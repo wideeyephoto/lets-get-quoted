@@ -135,6 +135,25 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Legacy: the blog list used to open a post in place via ?post=<id>. Editing
+  // has its own route now.
+  //
+  // Forwarded HERE rather than with redirect() inside the page. A redirect
+  // thrown during a Server Component's render happens after the shell has begun
+  // streaming, so Next finishes the partial tree and then swaps it — which in
+  // dev throws "Rendered more hooks than during the previous render" and in
+  // production is a visible flash of the wrong page. At this layer it is an
+  // ordinary 307 and nothing renders twice.
+  if (request.nextUrl.pathname === '/dashboard/marketing/blog') {
+    const legacyPost = request.nextUrl.searchParams.get('post')?.trim();
+    if (legacyPost) {
+      const target = request.nextUrl.clone();
+      target.pathname = `/dashboard/marketing/blog/${encodeURIComponent(legacyPost.slice(0, 80))}`;
+      target.searchParams.delete('post');
+      return applyCsp(NextResponse.redirect(target, 307));
+    }
+  }
+
   return applyCsp(response);
 }
 

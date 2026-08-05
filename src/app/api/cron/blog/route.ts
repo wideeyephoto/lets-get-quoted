@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteContent, slugifyBlogTitle } from '@/lib/site-content';
 import { draftBlogPost } from '@/lib/blog-generate';
+import { shouldAutoPublish } from '@/lib/marketing-status';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -45,8 +46,13 @@ export async function GET(request: Request) {
     let changed = false;
 
     // 1) Publish any scheduled drafts whose auto-publish date has arrived.
+    //
+    // Through shouldAutoPublish rather than a `status !== 'published'` test.
+    // That test was correct while there were two statuses and became a bug with
+    // the third: a post somebody ARCHIVED while it still held a schedule would
+    // put itself back on their website overnight.
     posts = posts.map((post) => {
-      if (post.status !== 'published' && post.publishAt && post.publishAt <= today) {
+      if (shouldAutoPublish(post, today)) {
         published++;
         changed = true;
         return { ...post, status: 'published' as const, publishAt: '', date: today };

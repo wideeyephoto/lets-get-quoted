@@ -5,6 +5,7 @@ import {
   isChatChannel, resolveChatButton,
   type ChatButtonConfig, type ChatChannel,
 } from '@/lib/chat-button';
+import { normalizePostStatus, type StoredPostStatus } from '@/lib/marketing-status';
 import { isSocialPlatformId, normalizeSocialUrl } from '@/lib/socials';
 import { parseVideoSource } from '@/lib/video-source';
 import { parseYouTubeUrl } from '@/lib/youtube';
@@ -526,7 +527,10 @@ export type SiteBlogPost = {
   excerpt: string;
   body: string;
   coverImage: string;
-  status: 'draft' | 'published';
+  // Four stored states. "Scheduled" is deliberately NOT one of them — it is
+  // derived from publishAt, which is what the nightly cron actually reads, so
+  // scheduling keeps a single source of truth. See lib/marketing-status.
+  status: StoredPostStatus;
   date: string;
   // Optional scheduled auto-publish date (YYYY-MM-DD). When set on a draft, the
   // daily cron flips it to published once that date arrives.
@@ -1288,7 +1292,12 @@ function parseBlogPosts(value: unknown): SiteBlogPost[] {
       excerpt: toString(item.excerpt),
       body: toString(item.body),
       coverImage: toString(item.coverImage),
-      status: rawStatus === 'published' ? 'published' : 'draft',
+      // An allowlist, not a published/not-published coin flip. This used to be
+      // `rawStatus === 'published' ? 'published' : 'draft'`, which silently
+      // rewrote every state that was not those two — so storing 'ready' or
+      // 'archived' would have LOST it on the very next read, and the loss would
+      // have looked like the owner's own click not registering.
+      status: normalizePostStatus(rawStatus),
       date: toString(item.date),
       publishAt: /^\d{4}-\d{2}-\d{2}$/.test(toString(item.publishAt)) ? toString(item.publishAt) : '',
       // Parsed, or it would not survive. This function rebuilds every post from

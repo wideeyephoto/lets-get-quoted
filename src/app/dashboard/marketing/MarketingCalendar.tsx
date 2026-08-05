@@ -164,7 +164,7 @@ export default function MarketingCalendar({
                         that says "review and publish it" landed on a page with
                         nothing to review. */}
                     ✓ Draft on your website: “{postTitle}” —{' '}
-                    <Link href={postId ? `/dashboard/marketing/blog?post=${encodeURIComponent(postId)}` : '/dashboard/marketing/blog'}>
+                    <Link href={postId ? `/dashboard/marketing/blog/${encodeURIComponent(postId)}` : '/dashboard/marketing/blog'}>
                       review and publish it
                     </Link>.
                   </p>

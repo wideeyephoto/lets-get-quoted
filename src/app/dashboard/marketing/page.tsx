@@ -1,171 +1,243 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { AUDIENCE_DEFS, listCampaigns, loadListHealth, loadRecipients, matchesAudience } from '@/lib/campaigns';
+import { loadRecipients } from '@/lib/campaigns';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
-import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
-import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
+import {
+  countStates, needsAttention, postState, shortDate, todayKeyOf,
+} from '@/lib/marketing-status';
+import { overviewSummary, prepareRecommendations, type Recommendation } from '@/lib/marketing-overview';
 import { marketingCalendarAction } from './actions';
-import MarketingWorkspace from './MarketingWorkspace';
+import MarketingNav from './MarketingNav';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Marketing' };
 
-export default async function MarketingPage({
-  searchParams,
-}: {
-  searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
-  // `draft` is 'extra-stop' or 'beat:<id>'. Both are looked up server-side.
-}) {
+/**
+ * Marketing, overview.
+ *
+ * This page used to be the whole of marketing: the seasonal calendar, the full
+ * email composer, the send history and two summary tiles, stacked. The composer
+ * alone is 336 lines of form, and it sat between the topics that suggest what to
+ * write and the history of what had been written — so the page opened on a blank
+ * form rather than on an answer to "what should I do today".
+ *
+ * The composer now lives at /campaigns and this is a dashboard: four figures,
+ * what to do next, and what is already coming.
+ */
+export default async function MarketingPage() {
   const { supabase, accountId } = await requireOwnerContext();
+  const today = todayKeyOf();
 
-  const [view, recipients, campaigns, listHealth, { data: addressRow }, rebookCandidates] = await Promise.all([
+  const [view, recipients, { data: addressRow }, rebookCandidates, blogData] = await Promise.all([
     marketingCalendarAction(4),
     loadRecipients(supabase, accountId),
-    listCampaigns(supabase, accountId),
-    loadListHealth(supabase, accountId),
     supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle(),
     listRebookCandidates(supabase, accountId, DEFAULT_REBOOK_DAYS),
+    loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
   ]);
 
-  // Past customers overdue for another job. A summary only — the list and the
-  // sending live on their own page. `uninvited` is the number that matters: the
-  // rest have already been asked, and asking them again is how you become the
-  // contractor somebody blocks.
-  const rebook = {
-    days: DEFAULT_REBOOK_DAYS,
-    due: rebookCandidates.length,
-    reachable: rebookCandidates.filter((candidate) => candidate.smsReady || candidate.hasEmail).length,
-    uninvited: rebookCandidates.filter((candidate) => (candidate.smsReady || candidate.hasEmail) && !candidate.invitedAt).length,
-  };
-
   const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
+  const posts = blogData?.posts ?? [];
+  const counts = countStates(posts, today);
+  const attention = needsAttention(posts, today);
 
-  // A summary only — the posts themselves are a page of their own. Null when
-  // there is no website, because "0 drafts" would read as something to fix.
-  const blogData = await loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com');
-  const published = blogData?.posts.filter((post) => post.status === 'published') ?? [];
-  const blogSummary = blogData
-    ? {
-        total: blogData.posts.length,
-        live: published.length,
-        drafts: blogData.posts.length - published.length,
-        latest: published.map((post) => post.date).filter(Boolean).sort().at(-1) ?? null,
-      }
-    : null;
+  // Scheduled posts, soonest first — the "Coming up" rail and the tile read the
+  // same list, so they cannot disagree about what is next.
+  const upcoming = posts
+    .filter((post) => postState(post, today) === 'scheduled')
+    .sort((a, b) => a.publishAt.localeCompare(b.publishAt));
 
-  // Precompute reachable counts per audience × channel so the composer can show
-  // live numbers without pulling any contact data into the client bundle.
-  const now = Date.now();
-  const reach = Object.fromEntries(
-    AUDIENCE_DEFS.map((audience) => {
-      const matched = recipients.filter((recipient) => matchesAudience(recipient, audience.id, now));
-      return [
-        audience.id,
-        {
-          total: matched.length,
-          email: matched.filter((recipient) => recipient.emailReady).length,
-          sms: matched.filter((recipient) => recipient.smsReady).length,
-          either: matched.filter((recipient) => recipient.emailReady || recipient.smsReady).length,
-        },
-      ];
-    }),
+  const monthPrefix = today.slice(0, 7);
+  const publishedThisMonth = posts.filter(
+    (post) => post.status === 'published' && post.date.startsWith(monthPrefix),
+  ).length;
+
+  const emailReachable = recipients.filter((recipient) => recipient.emailReady).length;
+
+  const summary = overviewSummary({
+    drafts: attention.drafts,
+    overdue: attention.overdue,
+    scheduledCount: counts.scheduled,
+    nextScheduledLabel: upcoming[0] ? shortDate(upcoming[0].publishAt) : null,
+    publishedThisMonth,
+    emailReachable,
+  });
+
+  const recommendations = prepareRecommendations(
+    view.planned.map<Recommendation>((beat) => ({
+      beatId: beat.beatId,
+      title: beat.title,
+      whyNow: beat.whyNow,
+      windowLabel: beat.monthName,
+      channels: beat.channels,
+      reach: beat.reach,
+      sentAt: beat.sentAt,
+      postedId: beat.postedId,
+      postedTitle: beat.postedTitle,
+    })),
   );
 
-  // A draft handed over from another page. Built here rather than passed through
-  // the URL: the message depends on the account's own settings, and a
-  // querystring carrying prose is a querystring somebody can rewrite.
-  //
-  // The calendar above no longer needs this — it hands its draft across in the
-  // browser — but a link arriving from elsewhere still does.
-  let draft:
-    | { channel: 'email' | 'sms' | 'both'; audience: string; subject: string; subjectOptions?: string[]; body: string; beatId?: string }
-    | undefined;
-  if (searchParams.draft === 'extra-stop') {
-    const [{ data: account }, { data: site }] = await Promise.all([
-      supabase.from('accounts').select('business_name, extra_stop_min_fee_cents, extra_stop_days_ahead').eq('id', accountId).maybeSingle(),
-      supabase.from('sites').select('published, subdomain, company_name').eq('account_id', accountId).maybeSingle(),
-    ]);
-    const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
-    const pitch = buildQuickStopPitch({
-      businessName: (site?.company_name as string) || (account as { business_name?: string } | null)?.business_name || 'us',
-      bookingUrl: site?.published && site?.subdomain ? `${origin}/book/${site.subdomain}` : origin,
-      minFeeCents: Number((account as { extra_stop_min_fee_cents?: number } | null)?.extra_stop_min_fee_cents) || 0,
-      daysAhead: Number((account as { extra_stop_days_ahead?: number } | null)?.extra_stop_days_ahead ?? 1),
-    });
-    // Past customers, because they already know whether they liked the work.
-    draft = { channel: 'email', audience: 'past', subject: pitch.subject, body: pitch.body };
-  } else if (searchParams.draft?.startsWith('beat:')) {
-    draft = await campaignDraftForBeat(supabase, accountId, searchParams.draft.slice('beat:'.length));
-  }
+  const rebookDue = rebookCandidates.filter(
+    (candidate) => (candidate.smsReady || candidate.hasEmail) && !candidate.invitedAt,
+  ).length;
 
-  const sentCount = searchParams.sent ? Number(searchParams.sent) : null;
-  const showResult = sentCount !== null;
-  const showTestFlash = searchParams.test === '1';
+  const tiles = [
+    { key: 'attention', label: 'Needs attention', ...summary.attention, href: '/dashboard/marketing/blog?status=draft' },
+    { key: 'scheduled', label: 'Scheduled', ...summary.scheduled, href: '/dashboard/marketing/blog?status=scheduled' },
+    { key: 'published', label: 'Published this month', ...summary.published, href: '/dashboard/marketing/blog?status=published' },
+    { key: 'audience', label: 'Email audience', ...summary.audience, href: '/dashboard/clients' },
+  ];
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel marketing-hero">
+      <MarketingNav />
+
+      <section className="workspace-hero panel marketing-hero mkt-overview-hero">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">Marketing</p>
-          <h1 className="workspace-title">What&apos;s worth saying, and when</h1>
-          {/* One line. The paragraph this replaced explained the drafting model,
-              the consent model and the unsubscribe — all of which the page
-              demonstrates a screen further down, where somebody is actually
-              deciding whether to press send. */}
+          <p className="eyebrow">Marketing overview</p>
+          <h1 className="workspace-title">Keep your pipeline moving</h1>
           <p className="workspace-lead">
-            Timed to {view.businessName}&apos;s trade and weather. Nothing sends itself.{' '}
-            <a href="#new-campaign">Write a one-off →</a>
+            Your next best marketing actions, timed to {view.businessName}
+            {view.state ? ` and ${view.state} weather` : ' and your local weather'}.
           </p>
+        </div>
+        <div className="mkt-hero-action">
+          <Link className="btn primary" href="/dashboard/marketing/campaigns">
+            Create email campaign
+          </Link>
         </div>
       </section>
 
-      {showTestFlash ? (
-        <section className="panel workspace-section-card flash-banner flash-info">
-          <p>Test email sent to your inbox. Take a look, then send the real thing when it&apos;s ready.</p>
-        </section>
-      ) : null}
-
-      {showResult ? (
-        <section className="panel workspace-section-card flash-banner flash-success">
-          <p>
-            Campaign sent to <strong>{sentCount}</strong> {sentCount === 1 ? 'message' : 'messages'} across{' '}
-            {searchParams.recipients ?? 0} {Number(searchParams.recipients) === 1 ? 'customer' : 'customers'}.
-            {Number(searchParams.skipped) > 0 ? ` ${searchParams.skipped} skipped (not reachable).` : ''}
-            {Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed to send.` : ''}
-          </p>
-        </section>
-      ) : null}
-
-      {/* Said before they write, not thrown as an error after. The send is
-          blocked without it either way — being told at the end is being told
-          once the work is done. */}
+      {/* Said before they write, not thrown as an error after the work is done. */}
       {!mailingAddress ? (
         <section className="panel workspace-section-card flash-banner flash-warn">
           <p>
             Marketing email needs a physical postal address by law, and you don&apos;t have one on file — anything
-            you write here can&apos;t be emailed until you add it.{' '}
+            you write can&apos;t be emailed until you add it.{' '}
             <Link href="/dashboard/settings">Add your mailing address →</Link>
           </p>
         </section>
       ) : null}
 
-      <MarketingWorkspace
-        view={view}
-        campaigns={campaigns}
-        hasRecipients={recipients.length > 0}
-        blog={blogSummary}
-        rebook={rebook}
-        composer={{
-          audiences: AUDIENCE_DEFS,
-          reach,
-          initial: draft,
-          mailingAddress,
-          daysSinceLastSend: listHealth.daysSinceLastSend,
-          unsubscribesSinceLastSend: listHealth.unsubscribesSinceLastSend,
-        }}
-      />
+      <div className="mkt-tiles">
+        {tiles.map((tile) => (
+          <Link key={tile.key} href={tile.href} className="panel mkt-tile">
+            <span className="mkt-tile-label">{tile.label}</span>
+            <strong className="mkt-tile-value">{tile.value}</strong>
+            <span className="mkt-tile-note">{tile.note}</span>
+          </Link>
+        ))}
+      </div>
+
+      <div className="mkt-overview-grid">
+        <section className="panel workspace-section-card mkt-recommend">
+          <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+            <h2>Recommended next actions</h2>
+            <Link href="/dashboard/marketing/calendar" className="mkt-section-link">View plan</Link>
+          </div>
+
+          {recommendations.length === 0 ? (
+            <p className="empty-state">
+              Nothing seasonal to suggest right now. <Link href="/dashboard/marketing/calendar">See the year →</Link>
+            </p>
+          ) : (
+            <ul className="mkt-rec-list">
+              {recommendations.map((rec) => (
+                <li key={rec.beatId} className="mkt-rec">
+                  <p className="mkt-rec-head">
+                    <span className="mkt-rec-window">{rec.windowLabel}</span>
+                    {/* Text, not a colour — the badge says what state it is in. */}
+                    {rec.badge ? <span className="mkt-rec-badge">{rec.badge}</span> : null}
+                    <span className="mkt-rec-title">{rec.title}</span>
+                  </p>
+                  <p className="mkt-rec-why">
+                    {rec.postedId
+                      ? 'Your blog draft is ready. Finish it, then turn it into a customer email.'
+                      : rec.whyNow}
+                    {rec.reach != null && rec.reach > 0 && !rec.postedId ? (
+                      <> {rec.reach} {rec.reach === 1 ? 'customer is' : 'customers are'} reachable by email.</>
+                    ) : null}
+                  </p>
+                  <div className="mkt-rec-actions">
+                    {rec.actions.map((action) => (
+                      <Link
+                        key={action.label}
+                        href={action.href}
+                        className={`btn ${action.primary ? 'primary' : 'secondary'}`}
+                      >
+                        {action.label}
+                      </Link>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="mkt-side">
+          <section className="panel workspace-section-card mkt-coming">
+            <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+              <h2>Coming up</h2>
+              <Link href="/dashboard/marketing/calendar" className="mkt-section-link">Calendar</Link>
+            </div>
+            {upcoming.length === 0 ? (
+              <p className="empty-state">
+                Nothing scheduled. A post with a date on it publishes itself.
+              </p>
+            ) : (
+              <ul className="mkt-coming-list">
+                {upcoming.slice(0, 5).map((post) => (
+                  <li key={post.id}>
+                    <Link href={`/dashboard/marketing/blog/${post.id}`} className="mkt-coming-row">
+                      <span className="mkt-coming-date">{shortDate(post.publishAt)}</span>
+                      <span className="mkt-coming-copy">
+                        <strong>{post.title.trim() || 'Untitled post'}</strong>
+                        <small>Scheduled</small>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="panel workspace-section-card mkt-blogsum">
+            <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+              <h2>Blog</h2>
+            </div>
+            {!blogData ? (
+              <>
+                <p className="mkt-blogsum-line">No website to post to yet.</p>
+                <Link href="/dashboard/sites" className="btn secondary">Set one up</Link>
+              </>
+            ) : (
+              <>
+                <p className="mkt-blogsum-line">
+                  {counts.draft + counts.ready} {counts.draft + counts.ready === 1 ? 'draft' : 'drafts'} ·{' '}
+                  {counts.published} published
+                </p>
+                <Link href="/dashboard/marketing/blog" className="btn secondary">Manage blog</Link>
+              </>
+            )}
+          </section>
+
+          {rebookDue > 0 ? (
+            <section className="panel workspace-section-card mkt-blogsum">
+              <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+                <h2>Book again</h2>
+              </div>
+              <p className="mkt-blogsum-line">
+                {rebookDue} past {rebookDue === 1 ? 'customer' : 'customers'} {DEFAULT_REBOOK_DAYS}+ days quiet,
+                not yet asked.
+              </p>
+              <Link href="/dashboard/rebook" className="btn secondary">Send booking links</Link>
+            </section>
+          ) : null}
+        </div>
+      </div>
     </main>
   );
 }

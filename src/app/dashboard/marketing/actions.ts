@@ -350,13 +350,16 @@ export async function sendCampaignAction(formData: FormData) {
   const result = await sendCampaign(supabase, accountId, { channel, audience, subject, body, businessName, mailingAddress, beatId });
 
   revalidatePath('/dashboard/marketing');
+  revalidatePath('/dashboard/marketing/campaigns');
   const params = new URLSearchParams({
     sent: String(result.emailSent + result.smsSent),
     recipients: String(result.recipientCount),
     skipped: String(result.skipped),
     failed: String(result.failed),
   });
-  redirect(`/dashboard/marketing?${params.toString()}`);
+  // Back to the composer, which is where the result banner lives now — not the
+  // overview, which no longer has a composer to return to.
+  redirect(`/dashboard/marketing/campaigns?${params.toString()}`);
 }
 
 // Send just the email version to the owner's own inbox so they can eyeball it

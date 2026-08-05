@@ -229,7 +229,7 @@ export default function QuickStopCandidates({
           {/* `extra-stop` is the value the composer actually reads. This link
               said `quick-stop`, which matched nothing, so the button that exists
               to hand over a written pitch opened an empty box. */}
-          <Link href="/dashboard/marketing?draft=extra-stop#new-campaign" className="btn primary">
+          <Link href="/dashboard/marketing/campaigns?draft=extra-stop#new-campaign" className="btn primary">
             Write them about it →
           </Link>
         </div>

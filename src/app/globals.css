@@ -24064,3 +24064,336 @@ a.bset-card { color: inherit; text-decoration: none; }
      goes first when there isn't room, so the phone number keeps its target. */
   .cbrand-site { display: none; }
 }
+
+/* === Marketing workspace ==================================================
+   Overview / Campaigns / Blog / Calendar / Performance. One local nav across
+   the top of all five, one tile row, and one set of status words.
+
+   Every button in here declares its own background and border. The stylesheet
+   resets only `color` on <button> (see the note near the top), so a control
+   that sets padding and a radius but no background falls through to the UA's
+   `buttonface` — a light-grey pill on a dark panel. That is what happened to
+   the window tabs, and it is silent: it looks like a deliberate style. */
+
+.mkt-nav {
+  margin-bottom: 1.1rem;
+  border-bottom: 1px solid var(--rule-t10);
+  /* The tab row scrolls rather than wrapping to two lines on a phone. Five
+     labels do not fit at 320px and a wrapped nav pushes the page title below
+     the fold. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.mkt-nav::-webkit-scrollbar { display: none; }
+
+.mkt-nav-list {
+  display: flex;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: max-content;
+}
+
+.mkt-nav-link {
+  display: inline-flex;
+  align-items: center;
+  /* 44px tall including the border, so the whole row is a real target. */
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--mute-t58);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+.mkt-nav-link:hover { color: var(--text); }
+.mkt-nav-link.is-active {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+.mkt-nav-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.mkt-overview-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap; }
+.mkt-hero-action { flex: 0 0 auto; }
+
+/* --- The four tiles ------------------------------------------------------- */
+.mkt-tiles {
+  display: grid;
+  /* minmax(0, 1fr), never a bare 1fr: a bare 1fr has a minimum of min-content,
+     so a long note in one tile pushes the row wider than the page and the whole
+     document scrolls sideways. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.1rem;
+}
+
+.mkt-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 14px;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+a.mkt-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.mkt-tile-label { color: var(--mute-t58); font-size: 0.78rem; font-weight: 600; }
+.mkt-tile-value { font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+.mkt-tile-note { color: var(--muted); font-size: 0.78rem; }
+
+/* --- Overview layout ------------------------------------------------------ */
+.mkt-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+.mkt-side { display: grid; gap: 1.1rem; align-content: start; }
+
+.mkt-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.mkt-section-head h2 { margin: 0; font-size: 1.02rem; font-weight: 700; }
+
+.mkt-section-link {
+  border: 0;
+  background: transparent;
+  padding: 0.2rem 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mkt-section-link:hover { color: var(--text); }
+
+/* --- Recommended next actions --------------------------------------------- */
+.mkt-rec-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.mkt-rec { padding: 1.05rem 0; border-top: 1px solid var(--rule-t10); }
+.mkt-rec:first-child { border-top: 0; padding-top: 0.4rem; }
+
+.mkt-rec-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 0.35rem; }
+.mkt-rec-window {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--mute-t58);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* Text, not a colour. The badge SAYS "Draft created" — the tint only repeats
+   what the words already carry, so it survives greyscale and colour blindness. */
+.mkt-rec-badge {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--cedge-green-3, var(--edge-t12));
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--ok-ink, var(--text));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.mkt-rec-title { font-size: 1rem; font-weight: 700; }
+.mkt-rec-why { margin: 0 0 0.7rem; color: var(--muted); font-size: 0.88rem; line-height: 1.55; }
+.mkt-rec-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* --- Coming up ------------------------------------------------------------ */
+.mkt-coming-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.mkt-coming-list li + li { border-top: 1px solid var(--rule-t10); }
+
+.mkt-coming-row {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: baseline;
+  min-height: 44px;
+  padding: 0.6rem 0;
+}
+.mkt-coming-row:hover .mkt-coming-copy strong { color: var(--accent); }
+.mkt-coming-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.mkt-coming-date { color: var(--accent); font-size: 0.8rem; font-weight: 700; }
+.mkt-coming-copy { display: grid; gap: 0.1rem; min-width: 0; }
+.mkt-coming-copy strong { font-size: 0.9rem; font-weight: 650; overflow-wrap: anywhere; }
+.mkt-coming-copy small { color: var(--mute-t58); font-size: 0.76rem; }
+
+.mkt-blogsum-line { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.9rem; }
+
+/* --- Status filters ------------------------------------------------------- */
+.mkt-filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.9rem 0 1rem; }
+
+.mkt-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.mkt-filter:hover { border-color: var(--accent); color: var(--text); }
+.mkt-filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mkt-filter.is-active {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--text);
+}
+.mkt-filter-count { color: var(--mute-t58); font-size: 0.76rem; font-weight: 700; }
+.mkt-filter.is-active .mkt-filter-count { color: var(--accent); }
+
+/* --- Post list ------------------------------------------------------------ */
+.mkt-post-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.mkt-post-list li + li { border-top: 1px solid var(--rule-t10); }
+
+.mkt-post-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 56px;
+  padding: 0.75rem 0.2rem;
+}
+.mkt-post-row:hover strong { color: var(--accent); }
+.mkt-post-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
+.mkt-post-copy { display: grid; gap: 0.15rem; min-width: 0; }
+.mkt-post-copy strong { font-size: 0.95rem; font-weight: 650; overflow-wrap: anywhere; }
+.mkt-post-copy small { color: var(--mute-t58); font-size: 0.78rem; }
+
+/* --- The status word ------------------------------------------------------
+   The WORD is the signal. Colour is a second, redundant channel — nothing here
+   is distinguishable by hue alone. */
+.mkt-state {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mkt-state-published { border-color: rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.12); color: var(--ok-ink, var(--text)); }
+.mkt-state-scheduled { border-color: rgba(255, 122, 33, 0.4); background: rgba(255, 122, 33, 0.12); color: var(--accent); }
+.mkt-state-ready { border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.12); color: var(--text); }
+.mkt-state-archived { opacity: 0.72; }
+
+/* --- Post editor ---------------------------------------------------------- */
+.mkt-crumb { margin: 0 0 0.7rem; font-size: 0.86rem; }
+.mkt-crumb a { color: var(--muted); font-weight: 600; }
+.mkt-crumb a:hover { color: var(--text); }
+
+.mkt-editor-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap; }
+.mkt-editor-hero .workspace-lead { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.mkt-editor-meta { color: var(--muted); font-size: 0.86rem; }
+.mkt-save { flex: 0 0 auto; margin: 0; color: var(--mute-t58); font-size: 0.8rem; }
+
+/* Draft → Ready → Scheduled/Published. A list, because it is an ordered
+   sequence and a screen reader should say so. */
+.mkt-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+.mkt-progress-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.55rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  color: var(--mute-t58);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.mkt-progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--edge-t12);
+}
+.mkt-progress-step.is-done { border-color: rgba(255, 122, 33, 0.35); color: var(--text); }
+.mkt-progress-step.is-done .mkt-progress-dot { background: var(--accent); }
+.mkt-progress-step.is-here { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
+
+.mkt-status-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.mkt-after-publish { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--rule-t10); }
+
+.mkt-preview {
+  margin: 0 0 1.2rem;
+  padding: 1.2rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+}
+.mkt-preview h3 { margin: 0 0 0.5rem; font-size: 1.3rem; font-weight: 800; }
+.mkt-preview p { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.92rem; line-height: 1.65; }
+.mkt-preview-excerpt { font-style: italic; }
+.mkt-preview-cover { display: block; width: 100%; max-width: 100%; height: auto; margin-bottom: 1rem; border-radius: 10px; }
+
+/* Kept apart from the document, with its own heading, so "delete" is never
+   adjacent to a field somebody is tabbing through. */
+.mkt-danger { border-color: rgba(248, 113, 113, 0.28); }
+
+/* --- Performance ---------------------------------------------------------- */
+.mkt-perf-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mkt-perf-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.mkt-perf-table th,
+.mkt-perf-table td { padding: 0.6rem 0.7rem; text-align: left; border-bottom: 1px solid var(--rule-t10); }
+.mkt-perf-table th { color: var(--mute-t58); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.mkt-perf-table td:first-child { white-space: nowrap; }
+.mkt-perf-muted { color: var(--mute-t58); }
+.mkt-perf-miss { color: var(--gold-ink); font-weight: 700; }
+
+/* --- Narrow --------------------------------------------------------------- */
+@media (max-width: 1000px) {
+  .mkt-overview-grid { grid-template-columns: minmax(0, 1fr); }
+  .mkt-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  /* One column, and every action row stacks to full width rather than
+     squeezing two buttons into 320px. */
+  .mkt-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .mkt-tile { padding: 0.8rem 0.85rem; }
+  .mkt-tile-value { font-size: 1.5rem; }
+
+  .mkt-overview-hero,
+  .mkt-editor-hero { flex-direction: column; align-items: stretch; }
+  .mkt-hero-action .btn { width: 100%; justify-content: center; }
+
+  .mkt-rec-actions,
+  .mkt-status-actions { flex-direction: column; align-items: stretch; }
+  .mkt-rec-actions .btn,
+  .mkt-status-actions .btn { width: 100%; justify-content: center; }
+
+  .mkt-post-row { align-items: flex-start; }
+  .mkt-coming-row { grid-template-columns: 3.6rem minmax(0, 1fr); }
+}
+
+@media (max-width: 420px) {
+  .mkt-tiles { grid-template-columns: minmax(0, 1fr); }
+}

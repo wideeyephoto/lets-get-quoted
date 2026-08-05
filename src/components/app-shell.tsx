@@ -65,9 +65,9 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // marketing — which is what it is.
   { href: '/dashboard/marketing/blog', label: 'Blog', hint: 'Posts for your website' },
   // Rebook is NOT a rail item. It reached the rail as a destination but it is a
-  // reason to send something, so it lives on Marketing beside the composer that
-  // sends it — see MarketingWorkspace. The page itself is still at
-  // /dashboard/rebook, still linked from there and from the dashboard.
+  // reason to send something, so it is surfaced on the Marketing overview
+  // instead. The page itself is still at /dashboard/rebook, still linked from
+  // there and from the dashboard.
   { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },

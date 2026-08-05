@@ -1,91 +1,70 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { SiteBlogPost } from '@/lib/site-content';
-import StockPhotoPicker from './StockPhotoPicker';
 import {
-  createBlogPostAction,
-  deleteBlogPostAction,
-  generateBlogPostAction,
-  setBlogReminderAction,
-  updateBlogPostAction,
-  uploadBlogCoverAction,
-  type BlogPostEdit,
-} from './actions';
+  countStates, postDateLabel, postState, POST_STATE_LABEL, todayKeyOf, type PostState,
+} from '@/lib/marketing-status';
+import { createBlogPostAction, generateBlogPostAction, setBlogReminderAction } from './actions';
 
-// Every edit saves on blur or on the control's own change, so there is no Save
-// button and nothing to lose. That is the difference between this page and the
-// website builder, which batches a whole site into one save — a blog post is a
-// document, and a document that only exists until you navigate away is a
-// document people stop writing.
+/**
+ * The post list.
+ *
+ * This used to be the list AND the editor: clicking a title expanded a full
+ * form — title, excerpt, cover picker, a 14-row body — inside the row. So the
+ * page was either a list you could scan or one post you could edit, never both,
+ * and the "list" was a stack of collapsed accordions whose heights jumped every
+ * time you opened one. Editing now has its own screen at /blog/[id]; this is a
+ * list again.
+ */
+
+const FILTERS: { id: PostState | 'all'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'draft', label: 'Draft' },
+  { id: 'ready', label: 'Ready' },
+  { id: 'scheduled', label: 'Scheduled' },
+  { id: 'published', label: 'Published' },
+  { id: 'archived', label: 'Archived' },
+];
 
 function wordCount(text: string): number {
   return text.trim() ? text.trim().split(/\s+/).length : 0;
-}
-
-function postLabel(post: SiteBlogPost, index: number): string {
-  const title = post.title.trim();
-  if (!title) return `Untitled post ${index + 1}`;
-  return title.length > 60 ? `${title.slice(0, 60).trimEnd()}…` : title;
-}
-
-function statusLabel(post: SiteBlogPost): { text: string; tone: string } {
-  if (post.status === 'published') return { text: 'Live', tone: 'live' };
-  if (post.publishAt) return { text: `Scheduled ${post.publishAt}`, tone: 'scheduled' };
-  return { text: 'Draft', tone: 'draft' };
 }
 
 export default function BlogWorkspace({
   initialPosts,
   reminderWeeks,
   sectionEnabled,
-  publicBase,
   initialTopic,
-  initialPostId,
-  trade,
+  initialFilter,
 }: {
   initialPosts: SiteBlogPost[];
   reminderWeeks: number;
   sectionEnabled: boolean;
-  publicBase: string | null;
-  /** ?topic= from the dashboard reminder or a seasonal-topic handoff. */
+  /** ?topic= — somebody pressed "Create blog post" on a seasonal topic. */
   initialTopic: string;
-  /** ?post= — open this post straight away. From the marketing calendar. */
-  initialPostId: string;
-  /** Fallback stock-photo search for a post that has no title yet. */
-  trade: string;
+  /** ?status= — arrived from an overview tile. */
+  initialFilter: PostState | 'all';
 }) {
+  const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
-  // Opened from the URL when a card linked to one specific post, and checked
-  // against the real list so a stale link opens nothing rather than nothing
-  // visible with an editor's worth of state pointing at a deleted post.
-  const [openId, setOpenId] = useState<string | null>(
-    () => (initialPostId && initialPosts.some((post) => post.id === initialPostId) ? initialPostId : null),
-  );
-  /** The post whose cover photo is being chosen, or null. */
-  const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [topic, setTopic] = useState(initialTopic);
+  const [filter, setFilter] = useState<PostState | 'all'>(initialFilter);
   const [reminder, setReminder] = useState(reminderWeeks);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Arriving with ?topic= means somebody pressed "write about this" elsewhere.
-  useEffect(() => {
-    if (initialTopic) document.getElementById('blog-topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [initialTopic]);
-
-  // Arriving with ?post= means a card elsewhere linked to one specific draft.
-  // Scrolled to its TOP, not centred: an open post is taller than the viewport,
-  // and centring it puts the title off-screen above — you land in the middle of
-  // a body field with nothing saying which post you are in.
-  useEffect(() => {
-    if (!openId || !initialPostId || openId !== initialPostId) return;
-    document.getElementById(`blog-post-${initialPostId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // Once only — after this, opening posts by hand should not move the page.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPostId]);
+  // One clock for the whole render, so two rows can never disagree about
+  // whether today is past a scheduled date.
+  const today = useMemo(() => todayKeyOf(), []);
+  const counts = useMemo(() => countStates(posts, today), [posts, today]);
+  const shown = useMemo(
+    () => (filter === 'all' ? posts : posts.filter((post) => postState(post, today) === filter)),
+    [posts, filter, today],
+  );
 
   function run(key: string, work: () => Promise<void>) {
     setBusy(key);
@@ -101,35 +80,18 @@ export default function BlogWorkspace({
     });
   }
 
-  function edit(postId: string, patch: BlogPostEdit) {
-    // Optimistic, so typing never fights the round trip; the server's list
-    // replaces it when it lands.
-    setPosts((current) => current.map((post) => (post.id === postId ? { ...post, ...patch } : post)));
-    run(`edit:${postId}`, async () => {
-      setPosts(await updateBlogPostAction(postId, patch));
-    });
+  // A new post goes STRAIGHT to its editor. Creating something and leaving the
+  // person on a list, to find the thing they just made, is a step nobody wants.
+  function openNewest(next: SiteBlogPost[]) {
+    setPosts(next);
+    const newest = next[0];
+    if (newest) router.push(`/dashboard/marketing/blog/${newest.id}`);
   }
-
-  const liveCount = posts.filter((post) => post.status === 'published').length;
-  const picking = posts.find((post) => post.id === pickingFor) ?? null;
 
   return (
     <>
-      {picking ? (
-        <StockPhotoPicker
-          // The post's own subject first; its trade is the fallback, because a
-          // brand-new untitled post would otherwise search for nothing.
-          defaultQuery={picking.title.trim() || trade}
-          onClose={() => setPickingFor(null)}
-          onPick={(photo) => {
-            setPickingFor(null);
-            edit(picking.id, { coverImage: photo.url });
-          }}
-        />
-      ) : null}
-
       {message ? (
-        <p className={message.tone === 'bad' ? 'marketing-error' : 'blog-flash'}>{message.text}</p>
+        <p className={message.tone === 'bad' ? 'marketing-error' : 'blog-flash'} role="status">{message.text}</p>
       ) : null}
 
       {!sectionEnabled && posts.length > 0 ? (
@@ -140,8 +102,8 @@ export default function BlogWorkspace({
       ) : null}
 
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Write a post</p>
+        <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+          <h2>New blog post</h2>
         </div>
         <label className="cash-bill-field wide">
           <span>What should it be about?</span>
@@ -165,10 +127,8 @@ export default function BlogWorkspace({
                   setMessage({ tone: 'bad', text: result.message });
                   return;
                 }
-                setPosts(result.posts);
-                setOpenId(result.posts[0]?.id ?? null);
                 setTopic('');
-                setMessage({ tone: 'ok', text: `Draft written: “${result.title}”. Read it through, then publish when you're happy.` });
+                openNewest(result.posts);
               })
             }
           >
@@ -178,13 +138,7 @@ export default function BlogWorkspace({
             type="button"
             className="btn secondary"
             disabled={pending && busy === 'blank'}
-            onClick={() =>
-              run('blank', async () => {
-                const next = await createBlogPostAction();
-                setPosts(next);
-                setOpenId(next[0]?.id ?? null);
-              })
-            }
+            onClick={() => run('blank', async () => openNewest(await createBlogPostAction()))}
           >
             Write one myself
           </button>
@@ -195,187 +149,74 @@ export default function BlogWorkspace({
       </section>
 
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Your posts</p>
+        <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+          <h2>Your posts</h2>
           <p className="job-meta">
-            {posts.length === 0
+            {counts.all === 0
               ? 'None yet'
-              : `${posts.length} total · ${liveCount} live · drafts stay hidden until you publish them`}
+              : `${counts.draft + counts.ready} ${counts.draft + counts.ready === 1 ? 'draft' : 'drafts'} · ${counts.scheduled} scheduled · ${counts.published} published`}
           </p>
         </div>
 
-        {posts.length === 0 ? (
+        {/* Filters, with their counts on them. A chip that says "Archived" and
+            hides everything when pressed is a chip you press once. */}
+        <div className="mkt-filters" role="group" aria-label="Filter posts by status">
+          {FILTERS.map((entry) => {
+            const count = entry.id === 'all' ? counts.all : counts[entry.id];
+            const active = filter === entry.id;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                className={`mkt-filter${active ? ' is-active' : ''}`}
+                aria-pressed={active}
+                onClick={() => setFilter(entry.id)}
+              >
+                {entry.label} <span className="mkt-filter-count">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {counts.all === 0 ? (
           <p className="empty-state">
             No posts yet. Draft one above — a few genuinely useful articles give Google more local pages to rank
             and give past customers a reason to come back.
           </p>
+        ) : shown.length === 0 ? (
+          <p className="empty-state">
+            No {POST_STATE_LABEL[filter as PostState].toLowerCase()} posts.{' '}
+            <button type="button" className="linklike" onClick={() => setFilter('all')}>Show all {counts.all}</button>
+          </p>
         ) : (
-          <div className="blog-list">
-            {posts.map((post, index) => {
-              const open = openId === post.id;
-              const status = statusLabel(post);
+          <ul className="mkt-post-list">
+            {shown.map((post) => {
+              const state = postState(post, today);
               const words = wordCount(post.body);
               return (
-                <article key={post.id} id={`blog-post-${post.id}`} className={`blog-row${open ? ' is-open' : ''}`}>
-                  <header className="blog-row-head">
-                    <button
-                      type="button"
-                      className="blog-row-title"
-                      aria-expanded={open}
-                      onClick={() => setOpenId(open ? null : post.id)}
-                    >
-                      <strong>{postLabel(post, index)}</strong>
-                      <span className="blog-row-meta">
-                        {words > 0 ? `${words} words · ` : ''}
-                        {post.date}
-                      </span>
-                    </button>
-                    <span className={`blog-status blog-status-${status.tone}`}>{status.text}</span>
-                  </header>
-
-                  {open ? (
-                    <div className="blog-row-body">
-                      <div className="blog-publish-row">
-                        <button
-                          type="button"
-                          className={`btn ${post.status === 'published' ? 'ghost' : 'primary'}`}
-                          onClick={() => edit(post.id, { status: post.status === 'published' ? 'draft' : 'published' })}
-                        >
-                          {post.status === 'published' ? '✓ Published — take it down' : 'Publish now'}
-                        </button>
-                        {post.status !== 'published' ? (
-                          <label className="cash-bill-field">
-                            <span>or auto-publish on</span>
-                            <input
-                              type="date"
-                              value={post.publishAt}
-                              min={new Date().toISOString().slice(0, 10)}
-                              onChange={(event) => edit(post.id, { publishAt: event.target.value })}
-                            />
-                          </label>
-                        ) : null}
-                        {post.status === 'published' && publicBase ? (
-                          <a className="btn ghost" href={`${publicBase}/${post.slug}`} target="_blank" rel="noopener noreferrer">
-                            View it live ↗
-                          </a>
-                        ) : null}
-                      </div>
-
-                      <label className="cash-bill-field wide">
-                        <span>Title</span>
-                        <input
-                          defaultValue={post.title}
-                          maxLength={120}
-                          placeholder="5 signs it’s time to reseal your deck"
-                          onBlur={(event) => {
-                            if (event.target.value !== post.title) edit(post.id, { title: event.target.value });
-                          }}
-                        />
-                        {post.status === 'published' ? (
-                          <small className="cash-bill-note">
-                            Its web address stays <code>/{post.slug}</code> — it&apos;s published, so anything linking
-                            to it would break.
-                          </small>
-                        ) : null}
-                      </label>
-
-                      <label className="cash-bill-field wide">
-                        <span>Excerpt</span>
-                        <input
-                          defaultValue={post.excerpt}
-                          maxLength={200}
-                          placeholder="One sentence that makes someone want to read it."
-                          onBlur={(event) => {
-                            if (event.target.value !== post.excerpt) edit(post.id, { excerpt: event.target.value });
-                          }}
-                        />
-                      </label>
-
-                      <div className="cash-bill-field wide">
-                        <span>Cover photo</span>
-                        {post.coverImage ? (
-                          <div className="blog-cover">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={post.coverImage} alt="" />
-                            <button type="button" className="btn ghost" onClick={() => edit(post.id, { coverImage: '' })}>
-                              Remove
-                            </button>
-                          </div>
-                        ) : null}
-                        <div className="blog-cover-actions">
-                          {/* Stock first. Almost nobody has a photo of a clean
-                              gutter to hand, and a post with no cover renders
-                              as a grey box on every blog layout. */}
-                          <button type="button" className="btn secondary" onClick={() => setPickingFor(post.id)}>
-                            {post.coverImage ? 'Choose a different photo' : 'Choose a photo'}
-                          </button>
-                          <label className="blog-cover-upload">
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,image/avif"
-                              disabled={pending && busy === `cover:${post.id}`}
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                event.currentTarget.value = '';
-                                if (!file) return;
-                                const form = new FormData();
-                                form.set('image', file);
-                                run(`cover:${post.id}`, async () => {
-                                  setPosts(await uploadBlogCoverAction(post.id, form));
-                                });
-                              }}
-                            />
-                            <span>
-                              {pending && busy === `cover:${post.id}` ? 'Uploading…' : 'Upload my own'}
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <label className="cash-bill-field wide">
-                        <span>Body</span>
-                        <textarea
-                          rows={14}
-                          defaultValue={post.body}
-                          placeholder="Write in short paragraphs separated by a blank line."
-                          onBlur={(event) => {
-                            if (event.target.value !== post.body) edit(post.id, { body: event.target.value });
-                          }}
-                        />
-                        <small className="cash-bill-note">
-                          {words} words · ~{Math.max(1, Math.round(words / 220))} min read
-                          {words > 0 && words < 300 ? ' — aim for 400+ so the post feels worth the click' : ''}
-                        </small>
-                      </label>
-
-                      <div className="marketing-actions">
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          onClick={() => {
-                            if (!window.confirm(`Delete “${postLabel(post, index)}”? This can't be undone.`)) return;
-                            run(`delete:${post.id}`, async () => {
-                              setPosts(await deleteBlogPostAction(post.id));
-                              setOpenId(null);
-                            });
-                          }}
-                        >
-                          Delete this post
-                        </button>
-                        <span className="field-note">Changes save as you go.</span>
-                      </div>
-                    </div>
-                  ) : null}
-                </article>
+                <li key={post.id}>
+                  <Link href={`/dashboard/marketing/blog/${post.id}`} className="mkt-post-row">
+                    <span className="mkt-post-copy">
+                      <strong>{post.title.trim() || 'Untitled post'}</strong>
+                      <small>
+                        {postDateLabel(post, today)}
+                        {words > 0 ? ` · ${words} words` : ''}
+                      </small>
+                    </span>
+                    {/* The word itself carries the state — the colour only
+                        repeats it, so this reads the same in greyscale. */}
+                    <span className={`mkt-state mkt-state-${state}`}>{POST_STATE_LABEL[state]}</span>
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </section>
 
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Reminders</p>
+        <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+          <h2>Reminders</h2>
         </div>
         <label className="cash-bill-field">
           <span>Nudge me to publish</span>

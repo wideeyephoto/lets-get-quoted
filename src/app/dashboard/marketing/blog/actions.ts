@@ -8,6 +8,7 @@ import { uploadSiteImage } from '@/lib/site-image-storage';
 import { pickBlogCover } from '@/app/dashboard/sites/actions';
 import { saveBlogPosts, uniqueBlogSlug } from '@/lib/site-blog';
 import { getSiteContent, type SiteBlogPost } from '@/lib/site-content';
+import type { StoredPostStatus } from '@/lib/marketing-status';
 
 // Every write here goes through saveBlogPosts, which re-reads the site content
 // immediately before writing and replaces the post list alone. The website
@@ -49,7 +50,7 @@ export type BlogPostEdit = {
   excerpt?: string;
   body?: string;
   coverImage?: string;
-  status?: 'draft' | 'published';
+  status?: StoredPostStatus;
   publishAt?: string;
 };
 
@@ -67,8 +68,11 @@ export async function updateBlogPostAction(postId: string, edit: BlogPostEdit): 
         body: edit.body !== undefined ? String(edit.body).slice(0, 20000) : post.body,
         coverImage: edit.coverImage !== undefined ? String(edit.coverImage).slice(0, 500) : post.coverImage,
         status: edit.status ?? post.status,
-        // A published post keeps no schedule — it is already out.
-        publishAt: edit.status === 'published'
+        // A published post keeps no schedule — it is already out. Archiving
+        // drops it too: shouldAutoPublish already refuses an archived post, but
+        // a stale date left on the row would fire the moment somebody moved it
+        // back to Ready, publishing something they only meant to un-archive.
+        publishAt: edit.status === 'published' || edit.status === 'archived'
           ? ''
           : edit.publishAt !== undefined
             ? (/^\d{4}-\d{2}-\d{2}$/.test(edit.publishAt) ? edit.publishAt : '')
