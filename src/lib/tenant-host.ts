@@ -43,3 +43,61 @@ export function resolveTenantHost(hostHeader: string | null | undefined, rootDom
 
   return { kind: 'customDomain', domain: hostname };
 }
+
+/**
+ * Paths that only work while you are signed in — and so must live on exactly one
+ * host.
+ *
+ * A session cookie is host-only. Sign in on letsgetquoted.com and you have no
+ * session on app.letsgetquoted.com, which is fine right up until something
+ * leaves the app and comes back to the OTHER one. QuickBooks did exactly that:
+ * Connect was clicked on the apex, Intuit returned the owner to the subdomain
+ * because that is what NEXT_PUBLIC_APP_URL says, and the callback arrived with
+ * no session and no CSRF-state cookie and bounced to /login. Stripe returns and
+ * magic links have the same shape.
+ *
+ * `/auth` is in here because it is where a magic link lands and mints the
+ * cookie: send that to the wrong host and you are signed in on a host you will
+ * then navigate away from.
+ *
+ * The public link surfaces — /book, /invoice, /pay, /portal, /review, /track —
+ * are deliberately NOT here. They carry their own tokens, work with no session
+ * at all, and a contractor may hand them out on any host we serve.
+ */
+const SESSION_PATHS = [
+  '/dashboard',
+  '/admin',
+  '/field',
+  '/login',
+  '/auth',
+  '/welcome',
+  '/account-suspended',
+];
+
+export function needsCanonicalHost(pathname: string): boolean {
+  return SESSION_PATHS.some((base) => pathname === base || pathname.startsWith(`${base}/`));
+}
+
+/**
+ * Where a session-bearing request should actually be served, or null to leave it
+ * where it is.
+ *
+ * `appUrl` is our own configured NEXT_PUBLIC_APP_URL, never a host read off the
+ * request — the whole point is to stop trusting whichever host the caller
+ * happened to use. Unset or unparseable means "no opinion", which keeps preview
+ * deploys and local development working: on localhost the configured host and
+ * the request host are the same, so nothing redirects.
+ */
+export function canonicalHostFor(appUrl: string | undefined | null, hostHeader: string | null | undefined): string | null {
+  const configured = String(appUrl ?? '').trim();
+  if (!configured) return null;
+  let canonical: string;
+  try {
+    canonical = normalizeHost(new URL(configured).host);
+  } catch {
+    return null;
+  }
+  const here = normalizeHost(hostHeader);
+  if (!canonical || !here || canonical === here) return null;
+  return canonical;
+}

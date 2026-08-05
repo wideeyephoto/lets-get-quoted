@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { buildCsp, cspHeaderName, generateNonce } from '@/lib/csp';
-import { resolveTenantHost } from '@/lib/tenant-host';
+import { canonicalHostFor, needsCanonicalHost, resolveTenantHost } from '@/lib/tenant-host';
 
 export async function middleware(request: NextRequest) {
   // One nonce per request. It goes on the REQUEST headers so Next can read it
@@ -56,6 +56,31 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-lgq-standalone-site', '1');
     requestHeaders.set(cspHeader, csp);
     return applyCsp(NextResponse.rewrite(customSiteUrl, { request: { headers: requestHeaders } }));
+  }
+
+  // ── One host for anything that carries a session ──────────────────────────
+  // Both letsgetquoted.com and app.letsgetquoted.com serve this app, and a
+  // session cookie belongs to exactly one of them. Anything that leaves the app
+  // and comes back — a QuickBooks callback, a Stripe return, a magic link —
+  // arrives at whichever host we configured, and if you signed in on the other
+  // one it arrives with no cookie and looks logged out. See needsCanonicalHost.
+  //
+  // GET and HEAD only. A redirect drops a request body, and every server action
+  // in the app is a POST to the page's own URL — bouncing one would silently
+  // throw the submission away.
+  //
+  // The target host comes from our own NEXT_PUBLIC_APP_URL, never from the
+  // request. Unset (preview deploys) means no opinion and nothing moves.
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const canonical = needsCanonicalHost(request.nextUrl.pathname)
+      ? canonicalHostFor(process.env.NEXT_PUBLIC_APP_URL, request.headers.get('x-forwarded-host') || request.headers.get('host'))
+      : null;
+    if (canonical) {
+      const target = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${canonical}`);
+      // 307, not 308: browsers cache a permanent redirect hard, and a canonical
+      // host is exactly the kind of decision you want to be able to reverse.
+      return applyCsp(NextResponse.redirect(target, 307));
+    }
   }
 
   // The site builder's bare live-preview route renders the raw public
