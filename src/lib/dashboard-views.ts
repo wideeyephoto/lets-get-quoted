@@ -84,21 +84,13 @@ export function normalizeClientsView(value: unknown): ClientsView {
   return CLIENTS_VIEWS.includes(value as ClientsView) ? (value as ClientsView) : 'list';
 }
 
-// How the text inbox is dressed.
+// The text inbox has ONE dressing — Slate — and no picker.
 //
-// The three columns don't move between these — this is the same page in
-// different clothes, which is why it's one cookie and not a layout enum. What
-// changes is the thread: Classic is orange replies with an avatar beside each
-// incoming run; Slate is blue-on-black bubbles, carded conversations and the
-// time under each turn rather than tucked beside it.
-export const MESSAGES_VIEW_COOKIE = 'lgq_messages_view';
-export type MessagesView = 'classic' | 'slate';
-export const MESSAGES_VIEWS: MessagesView[] = ['classic', 'slate'];
-export function normalizeMessagesView(value: unknown): MessagesView {
-  // Classic is what the inbox already is, so nobody who never opens the gear
-  // finds their conversations repainted.
-  return MESSAGES_VIEWS.includes(value as MessagesView) ? (value as MessagesView) : 'classic';
-}
+// Classic was the other half of a two-way switch: orange replies with an avatar
+// beside every incoming run. It is gone rather than hidden, so there is no
+// cookie to read, no branch in the page and no second set of thread styles to
+// keep in step with the first. The markup carries .inbox-slate unconditionally;
+// git has Classic if it is ever wanted back.
 
 // Which Leads layout the owner last used.
 //

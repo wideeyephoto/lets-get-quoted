@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Conversation, SmsMessage } from '@/lib/messages';
-import { groupRuns, initialsFor } from '@/lib/message-context';
+import { groupRuns } from '@/lib/message-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,8 +99,11 @@ export default function DemoMessagesPage({ searchParams }: { searchParams: { thr
   const activeThread = DEMO_THREADS.find((thread) => thread.phone === activePhone) ?? DEMO_THREADS[0];
   const activeName = activeThread.name;
 
+  // Slate, same as the real inbox. The demo is what a prospect believes the
+  // product looks like, so it cannot go on showing a dressing the product no
+  // longer has.
   return (
-    <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell inbox-slate">
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Messages</p>
@@ -152,9 +155,7 @@ export default function DemoMessagesPage({ searchParams }: { searchParams: { thr
               const last = run.items[run.items.length - 1];
               return (
                 <div className={`inbox-run inbox-run-${run.direction}`} key={run.items[0].id}>
-                  {run.direction === 'inbound' ? (
-                    <span className="inbox-avatar" aria-hidden="true">{initialsFor(activeThread.name)}</span>
-                  ) : null}
+                  {/* No avatar: the bubble's side already says who spoke. */}
                   <div className="inbox-run-stack">
                     {run.items.map((message, index) => (
                       <div
