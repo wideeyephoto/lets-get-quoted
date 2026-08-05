@@ -11897,6 +11897,89 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
 .marketing-beat-meta { font-size: 0.76rem; color: var(--mute-t45); }
 .marketing-why { margin: 0.45rem 0 0; font-size: 0.85rem; line-height: 1.5; color: var(--mute-t55); }
 .marketing-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
+
+/* ── The marketing hero ──────────────────────────────────────────────────────
+   The one page in the app that is about ideas rather than records, so it gets
+   the only lit surface on a dashboard of flat panels. Three washes: the accent
+   at the top left, a violet at the top right, and a cool diagonal between them,
+   so the colour moves across the block instead of sitting on it. */
+.marketing-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 150% at 10% -10%, rgba(255, 122, 33, 0.2), transparent 58%),
+    radial-gradient(95% 130% at 94% 4%, rgba(167, 139, 250, 0.17), transparent 62%),
+    linear-gradient(142deg, rgba(255, 122, 33, 0.07), rgba(56, 189, 248, 0.05) 54%, rgba(167, 139, 250, 0.08));
+}
+/* On paper the flip paints .panel a flat #ffffff at higher specificity, so the
+   hero came out plain white and the gradient was dark-theme-only decoration.
+   Same three washes, roughly two-thirds the strength — the same colours that
+   read as "lit" on navy read as "stained" on white — over an explicit white
+   base, since these washes are translucent and need a ground of their own. */
+:root[data-theme='light'] .marketing-hero {
+  background:
+    radial-gradient(120% 150% at 10% -10%, rgba(255, 122, 33, 0.13), transparent 58%),
+    radial-gradient(95% 130% at 94% 4%, rgba(167, 139, 250, 0.12), transparent 62%),
+    linear-gradient(142deg, rgba(255, 122, 33, 0.05), rgba(56, 189, 248, 0.04) 54%, rgba(167, 139, 250, 0.06)),
+    #ffffff;
+}
+
+/* The sheen. A skewed band that crosses ONCE, slowly, and then waits off-screen
+   for most of the cycle — the rest is the point. A band that sweeps on a beat
+   you can anticipate stops being light moving over a surface and becomes a
+   progress bar you keep glancing at.
+   Transform only, so it costs the compositor a translate and nothing else; the
+   gradient underneath is rasterised once and never touched again. */
+.marketing-hero::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  left: -30%;
+  width: 18%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05) 42%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 58%,
+    transparent
+  );
+  animation: marketingSheen 19s ease-in-out infinite;
+}
+@keyframes marketingSheen {
+  0%, 6% { transform: skewX(-14deg) translateX(0); }
+  46%, 100% { transform: skewX(-14deg) translateX(720%); }
+}
+/* On paper a white sheen over a pale wash is nothing at all — the band has to
+   darken the ground rather than lighten it to read as the same gesture. */
+:root[data-theme='light'] .marketing-hero::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(17, 27, 41, 0.04) 42%,
+    rgba(17, 27, 41, 0.07) 50%,
+    rgba(17, 27, 41, 0.04) 58%,
+    transparent
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-hero::after { animation: none; opacity: 0; }
+}
+
+/* Two tiles where two full-width panels were. A figure, a phrase and a button —
+   if a tile needs a sentence, the number in it is not the right number. */
+.marketing-more {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.marketing-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; padding: 1.1rem 1.2rem; }
+.marketing-tile .eyebrow { margin: 0; }
+.marketing-tile-figure { font-size: clamp(1.6rem, 3.4vw, 2.1rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.marketing-tile-note { margin: 0 0 0.75rem; font-size: 0.83rem; line-height: 1.45; color: var(--muted); }
+.marketing-tile .btn { margin-top: auto; }
 .marketing-error { font-size: 0.78rem; color: var(--ink-orange-1); flex: 1 1 14rem; }
 .marketing-draft {
   margin-top: 0.7rem;

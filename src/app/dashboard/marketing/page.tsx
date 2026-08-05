@@ -106,14 +106,17 @@ export default async function MarketingPage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className="workspace-hero panel marketing-hero">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Marketing</p>
           <h1 className="workspace-title">What&apos;s worth saying, and when</h1>
+          {/* One line. The paragraph this replaced explained the drafting model,
+              the consent model and the unsubscribe — all of which the page
+              demonstrates a screen further down, where somebody is actually
+              deciding whether to press send. */}
           <p className="workspace-lead">
-            Seasonal topics for {view.businessName}, timed to your trade and your weather — and the composer that
-            sends them. Nothing here goes out on its own: it drafts, you decide, and every email carries its own
-            unsubscribe. <a href="#new-campaign">Write a one-off →</a>
+            Timed to {view.businessName}&apos;s trade and weather. Nothing sends itself.{' '}
+            <a href="#new-campaign">Write a one-off →</a>
           </p>
         </div>
       </section>

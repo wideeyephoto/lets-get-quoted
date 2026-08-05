@@ -89,60 +89,56 @@ export default function MarketingWorkspace({
         )}
       </section>
 
-      {/* The cheapest send on this page: people who already hired you once.
-          It was a rail destination of its own, which made winning back a
-          customer feel like a separate discipline rather than the most obvious
-          thing to send this week. The list and the sending stay on their own
-          page — this is the reason to go there. */}
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
+      {/* Two tiles, not two full-width panels. Rebook and the blog are the other
+          two ways to reach somebody, and each was carrying a paragraph to say
+          what a number says: how many people, how many posts. Side by side they
+          read as "the other things you could do", which is what they are. */}
+      <section className="marketing-more">
+        <article className="panel marketing-tile">
           <p className="eyebrow">Book again</p>
-        </div>
-        <p className="workspace-card-copy">
-          {rebook.due === 0
-            ? `Nobody is ${rebook.days}+ days overdue right now. When a past customer goes quiet for a season, they show up here — they already know whether they liked the work, which makes them the cheapest send on this page.`
-            : rebook.uninvited > 0
-              ? `${rebook.uninvited} past ${rebook.uninvited === 1 ? 'customer has' : 'customers have'} gone ${rebook.days}+ days without booking and ${rebook.uninvited === 1 ? 'has' : 'have'} not been asked back yet. They already know whether they liked the work.`
-              : `${rebook.due} past ${rebook.due === 1 ? 'customer is' : 'customers are'} ${rebook.days}+ days overdue, and all the reachable ones have already been invited. Asking twice is how you get blocked.`}
-          {rebook.due > 0 && rebook.reachable < rebook.due
-            ? ` ${rebook.due - rebook.reachable} of them ${rebook.due - rebook.reachable === 1 ? 'has' : 'have'} no phone or email on file.`
-            : ''}
-        </p>
-        <div className="marketing-actions">
-          <Link href="/dashboard/rebook" className={`btn ${rebook.uninvited > 0 ? 'primary' : 'secondary'}`}>
-            {rebook.uninvited > 0 ? `Send your booking link to ${rebook.uninvited}` : 'Who’s due to rebook'}
-          </Link>
-        </div>
-      </section>
-
-      {/* The other half of marketing: what you publish rather than what you
-          send. The same seasonal topics feed both, so the blog belongs on this
-          page and not buried in the website builder's section list. */}
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Blog</p>
-        </div>
-        {!blog ? (
-          <p className="empty-state">
-            You need a website before you can post to it. <Link href="/dashboard/sites">Set one up →</Link>
+          <strong className="marketing-tile-figure">
+            {rebook.uninvited > 0 ? rebook.uninvited : rebook.due > 0 ? rebook.due : 'Nobody'}
+          </strong>
+          <p className="marketing-tile-note">
+            {rebook.uninvited > 0
+              ? `past ${rebook.uninvited === 1 ? 'customer' : 'customers'} ${rebook.days}+ days quiet, not yet asked`
+              : rebook.due > 0
+                ? `${rebook.days}+ days quiet — all reachable ones already invited`
+                : `is ${rebook.days}+ days overdue right now`}
           </p>
-        ) : (
-          <>
-            <p className="workspace-card-copy">
-              {blog.total === 0
-                ? 'No posts yet. A few genuinely useful articles give Google more local pages to rank, and give past customers a reason to come back — it is the slowest marketing here and the one that compounds.'
-                : `${blog.live} live · ${blog.drafts} ${blog.drafts === 1 ? 'draft' : 'drafts'}${blog.latest ? ` · last published ${blog.latest}` : ''}.`}
-            </p>
-            <div className="marketing-actions">
+          <Link href="/dashboard/rebook" className={`btn ${rebook.uninvited > 0 ? 'primary' : 'secondary'}`}>
+            {rebook.uninvited > 0 ? 'Send booking links' : 'Who’s due'}
+          </Link>
+        </article>
+
+        <article className="panel marketing-tile">
+          <p className="eyebrow">Blog</p>
+          {!blog ? (
+            <>
+              <strong className="marketing-tile-figure">—</strong>
+              <p className="marketing-tile-note">No website to post to yet</p>
+              <Link href="/dashboard/sites" className="btn secondary">Set one up</Link>
+            </>
+          ) : (
+            <>
+              <strong className="marketing-tile-figure">{blog.live}</strong>
+              <p className="marketing-tile-note">
+                live{blog.drafts > 0 ? ` · ${blog.drafts} ${blog.drafts === 1 ? 'draft' : 'drafts'}` : ''}
+                {blog.latest ? ` · last ${blog.latest}` : ''}
+              </p>
               <Link href="/dashboard/marketing/blog" className="btn secondary">
-                {blog.total === 0 ? 'Write your first post' : 'Write & edit posts'}
+                {blog.total === 0 ? 'Write your first' : 'Write & edit'}
               </Link>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </article>
       </section>
 
-      <CampaignHistory campaigns={campaigns} onReuse={hasRecipients ? onUseDraft : undefined} />
+      {/* Only once there IS a history. An empty panel saying its own name and
+          "nothing here yet" is a row of furniture explaining that it is empty. */}
+      {campaigns.length > 0 ? (
+        <CampaignHistory campaigns={campaigns} onReuse={hasRecipients ? onUseDraft : undefined} />
+      ) : null}
     </>
   );
 }

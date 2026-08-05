@@ -314,5 +314,8 @@ export const CHANNEL_LABEL: Record<Channel, string> = {
  * nobody gave for this purpose. Email carries an unsubscribe and a postal
  * address and is already wired for exactly this.
  */
+// Short on purpose. The full reasoning is in the comment above, where it is
+// useful; on screen it sat under three topic cards as a paragraph of law
+// nobody rereads after the first time.
 export const SMS_EXCLUSION_NOTE =
-  'These go out by email, not text. A marketing text needs its own written opt-in under US law — separate from the consent a customer gave for job updates — and the penalties for getting it wrong run to four figures per message.';
+  'Email only — marketing texts need their own written opt-in under US law, and job-update consent is not it.';
