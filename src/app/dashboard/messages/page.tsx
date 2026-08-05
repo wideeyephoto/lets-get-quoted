@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { fullDate } from '@/lib/recurring-display';
-import { groupByDay, messageContext } from '@/lib/message-context';
+import { groupByDay, groupRuns, initialsFor, messageContext } from '@/lib/message-context';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
@@ -187,28 +187,54 @@ export default async function MessagesPage({
                         {/* A thread with no day breaks reads as one long argument
                             about nothing. */}
                         <p className="inbox-day-divider"><span>{day.label}</span></p>
-                        {day.items.map((message) => (
-                          <div key={message.id} className={`inbox-bubble inbox-bubble-${message.direction}`}>
-                            {message.body ? <p>{message.body}</p> : null}
-                            {(message.media_urls ?? []).length > 0 ? (
-                              <div className="inbox-bubble-media">
-                                {(message.media_urls ?? []).map((url) => (
-                                  // Opens full size in a new tab; the thumbnail stays
-                                  // small so a thread of photos still scans as a
-                                  // conversation rather than a gallery.
-                                  <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={url} alt="Photo from the customer" loading="lazy" />
-                                  </a>
+                        {/* Runs, not messages. Six replies sent in the same minute
+                            are one turn in the conversation — stamping each of
+                            them with a time and a "Sent" made a thread read as a
+                            receipt printout. The time is said once, at the end of
+                            the run, and only the last bubble gets a tail. */}
+                        {groupRuns(day.items).map((run) => {
+                          const last = run.items[run.items.length - 1];
+                          return (
+                            <div className={`inbox-run inbox-run-${run.direction}`} key={run.items[0].id}>
+                              {/* Initials when we know who they are, the last two
+                                  digits when we don't — a number nobody in the
+                                  book owns still gets a stable mark rather than a
+                                  placeholder shrug. */}
+                              {run.direction === 'inbound' ? (
+                                <span className="inbox-avatar" aria-hidden="true">
+                                  {initialsFor(activeName ?? activePhone?.slice(-2) ?? null)}
+                                </span>
+                              ) : null}
+                              <div className="inbox-run-stack">
+                                {run.items.map((message, index) => (
+                                  <div
+                                    key={message.id}
+                                    className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
+                                  >
+                                    {message.body ? <p>{message.body}</p> : null}
+                                    {(message.media_urls ?? []).length > 0 ? (
+                                      <div className="inbox-bubble-media">
+                                        {(message.media_urls ?? []).map((url) => (
+                                          // Opens full size in a new tab; the thumbnail stays
+                                          // small so a thread of photos still scans as a
+                                          // conversation rather than a gallery.
+                                          <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={url} alt="Photo from the customer" loading="lazy" />
+                                          </a>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 ))}
+                                <span className="inbox-run-time">
+                                  {formatTime(last.created_at)}
+                                  {run.direction === 'outbound' ? <> · Sent</> : null}
+                                </span>
                               </div>
-                            ) : null}
-                            <span className="inbox-bubble-time">
-                              {formatTime(message.created_at)}
-                              {message.direction === 'outbound' ? <> · Sent</> : null}
-                            </span>
-                          </div>
-                        ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))
                   )}

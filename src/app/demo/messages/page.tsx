@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Conversation, SmsMessage } from '@/lib/messages';
+import { groupRuns, initialsFor } from '@/lib/message-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,13 +142,36 @@ export default function DemoMessagesPage({ searchParams }: { searchParams: { thr
             </div>
           </div>
 
+          {/* Same run structure as the real inbox — the bubbles share its CSS,
+              and a flat list here would render every message left-aligned the
+              moment that CSS moved alignment onto the run. */}
           <div className="inbox-messages">
-            {activeThread.messages.map((message, index) => (
-              <div key={index} className={`inbox-bubble inbox-bubble-${message.direction}`}>
-                <p>{message.body}</p>
-                <span className="inbox-bubble-time">{formatTime(hoursAgo(message.hoursAgo))}</span>
-              </div>
-            ))}
+            {groupRuns(
+              activeThread.messages.map((message, index) => ({ ...message, id: index, created_at: hoursAgo(message.hoursAgo) })),
+            ).map((run) => {
+              const last = run.items[run.items.length - 1];
+              return (
+                <div className={`inbox-run inbox-run-${run.direction}`} key={run.items[0].id}>
+                  {run.direction === 'inbound' ? (
+                    <span className="inbox-avatar" aria-hidden="true">{initialsFor(activeThread.name)}</span>
+                  ) : null}
+                  <div className="inbox-run-stack">
+                    {run.items.map((message, index) => (
+                      <div
+                        key={message.id}
+                        className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
+                      >
+                        <p>{message.body}</p>
+                      </div>
+                    ))}
+                    <span className="inbox-run-time">
+                      {formatTime(last.created_at)}
+                      {run.direction === 'outbound' ? <> · Sent</> : null}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="inbox-reply-area">

@@ -8371,33 +8371,84 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.5rem 0;
+  /* Between RUNS now, not between messages — messages inside a run set their
+     own 3px, which is what makes a burst of replies read as one turn. */
+  gap: 0.85rem;
+  padding: 0.5rem 0.15rem;
   overflow-y: auto;
   max-height: 30rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge-t22) transparent;
+}
+
+/* A run: one side's consecutive messages, the avatar that owns them, and the
+   single timestamp that closes them off. */
+.inbox-run { display: flex; align-items: flex-end; gap: 0.5rem; }
+.inbox-run-inbound { justify-content: flex-start; }
+.inbox-run-outbound { justify-content: flex-end; }
+.inbox-run-stack { display: flex; flex-direction: column; gap: 3px; max-width: 74%; min-width: 0; }
+.inbox-run-inbound .inbox-run-stack { align-items: flex-start; }
+.inbox-run-outbound .inbox-run-stack { align-items: flex-end; }
+
+/* Only on their side. An avatar against your own messages is a mirror nobody
+   needs, and it costs the width the message wanted. */
+.inbox-avatar {
+  flex: none;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-bottom: 1.3rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.09);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .inbox-bubble {
-  max-width: 78%;
-  padding: 0.55rem 0.8rem;
-  border-radius: 14px;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  max-width: 100%;
+  padding: 0.58rem 0.85rem;
+  border-radius: 18px;
+  font-size: 0.93rem;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
 
-.inbox-bubble p { margin: 0; overflow-wrap: anywhere; }
+/* `inherit`, not a colour. Without it a broader rule for paragraphs inside a
+   panel won the cascade and painted every outbound message in page-grey on
+   orange — 1.49:1, which is the state this replaced. The bubble decides its own
+   ink; the paragraph only carries it. */
+.inbox-bubble p { margin: 0; overflow-wrap: anywhere; color: inherit; }
 
 .inbox-bubble-inbound {
-  align-self: flex-start;
-  background: rgba(var(--tint), 0.07);
-  border-bottom-left-radius: 4px;
+  background: rgba(var(--tint), 0.09);
+  border: 1px solid var(--edge-t10);
+  color: var(--text);
 }
+/* The tail: square off the corner nearest the speaker, but only on the last
+   bubble of a run, so a run reads as one shape with one point of origin. */
+.inbox-bubble-inbound.is-last { border-bottom-left-radius: 6px; }
 
+/* Deeper than the brand orange on purpose. #ff7a21 carries white at about
+   2.4:1; this gradient runs 4.9:1 at its lightest end, so the bubble can keep
+   white text and still be read by somebody outdoors holding a phone. */
 .inbox-bubble-outbound {
-  align-self: flex-end;
-  background: linear-gradient(135deg, rgba(255, 122, 33, 0.9), rgba(255, 157, 77, 0.9));
-  color: #1a0f04;
-  border-bottom-right-radius: 4px;
+  background: linear-gradient(135deg, #c9430a, #a8330b);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+.inbox-bubble-outbound.is-last { border-bottom-right-radius: 6px; }
+
+.inbox-run-time {
+  margin-top: 0.3rem;
+  padding: 0 0.2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.015em;
+  color: var(--mute-t55);
 }
 
 .inbox-bubble-time {
@@ -8419,14 +8470,27 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 .inbox-reply textarea {
   flex: 1;
   resize: vertical;
-  min-height: 2.6rem;
-  padding: 0.55rem 0.7rem;
-  border-radius: 10px;
+  min-height: 2.75rem;
+  padding: 0.72rem 1.05rem;
+  /* Pill, to match the shape of the thing it puts on screen. */
+  border-radius: 20px;
   border: 1px solid var(--edge-t16);
   background: rgba(0, 0, 0, 0.2);
   color: inherit;
   font: inherit;
+  font-size: 0.93rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+.inbox-reply textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 122, 33, 0.16);
+}
+/* On paper that 20%-black wash is a grey slab, and a grey input field reads as
+   a disabled one. Paper wants an empty box you can obviously type in. */
+:root[data-theme='light'] .inbox-reply textarea { background: #ffffff; }
+.inbox-reply .btn { border-radius: 999px; padding-inline: 1.35rem; }
 
 /* ---- Self-serve booking widget ---- */
 .booking-slots {
@@ -21252,21 +21316,25 @@ a.bset-card { color: inherit; text-decoration: none; }
   /* OPACITY is what flickers, not the filter. The glow is a drop-shadow of the
      glyph, so dimming the glyph dims its halo in one cheap compositor-only
      property — animating the filter itself would re-rasterise the blur on every
-     frame for the whole 7 seconds, to flicker for a tenth of one. */
-  animation: cashNeonFlicker 7s steps(1, end) infinite;
+     frame for the whole minute, to flicker for a third of a second. */
+  animation: cashNeonFlicker 70s steps(1, end) infinite;
 }
 /* A real tube snaps, it does not fade — hence steps(1, end) above and the hard
-   jumps here. Lit for six and a half seconds, then a stutter. Long gaps on
-   purpose: this sits in a sidebar somebody looks at all day, and a light that
-   blinks every second is a light they cover with a sticky note. */
+   jumps here.
+   Lit for sixty-nine and a half seconds, then one 385ms stutter. It ran on a
+   7-second cycle first and that was a strobe, not a sign: this sits in a sidebar
+   somebody looks at all day, and anything that catches the eye on a rhythm you
+   can anticipate stops being a flourish and becomes a fault you want covered
+   with tape. The stutter itself is unchanged — only the wait for it grew, which
+   is the entire difference between a neon sign and a warning light. */
 @keyframes cashNeonFlicker {
-  0%, 92% { opacity: 1; }
-  93% { opacity: 0.32; }
-  94% { opacity: 1; }
-  95.5% { opacity: 0.5; }
-  96.5% { opacity: 1; }
-  97.5% { opacity: 0.28; }
-  98.5%, 100% { opacity: 1; }
+  0%, 99.44% { opacity: 1; }
+  99.45% { opacity: 0.32; }
+  99.55% { opacity: 1; }
+  99.7% { opacity: 0.5; }
+  99.8% { opacity: 1; }
+  99.9% { opacity: 0.28; }
+  100% { opacity: 1; }
 }
 .sidenav-link[href$='/cash-flow']:hover {
   background: rgba(57, 224, 122, 0.09);

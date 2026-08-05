@@ -142,6 +142,44 @@ export function dayDivider(iso: string): string {
   });
 }
 
+/**
+ * Cluster consecutive messages from the same side into runs, the way a phone
+ * does.
+ *
+ * Six replies sent in the same minute are one turn in the conversation, not six.
+ * Stamping every one of them with a time and a "Sent" turned a thread into a
+ * receipt printout — the run carries the time once, at the end, and only its
+ * last bubble gets a tail.
+ *
+ * A gap long enough to be a separate thought starts a new run even on the same
+ * side, so "on my way" at 8am and "running late" at 11am don't merge into one
+ * block stamped 11am.
+ */
+export function groupRuns<T extends { created_at: string; direction: string }>(
+  messages: T[],
+  gapMinutes = 5,
+): { direction: string; items: T[] }[] {
+  const runs: { direction: string; items: T[] }[] = [];
+  for (const message of messages) {
+    const current = runs[runs.length - 1];
+    const previous = current?.items[current.items.length - 1];
+    const withinGap =
+      previous != null &&
+      Math.abs(new Date(message.created_at).getTime() - new Date(previous.created_at).getTime()) <= gapMinutes * 60_000;
+    if (current && current.direction === message.direction && withinGap) current.items.push(message);
+    else runs.push({ direction: message.direction, items: [message] });
+  }
+  return runs;
+}
+
+/** "MW" — the initials on a thread avatar; falls back to the first character. */
+export function initialsFor(name: string | null | undefined): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '#';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 /** Group consecutive messages by calendar day, preserving order. */
 export function groupByDay<T extends { created_at: string }>(messages: T[]): { key: string; label: string; items: T[] }[] {
   const out: { key: string; label: string; items: T[] }[] = [];
