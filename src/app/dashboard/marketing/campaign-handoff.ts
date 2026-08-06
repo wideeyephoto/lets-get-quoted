@@ -1,4 +1,7 @@
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
+import type { CampaignChannel } from '@/lib/campaign-audiences';
+
+const VALID_CHANNELS: CampaignChannel[] = ['email', 'sms', 'both'];
 
 /**
  * Carrying a drafted topic from the Calendar screen to the Campaigns screen.
@@ -42,7 +45,7 @@ export function takeCampaignDraft(): CampaignDraft | null {
     // have put there, and a body that is not a string reaches a textarea.
     if (typeof parsed?.body !== 'string' || typeof parsed?.subject !== 'string') return null;
     return {
-      channel: 'email',
+      channel: VALID_CHANNELS.includes(parsed.channel as CampaignChannel) ? (parsed.channel as CampaignChannel) : 'email',
       audience: typeof parsed.audience === 'string' ? parsed.audience : 'all',
       subject: parsed.subject,
       subjectOptions: Array.isArray(parsed.subjectOptions)
@@ -50,6 +53,9 @@ export function takeCampaignDraft(): CampaignDraft | null {
         : [],
       body: parsed.body,
       beatId: typeof parsed.beatId === 'string' ? parsed.beatId : '',
+      templateName: typeof parsed.templateName === 'string' ? parsed.templateName : undefined,
+      templateExplanation: typeof parsed.templateExplanation === 'string' ? parsed.templateExplanation : undefined,
+      sendTimeHint: typeof parsed.sendTimeHint === 'string' ? parsed.sendTimeHint : undefined,
     };
   } catch {
     return null;

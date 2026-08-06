@@ -1,9 +1,19 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { AUDIENCE_DEFS, listCampaigns, loadListHealth, loadRecipients, matchesAudience } from '@/lib/campaigns';
+import {
+  AUDIENCE_DEFS,
+  listCampaigns,
+  loadListHealth,
+  loadRecipients,
+  matchesAudience,
+  summarizeReach,
+  type CampaignAudience,
+  type Reach,
+} from '@/lib/campaigns';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
+import { buildCampaignRecommendations } from '@/lib/campaign-recommendations';
 import MarketingNav from '../MarketingNav';
 import CampaignWorkspace from './CampaignWorkspace';
 
@@ -28,14 +38,18 @@ export default async function CampaignsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [recipients, campaigns, listHealth, { data: addressRow }] = await Promise.all([
+  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }] = await Promise.all([
     loadRecipients(supabase, accountId),
     listCampaigns(supabase, accountId),
     loadListHealth(supabase, accountId),
-    supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name, published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
 
-  const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
+  const mailingAddress = resolveMarketingMailingAddress((accountRow?.mailing_address as string | null) ?? null);
+  const businessName = (siteRow?.company_name as string) || (accountRow?.business_name as string) || 'your business';
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+  const bookingUrl = siteRow?.published && siteRow?.subdomain ? `${origin}/book/${siteRow.subdomain}` : null;
 
   // Precompute reachable counts per audience × channel so the composer shows
   // live numbers without pulling any contact data into the client bundle.
@@ -43,17 +57,13 @@ export default async function CampaignsPage({
   const reach = Object.fromEntries(
     AUDIENCE_DEFS.map((audience) => {
       const matched = recipients.filter((recipient) => matchesAudience(recipient, audience.id, now));
-      return [
-        audience.id,
-        {
-          total: matched.length,
-          email: matched.filter((recipient) => recipient.emailReady).length,
-          sms: matched.filter((recipient) => recipient.smsReady).length,
-          either: matched.filter((recipient) => recipient.emailReady || recipient.smsReady).length,
-        },
-      ];
+      return [audience.id, summarizeReach(matched)];
     }),
-  );
+  ) as Record<CampaignAudience, Reach>;
+
+  const recommendations =
+    recipients.length > 0 ? await buildCampaignRecommendations(supabase, accountId, { recipients, reach, businessName, bookingUrl }) : null;
+
 
   // A draft handed over from the overview. Built here rather than passed through
   // the URL: the message depends on the account's own settings, and a
@@ -84,14 +94,9 @@ export default async function CampaignsPage({
     <main className="wide-shell workspace-shell">
       <MarketingNav />
 
-      <section className="workspace-hero panel marketing-hero">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Marketing · Campaigns</p>
-          <h1 className="workspace-title">Write to your customers</h1>
-          <p className="workspace-lead">
-            One message, one audience. Nothing sends itself — you see the reach before you press send.
-          </p>
-        </div>
+      <section className="workspace-header-compact">
+        <h1 className="workspace-title">Campaigns</h1>
+        <p className="workspace-lead">Stay in touch with customers and keep your schedule full.</p>
       </section>
 
       {searchParams.test === '1' ? (
@@ -124,6 +129,7 @@ export default async function CampaignsPage({
       <CampaignWorkspace
         campaigns={campaigns}
         hasRecipients={recipients.length > 0}
+        recommendations={recommendations}
         composer={{
           audiences: AUDIENCE_DEFS,
           reach,

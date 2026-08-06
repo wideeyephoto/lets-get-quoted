@@ -41,6 +41,14 @@ export type CampaignRecipient = {
   emailReady: boolean;
   jobCount: number;
   lastJobAt: string | null;
+  /** Has a phone number on file at all — not the same as `smsReady` (needs consent too). */
+  hasPhone: boolean;
+  /** Has an email on file at all — not the same as `emailReady` (needs to be deliverable and not suppressed too). */
+  hasEmail: boolean;
+  /** Has an email, but it unsubscribed or bounced before. */
+  emailSuppressed: boolean;
+  /** Has an email, but it doesn't look deliverable (malformed or a placeholder). */
+  emailUndeliverable: boolean;
 };
 
 // The set of phone numbers this account has explicit SMS consent for. Marketing
@@ -64,6 +72,9 @@ export async function loadRecipients(supabase: SupabaseClient, accountId: string
   return clients.map((client) => {
     const phone = client.phone ? normalizeUsPhone(client.phone) : null;
     const email = client.email;
+    const hasEmail = Boolean(email);
+    const emailSuppressed = hasEmail && suppressed.has((email as string).trim().toLowerCase());
+    const emailUndeliverable = hasEmail && !isMailable(email);
     return {
       name: client.name,
       phone,
@@ -77,14 +88,45 @@ export async function loadRecipients(supabase: SupabaseClient, accountId: string
       // from intake, so addresses collected before the intake check, imported
       // from another CRM, or typed straight into a client record are all
       // covered by the same rule.
-      emailReady:
-        Boolean(email) &&
-        !suppressed.has((email as string).trim().toLowerCase()) &&
-        isMailable(email),
+      emailReady: hasEmail && !emailSuppressed && !emailUndeliverable,
       jobCount: client.jobCount,
       lastJobAt: client.lastJobAt,
+      hasPhone: Boolean(phone),
+      hasEmail,
+      emailSuppressed,
+      emailUndeliverable,
     };
   });
+}
+
+export type Reach = {
+  total: number;
+  email: number;
+  sms: number;
+  either: number;
+  /** No email and no phone at all — nothing to reach them on. */
+  missingContact: number;
+  /** Has a phone on file that isn't consented for marketing texts. */
+  optedOut: number;
+  /** Has an email on file that's suppressed (unsubscribed/bounced) or undeliverable. */
+  excluded: number;
+};
+
+// A reach breakdown for one already-filtered audience slice. The three
+// diagnostic counts are independent facts about the SAME group, not a
+// partition of it — a recipient can be both missingContact (no phone) and
+// simultaneously irrelevant to `excluded` (no email to suppress). Callers must
+// present them as separate notes, not as pieces that sum to `total - either`.
+export function summarizeReach(matched: CampaignRecipient[]): Reach {
+  return {
+    total: matched.length,
+    email: matched.filter((recipient) => recipient.emailReady).length,
+    sms: matched.filter((recipient) => recipient.smsReady).length,
+    either: matched.filter((recipient) => recipient.emailReady || recipient.smsReady).length,
+    missingContact: matched.filter((recipient) => !recipient.hasEmail && !recipient.hasPhone).length,
+    optedOut: matched.filter((recipient) => recipient.hasPhone && !recipient.smsReady).length,
+    excluded: matched.filter((recipient) => recipient.emailSuppressed || recipient.emailUndeliverable).length,
+  };
 }
 
 function personalize(text: string, recipient: CampaignRecipient): string {

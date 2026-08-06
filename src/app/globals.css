@@ -11063,11 +11063,119 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   background: #f4f6f9;
 }
 
+/* Compact page header for Campaigns — a plain title + one-liner, no hero
+   panel, no gradient. Replaces .workspace-hero on this page only. */
+.workspace-header-compact { margin-bottom: 0.2rem; }
+.workspace-header-compact .workspace-title {
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  max-width: none;
+}
+.workspace-header-compact .workspace-lead { color: var(--muted); }
+
+/* --- Recommended for You: 3 data-backed cards, stronger hierarchy than the
+   plain template tiles below them. --- */
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+.rec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 16px;
+  border: 1px solid var(--edge-t14);
+  background: linear-gradient(160deg, rgba(255, 122, 33, 0.08), transparent 55%), rgba(var(--tint), 0.03);
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+.rec-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.rec-card:focus-within { border-color: var(--accent); }
+.rec-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 10px;
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--accent);
+}
+.rec-card-icon .action-btn-ic { width: 1.2rem; height: 1.2rem; }
+.rec-card-title { margin: 0.1rem 0 0; font-size: 1.05rem; font-weight: 700; }
+.rec-card-one-liner { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+.rec-card-meta { margin: 0; color: var(--mute-t58); font-size: 0.78rem; }
+.rec-card-why { margin: 0; padding: 0.4rem 0.6rem; border-radius: 8px; background: rgba(var(--tint), 0.05); color: var(--mute-t55); font-size: 0.78rem; line-height: 1.45; }
+.rec-card-cta { margin-top: 0.3rem; align-self: flex-start; }
+
+/* --- Browsable rails: Quick Wins / Seasonal / Grow / All templates. Plainer
+   and more compact than the recommended cards above. --- */
+.template-rail { margin-top: 1.3rem; }
+.template-rail:first-child { margin-top: 0; }
+.template-rail-title { margin: 0 0 0.6rem; font-size: 0.85rem; font-weight: 700; color: var(--mute-t58); text-transform: uppercase; letter-spacing: 0.03em; }
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.7rem;
+}
+.template-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t10);
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.template-card:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 122, 33, 0.06); }
+.template-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.template-card-title { font-size: 0.9rem; font-weight: 650; }
+.template-card-meta { font-size: 0.76rem; color: var(--mute-t55); }
+.template-card.is-disabled,
+.template-card:disabled { opacity: 0.5; cursor: not-allowed; }
+.template-disabled-reason { font-size: 0.74rem; color: var(--mute-t50); font-style: italic; }
+
+/* "Start from scratch" sits below the rails, its own row rather than another
+   tile — it isn't a recommendation, it's the escape hatch from all of them. */
+.workspace-scratch-row { display: flex; justify-content: center; margin-top: 0.4rem; }
+
+/* Template banner + eligibility breakdown inside the composer, shown once a
+   card has prefilled it. */
+.campaign-template-banner {
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  border-left: 3px solid var(--accent);
+  background: rgba(255, 122, 33, 0.06);
+}
+.campaign-template-banner strong { font-size: 0.95rem; }
+.campaign-template-banner p { margin: 0.25rem 0 0; font-size: 0.83rem; line-height: 1.5; color: var(--muted); }
+.campaign-template-banner-hint { color: var(--mute-t55) !important; font-style: italic; }
+
+.campaign-eligibility-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--mute-t50);
+  font-size: 0.78rem;
+}
+
 @media (max-width: 640px) {
   .channel-toggle { width: 100%; }
   .channel-option { flex: 1; justify-content: center; }
   .campaign-actions { width: 100%; }
   .campaign-actions .btn { flex: 1; }
+  .rec-grid { grid-template-columns: minmax(0, 1fr); }
+  .template-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .flash-banner.flash-warn {

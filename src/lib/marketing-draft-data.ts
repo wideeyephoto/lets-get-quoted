@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSiteContent } from '@/lib/site-content';
 import { BEATS, climateZoneForState, stateFromAddress, type Channel } from '@/lib/marketing-calendar';
 import { draftMarketing, type MarketingDraft } from '@/lib/marketing-draft';
+import type { CampaignChannel } from '@/lib/campaign-audiences';
 
 /**
  * Assemble the context and draft one beat.
@@ -40,7 +41,10 @@ export async function draftMarketingForAccount(
 
 /** The draft shape the campaign composer takes. */
 export type CampaignDraft = {
-  channel: 'email';
+  // Widened from a fixed 'email' so a template starter (e.g. "Fill Next Week's
+  // Schedule") can hand over 'both' or 'sms' — the AI beat drafter below still
+  // only ever produces 'email', for the TCPA reason on campaignDraftForBeat.
+  channel: CampaignChannel;
   audience: string;
   subject: string;
   /** Alternatives to choose between. Never measured — we don't track opens. */
@@ -48,6 +52,12 @@ export type CampaignDraft = {
   body: string;
   /** So a send can be recorded against the topic it came from. */
   beatId: string;
+  /** Which template card produced this draft, shown in the composer banner. */
+  templateName?: string;
+  /** One-line "why this" shown alongside templateName. */
+  templateExplanation?: string;
+  /** Static display-only suggestion (e.g. "Tuesday mornings tend to open best") — not scheduling. */
+  sendTimeHint?: string;
 };
 
 /**

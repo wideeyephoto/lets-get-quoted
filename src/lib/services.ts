@@ -125,6 +125,18 @@ export async function deleteService(supabase: SupabaseClient, accountId: string,
   if (error) throw error;
 }
 
+const DAY = 24 * 60 * 60 * 1000;
+
+// Days since the newest active service was added — the signal for "you just
+// expanded what you offer, tell people." Null when there's nothing active to
+// announce, so a caller never has to invent an age for an empty price book.
+export function mostRecentServiceAgeDays(services: Service[]): number | null {
+  const active = services.filter((service) => service.active);
+  if (active.length === 0) return null;
+  const newest = active.reduce((latest, service) => Math.max(latest, new Date(service.created_at).getTime()), 0);
+  return Math.max(0, Math.floor((Date.now() - newest) / DAY));
+}
+
 export type ServiceImportRow = { name: string | null; description: string | null; unitPrice: number; unit: string | null };
 
 // Bulk-import price-book services, deduped by name (case-insensitive) against

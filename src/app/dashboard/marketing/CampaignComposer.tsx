@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import SaveButton from '@/components/save-button';
 import {
   checkCampaign,
@@ -10,15 +10,17 @@ import {
 } from '@/lib/campaign-guard';
 import { previewCampaignEmailAction, readCampaignAction, sendCampaignAction, sendTestEmailAction } from './actions';
 
-type Reach = { total: number; email: number; sms: number; either: number };
+type Reach = { total: number; email: number; sms: number; either: number; missingContact: number; optedOut: number; excluded: number };
+
+const EMPTY_REACH: Reach = { total: 0, email: 0, sms: 0, either: 0, missingContact: 0, optedOut: 0, excluded: 0 };
 
 type Props = {
   audiences: { id: string; label: string; hint: string }[];
   reach: Record<string, Reach>;
   /**
-   * A draft handed over from somewhere else — the seasonal calendar above, or
-   * the Quick Stops page, both of which know WHY a message is worth sending but
-   * have no business owning how one gets sent.
+   * A draft handed over from somewhere else — the seasonal calendar above, a
+   * recommended campaign card, or the Quick Stops page, all of which know WHY
+   * a message is worth sending but have no business owning how one gets sent.
    */
   initial?: {
     channel?: 'email' | 'sms' | 'both';
@@ -27,11 +29,19 @@ type Props = {
     subjectOptions?: string[];
     body?: string;
     beatId?: string;
+    /** Which template card produced this draft, shown in the banner below. */
+    templateName?: string;
+    /** One-line "why this" shown alongside templateName. */
+    templateExplanation?: string;
+    /** Static display-only suggestion (e.g. "Tuesday mornings tend to open best") — not scheduling. */
+    sendTimeHint?: string;
   };
   /** CAN-SPAM postal address, or null when there isn't one on file. */
   mailingAddress: string | null;
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
+  /** Reports whether there's unsaved text in the box, so a caller can confirm before replacing it. */
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 const CHANNELS = [
@@ -59,6 +69,7 @@ export default function CampaignComposer({
   mailingAddress,
   daysSinceLastSend,
   unsubscribesSinceLastSend,
+  onDirtyChange,
 }: Props) {
   const [channel, setChannel] = useState<'email' | 'sms' | 'both'>(initial?.channel ?? 'email');
   const [audience, setAudience] = useState(initial?.audience ?? audiences[0]?.id ?? 'past');
@@ -71,10 +82,15 @@ export default function CampaignComposer({
 
   const subjectOptions = initial?.subjectOptions ?? [];
 
+  useEffect(() => {
+    onDirtyChange?.(subject.trim() !== '' || body.trim() !== '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject, body]);
+
   const wantEmail = channel === 'email' || channel === 'both';
   const wantSms = channel === 'sms' || channel === 'both';
 
-  const audienceReach = reach[audience] ?? { total: 0, email: 0, sms: 0, either: 0 };
+  const audienceReach = reach[audience] ?? EMPTY_REACH;
   const reachCount = channel === 'email' ? audienceReach.email : channel === 'sms' ? audienceReach.sms : audienceReach.either;
   const unreachable = audienceReach.total - reachCount;
 
@@ -147,6 +163,14 @@ export default function CampaignComposer({
           against the known topics — it arrives from the browser. */}
       {initial?.beatId ? <input type="hidden" name="beatId" value={initial.beatId} /> : null}
 
+      {initial?.templateName ? (
+        <div className="campaign-template-banner">
+          <strong>{initial.templateName}</strong>
+          {initial.templateExplanation ? <p>{initial.templateExplanation}</p> : null}
+          {initial.sendTimeHint ? <p className="campaign-template-banner-hint">{initial.sendTimeHint}</p> : null}
+        </div>
+      ) : null}
+
       <div className="field">
         <label>Reach them by</label>
         <div className="channel-toggle" role="radiogroup" aria-label="Channel">
@@ -169,7 +193,7 @@ export default function CampaignComposer({
         <label>Send to</label>
         <div className="audience-grid">
           {audiences.map((option) => {
-            const r = reach[option.id] ?? { total: 0, email: 0, sms: 0, either: 0 };
+            const r = reach[option.id] ?? EMPTY_REACH;
             const count = channel === 'email' ? r.email : channel === 'sms' ? r.sms : r.either;
             return (
               <label key={option.id} className={`audience-card${audience === option.id ? ' is-active' : ''}`}>
@@ -298,6 +322,14 @@ export default function CampaignComposer({
           <strong>{reachCount}</strong> reachable now
           {unreachable > 0 ? <span className="muted"> · {unreachable} skipped (no {wantSms && !wantEmail ? 'opted-in number' : wantEmail && !wantSms ? 'email' : 'email or opted-in number'})</span> : null}
         </div>
+        <ul className="campaign-eligibility-breakdown">
+          <li>{audienceReach.total} selected</li>
+          <li>{audienceReach.email} valid email</li>
+          <li>{audienceReach.sms} valid text</li>
+          <li>{audienceReach.missingContact} missing contact info</li>
+          <li>{audienceReach.optedOut} opted out</li>
+          <li>{audienceReach.excluded} excluded</li>
+        </ul>
         <div className="campaign-actions">
           {wantEmail ? (
             <button type="button" className="btn ghost" onClick={runPreview} disabled={previewing || !body.trim()}>

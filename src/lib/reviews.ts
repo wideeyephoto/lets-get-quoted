@@ -134,6 +134,35 @@ export async function recordGoogleClick(admin: SupabaseClient, token: string): P
 }
 
 /**
+ * Completed jobs nobody has been asked to review yet.
+ *
+ * A set-diff, not a loop: every completed job id, minus every job id that
+ * already has a `review_requested` job_feed row (the same marker
+ * `reviewAlreadyRequested` checks one job at a time in
+ * src/app/dashboard/jobs/actions.ts). Two queries regardless of job count,
+ * so a recommendation card can show this number without an N+1 per job.
+ */
+export async function countCompletedJobsAwaitingReview(supabase: SupabaseClient, accountId: string): Promise<number> {
+  const { data: completed, error } = await supabase
+    .from('jobs')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('status', 'complete');
+  if (error || !completed || completed.length === 0) return 0;
+
+  const completedIds = completed.map((job) => job.id as string);
+  const { data: requested } = await supabase
+    .from('job_feed')
+    .select('job_id')
+    .eq('account_id', accountId)
+    .eq('kind', 'review_requested')
+    .in('job_id', completedIds);
+
+  const alreadyAsked = new Set((requested ?? []).map((row) => row.job_id as string));
+  return completedIds.filter((id) => !alreadyAsked.has(id)).length;
+}
+
+/**
  * Store the customer's private note and alert the owner — job feed + email.
  * This is an additional channel, never a substitute: the public route stays
  * open before, during and after leaving one.
