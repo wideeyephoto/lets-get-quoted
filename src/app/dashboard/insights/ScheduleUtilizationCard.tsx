@@ -20,9 +20,14 @@ import type { CampaignDraft } from '@/lib/marketing-draft-data';
 export default function ScheduleUtilizationCard({
   schedule,
   fillDraft,
+  basePath = '/dashboard',
+  readOnly = false,
 }: {
   schedule: ScheduleUtilization;
   fillDraft: CampaignDraft;
+  basePath?: string;
+  /** The demo has no campaign to start, so the button is not offered. */
+  readOnly?: boolean;
 }) {
   const { configured, lookaheadDays, workingDays, bookedDays, openDays, utilizationPct, estimatedOpportunity } = schedule;
 
@@ -36,7 +41,7 @@ export default function ScheduleUtilizationCard({
       {!configured ? (
         <p className="ins-empty-note">
           Set your working days and this shows how full your calendar is — booked versus open — for the weeks
-          ahead. <Link className="ins-inline-link" href="/dashboard/schedule">Open your schedule →</Link>
+          ahead. <Link className="ins-inline-link" href={`${basePath}/schedule`}>Open your schedule →</Link>
         </p>
       ) : workingDays === 0 ? (
         <p className="ins-empty-note">
@@ -78,7 +83,15 @@ export default function ScheduleUtilizationCard({
             </div>
           </div>
 
-          {openDays > 0 ? (
+          {openDays > 0 && readOnly ? (
+            // Read-only (the demo): the same call to action, as a link into the
+            // campaigns screen. The button itself stashes a draft in
+            // sessionStorage and pushes to a composer a logged-out visitor
+            // cannot reach, so offering it would end at /login.
+            <Link className="btn primary ins-sched-cta" href={`${basePath}/campaigns`}>
+              Fill your open days →
+            </Link>
+          ) : openDays > 0 ? (
             <StartCampaignButton
               draft={fillDraft}
               className="btn primary ins-sched-cta"

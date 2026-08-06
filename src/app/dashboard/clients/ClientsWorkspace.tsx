@@ -69,8 +69,14 @@ export default function ClientsWorkspace({
   todayKey,
   initialView,
   openAdd = false,
+  basePath = '/dashboard',
+  readOnly = false,
 }: {
   clients: ClientRow[];
+  /** Where customer links point. '/demo' keeps the demo's links in the demo. */
+  basePath?: string;
+  /** The logged-out demo: no Add form, because it cannot save one. */
+  readOnly?: boolean;
   /**
    * Coordinates for the Map view, derived from each customer's most recent
    * geocoded job. Defaulted so the demo can render this workspace without one.
@@ -178,9 +184,14 @@ export default function ClientsWorkspace({
         <input type="checkbox" checked={repeatOnly} onChange={(event) => setRepeatOnly(event.currentTarget.checked)} />
         <span>Repeat only</span>
       </label>
-      <button type="button" className="btn primary" onClick={() => setAdding(true)}>
-        + Add new client
-      </button>
+      {/* Withheld in the demo rather than disabled: the dialog saves through a
+          server action a logged-out visitor cannot call, so the button would
+          open a form that fails on submit. */}
+      {readOnly ? null : (
+        <button type="button" className="btn primary" onClick={() => setAdding(true)}>
+          + Add new client
+        </button>
+      )}
       {viewGear}
     </div>
   );
@@ -224,7 +235,7 @@ export default function ClientsWorkspace({
       {matches.length > 0 && view === 'list' ? (
         <div className="client-list" ref={listRef}>
           {matches.map((client) => (
-            <ClientRowLink key={client.id} client={client} selected={selectedId === client.id} onSelect={setSelectedId} />
+            <ClientRowLink key={client.id} client={client} selected={selectedId === client.id} onSelect={setSelectedId} basePath={basePath} />
           ))}
         </div>
       ) : null}
@@ -234,7 +245,7 @@ export default function ClientsWorkspace({
           {matches.map((client) => (
             <Link
               key={client.id}
-              href={`/dashboard/clients/${client.id}`}
+              href={`${basePath}/clients/${client.id}`}
               className={`client-card${selectedId === client.id ? ' is-selected' : ''}`}
               onMouseEnter={() => setSelectedId(client.id)}
               onFocus={() => setSelectedId(client.id)}
@@ -275,7 +286,7 @@ export default function ClientsWorkspace({
                   onMouseEnter={() => setSelectedId(client.id)}
                 >
                   <td>
-                    <Link href={`/dashboard/clients/${client.id}`} className="client-table-name">
+                    <Link href={`${basePath}/clients/${client.id}`} className="client-table-name">
                       <span className="client-avatar small" data-avatar-tone={avatarTone(client.name)} aria-hidden="true">{client.initials}</span>
                       <span>
                         {client.name}
@@ -303,7 +314,7 @@ export default function ClientsWorkspace({
         <ClientFocusView clients={matches} pins={pins} selectedId={selected?.id ?? null} onSelect={setSelectedId} />
       ) : null}
 
-      {matches.length > 0 && view === 'followup' ? <FollowUpBoard clients={matches} /> : null}
+      {matches.length > 0 && view === 'followup' ? <FollowUpBoard clients={matches} basePath={basePath} /> : null}
 
       {adding ? <AddClientDialog onClose={() => setAdding(false)} /> : null}
     </>
@@ -318,7 +329,7 @@ export default function ClientsWorkspace({
  * timezone. Nothing here is written or paid against, so a boundary that follows
  * the reader is the right one.
  */
-function FollowUpBoard({ clients }: { clients: ClientRow[] }) {
+function FollowUpBoard({ clients, basePath }: { clients: ClientRow[]; basePath: string }) {
   const groups = useMemo(() => {
     const todayKey = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD', local
     return groupByFollowUp(
@@ -362,7 +373,7 @@ function FollowUpBoard({ clients }: { clients: ClientRow[] }) {
                 {group.clients.map((client) => {
                   const row = byId.get(client.id);
                   return (
-                    <Link key={client.id} href={`/dashboard/clients/${client.id}`} className="client-band-card">
+                    <Link key={client.id} href={`${basePath}/clients/${client.id}`} className="client-band-card">
                       <span className="client-avatar small" data-avatar-tone={avatarTone(row?.name)} aria-hidden="true">{row?.initials ?? '?'}</span>
                       <span className="client-band-who">
                         <strong>{client.name}</strong>
@@ -414,14 +425,16 @@ function ClientRowLink({
   client,
   selected,
   onSelect,
+  basePath,
 }: {
   client: ClientRow;
   selected: boolean;
   onSelect: (id: string) => void;
+  basePath: string;
 }) {
   return (
     <Link
-      href={`/dashboard/clients/${client.id}`}
+      href={`${basePath}/clients/${client.id}`}
       className={`client-row${selected ? ' is-selected' : ''}`}
       onMouseEnter={() => onSelect(client.id)}
       onFocus={() => onSelect(client.id)}

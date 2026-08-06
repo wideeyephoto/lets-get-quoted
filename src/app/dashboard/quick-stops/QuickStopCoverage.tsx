@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import SaveButton from '@/components/save-button';
 import type { RouteStop } from '@/lib/quick-stop-route';
 import type { PriorityZone } from '@/lib/quick-stop-zones';
@@ -28,10 +29,19 @@ type Draft = { lat: number; lng: number; radiusMiles: number };
 export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zones, zonesAvailable, fallbackCenter = null }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [placing, setPlacing] = useState(false);
+  // The name, held here rather than left uncontrolled, so choosing a place in
+  // the search can fill it in and the owner can still overwrite it.
+  const [placeLabel, setPlaceLabel] = useState('');
 
   function pickCenter(point: { lat: number; lng: number }) {
     if (!placing) return;
     setDraft((current) => ({ lat: point.lat, lng: point.lng, radiusMiles: current?.radiusMiles ?? 2 }));
+  }
+
+  function stopPlacing() {
+    setPlacing(false);
+    setDraft(null);
+    setPlaceLabel('');
   }
 
   return (
@@ -69,7 +79,16 @@ export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zon
                   <div className="cash-bill-main">
                     <strong>{zone.label}</strong>
                     <small>
-                      {zone.radiusMiles} mile{zone.radiusMiles === 1 ? '' : 's'} across · worth driving up to{' '}
+                      {/* "across" was wrong, and not harmlessly. This number is
+                          used as a RADIUS everywhere that matters — zoneContains
+                          compares it against the distance from the middle, and
+                          the map draws it as the circle's radius — so an owner
+                          who read "2 miles across" and typed 2 got an area four
+                          miles wide, covering four times the ground they meant
+                          to grant a longer drive to. The wording is what was
+                          wrong here, not the maths: changing the maths would
+                          silently halve every area already saved. */}
+                      {zone.radiusMiles} mile{zone.radiusMiles === 1 ? '' : 's'} out from the middle · worth driving up to{' '}
                       {zone.maxDetourMiles} mile{zone.maxDetourMiles === 1 ? '' : 's'} off route
                     </small>
                   </div>
@@ -86,17 +105,57 @@ export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zon
           {placing ? (
             <form action={saveQuickStopZoneAction} className="cash-bill-form qs-zone-form">
               <p className="cash-bill-form-head">
-                {draft ? 'Name this area' : 'Tap the middle of the area on the map above'}
+                {draft ? 'Name this area' : 'Find the area, or tap it on the map above'}
               </p>
+
+              {/* Two ways in, because "tap the map" alone assumed the owner
+                  could already see the place they had in mind. Searching gets
+                  them there by name — which is how somebody actually thinks
+                  about a subdivision — and the map still accepts a tap for the
+                  areas that have no name worth typing. */}
+              <label className="cash-bill-field wide qs-zone-search">
+                <span>Search for it</span>
+                <AddressAutocomplete
+                  name="zoneSearch"
+                  mode="place"
+                  placeholder="A suburb, a subdivision, a street…"
+                  bias={fallbackCenter}
+                  onPlaceSelected={(place) => {
+                    if (place.lat === null || place.lng === null) return;
+                    setPlaceLabel(place.name || place.address);
+                    setDraft((current) => ({
+                      lat: place.lat as number,
+                      lng: place.lng as number,
+                      radiusMiles: current?.radiusMiles ?? 2,
+                    }));
+                  }}
+                />
+                <small className="cash-bill-note">
+                  {draft
+                    ? 'Centre set — drag the pin on the map to fine-tune it.'
+                    : 'Picking a place drops the pin there. You can still tap the map instead.'}
+                </small>
+              </label>
+
               <input type="hidden" name="centerLat" value={draft?.lat ?? ''} />
               <input type="hidden" name="centerLng" value={draft?.lng ?? ''} />
               <div className="cash-bill-form-grid">
                 <label className="cash-bill-field wide">
                   <span>What do you call it</span>
-                  <input name="label" placeholder="Birmingham, the lake streets, Oakwood Estates" required disabled={!draft} />
+                  {/* Pre-filled from the search, because the place somebody just
+                      picked is almost always what they would have typed here. */}
+                  <input
+                    name="label"
+                    placeholder="Birmingham, the lake streets, Oakwood Estates"
+                    required
+                    disabled={!draft}
+                    value={placeLabel}
+                    onChange={(event) => setPlaceLabel(event.target.value)}
+                  />
                 </label>
                 <label className="cash-bill-field">
-                  <span>How big (miles across)</span>
+                  {/* Radius, said as a radius — see the note on the list above. */}
+                  <span>How big (miles out from the middle)</span>
                   <input
                     name="radiusMiles"
                     type="number"
@@ -119,7 +178,7 @@ export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zon
               </div>
               <div className="cash-bill-form-actions">
                 <SaveButton className="btn primary" pendingLabel="Saving…" disabled={!draft}>Add this area</SaveButton>
-                <button type="button" className="linklike" onClick={() => { setPlacing(false); setDraft(null); }}>Cancel</button>
+                <button type="button" className="linklike" onClick={stopPlacing}>Cancel</button>
               </div>
             </form>
           ) : (

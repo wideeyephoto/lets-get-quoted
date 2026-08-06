@@ -22,10 +22,20 @@ const PRIORITY_LABEL: Record<Opportunity['priority'], string> = {
 export default function TopOpportunities({
   opportunities,
   fillDraft,
+  basePath = '/dashboard',
+  readOnly = false,
 }: {
   opportunities: Opportunity[];
   fillDraft: CampaignDraft;
+  basePath?: string;
+  /** The demo has no campaign to start, so the row links instead. */
+  readOnly?: boolean;
 }) {
+  // Opportunity hrefs are built in insights-metrics against /dashboard, which is
+  // right for the app and wrong inside the demo. Re-pointing them here keeps the
+  // metric library free of any knowledge that a demo exists.
+  const href = (target: string) =>
+    basePath === '/dashboard' ? target : target.replace(/^\/dashboard\/marketing\/campaigns/, `${basePath}/campaigns`).replace(/^\/dashboard/, basePath);
   return (
     <section className="panel ins-card ins-opps-card">
       <p className="ins-card-head">
@@ -52,7 +62,7 @@ export default function TopOpportunities({
                 </div>
                 <span className="ins-opp-detail">{opp.detail}</span>
               </div>
-              {opp.campaign === 'fill-schedule' ? (
+              {opp.campaign === 'fill-schedule' && !readOnly ? (
                 <StartCampaignButton
                   draft={fillDraft}
                   className="ins-opp-cta"
@@ -61,7 +71,7 @@ export default function TopOpportunities({
                   {opp.cta} →
                 </StartCampaignButton>
               ) : (
-                <Link className="ins-opp-cta" href={opp.href}>
+                <Link className="ins-opp-cta" href={opp.campaign === 'fill-schedule' ? `${basePath}/campaigns` : href(opp.href)}>
                   {opp.cta} →
                 </Link>
               )}

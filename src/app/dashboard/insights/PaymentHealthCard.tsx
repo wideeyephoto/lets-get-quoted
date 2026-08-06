@@ -9,7 +9,13 @@ import type { PaymentHealth } from '@/lib/insights-metrics';
 // asked for, and how many card charges failed. The card says "aging", never
 // "overdue", so it can't imply a due date the data doesn't have. Server-only.
 
-export default function PaymentHealthCard({ health }: { health: PaymentHealth }) {
+export default function PaymentHealthCard({
+  health,
+  basePath = '/dashboard',
+}: {
+  health: PaymentHealth;
+  basePath?: string;
+}) {
   const { overdueBalance, overdueCount, avgDaysToCollect, failedPayments } = health;
   const allClear = overdueBalance === 0 && failedPayments === 0;
 
@@ -47,7 +53,7 @@ export default function PaymentHealthCard({ health }: { health: PaymentHealth })
 
       <div className="ins-card-foot">
         <span />
-        <Link className="ins-inline-link" href="/dashboard/jobs">Open jobs →</Link>
+        <Link className="ins-inline-link" href={`${basePath}/jobs`}>Open jobs →</Link>
       </div>
     </section>
   );

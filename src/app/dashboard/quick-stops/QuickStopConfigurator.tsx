@@ -35,10 +35,17 @@ export default function QuickStopConfigurator({
   quickStop,
   refundTiers,
   stripeConnected,
+  readOnly = false,
 }: {
   quickStop: QuickStopSettingsRow;
   refundTiers: RefundTierValues;
   stripeConnected: boolean;
+  /**
+   * The logged-out demo. The whole panel is one settings form, so it is
+   * withheld rather than disabled field by field — the settings it holds are
+   * already visible as state on the status panel above it.
+   */
+  readOnly?: boolean;
 }) {
   const s = quickStopSettingsFromAccount(quickStop);
   const t = refundTiers;
@@ -60,6 +67,11 @@ export default function QuickStopConfigurator({
       window.scrollBy(0, after - before);
     }
   }
+
+  // After the hooks, never before them — an early return above the useState
+  // would change the hook call order between renders. React is strict about
+  // that, and eslint's rules-of-hooks is what caught it.
+  if (readOnly) return null;
 
   return (
     <section className="panel workspace-section-card" id="quick-stop-setup">

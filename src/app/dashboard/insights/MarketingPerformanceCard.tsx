@@ -24,7 +24,16 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function MarketingPerformanceCard({ marketing }: { marketing: MarketingPerformance }) {
+export default function MarketingPerformanceCard({
+  marketing,
+  basePath = '/dashboard',
+}: {
+  marketing: MarketingPerformance;
+  basePath?: string;
+}) {
+  // The demo's marketing area lives at /demo/campaigns rather than mirroring
+  // /dashboard/marketing/campaigns, so the sub-path is resolved once here.
+  const campaignsHref = basePath === '/dashboard' ? '/dashboard/marketing/campaigns' : `${basePath}/campaigns`;
   const { campaigns, totalRecipients, hasData } = marketing;
 
   return (
@@ -36,7 +45,7 @@ export default function MarketingPerformanceCard({ marketing }: { marketing: Mar
       {!hasData ? (
         <p className="ins-empty-note">
           Send a campaign from Marketing and each one — who it went to and how it delivered — is listed here.{' '}
-          <Link className="ins-inline-link" href="/dashboard/marketing/campaigns">Start a campaign →</Link>
+          <Link className="ins-inline-link" href={campaignsHref}>Start a campaign →</Link>
         </p>
       ) : (
         <>
@@ -78,7 +87,7 @@ export default function MarketingPerformanceCard({ marketing }: { marketing: Mar
 
           <div className="ins-card-foot">
             <span />
-            <Link className="ins-inline-link" href="/dashboard/marketing/campaigns">View all campaigns →</Link>
+            <Link className="ins-inline-link" href={campaignsHref}>View all campaigns →</Link>
           </div>
         </>
       )}

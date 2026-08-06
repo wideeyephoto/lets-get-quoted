@@ -223,8 +223,19 @@ export default function ScheduleCalendar({
   blockedDays = {},
   unscheduledCount = 0,
   initialDayKey,
+  readOnly = false,
+  basePath = '/dashboard',
 }: {
   weeks: CalendarCell[][];
+  /**
+   * The logged-out demo. Three things on this calendar write: the weekend-days
+   * cookie, the view cookie, and toggling a crew member onto a job. The first
+   * two still take effect locally — they are layout, and a visitor changing the
+   * shape of the grid is the point of a demo. The third is withheld outright,
+   * because assigning somebody TEXTS them.
+   */
+  readOnly?: boolean;
+  basePath?: string;
   todayKey: string;
   jobs: CalendarJob[];
   /** Recurring visits whose job doesn't exist yet. Never treated as a job. */
@@ -260,6 +271,7 @@ export default function ScheduleCalendar({
   const [days, setDays] = useState<WeekendDays>(weekendDays);
   function updateDays(next: WeekendDays) {
     setDays(next);
+    if (readOnly) return;
     void setCalendarWeekendAction(next).catch(() => {});
   }
 
@@ -286,6 +298,7 @@ export default function ScheduleCalendar({
   const [calendarView, setCalendarViewState] = useState<CalendarView>(initialView);
   const setCalendarView = (next: CalendarView) => {
     setCalendarViewState(next);
+    if (readOnly) return;
     startTransition(async () => { await setCalendarViewAction(next); });
   };
   // Drag-to-schedule is coordinated by the shared provider so the (server-
@@ -477,6 +490,10 @@ export default function ScheduleCalendar({
   }, [jobs, todayKey, weeks]);
 
   function handleToggle(jobId: string, crewId: string) {
+    // Assigning somebody to a job sends them a text. Not something a public
+    // demo gets to do, and not something to fake optimistically either — the
+    // popover still opens and still shows who is on the job.
+    if (readOnly) return;
     const key = `${jobId}:${crewId}`;
     const wasAssigned = (assignments[jobId] ?? []).includes(crewId);
 
@@ -830,9 +847,19 @@ export default function ScheduleCalendar({
                                 : 'Assign crew'
                             }
                           >
-                            {assignedMembers.length > 0
-                              ? assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')
-                              : '+'}
+                            {/* One pair of initials, then a count — NOT two pairs.
+                                "GY DW" renders about 2.9rem wide, which is wider
+                                than the space the name line reserves for this
+                                badge, so it sat on top of the client's name in
+                                any cell narrower than full screen. A count is
+                                fixed-width whatever the crew is called, so the
+                                reservation can be exact; the tooltip still names
+                                everyone assigned. */}
+                            {assignedMembers.length === 0
+                              ? '+'
+                              : assignedMembers.length === 1
+                                ? initials(assignedMembers[0]!.name)
+                                : `${initials(assignedMembers[0]!.name)}+${assignedMembers.length - 1}`}
                           </button>
                         </div>
                       );
@@ -886,9 +913,9 @@ export default function ScheduleCalendar({
 
             <div className="schedule-job-actions">
               <div className="schedule-job-quick-actions">
-                <Link href={`/dashboard/jobs/${openJob.id}`} className="btn secondary schedule-job-open-link">Open job</Link>
-                <Link href={`/dashboard/jobs/${openJob.id}?open=costs`} className="btn secondary schedule-job-open-link">Add expense</Link>
-                <Link href={`/dashboard/jobs/${openJob.id}?open=payment#request-payment`} className="btn primary schedule-job-open-link">Request payment</Link>
+                <Link href={`${basePath}/jobs/${openJob.id}`} className="btn secondary schedule-job-open-link">Open job</Link>
+                <Link href={`${basePath}/jobs/${openJob.id}?open=costs`} className="btn secondary schedule-job-open-link">Add expense</Link>
+                <Link href={`${basePath}/jobs/${openJob.id}?open=payment#request-payment`} className="btn primary schedule-job-open-link">Request payment</Link>
                 <div className="schedule-crew-action-wrap">
                   <div className="schedule-crew-action-group">
                     <details className="schedule-crew-quick">

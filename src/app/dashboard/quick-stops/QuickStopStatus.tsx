@@ -22,6 +22,8 @@ import { jumpToHowItWorks } from './quick-stop-jump';
 
 export type QuickStopStatusProps = {
   enabled: boolean;
+  /** The logged-out demo: the switch shows state, it does not flip it. */
+  readOnly?: boolean;
   /** Support's no-show lock. Overrides the owner's own switch entirely. */
   locked: boolean;
   lockedUntil: string | null;
@@ -90,7 +92,7 @@ function joinList(items: string[]): string {
 }
 
 export default function QuickStopStatus(props: QuickStopStatusProps) {
-  const { enabled, locked, lockedUntil, lockReason, feeSet, daysSet, stripeConnected, bookingUrl } = props;
+  const { enabled, locked, lockedUntil, lockReason, feeSet, daysSet, stripeConnected, bookingUrl, readOnly = false } = props;
   const router = useRouter();
   const [pending, startToggle] = useTransition();
 
@@ -118,6 +120,7 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
       : null;
 
   function setEnabled(next: boolean) {
+    if (readOnly) return;
     startToggle(() => {
       void setQuickStopEnabledAction(next, 'extra_stops_page')
         .then(() => router.refresh())

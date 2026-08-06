@@ -2,16 +2,28 @@ import Link from 'next/link';
 import { formatMoney } from '@/lib/jobs';
 import { DEMO_JOBS, dateKeyFromNow } from '@/lib/demo-data';
 import { demoJobDetails, demoJobViews } from '@/lib/demo-focus';
-import DemoJobsFocus from './DemoJobsFocus';
+import { getMapPins } from '@/lib/map-pins';
+import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
+import { demoSupabase } from '@/lib/demo-rows';
+import { todayKeyOf } from '@/lib/job-queue';
+import JobsWorkspace from '@/app/dashboard/jobs/JobsWorkspace';
 
 export const dynamic = 'force-dynamic';
 
-// Focus, because that is what the live page opens as (normalizeJobsView). The
-// demo used to show the stacked list behind a row of status tabs, so a prospect
-// never saw the pane the product actually opens on — the one that answers "what
-// is this job, what does it cost me and what do they still owe" without a page
-// load per job.
-export default function DemoJobsPage() {
+/**
+ * Current jobs, for a logged-out visitor.
+ *
+ * The whole workspace now, not just its Focus pane. The demo used to render one
+ * of the five layouts, so a prospect never saw the view picker, the Kanban
+ * board, the sortable table or the map — which is most of what makes this page
+ * worth a tour.
+ *
+ * `details` is supplied up front, so the panes read job detail from memory
+ * instead of calling /api/jobs/[id]/detail, which requires an owner. `readOnly`
+ * keeps the layout pickers working locally without trying to write a cookie
+ * nobody is signed in to own.
+ */
+export default async function DemoJobsPage() {
   const totalQuoted = DEMO_JOBS.reduce((sum, job) => sum + job.quoted_amount, 0);
   // "In progress" is the STATUS, and now that the demo books work a quarter out
   // it stopped being the answer to "how many jobs are you on". Every booked job
@@ -26,6 +38,10 @@ export default function DemoJobsPage() {
     (job) => job.status === 'in_progress' && job.scheduled_for && job.scheduled_for > todayKey,
   ).length;
 
+  // Real pins, from the coordinates seeded onto the demo jobs — so the map is
+  // the same map the app draws rather than an empty frame.
+  const mapPins = await getMapPins(demoSupabase, DEMO_ACCOUNT_ID);
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
@@ -33,7 +49,17 @@ export default function DemoJobsPage() {
           <p className="eyebrow">Pipeline</p>
           <h2>Current jobs</h2>
         </div>
-        <DemoJobsFocus jobs={demoJobViews()} details={demoJobDetails()} />
+        <JobsWorkspace
+          jobs={demoJobViews()}
+          details={demoJobDetails()}
+          initialView="smoothie"
+          mapView="large"
+          mapTheme="dark"
+          mapPins={mapPins}
+          todayKey={todayKeyOf(new Date())}
+          basePath="/demo"
+          readOnly
+        />
       </section>
 
       <div className="stat-ticker panel">

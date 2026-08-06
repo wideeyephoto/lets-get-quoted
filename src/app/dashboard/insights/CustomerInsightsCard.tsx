@@ -11,7 +11,13 @@ import type { CustomerInsights } from '@/lib/insights-metrics';
 // concrete next date and a confident wrong number beside the money is worse than
 // an honest one. Server-only.
 
-export default function CustomerInsightsCard({ customers }: { customers: CustomerInsights }) {
+export default function CustomerInsightsCard({
+  customers,
+  basePath = '/dashboard',
+}: {
+  customers: CustomerInsights;
+  basePath?: string;
+}) {
   const { totalClients, repeatClients, repeatRatePct, inactiveClients, inactiveThresholdDays, activeMaintenancePlans, maintenanceMonthly } =
     customers;
 
@@ -52,7 +58,7 @@ export default function CustomerInsightsCard({ customers }: { customers: Custome
 
           <div className="ins-card-foot">
             <span>{totalClients} customer{totalClients === 1 ? '' : 's'} in total.</span>
-            <Link className="ins-inline-link" href="/dashboard/clients">View customers →</Link>
+            <Link className="ins-inline-link" href={`${basePath}/clients`}>View customers →</Link>
           </div>
         </>
       )}

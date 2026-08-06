@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import {
   AUDIENCE_DEFS,
@@ -15,8 +14,7 @@ import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 import { buildCampaignRecommendations } from '@/lib/campaign-recommendations';
 import { marketingCalendarAction } from '../actions';
-import MarketingNav from '../MarketingNav';
-import CampaignWorkspace from './CampaignWorkspace';
+import CampaignsScreen from './CampaignsScreen';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Campaigns' };
@@ -90,58 +88,18 @@ export default async function CampaignsPage({
     draft = await campaignDraftForBeat(supabase, accountId, searchParams.draft.slice('beat:'.length));
   }
 
-  const sentCount = searchParams.sent ? Number(searchParams.sent) : null;
-
   return (
-    <main className="wide-shell workspace-shell">
-      <MarketingNav />
-
-      <section className="workspace-header-compact">
-        <h1 className="workspace-title">Campaigns</h1>
-        <p className="workspace-lead">Stay in touch with customers and keep your schedule full.</p>
-      </section>
-
-      {searchParams.test === '1' ? (
-        <section className="panel workspace-section-card flash-banner flash-info">
-          <p>Test email sent to your inbox. Take a look, then send the real thing when it&apos;s ready.</p>
-        </section>
-      ) : null}
-
-      {sentCount !== null ? (
-        <section className="panel workspace-section-card flash-banner flash-success">
-          <p>
-            Campaign sent to <strong>{sentCount}</strong> {sentCount === 1 ? 'message' : 'messages'} across{' '}
-            {searchParams.recipients ?? 0} {Number(searchParams.recipients) === 1 ? 'customer' : 'customers'}.
-            {Number(searchParams.skipped) > 0 ? ` ${searchParams.skipped} skipped (not reachable).` : ''}
-            {Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed to send.` : ''}
-          </p>
-        </section>
-      ) : null}
-
-      {!mailingAddress ? (
-        <section className="panel workspace-section-card flash-banner flash-warn">
-          <p>
-            Marketing email needs a physical postal address by law, and you don&apos;t have one on file — anything
-            you write here can&apos;t be emailed until you add it.{' '}
-            <Link href="/dashboard/settings">Add your mailing address →</Link>
-          </p>
-        </section>
-      ) : null}
-
-      <CampaignWorkspace
-        campaigns={campaigns}
-        hasRecipients={recipients.length > 0}
-        recommendations={recommendations}
-        view={view}
-        composer={{
-          audiences: AUDIENCE_DEFS,
-          reach,
-          initial: draft,
-          mailingAddress,
-          daysSinceLastSend: listHealth.daysSinceLastSend,
-          unsubscribesSinceLastSend: listHealth.unsubscribesSinceLastSend,
-        }}
-      />
-    </main>
+    <CampaignsScreen
+      campaigns={campaigns}
+      hasRecipients={recipients.length > 0}
+      recommendations={recommendations}
+      view={view}
+      reach={reach}
+      mailingAddress={mailingAddress}
+      daysSinceLastSend={listHealth.daysSinceLastSend}
+      unsubscribesSinceLastSend={listHealth.unsubscribesSinceLastSend}
+      draft={draft}
+      searchParams={searchParams}
+    />
   );
 }

@@ -120,14 +120,36 @@ export default function LeadsWorkspace({
   mapView,
   mapTheme,
   mapPins,
+  details,
+  initialLeadId,
+  basePath = '/dashboard',
+  readOnly = false,
 }: {
   leads: LeadViewItem[];
+  /** Open on this lead. The demo gives each lead its own shareable URL. */
+  initialLeadId?: string;
   /** Snoozed but not archived — the Priority inbox's third group. */
   snoozedLeads?: LeadViewItem[];
   initialView: LeadsView;
   mapView: MapView;
   mapTheme: MapTheme;
   mapPins: MapPin[];
+  /**
+   * Pre-loaded lead detail, keyed by id. Supplying it makes the Focus and
+   * Smoothie panes read from memory instead of calling /api/leads/[id]/detail —
+   * which is what lets the logged-out demo render the real workspace.
+   */
+  details?: Record<string, import('@/lib/lead-detail').LeadDetailDto>;
+  basePath?: string;
+  /**
+   * The logged-out demo.
+   *
+   * Every lead action on this workspace — mark contacted, snooze, archive, move
+   * a stage — funnels through the single `run` below, whichever of the six
+   * layouts fired it. So one guard there covers all of them, and the layout
+   * pickers stop trying to write a cookie nobody is signed in to own.
+   */
+  readOnly?: boolean;
 }) {
   const [view, setView] = useState<LeadsView>(initialView);
   /**
@@ -155,8 +177,16 @@ export default function LeadsWorkspace({
   const onFocusSelect = useCallback((id: string | null) => setFocusLeadId(id), []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  // Local map colour, so the demo's picker works with no cookie behind it.
+  const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
+  const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
 
   function run(fn: () => Promise<unknown>) {
+    // The one chokepoint every lead action goes through. Swallowed rather than
+    // hidden: the buttons stay visible, because the demo is showing what the
+    // triage controls ARE, and a card with its actions cut out reads as a
+    // narrower product than it is.
+    if (readOnly) return;
     startTransition(async () => {
       try {
         await fn();
@@ -176,6 +206,7 @@ export default function LeadsWorkspace({
     // load, which came back in the view you thought you had left. Awaiting
     // inside the transition keeps the swap instant and makes the cookie
     // actually land.
+    if (readOnly) return;
     startTransition(async () => {
       try {
         await setLeadsViewAction(next);
@@ -191,6 +222,7 @@ export default function LeadsWorkspace({
   function toggleMap() {
     const next = !mapOpen;
     setMapOpen(next);
+    if (readOnly) return;
     startTransition(async () => {
       try {
         await setMapViewAction(next ? 'large' : 'off', 'leads');
@@ -210,6 +242,10 @@ export default function LeadsWorkspace({
   }, [mapView]);
 
   function setTheme(next: MapTheme) {
+    if (readOnly) {
+      setLocalMapTheme(next);
+      return;
+    }
     startTransition(async () => {
       await setMapThemeAction(next);
       router.refresh();
@@ -232,7 +268,7 @@ export default function LeadsWorkspace({
       // is not a view setting — it is a toolbar toggle beside the views now, so
       // leaving a second control for it here would be two switches for one
       // thing. Its colour is still a preference, so that stays.
-      mapTheme={mapTheme}
+      mapTheme={effectiveMapTheme}
       onSetMapTheme={setTheme}
       label="View"
       // Mirrors normalizeLeadsView / normalizeMapTheme — the values this page
@@ -249,8 +285,11 @@ export default function LeadsWorkspace({
           run={run}
           onSelect={onFocusSelect}
           openRequest={pinRequest}
+          details={details}
+          initialLeadId={initialLeadId}
+          basePath={basePath}
           mapPins={mapPins}
-          mapTheme={mapTheme}
+          mapTheme={effectiveMapTheme}
           gear={gear}
         />
         <ScoreLegend />
@@ -301,7 +340,7 @@ export default function LeadsWorkspace({
       {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} />}
       {view === 'table' && <LeadTableView leads={leads} run={run} />}
       {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} />}
-      {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} />}
+      {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} />}
 
       <ScoreLegend />
     </div>

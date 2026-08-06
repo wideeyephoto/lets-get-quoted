@@ -9,7 +9,15 @@ import type { Insights } from '@/lib/insights';
 // threshold — a quote raised more than two weeks ago — surfaced as a nudge, not
 // invented here. A server component: it only reads and links.
 
-export default function QuotesFollowUpCard({ opportunity }: { opportunity: Insights['opportunity'] }) {
+export default function QuotesFollowUpCard({
+  opportunity,
+  // Defaulted, so every existing call site is unchanged. The demo passes
+  // '/demo' so its links stay inside the demo.
+  basePath = '/dashboard',
+}: {
+  opportunity: Insights['opportunity'];
+  basePath?: string;
+}) {
   const { total, count, quotes, staleCount } = opportunity;
 
   return (
@@ -56,7 +64,7 @@ export default function QuotesFollowUpCard({ opportunity }: { opportunity: Insig
             {count > quotes.slice(0, 4).length ? (
               <span>{count - Math.min(4, quotes.length)} more not shown.</span>
             ) : <span />}
-            <Link className="ins-inline-link" href="/dashboard/jobs?status=new_lead">Open quotes →</Link>
+            <Link className="ins-inline-link" href={`${basePath}/jobs?status=new_lead`}>Open quotes →</Link>
           </div>
         </>
       )}

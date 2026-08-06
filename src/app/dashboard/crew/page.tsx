@@ -6,34 +6,16 @@ import { arrivalPermissionsFromCrew } from '@/lib/arrival';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatMoney, listJobs } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
-import {
-  exportBlockedReason,
-  normalizeOffset,
-  normalizePeriodMode,
-  resolvePayPeriod,
-  summarizeJobLabor,
-  toDateKey,
-  zonedDateKey,
-} from '@/lib/labor';
-import {
-  comparePeriods,
-  hoursByWeekday,
-  payPeriodState,
-  periodPrimaryAction,
-  periodProgress,
-  summarizePayTotals,
-  type CrewPayRow,
-} from '@/lib/crew-pay';
+// The pay-period rollup, the pay day, the open shifts and the previous-period
+// comparison all moved into lib/crew-pay-view, which the logged-out demo reads
+// too. Twenty-four imports left this file with them.
+import { normalizePeriodMode, normalizeOffset, resolvePayPeriod, summarizeJobLabor } from '@/lib/labor';
 import { CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewSkin, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
-import { listOutstandingPeriods, listPayEvents, listPeriodEntryLines, loadCrewPayContext } from '@/lib/crew-pay-data';
-import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDaySettings } from '@/lib/pay-day';
+import { loadCrewPayView } from '@/lib/crew-pay-view';
 import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
-import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
-import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
-import type { OpenShiftView } from './HoursAndPay';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
 import LaborByJob from './LaborByJob';
@@ -60,13 +42,6 @@ type TabId = (typeof TABS)[number]['id'];
 
 function normalizeTab(value: unknown): TabId {
   return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'crew';
-}
-
-// "2026-07-30T14:05" — what <input type="datetime-local"> expects, in the
-// viewer's own wall clock rather than UTC.
-function localInputValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function initialsFor(name: string) {
@@ -180,32 +155,6 @@ export default async function CrewLaborPage({
     };
   });
 
-  // The time clock reads 'off' when its migration hasn't been run, so the whole
-  // feature stays invisible rather than throwing.
-  const timeClockMode = await getTimeClockMode(supabase, accountId);
-  // Only asked on the tab that shows the control — it's a second round trip
-  // that exists purely to word one hint correctly.
-  const timeClockAvailable = tab === 'hours' ? await isTimeClockAvailable(supabase, accountId) : false;
-  const openShifts: OpenShiftView[] =
-    tab === 'hours' && timeClockMode !== 'off'
-      ? (await listOpenShifts(supabase, accountId)).map((shift) => {
-          const flag = openShiftFlag(shift.startedAt);
-          return {
-            id: shift.id,
-            crewName: shift.crewName,
-            jobLabel: shift.jobLabel,
-            startedLabel: formatClock(shift.startedAt),
-            elapsedLabel: formatElapsed(shift.startedAt),
-            // datetime-local wants local wall-clock with no zone; "now" is the
-            // safest default end because it's the latest defensible one.
-            defaultEnd: localInputValue(new Date()),
-            flag,
-            flagLabel: flag ? SHIFT_FLAG_LABEL[flag] : null,
-            flagHelp: flag ? SHIFT_FLAG_HELP[flag] : null,
-          };
-        })
-      : [];
-
   // Only the open tab pays for its own reads.
   const laborEntries =
     tab === 'jobs'
@@ -213,51 +162,6 @@ export default async function CrewLaborPage({
       : [];
   const jobRows = tab === 'jobs' ? summarizeJobLabor(laborEntries, jobs) : [];
 
-  // Hours & pay reads through the pay context so the screen and the actions
-  // that follow from it are looking at exactly the same rollup.
-  const pay =
-    tab === 'hours'
-      ? await loadCrewPayContext(supabase, accountId, {
-          period,
-          settings,
-          crewId: searchParams.crew ?? null,
-          includeOpenShifts: timeClockMode !== 'off',
-          // Not everyone is paid by the hour. Without this the rollup totals a
-          // salaried person from their timesheet, which is the bug pay types
-          // exist to fix.
-          crew,
-          timeZone,
-        })
-      : null;
-
-  const payTotals = pay ? summarizePayTotals(pay.rows) : null;
-
-  // When this period is due, and what is still owed from before it. Both only
-  // on the tab that shows them — the roster does not need either.
-  let payDay: PayDaySettings | null = null;
-  let payDue: ReturnType<typeof payDayView> | null = null;
-  let outstanding: Awaited<ReturnType<typeof listOutstandingPeriods>> = [];
-  let approvedLines: Awaited<ReturnType<typeof listPeriodEntryLines>> = {};
-  if (tab === 'hours' && pay && payTotals) {
-    const { data: payDayRow } = await supabase.from('accounts').select(PAY_DAY_COLUMNS).eq('id', accountId).maybeSingle();
-    payDay = payDaySettingsFromAccount(payDayRow as Parameters<typeof payDaySettingsFromAccount>[0]);
-    payDue = payDayView({
-      periodEndKey: zonedDateKey(new Date(new Date(period.endIso).getTime() - 1), timeZone),
-      todayKey: zonedDateKey(new Date(), timeZone),
-      settings: payDay,
-      hasHours: payTotals.hours > 0,
-      // "Everyone" means everyone who could carry a payment record — labor with
-      // nobody attached to it is not somebody waiting to be paid.
-      allPaid: payTotals.crewCount > 0 && payTotals.unpaid === 0,
-    });
-    outstanding = await listOutstandingPeriods(supabase, accountId, settings.periodMode, { timeZone }).catch(() => []);
-    // The entries each approval was built from, frozen as they were then. Loaded
-    // for the whole period so the detail pane can switch people without a round
-    // trip — and so an adjustment can say WHICH shift moved, not just that one did.
-    if (pay.periodRow?.id) {
-      approvedLines = await listPeriodEntryLines(supabase, accountId, pay.periodRow.id).catch(() => ({}));
-    }
-  }
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
   const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
   // The page theme, not a layout. Read once here and worn by the whole shell so
@@ -268,45 +172,25 @@ export default async function CrewLaborPage({
   // the other how it is laid out, and they compose.
   const crewSkin = normalizeCrewSkin(cookies().get(CREW_SKIN_COOKIE)?.value);
 
-  // The period before this one, for the "vs last period" comparison and the
-  // second series on the hours chart. Only the grouped layout shows either, so
-  // this is the one read that is paid for a view rather than for the tab.
-  const previousPeriod =
-    tab === 'hours' && crewView === 'grouped'
-      ? resolvePayPeriod(
-          searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
-          normalizeOffset(searchParams.offset) - 1,
-          { from: searchParams.from, to: searchParams.to, timeZone },
-        )
+  // Hours & pay, in one read — the rollup, the pay day, what is still owed from
+  // earlier periods, the open shifts and the previous period's comparison. Lives
+  // in lib/crew-pay-view so the logged-out demo renders this tab from exactly
+  // the same figures rather than assembling its own set.
+  //
+  // Only the grouped layout shows the comparison, so that read is still paid for
+  // by the view rather than by the tab.
+  const payView =
+    tab === 'hours'
+      ? await loadCrewPayView(supabase, accountId, {
+          period,
+          settings,
+          timeZone,
+          crew,
+          crewId: searchParams.crew ?? null,
+          withComparison: crewView === 'grouped',
+          searchParams,
+        })
       : null;
-  const previousEntries = previousPeriod
-    ? await listLaborEntries(supabase, accountId, {
-        startIso: previousPeriod.startIso,
-        endIso: previousPeriod.endIso,
-        crewId: searchParams.crew ?? null,
-      })
-    : [];
-  const previousPay = previousEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
-  const periodState =
-    pay && payTotals ? payPeriodState(pay.rows, payTotals, period, { reopened: Boolean(pay.periodRow?.reopenedAt) }) : null;
-  const payEvents = pay?.periodRow ? await listPayEvents(supabase, accountId, { periodId: pay.periodRow.id, limit: 60 }) : [];
-
-  // "Hours today" only earns a column while the period actually contains today,
-  // and is counted here rather than in the browser so it agrees with the same
-  // clock every other date on this page was cut with.
-  const now = new Date();
-  const todayKey = toDateKey(now);
-  const periodHasToday = now >= new Date(period.startIso) && now < new Date(period.endIso);
-  const hoursToday: Record<string, number> = {};
-  if (pay && periodHasToday) {
-    for (const row of pay.rows as CrewPayRow[]) {
-      if (!row.crewId) continue;
-      const total = row.entries
-        .filter((entry) => toDateKey(new Date(entry.loggedAt)) === todayKey)
-        .reduce((sum, entry) => sum + entry.hours, 0);
-      if (total > 0) hoursToday[row.crewId] = Math.round(total * 100) / 100;
-    }
-  }
 
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
@@ -387,20 +271,20 @@ export default async function CrewLaborPage({
           />
         ) : null}
 
-        {tab === 'hours' && pay && payTotals && periodState ? (
+        {tab === 'hours' && payView ? (
           <HoursAndPay
             payrollProvider={normalizePayrollProvider((accountRules as { payroll_provider?: string } | null)?.payroll_provider)}
-            rows={pay.rows}
-            totals={payTotals}
-            periodState={periodState}
-            primaryAction={periodPrimaryAction(periodState, payTotals)}
-            period={period}
-            periodClosedAt={pay.periodRow?.closedAt ?? null}
-            periodReopenReason={pay.periodRow?.reopenReason ?? null}
-            overlaps={pay.overlaps}
-            events={payEvents}
-            payAvailable={pay.available}
-            exportBlocked={exportBlockedReason(pay.rows)}
+            rows={payView.rows}
+            totals={payView.totals}
+            periodState={payView.periodState}
+            primaryAction={payView.primaryAction}
+            period={payView.period}
+            periodClosedAt={payView.periodClosedAt}
+            periodReopenReason={payView.periodReopenReason}
+            overlaps={payView.overlaps}
+            events={payView.events}
+            payAvailable={payView.payAvailable}
+            exportBlocked={payView.exportBlocked}
             crewFilter={searchParams.crew ?? null}
             crewOptions={activeCrew.map((member) => ({ id: member.id, name: member.name }))}
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
@@ -408,28 +292,26 @@ export default async function CrewLaborPage({
             jobsByCrew={Object.fromEntries(
               Object.entries(jobsByCrew).map(([crewId, list]) => [crewId, list.map((job) => ({ ref: job.ref, clientName: job.clientName }))]),
             )}
-            hoursToday={hoursToday}
-            showTodayColumn={periodHasToday}
-            todayKey={todayKey}
-            progress={periodProgress(period, now)}
+            hoursToday={payView.hoursToday}
+            showTodayColumn={payView.showTodayColumn}
+            todayKey={payView.todayKey}
+            progress={payView.progress}
             initialView={crewView}
             initialSkin={crewSkin}
             initialOverview={crewTheme === 'overview'}
-            comparison={payTotals ? comparePeriods(payTotals.estimatedPay, previousPay) : null}
-            payDay={payDay}
-            payDue={payDue}
-            outstanding={outstanding}
-            approvedLines={approvedLines}
-            hoursThisPeriod={hoursByWeekday(pay.rows.flatMap((row) => row.entries))}
-            hoursLastPeriod={hoursByWeekday(
-              previousEntries.map((entry) => ({ loggedAt: entry.created_at, hours: Number(entry.hours) || 0 })),
-            )}
-            previousPayLabel={formatMoney(previousPay)}
+            comparison={payView.comparison}
+            payDay={payView.payDay}
+            payDue={payView.payDue}
+            outstanding={payView.outstanding}
+            approvedLines={payView.approvedLines}
+            hoursThisPeriod={payView.hoursThisPeriod}
+            hoursLastPeriod={payView.hoursLastPeriod}
+            previousPayLabel={payView.previousPayLabel}
             settings={settings}
             requireSeparatePayer={requireSeparatePayer}
-            timeClockMode={timeClockMode}
-            timeClockAvailable={timeClockAvailable}
-            openShifts={openShifts}
+            timeClockMode={payView.timeClockMode}
+            timeClockAvailable={payView.timeClockAvailable}
+            openShifts={payView.openShifts}
           />
         ) : null}
 

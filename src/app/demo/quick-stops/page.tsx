@@ -4,6 +4,9 @@ import { Icon } from '@/app/dashboard/schedule/booking/icons';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { DEMO_QUICK_STOPS, DEMO_SITE_HOST } from '@/lib/demo-data';
 import QuickStopHeaderExplainer from './QuickStopHeaderExplainer';
+import QuickStopStatus from '@/app/dashboard/quick-stops/QuickStopStatus';
+import QuickStopRequestCard, { type CardRequest } from '@/app/dashboard/quick-stops/QuickStopRequestCard';
+import { DEMO_QUICK_STOP_CARDS } from '@/lib/demo-rows';
 
 export const metadata = { title: 'Quick Stops — demo' };
 export const dynamic = 'force-dynamic';
@@ -14,26 +17,12 @@ export const dynamic = 'force-dynamic';
 // makes the case, because it counts the work you turned away as well as the work
 // you took.
 
-const STATUS_LABEL = {
-  accepted: 'Accepted',
-  waiting: 'Waiting on you',
-  declined: 'Declined',
-} as const;
-
-const STATUS_TONE = {
-  accepted: 'status-complete',
-  waiting: 'status-new_lead',
-  declined: 'status-archived',
-} as const;
+// The status labels, tones and "N min ago" helper that used to live here went
+// with the replica request rows — QuickStopRequestCard renders all three itself,
+// and a second copy of them is exactly what drifts.
 
 function money(cents: number): string {
   return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
-function agoLabel(minutes: number): string {
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
 }
 
 function clockLabel(hhmm: string): string {
@@ -91,85 +80,61 @@ export default async function DemoQuickStopsPage() {
         />
       )}
 
-      <section className="bset-master">
-        <span className="bset-master-switch">
-          <span className="bset-switch-track" aria-hidden="true"><span /></span>
-          <span className="bset-master-copy">
-            <strong>Quick Stops is <em className="on">ON</em></strong>
-            <small>Customers within {DEMO_QUICK_STOPS.radiusMiles} miles can ask to be added to today.</small>
-          </span>
-        </span>
-
-        <div className="bset-master-status live">
-          <p><span className="bset-dot" aria-hidden="true" />Live</p>
-          <small>
-            {money(DEMO_QUICK_STOPS.feeCents)} a stop · asking closes at {clockLabel(DEMO_QUICK_STOPS.cutoffTime)} ·{' '}
-            {DEMO_QUICK_STOPS.todayTaken} of {DEMO_QUICK_STOPS.maxPerDay} taken today
-          </small>
-        </div>
-      </section>
-
-      <div className="bset-cards">
-        <div className="bset-card">
-          <span className="bset-card-icon tone-link"><Icon name="repeat" /></span>
-          <span className="bset-card-label">The fee</span>
-          <strong>{money(DEMO_QUICK_STOPS.feeCents)}</strong>
-          <small>Held, not charged, until you accept</small>
-        </div>
-        <div className="bset-card">
-          <span className="bset-card-icon tone-days"><Icon name="calendar" /></span>
-          <span className="bset-card-label">How near</span>
-          <strong>{DEMO_QUICK_STOPS.radiusMiles} miles</strong>
-          <small>Of somewhere you are already working</small>
-        </div>
-        <div className="bset-card">
-          <span className="bset-card-icon tone-time"><Icon name="clock" /></span>
-          <span className="bset-card-label">Cutoff</span>
-          <strong>{clockLabel(DEMO_QUICK_STOPS.cutoffTime)}</strong>
-          <small>After that, today is closed</small>
-        </div>
-        <div className="bset-card">
-          <span className="bset-card-icon tone-off"><Icon name="briefcase" /></span>
-          <span className="bset-card-label">Most in a day</span>
-          <strong>{DEMO_QUICK_STOPS.maxPerDay} stops</strong>
-          <small>So a good day cannot bury the crew</small>
-        </div>
-      </div>
+      {/* The REAL status panel, read-only. It replaces a hand-drawn switch and
+          a four-card row that had to be kept in step with the live one by hand —
+          and had already drifted from it. Everything it shows is the same
+          derivation an owner sees: which of the prerequisites are met, and which
+          single one is missing when it is not live. */}
+      <QuickStopStatus
+        readOnly
+        enabled
+        locked={false}
+        lockedUntil={null}
+        lockReason=""
+        feeSet
+        daysSet
+        stripeConnected
+        bookingUrl={`https://${DEMO_SITE_HOST}/book`}
+        dayNames="Mon – Fri"
+        dayCount={5}
+        hoursLabel={`8 AM – ${clockLabel(DEMO_QUICK_STOPS.cutoffTime)}`}
+        feeLabel={money(DEMO_QUICK_STOPS.feeCents)}
+        maxPerDay={DEMO_QUICK_STOPS.maxPerDay}
+        todayCount={DEMO_QUICK_STOPS.todayTaken}
+        openCount={waiting.length}
+      />
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Today{waiting.length > 0 ? ` · ${waiting.length} waiting on you` : ''}</p>
           <h2>Asked to be squeezed in</h2>
         </div>
-        <div className="job-list">
-          {DEMO_QUICK_STOPS.requests.map((request) => (
-            <div className="job-row" key={request.id}>
-              <div className="job-row-header">
-                <span className="job-ref">Quick Stop · {agoLabel(request.minutesAgo)}</span>
-                <span className={`status-badge ${STATUS_TONE[request.status]}`}>{STATUS_LABEL[request.status]}</span>
-              </div>
-              <div className="job-client">{request.name}</div>
-              <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                <span className="job-meta">{request.address}</span>
-                <span className="job-quoted">{money(request.feeCents)}</span>
-              </div>
-              <p className="job-meta" style={{ margin: '0.45rem 0 0' }}>{request.what}</p>
-              <div className="job-row-header" style={{ marginTop: '0.45rem' }}>
-                <span className="job-meta">
-                  {/* Added minutes, not distance — a three-mile detour into rush hour
-                      costs more than a six-mile one down the road you're on. */}
-                  +{request.detourMinutes} min added to your route
-                  {request.slot ? ` · holding ${request.slot}` : ''}
-                  {request.status === 'declined' && 'declineReason' in request ? ` · ${request.declineReason}` : ''}
-                </span>
-                {request.status === 'waiting' ? (
-                  <span className="schedule-action-buttons">
-                    <button type="button" className="btn primary" disabled>Accept &amp; charge</button>
-                    <button type="button" className="btn secondary" disabled>Not today</button>
-                  </span>
-                ) : null}
-              </div>
-            </div>
+        {/* The REAL request card, read-only. It replaces a stripped-down row
+            that showed a name, an address and two disabled buttons — while the
+            card an owner sees carries the AI's read of the job, the visit
+            estimate, the detour it costs against today's route, and the fee. The
+            detour figure in particular is the argument for the whole feature and
+            the replica never showed it in context. */}
+        <div style={{ marginTop: '1rem' }}>
+          {DEMO_QUICK_STOP_CARDS.map((request, index) => (
+            <QuickStopRequestCard
+              key={request.id}
+              readOnly
+              request={request as unknown as CardRequest}
+              photoUrls={[]}
+              route={{
+                detourMiles: DEMO_QUICK_STOPS.requests[index]!.detourMinutes / 2.4,
+                detourMinutes: DEMO_QUICK_STOPS.requests[index]!.detourMinutes,
+                routeExtensionMinutes: DEMO_QUICK_STOPS.requests[index]!.detourMinutes,
+                anchorLabel: 'your Rosewood Ct job',
+              }}
+              defaults={{
+                earliest: '08:00',
+                latest: DEMO_QUICK_STOPS.cutoffTime,
+                minFeeDollars: DEMO_QUICK_STOPS.feeCents / 100,
+                maxFeeDollars: DEMO_QUICK_STOPS.feeCents / 100,
+              }}
+            />
           ))}
         </div>
       </section>

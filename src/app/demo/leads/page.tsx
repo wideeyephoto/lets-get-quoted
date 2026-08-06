@@ -1,22 +1,35 @@
 import Link from 'next/link';
 import { formatDuration, getAverageRequestResponseMs } from '@/lib/leads';
-import { DEMO_LEADS } from '@/lib/demo-data';
+import { DEMO_ACCOUNT_ID, DEMO_LEADS } from '@/lib/demo-data';
 import { demoLeadDetails, demoLeadViews } from '@/lib/demo-focus';
-import DemoLeadsFocus from './DemoLeadsFocus';
+import { getMapPins } from '@/lib/map-pins';
+import { demoSupabase } from '@/lib/demo-rows';
+import LeadsWorkspace from '@/app/dashboard/leads/LeadsWorkspace';
 import styles from '../../dashboard/leads/leads.module.css';
 
 export const dynamic = 'force-dynamic';
 
-// Focus, because that is what the live page opens as (normalizeLeadsView). The
-// demo used to show a Kanban board — a view a real owner has to go and choose —
-// so the first thing a prospect saw was not the product's own answer to "who do
-// I call next and what did they ask for".
-export default function DemoLeadsPage({ initialLeadId }: { initialLeadId?: string } = {}) {
+/**
+ * Current leads, for a logged-out visitor.
+ *
+ * The whole workspace, not just its Focus pane. The demo used to render one of
+ * the six layouts, so a prospect never saw the view picker, the Kanban board,
+ * the Priority inbox that orders by who has been waiting longest, or the map.
+ *
+ * `details` is supplied up front so the panes never call the owner-only detail
+ * API, and `readOnly` short-circuits the single `run` every lead action goes
+ * through. The triage buttons stay visible on purpose — the demo is showing
+ * what those controls ARE, and a card with its actions cut out reads as a
+ * narrower product than it is.
+ */
+export default async function DemoLeadsPage({ initialLeadId }: { initialLeadId?: string } = {}) {
   const leads = DEMO_LEADS;
   const websiteRequests = leads.filter((lead) => lead.source === 'website_form').length;
   const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
   const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(leads));
+
+  const mapPins = await getMapPins(demoSupabase, DEMO_ACCOUNT_ID);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -25,7 +38,17 @@ export default function DemoLeadsPage({ initialLeadId }: { initialLeadId?: strin
           <p className="eyebrow">Pipeline</p>
           <h2>Current leads</h2>
         </div>
-        <DemoLeadsFocus leads={demoLeadViews()} details={demoLeadDetails()} initialLeadId={initialLeadId} />
+        <LeadsWorkspace
+          leads={demoLeadViews()}
+          details={demoLeadDetails()}
+          initialView="smoothie"
+          mapView="large"
+          mapTheme="dark"
+          mapPins={mapPins}
+          initialLeadId={initialLeadId}
+          basePath="/demo"
+          readOnly
+        />
       </section>
 
       <div className={`stat-ticker panel ${styles.requestStats}`}>

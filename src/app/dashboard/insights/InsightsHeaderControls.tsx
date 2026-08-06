@@ -27,15 +27,21 @@ export default function InsightsHeaderControls({
   period,
   presets,
   searchParams,
+  basePath = '/dashboard',
 }: {
   period: Period;
   presets: Preset[];
   searchParams: Record<string, string | string[] | undefined>;
+  basePath?: string;
 }) {
   const compareOn = str(searchParams.compare) === 'prev';
+  // Every control here is a link back to THIS page with different params, so it
+  // has to know which page it is on. Hardcoded, the demo's period buttons would
+  // navigate a logged-out visitor into /dashboard and out to /login.
+  const selfPath = `${basePath}/insights`;
 
-  // Build a /dashboard/insights href from the current params with overrides
-  // applied (null deletes a key).
+  // Build a self href from the current params with overrides applied (null
+  // deletes a key).
   const hrefWith = (overrides: Record<string, string | null>): string => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(searchParams)) {
@@ -47,7 +53,7 @@ export default function InsightsHeaderControls({
       else params.set(key, value);
     }
     const qs = params.toString();
-    return `/dashboard/insights${qs ? `?${qs}` : ''}`;
+    return `${selfPath}${qs ? `?${qs}` : ''}`;
   };
 
   // Everything except the period keys, for the custom-range form's hidden inputs.
@@ -103,7 +109,7 @@ export default function InsightsHeaderControls({
         </div>
 
         {/* GET form so a custom range is a shareable URL, not tab-local state. */}
-        <form className={`ins-range${period.custom ? ' is-active' : ''}`} action="/dashboard/insights" method="get">
+        <form className={`ins-range${period.custom ? ' is-active' : ''}`} action={selfPath} method="get">
           {preserved.map(([key, value]) => (
             <input key={key} type="hidden" name={key} value={value} />
           ))}
@@ -144,7 +150,7 @@ export default function InsightsHeaderControls({
               <span className="ins-filter-chip-x" aria-hidden="true">✕</span>
             </Link>
           ))}
-          <Link href="/dashboard/insights" className="ins-filter-reset">
+          <Link href={selfPath} className="ins-filter-reset">
             Reset all
           </Link>
         </div>

@@ -1,148 +1,154 @@
 import Link from 'next/link';
-import { expandScheduledJobs, type Job } from '@/lib/jobs';
-import { DEMO_CREW, DEMO_JOBS } from '@/lib/demo-data';
-import DemoScheduleCalendar from './demo-schedule-calendar';
+import { expandScheduledJobs, formatMoney, listJobs } from '@/lib/jobs';
+import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
+import { deriveJobListBadge } from '@/lib/job-badges';
+import { DEMO_ACCOUNT_ID, DEMO_BOOKING } from '@/lib/demo-data';
+import { demoSupabase } from '@/lib/demo-rows';
+import ScheduleCalendar, { type CalendarCell, type CalendarJob } from '@/app/dashboard/schedule/schedule-calendar';
+import ScheduleDragProvider from '@/app/dashboard/schedule/ScheduleDragProvider';
 
 export const dynamic = 'force-dynamic';
-
-function parseMonthParam(month?: string): { year: number; monthIndex: number } {
-  if (month && /^\d{4}-\d{2}$/.test(month)) {
-    const [y, m] = month.split('-').map(Number);
-    if (m >= 1 && m <= 12) return { year: y, monthIndex: m - 1 };
-  }
-  const now = new Date();
-  return { year: now.getFullYear(), monthIndex: now.getMonth() };
-}
+export const metadata = { title: 'Schedule — Live Demo' };
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function monthParam(year: number, monthIndex: number): string {
-  return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+function shortClientName(name: string): string {
+  const [first = '', last = ''] = name.trim().split(/\s+/);
+  return last ? `${first} ${last[0]}.` : first;
 }
 
-export default function DemoSchedulePage({ searchParams }: { searchParams: { month?: string } }) {
-  const jobs = DEMO_JOBS;
-  const activeJobs = jobs.filter((job) => job.status !== 'archived');
-  const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
-  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, 8);
-  const unscheduledJobs = activeJobs.filter((job) => !job.scheduled_for);
+function shortCity(address: string | null): string | null {
+  if (!address) return null;
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[1] ?? null : null;
+}
 
-  const crewOptions = DEMO_CREW.filter((member) => member.active).map((member) => ({
-    id: member.id,
-    name: member.name,
-    role_label: member.role_label,
-  }));
-
-  // Fixed, believable assignments — Mike Torres and Elena Ruiz lead every
-  // currently scheduled job, same as a real small crew would double up.
-  const assignmentsByJob: Record<string, string[]> = Object.fromEntries(
-    scheduledJobs.map((job) => [job.id, [DEMO_CREW[0].id, DEMO_CREW[3].id]])
-  );
-
-  const { year, monthIndex } = parseMonthParam(searchParams.month);
-  const firstWeekday = new Date(year, monthIndex, 1).getDay();
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-  const cells: Array<{ day: number; dateKey: string } | null> = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(null);
-  for (let day = 1; day <= daysInMonth; day++) cells.push({ day, dateKey: toDateKey(year, monthIndex, day) });
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  const weeks: Array<typeof cells> = [];
-  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+/**
+ * The job calendar, for a logged-out visitor.
+ *
+ * The REAL calendar now — the same component the app renders, with its five
+ * views, its multi-day bands, its crew popover and its month navigation. The
+ * demo used to draw its own 227-line month grid, which meant none of that was
+ * visible to a prospect and fixes to the real one never reached them. The crew
+ * initials fix earlier in this session is a case in point: it would have landed
+ * on the app and left the demo showing the bug.
+ *
+ * `readOnly` keeps the view and weekend-day pickers working locally while
+ * withholding crew assignment, which texts the person assigned.
+ */
+export default async function DemoSchedulePage({ searchParams }: { searchParams: { month?: string } }) {
+  const [jobs, crew] = await Promise.all([
+    listJobs(demoSupabase, DEMO_ACCOUNT_ID),
+    listCrew(demoSupabase, DEMO_ACCOUNT_ID, { activeOnly: true }),
+  ]);
 
   const now = new Date();
-  const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
-  const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const prevMonth = monthParam(year, monthIndex - 1);
-  const nextMonth = monthParam(year, monthIndex + 1);
-  const currentMonth = monthParam(now.getFullYear(), now.getMonth());
+  const match = /^(\d{4})-(\d{2})$/.exec(searchParams.month ?? '');
+  const year = match ? Number(match[1]) : now.getFullYear();
+  const monthIndex = match ? Number(match[2]) - 1 : now.getMonth();
 
-  const in30Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
-  const next30Key = toDateKey(in30Days.getFullYear(), in30Days.getMonth(), in30Days.getDate());
-  const scheduledNext30Days = scheduledJobs.filter((job) => {
-    const dateKey = job.scheduled_for as string;
-    return dateKey >= todayKey && dateKey <= next30Key;
-  }).length;
+  const firstWeekday = new Date(year, monthIndex, 1).getDay();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const cells: CalendarCell[] = [];
+  for (let i = 0; i < firstWeekday; i += 1) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day += 1) cells.push({ day, dateKey: toDateKey(year, monthIndex, day) });
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks: CalendarCell[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-  const calendarJobs = scheduledJobOccurrences.map((job: Job & { scheduled_for: string }) => ({
-    id: job.id,
-    occurrence_key: `${job.id}:${job.scheduled_for}`,
-    client_name: job.client_name,
-    status: job.status,
-    scheduled_for: job.scheduled_for,
-    scheduled_time: job.scheduled_time,
-  }));
+  const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
+  const occurrences = expandScheduledJobs(scheduledJobs, 8, DEMO_BOOKING.weekdays as unknown as number[]);
+  const assignmentsByJob = await listCrewAssignmentsForJobs(demoSupabase, DEMO_ACCOUNT_ID, scheduledJobs.map((job) => job.id));
+  const crewInitialsById = new Map(
+    crew.map((member) => [
+      member.id,
+      member.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join(''),
+    ]),
+  );
+
+  // Built exactly as the app builds them — including the badge, which is
+  // derived from payments and invoices rather than asserted. The demo has no
+  // invoices attached to these occurrences, so the badge falls back to the
+  // job's own status, which is the same thing a new account sees.
+  const calendarJobs: CalendarJob[] = occurrences.map((job) => {
+    const badge = deriveJobListBadge(job, [], [], 0);
+    return {
+      id: job.id,
+      occurrence_key: `${job.id}:${job.scheduled_for}`,
+      client_name: job.client_name,
+      short_name: shortClientName(job.client_name),
+      city_label: shortCity(job.address),
+      status: job.status,
+      scheduled_for: job.scheduled_for,
+      scheduled_time: job.scheduled_time,
+      crew_notified_at: null,
+      confirmed: false,
+      badge_label: badge.label,
+      badge_tone: badge.tone,
+      badge_title: badge.title ?? null,
+      value_label: job.quoted_amount > 0 ? formatMoney(job.quoted_amount) : null,
+      hours_label: job.estimated_hours ? `${job.estimated_hours}h` : null,
+      crew_initials: (assignmentsByJob[job.id] ?? [])
+        .map((crewId) => crewInitialsById.get(crewId))
+        .filter((value): value is string => Boolean(value)),
+      scope_label: job.scope,
+    };
+  });
+
+  const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+  const previous = new Date(year, monthIndex - 1, 1);
+  const next = new Date(year, monthIndex + 1, 1);
+  const monthHref = (date: Date) => `/demo/schedule?month=${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
   return (
     <main className="wide-shell workspace-shell">
-        <section className="workspace-hero panel">
-          <div className="workspace-hero-copy">
-            <p className="eyebrow">Schedule</p>
-            <h1 className="workspace-title">Job calendar</h1>
-            <p className="workspace-lead">
-              See what&apos;s on the books this month and get unscheduled jobs onto a date.
-            </p>
-          </div>
-          <div className="workspace-metric-grid compact">
-            <article className="workspace-metric-card accent">
-              <span className="workspace-metric-label">Next 30 days</span>
-              <strong className="workspace-metric-value">{scheduledNext30Days}</strong>
-              <p className="workspace-metric-note">Jobs scheduled within the next 30 days.</p>
-            </article>
-            <article className="workspace-metric-card">
-              <span className="workspace-metric-label">Needs a date</span>
-              <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
-              <p className="workspace-metric-note">Active jobs without a scheduled date.</p>
-            </article>
-          </div>
-        </section>
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Schedule</p>
+          <h2>Job calendar</h2>
+        </div>
 
-        <section className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading calendar-heading">
-            <div>
-              <p className="eyebrow">Calendar</p>
-              <h2>{monthLabel}</h2>
-            </div>
-            <div className="actions">
-              <Link href={`/demo/schedule?month=${prevMonth}`} className="btn secondary">← Prev</Link>
-              <Link href={`/demo/schedule?month=${currentMonth}`} className="btn secondary">Today</Link>
-              <Link href={`/demo/schedule?month=${nextMonth}`} className="btn secondary">Next →</Link>
-            </div>
-          </div>
-
-          <DemoScheduleCalendar
+        {/* The drag provider is what couples the (server-rendered) unscheduled
+            list to the grid. The demo has no unscheduled list, but the calendar
+            calls useScheduleDrag unconditionally, so the provider has to be
+            here or it throws. */}
+        <ScheduleDragProvider>
+          <ScheduleCalendar
             weeks={weeks}
-            todayKey={todayKey}
+            todayKey={toDateKey(now.getFullYear(), now.getMonth(), now.getDate())}
             jobs={calendarJobs}
-            crew={crewOptions}
+            crew={crew.map((member) => ({ id: member.id, name: member.name, role_label: member.role_label }))}
             assignmentsByJob={assignmentsByJob}
+            initialDayKey={toDateKey(now.getFullYear(), now.getMonth(), now.getDate())}
+            monthNav={
+              <div className="calendar-monthnav">
+                <Link href={monthHref(previous)} className="btn ghost" aria-label="Previous month">←</Link>
+                <strong>{new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+                <Link href={monthHref(next)} className="btn ghost" aria-label="Next month">→</Link>
+              </div>
+            }
+            basePath="/demo"
+            readOnly
+            key={monthKey}
           />
-        </section>
+        </ScheduleDragProvider>
+      </section>
 
-        {unscheduledJobs.length > 0 ? (
-          <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Needs a date</p>
-              <h2>Unscheduled jobs</h2>
-            </div>
-            <div className="sign-in-methods-list">
-              {unscheduledJobs.map((job) => (
-                <div className="sign-in-method-row" key={job.id}>
-                  <div className="method-info">
-                    <strong>{job.client_name}</strong>
-                    <span>{job.ref}</span>
-                  </div>
-                  <Link href="/login" className="btn secondary">
-                    Schedule
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+      <section className="panel workspace-section-card demo-locked-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Try it yourself</p>
+          <h2>Drag work onto a day</h2>
+        </div>
+        <p className="workspace-card-copy">
+          In your own account you can drag an unscheduled job straight onto a date, assign crew from the
+          calendar, and text them the day — this demo account is read-only.
+        </p>
+        <Link href="/login" className="btn primary">
+          Create free account
+        </Link>
+      </section>
     </main>
   );
 }

@@ -8,6 +8,21 @@ import ThemeIcon from '@/app/dashboard/sites/ThemeIcon';
 import themeStyles from '@/app/dashboard/sites/SiteEditor.module.css';
 import DemoVideoStudio from './DemoVideoStudio';
 
+// PURPOSE-BUILT ON PURPOSE — the second deliberate exception to this demo's
+// "render the real screen" rule, alongside Settings.
+//
+// The real page is WebsiteBuilder: 2,638 lines and 58 server actions. Rendered
+// read-only it could not change the theme, and changing the theme is the entire
+// point of what is below — a prospect picks a template, taps an accent, and
+// watches a real preview redraw. A faithful read-only builder would be a worse
+// demo than this, which is the one situation where copying beats converting.
+//
+// It is not a replica in the way the old pages were, either: AVAILABLE_TEMPLATES,
+// COLOR_SCHEMES and ThemeIcon are all imported from the real modules, and the
+// preview iframe loads the real /themes/[template] route. Add a template to the
+// app and it appears here on its own. What is hand-written is the customiser
+// around them, and that is the part with no equivalent to drift from.
+
 // Preset accent swatches — mirrors the website builder's palette so the demo
 // customizer feels identical to the real thing.
 const ACCENT_PRESETS = [

@@ -72,6 +72,13 @@ export default function QuickStopCoverageMap({
   const onPickCenterRef = useRef(onPickCenter);
   onPickCenterRef.current = onPickCenter;
 
+  // The live map, so the effects below can steer it without rebuilding it.
+  const mapRef = useRef<google.maps.Map | null>(null);
+  // The draft circle and its centre pin, kept out of the build effect so moving
+  // the pin does not tear down and re-fit the whole map (see below).
+  const draftCircleRef = useRef<google.maps.Circle | null>(null);
+  const draftMarkerRef = useRef<google.maps.Marker | null>(null);
+
   // Read the saved choice after mount, never during render: reading
   // localStorage while rendering gives the server and the client different
   // answers and React throws away the markup it just streamed.
@@ -122,6 +129,7 @@ export default function QuickStopCoverageMap({
           styles: theme === 'dark' ? MAP_DARK_STYLE : MAP_LIGHT_STYLE,
           backgroundColor: theme === 'dark' ? '#16222f' : '#eef1f5',
         });
+        mapRef.current = map;
 
         const bounds = new g.LatLngBounds();
 
@@ -166,35 +174,25 @@ export default function QuickStopCoverageMap({
           if (zoneBounds) bounds.union(zoneBounds);
         }
 
-        if (draft) {
-          const preview = new g.Circle({
-            map,
-            center: { lat: draft.lat, lng: draft.lng },
-            radius: draft.radiusMiles * METERS_PER_MILE,
-            strokeColor: PRIORITY_COLOR,
-            strokeOpacity: 1,
-            strokeWeight: 2,
-            // Dashed would be better; the Circle API has no dash, so the draft
-            // is distinguished by being brighter and having a centre marker.
-            fillColor: PRIORITY_COLOR,
-            fillOpacity: 0.2,
-            clickable: false,
-          });
-          new g.Marker({
-            map,
-            position: { lat: draft.lat, lng: draft.lng },
-            icon: { path: g.SymbolPath.CIRCLE, fillColor: PRIORITY_COLOR, fillOpacity: 1, strokeColor: '#0b1220', strokeWeight: 1.5, scale: 7 },
-          });
-          const previewBounds = preview.getBounds();
-          if (previewBounds) bounds.union(previewBounds);
-        }
-
-        if (onPickCenterRef.current) {
-          map.addListener('click', (event: google.maps.MapMouseEvent) => {
-            const point = event.latLng;
-            if (point) onPickCenterRef.current?.({ lat: point.lat(), lng: point.lng() });
-          });
-        }
+        // ALWAYS attached, with the guard INSIDE the handler.
+        //
+        // This is what made the whole feature dead. The listener used to be
+        // wrapped in `if (onPickCenterRef.current)`, which is evaluated once,
+        // while the map is being built — and at that moment nobody is placing
+        // an area, so onPickCenter is undefined and no listener was ever added.
+        // Pressing "Add a priority area" then set the handler, but nothing
+        // re-ran the build (onPickCenter is deliberately not a dependency), so
+        // the map stayed unclickable for the life of the page. Every owner who
+        // tried to draw an area tapped a map that was not listening.
+        //
+        // The ref exists precisely so the CURRENT handler can be read at click
+        // time; reading it inside is the whole point of having it.
+        map.addListener('click', (event: google.maps.MapMouseEvent) => {
+          const pick = onPickCenterRef.current;
+          if (!pick) return; // not placing — a stray click must not drop a pin
+          const point = event.latLng;
+          if (point) pick({ lat: point.lat(), lng: point.lng() });
+        });
 
         if (stops.length > 1) {
           new g.Polyline({
@@ -251,11 +249,98 @@ export default function QuickStopCoverageMap({
 
     return () => {
       cancelled = true;
+      mapRef.current = null;
     };
     // Rebuilt on a theme change: Google applies `styles` at construction, and
     // swapping them on a live map leaves the previous palette on tiles that are
     // already painted.
-  }, [stops, radiusMiles, theme, zones, draft, fallbackCenter, canDrawMap]);
+    //
+    // `draft` is NOT a dependency. It used to be, which meant every tap on the
+    // map threw the map away and built a new one — re-fitting the bounds, so
+    // the ground moved under the pin you had just placed, and re-running
+    // fitBounds with the draft included so the view jumped on each nudge of the
+    // size field. The draft is an overlay, not a reason to rebuild a map; the
+    // effect below moves it in place.
+  }, [stops, radiusMiles, theme, zones, fallbackCenter, canDrawMap]);
+
+  // The draft area, drawn and moved without rebuilding the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !window.google) return;
+    const g = window.google.maps;
+
+    if (!draft) {
+      draftCircleRef.current?.setMap(null);
+      draftMarkerRef.current?.setMap(null);
+      draftCircleRef.current = null;
+      draftMarkerRef.current = null;
+      return;
+    }
+
+    const center = { lat: draft.lat, lng: draft.lng };
+    const radius = draft.radiusMiles * METERS_PER_MILE;
+
+    if (draftCircleRef.current) {
+      draftCircleRef.current.setCenter(center);
+      draftCircleRef.current.setRadius(radius);
+    } else {
+      draftCircleRef.current = new g.Circle({
+        map,
+        center,
+        radius,
+        strokeColor: PRIORITY_COLOR,
+        strokeOpacity: 1,
+        strokeWeight: 2,
+        // Dashed would be better; the Circle API has no dash, so the draft is
+        // distinguished by being brighter and having a centre marker.
+        fillColor: PRIORITY_COLOR,
+        fillOpacity: 0.2,
+        clickable: false,
+      });
+    }
+
+    if (draftMarkerRef.current) {
+      draftMarkerRef.current.setPosition(center);
+    } else {
+      draftMarkerRef.current = new g.Marker({
+        map,
+        position: center,
+        // Draggable, because "not quite there" is the normal case after a tap
+        // and re-tapping to nudge a pin fifty yards is a poor way to spend a
+        // minute. Dragging reports the same way a tap does.
+        draggable: true,
+        title: 'Drag to move the middle of this area',
+        icon: { path: g.SymbolPath.CIRCLE, fillColor: PRIORITY_COLOR, fillOpacity: 1, strokeColor: '#0b1220', strokeWeight: 1.5, scale: 7 },
+      });
+      draftMarkerRef.current.addListener('dragend', (event: google.maps.MapMouseEvent) => {
+        const point = event.latLng;
+        if (point) onPickCenterRef.current?.({ lat: point.lat(), lng: point.lng() });
+      });
+    }
+
+    // Bring the area into view when it lands off-screen — which is what happens
+    // when it was chosen by searching for a place rather than by tapping.
+    const bounds = draftCircleRef.current.getBounds();
+    const viewport = map.getBounds();
+    if (bounds && (!viewport || !viewport.contains(bounds.getNorthEast()) || !viewport.contains(bounds.getSouthWest()))) {
+      map.fitBounds(bounds, 48);
+    }
+    // `status` is a dependency because the map may not exist yet when the draft
+    // arrives — searching for a place can resolve before the tiles do, and
+    // without this the circle for it would never be drawn. Re-running once the
+    // map is ready costs nothing; the branches above are all idempotent.
+  }, [draft, status]);
+
+  // Crosshairs while placing. Without this the map looks exactly the same
+  // whether it is waiting for a tap or not, which is most of why "tap the map"
+  // read as decoration.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setOptions({
+      draggableCursor: onPickCenter ? 'crosshair' : undefined,
+    });
+  }, [onPickCenter, status]);
 
   function chooseTheme(next: MapTheme) {
     setTheme(next);
@@ -292,6 +377,16 @@ export default function QuickStopCoverageMap({
           <>
             <div ref={containerRef} className="qs-coverage-canvas" role="img" aria-label={`Today's route with your ${radiusMiles}-mile detour limit drawn around each stop`} />
             {status === 'loading' ? <p className="qs-coverage-empty">Loading the map…</p> : null}
+
+            {/* The instruction, ON the map. It used to live only in the form
+                below, where somebody looking at the map to decide where to tap
+                could not see it — and a map that gives no sign it is waiting
+                for you is indistinguishable from one that is broken. */}
+            {onPickCenter && status === 'ready' ? (
+              <p className="qs-coverage-placing" role="status">
+                {draft ? 'Drag the pin to adjust, or tap somewhere else' : 'Tap the middle of the area you want'}
+              </p>
+            ) : null}
             {status === 'error' ? (
               <p className="qs-coverage-empty">
                 The map couldn&rsquo;t load. Your detour limit is still {radiusMiles} miles from each of today&rsquo;s{' '}

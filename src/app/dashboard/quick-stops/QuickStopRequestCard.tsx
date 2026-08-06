@@ -81,18 +81,32 @@ const addDaysKey = (key: string, days: number) => {
   return at.toISOString().slice(0, 10);
 };
 
-export default function QuickStopRequestCard({ request, photoUrls, route, defaults }: {
+export default function QuickStopRequestCard({ request, photoUrls, route, defaults, readOnly = false }: {
   request: CardRequest;
   photoUrls: string[];
   route: CardRoute | null;
   defaults: CardDefaults;
+  /**
+   * The logged-out demo.
+   *
+   * Every action on this card — offer, decline, ask for more, en route,
+   * arrived, complete, cancel, propose a new window, convert to diagnostic —
+   * hangs off one of the two flags below, either directly or through the `mode`
+   * state that only those buttons can change. Clearing both is therefore the
+   * whole guard, rather than nine separate ones that can each be forgotten.
+   *
+   * The request itself still renders in full: what the customer asked for, when
+   * they asked, the detour it would cost and the fee. That is what a prospect
+   * needs to see; being able to accept it is not.
+   */
+  readOnly?: boolean;
 }) {
   const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info' | 'cancel' | 'window' | 'diag'>('idle');
   const [arriving, setArriving] = useState(false);
   const router = useRouter();
   const countdown = useCountdown(request.status === 'awaiting_contractor' ? request.response_deadline_at : null);
-  const isOpen = request.status === 'awaiting_contractor' || request.status === 'more_information_requested';
-  const isLive = request.status === 'confirmed' || request.status === 'en_route' || request.status === 'arrived';
+  const isOpen = !readOnly && (request.status === 'awaiting_contractor' || request.status === 'more_information_requested');
+  const isLive = !readOnly && (request.status === 'confirmed' || request.status === 'en_route' || request.status === 'arrived');
   const availabilityText = request.availability.map((a) => String(a)).filter(Boolean).join(' · ');
   // Requests made before the day picker existed genuinely meant today — that was
   // the only thing the form could ask for — so they say so rather than "—".

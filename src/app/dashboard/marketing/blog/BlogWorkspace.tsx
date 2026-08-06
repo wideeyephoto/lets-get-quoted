@@ -39,6 +39,8 @@ export default function BlogWorkspace({
   sectionEnabled,
   initialTopic,
   initialFilter,
+  readOnly = false,
+  basePath = '/dashboard',
 }: {
   initialPosts: SiteBlogPost[];
   reminderWeeks: number;
@@ -47,6 +49,15 @@ export default function BlogWorkspace({
   initialTopic: string;
   /** ?status= — arrived from an overview tile. */
   initialFilter: PostState | 'all';
+  /**
+   * The logged-out demo. Everything that WRITES is withheld rather than
+   * disabled: drafting a post calls a server action that starts with
+   * requireOwnerContext, so a visible "Draft it with AI" button would spin and
+   * then bounce a prospect to /login. Reading the list, filtering it and seeing
+   * how posts are staged is the part worth showing, and all of that is local.
+   */
+  readOnly?: boolean;
+  basePath?: string;
 }) {
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
@@ -97,10 +108,11 @@ export default function BlogWorkspace({
       {!sectionEnabled && posts.length > 0 ? (
         <p className="blog-warn">
           Your blog band is switched off on your website, so none of these are visible to anyone — publishing one
-          won&apos;t change that. <Link href="/dashboard/sites">Turn it on in the website builder →</Link>
+          won&apos;t change that. <Link href={`${basePath}/sites`}>Turn it on in the website builder →</Link>
         </p>
       ) : null}
 
+      {readOnly ? null : (
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
           <h2>New blog post</h2>
@@ -147,6 +159,7 @@ export default function BlogWorkspace({
           Everything saves as a hidden draft. Nothing appears on your website until you publish it.
         </p>
       </section>
+      )}
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
@@ -195,7 +208,7 @@ export default function BlogWorkspace({
               const words = wordCount(post.body);
               return (
                 <li key={post.id}>
-                  <Link href={`/dashboard/marketing/blog/${post.id}`} className="mkt-post-row">
+                  <Link href={`${basePath}/marketing/blog/${post.id}`} className="mkt-post-row">
                     <span className="mkt-post-copy">
                       <strong>{post.title.trim() || 'Untitled post'}</strong>
                       <small>
@@ -214,6 +227,7 @@ export default function BlogWorkspace({
         )}
       </section>
 
+      {readOnly ? null : (
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
           <h2>Reminders</h2>
@@ -241,6 +255,7 @@ export default function BlogWorkspace({
           </small>
         </label>
       </section>
+      )}
     </>
   );
 }

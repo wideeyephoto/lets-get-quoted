@@ -79,7 +79,42 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins, todayKey, toolbarAccessory }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[]; todayKey: string; toolbarAccessory?: ReactNode }) {
+export default function JobsWorkspace({
+  jobs,
+  initialView,
+  mapView,
+  mapTheme,
+  mapPins,
+  todayKey,
+  toolbarAccessory,
+  basePath = '/dashboard',
+  readOnly = false,
+  details,
+}: {
+  jobs: JobViewItem[];
+  /**
+   * Pre-loaded job detail, keyed by id. Supplying it makes the Focus and
+   * Smoothie panes read from memory instead of calling /api/jobs/[id]/detail —
+   * which is what lets the logged-out demo render the real workspace.
+   */
+  details?: Record<string, import('@/lib/job-detail').JobDetailDto>;
+  initialView: JobsView;
+  mapView: MapView;
+  mapTheme: MapTheme;
+  mapPins: MapPin[];
+  todayKey: string;
+  toolbarAccessory?: ReactNode;
+  basePath?: string;
+  /**
+   * The logged-out demo. Nothing on this workspace writes customer data — the
+   * only three actions here REMEMBER a layout choice in a cookie, and each one
+   * starts with requireOwnerContext. Left alone, picking a view on the public
+   * demo navigates a prospect to /login mid-browse. So under readOnly the view
+   * still changes; it just is not persisted, which is exactly right for
+   * somebody with no account to persist it to.
+   */
+  readOnly?: boolean;
+}) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   // Which job the Focus pane has open, so the map can centre on it.
@@ -103,17 +138,32 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
+  // Local layout state, so the demo's pickers work without a cookie to write.
+  const [localMapView, setLocalMapView] = useState<MapView>(mapView);
+  const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
+  const effectiveMapView = readOnly ? localMapView : mapView;
+  const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
+
   function pickView(next: JobsView) {
     setView(next);
+    if (readOnly) return;
     startTransition(() => setJobsViewAction(next).catch(() => {}));
   }
   function setMap(next: MapView) {
+    if (readOnly) {
+      setLocalMapView(next);
+      return;
+    }
     startTransition(async () => {
       await setMapViewAction(next, 'jobs');
       router.refresh();
     });
   }
   function setTheme(next: MapTheme) {
+    if (readOnly) {
+      setLocalMapTheme(next);
+      return;
+    }
     startTransition(async () => {
       await setMapThemeAction(next);
       router.refresh();
@@ -134,9 +184,9 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
         views={VIEWS}
         activeView={view}
         onPickView={pickView}
-        mapView={mapView}
+        mapView={effectiveMapView}
         onSetMapView={setMap}
-        mapTheme={mapTheme}
+        mapTheme={effectiveMapTheme}
         onSetMapTheme={setTheme}
         label="View"
         // Mirrors normalizeJobsView / normalizeMapView / normalizeMapTheme.
@@ -155,10 +205,12 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           jobs={jobs}
           todayKey={todayKey}
           mapPins={mapPins}
-          mapTheme={mapTheme}
+          mapTheme={effectiveMapTheme}
           gear={gear}
           onSelect={onFocusSelect}
           openRequest={pinRequest}
+          details={details}
+          basePath={basePath}
         />
       </div>
     );
@@ -172,7 +224,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           special-case it, and the gear went on showing Map as ticked while
           nothing rendered. A control that lies about its own state is worse
           than the query. */}
-      {mapView === 'large' ? (
+      {effectiveMapView === 'large' ? (
         <div className="workspace-embedded-map">
           <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} focusPinId={view === 'focus' && focusJobId ? `job-${focusJobId}` : null} onPinClick={onPinClick} />
         </div>
@@ -185,10 +237,10 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
         <p className="empty-state">No jobs yet. Create your first job below.</p>
       ) : (
         <>
-          {view === 'list' && <ListView jobs={filtered} />}
-          {view === 'board' && <BoardView jobs={jobs} />}
-          {view === 'table' && <TableView jobs={filtered} />}
-          {view === 'focus' && <FocusView jobs={filtered} onSelect={onFocusSelect} openRequest={pinRequest} />}
+          {view === 'list' && <ListView jobs={filtered} basePath={basePath} />}
+          {view === 'board' && <BoardView jobs={jobs} basePath={basePath} />}
+          {view === 'table' && <TableView jobs={filtered} basePath={basePath} />}
+          {view === 'focus' && <FocusView jobs={filtered} onSelect={onFocusSelect} openRequest={pinRequest} details={details} basePath={basePath} />}
 
           {view !== 'board' ? (
             <div className={styles.bar}>
@@ -214,12 +266,12 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
   );
 }
 
-function ListView({ jobs }: { jobs: JobViewItem[] }) {
+function ListView({ jobs, basePath }: { jobs: JobViewItem[]; basePath: string }) {
   if (jobs.length === 0) return <p className="empty-state">No jobs here.</p>;
   return (
     <div className="job-list">
       {jobs.map((job) => (
-        <Link id={`job-row-${job.id}`} key={job.id} href={`/dashboard/jobs/${job.id}`} className="job-row">
+        <Link id={`job-row-${job.id}`} key={job.id} href={`${basePath}/jobs/${job.id}`} className="job-row">
           <div className="job-row-header">
             <span className="job-ref">{job.ref}</span>
             <StatusBadge job={job} />
@@ -238,7 +290,7 @@ function ListView({ jobs }: { jobs: JobViewItem[] }) {
   );
 }
 
-function BoardView({ jobs }: { jobs: JobViewItem[] }) {
+function BoardView({ jobs, basePath }: { jobs: JobViewItem[]; basePath: string }) {
   return (
     <div className={styles.board}>
       {BOARD_COLUMNS.map((col) => {
@@ -248,7 +300,7 @@ function BoardView({ jobs }: { jobs: JobViewItem[] }) {
             <header className={styles.columnHeader}><h3>{col.label}</h3><span>{items.length}</span></header>
             <div className={styles.cards}>
               {items.map((job) => (
-                <Link id={`job-row-${job.id}`} key={job.id} href={`/dashboard/jobs/${job.id}`} className={styles.jobCard}>
+                <Link id={`job-row-${job.id}`} key={job.id} href={`${basePath}/jobs/${job.id}`} className={styles.jobCard}>
                   <div className={styles.cardTop}><strong>{job.clientName}</strong><StatusBadge job={job} /></div>
                   <span className={styles.cardRef}>{job.ref}</span>
                   <p className={styles.cardAddr}>{job.address || 'No address on file'}</p>
@@ -268,7 +320,7 @@ function BoardView({ jobs }: { jobs: JobViewItem[] }) {
 }
 
 type SortKey = 'ref' | 'client' | 'status' | 'scheduled' | 'value';
-function TableView({ jobs }: { jobs: JobViewItem[] }) {
+function TableView({ jobs, basePath }: { jobs: JobViewItem[]; basePath: string }) {
   const [sortKey, setSortKey] = useState<SortKey>('ref');
   const [asc, setAsc] = useState(true);
 
@@ -310,11 +362,11 @@ function TableView({ jobs }: { jobs: JobViewItem[] }) {
           {sorted.map((job) => (
             <tr id={`job-row-${job.id}`} key={job.id}>
               <td className={styles.tMono}>{job.ref}</td>
-              <td><Link href={`/dashboard/jobs/${job.id}`} className={styles.tName}>{job.clientName}</Link></td>
+              <td><Link href={`${basePath}/jobs/${job.id}`} className={styles.tName}>{job.clientName}</Link></td>
               <td><StatusBadge job={job} /></td>
               <td className={styles.tMuted}>{job.scheduledLabel || '—'}</td>
               <td className={styles.numCol}>{job.quotedAmount > 0 ? job.quotedLabel : '—'}</td>
-              <td><Link href={`/dashboard/jobs/${job.id}`} className={styles.tOpen}>Open →</Link></td>
+              <td><Link href={`${basePath}/jobs/${job.id}`} className={styles.tOpen}>Open →</Link></td>
             </tr>
           ))}
         </tbody>

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { AUDIENCE_LABEL, CHANNEL_LABEL, CLIMATE_LABEL, SMS_EXCLUSION_NOTE, type Audience, type Channel } from '@/lib/marketing-calendar';
 import type { MarketingDraft } from '@/lib/marketing-draft';
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
-import { createBlogPostFromBeatAction, campaignDraftForBeatAction, draftMarketingAction, type CalendarView } from './actions';
+import { createBlogPostFromBeatAction, campaignDraftForBeatAction, draftMarketingAction } from './actions';
+import type { CalendarView } from '@/lib/marketing-calendar-data';
 
 /**
  * The months ahead, and what's worth saying in them.

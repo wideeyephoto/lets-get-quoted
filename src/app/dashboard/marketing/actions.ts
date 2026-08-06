@@ -7,128 +7,30 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { getSiteContent, mergeSiteContent, slugifyBlogTitle } from '@/lib/site-content';
 import { draftBlogPost } from '@/lib/blog-generate';
 import { pickBlogCover } from '@/app/dashboard/sites/actions';
-import {
-  BEATS,
-  climateZoneForState,
-  planCalendar,
-  stateFromAddress,
-  type Channel,
-  type ClimateZone,
-  type PlannedBeat,
-} from '@/lib/marketing-calendar';
+// planCalendar, the zone helpers and the recipient/beat readers moved out with
+// buildCalendarView — see lib/marketing-calendar-data.
+import { BEATS, climateZoneForState, stateFromAddress, type Channel } from '@/lib/marketing-calendar';
 import { draftMarketing, type MarketingDraft } from '@/lib/marketing-draft';
 import { campaignDraftForBeat, type CampaignDraft } from '@/lib/marketing-draft-data';
-import { sendCampaign, loadRecipients, loadSentBeats, BEAT_DONE_DAYS } from '@/lib/campaigns';
-import { matchesAudience } from '@/lib/campaign-audiences';
-import { campaignAudienceForBeat, type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audiences';
+import { sendCampaign } from '@/lib/campaigns';
+import { type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audiences';
 
 import { sendCampaignEmail, renderCampaignEmailHtml } from '@/lib/email';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import type { CampaignFinding } from '@/lib/campaign-guard';
 import { readCampaign } from '@/lib/campaign-guard-ai';
-
-export type CalendarView = {
-  zone: ClimateZone;
-  /** Null when we couldn't tell where they are — shown, not hidden. */
-  state: string | null;
-  trade: string | null;
-  businessName: string;
-  planned: {
-    beatId: string;
-    title: string;
-    whyNow: string;
-    monthName: string;
-    channel: Channel;
-    /** Every channel the topic supports, so the card offers each one. */
-    channels: Channel[];
-    audience: string;
-    /** How many people the topic's audience actually reaches, when we can say. */
-    reach: number | null;
-    /** Set when this topic has been sent — ISO date and how many it went to. */
-    sentAt: string | null;
-    sentTo: number;
-    /** Set when a blog post has already been drafted from this topic. */
-    postedTitle: string | null;
-    postedId: string | null;
-  }[];
-};
+import { buildCalendarView, type CalendarView } from '@/lib/marketing-calendar-data';
 
 /**
- * The months ahead, for this trade in this climate.
+ * The seasonal calendar for the signed-in owner.
  *
- * The zone is derived from the account's own mailing address. When that can't be
- * read the panel SAYS SO rather than quietly assuming four seasons — a
- * contractor in Phoenix being offered furnace content should be able to see why.
+ * The read itself lives in lib/marketing-calendar-data so the logged-out demo
+ * can run the same query over fixtures — this file is 'use server', where every
+ * export becomes a server action and a plain helper cannot live.
  */
 export async function marketingCalendarAction(monthsAhead = 3): Promise<CalendarView> {
   const { supabase, accountId } = await requireOwnerContext();
   return buildCalendarView(supabase, accountId, monthsAhead);
-}
-
-type Supa = Awaited<ReturnType<typeof requireOwnerContext>>['supabase'];
-
-async function buildCalendarView(supabase: Supa, accountId: string, monthsAhead: number): Promise<CalendarView> {
-  const [{ data: account }, { data: site }, recipients, sentBeats] = await Promise.all([
-    supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name, content, service_area').eq('account_id', accountId).maybeSingle(),
-    loadRecipients(supabase, accountId),
-    loadSentBeats(supabase, accountId),
-  ]);
-
-  const content = getSiteContent(site?.content as Record<string, unknown> | null);
-  const state = stateFromAddress((account?.mailing_address as string | null) ?? site?.service_area ?? null);
-  const zone = climateZoneForState(state);
-  const trade = content.trade.trim() || null;
-
-  const planned: PlannedBeat[] = planCalendar({
-    trade,
-    zone,
-    fromMonth: new Date().getMonth() + 1,
-    monthsAhead,
-  });
-
-  // Which topics already have a post drafted on the website. Matched on the
-  // beat id stored with the post, so renaming a post never loses the link.
-  // The id comes along so the card can link to that exact post rather than to
-  // the blog list, where finding it again is the owner's problem.
-  const postedByBeat = new Map<string, { id: string; title: string }>();
-  for (const post of content.blog.posts) {
-    if (post.beatId && !postedByBeat.has(post.beatId)) postedByBeat.set(post.beatId, { id: post.id, title: post.title });
-  }
-
-  const now = Date.now();
-  const doneCutoff = now - BEAT_DONE_DAYS * 24 * 60 * 60 * 1000;
-
-  return {
-    zone,
-    state,
-    trade,
-    businessName: site?.company_name || account?.business_name || 'your business',
-    planned: planned.map((entry) => {
-      const campaignAudience = campaignAudienceForBeat(entry.beat.audience);
-      const sent = sentBeats.get(entry.beat.id);
-      // A send only marks the topic done for a while. These come round every
-      // year, and a card struck through since last autumn would be wrong.
-      const recentlySent = sent && new Date(sent.lastSentAt).getTime() >= doneCutoff ? sent : null;
-
-      return {
-        beatId: entry.beat.id,
-        title: entry.beat.title,
-        whyNow: entry.beat.whyNow,
-        monthName: entry.monthName,
-        channel: entry.channel,
-        channels: entry.channels,
-        audience: entry.beat.audience,
-        reach: campaignAudience
-          ? recipients.filter((recipient) => matchesAudience(recipient, campaignAudience, now) && recipient.emailReady).length
-          : null,
-        sentAt: recentlySent?.lastSentAt ?? null,
-        sentTo: recentlySent?.recipientCount ?? 0,
-        postedTitle: postedByBeat.get(entry.beat.id)?.title ?? null,
-        postedId: postedByBeat.get(entry.beat.id)?.id ?? null,
-      };
-    }),
-  };
 }
 
 /**
@@ -302,6 +204,10 @@ export async function createBlogPostFromBeatAction(
 
 const CHANNELS: CampaignChannel[] = ['email', 'sms', 'both'];
 const AUDIENCES: CampaignAudience[] = ['all', 'past', 'repeat', 'lapsed'];
+
+// Local alias, not an export — every export from a 'use server' file becomes a
+// server action, and a type is not one.
+type Supa = Awaited<ReturnType<typeof requireOwnerContext>>['supabase'];
 
 // Resolve the sender identity shown in marketing email: the display name and the
 // CAN-SPAM physical mailing address (contractor's own, else platform fallback).

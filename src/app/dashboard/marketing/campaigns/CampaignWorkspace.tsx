@@ -11,7 +11,7 @@ import CampaignTemplateBrowser from './CampaignTemplateBrowser';
 import type { Campaign } from '@/lib/campaign-audiences';
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
 import type { CampaignRecommendations } from '@/lib/campaign-recommendations';
-import type { CalendarView } from '../actions';
+import type { CalendarView } from '@/lib/marketing-calendar-data';
 
 type ComposerProps = React.ComponentProps<typeof CampaignComposer>;
 

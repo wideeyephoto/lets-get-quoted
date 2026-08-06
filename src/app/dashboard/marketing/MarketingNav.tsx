@@ -17,25 +17,47 @@ import { usePathname } from 'next/navigation';
  * links do not have.
  */
 
-const TABS = [
-  { href: '/dashboard/marketing', label: 'Overview' },
-  { href: '/dashboard/marketing/campaigns', label: 'Campaigns' },
-  { href: '/dashboard/marketing/blog', label: 'Blog' },
-  { href: '/dashboard/marketing/performance', label: 'Performance' },
+const SECTIONS = [
+  { path: '', label: 'Overview' },
+  { path: '/campaigns', label: 'Campaigns' },
+  { path: '/blog', label: 'Blog' },
+  { path: '/performance', label: 'Performance' },
 ];
 
-export default function MarketingNav() {
+export default function MarketingNav({
+  basePath = '/dashboard',
+  /**
+   * Which sections to offer. The app has all four; the demo is being converted
+   * one section at a time and lists only the ones it has actually built, because
+   * a tab that 404s is a worse advertisement than a tab that isn't there yet.
+   * Remove this argument at the demo's call sites as each section lands.
+   */
+  only,
+}: {
+  basePath?: string;
+  only?: string[];
+}) {
   const pathname = usePathname();
+
+  // Built from basePath rather than hardcoded, so the logged-out demo's nav
+  // links stay inside the demo. Hardcoded, every tab here sent a prospect to
+  // /login — which is the same reason the demo used to have no marketing nav at
+  // all, and therefore no way to see that Marketing has four sections.
+  const root = `${basePath}/marketing`;
+  const tabs = SECTIONS.filter((section) => !only || only.includes(section.path)).map((section) => ({
+    href: `${root}${section.path}`,
+    label: section.label,
+  }));
 
   // Overview is the only exact match. Everything else owns its sub-paths, so a
   // post editor at /blog/<id> keeps Blog lit rather than lighting nothing.
   const isActive = (href: string) =>
-    href === '/dashboard/marketing' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+    href === root ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <nav className="mkt-nav" aria-label="Marketing sections">
       <ul className="mkt-nav-list">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = isActive(tab.href);
           return (
             <li key={tab.href}>

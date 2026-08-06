@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
@@ -94,6 +94,20 @@ const ROSTER_VIEW_OPTIONS: ViewOption<RosterPick>[] = [
   overviewOption<RosterPick>('One person open beside the list — all three tabs'),
 ];
 
+/**
+ * Read-only mode, and where the roster's links point.
+ *
+ * CONTEXT rather than props, deliberately. The server actions on this roster —
+ * create, invite, assign, archive, update, delete — are spread across five
+ * sub-components and eight call sites. Threading a `readOnly` prop through all
+ * of them is a change where missing ONE leaves a form on a public page that
+ * POSTs to an action starting with requireOwnerContext, and the only symptom is
+ * a prospect landing on the login wall. A context cannot be forgotten at a call
+ * site, because there are no call sites to forget it at.
+ */
+const RosterMode = createContext<{ readOnly: boolean; basePath: string }>({ readOnly: false, basePath: '/dashboard' });
+const useRosterMode = () => useContext(RosterMode);
+
 function money(amount: number): string {
   return `$${Math.round(amount).toLocaleString('en-US')}`;
 }
@@ -119,10 +133,15 @@ export default function CrewRoster({
   initialSkin,
   initialOverview,
   openAdd,
+  readOnly = false,
+  basePath = '/dashboard',
 }: {
   rows: CrewRow[];
   assignableJobs: JobOption[];
   periodLabel: string;
+  /** The logged-out demo: show the team, offer nothing that writes. */
+  readOnly?: boolean;
+  basePath?: string;
   initialStatus: 'active' | 'archived';
   initialView: RosterView;
   initialSkin: CrewSkin;
@@ -323,7 +342,7 @@ export default function CrewRoster({
   }, [visible]);
 
   return (
-    <>
+    <RosterMode.Provider value={{ readOnly, basePath }}>
       <div className={styles.toolbar}>
         <div className={styles.search}>
           <span aria-hidden="true">🔎</span>
@@ -635,6 +654,7 @@ export default function CrewRoster({
 
       {selected ? <CrewDrawer row={selected} onClose={() => setOpenId(null)} periodLabel={periodLabel} /> : null}
 
+      {readOnly ? null : (
       <section id="add-crew" className={styles.addPanel} data-open={addOpen || undefined}>
         <button type="button" className={styles.addToggle} aria-expanded={addOpen} onClick={() => setAddOpen((v) => !v)}>
           <span className="btn primary">+ Add crew member</span>
@@ -669,7 +689,8 @@ export default function CrewRoster({
           </form>
         ) : null}
       </section>
-    </>
+      )}
+    </RosterMode.Provider>
   );
 }
 
@@ -679,8 +700,8 @@ export default function CrewRoster({
 // "Assign job" can never mean something subtly different depending on which
 // view the owner happens to have chosen.
 
-function hoursHrefFor(row: CrewRow): string {
-  return `/dashboard/crew?tab=hours&crew=${row.id}`;
+function hoursHrefFor(row: CrewRow, basePath = '/dashboard'): string {
+  return `${basePath}/crew?tab=hours&crew=${row.id}`;
 }
 
 // Close the row menu by ref containment on mousedown, NOT by a click listener:
@@ -723,15 +744,16 @@ function CrewActions({
   onOpen: () => void;
 }) {
   const { menuOpen, setMenuOpen, menuRef } = useRowMenu();
+  const { readOnly, basePath } = useRosterMode();
 
   return (
     <div className={styles.rowActions}>
-      {row.active ? (
+      {!readOnly && row.active ? (
         <button type="button" className={styles.rowBtn} onClick={() => setAssigning((v) => !v)} aria-expanded={assigning}>
           Assign job
         </button>
       ) : null}
-      <Link href={hoursHrefFor(row)} className={styles.rowBtn}>View hours</Link>
+      <Link href={hoursHrefFor(row, basePath)} className={styles.rowBtn}>View hours</Link>
 
       <div className={styles.menuWrap} ref={menuRef}>
         <button
@@ -749,7 +771,7 @@ function CrewActions({
             <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
               Edit crew member
             </button>
-            {row.active && row.fieldApp === 'invitable' ? (
+            {!readOnly && row.active && row.fieldApp === 'invitable' ? (
               <form action={inviteCrewAction.bind(null, row.id)}>
                 <button type="submit" role="menuitem">Invite to field app</button>
               </form>
@@ -759,11 +781,13 @@ function CrewActions({
             </button>
             {/* Archive is destructive-adjacent, so it lives behind the menu and
                 below a divider rather than beside the everyday actions. */}
+            {readOnly ? null : (
             <form action={setCrewActiveAction.bind(null, row.id, !row.active)} className={styles.menuDanger}>
               <button type="submit" role="menuitem">
                 {row.active ? 'Archive crew member' : 'Reactivate crew member'}
               </button>
             </form>
+            )}
           </div>
         ) : null}
       </div>
@@ -772,6 +796,10 @@ function CrewActions({
 }
 
 function AssignForm({ row, assignableJobs }: { row: CrewRow; assignableJobs: JobOption[] }) {
+  const { readOnly } = useRosterMode();
+  // Nothing to offer when the page cannot save it — and "Assign job" is the one
+  // control on this roster somebody would most expect to work.
+  if (readOnly) return null;
   return (
     <form action={assignCrewToJobAction.bind(null, row.id)} className={styles.assignForm}>
       {assignableJobs.length === 0 ? (
@@ -1041,6 +1069,7 @@ function CrewTableRow({
 }
 
 function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () => void; periodLabel: string }) {
+  const { readOnly, basePath } = useRosterMode();
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -1090,13 +1119,14 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
           <div className={styles.drawerJobs}>
             <h3>On these jobs</h3>
             {row.jobs.map((job) => (
-              <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className={styles.jobChip}>
+              <Link key={job.id} href={`${basePath}/jobs/${job.id}`} className={styles.jobChip}>
                 {job.ref} · {job.clientName}
               </Link>
             ))}
           </div>
         ) : null}
 
+        {readOnly ? null : (
         <details className={styles.drawerSection}>
           <summary>Edit crew member</summary>
           <form action={updateCrewAction.bind(null, row.id)} className="form-grid compact-form">
@@ -1169,11 +1199,13 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
             </div>
           </form>
         </details>
+        )}
 
         <div className={styles.drawerSection}>
           <CrewWorkHistory crewId={row.id} />
         </div>
 
+        {readOnly ? null : (
         <footer className={styles.drawerFoot}>
           {row.active && row.fieldApp === 'invitable' ? (
             <form action={inviteCrewAction.bind(null, row.id)}>
@@ -1199,6 +1231,7 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
             </ConfirmActionButton>
           ) : null}
         </footer>
+        )}
       </section>
     </div>
   );

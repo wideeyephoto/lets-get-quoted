@@ -82,9 +82,10 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
     label: 'Grow',
     items: [
       { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
-      // The icon key follows the real nav to /dashboard/marketing; the demo's
-      // own URL stays /demo/campaigns, which is public and has no reason to move.
-      { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/campaigns' },
+      // The demo's marketing area mirrors the real one's shape now, so the rail
+      // points at its overview exactly as the live rail does. The old
+      // /demo/campaigns URL redirects into it.
+      { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/marketing' },
       // Rebook is a section on Marketing in the real app, not a rail row, and
       // /demo/rebook is reached the same way — from the Marketing page.
       { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },

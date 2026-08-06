@@ -28,6 +28,19 @@ describe('zoneContains', () => {
     expect(zoneContains(zone({ radiusMiles: 0 }), CENTER)).toBe(false);
     expect(zoneContains(zone({ centerLat: Number.NaN }), CENTER)).toBe(false);
   });
+
+  it('measures radiusMiles from the middle — it is a RADIUS, not a width', () => {
+    // Pinned because the form used to call this field "miles across", which is
+    // a diameter, while every consumer treats it as a radius. An owner reading
+    // the label and typing 4 got an area eight miles wide. The label was the
+    // thing that was wrong, so this states the meaning the code actually has
+    // and would fail if anyone ever "fixed" it the other way round.
+    //
+    // NEAR is ~3 miles from CENTER, so a 4-mile zone contains it on the radius
+    // reading and would NOT on the diameter reading (which allows only 2).
+    expect(zoneContains(zone({ radiusMiles: 4 }), NEAR)).toBe(true);
+    expect(zoneContains(zone({ radiusMiles: 2 }), NEAR)).toBe(false);
+  });
 });
 
 describe('detourAllowance', () => {

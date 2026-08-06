@@ -6719,7 +6719,15 @@ li + li { margin-top: 0.45rem; }
 .week-glance-jobs { display: flex; flex-direction: column; gap: .4rem; }
 .week-glance-job { display: flex; flex-direction: column; gap: .1rem; padding: .35rem .45rem; border-radius: 7px; background: rgba(var(--tint), .06); color: #fff; text-decoration: none; }
 .week-glance-job:hover { background: rgba(var(--tint), .13); }
-.week-glance-job-top { display: flex; align-items: center; justify-content: space-between; gap: .35rem; }
+/* The crew pill follows the name; it is not pushed to the far edge.
+   space-between put the whole gap between the two, so in a narrow column — where
+   a name like "Hannah Ostrowski" wraps to two lines — the pill ended up hard
+   against the card's right border, vertically centred against the gap BETWEEN
+   the two lines of the name. It read as belonging to nothing. flex-start on both
+   axes keeps it beside the first line of the name it describes, and min-width on
+   the name lets the name shrink and wrap rather than shoving the pill out. */
+.week-glance-job-top { display: flex; align-items: flex-start; gap: .35rem; }
+.week-glance-job-top strong { min-width: 0; }
 .week-glance-job strong { font-size: .78rem; line-height: 1.25; }
 .week-glance-job span { font-size: .68rem; color: var(--mute-t55); }
 .week-glance-job .week-glance-crew { flex-shrink: 0; min-width: 1.35rem; padding: .12rem .28rem; border: 1px solid var(--cedge-green-14); border-radius: 999px; background: rgba(120,220,150,.14); color: var(--ink-green-1); font-size: .58rem; font-weight: 800; line-height: 1.2; text-align: center; letter-spacing: .02em; }
@@ -21481,12 +21489,24 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 
 /* The crew badge sits ON the chip (absolutely positioned), so the name has to
-   stop before it. The existing reservation is 1.25rem, sized for the '+' badge
-   — a pair of initials like 'MT ER' is nearer 2.5rem, and the ellipsis ended up
-   touching it. The other reservation rule keys on the badge coming BEFORE the
-   chip; here it comes after, so this matches on that order instead. */
+   stop before it. The other reservation rule keys on the badge coming BEFORE the
+   chip; here it comes after, so this matches on that order instead.
+
+   The reservation and the badge are now sized against the SAME maximum, which is
+   the bug this pair of rules kept having. 2.55rem was measured off 'MT ER' in a
+   particular font, and a wider pair — 'GY DW', with two of the widest capitals
+   in it — renders nearer 2.9rem and printed itself straight over the client's
+   name. Guessing a width for text somebody else's crew list decides is not a
+   thing that can be got right, so the badge no longer carries two pairs (see
+   schedule-calendar.tsx): it is one pair plus a count, whose widest possible
+   value is 'WW+9'. max-width caps it there even if that changes, and the
+   reservation clears it with room for the 2px inset. */
 .calendar-job-item > .calendar-job-chip:has(+ .calendar-crew-toggle) .calendar-job-chip-main {
-  padding-right: 2.55rem;
+  padding-right: 3rem;
+}
+.calendar-job-item > .calendar-crew-toggle {
+  max-width: 2.7rem;
+  overflow: hidden;
 }
 
 
@@ -21805,6 +21825,37 @@ a.bset-card { color: inherit; text-decoration: none; }
   margin: 0; padding: 1.5rem; text-align: center; line-height: 1.6;
   color: rgba(var(--tint), 0.6); font-size: 0.9rem;
 }
+
+/* "Tap the middle of the area", said ON the map while it is waiting for you.
+   Top-centre, clear of the zoom control bottom-left and the appearance gear
+   bottom-right, and pointer-events:none so it can never eat the tap it is
+   asking for. */
+.qs-coverage-placing {
+  position: absolute;
+  top: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0;
+  padding: 0.34rem 0.7rem;
+  max-width: calc(100% - 1.2rem);
+  border-radius: 999px;
+  border: 1px solid var(--cedge-violet-8, rgba(167, 139, 250, 0.55));
+  background: rgba(16, 28, 43, 0.92);
+  color: #ddd3ff;
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-align: center;
+  pointer-events: none;
+}
+:root[data-theme='light'] .qs-coverage-placing {
+  background: #f3f0ff;
+  border-color: #7c5cf0;
+  color: #3a2a8c;
+}
+/* The search sits above the grid and spans it — it is the first thing you do,
+   not a field among the others. */
+.qs-zone-search { margin-bottom: 0.7rem; }
 
 /* ── The customer book, as a map ─────────────────────────────────────────────
    Taller than the Quick Stops coverage map on purpose: that one frames a few
