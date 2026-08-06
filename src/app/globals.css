@@ -23871,7 +23871,22 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
    dashboard page reserve 14rem of empty space underneath so nothing hid behind
    it. In the flow it interrupts nothing and costs only its own height. */
 .quote-request-alert {
-  position: static;
+  /* RELATIVE, not static. The dismiss button is position:absolute, so it needs
+     this card to be its containing block — and `static` is precisely the value
+     that isn't one. Taking the alert out of position:fixed therefore sent the X
+     off to whichever ancestor happened to be positioned: adrift in the top-right
+     of the page on a desktop, and off the visible card entirely on a phone,
+     where it read as simply missing.
+     Relative keeps the card in the flow exactly as static did. */
+  position: relative;
+  /* The offsets from the position:fixed rule above have to be cleared with it.
+     On a relatively positioned box they stop being "where to pin this" and
+     become "how far to nudge it" — `right: 2rem` would shove the card two rems
+     LEFT of where it is laid out, and `bottom` would lift it. */
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
   width: auto;
   max-width: 46rem;
   margin: 0 auto 1.1rem;
@@ -23880,14 +23895,21 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 }
 /* No longer needed — there is nothing overhead to clear. */
 .app-main-alerted { padding-bottom: 0; }
+
 @media (max-width: 640px) {
-  .quote-request-alert {
-    left: auto;
-    right: auto;
-    bottom: auto;
-    margin: 0 0 0.9rem;
+  .quote-request-alert { margin: 0 0 0.9rem; }
+
+  /* The X rides in its own gutter down the right-hand edge, vertically centred,
+     NOT in the corner. The corner is where "View lead" is on a phone — the
+     layout above puts the button in column 2 spanning both rows — so a dismiss
+     control there would sit on top of the one thing the alert exists to get
+     tapped. The gutter is sized to clear the circle rather than by eye. */
+  .quote-request-alert { padding-right: 3.3rem; }
+  .quote-request-alert-close {
+    top: 50%;
+    right: 0.3rem;
+    transform: translateY(-50%);
   }
-  .quote-request-alert-close { top: 0.35rem; right: 0.35rem; transform: none; }
 }
 
 /* ==========================================================================
