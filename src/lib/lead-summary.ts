@@ -103,7 +103,7 @@ export function leadBreakdown(summary: LeadSummary): string {
 /** What the rail's tooltip says, so the badge and the dashboard agree. */
 export function leadRailTitle(summary: LeadSummary): string {
   if (summary.open === 0) return 'No open leads';
-  if (summary.waitingOnCustomer === 0) return `${leadHeadline(summary)}, all needing you`;
+  if (summary.waitingOnCustomer === 0) return `${leadHeadline(summary)}, all needing your attention`;
   if (summary.needsYou === 0) return `${leadHeadline(summary)}, all waiting on the customer`;
-  return `${leadHeadline(summary)} — ${summary.needsYou} need you, ${summary.waitingOnCustomer} waiting on the customer`;
+  return `${leadHeadline(summary)} — ${summary.needsYou} need your attention and ${summary.waitingOnCustomer} ${summary.waitingOnCustomer === 1 ? 'is' : 'are'} waiting on the customer`;
 }

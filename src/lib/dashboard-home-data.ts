@@ -28,7 +28,16 @@ function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-export type PriorityItem = { key: string; label: string; detail: string; href: string; cta: string };
+/**
+ * `detail` stays on the card; `info` moves behind the ⓘ.
+ *
+ * The split is not cosmetic. `detail` is live information you decide with —
+ * which leads came from the website, which dates a client turned down — and
+ * hiding it behind an icon costs a hover to read your own numbers. `info`
+ * explains what the row MEANS, which is worth one read and then never again,
+ * and spending a permanent line on it is what made these cards long.
+ */
+export type PriorityItem = { key: string; label: string; detail?: string; info?: string; href: string; cta: string };
 export type OnboardingStep = { key: string; label: string; description: string; done: boolean; href: string; cta: string };
 
 export type DashboardHome = {
@@ -179,37 +188,44 @@ export async function buildDashboardHome(
   // Setup tasks (Stripe, website) live in the onboarding checklist and the
   // topbar pills — keeping them out of the priority list stops the triple-listing
   // and prevents the cap from bumping real operational work.
-  const priorityItems: PriorityItem[] = [
+  // Annotated as the nullable union rather than PriorityItem[]: now that some
+  // rows carry `detail` and others carry `info`, TypeScript infers a union of
+  // two object shapes for the literal and will not widen it to the optional-
+  // property type on its own.
+  const priorityCandidates: (PriorityItem | null)[] = [
     leadStats.needsYou > 0
       ? {
           key: 'leads',
           // "need you", not "waiting" — the page carries a second lead figure
           // for the ones waiting on the CUSTOMER, and two rows both saying
           // "waiting" is how the counts stopped meaning anything.
-          label: `${leadStats.needsYou} lead${leadStats.needsYou === 1 ? '' : 's'} need${leadStats.needsYou === 1 ? 's' : ''} you`,
+          label: `${leadStats.needsYou} lead${leadStats.needsYou === 1 ? '' : 's'} need${leadStats.needsYou === 1 ? 's' : ''} your attention`,
+          // Kept on the card, not in a bubble: where a lead came from is how you
+          // decide which to open first.
           detail: leadStats.fromWebsite > 0
-            ? `${leadStats.fromWebsite} came from your website and ${leadStats.fromWebsite === 1 ? 'has' : 'have'} had no reply yet.`
+            ? `${leadStats.fromWebsite} website lead${leadStats.fromWebsite === 1 ? ' is' : 's are'} waiting for a reply.`
             : 'Send a quote or follow up before the lead goes cold.',
           href: `${basePath}/leads`,
           cta: 'Review leads',
         }
       : null,
     leadStats.waitingOnCustomer > 0
-      ? { key: 'quoted', label: `${leadStats.waitingOnCustomer} quote${leadStats.waitingOnCustomer === 1 ? '' : 's'} awaiting approval`, detail: 'Follow up with homeowners who have not signed off yet.', href: `${basePath}/leads`, cta: 'View quotes' }
+      ? { key: 'quoted', label: `${leadStats.waitingOnCustomer} quote${leadStats.waitingOnCustomer === 1 ? '' : 's'} awaiting approval`, info: 'Follow up with customers who haven’t approved their quotes.', href: `${basePath}/leads`, cta: 'Review quotes' }
       : null,
     stuckScheduleCount > 0
       ? { key: 'schedule-response', label: `${stuckScheduleCount} client${stuckScheduleCount === 1 ? '' : 's'} want${stuckScheduleCount === 1 ? 's' : ''} different dates`, detail: 'They passed on the times you sent — send a fresh set of dates.', href: `${basePath}/schedule#unscheduled-jobs`, cta: 'Send new dates' }
       : null,
     jobsNeedingCrewCount > 0
-      ? { key: 'crew', label: `${jobsNeedingCrewCount} scheduled job${jobsNeedingCrewCount === 1 ? '' : 's'} need crew`, detail: 'Assign crew before the work day starts.', href: `${basePath}/schedule`, cta: 'Open schedule' }
+      ? { key: 'crew', label: `${jobsNeedingCrewCount} scheduled job${jobsNeedingCrewCount === 1 ? '' : 's'} need a crew`, info: 'Assign a crew before each job starts.', href: `${basePath}/schedule`, cta: 'Assign crew' }
       : null,
     jobsMissingTimeCount > 0
-      ? { key: 'time', label: jobsMissingTimeCount === 1 ? '1 job needs a start time' : `${jobsMissingTimeCount} jobs need start times`, detail: 'Add start times so the week is easier to run.', href: `${basePath}/schedule`, cta: 'Set times' }
+      ? { key: 'time', label: jobsMissingTimeCount === 1 ? '1 job needs a start time' : `${jobsMissingTimeCount} jobs need start times`, info: 'Add a start time to finish scheduling this job.', href: `${basePath}/schedule`, cta: 'Set start time' }
       : null,
     unscheduledJobCount > 0
-      ? { key: 'unscheduled', label: `${unscheduledJobCount} open job${unscheduledJobCount === 1 ? '' : 's'} not scheduled`, detail: 'Put approved work on the calendar.', href: `${basePath}/schedule#unscheduled-jobs`, cta: 'Schedule work' }
+      ? { key: 'unscheduled', label: `${unscheduledJobCount} approved job${unscheduledJobCount === 1 ? '' : 's'} ${unscheduledJobCount === 1 ? 'isn’t' : 'aren’t'} scheduled`, info: 'Add these jobs to your calendar.', href: `${basePath}/schedule#unscheduled-jobs`, cta: 'Schedule jobs' }
       : null,
-  ].filter((item): item is PriorityItem => Boolean(item));
+  ];
+  const priorityItems: PriorityItem[] = priorityCandidates.filter((item): item is PriorityItem => Boolean(item));
 
   return {
     jobs,

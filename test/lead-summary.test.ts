@@ -116,11 +116,11 @@ describe('leadHeadline / leadRailTitle', () => {
   it('gives the rail the same story the dashboard tells', () => {
     // The rail badge and the dashboard disagreeing is the thing this whole
     // module exists to stop.
-    expect(leadRailTitle(leadSummary(book))).toBe('8 open leads — 5 need you, 3 waiting on the customer');
+    expect(leadRailTitle(leadSummary(book))).toBe('8 open leads — 5 need your attention and 3 are waiting on the customer');
   });
 
   it('does not claim a split that does not exist', () => {
-    expect(leadRailTitle(leadSummary([lead('new'), lead('contacted')]))).toBe('2 open leads, all needing you');
+    expect(leadRailTitle(leadSummary([lead('new'), lead('contacted')]))).toBe('2 open leads, all needing your attention');
     expect(leadRailTitle(leadSummary([lead('quoted')]))).toBe('1 open lead, all waiting on the customer');
     expect(leadRailTitle(leadSummary([]))).toBe('No open leads');
   });

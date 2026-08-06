@@ -846,6 +846,15 @@ export default function ScheduleCalendar({
                                 ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
                                 : 'Assign crew'
                             }
+                            // The visible text is initials and a count, which
+                            // reads as nonsense aloud. The names are already in
+                            // the title for a mouse; this is the same thing for
+                            // a screen reader.
+                            aria-label={
+                              assignedMembers.length > 0
+                                ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
+                                : 'Assign crew'
+                            }
                           >
                             {/* One pair of initials, then a count — NOT two pairs.
                                 "GY DW" renders about 2.9rem wide, which is wider

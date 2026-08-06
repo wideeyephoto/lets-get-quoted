@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import AutomationLink from '@/components/automation-link';
+import InfoTip from '@/components/info-tip';
 import { formatJobTime, formatMoney } from '@/lib/jobs';
 import { leadBreakdown } from '@/lib/lead-summary';
 import type { DashboardHome } from '@/lib/dashboard-home-data';
@@ -69,7 +70,7 @@ export default function DashboardHomeScreen({
             <h2>Stripe disabled your payments</h2>
           </div>
           <p className="workspace-card-copy">
-            Stripe has turned off transfers for your account, so homeowner deposits and
+            Stripe has turned off transfers for your account, so customer deposits and
             stage payments can&apos;t be collected right now. This usually means Stripe needs
             more information to keep your account verified. Reconnect to see what&apos;s required
             and restore payouts.
@@ -115,9 +116,10 @@ export default function DashboardHomeScreen({
       ) : null}
 
       <section className="panel workspace-section-card priority-panel">
+        {/* No eyebrow: "Today's priorities" above "Needs your attention" said
+            the same thing twice, and the second one says it better. */}
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Today&apos;s priorities</p>
-          <h2>What needs attention</h2>
+          <h2>Needs your attention</h2>
         </div>
         {priorityCount > 0 ? (
           <>
@@ -126,8 +128,11 @@ export default function DashboardHomeScreen({
                 <Link href={item.href} className="priority-item" key={item.key}>
                   <span className="priority-index">{index + 1}</span>
                   <span className="priority-copy">
-                    <strong>{item.label}</strong>
-                    <span>{item.detail}</span>
+                    <strong>
+                      {item.label}
+                      {item.info ? <InfoTip label={`More information about ${item.label.toLowerCase()}`}>{item.info}</InfoTip> : null}
+                    </strong>
+                    {item.detail ? <span>{item.detail}</span> : null}
                   </span>
                   <span className="priority-cta">{item.cta}</span>
                 </Link>
@@ -135,9 +140,7 @@ export default function DashboardHomeScreen({
             </div>
             {restPriorities.length > 0 ? (
               <details className="priority-more">
-                <summary>
-                  {restPriorities.length} more thing{restPriorities.length === 1 ? '' : 's'} to look at
-                </summary>
+                <summary>Show {restPriorities.length} more</summary>
                 <div className="priority-list">
                   {restPriorities.map((item, index) => (
                     <Link href={item.href} className="priority-item" key={item.key}>
@@ -163,7 +166,6 @@ export default function DashboardHomeScreen({
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Week at a glance</p>
           <h2>Next 7 days</h2>
         </div>
         {/* A phone gets one column, so seven cards became seven rows and four
@@ -216,7 +218,6 @@ export default function DashboardHomeScreen({
         <div className="section-heading workspace-section-heading">
           {/* "Account overview" promised your account and delivered public site
               links and lead counts. What is in here is the business. */}
-          <p className="eyebrow">Snapshot</p>
           <h2>Business snapshot</h2>
         </div>
 
@@ -253,11 +254,13 @@ export default function DashboardHomeScreen({
             <p className="workspace-metric-note">{leadBreakdown(leadStats)}</p>
           </article>
           <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Jobs this week</span>
+            <span className="workspace-metric-label">
+              Jobs in the next 7 days
+              <InfoTip label="More information about jobs in the next 7 days">
+                Includes scheduled jobs from today through the next six days.
+              </InfoTip>
+            </span>
             <strong className="workspace-metric-value">{jobsNext7Days}</strong>
-            <p className="workspace-metric-note">
-              Scheduled job days across the next 7 days.
-            </p>
           </article>
         </div>
       </section>
@@ -267,8 +270,7 @@ export default function DashboardHomeScreen({
             on, what they produced, and a log of individual sends. Which ones are
             ON is a setting; what they did is a result; the log is history. */}
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Automation status</p>
-          <h2>What&apos;s switched on</h2>
+          <h2>Active automations</h2>
         </div>
         <div className="automation-status-row">
           {readOnly ? (
@@ -301,31 +303,54 @@ export default function DashboardHomeScreen({
         ) : (
           <>
             <div className="section-heading workspace-section-heading dash-subheading">
-              <p className="eyebrow">Results</p>
-              <h3>What they did · last 30 days</h3>
+              <h3>Automation results · Last 30 days</h3>
             </div>
             <div className="workspace-metric-grid dash-results-grid">
+              {/* The explanatory sentence under each figure is now behind the
+                  ⓘ. The only note left is the deposit TOTAL, which is money
+                  raised rather than a description of the metric — that is a
+                  number you decide with, so it stays on the card. */}
               <article className="workspace-metric-card accent">
-                <span className="workspace-metric-label">Review requests</span>
+                <span className="workspace-metric-label">
+                  Review requests
+                  <InfoTip label="More information about review requests">
+                    Customers automatically asked for a Google review.
+                  </InfoTip>
+                </span>
                 <strong className="workspace-metric-value">{automation.reviewCount}</strong>
-                <p className="workspace-metric-note">Google reviews asked for automatically.</p>
               </article>
               <article className="workspace-metric-card">
-                <span className="workspace-metric-label">Quote follow-ups</span>
+                <span className="workspace-metric-label">
+                  Quote follow-ups
+                  <InfoTip label="More information about quote follow-ups">
+                    Follow-up texts sent for quotes awaiting approval.
+                  </InfoTip>
+                </span>
                 <strong className="workspace-metric-value">{automation.followupCount}</strong>
-                <p className="workspace-metric-note">Reminders sent on quotes awaiting approval.</p>
               </article>
               <article className="workspace-metric-card">
-                <span className="workspace-metric-label">Appointment reminders</span>
+                <span className="workspace-metric-label">
+                  Appointment reminders
+                  {/* Not "one day in advance" any more — the lead time is an
+                      account setting now, so a fixed claim here would be wrong
+                      for anyone who changed it. */}
+                  <InfoTip label="More information about appointment reminders">
+                    Appointment reminders sent ahead of scheduled jobs, on the schedule you set.
+                  </InfoTip>
+                </span>
                 <strong className="workspace-metric-value">{automation.reminderCount}</strong>
-                <p className="workspace-metric-note">Reminders before scheduled jobs, to cut no-shows.</p>
               </article>
               <article className="workspace-metric-card">
-                <span className="workspace-metric-label">Deposits requested</span>
+                <span className="workspace-metric-label">
+                  Deposits requested
+                  <InfoTip label="More information about deposits requested">
+                    Deposit requests sent after quote approval.
+                  </InfoTip>
+                </span>
                 <strong className="workspace-metric-value">{automation.depositCount}</strong>
-                <p className="workspace-metric-note">
-                  {automation.depositTotal > 0 ? `${formatMoney(automation.depositTotal)} asked on approval.` : 'Auto-requested when a quote is approved.'}
-                </p>
+                {automation.depositTotal > 0 ? (
+                  <p className="workspace-metric-note">{formatMoney(automation.depositTotal)} asked on approval.</p>
+                ) : null}
               </article>
             </div>
             {automation.recent.length > 0 ? (

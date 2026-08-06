@@ -43,8 +43,8 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
-  { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Your public booking page & availability' },
-  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Same-day route add-ons' },
+  { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
+  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers request a same-day stop.' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/cash-flow', label: 'Cash flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
@@ -605,7 +605,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     // rather than as an empty rail.
     const totalByHref: Record<string, { count: number; title: string }> = {
       '/dashboard/leads': { count: openLeadCount, title: leadTitle ?? `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
-      '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} live job${activeJobCount === 1 ? '' : 's'} (completed and archived not counted)` },
+      '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} live job${activeJobCount === 1 ? '' : 's'}. Completed and archived jobs are not counted.` },
     };
     // "Something arrived here that you haven't opened yet." The numbers say how
     // much; this says whether any of it is news. It clears on the visit, so it

@@ -25102,3 +25102,73 @@ select optgroup {
   background: var(--bg-3);
   color: var(--text);
 }
+
+/* ── The information bubble ───────────────────────────────────────────────────
+   A sentence a card used to spend a line on, folded behind a subtle ⓘ that sits
+   immediately after the words it explains. Hover and keyboard focus are pure
+   CSS; tap latches through data-open, because a phone has no hover to leave. */
+.infotip { position: relative; display: inline-flex; vertical-align: middle; margin-left: 0.3rem; }
+
+.infotip-btn {
+  display: grid;
+  place-items: center;
+  /* Visually small, but the tap target is expanded below — the glyph is 14px
+     and a 14px button is not something a thumb can hit. */
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mute-t50);
+  cursor: pointer;
+  border-radius: 999px;
+}
+.infotip-btn::after { content: ''; position: absolute; inset: -0.6rem; }
+.infotip-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; }
+.infotip-btn:hover, .infotip-btn:focus-visible { color: var(--accent-ink); }
+
+.infotip-bubble {
+  position: absolute;
+  /* BELOW the icon, never over it: the value and the action this annotates sit
+     above, and a bubble that covers them trades one unreadable thing for
+     another. */
+  top: calc(100% + 0.45rem);
+  z-index: 40;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t16);
+  background: var(--chrome, #101c2b);
+  color: var(--text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: normal;
+  /* Sentence case whatever it is dropped into — several of these sit inside
+     uppercase metric labels. */
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.infotip[data-align='start'] .infotip-bubble { left: 0; }
+.infotip[data-align='end'] .infotip-bubble { right: 0; }
+
+.infotip:hover .infotip-bubble,
+.infotip:focus-within .infotip-bubble,
+.infotip .infotip-bubble[data-open='true'] {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Touch has no hover state to leave, and :hover on a touch device sticks after
+   a tap — which would leave two bubbles open at once. There, only the latched
+   state counts. */
+@media (hover: none) {
+  .infotip:hover .infotip-bubble { opacity: 0; visibility: hidden; }
+  .infotip .infotip-bubble[data-open='true'] { opacity: 1; visibility: visible; }
+}
