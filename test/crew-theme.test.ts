@@ -19,12 +19,23 @@ describe('normalizeCrewTheme', () => {
     expect(normalizeCrewTheme('overview')).toBe('overview');
   });
 
-  it('falls back to the standard page for anything it does not recognise', () => {
-    // Standard, not Focus and not Overview: an unreadable cookie should give you
-    // the page as it has always been, never a layout you did not choose.
+  it('falls back to Overview for anything it does not recognise', () => {
+    // Overview is the page's default, so no cookie — a first visit — opens on
+    // it. Everything else here is a cookie that cannot be trusted (a typo, a
+    // case change, a hand-edited value), and those resolve the same way rather
+    // than to a layout of their own.
     for (const value of ['', 'OVERVIEW', 'grid', 'focus ', null, undefined, 0, {}, []]) {
-      expect(normalizeCrewTheme(value), JSON.stringify(value)).toBe('standard');
+      expect(normalizeCrewTheme(value), JSON.stringify(value)).toBe('overview');
     }
+  });
+
+  it('keeps an explicit standard, so turning Overview off sticks', () => {
+    // The one that would break quietly. Now that ABSENT means Overview, the
+    // only thing separating "I turned this off" from "I have never been here"
+    // is the literal cookie the off-switch writes — so if this ever normalized
+    // away, an owner who chose the plain page would be put back into Overview
+    // on every visit and the toggle would look broken.
+    expect(normalizeCrewTheme('standard')).toBe('standard');
   });
 
   it('is exhaustive — every CrewTheme is in CREW_THEMES', () => {

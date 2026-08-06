@@ -206,7 +206,17 @@ export const CREW_THEME_COOKIE = 'lgq_crew_theme';
 export type CrewTheme = 'standard' | 'focus' | 'overview';
 export const CREW_THEMES: CrewTheme[] = ['standard', 'focus', 'overview'];
 export function normalizeCrewTheme(value: unknown): CrewTheme {
-  return CREW_THEMES.includes(value as CrewTheme) ? (value as CrewTheme) : 'standard';
+  // Overview is the page Crew & Labor OPENS on, so an owner who never touches
+  // the gear lands in a list with one person beside it rather than in a bare
+  // table — the same shape all three tabs share, which is the point of it.
+  //
+  // Note what this makes the absence of the cookie mean. It used to be
+  // indistinguishable from an explicit 'standard'; now they are different
+  // states, and the difference is what makes turning Overview OFF stick. The
+  // two writers that clear it — setCrewOverviewAction(false) and syncCrewFocus
+  // — both write the literal 'standard', so an owner who has chosen the plain
+  // page keeps it and is not put back into Overview on their next visit.
+  return CREW_THEMES.includes(value as CrewTheme) ? (value as CrewTheme) : 'overview';
 }
 
 // The page's SKIN — its colours and surfaces — kept in its own cookie rather
