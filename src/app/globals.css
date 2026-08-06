@@ -21838,36 +21838,30 @@ a.bset-card { color: inherit; text-decoration: none; }
   color: rgba(var(--tint), 0.6); font-size: 0.9rem;
 }
 
-/* "Tap the middle of the area", said ON the map while it is waiting for you.
-   Top-centre, clear of the zoom control bottom-left and the appearance gear
-   bottom-right, and pointer-events:none so it can never eat the tap it is
-   asking for. */
-.qs-coverage-placing {
-  position: absolute;
-  top: 0.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  margin: 0;
-  padding: 0.34rem 0.7rem;
-  max-width: calc(100% - 1.2rem);
-  border-radius: 999px;
-  border: 1px solid var(--cedge-violet-8, rgba(167, 139, 250, 0.55));
-  background: rgba(16, 28, 43, 0.92);
-  color: #ddd3ff;
-  font-size: 0.76rem;
-  font-weight: 650;
-  text-align: center;
-  pointer-events: none;
+/* Priority areas are typed, not tapped, so the map carries no instructions of
+   its own any more — the "tap the middle of the area" pill and the search field
+   that sat above the old draw form both went with the drawing. */
+
+/* Each saved area keeps its one editable number inline: how far it is worth
+   driving. Laid out along the row rather than in a form below it, because with
+   the radius derived from the place there is nothing else to edit. */
+.qs-area-actions { flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem 0.75rem; }
+.qs-area-detour { display: flex; align-items: center; gap: 0.4rem; }
+.qs-area-detour label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--mute-i55);
+  white-space: nowrap;
 }
-:root[data-theme='light'] .qs-coverage-placing {
-  background: #f3f0ff;
-  border-color: #7c5cf0;
-  color: #3a2a8c;
-}
-/* The search sits above the grid and spans it — it is the first thing you do,
-   not a field among the others. */
-.qs-zone-search { margin-bottom: 0.7rem; }
+/* Wide enough for three digits and no wider — the field is inline in a row that
+   also carries Save and Remove, and a full-width number input would push them
+   onto their own line on every screen. */
+.qs-area-detour input { width: 4.5rem; text-align: right; }
+
+.qs-area-form { margin-top: 0.75rem; }
+.qs-zones { margin-bottom: 1.25rem; }
 
 /* ── The customer book, as a map ─────────────────────────────────────────────
    Taller than the Quick Stops coverage map on purpose: that one frames a few
@@ -21946,8 +21940,6 @@ a.bset-card { color: inherit; text-decoration: none; }
 /* Priority areas read as a different KIND of thing from the detour limit: the
    green is a consequence of a setting, the violet is the owner's own decision. */
 .qs-key-priority { width: 11px; height: 11px; border-radius: 50%; background: rgba(167, 139, 250, 0.3); border: 1.5px solid var(--cedge-violet-4); }
-.qs-zones { margin-bottom: 1.25rem; }
-.qs-zone-form { margin-top: 0.75rem; }
 
 /* --- Messages: unread + photos ------------------------------------------
    An inbox that could not tell you there was mail. There was no read state at

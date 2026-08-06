@@ -12,6 +12,7 @@ import {
   dollarsToCents,
 } from '@/lib/quick-stop';
 import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-requests';
+import { geocodeArea } from '@/lib/geocode';
 import { computeQuickStopRoute } from '@/lib/quick-stop-route';
 import { sendQuickStopOffer } from '@/lib/quick-stop-payments';
 
@@ -340,10 +341,17 @@ export async function proposeDiagnosticConversionAction(requestId: string, formD
   revalidatePath('/dashboard/quick-stops');
 }
 
-/* --- Priority zones ---------------------------------------------------------
-   Areas the owner has decided are worth a longer drive. Drawn by them, on their
-   own map, for their own reasons — see the migration for why this is never
-   derived from income or demographic data. */
+/* --- Priority areas ----------------------------------------------------------
+   Areas the owner has decided are worth a longer drive. Named by them, for their
+   own reasons — see the migration for why this is never derived from income or
+   demographic data.
+
+   Added by TYPING a city or ZIP code. This replaced tapping a centre on the map,
+   which asked an owner to express "Birmingham" as a pin and a radius — two
+   numbers nobody holds in their head about a place they already know by name.
+   The circle is still what gets stored, because the whole downstream stack
+   (zoneContains, the request card, the map) is built on one; it is now DERIVED
+   from the place's own boundary instead of guessed at. */
 
 function zoneNumber(form: FormData, field: string, max: number): number {
   const value = Number(form.get(field));
@@ -352,36 +360,56 @@ function zoneNumber(form: FormData, field: string, max: number): number {
   return value;
 }
 
-export async function saveQuickStopZoneAction(formData: FormData) {
+export async function addQuickStopAreaAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const label = String(formData.get('label') ?? '').trim().slice(0, 80);
-  if (!label) throw new Error('Give the area a name, so a longer drive is always attributed to a place you named.');
+  const place = String(formData.get('place') ?? '').trim();
+  if (!place) throw new Error('Type a city or ZIP code.');
 
-  const centerLat = Number(formData.get('centerLat'));
-  const centerLng = Number(formData.get('centerLng'));
-  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng) || Math.abs(centerLat) > 90 || Math.abs(centerLng) > 180) {
-    throw new Error('Pick the centre of the area on the map first.');
-  }
-
-  const radiusMiles = zoneNumber(formData, 'radiusMiles', 100);
   const maxDetourMiles = zoneNumber(formData, 'maxDetourMiles', 500);
 
-  const id = String(formData.get('id') ?? '').trim();
-  const row = {
+  const found = await geocodeArea(place);
+  if (!found.ok) {
+    // Each reason gets its own sentence, because the fix is different for each
+    // and "that didn't work" would send an owner to retype a ZIP that was right.
+    if (found.reason === 'unconfigured') {
+      throw new Error('Place lookup is not configured on this server yet, so areas cannot be added by name.');
+    }
+    if (found.reason === 'too-large') {
+      throw new Error(`“${place}” covers too much ground for a priority area — try a city, town or ZIP code.`);
+    }
+    throw new Error(`Couldn’t find “${place}”. Try a US city, town or ZIP code.`);
+  }
+
+  // The owner's own name for it still wins when they gave one; otherwise the
+  // resolved place name, which is what they typed said back properly.
+  const label = (String(formData.get('label') ?? '').trim() || found.label).slice(0, 80);
+
+  const { error } = await supabase.from('quick_stop_priority_zones').insert({
     account_id: accountId,
     label,
-    center_lat: centerLat,
-    center_lng: centerLng,
-    radius_miles: radiusMiles,
+    center_lat: found.lat,
+    center_lng: found.lng,
+    radius_miles: found.radiusMiles,
     max_detour_miles: maxDetourMiles,
     active: true,
     updated_at: new Date().toISOString(),
-  };
+  });
+  if (error) throw new Error(error.message);
 
-  const { error } = id
-    ? await supabase.from('quick_stop_priority_zones').update(row).eq('account_id', accountId).eq('id', id)
-    : await supabase.from('quick_stop_priority_zones').insert(row);
+  revalidatePath('/dashboard/quick-stops');
+}
+
+/** Change how far a saved area is worth driving, without re-finding the place. */
+export async function updateQuickStopAreaDetourAction(id: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const maxDetourMiles = zoneNumber(formData, 'maxDetourMiles', 500);
+
+  const { error } = await supabase
+    .from('quick_stop_priority_zones')
+    .update({ max_detour_miles: maxDetourMiles, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', id);
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/quick-stops');
