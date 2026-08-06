@@ -8514,6 +8514,18 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   border: 1px solid transparent;
 }
 
+/* The demo picks a conversation in place rather than navigating, so its rows are
+   buttons where the real inbox uses links. Strip the UA's button skin so the two
+   render identically — background is left alone rather than reset, because the
+   .inbox-slate rules below supply their own and out-specify this anyway. */
+button.inbox-thread-item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 .inbox-thread-item:hover { background: rgba(var(--tint), 0.04); }
 
 .inbox-thread-item.is-active {

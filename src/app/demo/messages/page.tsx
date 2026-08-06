@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import type { Conversation, SmsMessage } from '@/lib/messages';
+import type { SmsMessage } from '@/lib/messages';
 import { groupRuns } from '@/lib/message-context';
+import DemoInbox, { type DemoThreadView } from './DemoInbox';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,26 +79,39 @@ const DEMO_THREADS: DemoThread[] = [
   },
 ];
 
-function toConversation(thread: DemoThread): Conversation {
+/**
+ * Fixture → what the pane renders, formatted here and not in the browser.
+ *
+ * The timestamps come off Date.now() and go through toLocaleString, both of
+ * which answer differently on the server and on the client. Formatting on this
+ * side keeps the demo a server render with one clock and one timezone.
+ *
+ * The demo is a fixed snapshot, so nothing is waiting on anybody — there is no
+ * unread badge, which would be a number a prospect could never clear.
+ */
+function toThreadView(thread: DemoThread): DemoThreadView {
   const last = thread.messages[thread.messages.length - 1];
+  const runs = groupRuns(
+    thread.messages.map((message, index) => ({ ...message, id: index, created_at: hoursAgo(message.hoursAgo) })),
+  );
+
   return {
     phone: thread.phone,
     name: thread.name,
-    lastBody: last.body,
-    lastAt: hoursAgo(last.hoursAgo),
-    lastDirection: last.direction,
-    // The demo is a fixed snapshot, so nothing is waiting on anybody — an unread
-    // badge here would be a number a prospect could never clear.
-    unread: 0,
-    lastHasMedia: false,
+    previewPrefix: last.direction === 'outbound' ? 'You: ' : '',
+    previewBody: last.body,
+    timeLabel: formatTime(hoursAgo(last.hoursAgo)),
+    runs: runs.map((run) => ({
+      key: `${thread.phone}:${run.items[0].id}`,
+      direction: run.direction,
+      bubbles: run.items.map((message) => message.body),
+      timeLabel: formatTime(run.items[run.items.length - 1].created_at),
+    })),
   };
 }
 
-export default function DemoMessagesPage({ searchParams }: { searchParams: { thread?: string } }) {
-  const conversations = DEMO_THREADS.map(toConversation);
-  const activePhone = searchParams.thread ?? DEMO_THREADS[0].phone;
-  const activeThread = DEMO_THREADS.find((thread) => thread.phone === activePhone) ?? DEMO_THREADS[0];
-  const activeName = activeThread.name;
+export default function DemoMessagesPage() {
+  const threads = DEMO_THREADS.map(toThreadView);
 
   // Slate, same as the real inbox. The demo is what a prospect believes the
   // product looks like, so it cannot go on showing a dressing the product no
@@ -112,77 +126,7 @@ export default function DemoMessagesPage({ searchParams }: { searchParams: { thr
         </div>
       </section>
 
-      <section className="inbox-layout">
-        <aside className="panel workspace-section-card inbox-list">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Conversations</p>
-          </div>
-          <div className="inbox-thread-list">
-            {conversations.map((conversation) => (
-              <Link
-                key={conversation.phone}
-                href={`/demo/messages?thread=${encodeURIComponent(conversation.phone)}`}
-                className={`inbox-thread-item${conversation.phone === activePhone ? ' is-active' : ''}`}
-              >
-                <div className="inbox-thread-top">
-                  <strong>{conversation.name ?? conversation.phone}</strong>
-                  <span className="inbox-thread-time">{formatTime(conversation.lastAt)}</span>
-                </div>
-                <p className="inbox-thread-preview">
-                  {conversation.lastDirection === 'outbound' ? 'You: ' : ''}
-                  {conversation.lastBody}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </aside>
-
-        <div className="panel workspace-section-card inbox-thread">
-          <div className="section-heading workspace-section-heading compact-heading inbox-thread-head">
-            <div>
-              <h2>{activeName}</h2>
-              <p className="job-meta">{activeThread.phone}</p>
-            </div>
-          </div>
-
-          {/* Same run structure as the real inbox — the bubbles share its CSS,
-              and a flat list here would render every message left-aligned the
-              moment that CSS moved alignment onto the run. */}
-          <div className="inbox-messages">
-            {groupRuns(
-              activeThread.messages.map((message, index) => ({ ...message, id: index, created_at: hoursAgo(message.hoursAgo) })),
-            ).map((run) => {
-              const last = run.items[run.items.length - 1];
-              return (
-                <div className={`inbox-run inbox-run-${run.direction}`} key={run.items[0].id}>
-                  {/* No avatar: the bubble's side already says who spoke. */}
-                  <div className="inbox-run-stack">
-                    {run.items.map((message, index) => (
-                      <div
-                        key={message.id}
-                        className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
-                      >
-                        <p>{message.body}</p>
-                      </div>
-                    ))}
-                    <span className="inbox-run-time">
-                      {formatTime(last.created_at)}
-                      {run.direction === 'outbound' ? <> · Sent</> : null}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="inbox-reply-area">
-            <form className="inbox-reply">
-              <textarea rows={2} placeholder="Type a reply…" aria-label="Reply message" disabled />
-              <button type="button" className="btn primary" disabled>Send</button>
-            </form>
-          </div>
-        </div>
-      </section>
+      <DemoInbox threads={threads} />
 
       <section className="panel workspace-section-card demo-locked-card">
         <div className="section-heading workspace-section-heading">

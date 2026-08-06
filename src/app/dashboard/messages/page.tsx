@@ -136,6 +136,11 @@ export default async function MessagesPage({
                   key={conversation.phone}
                   href={`/dashboard/messages?thread=${encodeURIComponent(conversation.phone)}`}
                   className={`inbox-thread-item${conversation.phone === activePhone ? ' is-active' : ''}`}
+                  // Picking a conversation is a navigation, and the router's
+                  // default is to scroll a new page to the top — so the inbox
+                  // jumped away from the list you just clicked. Nothing above
+                  // the fold changed; only the pane beside it did.
+                  scroll={false}
                 >
                   <div className="inbox-thread-top">
                     <strong>{conversation.name ?? formatPhoneDashes(conversation.phone)}</strong>
