@@ -493,15 +493,7 @@ export default async function SettingsPage({
             anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'missed-call', 'reviews', 'followups', 'reminders', 'arrival', 'selections', 'client-portal', 'daily-digest'],
             content: (
               <div className="automation-list">
-                {allEssentialsOn ? (
-                  <div className="automation-recommend done">
-                    <span className="automation-recommend-mark" aria-hidden="true">✓</span>
-                    <div className="automation-recommend-copy">
-                      <strong>Your essential automations are on.</strong>
-                      <span>Review asks, quote follow-ups, appointment reminders, and your daily digest are all running. Tune any below.</span>
-                    </div>
-                  </div>
-                ) : (
+                {!allEssentialsOn ? (
                   <form action={enableRecommendedAutomationsAction} className="automation-recommend">
                     <div className="automation-recommend-copy">
                       <strong>Turn on the essentials in one click</strong>
@@ -509,7 +501,7 @@ export default async function SettingsPage({
                     </div>
                     <SaveButton>Turn on recommended</SaveButton>
                   </form>
-                )}
+                ) : null}
                 <p className="automation-group">Booking &amp; intake</p>
                 <AutomationCard
                   id="intake-ai"

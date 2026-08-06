@@ -2842,11 +2842,9 @@ h3 {
 
 /* One-click "turn on the essentials" banner at the top of the Automations tab. */
 .automation-recommend { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border: 1px solid var(--cedge-orange-8); background: linear-gradient(180deg, rgba(255, 122, 33, 0.1), rgba(255, 209, 102, 0.05)); border-radius: 0.85rem; padding: 1rem 1.15rem; margin-bottom: 1.1rem; }
-.automation-recommend.done { border-color: var(--cedge-green-4); background: rgba(52, 211, 153, 0.07); }
 .automation-recommend-copy { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .automation-recommend-copy strong { font-size: 0.95rem; }
 .automation-recommend-copy span { font-size: 0.82rem; color: rgba(var(--grey-2), 0.82); }
-.automation-recommend-mark { width: 1.7rem; height: 1.7rem; flex: none; display: grid; place-items: center; border-radius: 999px; background: rgba(52, 211, 153, 0.18); color: var(--good); font-weight: 800; }
 
 /* "Advanced settings" expander inside an automation form, and inline message previews. */
 .form-grid > .advanced-settings,
