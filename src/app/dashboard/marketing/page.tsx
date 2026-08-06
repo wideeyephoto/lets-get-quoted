@@ -135,12 +135,12 @@ export default async function MarketingPage() {
         <section className="panel workspace-section-card mkt-recommend">
           <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
             <h2>Recommended next actions</h2>
-            <Link href="/dashboard/marketing/calendar" className="mkt-section-link">View plan</Link>
+            <Link href="/dashboard/marketing/campaigns#seasonal" className="mkt-section-link">View plan</Link>
           </div>
 
           {recommendations.length === 0 ? (
             <p className="empty-state">
-              Nothing seasonal to suggest right now. <Link href="/dashboard/marketing/calendar">See the year →</Link>
+              Nothing seasonal to suggest right now. <Link href="/dashboard/marketing/campaigns#seasonal">See the year →</Link>
             </p>
           ) : (
             <ul className="mkt-rec-list">
@@ -181,7 +181,7 @@ export default async function MarketingPage() {
           <section className="panel workspace-section-card mkt-coming">
             <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
               <h2>Coming up</h2>
-              <Link href="/dashboard/marketing/calendar" className="mkt-section-link">Calendar</Link>
+              <Link href="/dashboard/marketing/campaigns#seasonal" className="mkt-section-link">Calendar</Link>
             </div>
             {upcoming.length === 0 ? (
               <p className="empty-state">

@@ -5,11 +5,13 @@ import Link from 'next/link';
 import CampaignComposer from '../CampaignComposer';
 import CampaignHistory from '../CampaignHistory';
 import { takeCampaignDraft } from '../campaign-handoff';
+import MarketingCalendar from '../MarketingCalendar';
 import RecommendedCampaigns from './RecommendedCampaigns';
 import CampaignTemplateBrowser from './CampaignTemplateBrowser';
 import type { Campaign } from '@/lib/campaign-audiences';
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
 import type { CampaignRecommendations } from '@/lib/campaign-recommendations';
+import type { CalendarView } from '../actions';
 
 type ComposerProps = React.ComponentProps<typeof CampaignComposer>;
 
@@ -36,6 +38,7 @@ export default function CampaignWorkspace({
   campaigns,
   hasRecipients,
   recommendations,
+  view,
 }: {
   composer: Omit<ComposerProps, 'initial'> & { initial?: ComposerProps['initial'] };
   campaigns: Campaign[];
@@ -43,6 +46,7 @@ export default function CampaignWorkspace({
   hasRecipients: boolean;
   /** null when there are no recipients to build recommendations from. */
   recommendations: CampaignRecommendations | null;
+  view: CalendarView;
 }) {
   const [handedOver, setHandedOver] = useState<CampaignDraft | null>(null);
   // Bumped on every handoff. The composer keeps its own state for the subject
@@ -97,11 +101,20 @@ export default function CampaignWorkspace({
   return (
     <>
       {hasRecipients && recommendations ? (
+        <RecommendedCampaigns cards={recommendations.recommended} onSelect={applyDraft} />
+      ) : null}
+
+      <section className="panel workspace-section-card" id="seasonal">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <h2>Seasonal Campaigns</h2>
+        </div>
+        <MarketingCalendar view={view} onUseDraft={hasRecipients ? applyDraft : undefined} />
+      </section>
+
+      {hasRecipients && recommendations ? (
         <>
-          <RecommendedCampaigns cards={recommendations.recommended} onSelect={applyDraft} />
           <CampaignTemplateBrowser
             quickWins={recommendations.quickWins}
-            seasonal={recommendations.seasonal}
             grow={recommendations.grow}
             all={recommendations.all}
             onSelect={applyDraft}

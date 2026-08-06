@@ -154,6 +154,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Legacy: Calendar used to be its own tab; its function moved into Campaigns.
+  if (request.nextUrl.pathname === '/dashboard/marketing/calendar') {
+    return applyCsp(
+      NextResponse.redirect(new URL('/dashboard/marketing/campaigns#seasonal', request.url), 307)
+    );
+  }
+
   return applyCsp(response);
 }
 

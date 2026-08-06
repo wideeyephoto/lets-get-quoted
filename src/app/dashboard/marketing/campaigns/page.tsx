@@ -14,6 +14,7 @@ import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 import { buildCampaignRecommendations } from '@/lib/campaign-recommendations';
+import { marketingCalendarAction } from '../actions';
 import MarketingNav from '../MarketingNav';
 import CampaignWorkspace from './CampaignWorkspace';
 
@@ -38,12 +39,13 @@ export default async function CampaignsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }] = await Promise.all([
+  const [recipients, campaigns, listHealth, { data: accountRow }, { data: siteRow }, view] = await Promise.all([
     loadRecipients(supabase, accountId),
     listCampaigns(supabase, accountId),
     loadListHealth(supabase, accountId),
     supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name, published, subdomain').eq('account_id', accountId).maybeSingle(),
+    marketingCalendarAction(12),
   ]);
 
   const mailingAddress = resolveMarketingMailingAddress((accountRow?.mailing_address as string | null) ?? null);
@@ -130,6 +132,7 @@ export default async function CampaignsPage({
         campaigns={campaigns}
         hasRecipients={recipients.length > 0}
         recommendations={recommendations}
+        view={view}
         composer={{
           audiences: AUDIENCE_DEFS,
           reach,

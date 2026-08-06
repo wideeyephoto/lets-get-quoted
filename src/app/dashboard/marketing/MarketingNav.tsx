@@ -8,9 +8,9 @@ import { usePathname } from 'next/navigation';
  *
  * Real links, not tab buttons. Each destination is its own route with its own
  * data, so a tab bar that swapped panels client-side would mean loading the
- * campaign composer, the whole calendar and the post list on every visit to
- * any of them. Links also mean back works, each screen is bookmarkable, and
- * cmd-click opens one in a tab.
+ * campaign composer and the whole post list on every visit to any of them.
+ * Links also mean back works, each screen is bookmarkable, and cmd-click
+ * opens one in a tab.
  *
  * `aria-current="page"` rather than `aria-selected`: this is navigation, not a
  * tablist, and calling it a tablist would promise arrow-key semantics that
@@ -21,7 +21,6 @@ const TABS = [
   { href: '/dashboard/marketing', label: 'Overview' },
   { href: '/dashboard/marketing/campaigns', label: 'Campaigns' },
   { href: '/dashboard/marketing/blog', label: 'Blog' },
-  { href: '/dashboard/marketing/calendar', label: 'Calendar' },
   { href: '/dashboard/marketing/performance', label: 'Performance' },
 ];
 

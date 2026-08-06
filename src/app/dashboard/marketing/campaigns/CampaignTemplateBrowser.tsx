@@ -49,20 +49,18 @@ function TemplateRail({
 }
 
 /**
- * Everything below Recommended for You: three capped-at-4 rails plus a
+ * Everything below Recommended for You: two capped-at-4 rails plus a
  * <details> "View all templates" holding the full 11-item catalog. Disabled
  * templates stay visible with their disabledReason shown inline rather than
  * being hidden, so a contractor can see what unlocks them.
  */
 export default function CampaignTemplateBrowser({
   quickWins,
-  seasonal,
   grow,
   all,
   onSelect,
 }: {
   quickWins: TemplateCard[];
-  seasonal: TemplateCard[];
   grow: TemplateCard[];
   all: TemplateCard[];
   onSelect: (draft: CampaignDraft) => void;
@@ -74,7 +72,6 @@ export default function CampaignTemplateBrowser({
       </div>
 
       <TemplateRail title="Quick Wins" cards={quickWins} onSelect={onSelect} />
-      <TemplateRail title="Seasonal Campaigns" cards={seasonal} onSelect={onSelect} />
       <TemplateRail title="Grow Your Business" cards={grow} onSelect={onSelect} />
 
       <details className="workspace-details">
