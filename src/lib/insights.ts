@@ -1,5 +1,32 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { quickStopMetrics, type QuickStopMetrics } from './quick-stop-insights';
+import { listClientsWithStats } from './clients';
+import { bookingAvailabilityFromAccount } from './booking-availability';
+import {
+  computeKpis,
+  buildRevenueTrend,
+  buildFunnel6,
+  countDistinctJobsInRange,
+  computeScheduleUtilization,
+  computePaymentHealth,
+  computeCustomerInsights,
+  groupRevenueByService,
+  buildMarketingPerformance,
+  buildTopOpportunities,
+  type InsightsKpis,
+  type RevenueTrend,
+  type Funnel6,
+  type ScheduleUtilization,
+  type PaymentHealth,
+  type CustomerInsights,
+  type RevenueByService,
+  type MarketingPerformance,
+  type Opportunity,
+  type FeedEvent,
+  type MetricClient,
+  type CampaignRecord,
+  type ServiceInvoice,
+} from './insights-metrics';
 
 // What the business made, what it's owed, where work is getting stuck, and what
 // to do about it — each headline compared to the previous equal period.
@@ -184,13 +211,15 @@ type JobRow = {
   id: string;
   ref: string | null;
   client_name: string | null;
+  client_id: string | null;
   quoted_amount: number | string | null;
   status: string;
   created_at: string;
+  scheduled_for: string | null;
   lead_source: string | null;
 };
 /** Payments carry paid_at, NOT created_at — see the note in buildInsights. */
-type PaidRow = { amount: number | string; paid_at: string; requested_at: string | null; job_id: string | null };
+type PaidRow = { amount: number | string; refunded_amount: number | string | null; paid_at: string; requested_at: string | null; job_id: string | null };
 type CostRow = { type: string; amount: number | string; created_at: string; job_id: string | null };
 
 type Rowset = {
@@ -640,6 +669,16 @@ export type Insights = {
   hasAnyData: boolean;
   /** True when costs exist — profit is revenue-minus-nothing without them. */
   costsRecorded: boolean;
+  // --- Second-generation dashboard metrics (additive; existing callers unaffected). ---
+  kpis: InsightsKpis;
+  revenueTrend: RevenueTrend;
+  funnel6: Funnel6;
+  scheduleUtilization: ScheduleUtilization;
+  paymentHealth: PaymentHealth;
+  customerInsights: CustomerInsights;
+  revenueByService: RevenueByService;
+  marketingPerformance: MarketingPerformance;
+  topOpportunities: Opportunity[];
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -657,6 +696,10 @@ export async function buildInsights(
   options: { arrivalUpdatesOn?: boolean; hasArrivalData?: boolean } = {},
 ): Promise<Insights> {
   const nowMs = Date.now();
+  const now = new Date(nowMs);
+  // Local calendar day, matching how listClientsWithStats splits "booked" from
+  // "been" and how the schedule-utilization lookahead enumerates days.
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const [
     { data: leadRows },
@@ -672,14 +715,24 @@ export async function buildInsights(
     { data: quickStopPaymentRows },
     { data: assignmentRows },
     { data: crewRows },
+    { data: completedEventRows },
+    { data: scheduledEventRows },
+    { data: failedPaymentRows },
+    { data: serviceInvoiceRows },
+    { data: accountConfigRow },
+    { data: blockRows },
+    clientsStats,
+    { data: campaignRows },
   ] = await Promise.all([
     supabase.from('leads').select('status, source, created_at, converted_job').eq('account_id', accountId),
-    supabase.from('jobs').select('id, ref, client_name, quoted_amount, status, created_at, lead_source').eq('account_id', accountId),
+    supabase.from('jobs').select('id, ref, client_name, client_id, quoted_amount, status, created_at, scheduled_for, lead_source').eq('account_id', accountId),
     // paid_at, NOT created_at. `payments` has no created_at column at all, so the
     // old query 400'd and the `?? []` below turned that into "you collected $0" —
     // on every account, in every window, with no error anywhere. A payment also
     // belongs in the month the money ARRIVED, not the month it was asked for.
-    supabase.from('payments').select('amount, paid_at, requested_at, job_id').eq('account_id', accountId).eq('status', 'paid'),
+    // refunded_amount rides along so Net Collected can subtract refunds without a
+    // second read; the existing collected/gross figures ignore it and are unchanged.
+    supabase.from('payments').select('amount, refunded_amount, paid_at, requested_at, job_id').eq('account_id', accountId).eq('status', 'paid'),
     supabase.from('costs').select('type, amount, created_at, job_id').eq('account_id', accountId),
     supabase.from('invoices').select('id, total, status, created_at, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
     supabase.from('invoices').select('job_id, status').eq('account_id', accountId),
@@ -706,6 +759,38 @@ export async function buildInsights(
       .eq('status', 'paid'),
     supabase.from('crew_assignments').select('job_id, crew_id').eq('account_id', accountId),
     supabase.from('crew').select('id, name').eq('account_id', accountId),
+    // When a job was marked complete — jobs have no completed_at, so completion
+    // lives only as a feed event. Powers Gross Revenue and Jobs Completed.
+    supabase.from('job_feed').select('job_id, created_at').eq('account_id', accountId).eq('kind', 'job_completed'),
+    // When a job was put on the calendar — the "Jobs Scheduled" funnel stage.
+    supabase.from('job_feed').select('job_id, created_at').eq('account_id', accountId).eq('kind', 'job_scheduled'),
+    // Failed charge attempts, for the Payment Health count. Only the tally is used.
+    supabase.from('payments').select('id').eq('account_id', accountId).eq('status', 'failed'),
+    // Line items on money-bearing invoices, for the approximate Revenue-by-Service
+    // split. invoice_items has no account_id of its own, so it's reached through
+    // the parent invoice (which is account-scoped) via a nested select.
+    supabase.from('invoices').select('created_at, status, invoice_items(description, amount)').eq('account_id', accountId).in('status', ['signed', 'paid']),
+    // Booking availability config, for Schedule Utilization. maybeSingle so a
+    // missing row degrades to defaults rather than throwing.
+    supabase
+      .from('accounts')
+      .select('booking_enabled, timezone, booking_weekdays, booking_windows, booking_window_minutes, booking_max_per_day, booking_lead_days, workday_start, workday_end, schedule_day_hours, job_buffer_minutes')
+      .eq('id', accountId)
+      .maybeSingle(),
+    // Owner time-off that removes days from bookable capacity in the lookahead.
+    supabase.from('availability_blocks').select('start_date, end_date').eq('account_id', accountId).gte('end_date', todayKey),
+    // Per-client rollups (repeat rate, inactivity, next/last visit). Owns its own
+    // reads; passed today so the booked/been split is made in the owner's day.
+    listClientsWithStats(supabase, accountId, { todayKey }),
+    // Campaign history for Marketing Performance. Read inline (rather than via
+    // listCampaigns) to keep this module off the email/SMS import graph; degrades
+    // to [] on an un-migrated DB exactly as listCampaigns does.
+    supabase
+      .from('campaigns')
+      .select('id, channel, audience, recipient_count, email_sent, sms_sent, failed_count, skipped_count, created_at')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false })
+      .limit(12),
   ]);
 
   const data: Rowset = {
@@ -851,6 +936,100 @@ export async function buildInsights(
     toMs: period.toMs,
   });
 
+  // ---------------------------------------------------------------------------
+  // Second-generation metrics: the KPI cards, six-stage funnel, revenue trend and
+  // action-oriented cards the redesigned dashboard renders. Every figure comes
+  // from the pure calculators in insights-metrics.ts, fed the rows fetched above —
+  // no new I/O, no fabricated values (a gap returns null / a flag, never a zero).
+  // ---------------------------------------------------------------------------
+  const completedEvents = (completedEventRows ?? []) as FeedEvent[];
+  const scheduledEvents = (scheduledEventRows ?? []) as FeedEvent[];
+  const quoteSentEvents = (shareRows ?? []) as FeedEvent[];
+
+  const kpis = computeKpis({
+    jobs: data.jobs,
+    completedEvents,
+    paid: data.paid,
+    quoteSentEvents,
+    quoteApprovedEvents: data.approvals,
+    outstandingTotal: outstanding.total,
+    outstandingCount: outstanding.count,
+    period,
+    now,
+  });
+
+  const revenueTrend = buildRevenueTrend(data.paid, period);
+
+  // Jobs paid in the window — distinct job_id among payments that landed in it,
+  // the final funnel stage. paid_at is the date the money arrived.
+  const paidJobIds = new Set<string>();
+  for (const payment of data.paid) {
+    const at = new Date(payment.paid_at).getTime();
+    if (payment.job_id && Number.isFinite(at) && at >= period.fromMs && at < period.toMs) paidJobIds.add(payment.job_id);
+  }
+  const funnel6 = buildFunnel6({
+    leadsCreated: cur.leads,
+    quotesSent: countDistinctJobsInRange(quoteSentEvents, period.fromMs, period.toMs),
+    quotesApproved: countDistinctJobsInRange(data.approvals, period.fromMs, period.toMs),
+    jobsScheduled: countDistinctJobsInRange(scheduledEvents, period.fromMs, period.toMs),
+    jobsCompleted: countDistinctJobsInRange(completedEvents, period.fromMs, period.toMs),
+    jobsPaid: paidJobIds.size,
+  });
+
+  // Upcoming, still-live jobs on the calendar — what makes a lookahead day "booked".
+  const upcomingScheduled = data.jobs
+    .filter((job) => job.scheduled_for && job.status !== 'archived')
+    .map((job) => (job.scheduled_for as string).slice(0, 10))
+    .filter((key) => key >= todayKey);
+  const scheduleUtilization = computeScheduleUtilization({
+    availability: bookingAvailabilityFromAccount(accountConfigRow),
+    scheduledDates: upcomingScheduled,
+    blocks: (blockRows ?? []) as Array<{ start_date: string; end_date: string }>,
+    avgJobValue: cur.avgQuoteValue,
+    now,
+    lookaheadDays: 21,
+  });
+
+  const paymentHealth = computePaymentHealth({
+    aging,
+    avgDaysToPayment: paymentGaps.length ? round2(mean(paymentGaps)) : null,
+    failedPayments: (failedPaymentRows ?? []).length,
+  });
+
+  const maintenanceMonthly = activePlans.reduce((sum, plan) => sum + monthlyRunRate(plan.amount, plan.frequency), 0);
+  const customerInsights = computeCustomerInsights({
+    clients: clientsStats as MetricClient[],
+    activeMaintenancePlans: activePlans.length,
+    maintenanceMonthly,
+    now,
+  });
+
+  const revenueByService = groupRevenueByService(
+    ((serviceInvoiceRows ?? []) as Array<{ created_at: string; status: string; invoice_items: ServiceInvoice['items'] | null }>).map((invoice) => ({
+      created_at: invoice.created_at,
+      status: invoice.status,
+      items: invoice.invoice_items ?? [],
+    })),
+    period,
+  );
+
+  const marketingPerformance = buildMarketingPerformance((campaignRows ?? []) as CampaignRecord[]);
+
+  const topOpportunities = buildTopOpportunities({
+    staleQuoteCount: staleCount,
+    openQuoteTotal: openQuotes.reduce((sum, quote) => sum + quote.amount, 0),
+    openQuoteCount: openQuotes.length,
+    openScheduleDays: scheduleUtilization.openDays,
+    scheduleOpportunity: scheduleUtilization.estimatedOpportunity,
+    agingOverdueBalance: paymentHealth.overdueBalance,
+    agingOverdueCount: paymentHealth.overdueCount,
+    inactiveCustomers: customerInsights.inactiveClients,
+    uncontactedLeads: leadsNeedingFollowUp,
+    uninvoicedCompleted: completedNotInvoiced,
+    outstandingTotal: outstanding.total,
+    outstandingCount: outstanding.count,
+  });
+
   return {
     period,
     windowLabel: period.label,
@@ -911,5 +1090,14 @@ export async function buildInsights(
       outstanding.count > 0 ||
       activePlans.length > 0,
     costsRecorded: data.costs.length > 0,
+    kpis,
+    revenueTrend,
+    funnel6,
+    scheduleUtilization,
+    paymentHealth,
+    customerInsights,
+    revenueByService,
+    marketingPerformance,
+    topOpportunities,
   };
 }

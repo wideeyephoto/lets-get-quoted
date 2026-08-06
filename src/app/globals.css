@@ -21944,6 +21944,43 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .ins-export:hover { border-color: var(--cedge-orange-5); background: rgba(255, 122, 33, 0.1); }
 
+/* Export insights modal ----------------------------------------------------
+   The header control is now a ModalDialog trigger (a <button>, not a link), so
+   it needs the button font/cursor the base rule assumed a link had. The picker
+   inside offers the two working formats as download links plus a disabled Excel
+   row. */
+.ins-export { font-family: inherit; cursor: pointer; }
+
+.ins-export-intro { margin: 0 0 1rem; font-size: 0.92rem; line-height: 1.5; color: var(--text); }
+.ins-export-intro strong { font-weight: 700; }
+
+.ins-export-formats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+
+.ins-export-opt {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  width: 100%; padding: 0.85rem 1rem;
+  border: 1px solid var(--edge-t14); border-radius: 12px;
+  background: rgba(var(--tint), 0.04); color: var(--text);
+  text-decoration: none; text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+a.ins-export-opt:hover { border-color: var(--cedge-orange-5); background: rgba(255, 122, 33, 0.09); }
+a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); outline-offset: 2px; }
+.ins-export-opt.is-disabled { opacity: 0.55; cursor: not-allowed; }
+
+.ins-export-opt-ic { font-size: 1.1rem; line-height: 1.4; flex: none; }
+.ins-export-opt-body { display: flex; flex-direction: column; gap: 0.15rem; }
+.ins-export-opt-title { font-weight: 700; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; }
+.ins-export-opt-sub { font-size: 0.82rem; color: var(--mute-i62); line-height: 1.45; }
+
+.ins-export-tag {
+  font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0.1rem 0.4rem; border-radius: 999px;
+  background: rgba(255, 122, 33, 0.16); color: var(--cedge-orange-5);
+}
+
+.ins-export-foot { margin: 1rem 0 0; font-size: 0.78rem; line-height: 1.5; color: var(--mute-i62); }
+
 /* Period controls */
 .ins-periods { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
 .ins-period-tabs {
@@ -21983,6 +22020,293 @@ a.bset-card { color: inherit; text-decoration: none; }
 .ins-delta.is-bad { color: var(--ink-orange-1); }
 .ins-delta.is-flat { color: var(--mute-t45); font-weight: 400; }
 .ins-unknown { color: var(--mute-t40); cursor: help; }
+
+/* ── KPI tiles + controls (redesign) ─────────────────────────────────────────
+   Six headline metrics above the summary, plus the compare-to-previous toggle.
+   Tokens only; --accent for emphasis, matching the rest of .ins-shell. */
+.ins-controls {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+.ins-compare {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.82rem; font-weight: 600; color: var(--mute-t60);
+}
+.ins-compare:hover { color: var(--text); }
+.ins-compare-track {
+  position: relative; width: 34px; height: 20px; flex-shrink: 0;
+  border-radius: 999px; border: 1px solid var(--edge-t16);
+  background: rgba(var(--tint), 0.12);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ins-compare-thumb {
+  position: absolute; top: 1px; left: 1px; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.ins-compare.is-on { color: var(--text); }
+.ins-compare.is-on .ins-compare-track { background: var(--accent); border-color: transparent; }
+.ins-compare.is-on .ins-compare-thumb { transform: translateX(14px); background: var(--on-accent); }
+
+/* Active-filter chips. Each one is a link that removes just that filter; "Reset
+   all" is the one link back to the plain default view. */
+.ins-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; width: 100%; }
+.ins-active-filters-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute-t45); }
+.ins-filter-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.28rem 0.6rem; border-radius: 999px;
+  border: 1px solid var(--cedge-orange-5); background: rgba(255, 122, 33, 0.1);
+  color: var(--accent-ink); font-size: 0.78rem; font-weight: 600;
+}
+.ins-filter-chip:hover { background: rgba(255, 122, 33, 0.18); }
+.ins-filter-chip-x { font-size: 0.7rem; opacity: 0.75; }
+.ins-filter-reset { font-size: 0.78rem; font-weight: 600; color: var(--mute-t55); text-decoration: underline; }
+.ins-filter-reset:hover { color: var(--text); }
+
+.ins-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+.ins-shell .ins-kpi-card {
+  display: grid; gap: 0.4rem; align-content: start;
+  padding: 0.85rem 0.95rem; border-radius: 16px;
+}
+.ins-kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.4rem; }
+.ins-kpi-label {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; color: var(--mute-t55); line-height: 1.3;
+}
+.ins-kpi-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem); line-height: 1.05;
+}
+
+/* The "how it's worked out" hint: a real <button> so it's keyboard-focusable,
+   with the tooltip revealed on both :hover and :focus (no JS). */
+.ins-kpi-info {
+  position: relative; flex-shrink: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%;
+  border: 1px solid var(--edge-t16); background: transparent;
+  color: var(--mute-t55); font-size: 0.64rem; font-weight: 700; line-height: 1; cursor: help;
+}
+.ins-kpi-info:hover, .ins-kpi-info:focus-visible {
+  color: var(--text); border-color: var(--cedge-orange-5); outline: none;
+}
+.ins-kpi-tip {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 6;
+  width: max-content; max-width: 210px; padding: 0.5rem 0.6rem;
+  border-radius: 10px; border: 1px solid var(--edge-t16);
+  background: var(--bg-elevated); color: var(--muted);
+  font-size: 0.72rem; font-weight: 400; line-height: 1.45; text-align: left;
+  text-transform: none; letter-spacing: 0;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+  opacity: 0; visibility: hidden; transform: translateY(-4px);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+  pointer-events: none;
+}
+.ins-kpi-info:hover .ins-kpi-tip, .ins-kpi-info:focus .ins-kpi-tip {
+  opacity: 1; visibility: visible; transform: translateY(0);
+}
+
+/* Reserve the row height so toggling the delta on/off doesn't shift the spark. */
+.ins-kpi-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; min-height: 30px; }
+.ins-kpi-delta { display: inline-flex; align-items: baseline; gap: 0.28rem; font-size: 0.74rem; font-weight: 700; }
+.ins-kpi-delta em { font-style: normal; font-weight: 400; color: var(--mute-t45); }
+.ins-kpi-delta.is-good { color: var(--ink-lime-1); }
+.ins-kpi-delta.is-bad { color: var(--ink-orange-1); }
+.ins-kpi-delta.is-flat { color: var(--mute-t45); font-weight: 400; }
+.ins-kpi-card .ins-kpi-spark { width: 74px; height: 28px; flex-shrink: 0; color: var(--accent-ink); }
+.ins-kpi-note { margin: 0; font-size: 0.7rem; line-height: 1.4; color: var(--mute-t50); }
+
+@media (max-width: 1200px) {
+  .ins-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .ins-kpi-grid {
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 78%;
+    overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 0.3rem; scrollbar-width: none;
+  }
+  .ins-kpi-grid::-webkit-scrollbar { display: none; }
+  .ins-shell .ins-kpi-card { scroll-snap-align: start; }
+}
+
+/* ── Revenue over time + Sales funnel (redesign) ─────────────────────────────
+   The wide collected-revenue line beside the six-stage funnel. Tokens only. */
+.ins-row-analytics { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; }
+
+.ins-revtime-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem 1.4rem; flex-wrap: wrap; }
+.ins-revtime-top > div { display: grid; gap: 0.1rem; }
+.ins-revtime-top .ins-sub { display: block; }
+.ins-revtime-prev { font-size: 0.8rem; color: var(--mute-t50); }
+.ins-revtime-prev strong { color: var(--text); font-variant-numeric: tabular-nums; margin-left: 0.3rem; }
+
+.ins-revtime-wrap { width: 100%; margin-top: 0.3rem; }
+.ins-revtime-svg { display: block; touch-action: none; }
+.ins-revtime-grid, .ins-revtime-axis-x, .ins-revtime-cursor,
+.ins-revtime-area, .ins-revtime-line, .ins-revtime-dot { pointer-events: none; }
+.ins-revtime-grid line { stroke: rgba(var(--tint), 0.08); stroke-width: 1; }
+.ins-revtime-grid text { fill: var(--mute-t45); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.ins-revtime-axis-x text { fill: var(--mute-t45); font-size: 10.5px; }
+.ins-revtime-area { fill: url(#ins-revtime-fill); }
+.ins-revtime-fill-top { stop-color: var(--accent); stop-opacity: 0.22; }
+.ins-revtime-fill-bottom { stop-color: var(--accent); stop-opacity: 0; }
+.ins-revtime-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.ins-revtime-line.is-prev { stroke: var(--mute-t45); stroke-width: 1.7; stroke-dasharray: 4 4; }
+.ins-revtime-dot { fill: var(--accent); }
+.ins-revtime-dot.is-prev { fill: var(--mute-t45); }
+.ins-revtime-dot.is-active { fill: var(--accent); stroke: var(--bg-elevated); stroke-width: 2; }
+.ins-revtime-hit { fill: transparent; cursor: crosshair; }
+.ins-revtime-crosshair { stroke: rgba(var(--tint), 0.28); stroke-width: 1; stroke-dasharray: 3 3; }
+.ins-revtime-tip-box { fill: var(--bg-elevated); stroke: var(--edge-t16); stroke-width: 1; }
+.ins-revtime-tip-label { fill: var(--mute-t55); font-size: 11px; }
+.ins-revtime-tip-value { fill: var(--text); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ins-revtime-tip-prev { fill: var(--mute-t45); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ins-revtime-legend { display: flex; gap: 1.1rem; margin-top: 0.5rem; font-size: 0.74rem; color: var(--mute-t50); }
+.ins-revtime-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ins-revtime-key { width: 16px; height: 2px; background: var(--accent); border-radius: 2px; }
+.ins-revtime-key.is-prev { background: none; height: 0; border-top: 2px dashed var(--mute-t45); }
+
+/* Six-stage funnel: a horizontal bar per stage, sized to the widest stage. */
+.ins-chip.is-funnel { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-funnel6 { display: grid; gap: 0.55rem; margin-top: 0.2rem; }
+.ins-funnel6-row { display: grid; grid-template-columns: 8.5rem 1fr auto 3rem; align-items: center; gap: 0.7rem; }
+.ins-funnel6-label { font-size: 0.8rem; color: var(--mute-t60); }
+.ins-funnel6-track { height: 1.75rem; border-radius: 8px; background: rgba(var(--tint), 0.05); overflow: hidden; }
+.ins-funnel6-fill { height: 100%; border-radius: 8px; background: var(--accent); transition: width 0.2s ease; }
+.ins-funnel6-fill.is-s0 { background: #6aa8ee; }
+.ins-funnel6-fill.is-s1 { background: #8f9bf0; }
+.ins-funnel6-fill.is-s2 { background: #a78bfa; }
+.ins-funnel6-fill.is-s3 { background: #ff9440; }
+.ins-funnel6-fill.is-s4 { background: var(--accent); }
+.ins-funnel6-fill.is-s5 { background: #4ade80; }
+.ins-funnel6-count { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; min-width: 2.2rem; }
+.ins-funnel6-rate { font-size: 0.8rem; color: var(--mute-t50); text-align: right; font-variant-numeric: tabular-nums; }
+.ins-funnel6-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.3rem; padding-top: 0.7rem; border-top: 1px solid var(--rule-t09); }
+.ins-funnel6-foot strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+
+/* Reusable SVG donut (schedule utilization, revenue by service). */
+.ins-donut { display: block; }
+.ins-donut-track { stroke: rgba(var(--tint), 0.1); }
+.ins-donut-value { fill: var(--text); font-family: var(--font-display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.ins-donut-label { fill: var(--mute-t50); font-size: 11px; }
+
+@media (max-width: 1100px) {
+  .ins-row-analytics { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .ins-funnel6-row { grid-template-columns: 6.5rem 1fr auto 2.5rem; gap: 0.5rem; }
+  .ins-funnel6-label { font-size: 0.76rem; }
+}
+
+/* ── Action cards: schedule / quotes / payment / customers / opportunities ───
+   The mockup's actionable grid — each card says what happened, why it matters,
+   and the next move. Tokens only; --accent reserved for the one emphasis. */
+.ins-row-actions3 { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+.ins-row-actions2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; }
+.ins-card-sub { margin-left: auto; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; text-transform: none; color: var(--mute-t45); }
+
+.ins-chip.is-sched { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
+.ins-chip.is-quote { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
+.ins-chip.is-pay { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
+.ins-chip.is-cust { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-chip.is-opp { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
+
+/* Schedule utilization — booked/open donut, legend, filler CTA. */
+.ins-sched-body { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.ins-sched-legend { display: grid; gap: 0.5rem; min-width: 9rem; flex: 1 1 9rem; }
+.ins-sched-key { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; }
+.ins-sched-key strong { font-variant-numeric: tabular-nums; }
+.ins-sched-swatch { width: 0.85rem; height: 0.85rem; border-radius: 3px; }
+.ins-sched-swatch.is-booked { background: var(--accent); }
+.ins-sched-swatch.is-open { background: rgba(var(--tint), 0.3); }
+.ins-sched-opp { grid-column: 1 / -1; margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--mute-t60); }
+.ins-sched-opp strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.ins-sched-opp .ins-sub { display: block; margin-top: 0.1rem; }
+.ins-shell .ins-sched-cta { width: 100%; margin-top: 0.7rem; }
+.ins-sched-full { margin-top: 0.5rem; }
+
+/* Quotes needing follow-up — headline count, $ on the table, biggest few. */
+.ins-quotes-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.ins-quotes-top > div { display: grid; gap: 0.1rem; }
+.ins-quotes-total { text-align: right; }
+.ins-quotes-total strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.ins-quotes-stale { margin: 0.1rem 0 0; }
+.ins-quotes-list { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; }
+.ins-quotes-row { display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--rule-t09); font-size: 0.85rem; }
+.ins-quotes-row:first-child { border-top: 0; }
+.ins-quotes-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-quotes-amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ins-quotes-age { font-size: 0.76rem; color: var(--mute-t45); font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; }
+
+/* Payment health / customer insights — three-stat grids. */
+.ins-payhealth-grid, .ins-cust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; margin-top: 0.2rem; }
+.ins-payhealth-stat, .ins-cust-stat { display: grid; gap: 0.15rem; align-content: start; }
+.ins-payhealth-stat .ins-mid.is-warn, .ins-cust-stat .ins-mid.is-warn { color: var(--gold-ink); }
+.ins-payhealth-note { margin-top: 0.5rem; }
+
+/* Top opportunities — the ranked "do this next" list. */
+.ins-opps { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.ins-opp { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.8rem; padding: 0.6rem 0.7rem; border-radius: 12px; background: rgba(var(--tint), 0.04); }
+.ins-opp-icon { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; flex: none; border-radius: 9px; color: var(--mute-t60); background: rgba(var(--tint), 0.08); }
+.ins-opp-icon.is-high { color: var(--accent); background: rgba(255, 122, 33, 0.14); }
+.ins-opp-icon.is-medium { color: #6aa8ee; background: rgba(74, 144, 226, 0.16); }
+.ins-opp-icon.is-low { color: #a78bfa; background: rgba(167, 139, 250, 0.16); }
+.ins-opp-icon .action-btn-ic { width: 1.15rem; height: 1.15rem; }
+.ins-opp-body { display: grid; gap: 0.15rem; min-width: 0; }
+.ins-opp-titlerow { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.ins-opp-title { font-size: 0.92rem; }
+.ins-opp-pri { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.1rem 0.42rem; border-radius: 999px; white-space: nowrap; }
+.ins-opp-pri.is-high { color: var(--accent); background: rgba(255, 122, 33, 0.14); }
+.ins-opp-pri.is-medium { color: #6aa8ee; background: rgba(74, 144, 226, 0.16); }
+.ins-opp-pri.is-low { color: var(--mute-t55); background: rgba(var(--tint), 0.08); }
+.ins-opp-detail { font-size: 0.8rem; color: var(--mute-t50); line-height: 1.45; }
+.ins-opp-cta { flex: none; white-space: nowrap; font-size: 0.8rem; font-weight: 700; color: var(--accent-ink); text-decoration: none; background: none; border: 0; cursor: pointer; padding: 0.35rem 0.2rem; }
+.ins-opp-cta:hover { text-decoration: underline; }
+
+@media (max-width: 1100px) {
+  .ins-row-actions3 { grid-template-columns: 1fr 1fr; }
+  .ins-row-actions2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .ins-row-actions3 { grid-template-columns: 1fr; }
+  .ins-payhealth-grid, .ins-cust-grid { grid-template-columns: 1fr; }
+  .ins-opp { grid-template-columns: auto 1fr; }
+  .ins-opp-cta { grid-column: 2; justify-self: start; padding-left: 0; }
+}
+
+/* ── Revenue by service (approximate) + Marketing performance ────────────────
+   A donut breakdown beside the send log. The donut centre is glanceable; every
+   legend row and every send stat carries the exact figure. Tokens only. */
+.ins-chip.is-revsvc { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-chip.is-mkt { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
+
+.ins-revsvc-body { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.ins-revsvc-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; min-width: 12rem; flex: 1 1 12rem; }
+.ins-revsvc-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0.5rem; font-size: 0.83rem; }
+.ins-revsvc-swatch { width: 0.8rem; height: 0.8rem; border-radius: 3px; }
+.ins-revsvc-label { color: var(--mute-t60); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-revsvc-amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ins-revsvc-pct { font-variant-numeric: tabular-nums; color: var(--mute-t45); min-width: 2.6rem; text-align: right; }
+.ins-revsvc-note { margin-top: 0.6rem; }
+
+.ins-mkt-summary { margin-top: 0.1rem; }
+.ins-mkt-list { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; }
+.ins-mkt-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem 1rem; flex-wrap: wrap; padding: 0.55rem 0; border-top: 1px solid var(--rule-t09); }
+.ins-mkt-row:first-child { border-top: 0; }
+.ins-mkt-when { display: grid; gap: 0.1rem; min-width: 0; }
+.ins-mkt-when strong { font-size: 0.9rem; }
+.ins-mkt-stats { display: flex; align-items: baseline; gap: 0.3rem 0.8rem; flex-wrap: wrap; justify-content: flex-end; }
+.ins-mkt-stat { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.ins-mkt-muted { font-size: 0.76rem; color: var(--mute-t45); font-variant-numeric: tabular-nums; }
+.ins-mkt-fail { font-size: 0.76rem; color: var(--ink-orange-1); font-variant-numeric: tabular-nums; }
+.ins-mkt-note { margin-top: 0.5rem; }
+
+@media (max-width: 760px) {
+  .ins-revsvc-legend { min-width: 100%; }
+  .ins-mkt-stats { justify-content: flex-start; }
+}
 
 /* Executive summary */
 /* This class was owned by TWO different components. Settings → Trust wrapped
@@ -22030,7 +22354,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 /* Card grid */
 .ins-row { display: grid; gap: 1rem; }
 .ins-row-2 { grid-template-columns: 1fr 1fr; }
-.ins-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ins-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ins-shell .ins-card { display: grid; gap: 0.5rem; align-content: start; padding: 1.05rem 1.15rem; }
 .ins-card-head { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 0.3rem; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute-t55); }
 .ins-chip { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; flex: none; border-radius: 8px; font-size: 0.8rem; }
@@ -22051,6 +22375,14 @@ a.bset-card { color: inherit; text-decoration: none; }
 .ins-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .ins-pair > div { display: grid; gap: 0.2rem; padding-right: 0.9rem; border-right: 1px solid var(--rule-t09); }
 .ins-pair > div:last-child { border-right: 0; }
+
+/* More detail. A plain, always-visible section (not a <details> — a page
+   anchor like #arrival-performance must never land inside a closed disclosure)
+   that holds the fuller legacy report below the mockup's headline cards. */
+.ins-more { display: grid; gap: 1rem; padding-top: 0.4rem; border-top: 1px solid var(--rule-t09); }
+.ins-more-head { display: grid; gap: 0.25rem; }
+.ins-shell .ins-more-title { margin: 0; font-size: 1.3rem; letter-spacing: -0.01em; }
+.ins-more-sub { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--mute-t55); }
 
 /* Invoice aging. Older money is redder: an invoice sitting 60 days is a
    different kind of problem from one raised on Tuesday. */
@@ -22141,46 +22473,15 @@ a.bset-card { color: inherit; text-decoration: none; }
 .ins-source-count { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .ins-source-win { text-align: right; font-size: 0.76rem; color: var(--mute-t45); }
 
-/* What to do next */
-.ins-shell .ins-actions-title { margin: 0.2rem 0 0.8rem; font-size: 1.2rem; }
-.ins-actions { display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
-.ins-action {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto;
-  align-items: center; gap: 0.9rem;
-  padding: 0.75rem 0.9rem; border-radius: 12px;
-  border: 1px solid var(--edge-t10); background: rgba(var(--tint), 0.03);
-}
-.ins-action-mark { display: grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 9px; font-weight: 800; background: rgba(var(--tint), 0.08); color: var(--mute-t55); }
-.ins-action-mark.impact-5, .ins-action-mark.impact-4 { background: rgba(255, 122, 33, 0.16); color: var(--accent); }
-.ins-action-body { display: grid; gap: 0.15rem; min-width: 0; }
-.ins-action-body strong { font-size: 0.9rem; }
-.ins-action-body span { font-size: 0.79rem; color: var(--mute-t50); }
-.ins-action-impact { font-size: 0.78rem; color: var(--mute-t50); white-space: nowrap; }
-.ins-impact-meter { display: inline-flex; gap: 3px; }
-.ins-impact-meter i { width: 0.55rem; height: 0.85rem; border-radius: 2px; background: rgba(var(--tint), 0.12); }
-.ins-impact-meter i.is-on { background: var(--accent); }
-.ins-action-cta {
-  min-height: 36px; display: inline-flex; align-items: center; padding: 0.4rem 0.9rem;
-  border-radius: 9px; border: 1px solid var(--cedge-orange-5);
-  background: rgba(255, 122, 33, 0.08); color: var(--accent-ink);
-  font-size: 0.82rem; font-weight: 700; white-space: nowrap;
-}
-.ins-action-cta:hover { background: rgba(255, 122, 33, 0.18); }
-
 @media (max-width: 1100px) {
   .ins-summary { grid-template-columns: 1fr; }
   .ins-breakdown { padding-left: 0; border-left: 0; padding-top: 1rem; border-top: 1px solid var(--rule-t09); }
-  .ins-row-4 { grid-template-columns: 1fr 1fr; }
-  .ins-funnel-row { grid-template-columns: 1fr; }
+  .ins-row-3 { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 720px) {
   .ins-figures { grid-template-columns: 1fr 1fr; }
   .ins-figure { border-right: 0; }
-  .ins-row-2, .ins-row-4 { grid-template-columns: 1fr; }
-  .ins-open { grid-template-columns: 1fr; }
-  .ins-action { grid-template-columns: auto minmax(0, 1fr); }
-  .ins-action-impact, .ins-impact-meter { display: none; }
-  .ins-action-cta { grid-column: 1 / -1; justify-self: start; }
+  .ins-row-2, .ins-row-3 { grid-template-columns: 1fr; }
   .ins-source { grid-template-columns: 6rem 1fr auto; }
   .ins-source-win { display: none; }
 }

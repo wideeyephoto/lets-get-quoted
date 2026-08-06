@@ -2,8 +2,23 @@ import Link from 'next/link';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { buildInsights, resolvePeriod, PERIOD_PRESETS, type Delta, type Insights } from '@/lib/insights';
+import type { Kpi } from '@/lib/insights-metrics';
+import { buildFillScheduleCopy, TEMPLATES } from '@/lib/campaign-templates';
+import type { CampaignDraft } from '@/lib/marketing-draft-data';
 import { loadArrivalAnalytics } from '@/lib/arrival-analytics-data';
 import ArrivalPerformance from './ArrivalPerformance';
+import KpiCard from './KpiCard';
+import InsightsHeaderControls from './InsightsHeaderControls';
+import RevenueOverTimeChart from './RevenueOverTimeChart';
+import SalesFunnelCard from './SalesFunnelCard';
+import ScheduleUtilizationCard from './ScheduleUtilizationCard';
+import QuotesFollowUpCard from './QuotesFollowUpCard';
+import PaymentHealthCard from './PaymentHealthCard';
+import CustomerInsightsCard from './CustomerInsightsCard';
+import TopOpportunities from './TopOpportunities';
+import RevenueByServiceDonut from './RevenueByServiceDonut';
+import MarketingPerformanceCard from './MarketingPerformanceCard';
+import ExportInsightsModal from './ExportInsightsModal';
 
 export const metadata = {
   title: 'Insights',
@@ -31,10 +46,6 @@ function DeltaPill({ delta, tone = 'up-good', unit = '%' }: { delta: Delta | und
       {glyph} {Math.abs(delta.pct)}{unit === 'pp' ? 'pp' : '%'} <em>vs previous period</em>
     </span>
   );
-}
-
-function periodHref(key: string): string {
-  return `/dashboard/insights?window=${key}`;
 }
 
 /** A number the page can't honestly produce yet, said as such. */
@@ -393,19 +404,53 @@ function ExecutiveSummary({ insights }: { insights: Insights }) {
 
 /* -------------------------------------------------------------------------- */
 
+// The six headline tiles, in mockup order. Each is honest at zero — an empty
+// account renders six real $0 / 0 cards with their "why there's no comparison"
+// notes, never a fabricated sample.
+function KpiGrid({ kpis, showDelta }: { kpis: Insights['kpis']; showDelta: boolean }) {
+  const order: Kpi[] = [
+    kpis.grossRevenue,
+    kpis.netCollected,
+    kpis.jobsCompleted,
+    kpis.quoteConversion,
+    kpis.outstandingBalance,
+    kpis.newCustomers,
+  ];
+  return (
+    <section className="ins-kpi-grid" aria-label="Key metrics for the selected period">
+      {order.map((kpi) => (
+        <KpiCard key={kpi.key} kpi={kpi} showDelta={showDelta} />
+      ))}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
 export default async function InsightsPage({
   searchParams,
 }: {
-  searchParams: { window?: string; from?: string; to?: string };
+  searchParams: { window?: string; from?: string; to?: string; compare?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const period = resolvePeriod(searchParams);
+  const showDelta = searchParams.compare === 'prev';
 
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('arrival_updates_enabled')
-    .eq('id', accountId)
-    .maybeSingle();
+  // The window/from/to the page is showing, forwarded to the export route so the
+  // downloaded file matches exactly this view (compare is display-only).
+  const exportParams = new URLSearchParams();
+  if (searchParams.window) exportParams.set('window', searchParams.window);
+  if (searchParams.from) exportParams.set('from', searchParams.from);
+  if (searchParams.to) exportParams.set('to', searchParams.to);
+  const exportQuery = exportParams.toString();
+
+  // Account flag + published-site details in one round trip. business_name and
+  // the site's company_name/subdomain are only needed to word and address the
+  // schedule-filler campaign handoff below.
+  const [{ data: account }, { data: siteRow }] = await Promise.all([
+    supabase.from('accounts').select('arrival_updates_enabled, business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name, published, subdomain').eq('account_id', accountId).maybeSingle(),
+  ]);
 
   // job_tracking is owner-scoped by RLS; this page is already inside
   // requireOwnerContext. Arrival habits are measured over the same window.
@@ -415,11 +460,30 @@ export default async function InsightsPage({
     hasArrivalData: arrivals.summary.trips > 0,
   });
 
-  const leadsTop = Math.max(1, insights.funnel[0].count);
-  const hasRevenueTrend = insights.revenueByMonth.some((month) => month.total > 0);
+  // The schedule-filler campaign, drafted on the SERVER so the exact words the
+  // owner is about to read don't get re-generated on arrival at the composer.
+  // The identical draft feeds both Schedule Utilization's button and the
+  // fill-schedule row of Top Opportunities, so the two can't drift apart. It
+  // never sends — the button only opens the composer.
+  const businessName = (siteRow?.company_name as string) || (account?.business_name as string) || 'your business';
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+  const bookingUrl = siteRow?.published && siteRow?.subdomain ? `${origin}/book/${siteRow.subdomain}` : null;
+  const fillMeta = TEMPLATES.find((template) => template.id === 'fill-next-week')!;
+  const fillCopy = buildFillScheduleCopy({ businessName, openSlotCount: insights.scheduleUtilization.openDays, bookingUrl });
+  const fillDraft: CampaignDraft = {
+    channel: fillMeta.defaultChannel,
+    audience: fillMeta.defaultAudience,
+    subject: fillCopy.subject,
+    subjectOptions: [],
+    body: fillCopy.body,
+    beatId: '',
+    templateName: fillMeta.title,
+    templateExplanation: fillMeta.oneLiner,
+    sendTimeHint: fillMeta.sendTimeHint ?? undefined,
+  };
+
   const hasJobValueTrend = insights.revenueByMonth.some((month) => month.avgJobValue > 0);
   const agingTotal = insights.cash.aging.reduce((sum, band) => sum + band.total, 0);
-  const openTop = Math.max(1, ...insights.opportunity.quotes.map((quote) => quote.amount));
   const sourceTop = Math.max(1, ...insights.leadSources.map((row) => row.leads));
 
   // The average-job-value line, as a polyline over a 100×100 viewBox.
@@ -438,36 +502,10 @@ export default async function InsightsPage({
           <h1 className="ins-title">Insights</h1>
           <p className="ins-lead">See what you earned, where work is getting stuck, and what to improve next.</p>
         </div>
-        <Link className="ins-export" href="/dashboard/reports">
-          <span aria-hidden="true">⬇</span> Export report
-        </Link>
+        <ExportInsightsModal query={exportQuery} periodLabel={period.label} />
       </header>
 
-      <div className="ins-periods">
-        <div className="ins-period-tabs" role="tablist" aria-label="Reporting period">
-          {PERIOD_PRESETS.map((option) => (
-            <Link
-              key={option.key}
-              href={periodHref(option.key)}
-              role="tab"
-              aria-selected={!period.custom && option.key === period.key}
-              className={`ins-period-tab${!period.custom && option.key === period.key ? ' is-active' : ''}`}
-            >
-              {option.label}
-            </Link>
-          ))}
-        </div>
-        {/* A GET form, so a custom range is a shareable URL rather than state
-            that dies with the tab. */}
-        <form className={`ins-range${period.custom ? ' is-active' : ''}`} action="/dashboard/insights" method="get">
-          <label htmlFor="ins-from">From</label>
-          <input id="ins-from" type="date" name="from" defaultValue={searchParams.from ?? ''} />
-          <label htmlFor="ins-to">To</label>
-          <input id="ins-to" type="date" name="to" defaultValue={searchParams.to ?? ''} />
-          <button type="submit">Apply</button>
-          {period.custom ? <Link href={periodHref('90')} className="ins-range-clear">Clear</Link> : null}
-        </form>
-      </div>
+      <InsightsHeaderControls period={period} presets={PERIOD_PRESETS} searchParams={searchParams} />
 
       {!insights.hasAnyData ? (
         <section className="panel workspace-section-card">
@@ -478,9 +516,58 @@ export default async function InsightsPage({
         </section>
       ) : null}
 
-      <ExecutiveSummary insights={insights} />
+      <KpiGrid kpis={insights.kpis} showDelta={showDelta} />
 
+      <div className="ins-row ins-row-analytics">
+        <section className="panel ins-card ins-revtime-card">
+          <p className="ins-card-head">
+            <span className="ins-chip is-chart" aria-hidden="true">▥</span> Revenue collected over time
+          </p>
+          <RevenueOverTimeChart
+            trend={insights.revenueTrend}
+            windowLabel={insights.windowLabel}
+            sentenceLabel={insights.period.sentenceLabel}
+            showPrevious={showDelta}
+          />
+        </section>
+
+        <SalesFunnelCard funnel={insights.funnel6} windowLabel={insights.windowLabel} />
+      </div>
+
+      {/* Action grid — schedule / quotes / payment / customers, then the ranked
+          "do this next" list. The older, denser report lives on below under
+          "More detail" so nothing the previous page showed is lost. */}
+      <div className="ins-row ins-row-actions3">
+        <ScheduleUtilizationCard schedule={insights.scheduleUtilization} fillDraft={fillDraft} />
+        <QuotesFollowUpCard opportunity={insights.opportunity} />
+        <PaymentHealthCard health={insights.paymentHealth} />
+      </div>
+
+      <div className="ins-row ins-row-actions2">
+        <CustomerInsightsCard customers={insights.customerInsights} />
+        <TopOpportunities opportunities={insights.topOpportunities} fillDraft={fillDraft} />
+      </div>
+
+      {/* Revenue by service (approximate) beside what marketing actually sent. */}
       <div className="ins-row ins-row-2">
+        <RevenueByServiceDonut revenue={insights.revenueByService} />
+        <MarketingPerformanceCard marketing={insights.marketingPerformance} />
+      </div>
+
+      {/* More detail — the fuller report the mockup cards above summarize, kept
+          so nothing the earlier page showed is lost. Hidden on an empty account,
+          where the headline cards already read as "nothing yet." */}
+      {insights.hasAnyData ? (
+      <section className="ins-more" aria-labelledby="ins-more-heading">
+      <div className="ins-more-head">
+        <h2 id="ins-more-heading" className="ins-more-title">More detail</h2>
+        <p className="ins-more-sub">
+          The fuller picture behind the cards above — profit and costs, cash aging, where your work comes
+          from, and Quick Stops.
+        </p>
+      </div>
+
+      <ExecutiveSummary insights={insights} />
         <section className="panel ins-card">
           <p className="ins-card-head"><span className="ins-chip is-cash" aria-hidden="true">$</span> Cash position</p>
           <div className="ins-pair">
@@ -537,116 +624,7 @@ export default async function InsightsPage({
           </div>
         </section>
 
-        <section className="panel ins-card">
-          <p className="ins-card-head"><span className="ins-chip is-open" aria-hidden="true">◷</span> Open opportunity</p>
-          <div className="ins-open">
-            <div>
-              <span className="ins-figure-label">Open quotes</span>
-              <strong className="ins-big">{formatMoney(insights.opportunity.total)}</strong>
-              <span className="ins-sub">
-                {insights.opportunity.count === 0
-                  ? 'No quotes awaiting a decision'
-                  : `${insights.opportunity.count} quote${insights.opportunity.count === 1 ? '' : 's'} awaiting a decision`}
-              </span>
-              {insights.opportunity.staleCount > 0 ? (
-                <span className="ins-warn">{insights.opportunity.staleCount} sent over two weeks ago</span>
-              ) : null}
-            </div>
-            <div className="ins-open-chart">
-              <p className="eyebrow">Potential revenue</p>
-              {insights.opportunity.quotes.length > 0 ? (
-                <div className="ins-minibars" role="img" aria-label="The largest open quotes, by value">
-                  <span className="ins-minibars-max">{formatMoney(openTop)}</span>
-                  <div className="ins-minibars-plot">
-                    {insights.opportunity.quotes.map((quote) => (
-                      <div
-                        className="ins-minibar"
-                        key={quote.id}
-                        style={{ height: `${Math.max(8, Math.round((quote.amount / openTop) * 100))}%` }}
-                        title={`${quote.clientName} — ${formatMoney(quote.amount)}, ${quote.ageDays} days old`}
-                      />
-                    ))}
-                  </div>
-                  <span className="ins-minibars-min">$0</span>
-                </div>
-              ) : (
-                <p className="ins-empty-note">Quotes waiting on a decision show up here.</p>
-              )}
-            </div>
-            <Link className="ins-cta" href="/dashboard/jobs?status=new_lead">View open quotes</Link>
-          </div>
-        </section>
-      </div>
-
-      <section className="panel ins-card ins-funnel-card">
-        <p className="ins-card-head">Lead → Quoted → Won</p>
-        <div className="ins-funnel-row">
-          <div className="ins-funnel">
-            {insights.funnel.map((stage) => (
-              <div className={`ins-funnel-stage is-${stage.key}`} key={stage.key} style={{ flexGrow: Math.max(0.6, stage.count / leadsTop) }}>
-                <strong>{stage.count.toLocaleString()}</strong>
-                <span>{stage.label}</span>
-              </div>
-            ))}
-          </div>
-          <div className="ins-funnel-rates">
-            <div>
-              <span className="ins-figure-label">Lead → Quote</span>
-              <strong>{insights.leadToQuote}%</strong>
-            </div>
-            <div>
-              <span className="ins-figure-label">Quote → Win</span>
-              <strong>{insights.winRate}%</strong>
-            </div>
-            <div>
-              <span className="ins-figure-label">Overall win rate</span>
-              <strong>{insights.overallConversion}%</strong>
-            </div>
-          </div>
-          {insights.drop ? (
-            <div className="ins-drop">
-              <span className="ins-drop-mark" aria-hidden="true">↘</span>
-              <div>
-                <strong>Biggest drop: {insights.drop.from} → {insights.drop.to}</strong>
-                <span>
-                  {insights.drop.lostPct}% of {insights.drop.from.toLowerCase()} never became {insights.drop.to.toLowerCase()}
-                  {insights.opportunity.total > 0 && insights.drop.to === 'Wins'
-                    ? ` — ${insights.opportunity.count} open quotes could recover up to ${formatMoney(insights.opportunity.total)}.`
-                    : '.'}
-                </span>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      <div className="ins-row ins-row-4">
-        <section className="panel ins-card">
-          <p className="ins-card-head"><span className="ins-chip is-chart" aria-hidden="true">▥</span> Collected, last 6 months</p>
-          {hasRevenueTrend ? (
-            <>
-              <strong className="ins-big">{formatMoney(insights.revenueByMonth.reduce((sum, m) => sum + m.total, 0))}</strong>
-              <div className="ins-bars" role="img" aria-label="Collected revenue and costs by month for the last six months">
-                {insights.revenueByMonth.map((month) => (
-                  <div className="ins-bar-col" key={month.key} title={`${month.label}: ${formatMoney(month.total)} collected, ${formatMoney(month.costs)} costs`}>
-                    <div className="ins-bar-stack">
-                      <div className="ins-bar is-revenue" style={{ height: `${Math.round((month.total / insights.peakMonthTotal) * 100)}%` }} />
-                      <div className="ins-bar is-costs" style={{ height: `${Math.round((month.costs / insights.peakMonthTotal) * 100)}%` }} />
-                    </div>
-                    <span>{month.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="ins-mini-legend">
-                <span><i className="ins-dot is-revenue" /> Collected</span>
-                <span><i className="ins-dot is-costs" /> Costs</span>
-              </div>
-            </>
-          ) : (
-            <p className="ins-empty-note">Once invoices start getting paid, six months of collected revenue appear here.</p>
-          )}
-        </section>
-
+      <div className="ins-row ins-row-3">
         <section className="panel ins-card">
           <p className="ins-card-head"><span className="ins-chip is-value" aria-hidden="true">◎</span> Average job value</p>
           <strong className="ins-big">{formatMoney(insights.jobValue.average)}</strong>
@@ -759,37 +737,8 @@ export default async function InsightsPage({
       ) : null}
 
       <QuickStops insights={insights} />
-
-      <section className="panel ins-card ins-actions-card">
-        <p className="eyebrow">What to do next</p>
-        <h2 className="ins-actions-title">Recommended actions</h2>
-        {insights.actions.length === 0 ? (
-          <p className="ins-empty-note">
-            Nothing is waiting on you — no open quotes, no unpaid invoices, no finished work left unbilled.
-          </p>
-        ) : (
-          <ul className="ins-actions">
-            {insights.actions.map((action) => (
-              <li className="ins-action" key={action.id}>
-                <span className={`ins-action-mark impact-${action.impact}`} aria-hidden="true">
-                  {action.impact >= 4 ? '!' : '•'}
-                </span>
-                <div className="ins-action-body">
-                  <strong>{action.title}</strong>
-                  <span>{action.detail}</span>
-                </div>
-                <span className="ins-action-impact">{action.impactLabel}</span>
-                <span className="ins-impact-meter" role="img" aria-label={action.impactLabel}>
-                  {[1, 2, 3, 4, 5].map((step) => (
-                    <i key={step} className={step <= action.impact ? 'is-on' : ''} />
-                  ))}
-                </span>
-                <Link className="ins-action-cta" href={action.href}>{action.cta}</Link>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
+      ) : null}
 
       <ArrivalPerformance analytics={arrivals} />
     </main>

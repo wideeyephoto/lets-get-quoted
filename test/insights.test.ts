@@ -85,14 +85,14 @@ describe('metricsForRange', () => {
       { status: 'won', source: 'referral', created_at: '2026-01-01T00:00:00Z', converted_job: null }, // out of window
     ],
     jobs: [
-      { id: 'j1', ref: 'J-1', client_name: 'A', quoted_amount: 1000, status: 'complete', created_at: '2026-06-10T00:00:00Z', lead_source: null },
-      { id: 'j2', ref: 'J-2', client_name: 'B', quoted_amount: 2000, status: 'new_lead', created_at: '2026-06-12T00:00:00Z', lead_source: null },
-      { id: 'j3', ref: 'J-3', client_name: 'C', quoted_amount: 0, status: 'complete', created_at: '2026-06-12T00:00:00Z', lead_source: null },
+      { id: 'j1', ref: 'J-1', client_name: 'A', client_id: null, quoted_amount: 1000, status: 'complete', created_at: '2026-06-10T00:00:00Z', scheduled_for: null, lead_source: null },
+      { id: 'j2', ref: 'J-2', client_name: 'B', client_id: null, quoted_amount: 2000, status: 'new_lead', created_at: '2026-06-12T00:00:00Z', scheduled_for: null, lead_source: null },
+      { id: 'j3', ref: 'J-3', client_name: 'C', client_id: null, quoted_amount: 0, status: 'complete', created_at: '2026-06-12T00:00:00Z', scheduled_for: null, lead_source: null },
     ],
     paid: [
-      { amount: 500, paid_at: '2026-06-11T00:00:00Z', requested_at: '2026-06-10T00:00:00Z', job_id: 'j1' },
-      { amount: '250.50', paid_at: '2026-06-18T00:00:00Z', requested_at: null, job_id: null }, // string numeric
-      { amount: 999, paid_at: '2026-01-01T00:00:00Z', requested_at: null, job_id: null }, // out of window
+      { amount: 500, refunded_amount: null, paid_at: '2026-06-11T00:00:00Z', requested_at: '2026-06-10T00:00:00Z', job_id: 'j1' },
+      { amount: '250.50', refunded_amount: null, paid_at: '2026-06-18T00:00:00Z', requested_at: null, job_id: null }, // string numeric
+      { amount: 999, refunded_amount: null, paid_at: '2026-01-01T00:00:00Z', requested_at: null, job_id: null }, // out of window
     ],
     costs: [
       { type: 'labor', amount: 100, created_at: '2026-06-11T00:00:00Z', job_id: 'j1' },
