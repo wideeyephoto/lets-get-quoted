@@ -470,6 +470,24 @@
 .triageHint { color: var(--muted-2); font-size: .75rem; }
 .triageNote { color: var(--good); font-size: .78rem; font-weight: 600; }
 
+/* --- When a lead is written off ---
+   Sits above the archived drawer because it is the rule that FILLS it: a lead
+   that times out here is one you will next see as Lost. The note wraps to its
+   own full-width row so the control line stays one line at any width. */
+.lostAfter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .7rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--edge-t09);
+}
+.lostAfterLabel { color: var(--muted); font-size: .88rem; white-space: nowrap; }
+.lostAfterLabel strong { color: inherit; font-weight: 800; }
+.lostAfter select { min-width: 12rem; }
+.lostAfterNote { flex-basis: 100%; margin: 0; color: var(--muted-2); font-size: .78rem; line-height: 1.45; }
+
 .setAsideList { display: grid; gap: .4rem; margin-top: .8rem; }
 .setAsideRow { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .5rem .75rem; border: 1px solid var(--edge-t09); border-radius: 8px; background: rgba(var(--tint), .03); }
 .setAsideName { font-weight: 700; color: inherit; }

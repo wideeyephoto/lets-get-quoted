@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
 import { waitingLabel } from '@/lib/lead-queue';
-import { archiveLeadAction, createLeadAction, deleteLeadAction, unsnoozeLeadAction } from './actions';
+import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfterDaysAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
@@ -17,7 +17,11 @@ import styles from './leads.module.css';
 
 export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
-  await expireStaleLeads(supabase, accountId);
+  // Read the window BEFORE expiring, and hand it over, so the number shown in
+  // the selector is provably the one that just ran — not a second read that
+  // could disagree with it.
+  const leadLostAfterDays = await getLeadLostAfterDays(supabase, accountId);
+  await expireStaleLeads(supabase, accountId, leadLostAfterDays);
   const allLeads = await listLeads(supabase, accountId);
 
   // Snoozed/archived leads collapse into "Set aside" below the board; the
@@ -118,12 +122,40 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       </section>
 
 
-      {setAside.length > 0 && (
-        <section className="panel workspace-section-card">
+      {/* Renders whether or not anything is set aside. The lost-after selector
+          lives at the top of it, and a setting that governs the whole queue
+          cannot be reachable only once a lead has already been archived. */}
+      <section className="panel workspace-section-card">
+        <form action={setLeadLostAfterDaysAction} className={styles.lostAfter}>
+          <label htmlFor="leadLostAfterDays" className={styles.lostAfterLabel}>
+            Mark a lead <strong>Lost</strong> after
+          </label>
+          <select id="leadLostAfterDays" name="days" defaultValue={String(leadLostAfterDays)}>
+            {/* The saved value first if it is not one of the presets — an
+                account set to 45 by hand must not silently read as 30. */}
+            {(LEAD_LOST_AFTER_CHOICES as readonly number[]).includes(leadLostAfterDays) ? null : (
+              <option value={String(leadLostAfterDays)}>{leadLostAfterLabel(leadLostAfterDays)}</option>
+            )}
+            {LEAD_LOST_AFTER_CHOICES.map((days) => (
+              <option key={days} value={String(days)}>{leadLostAfterLabel(days)}</option>
+            ))}
+          </select>
+          <SaveButton className="btn ghost" pendingLabel="Saving…" onlyWhenChanged>Save</SaveButton>
+          <p className={styles.lostAfterNote}>
+            {leadLostAfterDays === LEAD_LOST_NEVER
+              ? 'Nothing is closed automatically — leads stay in the queue until you move them.'
+              : `Counted from when the lead arrived. Only leads still New, Contacted or Quoted are touched, and changing this doesn’t reopen anything already marked lost.`}
+          </p>
+        </form>
+
+        {setAside.length > 0 ? (
           <details className="workspace-details">
             <summary className="workspace-details-summary">
-              <span className="btn secondary">Set aside ({setAside.length})</span>
-              <span className="workspace-details-copy">Snoozed and archived leads — out of the way, never lost.</span>
+              <span className="btn secondary">Archived Leads ({setAside.length})</span>
+              {/* The drawer holds snoozed leads too, so the copy still says so —
+                  a label can be shorter than what it opens, but it should not
+                  contradict it. */}
+              <span className="workspace-details-copy">Archived and snoozed leads — out of the way, never lost.</span>
             </summary>
             <div className={styles.setAsideList}>
               {setAside.map(({ lead, triage }) => (
@@ -152,8 +184,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
               ))}
             </div>
           </details>
-        </section>
-      )}
+        ) : (
+          <p className="empty-state">Nothing archived. Leads you set aside or snooze collect here.</p>
+        )}
+      </section>
 
       <div className={`stat-ticker panel ${styles.requestStats}`}>
         <div className={styles.urgentStat}>

@@ -9,7 +9,7 @@ import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } fro
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
-import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -680,4 +680,28 @@ export async function sendQuoteAction(
     if (typeof digest === 'string' && (digest.startsWith('NEXT_REDIRECT') || digest === 'NEXT_NOT_FOUND')) throw error;
     return { error: error instanceof Error ? error.message : 'Could not send the quote.' };
   }
+}
+
+/**
+ * How long a lead sits before the app marks it lost.
+ *
+ * Saved on the Leads page rather than buried in Settings, because the number
+ * only means anything next to the queue it is quietly emptying — and until now
+ * it was a constant nobody could see at all.
+ */
+export async function setLeadLostAfterDaysAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const days = normalizeLeadLostAfterDays(formData.get('days'));
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ lead_lost_after_days: days })
+    .eq('id', accountId);
+  if (error) throw new Error(error.message);
+
+  // Every page that shows a lead status runs expireStaleLeads on load, so a
+  // longer window does not un-lose anything already closed — it only stops the
+  // next one. Said plainly on the page rather than implied here.
+  revalidatePath('/dashboard/leads');
+  revalidatePath('/dashboard');
 }

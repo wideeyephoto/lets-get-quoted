@@ -481,8 +481,80 @@ export async function clearLeadQuoteVisit(
   return data as Lead;
 }
 
-export async function expireStaleLeads(supabase: SupabaseClient, accountId: string, days = 30): Promise<void> {
-  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+/* --- How long a lead gets before the app writes it off ----------------------
+   Thirty days used to be a constant here, and it suited almost nobody exactly:
+   storm-chasing trades give up in a fortnight, and a kitchen fitter is still in
+   conversation at ninety days — where the old constant closed the lead
+   underneath them. It is an account setting now. */
+
+export const DEFAULT_LEAD_LOST_AFTER_DAYS = 30;
+/** Auto-lost switched off. Zero rather than null — see the migration. */
+export const LEAD_LOST_NEVER = 0;
+export const LEAD_LOST_AFTER_CHOICES = [7, 14, 21, 30, 45, 60, 90, 180, LEAD_LOST_NEVER] as const;
+
+export function leadLostAfterLabel(days: number): string {
+  if (days === LEAD_LOST_NEVER) return 'Never — I’ll close them myself';
+  if (days % 7 === 0 && days < 60) return `${days} days (${days / 7} week${days / 7 === 1 ? '' : 's'})`;
+  return `${days} days`;
+}
+
+/**
+ * Whatever came out of a form or a database column, as a number of days.
+ *
+ * Zero has to survive this, so the guard cannot be a truthiness check — `value
+ * || DEFAULT` would read "never" as "thirty days" and silently start closing
+ * leads for the one owner who explicitly asked it not to.
+ */
+export function normalizeLeadLostAfterDays(value: unknown): number {
+  // Absent is not zero, and Number() disagrees: Number(null) and Number('') are
+  // both 0, which is the value that means "never auto-close". So a missing
+  // column or an empty form field would have switched the feature OFF for the
+  // account instead of leaving it at the default — the exact conflation the
+  // migration chose 0-not-null to avoid, undone here in a type coercion.
+  if (value === null || value === undefined || value === '') return DEFAULT_LEAD_LOST_AFTER_DAYS;
+  const days = Number(value);
+  if (!Number.isFinite(days)) return DEFAULT_LEAD_LOST_AFTER_DAYS;
+  const whole = Math.round(days);
+  if (whole < 0 || whole > 3650) return DEFAULT_LEAD_LOST_AFTER_DAYS;
+  return whole;
+}
+
+/**
+ * The account's setting, falling back to the old fixed 30 days.
+ *
+ * The fallback is doing real work: the column arrives in a migration that is run
+ * by hand, so between deploy and SQL every read here fails. Catching it keeps
+ * the previous behaviour exactly rather than throwing on four different pages.
+ */
+export async function getLeadLostAfterDays(supabase: SupabaseClient, accountId: string): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('accounts')
+      .select('lead_lost_after_days')
+      .eq('id', accountId)
+      .maybeSingle();
+    if (error || !data) return DEFAULT_LEAD_LOST_AFTER_DAYS;
+    return normalizeLeadLostAfterDays((data as { lead_lost_after_days?: unknown }).lead_lost_after_days);
+  } catch {
+    return DEFAULT_LEAD_LOST_AFTER_DAYS;
+  }
+}
+
+/**
+ * Mark leads lost once they are older than the account's window.
+ *
+ * Reads the setting itself rather than taking it as a parameter. Four different
+ * page loads call this, and a default argument meant adding a setting would
+ * silently apply to whichever call sites somebody remembered to update. The
+ * override is still there for tests.
+ */
+export async function expireStaleLeads(supabase: SupabaseClient, accountId: string, days?: number): Promise<void> {
+  const window = days ?? (await getLeadLostAfterDays(supabase, accountId));
+  // Zero (or anything nonsensical) means the owner turned this off. Leaving
+  // early is the whole feature — no cutoff, no write.
+  if (!(window > 0)) return;
+
+  const cutoff = new Date(Date.now() - window * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await supabase
     .from('leads')
     .update({ status: 'lost', updated_at: new Date().toISOString() })

@@ -202,6 +202,12 @@ alter table accounts add column if not exists reminder_confirmation_email boolea
 -- (and in-area / work-you-take) can grab a slot; everyone else is routed to a
 -- graceful "request a callback" instead of a hard no. OFF by default = booking
 -- stays open to everyone exactly as before.
+-- Days after a lead arrives before it is auto-marked lost, counted from
+-- created_at and applied only to leads still new/contacted/quoted. 0 = never.
+-- Was a hardcoded 30 in expireStaleLeads; see the 2026-08-06 migration for why
+-- zero rather than null carries "never".
+alter table accounts add column if not exists lead_lost_after_days integer not null default 30;
+
 alter table accounts add column if not exists instant_book_enabled boolean not null default false;
 -- Minimum estimated job value ($) to self-book a premium slot. 0 = no floor.
 alter table accounts add column if not exists instant_book_min_amount numeric(12,2) not null default 0;
