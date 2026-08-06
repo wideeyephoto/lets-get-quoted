@@ -207,6 +207,14 @@ alter table accounts add column if not exists reminder_confirmation_email boolea
 -- Was a hardcoded 30 in expireStaleLeads; see the 2026-08-06 migration for why
 -- zero rather than null carries "never".
 alter table accounts add column if not exists lead_lost_after_days integer not null default 30;
+-- The bound belongs here as well as in the migration, or a database built from
+-- this file alone would accept values production rejects. Nothing can currently
+-- produce one — normalizeLeadLostAfterDays clamps identically on both the read
+-- and the write — but "the app happens to be careful" is not a schema, and the
+-- column is exposed for write through PostgREST like every other.
+alter table accounts drop constraint if exists accounts_lead_lost_after_days_check;
+alter table accounts add constraint accounts_lead_lost_after_days_check
+  check (lead_lost_after_days >= 0 and lead_lost_after_days <= 3650);
 
 alter table accounts add column if not exists instant_book_enabled boolean not null default false;
 -- Minimum estimated job value ($) to self-book a premium slot. 0 = no floor.
