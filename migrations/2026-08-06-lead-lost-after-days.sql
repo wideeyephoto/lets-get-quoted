@@ -1,9 +1,14 @@
 -- How long a lead sits before the app gives up on it.
 --
--- Run this against the production database (Supabase SQL editor) BEFORE the
--- selector on the Leads page will stick. Until it runs, the reader catches the
--- missing column and every account keeps the old fixed 30 days, so nothing
--- throws and nothing changes.
+-- Run this against the production database BEFORE the selector on the Leads
+-- page will stick. Until it runs, the reader catches the missing column and
+-- every account keeps the old fixed 30 days, so nothing throws and nothing
+-- changes.
+--
+--   node scripts/run-migration.mjs 2026-08-06-lead-lost-after-days.sql
+--
+-- (or paste it into the Supabase SQL editor — the runner exists so the same
+-- change can be applied the same way twice, with a lock_timeout in front of it.)
 --
 -- Additive only: one new column. Safe to run twice.
 --
