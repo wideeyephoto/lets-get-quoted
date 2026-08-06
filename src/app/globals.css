@@ -3502,6 +3502,58 @@ h3 {
   .followup-card .followup-grid { grid-template-columns: 1fr; gap: 1.1rem; }
 }
 
+/* --- Appointment reminders: editing the schedule in place ------------------
+   The timing row states the schedule and hides its two selects behind "Edit",
+   so the card stays a set of readable facts rather than a form you have to
+   parse before you can read it. */
+.reminder-edit { margin-top: 0.5rem; }
+.reminder-edit > summary {
+  display: inline-block;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  /* The marker would sit oddly against a link-styled word. */
+  list-style: none;
+}
+.reminder-edit > summary::-webkit-details-marker { display: none; }
+.reminder-edit > summary:hover { text-decoration: underline; }
+.reminder-edit[open] > summary { margin-bottom: 0.6rem; }
+
+.reminder-edit-form { display: grid; gap: 0.6rem; }
+.reminder-edit-form label { display: grid; gap: 0.25rem; }
+.reminder-edit-form label > span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mute-i55);
+}
+.reminder-edit-note { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--mute-t50); }
+.reminder-edit-note a { color: var(--accent-ink); }
+
+/* Send a test sits under the preview, because it is the same question asked a
+   second way: this is what it says, and here it is in your inbox. */
+.reminder-test { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.7rem; flex-wrap: wrap; }
+.reminder-test small { font-size: 0.74rem; color: var(--mute-t50); }
+
+/* NO GLOW ON A SETTINGS SAVE.
+   .workspace-shell .btn.primary carries an orange halo, which is right for a
+   dashboard call to action and wrong here: saving the hour a text goes out is
+   bookkeeping, and a button that looks urgent about it reads as an alarm. The
+   fill stays; only the halo goes. Scoped to automation cards, where every
+   primary button is a save rather than an action. */
+.workspace-shell .automation-card .btn.primary {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.workspace-shell .automation-card .btn.primary:hover {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+}
+
+/* The preview dims when the automation is off, but not so far that you cannot
+   read it — evaluating whether to turn something ON is exactly when you most
+   want to see what it would send. 0.45 was too dark to judge by. */
+.followup-card.is-paused .followup-preview { opacity: 0.72; }
+
 .automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(var(--tint), 0.05); border: 1px solid var(--edge-t10); font-size: 0.85rem; line-height: 1.45; color: rgba(var(--ink-rgb), 0.9); max-width: 42ch; }
 .automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid var(--cedge-amber-5); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
 .automation-prereq a { color: var(--gold-ink); text-decoration: underline; }

@@ -233,7 +233,7 @@ export default function BlogWorkspace({
           <h2>Reminders</h2>
         </div>
         <label className="cash-bill-field">
-          <span>Nudge me to publish</span>
+          <span>Remind me to publish</span>
           <select
             value={reminder}
             onChange={(event) => {

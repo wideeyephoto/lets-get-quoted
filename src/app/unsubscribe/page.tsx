@@ -81,7 +81,7 @@ export default async function UnsubscribePage({
         <h1 className="workspace-title">Unsubscribe from {businessName}?</h1>
         <p className="workspace-lead">
           Confirm below and <strong>{decoded.email}</strong> will stop receiving marketing emails
-          (special offers, &ldquo;book again&rdquo; nudges, and review requests) from {businessName}.
+          (special offers, &ldquo;book again&rdquo; reminders, and review requests) from {businessName}.
           You&apos;ll still get messages about your own jobs, quotes, and payments.
         </p>
         <form action={unsubscribeAction} style={{ marginTop: '1rem' }}>

@@ -38,6 +38,8 @@ import { quickStopSettingsFromAccount, dollarsToCents } from '@/lib/quick-stop';
 import { mergeRefundTiers } from '@/lib/quick-stop-refunds';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
+import { normalizeReminderHour, normalizeReminderLeadDays } from '@/lib/appointment-reminders';
+import { getAccountOwnerEmail, sendAppointmentReminderEmail } from '@/lib/email';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -649,16 +651,65 @@ export async function updateBusinessAddressesAction(formData: FormData) {
   revalidatePath('/dashboard/marketing');
 }
 
+/**
+ * WHEN reminders go out — not WHETHER.
+ *
+ * The card used to carry a checkbox that wrote appointment_reminders_enabled,
+ * duplicating the switch in its own header: two controls for one boolean, which
+ * could disagree until you saved. The switch is the only enablement control
+ * now, and this form owns the schedule instead.
+ */
 export async function updateReminderSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
-  const appointmentReminders = formData.get('appointmentReminders') === 'on';
 
   const { error } = await supabase
     .from('accounts')
-    .update({ appointment_reminders_enabled: appointmentReminders })
+    .update({
+      appointment_reminder_lead_days: normalizeReminderLeadDays(formData.get('reminderLeadDays')),
+      appointment_reminder_hour: normalizeReminderHour(formData.get('reminderHour')),
+    })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+  // The schedule page tells the owner whether tomorrow's jobs will be reminded.
+  revalidatePath('/dashboard/schedule');
+}
+
+/**
+ * Send the owner the reminder their own customers would get.
+ *
+ * Goes to the account email rather than the owner's mobile: a test that needs a
+ * verified, opted-in mobile on file would fail for most people the first time
+ * they pressed it, and "it didn't arrive" is the worst possible answer from a
+ * button whose entire job is to prove delivery works.
+ *
+ * The body is appointmentReminderText — the same function the real send uses —
+ * so this proves the actual message, not a rehearsal of it.
+ */
+export async function sendReminderTestAction() {
+  const { supabase, accountId } = await requireOwnerContext();
+  const admin = createAdminClient();
+
+  const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+  if (!ownerEmail) throw new Error('No account email to send a test to.');
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+  const businessName = site?.company_name || account?.business_name || 'Your business';
+
+  await sendAppointmentReminderEmail({
+    recipientEmail: ownerEmail,
+    businessName,
+    clientName: 'there',
+    whenLabel: 'tomorrow at 10:00 AM',
+    address: null,
+    jobRef: 'TEST',
+    accountId,
+  });
 
   revalidatePath('/dashboard/settings');
 }

@@ -216,6 +216,19 @@ alter table accounts drop constraint if exists accounts_lead_lost_after_days_che
 alter table accounts add constraint accounts_lead_lost_after_days_check
   check (lead_lost_after_days >= 0 and lead_lost_after_days <= 3650);
 
+-- When appointment reminders go out. Lead days are calendar days before the job
+-- (1 = the day before); the hour is in the ACCOUNT'S own timezone, and the sweep
+-- runs hourly to catch it. Before these existed the send moment was whatever
+-- 22:00 UTC happened to be locally — see the 2026-08-06 migration.
+alter table accounts add column if not exists appointment_reminder_lead_days integer not null default 1;
+alter table accounts add column if not exists appointment_reminder_hour integer not null default 9;
+alter table accounts drop constraint if exists accounts_appointment_reminder_lead_days_check;
+alter table accounts add constraint accounts_appointment_reminder_lead_days_check
+  check (appointment_reminder_lead_days >= 1 and appointment_reminder_lead_days <= 30);
+alter table accounts drop constraint if exists accounts_appointment_reminder_hour_check;
+alter table accounts add constraint accounts_appointment_reminder_hour_check
+  check (appointment_reminder_hour >= 0 and appointment_reminder_hour <= 23);
+
 alter table accounts add column if not exists instant_book_enabled boolean not null default false;
 -- Minimum estimated job value ($) to self-book a premium slot. 0 = no floor.
 alter table accounts add column if not exists instant_book_min_amount numeric(12,2) not null default 0;

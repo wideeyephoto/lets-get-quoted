@@ -7,6 +7,13 @@ import { resolveAccountForInbound } from '@/lib/messages';
 import { sendAppointmentReminderSms } from '@/lib/sms';
 import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendReminderRunSummaryEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
+import { zonedNowParts } from '@/lib/quick-stop';
+import {
+  isReminderHourNow,
+  normalizeReminderHour,
+  normalizeReminderLeadDays,
+  reminderTargetDateKey,
+} from '@/lib/appointment-reminders';
 
 // Bound the work one cron invocation will do.
 const MAX_SENDS_PER_RUN = 200;
@@ -19,14 +26,19 @@ export type ReminderRunSummary = {
   reason?: string;
 };
 
-// The date key (YYYY-MM-DD) for "tomorrow" in UTC. The cron runs late-day UTC
-// (afternoon in US timezones), so a reminder for tomorrow's job lands the
-// afternoon before — the classic day-before nudge.
-function tomorrowDateKey(): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
-}
+/**
+ * An account that has reminders switched on, and when it wants them sent.
+ *
+ * The timezone is not decoration: it is the only thing that turns "9" into a
+ * moment. Every account carries one already (accounts.timezone, IANA, defaulted
+ * to America/New_York), so there is no case where this is unknown.
+ */
+type ReminderAccount = {
+  id: string;
+  timezone: string;
+  leadDays: number;
+  hour: number;
+};
 
 /** The job fields a reminder needs. Anything that can supply these can send one. */
 export type RemindableJob = {
@@ -124,38 +136,78 @@ export async function sendJobAppointmentReminder(
   return { sent: true, channel };
 }
 
-// Sweep for jobs scheduled tomorrow and remind the client, texting when they
-// have SMS consent and emailing otherwise. Idempotent per (job, scheduled date):
-// a job already reminded for that date is skipped, so re-runs — and a job later
-// rescheduled to a different day — behave correctly. Best-effort per job so one
-// failure never sinks the run. Opt-in per account.
-export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
+/**
+ * Sweep for jobs whose reminder is due right now and tell the client.
+ *
+ * RUNS HOURLY, and only acts for accounts whose OWN clock has reached their
+ * chosen hour. It used to run once a day at 22:00 UTC and remind about "one UTC
+ * day from now", which meant the send time was a side effect of the cron
+ * schedule — 6pm in New York, noon in Honolulu — and was correct at all only
+ * because 22:00 UTC falls after the UTC date rollover for every US zone.
+ *
+ * Still idempotent per (job, scheduled date): a job already reminded for that
+ * date is skipped. That property is what makes the catch-up window safe, and
+ * what makes a rescheduled job get a fresh reminder for its new day.
+ *
+ * Best-effort per job so one failure never sinks the run. Opt-in per account.
+ */
+export async function runAppointmentReminders(now = new Date()): Promise<ReminderRunSummary> {
   const admin = createAdminClient();
-  const target = tomorrowDateKey();
 
-  // Accounts that opted in. Defensive: if the column doesn't exist yet, bail
+  // Accounts that opted in. Defensive: if the columns don't exist yet, bail
   // cleanly rather than throwing.
-  const { data: accounts, error: accountsError } = await admin
+  const { data: accountRows, error: accountsError } = await admin
     .from('accounts')
-    .select('id')
+    .select('id, timezone, appointment_reminder_lead_days, appointment_reminder_hour')
     .eq('appointment_reminders_enabled', true);
   if (accountsError) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, reason: 'reminders not enabled/available' };
   }
-  const enabledIds = new Set((accounts ?? []).map((account) => account.id as string));
-  if (enabledIds.size === 0) {
+  if ((accountRows ?? []).length === 0) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, reason: 'no accounts enabled' };
   }
 
-  // Jobs scheduled for tomorrow in an enabled account, still active (a completed
-  // or archived job doesn't need a reminder).
-  const { data: jobs } = await admin
-    .from('jobs')
-    .select('id, account_id, ref, client_name, client_phone, client_email, address, scheduled_for, scheduled_time, status')
-    .eq('scheduled_for', target)
-    .in('status', ['new_lead', 'in_progress'])
-    .in('account_id', [...enabledIds])
-    .limit(1000);
+  const accounts: ReminderAccount[] = (accountRows ?? []).map((row) => ({
+    id: row.id as string,
+    timezone: (row.timezone as string) || 'America/New_York',
+    leadDays: normalizeReminderLeadDays((row as { appointment_reminder_lead_days?: unknown }).appointment_reminder_lead_days),
+    hour: normalizeReminderHour((row as { appointment_reminder_hour?: unknown }).appointment_reminder_hour),
+  }));
+
+  // Whose hour is it? Each account resolves its own local date and time, and
+  // then its own target date — two accounts an hour apart can be reminding
+  // about different calendar days in the same run, which is the entire point.
+  const due = new Map<string, string>();
+  for (const account of accounts) {
+    const { dateKey, time } = zonedNowParts(now, account.timezone);
+    if (!isReminderHourNow(time, account.hour)) continue;
+    due.set(account.id, reminderTargetDateKey(dateKey, account.leadDays));
+  }
+  if (due.size === 0) {
+    return { candidates: 0, sent: 0, skipped: 0, failed: 0, reason: 'no account is due this hour' };
+  }
+
+  // Group by target date so this is one query per distinct date rather than one
+  // per account — in practice every US account due in the same hour shares a
+  // date, so this is almost always a single round trip.
+  const idsByTarget = new Map<string, string[]>();
+  for (const [accountId, target] of due) {
+    idsByTarget.set(target, [...(idsByTarget.get(target) ?? []), accountId]);
+  }
+
+  const jobs: RemindableJob[] = [];
+  for (const [target, accountIds] of idsByTarget) {
+    // Still active only — a completed or archived job doesn't need a reminder,
+    // and archiving is how this product expresses a cancellation.
+    const { data: rows } = await admin
+      .from('jobs')
+      .select('id, account_id, ref, client_name, client_phone, client_email, address, scheduled_for, scheduled_time, status')
+      .eq('scheduled_for', target)
+      .in('status', ['new_lead', 'in_progress'])
+      .in('account_id', accountIds)
+      .limit(1000);
+    jobs.push(...((rows ?? []) as RemindableJob[]));
+  }
 
   let sent = 0;
   let skipped = 0;
@@ -169,26 +221,26 @@ export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
     byAccount.set(accountId, row);
   };
 
-  for (const job of jobs ?? []) {
+  for (const job of jobs) {
     if (sent >= MAX_SENDS_PER_RUN) break;
     try {
-      const result = await sendJobAppointmentReminder(admin, job as RemindableJob);
+      const result = await sendJobAppointmentReminder(admin, job);
       if (!result.sent) {
         skipped++;
         continue;
       }
       sent++;
-      tally(job.account_id as string, 'sent');
+      tally(job.account_id, 'sent');
     } catch (error) {
       console.error(`Appointment reminder failed for job ${job.id}:`, error instanceof Error ? error.message : error);
       failed++;
-      tally(job.account_id as string, 'failed');
+      tally(job.account_id, 'failed');
     }
   }
 
   await sendReminderSummaries(admin, byAccount);
 
-  return { candidates: (jobs ?? []).length, sent, skipped, failed };
+  return { candidates: jobs.length, sent, skipped, failed };
 }
 
 export type ConfirmResult = {

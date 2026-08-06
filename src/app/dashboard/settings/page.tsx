@@ -18,7 +18,18 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateReminderSettingsAction, updateBusinessAddressesAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReminderSettingsAction, sendReminderTestAction, updateBusinessAddressesAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import {
+  appointmentReminderText,
+  REMINDER_HOUR_CHOICES,
+  REMINDER_LEAD_DAY_CHOICES,
+  reminderHourLabel,
+  reminderLeadLabel,
+  reminderTimingLabel,
+  normalizeReminderHour,
+  normalizeReminderLeadDays,
+  timeZoneAbbreviation,
+} from '@/lib/appointment-reminders';
 import { toggleClientPortalAction } from './actions';
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import InsuranceSection from './InsuranceSection';
@@ -255,10 +266,21 @@ export default async function SettingsPage({
 
   const { data: reminderSettings } = await supabase
     .from('accounts')
-    .select('appointment_reminders_enabled')
+    .select('appointment_reminders_enabled, appointment_reminder_lead_days, appointment_reminder_hour, timezone')
     .eq('id', accountId)
     .maybeSingle();
   const appointmentRemindersEnabled = Boolean(reminderSettings?.appointment_reminders_enabled);
+  // Normalised on the way in, so a database built before the timing migration —
+  // where both columns read as undefined — renders the old behaviour's defaults
+  // rather than "0 days before at 12:00 AM".
+  const reminderLeadDays = normalizeReminderLeadDays(reminderSettings?.appointment_reminder_lead_days);
+  const reminderHour = normalizeReminderHour(reminderSettings?.appointment_reminder_hour);
+  const accountTimeZone = (reminderSettings?.timezone as string) || 'America/New_York';
+  // One clock for the card: the abbreviation is DST-dependent, so it has to be
+  // derived from a moment rather than stored.
+  const reminderNow = new Date();
+  const reminderTiming = reminderTimingLabel(reminderLeadDays, reminderHour, accountTimeZone, reminderNow);
+  const accountTimeZoneLabel = timeZoneAbbreviation(accountTimeZone, reminderNow);
 
   const { data: mailingSettings } = await supabase
     .from('accounts')
@@ -662,11 +684,11 @@ export default async function SettingsPage({
                     what's left is what the automation does and what it says —
                     the cadence read from the constants the cron actually uses,
                     not written out in prose beside them. */}
-                <AutomationCard group="follow-through" id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
+                <AutomationCard group="follow-through" id="followups" title="Quote follow-ups" subtitle="Remind clients about unanswered quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
                   <div className={`followup-card${quoteFollowupsEnabled ? '' : ' is-paused'}`}>
                     <p className="followup-state">
                       {quoteFollowupsEnabled
-                        ? 'A quote that goes quiet gets a nudge, so you never have to remember which ones did.'
+                        ? 'A quote that goes quiet gets a reminder, so you never have to remember which ones did.'
                         : 'Paused — a quote nobody answers stays that way until you chase it yourself.'}
                     </p>
 
@@ -675,7 +697,7 @@ export default async function SettingsPage({
                         <div className="followup-fact">
                           <strong>{followupScheduleLabel()}</strong>
                           <span>
-                            Counted from the day you shared the quote. {MAX_FOLLOWUPS} nudges, then it leaves them alone.
+                            Counted from the day you shared the quote. {MAX_FOLLOWUPS} reminders, then it leaves them alone.
                           </span>
                         </div>
                         <div className="followup-fact">
@@ -693,7 +715,7 @@ export default async function SettingsPage({
 
                       <div className="followup-preview">
                         <p className="eyebrow">What the client sees</p>
-                        <p className="followup-lede">The first nudge, {followupSchedule()[0]} days after you share a quote.</p>
+                        <p className="followup-lede">The first reminder, {followupSchedule()[0]} days after you share a quote.</p>
                         <div className="followup-phone">
                           <div className="followup-phone-head">
                             <span className="followup-phone-avatar" aria-hidden="true">
@@ -719,30 +741,117 @@ export default async function SettingsPage({
                   </div>
                 </AutomationCard>
 
-                <AutomationCard group="follow-through" id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}>
-                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
-                    When on, the day before a scheduled job we automatically remind the client — texting them if
-                    they have a mobile on file that&apos;s opted in, and emailing otherwise. It runs once per
-                    appointment and respects text opt-outs, so it cuts no-shows without you lifting a finger.
-                  </p>
-                  <form action={updateReminderSettingsAction} className="form-grid compact-form">
-                    <label className="checkbox-row" htmlFor="appointmentReminders">
-                      <input
-                        id="appointmentReminders"
-                        name="appointmentReminders"
-                        type="checkbox"
-                        defaultChecked={appointmentRemindersEnabled}
-                      />
-                      <span>Automatically remind clients the day before their appointment</span>
-                    </label>
-                    <details className="automation-preview">
-                      <summary>Preview the reminder text</summary>
-                      <p className="automation-preview-bubble">{businessName} reminder — Sarah, your appointment is coming up tomorrow at 9:00 AM. Reply C to confirm. Reply STOP to opt out.</p>
-                    </details>
-                    <div className="form-actions">
-                      <SaveButton>Save reminder settings</SaveButton>
+                {/* Rebuilt from a paragraph plus a checkbox into scannable rows.
+                    The checkbox is gone: it wrote appointment_reminders_enabled,
+                    which is what the switch in this card's own header already
+                    does — two controls for one boolean, able to disagree until
+                    you saved. The switch is the one enablement control, and the
+                    form below owns the schedule instead of duplicating it. */}
+                <AutomationCard
+                  group="follow-through"
+                  id="reminders"
+                  title="Appointment reminders"
+                  subtitle="Automatically remind clients before scheduled jobs"
+                  toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}
+                >
+                  <div className={`followup-card${appointmentRemindersEnabled ? '' : ' is-paused'}`}>
+                    <p className="followup-state">
+                      {appointmentRemindersEnabled
+                        ? `Active — clients are reminded ${reminderTiming}.`
+                        : 'Off — nobody is reminded, so a forgotten appointment stays forgotten.'}
+                    </p>
+
+                    <div className="followup-grid">
+                      <div className="followup-facts">
+                        <div className="followup-fact">
+                          <strong>Send reminder</strong>
+                          {/* The whole schedule in one line, timezone included.
+                              "The day before" was all this could ever say while
+                              the send time was a side effect of the cron hour. */}
+                          <span>{reminderTiming}</span>
+                          <details className="reminder-edit">
+                            <summary>Edit</summary>
+                            <form action={updateReminderSettingsAction} className="reminder-edit-form">
+                              <label>
+                                <span>How far ahead</span>
+                                <select name="reminderLeadDays" defaultValue={String(reminderLeadDays)}>
+                                  {REMINDER_LEAD_DAY_CHOICES.map((days) => (
+                                    <option key={days} value={String(days)}>{reminderLeadLabel(days)}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                <span>At</span>
+                                <select name="reminderHour" defaultValue={String(reminderHour)}>
+                                  {REMINDER_HOUR_CHOICES.map((hour) => (
+                                    <option key={hour} value={String(hour)}>{reminderHourLabel(hour)}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <p className="reminder-edit-note">
+                                Times are {accountTimeZoneLabel} — your own clock, not the server&apos;s.{' '}
+                                <Link href="/dashboard/settings#business">Change your timezone</Link>
+                              </p>
+                              <SaveButton className="btn primary" onlyWhenChanged>Save changes</SaveButton>
+                            </form>
+                          </details>
+                        </div>
+
+                        <div className="followup-fact">
+                          <strong>Delivery</strong>
+                          <span>
+                            Text clients who opted in to texts. If there&apos;s no mobile on file, or they never
+                            opted in, we email them instead. A STOP reply ends texts for good.
+                          </span>
+                        </div>
+
+                        <div className="followup-fact">
+                          <strong>Stops automatically</strong>
+                          {/* Said plainly because it is the question an owner
+                              actually has: cancelling is archiving here, and a
+                              reschedule moves the date the reminder is keyed to,
+                              so the old one is void and a fresh one is due. */}
+                          <span>
+                            When the job is cancelled or completed. Reschedule it and the old reminder is void —
+                            the new date gets its own. One reminder per appointment, never two.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="followup-preview">
+                        <p className="eyebrow">What the client sees</p>
+                        <p className="followup-lede">Sent {reminderTiming}.</p>
+                        <div className="followup-phone">
+                          <div className="followup-phone-head">
+                            <span className="followup-phone-avatar" aria-hidden="true">
+                              {businessName.slice(0, 2).toUpperCase()}
+                            </span>
+                            <strong>{businessName}</strong>
+                          </div>
+                          <div className="followup-phone-body">
+                            {/* The sender's own function. The old preview here
+                                was hand-typed and had drifted: it had lost the
+                                "Let's Get Quoted:" prefix every one of our texts
+                                carries, and the address clause. */}
+                            <p className="followup-bubble">
+                              {appointmentReminderText({
+                                businessName,
+                                clientName: 'Sarah',
+                                whenLabel: 'tomorrow at 10:00 AM',
+                                address: null,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <form action={sendReminderTestAction} className="reminder-test">
+                          <SaveButton className="btn ghost" pendingLabel="Sending…" savedLabel="Test sent ✓">
+                            Send a test
+                          </SaveButton>
+                          <small>Goes to your account email.</small>
+                        </form>
+                      </div>
                     </div>
-                  </form>
+                  </div>
                 </AutomationCard>
 
                 {/* Now a real toggle. It used to say "there is nothing to

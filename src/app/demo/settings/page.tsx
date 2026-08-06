@@ -55,7 +55,7 @@ export default function DemoSettingsPage() {
                 </div>
                 <p className="workspace-card-copy">
                   Passwordless: a magic link to your email, or a code by text. You can link both, and the
-                  dashboard nudges you to add a second one — being locked out of your own business because you
+                  dashboard reminds you to add a second one — being locked out of your own business because you
                   changed phone number is a bad afternoon.
                 </p>
                 <p className="workspace-card-copy">

@@ -313,12 +313,12 @@ export default function DashboardHomeScreen({
               <article className="workspace-metric-card">
                 <span className="workspace-metric-label">Quote follow-ups</span>
                 <strong className="workspace-metric-value">{automation.followupCount}</strong>
-                <p className="workspace-metric-note">Nudges sent on quotes awaiting approval.</p>
+                <p className="workspace-metric-note">Reminders sent on quotes awaiting approval.</p>
               </article>
               <article className="workspace-metric-card">
                 <span className="workspace-metric-label">Appointment reminders</span>
                 <strong className="workspace-metric-value">{automation.reminderCount}</strong>
-                <p className="workspace-metric-note">Day-before nudges to cut no-shows.</p>
+                <p className="workspace-metric-note">Reminders before scheduled jobs, to cut no-shows.</p>
               </article>
               <article className="workspace-metric-card">
                 <span className="workspace-metric-label">Deposits requested</span>

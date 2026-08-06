@@ -56,7 +56,7 @@ export const TEMPLATES: TemplateMeta[] = [
     title: 'Follow Up on Open Quotes',
     category: 'quick-wins',
     icon: 'follow-up-quotes',
-    oneLiner: 'Nudge customers who have an open quote sitting unanswered.',
+    oneLiner: 'Remind customers who have an open quote sitting unanswered.',
     defaultAudience: 'past',
     defaultChannel: 'email',
     sendTimeHint: 'A short, low-pressure note tends to work better than a long one.',
@@ -109,7 +109,7 @@ export const TEMPLATES: TemplateMeta[] = [
     oneLiner: "Win back customers who've been gone a long time.",
     defaultAudience: 'lapsed',
     defaultChannel: 'both',
-    sendTimeHint: 'Keep it short — this is a nudge, not a pitch.',
+    sendTimeHint: 'Keep it short — this is a reminder, not a pitch.',
   },
   {
     id: 'request-reviews',

@@ -4,6 +4,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { missedCallTextBack } from '@/lib/missed-call';
 import { reviewRequestText } from '@/lib/review-routing';
 import { quoteFollowupText } from '@/lib/quote-followups';
+import { appointmentReminderText } from '@/lib/appointment-reminders';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
@@ -624,8 +625,11 @@ export async function sendAppointmentReminderSms(params: {
   address: string | null;
   accountId?: string;
 }) {
-  const addressNote = params.address ? ` at ${params.address}` : '';
-  const message = `Let's Get Quoted: ${params.businessName} reminder — ${params.clientName}, your appointment is coming up ${params.whenLabel}${addressNote}. Reply C to confirm. Reply STOP to opt out.`;
+  // Composed by appointmentReminderText, not here. It was written inline — the
+  // one message in this family without a builder — so the settings preview was
+  // a hand-typed copy beside it, and it had already drifted: no "Let's Get
+  // Quoted:" prefix, no address clause. Now the card renders this exact string.
+  const message = appointmentReminderText(params);
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
