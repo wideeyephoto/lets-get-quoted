@@ -250,8 +250,13 @@ export type AdminContext = {
    * Which permission authorised this request, stamped by requirePermission.
    * It rides into the audit row, which makes an access review answerable from
    * the log ("who used money.refund last quarter") rather than from the code.
+   *
+   * A plain string rather than Permission, because an action that crosses two
+   * boundaries records both — "money.refund + account.enforce". It is an audit
+   * label, never read back as a check: staffCan() is the only thing that
+   * decides authority, and it takes a Permission.
    */
-  permission?: Permission;
+  permission?: string;
 };
 
 /**
@@ -352,10 +357,32 @@ export async function requireAdmin(): Promise<AdminContext> {
  * particular thing is not theirs, which is a different fact from "no such page".
  */
 export async function requirePermission(permission: Permission): Promise<AdminContext> {
+  return requirePermissions(permission);
+}
+
+/**
+ * The same, for an action that crosses more than one boundary at once.
+ *
+ * Resolving a Quick Stop as a no-show issues a refund AND locks the account,
+ * which are money.refund and account.enforce respectively — two permissions no
+ * single role but super_admin holds together, deliberately. Calling
+ * requirePermission twice would work but costs a second full requireAdmin()
+ * round trip and mints a second requestId, so the two audit rows an action
+ * writes would no longer share one.
+ *
+ * ALL are required, never any. An action that needs two authorities is not
+ * satisfied by holding one of them.
+ */
+export async function requirePermissions(...permissions: Permission[]): Promise<AdminContext> {
   const context = await requireAdmin();
-  if (!staffCan(context.staff, permission)) {
-    console.warn(`[admin] ${context.adminEmail} (${context.role}) denied ${permission} req=${context.requestId}`);
-    throw new Error(deniedMessage(context.role, permission));
+  for (const permission of permissions) {
+    if (!staffCan(context.staff, permission)) {
+      console.warn(`[admin] ${context.adminEmail} (${context.role}) denied ${permission} req=${context.requestId}`);
+      throw new Error(deniedMessage(context.role, permission));
+    }
   }
-  return { ...context, permission };
+  // Recorded as the full set. An audit row stamped with only the first of two
+  // permissions understates what was authorised, which is the thing the column
+  // exists to make reviewable.
+  return { ...context, permission: permissions.join(' + ') };
 }

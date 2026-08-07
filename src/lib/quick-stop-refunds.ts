@@ -4,7 +4,7 @@ import { getQuickStopRequest, logQuickStopEvent, type QuickStopRequest } from '@
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { sendQuickStopStatusSms } from '@/lib/sms';
 import { centsToDollars, quickStopNoShowLock } from '@/lib/quick-stop';
-import { logAdminAction, systemActor } from '@/lib/admin';
+import { logAdminAction, systemActor, type AuditActor } from '@/lib/admin';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -80,7 +80,12 @@ export async function resolveQuickStopCancellation(
   admin: SupabaseClient,
   accountId: string,
   requestId: string,
-  opts: { kind: CancellationKind; reason?: string | null },
+  // `actor` attributes the no-show lock below. It defaults to systemActor()
+  // because two of the three callers genuinely are the system — the sweep and
+  // the customer's own cancel link — but the admin console is a person, and
+  // recording their enforcement action as 'system' hid it from every review
+  // that reads the audit log by staff member or by permission.
+  opts: { kind: CancellationKind; reason?: string | null; actor?: AuditActor },
 ): Promise<{ pct: number; refundCents: number }> {
   const req = await getQuickStopRequest(admin, accountId, requestId);
   if (!req) throw new Error('Request not found.');
@@ -136,7 +141,12 @@ export async function resolveQuickStopCancellation(
 
   // No-show escalation: auto-lock Quick Stop on a verified no-show, escalating by
   // how many the account has had recently (10-day → 30-day → disabled pending
-  // review). Staff can clear it from the admin console. Logged as a 'system' action.
+  // review). Staff can clear it from the admin console.
+  //
+  // This writes the same two columns as lockQuickStopAction, which the console
+  // gates on account.enforce — so when a staff member drove it, the audit row
+  // has to name them. Attributed to `opts.actor` when there is one, and to the
+  // system only when the system really did it.
   if (opts.kind === 'no_show') {
     const { data: priors } = await admin
       .from('extra_stop_requests')
@@ -150,7 +160,7 @@ export async function resolveQuickStopCancellation(
       .filter((d) => !Number.isNaN(d.getTime()));
     const lock = quickStopNoShowLock(priorDates);
     await admin.from('accounts').update({ extra_stop_locked_until: lock.untilIso, extra_stop_lock_reason: lock.reason }).eq('id', accountId);
-    await logAdminAction(admin, systemActor(), {
+    await logAdminAction(admin, opts.actor ?? systemActor(), {
       action: 'extra_stop_auto_lock',
       accountId,
       targetType: 'account',

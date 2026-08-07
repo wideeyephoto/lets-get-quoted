@@ -13,6 +13,7 @@ import {
   getUnresolvedWebhookFailures,
   getRecentIncidents,
   getCasesNearSla,
+  getCasesWithoutSlaCount,
   getMyAssignedCases,
   type DisputeRow,
   type PausedPayoutRow,
@@ -27,6 +28,7 @@ import {
   type SupportCaseRow,
 } from '@/lib/admin-alerts';
 import { rangeWindow, computeTrend, type DateRange } from '@/lib/command-center-logic';
+import { fetchFeeWindow } from '@/lib/platform-fees';
 
 export type { DateRange } from '@/lib/command-center-logic';
 
@@ -58,6 +60,8 @@ export type CommandCenterData = {
   webhookFailures: WebhookFailureRow[];
   incidents: PlatformIncidentRow[];
   casesNearSla: SupportCaseRow[];
+  /** Open cases the SLA card cannot see, because they have no SLA set. */
+  casesWithoutSla: number;
   myCases: SupportCaseRow[];
 };
 
@@ -73,36 +77,25 @@ type MetricsWindow = {
 // error surfaces via `.error` on each response, not an exception, so this
 // degrades to zeros exactly like every fetcher in admin-alerts.ts rather than
 // needing its own try/catch.
+//
+// The fee half now comes from lib/platform-fees.ts rather than being computed
+// here. It used to be a second copy of the Money page's query, and both copies
+// carried the same defect: gross summed over `status = 'paid'` while reversals
+// summed over anything refunded in the window, so a payment refunded in full
+// left the first population, stayed in the second, and drove the headline
+// figure negative. One definition is the fix; see that file for the detail.
 async function fetchMetricsWindow(admin: SupabaseClient, startIso: string, endIso: string): Promise<MetricsWindow> {
-  const [accountsRes, paidRes, refundRes] = await Promise.all([
+  const [accountsRes, fees] = await Promise.all([
     admin.from('accounts').select('id', { count: 'exact', head: true }).gte('created_at', startIso).lt('created_at', endIso),
-    admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', startIso).lt('paid_at', endIso),
-    // Windowed on refunded_at, not paid_at. Dating a refund by the day the
-    // payment was collected put it in the wrong month whenever the two differed
-    // — which is every refund that is not same-day.
-    admin
-      .from('payments')
-      .select('refunded_amount, platform_fee_refunded')
-      .gt('refunded_amount', 0)
-      .gte('refunded_at', startIso)
-      .lt('refunded_at', endIso),
+    fetchFeeWindow(admin, startIso, endIso),
   ]);
   if (accountsRes.error) console.error('command center metrics (new accounts) failed:', accountsRes.error);
-  if (paidRes.error) console.error('command center metrics (payments) failed:', paidRes.error);
-  if (refundRes.error) console.error('command center metrics (refunds) failed:', refundRes.error);
 
-  const paidRows = (paidRes.data ?? []) as { platform_fee: number | null }[];
-  const refundRows = (refundRes.data ?? []) as { refunded_amount: number | null; platform_fee_refunded: number | null }[];
-  const grossFees = paidRows.reduce((s, r) => s + (Number(r.platform_fee) || 0), 0);
-  // Refunds return our application fee in proportion, so the gross figure
-  // counted money already given back. The trend arrow beside this number made
-  // that worse: fees only ever moved up.
-  const feesReversed = refundRows.reduce((s, r) => s + (Number(r.platform_fee_refunded) || 0), 0);
   return {
     newAccounts: accountsRes.count ?? 0,
-    paymentsProcessed: paidRows.length,
-    platformFees: grossFees - feesReversed,
-    refunds: refundRows.reduce((s, r) => s + (Number(r.refunded_amount) || 0), 0),
+    paymentsProcessed: fees.paymentsProcessed,
+    platformFees: fees.netFees,
+    refunds: fees.refunds,
   };
 }
 
@@ -133,6 +126,7 @@ export async function buildCommandCenterData(
     webhookFailures,
     incidents,
     casesNearSla,
+    casesWithoutSla,
     myCases,
   ] = await Promise.all([
     fetchMetricsWindow(admin, win.currentStart, win.currentEnd),
@@ -148,7 +142,8 @@ export async function buildCommandCenterData(
     getFailedEmailEvents(admin),
     getUnresolvedWebhookFailures(admin),
     getRecentIncidents(admin),
-    getCasesNearSla(admin),
+    getCasesNearSla(admin, { now }),
+    getCasesWithoutSlaCount(admin),
     getMyAssignedCases(admin, opts.staffEmail),
   ]);
 
@@ -161,6 +156,7 @@ export async function buildCommandCenterData(
 
   return {
     range, metrics, disputes, pausedPayouts, suspendedAccounts, notOnboardedCount, notOnboardedAccounts,
-    dunningPayments, overdueQuickStops, failedSms, failedEmails, webhookFailures, incidents, casesNearSla, myCases,
+    dunningPayments, overdueQuickStops, failedSms, failedEmails, webhookFailures, incidents, casesNearSla,
+    casesWithoutSla, myCases,
   };
 }

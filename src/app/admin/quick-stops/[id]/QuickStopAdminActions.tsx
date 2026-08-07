@@ -1,6 +1,7 @@
 'use client';
 
 import { permissionsFor, type StaffRole } from '@/lib/staff';
+import { QUICK_STOP_OUTCOME, allowedQuickStopOutcomes } from '@/lib/quick-stop-outcomes';
 import styles from '../../admin.module.css';
 import { adminRefundQuickStopAction, adminResolveQuickStopAction } from './actions';
 
@@ -22,7 +23,13 @@ export default function QuickStopAdminActions({
   // would tell a finance user a payment does not exist when it does.
   const granted = permissionsFor(role);
   const mayRefund = granted.includes('money.refund');
-  const mayResolve = granted.includes('account.support');
+
+  // The resolution dropdown is not one permission. Two of its four outcomes
+  // issue a full refund, and no-show also locks the account — so each option is
+  // offered only to somebody the server will accept it from. Listing an outcome
+  // that throws on submit is how a staff member loses a typed note to a crash.
+  // Read from the same map the server action gates on, so the two cannot drift.
+  const outcomes = allowedQuickStopOutcomes(granted);
 
   return (
     <section className={styles.panel}>
@@ -30,7 +37,12 @@ export default function QuickStopAdminActions({
 
       {!mayRefund ? (
         <p className={styles.muted} style={{ fontSize: '.82rem' }}>
-          Refunds need the finance role. Everything else on this page still works.
+          {/* This used to end "Everything else on this page still works", which
+              was false: the resolution dropdown below carried two outcomes that
+              refund in full, so the sentence reassured people about a boundary
+              the page was not keeping. */}
+          Refunds need the finance role, including the two resolutions that refund
+          a Quick Stop in full.
         </p>
       ) : canRefund ? (
         <form action={adminRefundQuickStopAction.bind(null, requestId)} className={styles.formStack}>
@@ -46,18 +58,17 @@ export default function QuickStopAdminActions({
 
       <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
-      {!mayResolve ? null : (
-      <form action={adminResolveQuickStopAction.bind(null, requestId)} className={styles.formStack}>
-        <label>Resolve / adjudicate</label>
-        <select className={styles.input} name="outcome" defaultValue="no_show" style={{ minWidth: 0 }}>
-          <option value="no_show">No-show (full refund + record)</option>
-          <option value="contractor_cancel">Contractor cancel (full refund)</option>
-          <option value="completed">Mark completed</option>
-          <option value="disputed">Flag as disputed</option>
-        </select>
-        <input className={styles.input} name="reason" placeholder="Note (internal)" />
-        <button type="submit" className="btn primary">Apply resolution</button>
-      </form>
+      {outcomes.length === 0 ? (
+        <p className={styles.muted} style={{ fontSize: '.82rem' }}>Resolving a Quick Stop is not part of your role.</p>
+      ) : (
+        <form action={adminResolveQuickStopAction.bind(null, requestId)} className={styles.formStack}>
+          <label>Resolve / adjudicate</label>
+          <select className={styles.input} name="outcome" defaultValue={outcomes[0]} style={{ minWidth: 0 }}>
+            {outcomes.map((key) => <option key={key} value={key}>{QUICK_STOP_OUTCOME[key].label}</option>)}
+          </select>
+          <input className={styles.input} name="reason" placeholder="Note (internal)" />
+          <button type="submit" className="btn primary">Apply resolution</button>
+        </form>
       )}
     </section>
   );

@@ -2,8 +2,9 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/auth';
+import { requirePermission, requirePermissions } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
+import { QUICK_STOP_OUTCOME, isQuickStopOutcome } from '@/lib/quick-stop-outcomes';
 import { getQuickStopRequestById, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
 import { refundPayment } from '@/lib/payments';
@@ -53,17 +54,39 @@ export async function adminRefundQuickStopAction(requestId: string, formData: Fo
 // Adjudicate a request to a terminal state. no_show / contractor_cancel run the
 // full cancellation path (tiered/forced refund + notify + archive job); the
 // others just set the status for record-keeping.
+//
+// Which permission that takes depends on the outcome, and the map lives in
+// lib/quick-stop-outcomes.ts so the dropdown offering the options and the gate
+// enforcing them read from one place.
 export async function adminResolveQuickStopAction(requestId: string, formData: FormData) {
-  const ctx = await requirePermission('account.support');
-  const { admin } = ctx;
+  // The outcome has to be read before the gate, because the outcome is what
+  // decides the gate. Parsed against the allowlist first so an unrecognised
+  // value cannot pick its own permission.
   const outcome = String(formData.get('outcome') ?? '').trim();
+  if (!isQuickStopOutcome(outcome)) {
+    // Still requires a staff member: this branch is reachable by anyone who can
+    // post to the action, and it should not reveal anything to a stranger.
+    await requirePermission('account.support');
+    backTo(requestId, 'error=outcome');
+  }
+
+  const ctx = await requirePermissions(...QUICK_STOP_OUTCOME[outcome].permissions);
+  const { admin } = ctx;
   const reason = String(formData.get('reason') ?? '').trim() || `Resolved by ${ctx.adminEmail}`;
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) backTo(requestId, 'error=notfound');
 
   const nowIso = new Date().toISOString();
   if (outcome === 'no_show' || outcome === 'contractor_cancel') {
-    await resolveQuickStopCancellation(admin, req.account_id, requestId, { kind: outcome === 'no_show' ? 'no_show' : 'contractor_cancel', reason });
+    await resolveQuickStopCancellation(admin, req.account_id, requestId, {
+      kind: outcome === 'no_show' ? 'no_show' : 'contractor_cancel',
+      reason,
+      // So the no-show lock is audited as the person who ordered it rather than
+      // as 'system'. Without this the only row naming them says
+      // 'extra_stop_resolve / account.support', and an access review asking who
+      // exercised enforcement powers finds nobody.
+      actor: ctx,
+    });
   } else if (outcome === 'completed') {
     await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId);
     await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'completed', meta: { adminForced: true, by: ctx.adminEmail } });

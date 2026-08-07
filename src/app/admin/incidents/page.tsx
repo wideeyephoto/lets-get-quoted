@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth';
+import { staffCan } from '@/lib/staff';
 import { getRecentIncidents } from '@/lib/admin-alerts';
 import {
   INCIDENT_KINDS,
@@ -40,10 +41,17 @@ function fmt(v: string | null): string {
 }
 
 export default async function AdminIncidentsPage({ searchParams }: { searchParams: { done?: string; error?: string } }) {
-  const { admin } = await requireAdmin();
-  const incidents = await getRecentIncidents(admin, { limit: 50 });
+  const ctx = await requireAdmin();
+  const incidents = await getRecentIncidents(ctx.admin, { limit: 50 });
   const now = new Date();
   const open = incidents.filter((i) => i.kind === 'incident' && !i.resolved_at);
+  // Both write surfaces on this page call requirePermission('ops.manage'),
+  // which only ops and super_admin hold — but the page is in the nav for
+  // everyone and used to render the form and the resolve button regardless.
+  // requirePermission throws as its first statement, and there is no error
+  // boundary under /app, so a support user clicking "Log it" got Next's generic
+  // crash screen and lost the write-up they had just typed.
+  const mayManage = staffCan(ctx.staff, 'ops.manage');
 
   return (
     <>
@@ -69,8 +77,12 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
                 <span>
                   <span className={`${styles.pill} ${i.severity === 'critical' ? styles.bad : styles.warn}`}>{i.severity}</span>{' '}
                   <span className={styles.timelineActor}>{i.title}</span>
-                  {' — '}
-                  <ResolveIncidentButton incidentId={i.id} title={i.title} />
+                  {mayManage ? (
+                    <>
+                      {' — '}
+                      <ResolveIncidentButton incidentId={i.id} title={i.title} />
+                    </>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -120,6 +132,12 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
         <div>
           <section className={styles.panel}>
             <p className={styles.panelTitle}>Log one</p>
+            {!mayManage ? (
+              <p className={styles.muted} style={{ fontSize: '.82rem' }}>
+                Logging releases and incidents needs the ops role. The log itself is readable by everyone — if something
+                belongs here, ask ops to write it up.
+              </p>
+            ) : (
             <form action={logIncidentAction} className={styles.formStack}>
               <label htmlFor="kind">What is it</label>
               <select id="kind" name="kind" className={styles.input} defaultValue="incident">
@@ -154,6 +172,7 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
 
               <button type="submit" className="btn primary">Log it</button>
             </form>
+            )}
           </section>
         </div>
       </div>

@@ -113,7 +113,20 @@
 .statCard { display: flex; flex-direction: column; gap: 0.25rem; }
 .statValue { font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .statLabel { font-size: 0.78rem; color: var(--ink-mod-grey-6); }
-.statCard.link:hover { border-color: var(--cedge-orange-9); }
+
+/* A stat that opens the rows behind it. The whole card is the target — the
+   number is what people aim at, and a small link tucked underneath it invites
+   a miss. `.statDrill` is the visible promise; without it the card looks
+   identical to the ones that genuinely lead nowhere. */
+.statCard.link { color: inherit; transition: border-color 0.12s ease, background 0.12s ease; }
+.statCard.link:hover, .statCard.link:focus-visible { border-color: var(--cedge-orange-9); background: rgba(var(--tint), 0.06); }
+.statDrill {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-mod-grey-2);
+}
+.statCard.link:hover .statDrill, .statCard.link:focus-visible .statDrill { color: var(--cedge-orange-9); }
 
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }

@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
 import { getOpenDisputes, getPausedPayouts, getNotOnboardedCount } from '@/lib/admin-alerts';
+import { fetchFeeWindow } from '@/lib/platform-fees';
+import { isDateRange, rangeWindow, type DateRange } from '@/lib/command-center-logic';
+import { StatCard } from '../StatCard';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -13,37 +16,51 @@ function fmtDate(v: string | null | undefined): string {
   return v ? new Date(v).toLocaleDateString('en-US', { dateStyle: 'medium' }) : '—';
 }
 
-export default async function AdminMoneyPage() {
-  const { admin } = await requireAdmin();
-  const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+const RANGE_TABS: { key: DateRange; label: string }[] = [
+  { key: '7d', label: '7 days' },
+  { key: '30d', label: '30 days' },
+  { key: '90d', label: '90 days' },
+];
 
-  const [feeRows, refundRows, disputes, pausedRows, notOnboardedCount] = await Promise.all([
-    admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', since30),
-    // Dated by refunded_at, NOT paid_at. Filtering refunds by the payment date
-    // meant "refunds on payments paid in the last 30 days" — a refund issued
-    // today against a ninety-day-old charge landed in no window at all.
-    admin
-      .from('payments')
-      .select('refunded_amount, platform_fee_refunded, refunded_at')
-      .gt('refunded_amount', 0)
-      .gte('refunded_at', since30),
-    getOpenDisputes(admin),
+export default async function AdminMoneyPage({ searchParams }: { searchParams: { range?: string; account?: string } }) {
+  const { admin } = await requireAdmin();
+  // Set when an account page's dispute count sends you here. Only the disputes
+  // table narrows — the fee and refund totals stay platform-wide, because a
+  // per-account fee figure is a different report and quietly reusing these
+  // cards for it would mislabel four numbers to make one link work.
+  const accountId = searchParams.account?.trim() || undefined;
+  // Was hardcoded to 30 days. The Command Center's fee and refund metrics link
+  // here, and they can be showing 7 or 90 — a drill-down that silently changed
+  // the window would produce a total that disagrees with the number clicked,
+  // which is the same failure as not linking at all.
+  const range: DateRange = isDateRange(searchParams.range) ? searchParams.range : '30d';
+  const now = new Date();
+  const win = rangeWindow(range, now);
+  const rangeLabel = RANGE_TABS.find((r) => r.key === range)?.label ?? '30 days';
+
+  // The fee arithmetic — and the refund rows the table renders — come from the
+  // one definition in lib/platform-fees.ts, which the Command Center shares.
+  // They used to be two copies of the same query carrying the same defect.
+  const [fees, disputes, pausedRows, notOnboardedCount] = await Promise.all([
+    fetchFeeWindow(admin, win.currentStart, win.currentEnd),
+    getOpenDisputes(admin, { accountId }),
     getPausedPayouts(admin),
     getNotOnboardedCount(admin),
   ]);
 
-  const grossFees30 = (feeRows.data ?? []).reduce((s, r) => s + (Number((r as { platform_fee: number }).platform_fee) || 0), 0);
-  const refundRowsData = (refundRows.data ?? []) as { refunded_amount: number; platform_fee_refunded: number | null }[];
-  const refunds30 = refundRowsData.reduce((s, r) => s + (Number(r.refunded_amount) || 0), 0);
-  // Refunds are issued with refund_application_fee: true, so Stripe hands our
-  // fee back in proportion. Reporting the gross figure claimed money we had
-  // already returned.
-  const feesReversed30 = refundRowsData.reduce((s, r) => s + (Number(r.platform_fee_refunded) || 0), 0);
-  const fees30 = grossFees30 - feesReversed30;
+  // Deliberately not named *30 any more — the window is whatever `range` says,
+  // and a variable called fees30 holding 90 days of fees is how a hardcoded
+  // label survives the change that was supposed to remove it.
+  const { grossFees, feesReversed, netFees, refunds, refundRows } = fees;
+  const refundCount = refundRows.length;
 
-  // Stitch display names (site company_name preferred) onto the dispute + paused
-  // rows in one pass.
-  const acctIds = [...new Set([...disputes.map((d) => d.account_id), ...pausedRows.map((p) => p.id)].filter(Boolean))];
+  // Stitch display names (site company_name preferred) onto the dispute, paused
+  // and refund rows in one pass.
+  const acctIds = [...new Set([
+    ...disputes.map((d) => d.account_id),
+    ...pausedRows.map((p) => p.id),
+    ...refundRows.map((r) => r.account_id),
+  ].filter(Boolean))];
   const nameMap = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
   if (acctIds.length) {
     const [acctsRes, sitesRes] = await Promise.all([
@@ -69,41 +86,112 @@ export default async function AdminMoneyPage() {
         <p className={styles.lead}>Platform fees, refunds, disputes, and payout health. You&rsquo;re the merchant of record on Connect — this is the liability side of the ledger.</p>
       </header>
 
+      <div className={styles.filterTabs}>
+        {RANGE_TABS.map((r) => (
+          <Link key={r.key} href={`/admin/money?range=${r.key}`} className={`${styles.filterTab} ${range === r.key ? styles.on : ''}`}>{r.label}</Link>
+        ))}
+      </div>
+
+      {/* Every figure that IS a set of rows now opens them. The two that are
+          sums of money link to the tables further down this page, which is
+          where their working is; the three that count accounts or payments
+          link to the list that holds those records. */}
       <section className={styles.cardGrid} style={{ marginBottom: '1.4rem' }}>
-        <div className={`${styles.panel} ${styles.statCard}`}>
-          <span className={styles.statValue}>{usd(fees30)}</span>
-          <span className={styles.statLabel}>Platform fees (30 days)</span>
-          {/* The arithmetic is shown rather than hidden. A net figure with no
-              working is indistinguishable from the gross one that used to sit
-              here, and the whole point of the fix is that they differ. */}
-          {feesReversed30 > 0 ? (
-            <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
-              {usd(grossFees30)} charged − {usd(feesReversed30)} returned with refunds
-            </span>
-          ) : null}
-        </div>
-        <div className={`${styles.panel} ${styles.statCard}`}>
-          <span className={styles.statValue} style={refunds30 > 0 ? { color: '#ffd166' } : undefined}>{usd(refunds30)}</span>
-          <span className={styles.statLabel}>Refunds issued (30 days)</span>
-        </div>
-        <div className={`${styles.panel} ${styles.statCard}`}>
-          <span className={styles.statValue} style={disputes.length > 0 ? { color: '#fca5a5' } : undefined}>{disputes.length}</span>
-          <span className={styles.statLabel}>Open disputes</span>
-        </div>
-        <div className={`${styles.panel} ${styles.statCard}`}>
-          <span className={styles.statValue} style={pausedRows.length > 0 ? { color: '#ffd166' } : undefined}>{pausedRows.length}</span>
-          <span className={styles.statLabel}>Payouts paused</span>
-        </div>
-        <div className={`${styles.panel} ${styles.statCard}`}>
-          <span className={styles.statValue}>{notOnboardedCount}</span>
-          <span className={styles.statLabel}>Not onboarded</span>
-        </div>
+        <StatCard
+          value={usd(netFees)}
+          label={`Platform fees (${rangeLabel})`}
+          /* The arithmetic is shown rather than hidden. A net figure with no
+             working is indistinguishable from the gross one that used to sit
+             here, and the whole point of the fix is that they differ. */
+          note={feesReversed > 0 ? <>{usd(grossFees)} charged − {usd(feesReversed)} returned with refunds</> : null}
+        />
+        <StatCard
+          value={usd(refunds)}
+          label={`Refunds issued (${rangeLabel})`}
+          tone={refunds > 0 ? 'warn' : undefined}
+          href={refundCount > 0 ? '#refunds' : undefined}
+          drill={refundCount > 0 ? `${refundCount} ${refundCount === 1 ? 'refund' : 'refunds'}` : undefined}
+        />
+        <StatCard
+          value={disputes.length}
+          label="Open disputes"
+          tone={disputes.length > 0 ? 'bad' : undefined}
+          href={disputes.length > 0 ? '#disputes' : undefined}
+          drill="See them"
+        />
+        <StatCard
+          value={pausedRows.length}
+          label="Payouts paused"
+          tone={pausedRows.length > 0 ? 'warn' : undefined}
+          href={pausedRows.length > 0 ? '#paused' : undefined}
+          drill="See them"
+        />
+        <StatCard
+          value={notOnboardedCount}
+          label="Not onboarded"
+          href={notOnboardedCount > 0 ? '/admin/accounts?filter=not_onboarded' : undefined}
+          drill="Open the list"
+        />
       </section>
 
-      <section className={styles.panel}>
-        <p className={styles.panelTitle}>Open disputes / chargebacks</p>
+      <section className={styles.panel} id="refunds">
+        <p className={styles.panelTitle}>Refunds issued ({rangeLabel})</p>
+        {refundRows.length === 0 ? (
+          <p className={styles.emptyState}>No refunds in the last {rangeLabel}.</p>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th>Refunded</th><th>Account</th><th>Charge</th><th className="num">Original</th><th className="num">Refunded</th><th className="num">Our fee returned</th><th /></tr></thead>
+              <tbody>
+                {refundRows.map((row) => {
+                  const acct = nameMap.get(row.account_id);
+                  const original = Number(row.amount) || 0;
+                  const refunded = Number(row.refunded_amount) || 0;
+                  // A refund smaller than the charge is a partial one, and the
+                  // difference between "we gave it all back" and "we gave half
+                  // back" is the first thing anybody asks about a refund.
+                  const partial = refunded > 0 && original > 0 && refunded < original - 0.005;
+                  return (
+                    <tr key={row.id}>
+                      <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{fmtDate(row.refunded_at)}</td>
+                      <td>
+                        <Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct ? accountDisplayName(acct) : 'Account'}</Link>
+                        {acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}
+                      </td>
+                      <td>{row.label || '—'}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{usd(original)}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{usd(refunded)}</td>
+                      <td className="num" style={{ textAlign: 'right' }} title="Returned to Stripe with the refund, in proportion">
+                        {row.platform_fee_refunded === null ? (
+                          <span className={styles.muted} title="Refunded before we recorded fee reversals">—</span>
+                        ) : (
+                          usd(Number(row.platform_fee_refunded) || 0)
+                        )}
+                      </td>
+                      <td>{partial ? <span className={`${styles.pill} ${styles.neutral}`}>Partial</span> : null}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className={styles.panel} id="disputes">
+        <p className={styles.panelTitle}>
+          Open disputes / chargebacks
+          {accountId ? <span className={styles.muted} style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> — one account only</span> : null}
+        </p>
+        {accountId ? (
+          <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.8rem' }}>
+            <Link href={`/admin/accounts/${accountId}`} className={styles.rowLink}>Back to the account →</Link>
+            {' · '}
+            <Link href={`/admin/money?range=${range}`} className={styles.rowLink}>Show every account</Link>
+          </p>
+        ) : null}
         {disputes.length === 0 ? (
-          <p className={styles.emptyState}>No open disputes. 🎉</p>
+          <p className={styles.emptyState}>{accountId ? 'No open disputes on this account.' : 'No open disputes. 🎉'}</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -137,7 +225,7 @@ export default async function AdminMoneyPage() {
         )}
       </section>
 
-      <section className={styles.panel}>
+      <section className={styles.panel} id="paused">
         <p className={styles.panelTitle}>Payouts paused</p>
         {pausedRows.length === 0 ? (
           <p className={styles.emptyState}>No accounts with paused payouts.</p>
