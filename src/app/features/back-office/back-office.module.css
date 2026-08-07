@@ -265,11 +265,304 @@
   color: var(--muted-2);
 }
 
+/* ---- the two computed showcases ------------------------------------------ */
+
+/* Copy on the left, the panel it describes on the right. Same 0.95/1.05 split
+   the how-it-works continuity band uses, so the two pages set a claim beside
+   its evidence the same way. */
+.showcaseGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.showcaseCopy { min-width: 0; }
+.showcaseCopy h2 { max-width: 20ch; }
+.showcaseCopy > p { margin: 0.9rem 0 0; max-width: 52ch; }
+
+.showcaseNote {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+}
+
+/* ---- the payment plan schedule ------------------------------------------- */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+
+.planHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--edge-t08);
+}
+
+.planHeadLabel {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.planHeadValue {
+  font-size: 1rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The sum row. Gold rather than a second white figure: it is the one number a
+   reader is meant to check against the total at the top. */
+.planTotal {
+  margin-top: 0.7rem;
+  padding: 0.7rem 0 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--cedge-orange-2);
+}
+.planTotal .planHeadValue { color: var(--gold-ink); }
+
+.planRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+.planRows > li + li { margin-top: 0; }
+
+/* A date column, a description that can wrap, and an amount that cannot. */
+.planRow {
+  display: grid;
+  grid-template-columns: 6.4rem minmax(0, 1fr) auto;
+  gap: 0.5rem 0.75rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--edge-t08);
+}
+.planRow:last-child { border-bottom: 0; }
+
+/* The deposit is not one of the instalments — it is what the other four are
+   allocated after, so it is marked rather than numbered. */
+.planDeposit { color: var(--text); }
+.planDeposit .planWhen { color: var(--accent); }
+
+.planWhen {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gold-ink);
+  min-width: 0;
+}
+
+.planWhat {
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.planSub {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--muted-2);
+}
+
+.planAmount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ---- the fortnight of cash ----------------------------------------------- */
+
+.cash {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+
+.cashHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--edge-t08);
+}
+
+.cashHeadLabel {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  min-width: 0;
+}
+
+.cashHeadValue {
+  font-size: 1rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cashRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cashRows > li + li { margin-top: 0; }
+
+.cashDay { padding: 0.7rem 0; border-bottom: 1px solid var(--edge-t08); }
+.cashDay:last-child { border-bottom: 0; }
+
+.cashDayHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.cashDate {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+/* The balance carried down. A day under the buffer is marked by a word as well
+   as a colour — the ‹ glyph and the bolder weight survive greyscale. */
+.cashBalance {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.cashBalance[data-low='true'] { color: var(--warn); }
+.cashBalance[data-low='true']::before {
+  content: '\25BE\00a0';
+  font-weight: 400;
+}
+
+.cashEvents {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.cashEvents > li + li { margin-top: 0; }
+
+.cashEvent {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr) auto;
+  gap: 0.35rem 0.7rem;
+  align-items: baseline;
+}
+
+.cashKind {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  opacity: 0.85;
+  min-width: 0;
+}
+
+.cashWhat {
+  min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cashDetail {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--muted-2);
+}
+
+/* Direction is carried by the sign in the markup, not by colour alone. */
+.cashAmount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.cashAmount[data-direction='in'] { color: var(--gold-ink); }
+
+.cashVerdicts {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--cedge-orange-2);
+  display: grid;
+  gap: 0.45rem;
+}
+.cashVerdicts > li + li { margin-top: 0; }
+
+.cashVerdicts > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  flex-wrap: wrap;
+}
+
+.cashVerdictLabel {
+  font-size: 0.78rem;
+  color: var(--muted-2);
+  min-width: 0;
+}
+
+.cashVerdictValue {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .showcaseGrid { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 720px) {
   .record { font-size: 0.8rem; }
   .capGroup { padding: 1rem 1.05rem 1.1rem; }
+  /* Both panels drop their leading label column: at 390px a 6.4rem date gutter
+     leaves about 9 characters for the description, which wraps to four lines. */
+  .planRow,
+  .cashEvent { grid-template-columns: minmax(0, 1fr) auto; }
+  .planWhen,
+  .cashKind { grid-column: 1 / -1; }
   /* The timestamps are the first thing to give up their column on a narrow
      screen — without this the stage label wraps to two lines to keep "TUE
      9–11 AM" on the same row as it. */

@@ -1,0 +1,155 @@
+/* PriceZeroDial — a circular price mark.
+ *
+ * The idea is borrowed; the palette is not. Every neutral here is written
+ * `rgba(var(--tint), α)` or a token, and the one hue is the app's literal
+ * orange — which is exactly the condition under which this file needs no light
+ * theme override at all. `:root[data-theme='light']` keeps `--tint` white
+ * because the marketing canvas stays dark under Harbour (only content sheets
+ * invert), so the dial renders identically in both themes with zero extra
+ * rules. Do not add a `[data-theme='light']` block; it would be the bug.
+ *
+ * Every length below derives from one custom property, --price-dial, so the
+ * proportions cannot drift apart at a breakpoint and there is exactly one
+ * number to change. It must stay a pure LENGTH — never a percentage — because
+ * a percentage inside calc() resolves against the parent font-size when it
+ * lands in `font-size`, which silently breaks the numeral. */
+
+.dial {
+  /* Safety default only; a variant class always overrides it. */
+  --price-dial: 18.5rem;
+  position: relative;
+  width: var(--price-dial);
+  aspect-ratio: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 46%, rgba(255, 122, 33, 0.16), transparent 63%);
+  /* The elevation idiom the marketing pages already use: a warm radial wash
+     plus a soft outer bloom, the same pairing as .cta-band and
+     .recurring-cadence-mark. Not a new effect, the existing one at dial size. */
+  box-shadow:
+    inset 0 1px 0 rgba(var(--tint), 0.06),
+    inset 0 0 calc(var(--price-dial) * 0.18) rgba(255, 122, 33, 0.07),
+    0 30px 60px -34px rgba(var(--shade), 0.55),
+    0 0 56px -14px rgba(255, 122, 33, 0.22);
+}
+
+/* The two concentric rings. Insets are the source's ratios rounded: .078 -> 8%,
+   .170 -> 17.5%. The outer glow is meant to bleed past a host card's edge the
+   way .cta-band's does, so hosts must not put `overflow: hidden` on the
+   section. box-shadow never creates scrollable overflow, so that is safe. */
+.dial::before,
+.dial::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.dial::before {
+  inset: 8%;
+  border: 1px solid var(--edge-t08);
+}
+
+.dial::after {
+  inset: 17.5%;
+  border: 1px solid rgba(var(--tint), 0.05);
+}
+
+/* Sized to the 0 ALONE, so the grid centres the numeral on the circle's axis.
+   The $ is taken out of flow below and hung off the left edge.
+
+   Do not make the $ and the 0 flex siblings. The source's `letter-spacing:-18px`
+   is a crude correction for a real problem — a $ in the flow drags the 0 off
+   the circle's axis — and removing that hack without removing its CAUSE just
+   mirrors the error instead of fixing it. Measured on a 320px dial: flex row,
+   no tracking, put the 0 15.5px RIGHT of the axis, which is visible. Only the
+   0 may participate in centring.
+
+   Lifted a hair above true centre: the caption sits low in the circle, so
+   geometric centring reads as bottom-heavy. */
+.value {
+  grid-area: 1 / 1;
+  position: relative;
+  margin: 0;
+  font-family: var(--font-display);
+  line-height: 1;
+  transform: translateY(calc(var(--price-dial) * -0.035));
+}
+
+/* Out of flow, hung off the 0's left edge, so it adds no width to centre.
+   The 0.05 top lands the $ ink level with the top of the numeral. */
+.currency {
+  position: absolute;
+  right: 100%;
+  top: calc(var(--price-dial) * 0.05);
+  margin-right: calc(var(--price-dial) * 0.012);
+  font-size: calc(var(--price-dial) * 0.14);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+/* letter-spacing stays `normal`. The source tracks this glyph to -18px, but
+   tracking is applied AFTER a character, so on a lone numeral it adds nothing
+   between anything and simply shoves the 0 off the circle's axis. There is
+   nothing to track against. */
+.zero {
+  font-size: calc(var(--price-dial) * 0.5);
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--text);
+}
+
+/* Floor of 0.66rem on purpose: this is meaningful text, not a watermark, and
+   the source's 8px is smaller than anything else in this codebase.
+   It WRAPS rather than staying on one line — the deliberate departure from the
+   source. At the smallest `inline` dial (198px at a 320px viewport) a tracked
+   20-character caption measures ~160px against a ~142px chord at this height,
+   so a nowrap caption would poke outside the circle. Allowed to break, it
+   becomes two centred lines that sit comfortably inside the inner ring, and at
+   every larger size it stays on one line anyway. max-width keeps the break
+   point inside the ring rather than at the circle's edge. */
+.caption {
+  position: absolute;
+  left: 50%;
+  bottom: 15%;
+  transform: translateX(-50%);
+  max-width: 72%;
+  text-align: center;
+  text-wrap: balance;
+  font-size: clamp(0.66rem, calc(var(--price-dial) * 0.036), 0.74rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+/* ---- sizing -------------------------------------------------------------- */
+/* Phone first. At 390px the usable width inside .marketing-shell (1rem
+   padding-inline below 640) and .section-block (1.15rem below 640) is 321px;
+   18.5rem = 296px clears it, and the vw term keeps 320px viewports safe. */
+.lead {
+  --price-dial: min(18.5rem, 76vw);
+}
+
+.inline {
+  --price-dial: min(15.5rem, 62vw);
+}
+
+/* At 900 the host grids go two-column, so the dial shares the row and steps
+   down to a share of the viewport. 900 is the breakpoint home-next.module.css
+   already uses for exactly this collapse, so the dial shrinks in the same
+   frame that the row splits. */
+@media (min-width: 900px) {
+  .lead {
+    --price-dial: clamp(17rem, 25vw, 22rem);
+  }
+
+  .inline {
+    --price-dial: clamp(14rem, 19vw, 17rem);
+  }
+}

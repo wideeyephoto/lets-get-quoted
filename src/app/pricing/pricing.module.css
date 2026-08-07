@@ -35,3 +35,176 @@
 .usValue {
   color: var(--gold-ink);
 }
+
+/* ============================================================
+   The $0 band — layout only
+   ============================================================
+   PriceZeroDial brings its own size, colour and type; this file only decides
+   where it sits. Do not set a width on it here, and do not put `overflow:
+   hidden` on this band: the dial's outer bloom is meant to bleed past the card
+   edge the way .cta-band's does, and a box-shadow creates no scrollable
+   overflow, so the page body stays put at 390px either way. */
+.zeroBand {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(1.5rem, 4vw, 2.75rem);
+}
+
+/* The dial, centred while it's stacked. */
+.zeroBand > :first-child {
+  justify-self: center;
+}
+
+/* Grid children default to min-content-sized, which lets the ledger's longest
+ * unbreakable string set the column width. */
+.zeroCopy {
+  min-width: 0;
+}
+
+/* 900 is PriceZeroDial's own step-down breakpoint, so the dial shrinks in the
+ * same frame that the row splits into two columns. */
+@media (min-width: 900px) {
+  .zeroBand {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+/* globals centres .pricing-takehome and caps it at 30rem, sized for the
+ * homepage where it stands alone under a chart. Here it is a grid column, so it
+ * fills the one it's in. */
+.zeroLedger {
+  margin: 1.2rem 0 0;
+  max-width: none;
+}
+
+/* ============================================================
+   Where a single payment goes
+   ============================================================ */
+.payFrame {
+  margin-top: 1.4rem;
+}
+
+.payAnatomy {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.payTotal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  margin: 0;
+}
+
+/* The same mono/tracked label treatment as .pricing-takehome-h above, so the
+ * two money cards on this page read as one family. */
+.payTotalLabel {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.payTotalValue {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 5vw, 1.95rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+
+/* The one place on this page that states the fee's SIZE rather than its rate,
+ * so both slices are true widths. There is deliberately no min-width floor on
+ * the fee slice: a floor would draw the fee larger than it is, which is the
+ * single lie this graphic is capable of telling. At the narrowest card the
+ * slice is still ~4px of accent against a 44px-tall bar, which reads clearly. */
+.payBar {
+  display: flex;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(var(--tint), 0.03);
+}
+
+.payBarNet {
+  background: linear-gradient(180deg, rgba(var(--tint), 0.17), rgba(var(--tint), 0.09));
+}
+
+.payBarFee {
+  background: var(--accent);
+}
+
+.payRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.payRows li {
+  display: grid;
+  grid-template-columns: 0.7rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.payRows li:first-child {
+  border-top: 0;
+  padding-top: 0.2rem;
+}
+
+.paySwatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  align-self: center;
+}
+
+.paySwatchNet {
+  background: rgba(var(--tint), 0.22);
+}
+
+.paySwatchFee {
+  background: var(--accent);
+}
+
+/* Dashed and hollow because this row has no slice on the bar — the swatch says
+ * "named here, not drawn above" before the caption has to. */
+.paySwatchOther {
+  border: 1px dashed var(--line);
+  background: transparent;
+}
+
+.payRowLabel {
+  min-width: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.payRowLabel small {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+
+.payRowValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* Stripe's line carries no dollar figure and shouldn't look like it does. */
+.payRowAside .payRowValue {
+  font-weight: 600;
+  color: var(--muted-2);
+}

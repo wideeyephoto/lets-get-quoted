@@ -5,12 +5,15 @@ import StickyCta from '@/components/sticky-cta';
 import {
   APP_SIGNUP_URL,
   CtaLink,
+  ExampleFrame,
   MARKETING_MAIN_ID,
   MARKETING_PAGE_CLASS,
   MarketingCta,
   MarketingHeader,
+  PriceZeroDial,
 } from '@/components/marketing';
-import { FEE_TIERS } from '@/lib/pricing';
+import { FEATURE_CATEGORIES, FEATURE_COUNT } from '@/lib/features';
+import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './founder.module.css';
 
 export const metadata: Metadata = {
@@ -86,6 +89,80 @@ const PRINCIPLES: { title: string; body: string }[] = [
     body: 'The one-truck business gets the same quoting, scheduling, payments, client portal and follow-up as the operator running four crews. I am not building a smaller version of the product for the people who can least afford the gaps in it.',
   },
 ];
+
+/* ------------------------------------------------------------------------- */
+/* "Context should travel", drawn instead of asserted.                        */
+/*                                                                            */
+/* Every field on the left is one the public intake actually stores           */
+/* (src/app/api/public/leads/route.ts -> createLead: name, phone, email,      */
+/* address, projectType, message, photoPaths), and every destination on the   */
+/* right is a place shipped code reads those same columns back out. The       */
+/* homeowner, the address and the job are invented — hence the ExampleFrame — */
+/* but the plumbing is not.                                                   */
+/* ------------------------------------------------------------------------- */
+
+const INTAKE_FIELDS: { label: string; value: string }[] = [
+  { label: 'Name', value: 'D. Whitfield' },
+  { label: 'Phone', value: '(555) 014-9820' },
+  { label: 'Email', value: 'd.whitfield@example.com' },
+  { label: 'Address', value: '22 Linden Ct, Royal Oak MI' },
+  { label: 'Project type', value: 'Kitchen remodel' },
+  {
+    label: 'What’s happening',
+    value: 'Cabinets are original to the house and the sink base has gone soft. Hoping to start before fall.',
+  },
+  { label: 'Photos', value: '3 attached' },
+];
+
+/* Each `how` describes a real code path, and each `carries` lists only columns
+   that path genuinely moves:
+     1. src/lib/leads.ts convertLeadToJob — clientName / clientPhone /
+        clientEmail / address, plus a scope assembled from project_type +
+        message.
+     2. src/lib/jobs.ts createJob — findOrCreateClientId on the same name,
+        phone, email and address, so the job links to a client profile.
+     3. src/app/field/jobs/[id]/page.tsx — selects client_name, client_phone,
+        address and scope and renders them for the assigned crew.
+     4. src/lib/message-context.ts messageContext — a normalised inbound number
+        resolves to client -> job (titled by its scope) -> latest invoice.
+     5. src/lib/invoices.ts getPublicInvoice — job.client_name and ref on the
+        signing page; src/lib/client-portal.ts PortalJob — scope, address,
+        quotedAmount for every job under that client. */
+const TRAVEL_STOPS: { title: string; how: string; carries: string[] }[] = [
+  {
+    title: 'The job record',
+    how: 'Turning the request into a job carries the contact details across as they were typed, and files the project type and the description together as the scope of work.',
+    carries: ['Name', 'Phone', 'Email', 'Address', 'Scope'],
+  },
+  {
+    title: 'The client in the book',
+    how: 'That same phone number and email either match a client already on file or open a new one, so the second job at this house lands on the same record as the first.',
+    carries: ['Name', 'Phone', 'Email', 'Address'],
+  },
+  {
+    title: 'The crew’s job screen',
+    how: 'Whoever is assigned opens the job on their own phone and reads the address and the scope the homeowner wrote. Nobody retypes it into a text message the night before.',
+    carries: ['Name', 'Phone', 'Address', 'Scope'],
+  },
+  {
+    title: 'The message thread',
+    how: 'A text from that number arrives with the client, the job it is most likely about and the latest invoice already attached to the conversation.',
+    carries: ['Name', 'Address', 'Scope', 'Latest invoice'],
+  },
+  {
+    title: 'The invoice, and the homeowner’s portal',
+    how: 'The invoice they sign is headed with the name they gave. Their portal link lists every job filed under them — scope, address and what they were quoted.',
+    carries: ['Name', 'Address', 'Scope'],
+  },
+];
+
+/* The honest counterweight. convertLeadToJob does not pass photoPaths to
+   createJob, so photos genuinely stay on the lead. Drawing them travelling
+   would be the easy lie; this is the weaker true thing. */
+const TRAVEL_STAYS = {
+  title: 'The photos stay on the request',
+  how: 'They belong to the message they arrived with and are not copied onto the job. One thing on this page that does not travel, said out loud rather than quietly drawn as if it did.',
+};
 
 export default function FounderPage() {
   return (
@@ -167,6 +244,71 @@ export default function FounderPage() {
             </ol>
           </section>
 
+          {/* The page's one product graphic. It exists because "context should
+              travel" is the claim the whole product rests on and, until now,
+              the page only stated it. A screenshot cannot argue it — the point
+              is not what one screen looks like, it is that five screens are
+              reading the same row. So: the request on the left, the places it
+              turns up on the right, and the one thing that stays behind. */}
+          <section className="section-block" aria-labelledby="founder-travel-title">
+            <div className={styles.sectionHead}>
+              <p className="eyebrow">Captured once</p>
+              <h2 id="founder-travel-title">What a homeowner types should never be typed again.</h2>
+              <p className={styles.sectionLede}>
+                One request comes in. Everything after it—the job, the client record, the crew’s
+                screen, the text thread, the invoice—reads what the homeowner already wrote instead
+                of asking somebody to key it in a second time.
+              </p>
+            </div>
+
+            <ExampleFrame
+              className={styles.travelFrame}
+              label="One request, and where its values turn up next"
+              note="Sample homeowner and job. The fields on the left are the ones the intake actually stores, and each destination is a place the product already reads them back out."
+            >
+              <div className={styles.travel}>
+                <div className={styles.origin}>
+                  {/* A <p>, not an <h3>: this is a picture of a form inside an
+                      example frame, and a real heading here would let the mock
+                      outrank the section it sits in. */}
+                  <p className={styles.originTitle}>Request from your website</p>
+                  <dl className={styles.fields}>
+                    {INTAKE_FIELDS.map((field) => (
+                      <div key={field.label} className={styles.field}>
+                        <dt className={styles.fieldLabel}>{field.label}</dt>
+                        <dd className={styles.fieldValue}>{field.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+
+                <div className={styles.stopsWrap}>
+                  <p className={styles.stopsTitle}>Where those values appear afterwards</p>
+                  <ol className={styles.stops}>
+                    {TRAVEL_STOPS.map((stop) => (
+                      <li key={stop.title} className={styles.stop}>
+                        <p className={styles.stopTitle}>{stop.title}</p>
+                        <p className={styles.stopHow}>{stop.how}</p>
+                        <ul className={styles.chips} aria-label={`Values carried into ${stop.title}`}>
+                          {stop.carries.map((carried) => (
+                            <li key={carried} className={styles.chip}>
+                              {carried}
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className={styles.stays}>
+                    <p className={styles.staysTitle}>{TRAVEL_STAYS.title}</p>
+                    <p className={styles.stopHow}>{TRAVEL_STAYS.how}</p>
+                  </div>
+                </div>
+              </div>
+            </ExampleFrame>
+          </section>
+
           <section className="section-block" aria-labelledby="founder-principles-title">
             <div className={styles.sectionHead}>
               <p className="eyebrow">What guides the build</p>
@@ -183,6 +325,58 @@ export default function FounderPage() {
                 </li>
               ))}
             </ul>
+          </section>
+
+          {/* The $0 dial, and the reason it is not a naked circle: on its own it
+              would be the "empty decorative space" this page is meant to avoid.
+              Beside it is the whole catalogue, read from FEATURE_CATEGORIES at
+              build time — category names and counts only, so it states the
+              shape of the product without reprinting /features. It is the proof
+              of the fourth principle above: the free account is not the
+              stripped-down one, because there is no tier field anywhere in the
+              catalogue to strip it with.
+              Not an ExampleFrame — the price and the counts are real, and an
+              "Example" badge on either would read as a hedge. */}
+          <section className="section-block" aria-labelledby="founder-zero-title">
+            <div className={styles.zeroBand}>
+              <PriceZeroDial variant="lead" className={styles.zeroDial} />
+
+              <div className={styles.zeroCopy}>
+                <div className={styles.sectionHead}>
+                  <p className="eyebrow">Software should earn its keep</p>
+                  <h2 id="founder-zero-title">Nothing to pay before the product moves money.</h2>
+                </div>
+                <p className={styles.sectionLede}>
+                  There is no plan to choose and no tier to grow out of. There is one catalogue—
+                  {` ${FEATURE_COUNT} `}features across {FEATURE_CATEGORIES.length} groups—and the
+                  one-truck account opens with all of it.
+                </p>
+
+                <p className={styles.catalogueHead} id="founder-catalogue-head">
+                  Every group, in every account
+                </p>
+                <ul className={styles.catalogue} aria-labelledby="founder-catalogue-head">
+                  {FEATURE_CATEGORIES.map((category) => (
+                    <li key={category.slug} className={styles.catRow}>
+                      <span className={styles.catNum} aria-hidden="true">
+                        {category.num}
+                      </span>
+                      <span className={styles.catTitle}>{category.title}</span>
+                      <span className={styles.catCount}>
+                        {category.features.length}
+                        <span className="sr-only"> features</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <p className={styles.zeroNote}>
+                  The one charge is the platform fee, taken out of a payment a homeowner actually
+                  makes to you—never a monthly bill, and never a charge for reaching a feature.
+                  Card processing ({STRIPE_PROCESSING_NOTE}) is separate and goes to Stripe.
+                </p>
+              </div>
+            </div>
           </section>
 
           <MarketingCta

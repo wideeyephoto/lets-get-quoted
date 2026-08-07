@@ -19,5 +19,8 @@ export { MARKETING_PAGE_CLASS, MARKETING_MAIN_ID } from './marketing-page';
 export { default as ExampleFrame } from './example-frame';
 export type { ExampleFrameProps } from './example-frame';
 
+export { default as PriceZeroDial } from './price-zero-dial';
+export type { PriceZeroDialProps } from './price-zero-dial';
+
 export { CtaLink, APP_SIGNUP_URL, DEMO_URL, FEATURES_URL } from './links';
 export type { CtaLinkSpec } from './links';

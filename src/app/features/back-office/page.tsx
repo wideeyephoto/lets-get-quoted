@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import { ExampleFrame, FeatureDetailLayout } from '@/components/marketing';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import {
+  DEFAULT_PLAN,
+  buildPlanSchedule,
+  formatPlanDate,
+  planSchedulePreview,
+} from '@/lib/payment-plan-math';
+import { KIND_LABEL, buildForecast, type CashEvent } from '@/lib/cash-forecast';
 import styles from './back-office.module.css';
 
 export const metadata: Metadata = {
@@ -240,6 +247,204 @@ const CAPABILITY_GROUPS: { stage: string; items: { term: string; detail: string 
 
 const CAPABILITY_COUNT = CAPABILITY_GROUPS.reduce((total, group) => total + group.items.length, 0);
 
+/* ------------------------------------------------------------------------- */
+/* Two showcases whose numbers this page does not type.                       */
+/*                                                                            */
+/* src/lib/payment-plan-math.ts and src/lib/cash-forecast.ts are both pure and */
+/* free of app imports — that is a deliberate property of those modules, so    */
+/* the engine, the dashboard and the client loader can all share them. It also */
+/* means this page can call the SHIPPED functions at build time and render     */
+/* what they return. Every amount, every due date, every verdict below is      */
+/* computed by the same code that runs in the product. The only invented       */
+/* things are the inputs: a job total, a first due date, a starting balance    */
+/* and nine dated movements. Hence the Example frames.                         */
+/* ------------------------------------------------------------------------- */
+
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const money = (cents: number) => usd.format(cents / 100);
+const dollars = (amount: number) => usd.format(amount);
+
+/* ---- the payment plan ---------------------------------------------------- */
+
+/* An invented approved total, chosen for one reason: 50% of it does not divide
+   into four whole cents. That is the case worth showing — allocateInstallments
+   floors the first three parts and puts the remainder on the LAST one, so the
+   schedule sums to exactly the approved total and a plan can never over- or
+   under-charge a quote. A total that divided evenly would hide the guarantee. */
+const PLAN_TOTAL_CENTS = 745_500;
+const PLAN_FIRST_DUE = '2026-10-15';
+
+const PLAN = buildPlanSchedule(
+  PLAN_TOTAL_CENTS,
+  DEFAULT_PLAN.depositPercent,
+  DEFAULT_PLAN.installmentCount,
+);
+
+const PLAN_ROWS = planSchedulePreview({
+  total_cents: PLAN_TOTAL_CENTS,
+  deposit_cents: PLAN.depositCents,
+  installment_count: DEFAULT_PLAN.installmentCount,
+  frequency: DEFAULT_PLAN.frequency,
+  first_installment_date: PLAN_FIRST_DUE,
+});
+
+/* Added back up rather than asserted: if the allocation ever stopped summing to
+   the total, this figure would stop matching it on the page. */
+const PLAN_SUM_CENTS =
+  PLAN.depositCents + PLAN_ROWS.reduce((total, row) => total + row.amountCents, 0);
+const PLAN_REMAINDER_CENTS =
+  PLAN_ROWS.length > 1 ? PLAN_ROWS[PLAN_ROWS.length - 1].amountCents - PLAN_ROWS[0].amountCents : 0;
+
+/* ---- the fortnight of cash ----------------------------------------------- */
+
+/* Nine dated movements of the kind the record already holds: material orders,
+   payroll runs, a deposit link nobody has clicked, a payment-plan instalment
+   due off a saved card, a final balance, a truck payment, an insurance bill and
+   a recurring maintenance visit. Every `kind` is a real CashEventKind and every
+   label under it comes from the product's own KIND_LABEL map.
+   `confirmed: false` means we worked it out rather than that it is booked —
+   the deposit and the final balance are both money a homeowner has not paid
+   yet, which is why they are also the two that `slips`. */
+const CASH_TODAY = '2026-09-07';
+const CASH_DAYS = 14;
+const CASH_STARTING_BALANCE = 9_200;
+const CASH_BUFFER = 5_000;
+const CASH_LATE_DAYS = 7;
+
+const CASH_EVENTS: CashEvent[] = [
+  {
+    id: 'materials-panel',
+    dateKey: '2026-09-08',
+    label: 'Supply house order',
+    detail: 'Panel and EV circuit · Fairview Ave',
+    amount: -1_840,
+    kind: 'materials',
+    confirmed: true,
+    slips: false,
+    repeating: false,
+    href: null,
+  },
+  {
+    id: 'deposit-whitfield',
+    dateKey: '2026-09-09',
+    label: 'Deposit — Whitfield',
+    detail: 'Payment link sent, not yet opened',
+    amount: 3_727.5,
+    kind: 'deposit',
+    confirmed: false,
+    slips: true,
+    repeating: false,
+    href: null,
+  },
+  {
+    id: 'payroll-1',
+    dateKey: '2026-09-11',
+    label: 'Crew payroll',
+    detail: 'Week ending 6 Sep · 3 on the clock',
+    amount: -6_400,
+    kind: 'payroll',
+    confirmed: true,
+    slips: false,
+    repeating: true,
+    href: null,
+  },
+  {
+    id: 'truck-loan',
+    dateKey: '2026-09-14',
+    label: 'Truck payment',
+    detail: 'Monthly, on the 14th',
+    amount: -742,
+    kind: 'loan',
+    confirmed: true,
+    slips: false,
+    repeating: true,
+    href: null,
+  },
+  {
+    id: 'installment-1',
+    dateKey: '2026-09-15',
+    label: 'Payment plan — instalment 1 of 4',
+    detail: 'Runs against the card saved at deposit',
+    amount: 931.87,
+    kind: 'installment',
+    confirmed: true,
+    slips: false,
+    repeating: true,
+    href: null,
+  },
+  {
+    id: 'final-lighting',
+    dateKey: '2026-09-17',
+    label: 'Balance — kitchen lighting',
+    detail: 'Due on completion',
+    amount: 1_860,
+    kind: 'final',
+    confirmed: false,
+    slips: true,
+    repeating: false,
+    href: null,
+  },
+  {
+    id: 'payroll-2',
+    dateKey: '2026-09-18',
+    label: 'Crew payroll',
+    detail: 'Week ending 13 Sep · 3 on the clock',
+    amount: -6_400,
+    kind: 'payroll',
+    confirmed: true,
+    slips: false,
+    repeating: true,
+    href: null,
+  },
+  {
+    id: 'insurance',
+    dateKey: '2026-09-19',
+    label: 'General liability',
+    detail: 'Monthly premium',
+    amount: -385,
+    kind: 'bill',
+    confirmed: true,
+    slips: false,
+    repeating: true,
+    href: null,
+  },
+  {
+    id: 'recurring-maintenance',
+    dateKey: '2026-09-19',
+    label: 'Maintenance plan — Alvarez',
+    detail: 'Every other week, bills itself',
+    amount: 240,
+    kind: 'recurring',
+    confirmed: true,
+    slips: false,
+    repeating: true,
+    href: null,
+  },
+];
+
+const CASH = buildForecast(CASH_EVENTS, {
+  todayKey: CASH_TODAY,
+  days: CASH_DAYS,
+  startingBalance: CASH_STARTING_BALANCE,
+  buffer: CASH_BUFFER,
+  lateDays: CASH_LATE_DAYS,
+});
+
+/** Only the days something happens — thirteen empty rows are not a forecast. */
+const CASH_ROWS = CASH.days.filter((day) => day.events.length > 0);
+
+const dayFormat = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+function dayLabel(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return dayFormat.format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 export default function BackOfficePage() {
   return (
     <FeatureDetailLayout
@@ -331,6 +536,192 @@ export default function BackOfficePage() {
               </dl>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* B1 — the payment plan, drawn by the module that builds it.
+          The capability list says "split the approved total into a deposit and
+          fixed instalments at 0%… the plan allocates the quote total and can
+          never increase it". This is that sentence, executed. */}
+      <section className="section-block" aria-labelledby="back-office-plan">
+        <div className={styles.showcaseGrid}>
+          <div className={styles.showcaseCopy}>
+            <p className="eyebrow">Payment plans without financing anybody</p>
+            <h2 id="back-office-plan">The whole schedule, before anybody signs it.</h2>
+            <p>
+              A homeowner who cannot write one cheque for {money(PLAN_TOTAL_CENTS)} can still say
+              yes. Half on approval, then {DEFAULT_PLAN.installmentCount} fixed{' '}
+              {DEFAULT_PLAN.frequency} parts off the card saved when the deposit was taken — at 0%.
+              No interest, no credit check, and nobody advances you the money.
+            </p>
+            <p className={styles.showcaseNote}>
+              The plan allocates the approved total and can never increase it. The first three
+              parts are floored to the cent and the last one absorbs what is left over, so the
+              schedule adds back up to exactly what was agreed
+              {PLAN_REMAINDER_CENTS > 0 ? (
+                <>
+                  {' '}
+                  — here the final instalment carries {money(PLAN_REMAINDER_CENTS)} more than the
+                  three before it
+                </>
+              ) : null}
+              .
+            </p>
+          </div>
+
+          <ExampleFrame
+            label="A payment plan as the homeowner is shown it"
+            note="Invented job total and invented dates. Every amount and every due date on this panel is produced by the product's own payment-plan module — none of them is typed onto the page."
+          >
+            <div className={styles.plan}>
+              <div className={styles.planHead}>
+                <span className={styles.planHeadLabel}>Approved total</span>
+                <b className={styles.planHeadValue}>{money(PLAN_TOTAL_CENTS)}</b>
+              </div>
+
+              <ol className={styles.planRows}>
+                <li className={`${styles.planRow} ${styles.planDeposit}`}>
+                  <span className={styles.planWhen}>On approval</span>
+                  <span className={styles.planWhat}>
+                    Deposit
+                    <span className={styles.planSub}>
+                      {DEFAULT_PLAN.depositPercent}% of the approved total
+                    </span>
+                  </span>
+                  <span className={styles.planAmount}>{money(PLAN.depositCents)}</span>
+                </li>
+
+                {PLAN_ROWS.map((row) => (
+                  <li key={row.seq} className={styles.planRow}>
+                    <span className={styles.planWhen}>{formatPlanDate(row.dueDate)}</span>
+                    <span className={styles.planWhat}>
+                      Instalment {row.seq} of {PLAN_ROWS.length}
+                      <span className={styles.planSub}>
+                        {row.seq === PLAN_ROWS.length && PLAN_REMAINDER_CENTS > 0
+                          ? 'Carries the rounding remainder'
+                          : `Charged ${DEFAULT_PLAN.frequency}, off the saved card`}
+                      </span>
+                    </span>
+                    <span className={styles.planAmount}>{money(row.amountCents)}</span>
+                  </li>
+                ))}
+              </ol>
+
+              <div className={`${styles.planHead} ${styles.planTotal}`}>
+                <span className={styles.planHeadLabel}>Deposit + instalments</span>
+                <b className={styles.planHeadValue}>{money(PLAN_SUM_CENTS)}</b>
+              </div>
+            </div>
+          </ExampleFrame>
+        </div>
+      </section>
+
+      {/* B2 — cash flow you can see coming.
+          The capability list promises "the week you cannot make payroll is a
+          week you find out about before it arrives" and nothing on the page
+          showed it. This is a fortnight of the record's own dated money, run
+          through the shipped forecast module. */}
+      <section className="section-block" aria-labelledby="back-office-cash">
+        <div className={styles.showcaseGrid}>
+          <div className={styles.showcaseCopy}>
+            <p className="eyebrow">Cash flow you can see coming</p>
+            <h2 id="back-office-cash">The payroll you cannot make, {CASH_DAYS} days early.</h2>
+            <p>
+              Deposits, balances, plan instalments and recurring visits are already dated on the
+              record, and so are payroll, materials, the truck payment and the bills. Lined up in
+              order, they answer the only question that matters on a Friday: what is the balance
+              going to be when the next payroll clears?
+            </p>
+            <p className={styles.showcaseNote}>
+              Nothing here reads a bank. The starting figure is one you type in, and every row
+              below it is something already on your own record, dated forward.
+            </p>
+          </div>
+
+          <ExampleFrame
+            label={`${CASH_DAYS} days of dated money, with the balance carried down`}
+            note="Invented starting balance and invented movements. The running balance, the lowest point and the late-payment stress test are all computed by the product's forecast module from the rows shown."
+          >
+            <div className={styles.cash}>
+              <div className={styles.cashHead}>
+                <span className={styles.cashHeadLabel}>Money in the bank today (you enter this)</span>
+                <b className={styles.cashHeadValue}>{dollars(CASH_STARTING_BALANCE)}</b>
+              </div>
+
+              <ul className={styles.cashRows}>
+                {CASH_ROWS.map((day) => (
+                  <li key={day.dateKey} className={styles.cashDay}>
+                    <div className={styles.cashDayHead}>
+                      <span className={styles.cashDate}>{dayLabel(day.dateKey)}</span>
+                      <span
+                        className={styles.cashBalance}
+                        data-low={day.projected < CASH_BUFFER ? 'true' : undefined}
+                      >
+                        {dollars(day.projected)}
+                      </span>
+                    </div>
+                    <ul className={styles.cashEvents}>
+                      {day.events.map((event) => (
+                        <li key={event.id} className={styles.cashEvent}>
+                          <span className={styles.cashKind}>{KIND_LABEL[event.kind]}</span>
+                          <span className={styles.cashWhat}>
+                            {event.label}
+                            <span className={styles.cashDetail}>
+                              {event.detail}
+                              {event.confirmed ? '' : ' · not confirmed yet'}
+                            </span>
+                          </span>
+                          <span
+                            className={styles.cashAmount}
+                            data-direction={event.amount < 0 ? 'out' : 'in'}
+                          >
+                            {event.amount < 0 ? '−' : '+'}
+                            {dollars(Math.abs(event.amount))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+
+              <ul className={styles.cashVerdicts}>
+                <li>
+                  <span className={styles.cashVerdictLabel}>Lowest projected balance</span>
+                  <span className={styles.cashVerdictValue}>
+                    {dollars(CASH.lowest.balance)} on {dayLabel(CASH.lowest.dateKey)}
+                  </span>
+                </li>
+                {CASH.firstBelowBuffer ? (
+                  <li>
+                    <span className={styles.cashVerdictLabel}>
+                      First day under your {dollars(CASH_BUFFER)} floor
+                    </span>
+                    <span className={styles.cashVerdictValue}>
+                      {dayLabel(CASH.firstBelowBuffer.dateKey)} —{' '}
+                      {dollars(CASH.firstBelowBuffer.balance)}
+                    </span>
+                  </li>
+                ) : null}
+                {CASH.worstCaseOverdraft ? (
+                  <li>
+                    <span className={styles.cashVerdictLabel}>
+                      If customer money lands {CASH_LATE_DAYS} days late
+                    </span>
+                    <span className={styles.cashVerdictValue}>
+                      Overdrawn by {dayLabel(CASH.worstCaseOverdraft.dateKey)}
+                    </span>
+                  </li>
+                ) : null}
+                <li>
+                  <span className={styles.cashVerdictLabel}>
+                    Cash you would need today to stay above the floor
+                  </span>
+                  <span className={styles.cashVerdictValue}>{dollars(CASH.safeStartingCash)}</span>
+                </li>
+              </ul>
+            </div>
+          </ExampleFrame>
         </div>
       </section>
     </FeatureDetailLayout>

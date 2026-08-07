@@ -6,7 +6,7 @@ import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
-import { CtaLink, ExampleFrame, MarketingCta, APP_SIGNUP_URL } from '@/components/marketing';
+import { CtaLink, ExampleFrame, MarketingCta, PriceZeroDial, APP_SIGNUP_URL } from '@/components/marketing';
 import { TRADES } from '@/lib/trades';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './home-next.module.css';
@@ -926,11 +926,14 @@ export default function HomeNextPage({ searchParams }: { searchParams: { frame?:
         {/* ---------------------------------------------------------------- */}
         <section className="section-block" id="pricing" aria-labelledby="pricing-title">
           <div className={styles.pricingGrid}>
-            <p className={styles.priceZero}>
-              <span aria-hidden="true">$</span>
-              <strong>0</strong>
-              <small>/ MONTH</small>
-            </p>
+            {/* The shared $0 dial replaces the flat $/0//MONTH mark that used to
+                sit here. Same slot, same first column of .pricingGrid, same
+                words — `/ MONTH` is Codex copy and stays verbatim; only the
+                treatment changes. `inline` rather than `lead` because this
+                section also carries the tier chart and the calculator, so the
+                dial states the number without shouting over them. It is not an
+                ExampleFrame on purpose: this is the real price, not a mock. */}
+            <PriceZeroDial variant="inline" caption="/ MONTH" srLabel="$0 per month." />
             <div className="section-heading">
               <p className="eyebrow">Full suite. No monthly subscription.</p>
               <h2 id="pricing-title">

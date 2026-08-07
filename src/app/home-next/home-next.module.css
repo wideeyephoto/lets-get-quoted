@@ -961,22 +961,9 @@
   gap: clamp(1.25rem, 3vw, 2.5rem);
   align-items: center;
 }
-.priceZero {
-  display: flex;
-  align-items: baseline;
-  gap: 0.15rem;
-  margin: 0;
-  font-family: var(--font-display);
-  line-height: 1;
-}
-.priceZero span { font-size: 1.6rem; color: var(--accent); }
-.priceZero strong { font-size: clamp(4rem, 11vw, 7rem); color: var(--text); }
-.priceZero small {
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  color: var(--muted-2);
-}
+/* The flat .priceZero mark that used to live here is gone — the first column of
+   .pricingGrid now holds the shared <PriceZeroDial>, which brings its own module
+   CSS and sizes itself. Nothing here should try to set its width. */
 
 .pricingPoints {
   list-style: none;
@@ -1016,7 +1003,6 @@
   .steps { gap: 2rem; }
   .clientGrid { grid-template-columns: 1fr; }
   .pricingGrid { grid-template-columns: 1fr; }
-  .priceZero { justify-content: flex-start; }
 }
 
 @media (max-width: 720px) {

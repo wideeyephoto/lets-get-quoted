@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEE_TIERS, STRIPE_PROCESSING_NOTE, marginalTierForVolume } from '@/lib/pricing';
 import { FEATURE_COUNT } from '@/lib/features';
 import PricingCalculator from './PricingCalculator';
+import { ExampleFrame, PriceZeroDial } from '@/components/marketing';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
 import styles from './pricing.module.css';
@@ -29,6 +30,36 @@ const included = [
   'Reviews, campaigns & rebook',
   'Insights, tax reports & QuickBooks export',
 ];
+
+// The $0 ledger beside the dial. Every line is a "$0" this page already asserts
+// in prose — the hero's "no setup fee and no monthly subscription" above, and
+// "no per-seat pricing, no premium tier, no feature paywall" below. The ledger
+// only restates those as line items; it introduces no fifth claim, and there is
+// no figure here that isn't the literal number zero.
+const ZERO_LINES = ['Software subscription', 'Per-seat charges', 'Setup fee', 'Premium feature tiers'];
+
+// ---- "Where a single payment goes" -----------------------------------------
+// The tier chart states rates and the calculator states yearly totals; neither
+// shows one payment, which is the FAQ's own question further down ("When am I
+// charged?" — "the fee comes out of that payment automatically"). That answer is
+// literally how the product works: payments.platform_fee is a real per-payment
+// column, summed in src/lib/platform-fees.ts.
+//
+// Nothing below is typed out. The amount is an example, declared as one and
+// shown inside an ExampleFrame; the fee is computed from FEE_TIERS at the FIRST
+// tier — the highest of the four, the rate before any volume discount — so the
+// slice drawn is the largest it ever gets.
+const SAMPLE_PAYMENT = 2400;
+const SAMPLE_TIER = marginalTierForVolume(0);
+const SAMPLE_FEE = SAMPLE_PAYMENT * (SAMPLE_TIER.ratePct / 100);
+const SAMPLE_AFTER_FEE = SAMPLE_PAYMENT - SAMPLE_FEE;
+// Bar geometry, derived from the money rather than restated, so the drawing and
+// the ledger can never disagree.
+const SAMPLE_FEE_SHARE = (SAMPLE_FEE / SAMPLE_PAYMENT) * 100;
+
+function money(value: number): string {
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
 
 // The pricing-model comparison. Deliberately a comparison of two BILLING
 // MODELS, not of two products: no vendor is named, and no competitor's price is
@@ -182,6 +213,49 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* The page's lead graphic. /pricing carried no visual at all, so the first
+          thing under an h1 about "no subscription" was a bar chart of the fee
+          that DOES apply. Read in order it now goes: the zero → the fee that
+          isn't zero → the calculator. The dial states a price of $0; the chart
+          below states four rates that are not $0. Different numbers, different
+          claims, no overlap — the chart and calculator are untouched.
+
+          The dial does not stand alone: a circle in an empty card is decoration.
+          The ledger beside it itemises what the zero covers, so the band carries
+          information rather than ornament.
+
+          Deliberately NOT wrapped in ExampleFrame. Every product mock on these
+          pages takes the frame because it shows invented data; this is the real
+          price, and an "Example" badge on it would read as a hedge on the
+          number itself. */}
+      <section className="section-block" aria-labelledby="zero-title">
+        <div className={styles.zeroBand}>
+          <PriceZeroDial variant="lead" />
+          <div className={styles.zeroCopy}>
+            <div className="section-heading">
+              <p className="eyebrow">Before a homeowner pays you</p>
+              <h2 id="zero-title">Nothing is due until money lands.</h2>
+            </div>
+            {/* .pricing-takehome and its rows are existing globals (the homepage
+                uses the same card), so the mono label, tabular values and gold
+                total row come for free rather than being re-declared here. */}
+            <div className={`pricing-takehome ${styles.zeroLedger}`}>
+              <p className="pricing-takehome-h">What the software costs you each month</p>
+              <ul className="pricing-takehome-rows">
+                {ZERO_LINES.map((line) => (
+                  <li key={line}><span>{line}</span><span className="v">$0</span></li>
+                ))}
+                <li className="keep"><span>Total billed each month</span><span className="v">$0</span></li>
+              </ul>
+              <p className="pricing-takehome-note">
+                The only charge is the platform fee below, and only on a payment a homeowner actually makes to you.
+                Standard Stripe processing ({STRIPE_PROCESSING_NOTE}) applies separately and goes to Stripe, not to us.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="section-block pricing-band">
         <div className="section-heading">
           <p className="eyebrow">The more you grow, the less you pay</p>
@@ -210,6 +284,78 @@ export default function PricingPage() {
           <p>Drag to your yearly volume &mdash; the fee is figured across brackets, the way you&apos;d actually be billed.</p>
         </div>
         <PricingCalculator />
+      </section>
+
+      {/* Its own section rather than a panel tacked under the calculator: a
+          static figure sitting directly beneath a slider looks like it ought to
+          move when you drag, and this one doesn't.
+
+          Stripe's cut is named but not drawn. src/lib/pricing.ts publishes it as
+          prose (STRIPE_PROCESSING_NOTE), not as numbers, so quantifying it here
+          would mean typing a percentage this page has no source for — exactly
+          the invented precision we don't ship. The bar therefore shows only the
+          split we can compute exactly, and the note says so. */}
+      <section className="section-block" aria-labelledby="one-payment-title">
+        <div className="section-heading">
+          <p className="eyebrow">One job, one payment</p>
+          <h2 id="one-payment-title">Where a single payment goes.</h2>
+          <p>
+            The fee comes out of the payment itself &mdash; there&apos;s no separate invoice from us and nothing to
+            settle up at the end of the month.
+          </p>
+        </div>
+        <ExampleFrame
+          className={styles.payFrame}
+          label={`One ${money(SAMPLE_PAYMENT)} payment, split to scale`}
+          note={
+            <>
+              The two slices are true widths: at {SAMPLE_TIER.rate}, the platform fee is the thin slice on the right.
+              Standard Stripe processing ({STRIPE_PROCESSING_NOTE}) is deducted by Stripe separately and is not part of
+              the bar, so what finally settles in your bank is a little under the figure above. The payment amount is
+              an example; the fee is calculated from the published tiers at Tier {SAMPLE_TIER.tier} &mdash; the highest
+              of the {FEE_TIERS.length}, before any volume discount.
+            </>
+          }
+        >
+          <div className={styles.payAnatomy}>
+            <p className={styles.payTotal}>
+              <span className={styles.payTotalLabel}>A homeowner pays you</span>
+              <strong className={styles.payTotalValue}>{money(SAMPLE_PAYMENT)}</strong>
+            </p>
+            {/* Decorative: every value it encodes is stated as text in the list
+                below, so there is nothing here for a screen reader to lose. */}
+            <div className={styles.payBar} aria-hidden="true">
+              <span className={styles.payBarNet} style={{ width: `${100 - SAMPLE_FEE_SHARE}%` }} />
+              <span className={styles.payBarFee} style={{ width: `${SAMPLE_FEE_SHARE}%` }} />
+            </div>
+            <ul className={styles.payRows}>
+              <li>
+                <span className={`${styles.paySwatch} ${styles.paySwatchNet}`} aria-hidden="true" />
+                <span className={styles.payRowLabel}>
+                  Left after our fee
+                  <small>Before Stripe&apos;s processing, which Stripe deducts separately.</small>
+                </span>
+                <span className={styles.payRowValue}>{money(SAMPLE_AFTER_FEE)}</span>
+              </li>
+              <li>
+                <span className={`${styles.paySwatch} ${styles.paySwatchFee}`} aria-hidden="true" />
+                <span className={styles.payRowLabel}>
+                  Platform fee &mdash; Tier {SAMPLE_TIER.tier} at {SAMPLE_TIER.rate}
+                  <small>The only charge from us, taken out of this payment automatically.</small>
+                </span>
+                <span className={styles.payRowValue}>&minus;{money(SAMPLE_FEE)}</span>
+              </li>
+              <li className={styles.payRowAside}>
+                <span className={`${styles.paySwatch} ${styles.paySwatchOther}`} aria-hidden="true" />
+                <span className={styles.payRowLabel}>
+                  Stripe card processing
+                  <small>{STRIPE_PROCESSING_NOTE} &mdash; charged by Stripe, not by us, and not drawn above.</small>
+                </span>
+                <span className={styles.payRowValue}>Separate</span>
+              </li>
+            </ul>
+          </div>
+        </ExampleFrame>
       </section>
 
       <section className="section-block">

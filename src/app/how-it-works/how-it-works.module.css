@@ -363,6 +363,91 @@
   color: var(--muted-2);
 }
 
+/* ---- who put each line on the record ------------------------------------- */
+
+/* The tag. Three states, distinguished by the WORD first and colour second —
+   "Homeowner", "You" and "Automatic" are already unambiguous in greyscale, so
+   the hue only has to reinforce them. Inline-block rather than a floated chip:
+   it sits at the head of the event sentence and wraps with it. */
+.recordHand {
+  display: inline-block;
+  margin-right: 0.45rem;
+  vertical-align: 0.05em;
+  padding: 0.1rem 0.42rem;
+  border: 1px solid var(--edge-t18);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted-2);
+}
+
+/* The homeowner's own hand — the page's argument is how much of the record is
+   theirs, so it takes the gold the rest of the page uses for the customer. */
+.recordHand[data-hand='homeowner'] {
+  color: var(--gold-ink);
+  border-color: var(--cedge-orange-2);
+}
+
+/* The one that needs nobody. Accent, matching the arrow on the fourth axis. */
+.recordHand[data-hand='auto'] {
+  color: var(--accent);
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+}
+
+.recordKey {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+  margin-bottom: 0.95rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--edge-t08);
+}
+
+.recordKeyLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  opacity: 0.8;
+}
+
+.recordKeyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.recordKeyList > li + li { margin-top: 0; }
+
+/* The detail line, when the detail is what the record wrote for itself once the
+   row above it existed. Reuses the arrow the fourth axis already carries
+   (.axisLabelAuto), so the two marks mean the same thing on one page. */
+.recordAuto {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.recordTally {
+  margin: 0.95rem 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--edge-t08);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+  max-width: 46ch;
+}
+
 /* ---- responsive ---------------------------------------------------------- */
 
 @media (max-width: 1040px) {

@@ -232,43 +232,108 @@ const AXES = [
  * carrier "delivered" callback is discarded. "Text delivered" would be a
  * receipt the product cannot produce; "Customer texted." is the string
  * arrival-send.ts actually writes to the timeline. */
-const RECORD_EVENTS: { stage: string; event: string; detail: string }[] = [
+/* Whose hand put a line on the record.
+ *
+ * The page's fourth axis is "Then, automatically", and until now the timeline
+ * below it drew a line the homeowner typed and a line nobody typed in exactly
+ * the same ink. That flattening cost the page its own argument, so each row now
+ * says which of three things happened — and the tag is checked against the code
+ * that writes the row, not against the pitch:
+ *
+ *   homeowner  the form, the signature, the date they picked, the payment
+ *   you        your move: the quote you sent, the on-my-way the tech tapped
+ *   auto       nobody typed it. The intake route scores the lead itself —
+ *              src/app/api/public/leads/route.ts:232 sets hot/warm/low from
+ *              the flags and the estimate before the lead is ever stored.
+ *
+ * `auto` on a row is separate from `hand`, and it is about the DETAIL line: the
+ * thing the record went on to write by itself once the row above existed.
+ * Each one is a specific function:
+ *
+ *   row 3  src/lib/quote-draft.ts — DraftSource marks every line price-book,
+ *          history or estimate; the "flagged for you to check" is the product's
+ *          verdict, not a note somebody left
+ *   row 4  src/lib/invoices.ts signInvoice (line 448) — one call flips the lead
+ *          to won and the job from new_lead to in_progress
+ *   row 5  src/lib/scheduling.ts applyScheduleSelection (line ~280) — the pick
+ *          writes itself onto the job and texts the assigned crew
+ *   row 6  src/lib/arrival.ts — the window and the text, composed and sent from
+ *          the tech's tap
+ *   row 7  src/lib/review-routing.ts reviewRoutes — the invite offers the public
+ *          review and the private word together, and cannot see the rating
+ *
+ * Rows 1 and 2 carry no `auto` because nothing followed on its own: row 1 IS
+ * the homeowner's typing and row 2 IS the automatic step. */
+type RecordHand = 'homeowner' | 'you' | 'auto';
+
+const HAND_LABEL: Record<RecordHand, string> = {
+  homeowner: 'Homeowner',
+  you: 'You',
+  auto: 'Automatic',
+};
+
+const HANDS: RecordHand[] = ['homeowner', 'you', 'auto'];
+
+const RECORD_EVENTS: {
+  stage: string;
+  event: string;
+  detail: string;
+  hand: RecordHand;
+  /** True when the detail line is what the record wrote once the event landed. */
+  auto?: true;
+}[] = [
   {
     stage: '01→02',
     event: 'Quote request from your website',
     detail: '3 photos · “Kitchen ceiling, water stain spreading” · timeframe: within a month',
+    hand: 'homeowner',
   },
   {
     stage: '02',
     event: 'Triaged Hot',
     detail: 'In your service area · phone verified · above your minimum job size',
+    hand: 'auto',
   },
   {
     stage: '03',
     event: 'Quote sent — 4 line items',
     detail: '3 priced from your price book, 1 estimate flagged for you to check',
+    hand: 'you',
+    auto: true,
   },
   {
     stage: '03',
     event: 'Signed by D. Whitfield · deposit paid',
     detail: 'Lead marked won · job moved to in progress · schedule unlocked',
+    hand: 'homeowner',
+    auto: true,
   },
   {
     stage: '04',
     event: 'Homeowner picked Tue, 9–11am',
     detail: 'Chosen from the three dates you offered · crew assigned',
+    hand: 'homeowner',
+    auto: true,
   },
   {
     stage: '04',
     event: 'On my way — 15 minutes',
     detail: 'Customer texted · arrival window 9:15–9:45am',
+    hand: 'you',
+    auto: true,
   },
   {
     stage: '05',
     event: 'Balance paid · review request sent',
     detail: 'Public review and a private word offered together, as they always are',
+    hand: 'homeowner',
+    auto: true,
   },
 ];
+
+/* Counted, not asserted — so the sentence under the timeline cannot drift from
+   the rows above it if one is ever added or retagged. */
+const YOUR_ROWS = RECORD_EVENTS.filter((entry) => entry.hand === 'you').length;
 
 const FIRST_TIER = FEE_TIERS[0];
 const LAST_TIER = FEE_TIERS[FEE_TIERS.length - 1];
@@ -433,6 +498,22 @@ export default function HowItWorksPage() {
                 label="One job record, filling itself in across the five stages."
                 note="Invented job and invented homeowner. The event types and the wording of each are the product’s own."
               >
+                {/* The key. Three words, so the tags on the rows below are read
+                    as a taxonomy rather than as decoration — and so the one
+                    that matters, "Automatic", is named before it appears. */}
+                <div className={styles.recordKey}>
+                  <span className={styles.recordKeyLabel}>Who put it there</span>
+                  <ul className={styles.recordKeyList}>
+                    {HANDS.map((hand) => (
+                      <li key={hand}>
+                        <span className={styles.recordHand} data-hand={hand}>
+                          {HAND_LABEL[hand]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 <ul className={styles.record}>
                   {RECORD_EVENTS.map((entry) => (
                     <li key={`${entry.stage}-${entry.event}`}>
@@ -441,13 +522,28 @@ export default function HowItWorksPage() {
                           {entry.stage}
                         </span>
                         <span className={styles.recordEvent}>
+                          <span className={styles.recordHand} data-hand={entry.hand}>
+                            {HAND_LABEL[entry.hand]}
+                          </span>
                           {entry.event}
-                          <span className={styles.recordDetail}>{entry.detail}</span>
+                          <span className={styles.recordDetail}>
+                            {entry.auto ? (
+                              <span className={styles.recordAuto}>
+                                <span aria-hidden="true">→ </span>Then, automatically:{' '}
+                              </span>
+                            ) : null}
+                            {entry.detail}
+                          </span>
                         </span>
                       </div>
                     </li>
                   ))}
                 </ul>
+
+                <p className={styles.recordTally}>
+                  {YOUR_ROWS} of the {RECORD_EVENTS.length} lines on this record were put there by
+                  you. The rest arrived with the homeowner, or the record wrote them itself.
+                </p>
               </ExampleFrame>
             </div>
           </section>
