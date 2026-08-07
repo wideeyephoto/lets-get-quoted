@@ -88,7 +88,7 @@ type RosterPick = RosterView | 'overview';
 const ROSTER_VIEW_OPTIONS: ViewOption<RosterPick>[] = [
   { id: 'rows', label: 'Rows', hint: 'One line each, the everyday roster' },
   { id: 'cards', label: 'Cards', hint: 'Photos and details, a card per person' },
-  { id: 'board', label: 'Board', hint: "Split by who's free and who's out on a job" },
+  { id: 'board', label: 'Board', hint: "Split by who's free and who's already assigned" },
   { id: 'table', label: 'Table', hint: 'Dense columns for a big crew' },
   { id: 'focus', label: 'Focus', hint: 'The roster, with what needs doing pinned beside it' },
   overviewOption<RosterPick>('One person open beside the list — all three tabs'),
@@ -286,7 +286,14 @@ export default function CrewRoster({
         badge: !row.active
           ? { label: 'Archived', tone: 'muted' as const }
           : row.jobs.length > 0
-            ? { label: 'On a job', tone: 'warn' as const, title: row.jobs.map((job) => `${job.ref} · ${job.clientName}`).join('\n') }
+            // "Assigned", not "On a job". What the data says is: this person is
+            // attached to at least one job that is not complete or archived —
+            // which includes work scheduled for next month and work with no
+            // date at all. "On a job" reads as "right now", so a roster where
+            // everyone was assigned to future work announced a whole crew out
+            // on site with zero hours logged against any of it. The title still
+            // names the jobs.
+            ? { label: 'Assigned', tone: 'warn' as const, title: row.jobs.map((job) => `${job.ref} · ${job.clientName}`).join('\n') }
             : { label: 'Available', tone: 'ok' as const },
         headline: [row.phoneLabel, row.email].filter(Boolean).join(' · ') || 'No contact on file',
         stats: [
@@ -308,7 +315,7 @@ export default function CrewRoster({
                 ))}
               </>
             ) : (
-              <span className={styles.dim}>{row.active ? 'Not on a job right now.' : 'Not on the crew right now.'}</span>
+              <span className={styles.dim}>{row.active ? 'Not assigned to any open work.' : 'Not on the crew right now.'}</span>
             )}
           </>
         ),
@@ -336,7 +343,7 @@ export default function CrewRoster({
     const archived = visible.filter((row) => !row.active);
     return [
       { id: 'free', label: 'Available now', hint: 'Nobody has them booked today', rows: free },
-      { id: 'busy', label: 'On a job', hint: 'Already assigned', rows: busy },
+      { id: 'busy', label: 'Assigned', hint: 'On at least one job that is not finished', rows: busy },
       ...(archived.length > 0 ? [{ id: 'archived', label: 'Archived', hint: 'Not on the crew right now', rows: archived }] : []),
     ];
   }, [visible]);
@@ -379,7 +386,7 @@ export default function CrewRoster({
             <select value={jobFilter} onChange={(event) => setJobFilter(event.target.value)}>
               <option value="all">Any</option>
               <option value="available">Available now</option>
-              <option value="assigned">On a job</option>
+              <option value="assigned">Assigned</option>
               {assignableJobs.map((job) => (
                 <option key={job.id} value={job.id}>{job.ref} · {job.clientName}</option>
               ))}
@@ -578,7 +585,7 @@ export default function CrewRoster({
                 </li>
                 <li>
                   <button type="button" onClick={() => { setJobFilter('assigned'); setStatus('active'); }}>
-                    <b>{totals.onJob}</b> on a job
+                    <b>{totals.onJob}</b> assigned
                   </button>
                 </li>
                 <li>

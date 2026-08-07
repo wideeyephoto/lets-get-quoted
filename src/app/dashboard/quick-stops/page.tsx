@@ -103,6 +103,21 @@ export default async function QuickStopsPage() {
   const refundTiers = await loadRefundTiers(supabase, accountId);
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingUrl = site?.published && site?.subdomain ? `${appOrigin}/book/${site.subdomain}` : null;
+  /**
+   * Could a customer actually get a Quick Stop out of this today?
+   *
+   * The switch is one of five conditions, not the whole answer. Anything on
+   * this page that reports readiness has to ask THIS, not `settings.enabled` —
+   * see the empty-requests panel below, which used to congratulate an owner
+   * who had turned the switch on and set up nothing.
+   */
+  const quickStopLive =
+    settings.enabled &&
+    !settings.locked &&
+    settings.maxFeeCents > 0 &&
+    settings.weekdays.length > 0 &&
+    stripeConnected &&
+    Boolean(bookingUrl);
   const businessName =
     (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
 
@@ -207,6 +222,11 @@ export default async function QuickStopsPage() {
         fallbackCenter={fallbackCenter}
       />
 
+      {/* The same five conditions QuickStopStatus computes for its own "Live"
+          line. Kept here rather than passed back out of that component because
+          the empty panel further down needs the same answer, and two places
+          deciding independently what "live" means is how they came to disagree
+          in the first place. */}
       <QuickStopStatus
         enabled={settings.enabled}
         locked={settings.locked}
@@ -250,13 +270,31 @@ export default async function QuickStopsPage() {
         <section className="panel workspace-section-card quick-stop-empty-panel" id="quick-stop-requests">
           <div className="quick-stop-empty">
             <span className="quick-stop-empty-mark" aria-hidden="true">📍</span>
-            <h3>{settings.locked ? 'No active requests while paused' : settings.enabled ? "You're all set — waiting on requests" : 'Nothing can come in yet'}</h3>
+            {/* `quickStopLive`, not `settings.enabled`. The switch being on is
+                one of five things a request needs — the others are a fee band,
+                the days you take them, Stripe, and a published site. Keyed on
+                the switch alone, this panel congratulated an owner with
+                "You're all set — waiting on requests" while the status block a
+                few inches above it said "Not live yet" and listed four things
+                still missing. Nothing could arrive, and the page said two
+                opposite things about why. */}
+            <h3>
+              {settings.locked
+                ? 'No active requests while paused'
+                : quickStopLive
+                  ? "You're all set — waiting on requests"
+                  : settings.enabled
+                    ? 'Switched on, but not live yet'
+                    : 'Nothing can come in yet'}
+            </h3>
             <p>
               {settings.locked
                 ? 'New Quick Stop requests are paused until the lock lifts. Anything already in progress will still appear here.'
-                : settings.enabled
+                : quickStopLive
                   ? 'When a customer requests a Quick Stop from your booking page, it lands here and we text and email you right away.'
-                  : 'Turn Quick Stops on above and requests from your booking page will land here.'}
+                  : settings.enabled
+                    ? 'The switch is on, but a request still needs the rest of the setup. The status block at the top of this page lists what is outstanding.'
+                    : 'Turn Quick Stops on above and finish the setup, and requests from your booking page will land here.'}
             </p>
           </div>
         </section>

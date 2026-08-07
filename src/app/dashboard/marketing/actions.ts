@@ -136,6 +136,11 @@ export async function createBlogPostFromBeatAction(
   try {
     draft = await draftBlogPost({
       companyName: (site.company_name as string) || '',
+      // Without this the drafter infers the trade from the business name. A
+      // seasonal beat makes that worse rather than better: the topic already
+      // arrives phrased for a whole trade family, so an unnamed trade lets the
+      // model write the version belonging to the wrong member of it.
+      trade: getSiteContent(site.content as Record<string, unknown> | null).trade,
       serviceArea: (site.service_area as string) || '',
       // The title is the topic; whyNow is the angle that makes it worth reading
       // this month rather than in general.

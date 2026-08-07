@@ -22395,6 +22395,38 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-kpi-info:hover, .ins-kpi-info:focus-visible {
   color: var(--text); border-color: var(--cedge-orange-5); outline: none;
 }
+/* The loss banner at the top of Insights. Loud enough to stop a scroll, quiet
+   enough not to become the page's new hero — it is a pointer to the breakdown,
+   not the breakdown. */
+.ins-loss-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(220, 38, 38, 0.38);
+  border-radius: 14px;
+  background: rgba(220, 38, 38, 0.07);
+  color: inherit;
+  text-decoration: none;
+}
+.ins-loss-alert:hover { border-color: rgba(220, 38, 38, 0.6); }
+.ins-loss-alert > span:last-child { display: grid; gap: 0.15rem; min-width: 0; }
+.ins-loss-alert strong { font-size: 0.98rem; font-weight: 750; }
+.ins-loss-alert small { font-size: 0.82rem; color: var(--mute-i60); }
+.ins-loss-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
 .ins-kpi-tip {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 6;
   width: max-content; max-width: 210px; padding: 0.5rem 0.6rem;

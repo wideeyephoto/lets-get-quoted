@@ -137,6 +137,12 @@ export async function generateBlogPostAction(topic?: string): Promise<{ ok: true
   try {
     draft = await draftBlogPost({
       companyName: (site.company_name as string) || '',
+      // `trade` is read two lines up and used two lines down for the cover
+      // image; it was simply never handed to the drafter. Without it
+      // draftBlogPost falls back to inferring the trade from the business
+      // NAME, which is how a plumbing site ends up with a published article
+      // about window maintenance. See the note on its `trade` parameter.
+      trade,
       serviceArea: (site.service_area as string) || '',
       topic: cleanTopic,
     });

@@ -356,7 +356,7 @@ export default async function CrewLaborPage({
           </div>
           <div className="stat-ticker-item">
             <span className="stat-ticker-value">{onJobCount}</span>
-            <span className="stat-ticker-label">On a job</span>
+            <span className="stat-ticker-label">Assigned</span>
           </div>
           <div className="stat-ticker-item">
             <span className="stat-ticker-value">{activeCrew.length - onJobCount}</span>

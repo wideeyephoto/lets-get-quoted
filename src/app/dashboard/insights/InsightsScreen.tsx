@@ -340,7 +340,7 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
   ];
 
   return (
-    <section className="panel ins-summary">
+    <section className="panel ins-summary" id="ins-summary">
       <div className="ins-summary-main">
         <p className="eyebrow">Summary — {insights.windowLabel}</p>
         <h2 className="ins-summary-headline">
@@ -499,6 +499,29 @@ export default function InsightsScreen({
             position and funnel appear here.
           </p>
         </section>
+      ) : null}
+
+      {/* A loss says so at the top.
+          The sentence "You spent $X more than you collected" already existed —
+          inside ExecutiveSummary, which lives under "More detail", six rows
+          and one section heading down the page. The single most important
+          thing this page can tell somebody was the thing you had to scroll
+          furthest to find. This does not move that section; it says the one
+          fact up here and points at it. */}
+      {insights.hasAnyData && insights.summary.profit < 0 ? (
+        <a className="ins-loss-alert" href="#ins-summary">
+          <span className="ins-loss-mark" aria-hidden="true">!</span>
+          <span>
+            <strong>
+              You spent {formatMoney(Math.abs(insights.summary.profit))} more than you collected{' '}
+              {insights.period.sentenceLabel}.
+            </strong>
+            <small>
+              {formatMoney(insights.summary.costs)} of costs against{' '}
+              {formatMoney(insights.summary.revenue)} collected. See the breakdown →
+            </small>
+          </span>
+        </a>
       ) : null}
 
       <KpiGrid kpis={insights.kpis} showDelta={showDelta} />

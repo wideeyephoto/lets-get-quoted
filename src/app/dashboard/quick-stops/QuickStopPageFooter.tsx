@@ -20,9 +20,16 @@ export default function QuickStopPageFooter({ enabled }: { enabled: boolean }) {
       <div className="qs-foot-copy">
         <strong>{enabled ? 'Anything you want to change?' : 'Ready to try it?'}</strong>
         <p>
+          {/* Order matters here and this line used to give the opposite one to
+              the rest of the page. The empty panel says "turn it on above",
+              the switch's own status lists what is still missing once it is
+              on, and this said "set it up, THEN switch it on" — three
+              instructions, two orders. Either sequence works; the page should
+              only describe one. The switch first, because that is what the
+              status block then measures the setup against. */}
           {enabled
             ? 'Your days, hours, fee band and limits all live in the settings block further up this page.'
-            : 'Set your days, hours and fee band, then switch it on at the top. Nothing can be requested until both are done.'}
+            : 'Switch it on at the top, then set your days, hours and fee band. Nothing can be requested until both are done — the status line up there tracks what is left.'}
         </p>
       </div>
       <div className="qs-foot-actions">
