@@ -62,8 +62,10 @@
   margin: 0;
 }
 
+/* A full line of space under the button row, not a hair. This is a separate
+   thought from the buttons above it, and at 0.4rem it read as their caption. */
 .heroNote {
-  margin: 0.4rem 0 0;
+  margin: 1rem 0 0;
   font-size: 0.85rem;
   line-height: 1.5;
   color: var(--muted-2);

@@ -385,9 +385,14 @@ export default function FeaturesPage() {
                 className="btn secondary"
               />
             </div>
+            {/* Deliberately NOT the fee. The lede already says "no monthly
+                subscription" and the closing band states the rate in full — a
+                third telling in between turns a features page into a pricing
+                page. This line answers the other question a cold visitor has,
+                which is whether the site they build is theirs. */}
             <p className={styles.heroNote}>
-              Free to build and free to send. The platform fee applies only when a homeowner actually
-              pays you.
+              Free to build, and no card required to start. You keep your own domain and your own
+              customer list.
             </p>
           </section>
 
