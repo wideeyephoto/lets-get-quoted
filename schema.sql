@@ -1964,7 +1964,14 @@ create table if not exists admin_actions (
   id           uuid primary key default gen_random_uuid(),
   admin_email  text not null,
   action       text not null,           -- e.g. 'extra_stop_refund', 'account_suspend'
-  account_id   uuid references accounts(id) on delete set null,
+  -- Deliberately NOT a foreign key. This is a log of things that happened, not
+  -- a row about a live account, and a log with referential integrity to the
+  -- mutable thing it describes can be rewritten by editing something else.
+  -- It was `on delete set null`, so deleting an account NULLed the audit row
+  -- recording that deletion — plus every prior row for that account.
+  -- The index still answers "everything ever done to account X", which is the
+  -- question actually asked once an account is gone.
+  account_id   uuid,
   target_type  text,                    -- 'extra_stop_request' | 'payment' | 'account' | ...
   target_id    text,
   meta         jsonb not null default '{}'::jsonb,
@@ -2139,7 +2146,13 @@ on conflict (id) do nothing;
 -- GDPR/CCPA-style requests logged against an account, with who resolved them.
 create table if not exists privacy_requests (
   id            uuid primary key default gen_random_uuid(),
-  account_id    uuid not null references accounts(id) on delete cascade,
+  -- Not a foreign key, for the same reason admin_actions.account_id is not one.
+  -- This was `on delete cascade`, so honouring a deletion request destroyed the
+  -- proof you had honoured it — the one record that exists to be produced later
+  -- by somebody who does not believe you.
+  -- deleteAccountAction clears `details` before the account goes, so the free
+  -- text cannot outlive the data it may quote; the log itself survives.
+  account_id    uuid not null,
   kind          text not null check (kind in ('access', 'deletion', 'correction', 'other')),
   status        text not null default 'open' check (status in ('open', 'resolved')),
   details       text,

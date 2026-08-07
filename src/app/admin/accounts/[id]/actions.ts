@@ -240,6 +240,17 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
   const { data: owners } = await admin.from('memberships').select('user_id').eq('account_id', accountId).eq('role', 'owner');
   const ownerIds = (owners ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
 
+  // The privacy log outlives the account on purpose — a deletion request has to
+  // stay provable after the deletion. But `details` is free text a staff member
+  // typed, and it may quote the very personal data the request was about, so it
+  // goes while the record of the request stays. Everything that makes the log
+  // useful later (kind, status, who resolved it, when) is structured and kept.
+  const { error: scrubError } = await admin
+    .from('privacy_requests')
+    .update({ details: null })
+    .eq('account_id', accountId);
+  if (scrubError) console.error('privacy request scrub failed:', scrubError);
+
   await logAdminAction(admin, adminEmail, { action: 'account_delete', accountId, targetType: 'account', targetId: accountId, meta: { accountNumber: expected } });
   await admin.from('accounts').delete().eq('id', accountId);
 
