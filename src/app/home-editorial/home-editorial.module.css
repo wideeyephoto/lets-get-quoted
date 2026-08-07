@@ -1,0 +1,377 @@
+/* Candidate: the editorial homepage.
+
+   The bet here is that a contractor deciding whether this is for them reads
+   rather than skims, and that the page should therefore behave like a printed
+   page — one column, generous measure, large type, air between ideas, and a
+   visual only where it carries an argument.
+
+   PALETTE. This is the only candidate on paper, and it cannot borrow
+   [data-theme='light'] to get there: that theme is `color-scheme: dark` with a
+   #1e2733 ground — a lighter navy, not paper — and it is anchored to
+   :root[data-theme='light'], so it cannot be scoped to a wrapper anyway. The
+   tokens are therefore re-pointed here, on .root. Every token the app's
+   components read is re-declared, so anything rendered inside inherits paper
+   rather than needing a light variant of its own.
+
+   The accent does not move. It is the one thing every candidate shares, and a
+   homepage test that also changes the brand colour tests nothing. */
+
+.root {
+  color-scheme: light;
+
+  /* The two rgb triples the app's soft surfaces and secondary text are written
+     against. Flipping these two is what turns ~130 rgba() declarations from
+     "white at an alpha" into "ink at an alpha" without touching any of them. */
+  --tint: 17, 22, 28;
+  --ink-rgb: 20, 24, 31;
+
+  --bg: #fbfaf7;
+  --bg-2: #f5f2ec;
+  --bg-3: #efebe3;
+  --bg-elevated: #fffefb;
+  --bg-soft: rgba(var(--tint), 0.035);
+  --line: rgba(var(--tint), 0.14);
+
+  --text: #14181f;
+  --muted: #454f5c;
+  --muted-2: #6b7684;
+
+  --accent: #ff7a21;
+  --accent-paper: #d4560c; /* the accent, darkened only where it must pass on paper */
+  --accent-2: #b8860b;
+  --on-accent: #fffdf9;
+
+  --shadow-soft: rgba(20, 24, 31, 0.07);
+  --shadow-strong: rgba(20, 24, 31, 0.13);
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+/* ---- chrome -------------------------------------------------------------- */
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1.25rem, 5vw, 4rem);
+  background: rgba(251, 250, 247, 0.86);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.wordmark em { font-style: normal; color: var(--accent-paper); }
+.barNav { display: flex; gap: 1.6rem; font-size: 0.86rem; color: var(--muted); }
+.barNav a:hover { color: var(--text); }
+.barCta {
+  font-size: 0.84rem;
+  font-weight: 650;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 86, 12, 0.4);
+  color: var(--accent-paper);
+  white-space: nowrap;
+}
+.barCta:hover { background: rgba(212, 86, 12, 0.06); }
+@media (max-width: 780px) { .barNav { display: none; } }
+
+/* ---- the measure --------------------------------------------------------- */
+
+/* One column, and the column is the design. 34rem is about 68 characters at
+   this size, which is the width long-form prose is comfortable at. */
+.column {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.wide { max-width: 62rem; }
+
+.section { padding: clamp(4rem, 9vw, 7.5rem) 0; }
+.sectionLine { border-top: 1px solid var(--line); }
+
+/* ---- hero ---------------------------------------------------------------- */
+
+.hero { padding: clamp(4.5rem, 11vw, 9rem) 0 clamp(3rem, 7vw, 5rem); }
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 0 0 1.6rem;
+}
+
+/* Big, but not a slogan-tower. The headline is three sentences and has to read
+   as three, so each lands on its own line and the size is chosen to let the
+   longest one fit rather than to be as large as possible. */
+.headline {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 5.6vw, 3.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  margin: 0;
+  max-width: none;
+  color: var(--text);
+}
+.headline span { display: block; }
+.headline span:last-child { color: var(--accent-paper); }
+
+.lede {
+  font-size: clamp(1.05rem, 2.2vw, 1.2rem);
+  line-height: 1.62;
+  color: var(--muted);
+  margin: 1.75rem 0 0;
+}
+
+/* The disambiguation. "Let's Get Quoted" reads like somewhere a HOMEOWNER goes
+   to get quotes, and a wrong first guess is not recoverable further down the
+   page. Set as an aside, because it is orientation rather than a claim. */
+.orient {
+  margin: 1.5rem 0 0;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(212, 86, 12, 0.45);
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--muted-2);
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2.25rem; }
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.4rem;
+  border-radius: 999px;
+  font-weight: 650;
+  background: var(--accent);
+  color: #20130a;
+}
+.primary:hover { background: #ff8c3d; }
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.8rem 1.3rem;
+  border-radius: 999px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.secondary:hover { border-color: rgba(var(--tint), 0.3); }
+
+.fine { margin: 1.25rem 0 0; font-size: 0.82rem; color: var(--muted-2); }
+
+/* ---- the quiet trust line ------------------------------------------------ */
+
+/* Deliberately typographic rather than four cards. On this page the claim is
+   that everything is included, and a row of boxes says "four features" where a
+   sentence says "all of it". */
+.included {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 1.75rem 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.included dt,
+.includedTitle {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-paper);
+  margin: 0 0 0.4rem;
+}
+.includedBody { margin: 0; font-size: 0.95rem; line-height: 1.55; color: var(--muted); }
+
+/* ---- numbered long-form chapters ---------------------------------------- */
+
+.chapter { margin-top: clamp(3rem, 7vw, 5rem); }
+.chapter:first-of-type { margin-top: 0; }
+
+.chapterNum {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  color: var(--muted-2);
+  display: block;
+  margin-bottom: 0.9rem;
+}
+.chapterTitle {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.4vw, 2.05rem);
+  line-height: 1.16;
+  letter-spacing: -0.022em;
+  margin: 0 0 1rem;
+  max-width: none;
+  color: var(--text);
+}
+.chapterBody { margin: 0; font-size: 1.02rem; line-height: 1.66; color: var(--muted); }
+
+.proof { margin: 1.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.6rem; }
+.proof li {
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.proof li::before {
+  content: '';
+  flex: none;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-top: 0.52rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* The one-line before/after. Two nouns and an arrow carry the argument that a
+   whole diagram would carry no better. */
+.handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.5rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-2);
+  font-size: 0.88rem;
+}
+.handoffLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  display: block;
+}
+.handoff b { font-weight: 650; color: var(--text); }
+.handoffArrow { color: var(--accent-paper); }
+
+/* ---- the suite, as an index --------------------------------------------- */
+
+.index { margin: 2rem 0 0; padding: 0; list-style: none; }
+.indexRow {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0 1rem;
+  padding: 1.05rem 0;
+  border-top: 1px solid var(--line);
+}
+.indexRow:last-child { border-bottom: 1px solid var(--line); }
+.indexNum { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted-2); padding-top: 0.15rem; }
+.indexTitle { font-weight: 650; font-size: 1rem; color: var(--text); }
+.indexBody { grid-column: 2; margin: 0.25rem 0 0; font-size: 0.92rem; line-height: 1.55; color: var(--muted-2); }
+
+/* ---- the comparison ------------------------------------------------------ */
+
+.versus { display: grid; gap: 1rem; margin-top: 2rem; }
+@media (min-width: 720px) { .versus { grid-template-columns: 1fr 1fr; gap: 1.25rem; } }
+
+.versusCard { padding: 1.5rem 1.4rem; border: 1px solid var(--line); border-radius: 18px; }
+.versusCard.connected { border-color: rgba(212, 86, 12, 0.32); background: rgba(212, 86, 12, 0.035); }
+.versusLabel {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 0 0 1rem;
+}
+.versusCard.connected .versusLabel { color: var(--accent-paper); }
+.versusList { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.6rem; }
+.versusList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+.versusList li:last-child { border-bottom: 0; padding-bottom: 0; }
+.versusList b { font-weight: 600; font-size: 0.78rem; color: var(--muted-2); white-space: nowrap; }
+.versusCard.connected .versusList b { color: var(--accent-paper); }
+.versusNote { margin: 1.1rem 0 0; font-size: 0.88rem; line-height: 1.5; color: var(--muted-2); }
+
+/* ---- price --------------------------------------------------------------- */
+
+.price { text-align: center; }
+.priceMark {
+  font-family: var(--font-display);
+  font-size: clamp(5rem, 18vw, 11rem);
+  line-height: 0.86;
+  letter-spacing: -0.06em;
+  color: var(--text);
+  margin: 0;
+}
+.priceMark sup {
+  font-size: 0.3em;
+  vertical-align: super;
+  color: var(--accent-paper);
+  letter-spacing: 0;
+  margin-right: 0.08em;
+}
+.priceCaption {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 1rem 0 0;
+}
+
+/* ---- close --------------------------------------------------------------- */
+
+.close { text-align: center; padding: clamp(4rem, 9vw, 7rem) 0; }
+.closeTitle {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4.4vw, 2.6rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0 0 1rem;
+  max-width: none;
+  color: var(--text);
+}
+.close .actions { justify-content: center; }
+
+.foot {
+  border-top: 1px solid var(--line);
+  padding: 2rem 0 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.6rem;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.84rem;
+  color: var(--muted-2);
+}
+.footLinks { display: flex; flex-wrap: wrap; gap: 1.2rem; }
+.footLinks a:hover { color: var(--text); }
+
+/* ---- focus --------------------------------------------------------------- */
+
+/* globals only scopes its .btn focus ring to .fx-hero, .fx-tile and .cta-band,
+   none of which wrap this page, so every interactive element here needs its
+   own visible ring or keyboard users get the UA default on paper. */
+.root a:focus-visible,
+.root button:focus-visible {
+  outline: 2px solid var(--accent-paper);
+  outline-offset: 3px;
+  border-radius: 4px;
+}

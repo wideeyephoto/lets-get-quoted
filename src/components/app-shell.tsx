@@ -190,7 +190,18 @@ const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 // reproducing a standalone marketing site, and it ships that site's own fixed
 // header and footer. Letting the shell draw a second one would put two brands
 // on top of each other and make the candidate impossible to judge.
-const OWN_CHROME_MARKETING_ROUTES = ['/features', '/how-it-works', '/founder', '/home-flagship'];
+// /home-editorial and /home-compact are here for the same reason as
+// /home-flagship: each is a homepage candidate carrying its own header and
+// footer, and a candidate wearing this app's chrome on top of its own is not
+// the design being judged.
+const OWN_CHROME_MARKETING_ROUTES = [
+  '/features',
+  '/how-it-works',
+  '/founder',
+  '/home-flagship',
+  '/home-editorial',
+  '/home-compact',
+];
 
 function getPrimaryAction() {
   return { href: '/login', label: 'Create free account' };
