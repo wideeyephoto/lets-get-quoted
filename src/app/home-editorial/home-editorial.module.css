@@ -5,46 +5,30 @@
    page — one column, generous measure, large type, air between ideas, and a
    visual only where it carries an argument.
 
-   PALETTE. This is the only candidate on paper, and it cannot borrow
-   [data-theme='light'] to get there: that theme is `color-scheme: dark` with a
-   #1e2733 ground — a lighter navy, not paper — and it is anchored to
-   :root[data-theme='light'], so it cannot be scoped to a wrapper anyway. The
-   tokens are therefore re-pointed here, on .root. Every token the app's
-   components read is re-declared, so anything rendered inside inherits paper
-   rather than needing a light variant of its own.
+   PALETTE. This page was originally the one candidate on paper and is now dark
+   like the rest, by request. That turned out to mean DELETING a palette rather
+   than writing one: it declares no colour tokens at all and inherits the app's,
+   so it cannot drift from the design system and needs no light/dark variants of
+   its own.
 
-   The accent does not move. It is the one thing every candidate shares, and a
-   homepage test that also changes the brand colour tests nothing. */
+   The ten --accent-paper references further down are deliberately left alone.
+   The app's dark :root defines `--accent-paper: var(--accent)`, so they already
+   resolve to the brand orange; the token exists precisely so a page can name
+   "the accent, wherever it lands" without caring which ground it is on.
+
+   What survives the change is the format, which was always the actual bet here:
+   one column at a readable measure, large type, air between ideas, and a visual
+   only where prose would be slower. That is what distinguishes this candidate
+   from /home-flagship (dark and mockup-heavy) and /home-compact (dark and
+   short), not the colour it used to be. */
 
 .root {
-  color-scheme: light;
-
-  /* The two rgb triples the app's soft surfaces and secondary text are written
-     against. Flipping these two is what turns ~130 rgba() declarations from
-     "white at an alpha" into "ink at an alpha" without touching any of them. */
-  --tint: 17, 22, 28;
-  --ink-rgb: 20, 24, 31;
-
-  --bg: #fbfaf7;
-  --bg-2: #f5f2ec;
-  --bg-3: #efebe3;
-  --bg-elevated: #fffefb;
-  --bg-soft: rgba(var(--tint), 0.035);
-  --line: rgba(var(--tint), 0.14);
-
-  --text: #14181f;
-  --muted: #454f5c;
-  --muted-2: #6b7684;
-
-  --accent: #ff7a21;
-  --accent-paper: #d4560c; /* the accent, darkened only where it must pass on paper */
-  --accent-2: #b8860b;
-  --on-accent: #fffdf9;
-
-  --shadow-soft: rgba(20, 24, 31, 0.07);
-  --shadow-strong: rgba(20, 24, 31, 0.13);
-
-  background: var(--bg);
+  /* A whisper of warmth at the top, so a page this sparse does not read as a
+     flat black field. Far quieter than the other candidates' ambient glows —
+     an editorial page should not look lit. */
+  background:
+    radial-gradient(ellipse 90% 40% at 50% -8%, rgba(255, 122, 33, 0.07), transparent 72%),
+    var(--bg);
   color: var(--text);
   font-family: var(--font-body);
 }
@@ -60,7 +44,11 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem clamp(1.25rem, 5vw, 4rem);
-  background: rgba(251, 250, 247, 0.86);
+  /* --bg-elevated is already a translucent dark in this theme
+     (rgba(8, 18, 31, 0.82)), which is exactly what a sticky bar over scrolling
+     content wants — no literal needed. */
+  background: var(--bg-elevated);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
@@ -79,11 +67,11 @@
   font-weight: 650;
   padding: 0.5rem 0.95rem;
   border-radius: 999px;
-  border: 1px solid rgba(212, 86, 12, 0.4);
+  border: 1px solid rgba(255, 122, 33, 0.4);
   color: var(--accent-paper);
   white-space: nowrap;
 }
-.barCta:hover { background: rgba(212, 86, 12, 0.06); }
+.barCta:hover { background: rgba(255, 122, 33, 0.06); }
 @media (max-width: 780px) { .barNav { display: none; } }
 
 /* ---- the measure --------------------------------------------------------- */
@@ -141,7 +129,7 @@
 .orient {
   margin: 1.5rem 0 0;
   padding-left: 1rem;
-  border-left: 2px solid rgba(212, 86, 12, 0.45);
+  border-left: 2px solid rgba(255, 122, 33, 0.45);
   font-size: 0.94rem;
   line-height: 1.6;
   color: var(--muted-2);
@@ -156,9 +144,11 @@
   border-radius: 999px;
   font-weight: 650;
   background: var(--accent);
-  color: #20130a;
+  /* The ink that sits ON the accent. A token rather than a literal, because the
+     accent does not change between themes and neither should this. */
+  color: var(--on-accent);
 }
-.primary:hover { background: #ff8c3d; }
+.primary:hover { filter: brightness(1.08); }
 .secondary {
   display: inline-flex;
   align-items: center;
@@ -284,7 +274,7 @@
 @media (min-width: 720px) { .versus { grid-template-columns: 1fr 1fr; gap: 1.25rem; } }
 
 .versusCard { padding: 1.5rem 1.4rem; border: 1px solid var(--line); border-radius: 18px; }
-.versusCard.connected { border-color: rgba(212, 86, 12, 0.32); background: rgba(212, 86, 12, 0.035); }
+.versusCard.connected { border-color: rgba(255, 122, 33, 0.32); background: rgba(255, 122, 33, 0.035); }
 .versusLabel {
   font-family: var(--font-mono);
   font-size: 0.64rem;
