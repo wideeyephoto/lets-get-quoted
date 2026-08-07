@@ -100,9 +100,44 @@ export function accountDisplayName(row: { company_name?: string | null; business
   return biz || 'Untitled business';
 }
 
-// Search accounts by business name, site company name, or account number. Owner
-// email isn't stored in our tables (it lives in auth.users), so it's resolved on
-// the detail page, not here.
+/**
+ * Which accounts have an owner whose login email matches.
+ *
+ * Through an RPC because the owner's address lives in auth.users, which
+ * PostgREST does not expose — see migrations/2026-08-10-owner-email-lookup.sql
+ * for why this is a security-definer function rather than a denormalised column.
+ *
+ * Returns an empty list rather than throwing on a missing function, so a
+ * deployment that runs ahead of its migration degrades to the old
+ * name-and-number search instead of breaking the accounts page outright.
+ */
+export async function accountIdsByOwnerEmail(admin: SupabaseClient, term: string, limit = 50): Promise<string[]> {
+  const { data, error } = await admin.rpc('accounts_by_owner_email', { term, max_rows: limit });
+  if (error) {
+    console.error('accountIdsByOwnerEmail failed:', error);
+    return [];
+  }
+  return [...new Set(((data ?? []) as { account_id: string }[]).map((r) => r.account_id))];
+}
+
+/** Owner emails for a page of accounts, in one round trip rather than one per row. */
+export async function ownerEmailsForAccounts(admin: SupabaseClient, ids: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (!ids.length) return map;
+  const { data, error } = await admin.rpc('owner_emails_for_accounts', { ids });
+  if (error) {
+    console.error('ownerEmailsForAccounts failed:', error);
+    return map;
+  }
+  for (const row of (data ?? []) as { account_id: string; email: string | null }[]) {
+    if (row.email) map.set(row.account_id, row.email);
+  }
+  return map;
+}
+
+// Search accounts by business name, site company name, account number, or the
+// owner's login email — the last of these being the one a support ticket
+// actually arrives with.
 export async function listAccountsForAdmin(
   admin: SupabaseClient,
   opts: { query?: string; limit?: number; filter?: AccountFilter; joinedSince?: string } = {},
@@ -121,19 +156,29 @@ export async function listAccountsForAdmin(
       const { data } = await base().eq('account_number', Number(digits)).limit(limit);
       rows = (data ?? []) as AdminAccountRow[];
     } else {
-      // Match either the account's business_name OR the site's company_name.
-      const [byBiz, bySite] = await Promise.all([
+      // Three ways in: the account's business_name, the site's company_name, or
+      // the owner's login email. The last one is what a support ticket actually
+      // arrives with, and it only became searchable once the RPC above existed.
+      const [byBiz, bySite, byEmail] = await Promise.all([
         base().ilike('business_name', `%${term}%`).limit(limit),
         admin.from('sites').select('account_id').ilike('company_name', `%${term}%`).limit(limit),
+        // Skipped unless the term looks like part of an address. Every search
+        // would otherwise pay for an auth.users scan, and a bare word matches
+        // far too much of an email corpus to be a useful signal.
+        term.includes('@') || term.includes('.') ? accountIdsByOwnerEmail(admin, term, limit) : Promise.resolve([]),
       ]);
       const found = (byBiz.data ?? []) as AdminAccountRow[];
       const haveIds = new Set(found.map((r) => r.id));
-      const siteIds = (bySite.data ?? []).map((s) => (s as { account_id: string }).account_id).filter((id) => id && !haveIds.has(id));
-      if (siteIds.length) {
-        // Re-filtered, not just re-fetched. The sites table knows nothing about
-        // onboarding or suspension, so without this a name match could smuggle
-        // an account into a filtered list it does not belong in.
-        const { data: extra } = await base().in('id', siteIds).limit(limit);
+      const extraIds = [
+        ...(bySite.data ?? []).map((s) => (s as { account_id: string }).account_id),
+        ...byEmail,
+      ].filter((id, i, all) => id && !haveIds.has(id) && all.indexOf(id) === i);
+      if (extraIds.length) {
+        // Re-filtered, not just re-fetched. Neither the sites table nor the
+        // email lookup knows anything about onboarding or suspension, so
+        // without this a name or address match could smuggle an account into a
+        // filtered list it does not belong in.
+        const { data: extra } = await base().in('id', extraIds).limit(limit);
         rows = [...found, ...((extra ?? []) as AdminAccountRow[])];
       } else {
         rows = found;

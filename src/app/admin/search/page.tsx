@@ -42,8 +42,14 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Lookup</p>
         <h1 className={styles.title}>Search</h1>
+        {/* Split into whose email is whose. This used to read "customer
+            name/email/phone" while searching clients.email — the contractors'
+            homeowners — so a staff member pasting a CONTRACTOR's address got a
+            confident "no results" from a lookup answering a different question.
+            Both are searchable now, and the two are named separately. */}
         <p className={styles.lead}>
-          Business name, customer name/email/phone, account #, Quick Stop ID, or a Stripe payment/checkout/dispute ID.
+          Contractors by business name, account #, or the owner&rsquo;s login email. Their customers by name, email or
+          phone. Also Quick Stop IDs and Stripe payment/checkout/dispute IDs.
         </p>
       </header>
 

@@ -15,7 +15,11 @@ import {
   deleteAccountAttachmentAction,
   logPrivacyRequestAction,
   resolvePrivacyRequestAction,
+  setAccountFlagAction,
 } from './actions';
+import { ACCOUNT_FLAGS } from '@/lib/account-flags';
+import { listAccountMessages, messageFailed, messageKindLabel } from '@/lib/admin-messages';
+import { staffCan } from '@/lib/staff';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,15 +42,8 @@ function bool(v: unknown): boolean {
   return v === true;
 }
 
-const FEATURE_FLAGS: { key: string; label: string }[] = [
-  { key: 'instant_book_enabled', label: 'Instant booking' },
-  { key: 'extra_stop_enabled', label: 'Quick Stop' },
-  { key: 'deposit_on_approval', label: 'Deposit on approval' },
-  { key: 'quote_followups_enabled', label: 'Quote follow-ups' },
-  { key: 'appointment_reminders_enabled', label: 'Appointment reminders' },
-  { key: 'daily_digest_enabled', label: 'Daily digest' },
-  { key: 'auto_review_request', label: 'Auto review requests' },
-];
+// The flag list moved to lib/account-flags.ts, where the server action can
+// validate against the same closed set it renders from.
 
 export default async function AdminAccountDetailPage({
   params,
@@ -55,14 +52,19 @@ export default async function AdminAccountDetailPage({
   params: { id: string };
   searchParams: { done?: string; error?: string };
 }) {
-  const { admin, role } = await requireAdmin();
+  const ctx = await requireAdmin();
+  const { admin, role } = ctx;
+  const canFlag = staffCan(ctx.staff, 'account.support');
   const detail = await getAccountAdminDetail(admin, params.id);
   if (!detail || !detail.account) notFound();
 
   const a = detail.account as Record<string, unknown>;
   const displayName = accountDisplayName({ company_name: detail.site?.company_name ?? null, business_name: (a.business_name as string | null) ?? null });
-  const actions = await listAdminActions(admin, { accountId: params.id, limit: 12 });
-  const cases = await listSupportCases(admin, { accountId: params.id, limit: 5 });
+  const [actions, cases, messages] = await Promise.all([
+    listAdminActions(admin, { accountId: params.id, limit: 12 }),
+    listSupportCases(admin, { accountId: params.id, limit: 5 }),
+    listAccountMessages(admin, params.id, 40),
+  ]);
   const attachmentLinks = await Promise.all(
     detail.attachments.map(async (att) => ({ att, url: await accountAttachmentUrl(att.account_id, att.path) })),
   );
@@ -148,10 +150,53 @@ export default async function AdminAccountDetailPage({
                     {detail.recentPayments.map((p) => (
                       <tr key={p.id}>
                         <td className={styles.muted}>{fmtDate(p.created_at)}</td>
-                        <td>{p.label || '—'}</td>
+                        <td><Link href={`/admin/payments/${p.id}`} className={styles.rowLink}>{p.label || 'Payment'}</Link></td>
                         <td className={styles.muted}>{p.kind || '—'}</td>
                         <td className={`num ${styles.muted}`} style={{ textAlign: 'right' }}>{usd(p.amount)}{p.refunded_amount ? <span className={styles.muted}> (−{usd(p.refunded_amount)})</span> : null}</td>
                         <td><PaymentStatusPill status={p.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Messages sent</p>
+            {/* The coverage note is not a disclaimer, it is the point. Staff
+                read an absent row as "we never sent it" and tell the customer
+                so — and for reminder texts, and for any email sent without an
+                account tag, an absent row means nothing of the kind. */}
+            <p className={styles.muted} style={{ margin: '0 0 .7rem', fontSize: '.76rem' }}>
+              Emails tagged with this account, plus payment and crew texts. Reminder, arrival and Quick Stop texts are
+              not logged anywhere yet, and emails sent without an account tag — magic links, digests, contact replies —
+              cannot appear here. A missing row is not proof nothing was sent.
+            </p>
+            {messages.length === 0 ? (
+              <p className={styles.emptyState}>Nothing recorded for this account.</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead><tr><th>When</th><th>Channel</th><th>Kind</th><th>To</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {messages.map((m) => (
+                      <tr key={m.id}>
+                        <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(m.occurredAt)}</td>
+                        <td className={styles.muted}>{m.channel === 'sms' ? 'Text' : 'Email'}</td>
+                        <td>
+                          {messageKindLabel(m.kind)}
+                          {m.body ? (
+                            <div className={styles.muted} style={{ fontSize: '.72rem', maxWidth: '40ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.body}</div>
+                          ) : null}
+                        </td>
+                        <td className={styles.muted} style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.recipient}</td>
+                        <td>
+                          <span className={`${styles.pill} ${messageFailed(m) ? styles.bad : m.status === 'delivered' || m.status === 'sent' ? styles.good : styles.neutral}`}>
+                            {m.status}
+                          </span>
+                          {m.errorReason ? <div className={styles.muted} style={{ fontSize: '.7rem' }}>{m.errorReason}</div> : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -222,13 +267,44 @@ export default async function AdminAccountDetailPage({
 
           <section className={styles.panel}>
             <p className={styles.panelTitle}>Feature flags</p>
+            {/* Toggles now, not pills. These are the owner's own settings —
+                writable from their settings page all along — so the console
+                showing which switch the customer is asking about and offering
+                no way to move it meant "flip that for them" was done in the
+                Supabase table editor, with no audit row and no reason. */}
+            <p className={styles.muted} style={{ margin: '0 0 .8rem', fontSize: '.78rem' }}>
+              {canFlag
+                ? 'The owner can change these themselves. Changing one here is recorded with your name against it.'
+                : 'Read-only for your role.'}
+            </p>
             <dl className={styles.kv}>
-              {FEATURE_FLAGS.map((f) => (
-                <div key={f.key} style={{ display: 'contents' }}>
-                  <dt>{f.label}</dt>
-                  <dd>{bool(a[f.key]) ? <span className={`${styles.pill} ${styles.good}`}>On</span> : <span className={`${styles.pill} ${styles.neutral}`}>Off</span>}</dd>
-                </div>
-              ))}
+              {ACCOUNT_FLAGS.map((f) => {
+                const on = bool(a[f.key]);
+                return (
+                  <div key={f.key} style={{ display: 'contents' }}>
+                    <dt>
+                      {f.label}
+                      <div className={styles.muted} style={{ fontSize: '.7rem', fontWeight: 400 }}>{f.help}</div>
+                    </dt>
+                    <dd>
+                      {on ? <span className={`${styles.pill} ${styles.good}`}>On</span> : <span className={`${styles.pill} ${styles.neutral}`}>Off</span>}
+                      {canFlag ? (
+                        <form action={setAccountFlagAction.bind(null, params.id)} style={{ display: 'inline' }}>
+                          <input type="hidden" name="flag" value={f.key} />
+                          <input type="hidden" name="next" value={on ? 'off' : 'on'} />
+                          <button
+                            type="submit"
+                            className={styles.rowLink}
+                            style={{ background: 'none', border: 'none', padding: 0, marginLeft: '.5rem', font: 'inherit', cursor: 'pointer' }}
+                          >
+                            Turn {on ? 'off' : 'on'}
+                          </button>
+                        </form>
+                      ) : null}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           </section>
 
@@ -409,8 +485,12 @@ const DONE_MESSAGES: Record<string, string> = {
   attachment_deleted: 'File deleted.',
   privacy_logged: 'Privacy request logged.',
   privacy_resolved: 'Privacy request resolved.',
+  flag_changed: 'Setting changed, and recorded against your name.',
+  refunded: 'Refund issued.',
 };
 const ERROR_MESSAGES: Record<string, string> = {
+  flag: 'That is not a setting this console can change.',
+  flag_save: 'Could not save that setting. Try again in a moment.',
   amount: 'Enter a valid dollar amount.',
   state: 'That action isn’t available right now.',
   confirm: 'Confirmation text didn’t match.',

@@ -9,6 +9,7 @@ import { sendMagicLinkEmail } from '@/lib/magic-link';
 import { addAccountNote, addAccountTag, removeAccountTag } from '@/lib/account-notes';
 import { uploadAccountAttachment, deleteAccountAttachment, isAttachmentFile } from '@/lib/account-attachments';
 import { logPrivacyRequest, resolvePrivacyRequest, isPrivacyRequestKind } from '@/lib/privacy-requests';
+import { isAccountFlag } from '@/lib/account-flags';
 
 const PLAN_TARGETS = ['free', 'pro', 'crew_plus'] as const;
 type PlanTarget = (typeof PLAN_TARGETS)[number];
@@ -178,6 +179,53 @@ export async function signOutAllSessionsAction(accountId: string) {
   }
   await logAdminAction(admin, ctx, { action: 'account_sign_out_all', accountId, targetType: 'account', targetId: accountId, meta: { userCount: userIds.length } });
   backTo(accountId, 'done=signed_out');
+}
+
+/**
+ * Flip one per-account feature switch.
+ *
+ * Gated on account.support rather than anything sharper because none of these
+ * move money or access — they are the settings the owner can already change
+ * themselves, and the reason staff need them is the sentence "kill their auto
+ * review requests, they are complaining", which support should not have to
+ * escalate.
+ *
+ * The column name is validated against the allowlist in lib/account-flags.ts
+ * before it reaches the update. It arrives from a form, and a form field that
+ * names its own column is how `connect_onboarded` gets set to true.
+ */
+export async function setAccountFlagAction(accountId: string, formData: FormData) {
+  const ctx = await requirePermission('account.support');
+  const { admin } = ctx;
+  const flag = String(formData.get('flag') ?? '').trim();
+  if (!isAccountFlag(flag)) backTo(accountId, 'error=flag');
+  const next = String(formData.get('next') ?? '') === 'on';
+  const reason = String(formData.get('reason') ?? '').trim() || null;
+
+  // Read first so the trail says what it WAS. Turning something on that was
+  // already on is a different event from turning it on, and only the before
+  // value can tell them apart later.
+  const { data: was } = await admin.from('accounts').select(flag).eq('id', accountId).maybeSingle();
+  const before = (was as Record<string, unknown> | null)?.[flag] === true;
+
+  const { error } = await admin.from('accounts').update({ [flag]: next }).eq('id', accountId);
+  if (error) {
+    console.error('setAccountFlagAction failed:', error);
+    backTo(accountId, 'error=flag_save');
+  }
+
+  await logAdminAction(admin, ctx, {
+    action: 'account_flag_change',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    reason,
+    before: { [flag]: before },
+    after: { [flag]: next },
+    meta: { flag },
+  });
+  revalidatePath(`/admin/accounts/${accountId}`);
+  backTo(accountId, 'done=flag_changed');
 }
 
 export async function addAccountNoteAction(accountId: string, formData: FormData) {

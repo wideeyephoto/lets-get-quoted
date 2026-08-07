@@ -158,7 +158,7 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
                         <Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct ? accountDisplayName(acct) : 'Account'}</Link>
                         {acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}
                       </td>
-                      <td>{row.label || '—'}</td>
+                      <td><Link href={`/admin/payments/${row.id}`} className={styles.rowLink}>{row.label || 'Charge'}</Link></td>
                       <td className="num" style={{ textAlign: 'right' }}>{usd(original)}</td>
                       <td className="num" style={{ textAlign: 'right' }}>{usd(refunded)}</td>
                       <td className="num" style={{ textAlign: 'right' }} title="Returned to Stripe with the refund, in proportion">
@@ -205,7 +205,7 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
                     <tr key={row.id}>
                       <td className={styles.muted}>{fmtDate(row.disputed_at)}</td>
                       <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct ? accountDisplayName(acct) : 'Account'}</Link>{acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}</td>
-                      <td>{row.label || '—'}</td>
+                      <td><Link href={`/admin/payments/${row.id}`} className={styles.rowLink}>{row.label || 'Charge'}</Link></td>
                       <td className="num" style={{ textAlign: 'right' }}>{usd(Number(row.amount) || 0)}</td>
                       <td className={styles.muted}>{row.dispute_reason || row.dispute_status || '—'}</td>
                       <td>{row.dispute_due_by ? <span className={`${styles.pill} ${overdue ? styles.bad : styles.warn}`}>{fmtDate(row.dispute_due_by)}</span> : <span className={styles.muted}>—</span>}</td>

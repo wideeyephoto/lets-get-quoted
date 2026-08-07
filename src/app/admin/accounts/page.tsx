@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { listAccountsForAdmin, countAccountsForAdmin, accountDisplayName, type AdminAccountRow } from '@/lib/admin-accounts';
+import { listAccountsForAdmin, countAccountsForAdmin, ownerEmailsForAccounts, accountDisplayName, type AdminAccountRow } from '@/lib/admin-accounts';
 import {
   ACCOUNT_FILTERS,
   ACCOUNT_FILTER_INFO,
@@ -83,11 +83,15 @@ export default async function AdminAccountsPage({
 
   const [rows, total] = await Promise.all([
     listAccountsForAdmin(ctx.admin, { query, limit: PAGE_LIMIT, filter, joinedSince }),
-    // Only meaningful for an unsearched slice: a text search runs two ILIKEs
-    // and a union, which no single count query reproduces. Asking for one
-    // anyway would print a total that disagrees with the rows underneath it.
+    // Only meaningful for an unsearched slice: a text search unions three
+    // lookups, which no single count query reproduces. Asking for one anyway
+    // would print a total that disagrees with the rows underneath it.
     query ? Promise.resolve(null) : countAccountsForAdmin(ctx.admin, { filter, joinedSince }),
   ]);
+  // Shown as a column because it is how staff identify an account when a
+  // customer writes in, and because a search that matches on something
+  // invisible looks broken — you would have no way to see WHY a row matched.
+  const ownerEmails = await ownerEmailsForAccounts(ctx.admin, rows.map((r) => r.id));
 
   const canResend = staffCan(ctx.staff, 'account.support');
   const showStalled = filter === 'not_onboarded' || filter === 'connect_incomplete';
@@ -119,7 +123,7 @@ export default async function AdminAccountsPage({
             ? info.blurb
             : joined
               ? `${JOINED_LABEL[joined]}, newest first.`
-              : 'Look up any contractor to see their plan, payout status, and recent activity. Search by business name or account number.'}
+              : 'Look up any contractor to see their plan, payout status, and recent activity. Search by business name, account number, or the owner’s login email.'}
           {info && joined ? ` ${JOINED_LABEL[joined]} only.` : ''}
         </p>
       </header>
@@ -156,7 +160,7 @@ export default async function AdminAccountsPage({
       <form className={styles.searchRow} method="get">
         {filter ? <input type="hidden" name="filter" value={filter} /> : null}
         {joined ? <input type="hidden" name="joined" value={joined} /> : null}
-        <input className={styles.input} type="search" name="q" defaultValue={query} placeholder="Business name or account #…" autoFocus />
+        <input className={styles.input} type="search" name="q" defaultValue={query} placeholder="Business name, account #, or owner email…" autoFocus />
         <button type="submit" className="btn primary">Search</button>
         {query ? <Link href={href(filter ?? null)} className="btn secondary">Clear</Link> : null}
       </form>
@@ -183,6 +187,7 @@ export default async function AdminAccountsPage({
               <thead>
                 <tr>
                   <th>Account</th>
+                  <th>Owner</th>
                   <th>#</th>
                   <th>Plan</th>
                   <th>Payouts</th>
@@ -199,6 +204,9 @@ export default async function AdminAccountsPage({
                       <Link href={`/admin/accounts/${r.id}`} className={styles.rowLink}>
                         {accountDisplayName(r)}
                       </Link>
+                    </td>
+                    <td className={styles.muted} style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {ownerEmails.get(r.id) ?? <span className={styles.muted}>—</span>}
                     </td>
                     <td className={styles.muted}>{r.account_number ?? '—'}</td>
                     <td><span className={`${styles.pill} ${styles.neutral}`}>{r.plan ?? 'free'}</span></td>

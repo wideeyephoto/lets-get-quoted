@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { listAccountsForAdmin, accountDisplayName } from '@/lib/admin-accounts';
+import { listAccountsForAdmin, ownerEmailsForAccounts, accountDisplayName } from '@/lib/admin-accounts';
 import { QUICK_STOP_STATUS_LABEL, type QuickStopStatus } from '@/lib/quick-stop';
 
 // Universal Search backend. Staff today look accounts/customers/payments up by
@@ -49,14 +49,31 @@ function dedupeById<T extends { id: string }>(groups: T[][]): T[] {
 
 async function searchAccounts(admin: SupabaseClient, term: string, limit: number): Promise<SearchResult[]> {
   try {
+    // Matches on business name, site company name, account number, and — since
+    // the owner-email RPC exists — the contractor's own login address. That last
+    // one is the reason this page previously misled: it advertised "email" and
+    // searched clients.email, which is the contractors' HOMEOWNERS, so a staff
+    // member pasting a contractor's address got a confident "no results".
     const rows = await listAccountsForAdmin(admin, { query: term, limit });
-    return rows.map((r) => ({
-      kind: 'account',
-      id: r.id,
-      title: accountDisplayName(r),
-      subtitle: r.account_number ? `Account #${r.account_number}` : null,
-      href: `/admin/accounts/${r.id}`,
-    }));
+    const emails = await ownerEmailsForAccounts(admin, rows.map((r) => r.id));
+    return rows.map((r) => {
+      const email = emails.get(r.id);
+      // The owner email leads the subtitle when it is what matched, so the
+      // reason a row is in the list is visible rather than guessed at.
+      const matchedOnEmail = Boolean(email && email.toLowerCase().includes(term.toLowerCase()));
+      const parts = [
+        matchedOnEmail ? email : null,
+        r.account_number ? `Account #${r.account_number}` : null,
+        !matchedOnEmail && email ? email : null,
+      ].filter(Boolean);
+      return {
+        kind: 'account' as const,
+        id: r.id,
+        title: accountDisplayName(r),
+        subtitle: parts.length ? parts.join(' · ') : null,
+        href: `/admin/accounts/${r.id}`,
+      };
+    });
   } catch {
     return [];
   }
@@ -163,9 +180,7 @@ async function searchPayments(admin: SupabaseClient, term: string, limit: number
       id: r.id,
       title: r.label || `Payment ${r.id.slice(0, 8)}`,
       subtitle: `${r.status} · ${usd(r.amount)}`,
-      // No standalone payment detail page today — the account page shows its
-      // recent payments and disputes.
-      href: `/admin/accounts/${r.account_id}`,
+      href: `/admin/payments/${r.id}`,
     }));
   } catch {
     return [];

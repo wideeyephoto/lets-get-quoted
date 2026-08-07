@@ -15,6 +15,7 @@ const ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: '/admin/accounts', label: 'Accounts' },
   { href: '/admin/cases', label: 'Cases' },
   { href: '/admin/quick-stops', label: 'Quick Stops' },
+  { href: '/admin/risk', label: 'Review queue' },
   { href: '/admin/money', label: 'Money' },
   { href: '/admin/health', label: 'Service health' },
   { href: '/admin/incidents', label: 'Incidents' },
