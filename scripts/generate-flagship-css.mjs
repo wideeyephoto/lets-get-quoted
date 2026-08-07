@@ -268,6 +268,105 @@ const TWEAKS = `
   .root :global(.system-stage .system-pipeline) { animation: none; }
 }
 
+/* ---- the pipeline, made readable ------------------------------------------
+
+   The source set this readout at 6-7px. Not small-as-a-style — 6px is around
+   half the smallest size most people can read comfortably, and the state chip
+   ("✓ CAPTURED", "IN PROGRESS") was 6px of #6e8996 on a near-black card, which
+   is the least legible text on either flagship page. It is also the text
+   carrying the whole argument of the panel: which stage the job is on.
+
+   Three changes together, because any one alone does not fix it:
+
+     TYPEFACE. The labels, states and stage numbers move to the mono face. At
+     this size a heavy grotesque with 1px of tracking turns to mush, while mono
+     keeps its counters open and reads as an instrument panel — which is what a
+     live job readout should look like. The VALUE line moves the other way, to
+     the display face, so the two are told apart by shape as well as by size.
+
+     SCALE. Roughly doubled: 6-7px to 10-11px, and the value from 11px to 15px.
+     The cards are ~215px wide in the five-column grid, so there is room.
+
+     CONTRAST. The head and the upcoming-state chip were dim grey on near
+     black. Both lifted; the mint and orange states already carried enough.
+
+   The rest of the panel — the geometry, the borders, the mint/orange state
+   colours — is untouched. */
+.root :global(.system-pipeline-head) {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #9fb4c0;
+}
+
+.root :global(.system-pipeline-track article) {
+  min-height: 150px;
+}
+
+/* The stage number. Bigger circle to match the bigger numeral. */
+.root :global(.system-pipeline-track article) > span {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 16px;
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* WEBSITE / INTAKE / QUOTE / SCHEDULE / PAYMENT. */
+.root :global(.system-pipeline-track article) > small {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+/* The value — the line a visitor actually reads. Display face, and the only
+   thing on the card set large enough to scan from a distance. */
+.root :global(.system-pipeline-track article) > b {
+  margin-top: 9px;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: #f4f8fa;
+}
+
+/* The state chip: was the worst offender at 6px. */
+.root :global(.system-pipeline-track article) > em {
+  padding-top: 14px;
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #93a9b6;
+}
+
+/* The record strip under the track, same treatment. */
+.root :global(.system-job-record) span {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.root :global(.system-job-record) b {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 650;
+}
+.root :global(.system-job-record) small {
+  font-size: 11px;
+  color: #a3b6c1;
+}
+
+@media (max-width: 760px) {
+  /* Two-up on a phone means wider cards, so nothing needs to shrink back —
+     only the head, which has two items competing for one line. */
+  .root :global(.system-pipeline-head) { font-size: 9.5px; }
+  .root :global(.system-pipeline-track article) { min-height: 132px; }
+}
+
 /* ---- the four promises -----------------------------------------------------
 
    They were two lines of small grey text in four boxes: a 10px label over an
