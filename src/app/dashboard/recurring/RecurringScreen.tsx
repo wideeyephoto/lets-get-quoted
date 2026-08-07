@@ -5,6 +5,7 @@ import type { RecurringPlan } from '@/lib/recurring';
 import type { PlanContext } from '@/lib/recurring-context';
 import type { RecurringView } from '@/lib/recurring-view';
 import { planMonthlyValue } from '@/lib/recurring-display';
+import { issueBreakdown } from '@/lib/recurring-board';
 import type { RecurringView as RecurringViewMode } from '@/lib/dashboard-views';
 import Sparkline from '@/components/sparkline';
 import RecurringPlanCard from '@/components/recurring-plan-card';
@@ -203,18 +204,31 @@ export default function RecurringScreen({
 
           The heading names the actual problem: it used to say "N plans need
           attention" while counting only the ones with no card, so it disagreed
-          with both the tile above it and the badges on the cards below. */}
-      {!ops && noCardPlans.length > 0 ? (
+          with both the tile above it and the badges on the cards below.
+
+          It is now gated on `issues` — the SAME array the tile counts — rather
+          than on the no-card subset. Under the old gate a contractor whose
+          flagged plans were all unassigned, past due or unpriced saw a number
+          in the tile and no explanation anywhere on the page, because the one
+          band that explains anything only appeared for card problems. The
+          breakdown line names every category the number is made of; the
+          customer names stay, but only for the part they were ever about. */}
+      {!ops && issues.length > 0 ? (
         <section className="panel client-attention-card recurring-attention">
           <div className="recurring-attention-copy">
             <strong>
-              {noCardPlans.length} plan{noCardPlans.length === 1 ? '' : 's'} ha
-              {noCardPlans.length === 1 ? 's' : 've'} no payment method
+              {issues.length} plan{issues.length === 1 ? '' : 's'} need
+              {issues.length === 1 ? 's' : ''} attention
             </strong>
+            {/* "Between them", because one plan can be flagged twice and the
+                counts can add up to more than the number above. */}
             <p>
-              {noCardPlans.length === 1
-                ? `${noCardPlans[0]!.client_name} has not added a card — that plan's visits will bill nobody.`
-                : `${noCardPlans.map((plan) => plan.client_name).slice(0, 3).join(', ')}${noCardPlans.length > 3 ? ` and ${noCardPlans.length - 3} more` : ''} have not added a card.`}
+              Between them: {issueBreakdown(issues).map((entry) => `${entry.count} ${entry.headline.toLowerCase()}`).join(' · ')}.
+              {noCardPlans.length > 0
+                ? noCardPlans.length === 1
+                  ? ` ${noCardPlans[0]!.client_name} has not added a card — that plan's visits will bill nobody.`
+                  : ` ${noCardPlans.map((plan) => plan.client_name).slice(0, 3).join(', ')}${noCardPlans.length > 3 ? ` and ${noCardPlans.length - 3} more` : ''} have not added a card.`
+                : ''}
             </p>
           </div>
           {noCardPlans.length === 1 ? attentionAction : null}

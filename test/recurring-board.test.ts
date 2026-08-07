@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { autopayCoverage, boardIssues, boardVisits, type BoardPlan } from '@/lib/recurring-board';
+import { autopayCoverage, boardIssues, boardVisits, issueBreakdown, type BoardPlan } from '@/lib/recurring-board';
 import { normalizeRecurringView } from '@/lib/dashboard-views';
 
 const today = '2026-08-04';
@@ -133,5 +133,57 @@ describe('the view cookie', () => {
   it('keeps an explicit choice', () => {
     expect(normalizeRecurringView('ops')).toBe('ops');
     expect(normalizeRecurringView('cards')).toBe('cards');
+  });
+});
+
+describe('issueBreakdown — what the "needs attention" number is made of', () => {
+  // The Cards view shows one number counting four different problems and used
+  // to explain it with a sentence about one of them.
+  it('counts each reason across the flagged plans', () => {
+    const issues = boardIssues(
+      [
+        plan({ id: 'a', clientName: 'Ada', hasCard: false }),
+        plan({ id: 'b', clientName: 'Ben', hasCard: false }),
+        plan({ id: 'c', clientName: 'Cal', nextVisitAssigned: false }),
+      ],
+      today,
+    );
+    expect(issueBreakdown(issues)).toEqual([
+      { headline: 'No payment method', count: 2 },
+      { headline: 'Nobody assigned', count: 1 },
+    ]);
+  });
+
+  // One plan, two problems. The breakdown must report both, which is why the
+  // banner says "Between them" rather than implying the counts sum to the
+  // number of plans.
+  it('reports every reason a single plan carries', () => {
+    const issues = boardIssues([plan({ hasCard: false, nextVisitAssigned: false })], today);
+    expect(issues).toHaveLength(1);
+    const breakdown = issueBreakdown(issues);
+    const headlines = breakdown.map((entry) => entry.headline);
+    expect(headlines).toContain('No payment method');
+    expect(headlines).toContain('Nobody assigned');
+    expect(breakdown.reduce((sum, entry) => sum + entry.count, 0)).toBeGreaterThan(issues.length);
+  });
+
+  // The banner is gated on this being non-empty whenever the tile shows a
+  // number. A category the breakdown cannot name would put the page back into
+  // the state where a count had no explanation anywhere.
+  it('names every flagged plan, whatever it was flagged for', () => {
+    const issues = boardIssues(
+      [
+        plan({ id: 'a', amount: 0 }),
+        plan({ id: 'b', nextRunDate: '2026-07-01' }),
+      ],
+      today,
+    );
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issueBreakdown(issues).length).toBeGreaterThan(0);
+    for (const entry of issueBreakdown(issues)) expect(entry.headline).not.toBe('');
+  });
+
+  it('is empty when nothing is wrong', () => {
+    expect(issueBreakdown(boardIssues([plan()], today))).toEqual([]);
   });
 });

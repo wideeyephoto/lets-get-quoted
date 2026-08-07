@@ -705,6 +705,13 @@ export default function BookingSetup({
             </div>
           </section>
 
+          {/* The link follows the tip, rather than always pointing at Quick
+              Stops. Two of these three tips are about controls on this very
+              page — arrival windows and lead time — and sending someone from
+              "add more arrival windows" to a different product entirely reads
+              as a mis-wired link, because it was one. Only the third tip is
+              about an open day, which is the one thing here Quick Stops has
+              anything to do with. */}
           <section className="bset-tipcard">
             <Icon name="bulb" />
             <div>
@@ -716,7 +723,11 @@ export default function BookingSetup({
                     ? 'A long lead time turns away urgent work. “From tomorrow” books more jobs.'
                     : 'Keep a weekday free and it shows up here as an open window automatically.'}
               </p>
-              <Link href="/dashboard/quick-stops">Learn more <Icon name="external" /></Link>
+              {windowTimes.length >= 2 && leadDays < 3 ? (
+                <Link href="/dashboard/quick-stops">
+                  How Quick Stops fill an open day <Icon name="external" />
+                </Link>
+              ) : null}
             </div>
           </section>
 

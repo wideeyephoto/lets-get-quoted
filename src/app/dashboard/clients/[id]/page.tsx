@@ -77,6 +77,21 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             {client.address ? <span>{client.address}</span> : null}
           </div>
           <div className="actions workspace-actions">
+            {/* Call, Text and Email exist on the detail pane in the client
+                LIST, and used to disappear the moment you opened the person's
+                full profile — the page with more about them than anywhere
+                else, and the one you are most likely to be on when you decide
+                to get in touch. The phone and email were already here; they
+                were just printed as text. */}
+            {client.phone ? (
+              <>
+                <a className="btn primary" href={`tel:${client.phone}`}>📞 Call</a>
+                <a className="btn secondary" href={`sms:${client.phone}`}>💬 Text</a>
+              </>
+            ) : null}
+            {client.email ? (
+              <a className="btn secondary" href={`mailto:${client.email}`}>✉️ Email</a>
+            ) : null}
             <Link href="/dashboard/clients" className="btn secondary">Back to clients</Link>
             {jobs.length > 0 ? <Link href={`/dashboard/clients/${client.id}/statement`} className="btn secondary">View statement →</Link> : null}
           </div>
@@ -183,7 +198,12 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               </div>
               <div className="field">
                 <label htmlFor="phone">Mobile</label>
-                <input id="phone" name="phone" defaultValue={client.phone ?? ''} />
+                {/* Shown the way it is shown everywhere else on the page. The
+                    field used to hold the raw stored value, so a number that
+                    read "248-555-0117" in the header became "+12485550117" the
+                    moment you opened the form to change the address. Saving
+                    re-normalizes, so this round-trips. */}
+                <input id="phone" name="phone" defaultValue={formatPhoneDashes(client.phone)} />
               </div>
               <div className="field">
                 <label htmlFor="email">Email</label>

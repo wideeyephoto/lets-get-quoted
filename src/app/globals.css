@@ -11193,6 +11193,15 @@ button.inbox-thread-item {
 .campaign-reach .muted { color: var(--mute-t50); }
 .campaign-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
+/* Why Send is greyed out. Quiet — this is an instruction, not an error: nothing
+   has gone wrong, the message just is not finished yet. */
+.campaign-send-blocked {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mute-i60);
+}
+
 .campaign-history { display: flex; flex-direction: column; }
 .campaign-history-row {
   display: flex;

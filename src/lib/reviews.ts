@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { summariseReviewInvites, type ReviewInviteRow, type ReviewsSummary } from '@/lib/review-routing';
-import { loadBusinessName } from '@/lib/business-name';
+import { loadBusinessName, pickBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -82,7 +82,11 @@ export async function getReviewInviteByToken(
     admin.from('accounts').select('business_name').eq('id', invite.account_id).maybeSingle(),
     admin.from('sites').select('company_name').eq('account_id', invite.account_id).maybeSingle(),
   ]);
-  return { ...invite, business_name: site?.company_name || account?.business_name || 'your contractor' };
+  // pickBusinessName rather than `site || account || fallback`: sites.company_name
+  // is itself seeded to the "My Business" placeholder (src/lib/sites.ts), so
+  // preferring the site is not enough on its own — the placeholder has to be
+  // treated as absent wherever it appears.
+  return { ...invite, business_name: pickBusinessName(site, account, 'your contractor') };
 }
 
 /**

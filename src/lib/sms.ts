@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
 import { missedCallTextBack } from '@/lib/missed-call';
@@ -35,8 +36,16 @@ function clientJobLink(token: string) {
   return `${origin}/client/jobs/${token}`;
 }
 
-function messageFor(payment: SmsPayment, eventType: PaymentSmsEvent) {
-  const contractor = payment.account?.business_name || 'Your contractor';
+/**
+ * `contractor` is passed in rather than read off the payment row.
+ *
+ * It used to be `payment.account?.business_name || 'Your contractor'` — the
+ * account name alone, which on most live accounts is still the signup
+ * placeholder "My Business". So the text asking a homeowner to pay named a
+ * business nobody has heard of, at the exact moment they are deciding whether a
+ * payment link is genuine. See src/lib/business-name.ts for the ladder.
+ */
+function messageFor(payment: SmsPayment, eventType: PaymentSmsEvent, contractor: string) {
   const amount = formatMoney(Number(payment.amount));
   const label = payment.label || 'payment';
   const link = paymentLink(payment.id);
@@ -360,7 +369,9 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
   if (!payment.sms_consent || !payment.homeowner_phone) return { status: 'skipped' as const };
 
   const { data: consent } = await admin.from('sms_consent').select('status').eq('account_id', payment.account_id).eq('phone_number', payment.homeowner_phone).maybeSingle();
-  const body = messageFor(payment, eventType);
+  // The site's name before the account's, and never the placeholder.
+  const contractor = await loadBusinessName(admin, payment.account_id);
+  const body = messageFor(payment, eventType, contractor);
   if (consent?.status === 'opted_out') {
     await admin.from('sms_events').upsert({ account_id: payment.account_id, payment_id: payment.id, event_type: eventType, phone_number: payment.homeowner_phone, status: 'opted_out', body }, { onConflict: 'payment_id,event_type', ignoreDuplicates: true });
     return { status: 'opted_out' as const };

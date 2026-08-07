@@ -115,7 +115,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h1>Work pipeline</h1></div>
+        {/* The heading matches the nav item that got you here. It read "Work
+            pipeline" under a rail item called "Leads", so the one page in the
+            app whose job is to tell you where a request has got to could not
+            agree with the link you clicked on what it was called. The eyebrow
+            keeps the wider sense — this board does carry work past the lead
+            stage — without the title contradicting the navigation. */}
+        <div className="section-heading workspace-section-heading"><p className="eyebrow">Work pipeline</p><h1>Leads</h1></div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
           <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
         )}

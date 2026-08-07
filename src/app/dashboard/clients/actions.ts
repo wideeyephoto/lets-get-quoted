@@ -120,12 +120,31 @@ function optionalText(value: FormDataEntryValue | null): string | null {
   return text.length > 0 ? text : null;
 }
 
+/**
+ * Store a phone the way the rest of the system expects to find one.
+ *
+ * Creating a client normalizes to E.164; editing one did not, so an edit saved
+ * whatever was typed. That matters more than tidiness: the duplicate check on
+ * create is `.eq('phone', normalizeUsPhone(typed))`, so a client whose number
+ * had been left as "(248) 555-0117" by an edit could never be matched again and
+ * the next booking from that number made a second client record.
+ *
+ * Unparseable input is KEPT rather than dropped. Create nulls it, which is
+ * defensible for a new row; silently erasing a number somebody already had —
+ * an extension, an international line — because we could not parse it is not.
+ */
+function normalizedPhone(value: FormDataEntryValue | null): string | null {
+  const typed = optionalText(value);
+  if (!typed) return null;
+  return normalizeUsPhone(typed) ?? typed;
+}
+
 export async function updateClientAction(clientId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
   await updateClient(supabase, accountId, clientId, {
     name: (formData.get('name') ?? '').toString().trim() || 'Client',
-    phone: optionalText(formData.get('phone')),
+    phone: normalizedPhone(formData.get('phone')),
     email: optionalText(formData.get('email')),
     address: optionalText(formData.get('address')),
     notes: optionalText(formData.get('notes')),

@@ -102,8 +102,13 @@ const FLOW_CLASS: Record<string, string> = {
 // Grouping used only by the signed-in dashboard's left sidebar. The flat
 // `baseNavItems` order still drives the marketing/top-bar render; here the same
 // items are bucketed so the rail reads as labeled sections instead of one long
-// list. Dashboard (home) sits above the groups; Website is promoted to its own
-// badge and Account drops to the sidebar footer, so neither appears here.
+// list. Website is promoted to its own badge and Account drops to the sidebar
+// footer, so neither appears here.
+//
+// Dashboard is not in a group either: it is rendered BELOW all of them, with a
+// rule above it — see the note at the `renderSideLink('/dashboard', …)` call.
+// This comment used to say it sat above the groups, which stopped being true
+// when it moved and is the kind of stale note that gets read as the spec.
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },

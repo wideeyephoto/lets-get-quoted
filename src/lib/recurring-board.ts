@@ -44,6 +44,15 @@ export type BoardIssue = {
   /** Days until the next visit; negative is late. What `when` is built from. */
   days: number;
   level: Exclude<PlanHealthLevel, 'healthy'>;
+  /**
+   * Every reason this plan was flagged, not just the headline one.
+   *
+   * `headline` and `detail` are already a rendering decision — one row per
+   * plan, extra reasons folded into prose. A caller that wants to count how
+   * many plans have no card versus how many have nobody assigned cannot get
+   * that back out of a sentence.
+   */
+  reasons: string[];
 };
 
 export type BoardVisit = {
@@ -96,6 +105,34 @@ const ISSUE_COPY: Record<string, { headline: string; detail: string }> = {
  * and a late visit is one conversation, and three rows about the same customer
  * reads as three problems. The extra reasons ride along in the detail line.
  */
+/**
+ * How many plans are flagged for each reason.
+ *
+ * The Cards view shows a big "Needs attention" number counting four different
+ * problems, and used to explain it with a sentence about one of them — so a
+ * contractor whose flagged plans were all missing a PRICE read "3" above prose
+ * about payment methods, or, if none of them was a card problem, read "3" above
+ * nothing at all. This is what the number is made of.
+ *
+ * Counts can sum above the number of plans: one plan with no card AND nobody
+ * assigned is one plan and two reasons. Callers must phrase it so that reads as
+ * a breakdown rather than a contradiction.
+ */
+export function issueBreakdown(issues: BoardIssue[]): { headline: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const issue of issues) {
+    for (const reason of issue.reasons) {
+      // The same headline the board uses, so the two never name the same
+      // problem differently.
+      const headline = ISSUE_COPY[reason]?.headline ?? reason;
+      counts.set(headline, (counts.get(headline) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([headline, count]) => ({ headline, count }))
+    .sort((a, b) => b.count - a.count || a.headline.localeCompare(b.headline));
+}
+
 export function boardIssues(plans: BoardPlan[], today: string): BoardIssue[] {
   const issues: BoardIssue[] = [];
 
@@ -127,6 +164,7 @@ export function boardIssues(plans: BoardPlan[], today: string): BoardIssue[] {
       when: countdown.label,
       days: countdown.days,
       level: health.level,
+      reasons: health.reasons,
     });
   }
 

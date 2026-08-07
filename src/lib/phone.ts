@@ -6,9 +6,19 @@ export function normalizeUsPhone(value: string): string | null {
   return null;
 }
 
+/**
+ * A US number the way a person writes one. Anything else, untouched.
+ *
+ * Normalizes first rather than pattern-matching the raw string. Supabase's auth
+ * user stores a phone as bare digits — "12485550117", no plus — so the old
+ * `/^\+1\d{10}$/` test missed it and Login & security printed the digit run at
+ * a customer. The same applied to any 10-digit value that had not been through
+ * normalizeUsPhone on its way in.
+ */
 export function displayPhone(value: string) {
-  if (/^\+1\d{10}$/.test(value)) {
-    return `(${value.slice(2, 5)}) ${value.slice(5, 8)}-${value.slice(8)}`;
+  const e164 = normalizeUsPhone(value);
+  if (e164 && /^\+1\d{10}$/.test(e164)) {
+    return `(${e164.slice(2, 5)}) ${e164.slice(5, 8)}-${e164.slice(8)}`;
   }
   return value;
 }

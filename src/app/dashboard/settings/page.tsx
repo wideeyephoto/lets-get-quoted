@@ -449,7 +449,7 @@ export default async function SettingsPage({
                 <section className="panel workspace-section-card">
                   <SignInMethods
                     email={userData.user?.email ?? null}
-                    phone={userData.user?.phone ?? null}
+                    phone={displayPhone(userData.user?.phone ?? '') || null}
                     providers={providers}
                   />
                   <div className="signout-row">

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { getLeadTriage, isLeadSnoozed, LEAD_PRUNE_FLAGS, type LeadTriage } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordAccountEvent } from '@/lib/account-events';
@@ -286,7 +287,9 @@ export async function resolveOfferReply(phone: string, rawBody: string): Promise
     if (error || !data) return nothing;
     const offer = data as unknown as OfferWithLead;
     const decision = parseOfferReply(rawBody);
-    const businessName = offer.account?.business_name || 'your contractor';
+    // The site's name first, and never the "My Business" placeholder — this
+    // goes into an auto-reply a homeowner reads. See src/lib/business-name.ts.
+    const businessName = await loadBusinessName(admin, offer.account_id, 'your contractor');
     const windowLabel = storedWindowLabel(offer);
     const leadName = greetingName(offer.lead?.name ?? null);
 

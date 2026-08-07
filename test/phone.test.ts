@@ -46,3 +46,25 @@ describe('formatPhoneDashes', () => {
     expect(formatPhoneDashes(undefined)).toBe('');
   });
 });
+
+describe('displayPhone and the shapes numbers actually arrive in', () => {
+  // Supabase's auth user stores the phone as bare digits with no plus. That is
+  // what Login & security renders, and it used to render it raw.
+  it('formats the bare-digit form the auth user carries', () => {
+    expect(displayPhone('15175551234')).toBe('(517) 555-1234');
+  });
+
+  it('formats a plain 10-digit number', () => {
+    expect(displayPhone('5175551234')).toBe('(517) 555-1234');
+  });
+
+  it('is idempotent, so formatting something already formatted is harmless', () => {
+    expect(displayPhone('(517) 555-1234')).toBe('(517) 555-1234');
+  });
+
+  it('still leaves anything it cannot read alone', () => {
+    expect(displayPhone('')).toBe('');
+    expect(displayPhone('ext. 214')).toBe('ext. 214');
+    expect(displayPhone('+447911123456')).toBe('+447911123456');
+  });
+});

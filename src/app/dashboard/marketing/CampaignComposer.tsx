@@ -118,6 +118,25 @@ export default function CampaignComposer({
   const findings = useMemo(() => rankFindings([...checks, ...(aiFindings ?? [])]), [checks, aiFindings]);
   const serious = hasBlockingFinding(findings);
 
+  /**
+   * The same four rules sendCampaignAction enforces, said before the press.
+   *
+   * Order matters: name the thing they are most likely to be able to fix right
+   * now. An empty message is a keystroke away; a missing mailing address is a
+   * trip to Settings; nobody reachable is a different audience entirely.
+   */
+  const sendBlockedReason =
+    !body.trim()
+      ? 'Write a message before sending.'
+      : wantEmail && !subject.trim()
+        ? 'Add a subject line for the email.'
+        : wantEmail && !mailingAddress
+          ? 'Marketing emails have to carry a postal address by law. Add yours in Settings first.'
+          : reachCount === 0
+            ? 'Nobody in this audience can be reached on the channel you picked.'
+            : null;
+  const canSend = sendBlockedReason === null;
+
   function runRead() {
     setAiFindings(null);
     startChecking(async () => {
@@ -339,10 +358,25 @@ export default function CampaignComposer({
           <SaveButton className="btn secondary" formAction={sendTestEmailAction} pendingLabel="Sending…" savedLabel="Test sent ✓" aria-label="Send a test email to yourself">
             Send test to myself
           </SaveButton>
-          <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">
+          {/* The server already refuses an empty message, a missing subject and
+              a missing postal address — sendCampaignAction throws on all three.
+              But throwing from a server action surfaces as an error boundary
+              AFTER the press, so the only way to discover the rule was to break
+              it. Same rules, stated before the press instead of after it.
+              The server checks stay: this is the label on the lock, not the
+              lock. */}
+          <SaveButton
+            className="btn primary"
+            pendingLabel="Sending…"
+            savedLabel="Sent ✓"
+            disabled={!canSend}
+          >
             Send campaign
           </SaveButton>
         </div>
+        {sendBlockedReason ? (
+          <p className="campaign-send-blocked" role="status">{sendBlockedReason}</p>
+        ) : null}
       </div>
 
       {/* Rendered by the same function that builds the real email, in a sandboxed

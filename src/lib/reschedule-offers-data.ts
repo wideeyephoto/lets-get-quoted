@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordAccountEvent } from '@/lib/account-events';
 import { logOutboundMessage } from '@/lib/messages';
@@ -257,7 +258,9 @@ export async function resolveRescheduleReply(phone: string, rawBody: string): Pr
     if (error || !data) return nothing;
     const offer = data as unknown as OfferWithJob;
     const decision = parseRescheduleReply(rawBody);
-    const businessName = offer.account?.business_name || 'your contractor';
+    // The site's name first, and never the "My Business" placeholder — this
+    // goes into an auto-reply a homeowner reads. See src/lib/business-name.ts.
+    const businessName = await loadBusinessName(admin, offer.account_id, 'your contractor');
     const clientName = greetingName(offer.job?.client_name ?? null);
     const windowLabel = storedWindowLabel(offer);
     const newDay = friendlyDate(offer.to_date);

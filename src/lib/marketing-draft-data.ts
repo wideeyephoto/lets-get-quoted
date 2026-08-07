@@ -3,6 +3,7 @@ import { getSiteContent } from '@/lib/site-content';
 import { BEATS, climateZoneForState, stateFromAddress, type Channel } from '@/lib/marketing-calendar';
 import { draftMarketing, type MarketingDraft } from '@/lib/marketing-draft';
 import type { CampaignChannel } from '@/lib/campaign-audiences';
+import { pickBusinessName } from '@/lib/business-name';
 
 /**
  * Assemble the context and draft one beat.
@@ -30,7 +31,8 @@ export async function draftMarketingForAccount(
   return draftMarketing({
     beat,
     channel,
-    businessName: site?.company_name || account?.business_name || 'your business',
+    // Feeds generated marketing copy, which becomes customer-facing.
+    businessName: pickBusinessName(site, account, 'your business'),
     trade: content.trade.trim() || null,
     zone,
     monthName: new Date().toLocaleString('en-US', { month: 'long' }),

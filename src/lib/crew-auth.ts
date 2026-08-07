@@ -4,6 +4,7 @@ import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCrewByUserId, type CrewMember } from '@/lib/crew';
+import { pickBusinessName } from '@/lib/business-name';
 
 const TOKEN_EXPIRY_MINUTES = 60;
 
@@ -105,7 +106,10 @@ export async function requireCrewContext(): Promise<CrewContext> {
     admin.from('sites').select('company_name').eq('account_id', crew.account_id).limit(1).maybeSingle(),
     admin.from('accounts').select('business_name').eq('id', crew.account_id).maybeSingle(),
   ]);
-  const businessName = site?.company_name || account?.business_name || 'My crew';
+  // pickBusinessName, not `site || account`: sites.company_name is itself
+  // seeded to the "My Business" placeholder, so preferring the site is not
+  // enough — the placeholder has to be treated as absent wherever it appears.
+  const businessName = pickBusinessName(site, account, 'My crew');
 
   return { supabase, userId: user.id, accountId: crew.account_id, crew, businessName };
 }

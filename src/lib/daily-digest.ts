@@ -12,6 +12,7 @@ import { buildForecast } from './cash-forecast';
 import { loadCashForecastSources, DEFAULT_HORIZON_DAYS } from './cash-forecast-data';
 import { cashWarningFrom, shouldForecastCash, type CashWarning } from './cash-warning';
 import { countJobsAwaitingSelections } from './selection-notify';
+import { pickBusinessName } from '@/lib/business-name';
 
 // Owner "here's your business today" digest — one email that ties together the
 // day's money, pipeline, schedule, and reputation so the app reads as one
@@ -187,7 +188,7 @@ async function resolveBusinessName(admin: SupabaseClient, accountId: string): Pr
     admin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
     admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
   ]);
-  return site?.company_name || account?.business_name || 'Your business';
+  return pickBusinessName(site, account, 'Your business');
 }
 
 // Daily cron entry point. For each opted-in account, build the digest and email
