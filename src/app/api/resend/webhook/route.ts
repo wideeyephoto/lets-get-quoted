@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { suppressEmail, suppressionReasonFor } from '@/lib/email-suppression';
+import { resendRecipient, resendTags } from '@/lib/resend-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,14 +38,17 @@ function verifyResendSignature(rawBody: string, headers: Headers, secret: string
   });
 }
 
-type ResendTag = { name: string; value: string };
 type ResendWebhookEvent = {
   type: string;
   created_at?: string;
   data: {
     email_id?: string;
     to?: string[] | string;
-    tags?: ResendTag[];
+    // Deliberately `unknown`. This was typed as an array of {name, value} —
+    // the shape the SEND api takes — and the webhook delivers a flat object
+    // instead, so the type was asserting something false about runtime data and
+    // TypeScript happily let .find through. See lib/resend-tags.ts.
+    tags?: unknown;
     // `type` decides whether we ever send here again. Resend passes Amazon SES's
     // classification through: Permanent means the address does not exist,
     // Transient means it was busy or full, Undetermined means the far end did
@@ -121,10 +125,12 @@ export async function POST(request: Request) {
     const providerId = event.data.email_id;
     if (!providerId) throw new Error(`Resend ${event.type} event carried no email_id`);
 
-    const tags = event.data.tags ?? [];
-    const kind = tags.find((t) => t.name === 'kind')?.value ?? 'unknown';
-    const accountId = tags.find((t) => t.name === 'account_id')?.value ?? null;
-    const recipient = Array.isArray(event.data.to) ? event.data.to[0] : event.data.to;
+    // Through resendTags rather than .find, because the webhook does NOT echo
+    // the array-of-pairs shape we send — it delivers a flat object. Calling
+    // .find on it threw before every write in this handler, so no email
+    // delivery was ever recorded and no bouncing address was ever suppressed.
+    const { kind, accountId } = resendTags(event.data.tags);
+    const recipient = resendRecipient(event.data.to);
 
     // Upsert keyed by provider_id: a send's status only moves forward over its
     // lifecycle (sent -> delivered, or sent -> bounced), so the latest event
@@ -189,7 +195,7 @@ async function maybeSuppress(
   input: {
     status: string;
     accountId: string | null;
-    recipient: string | undefined;
+    recipient: string | null;
     bounce: { message?: string; type?: string } | null;
   },
 ): Promise<void> {
