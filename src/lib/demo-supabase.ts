@@ -54,6 +54,126 @@ function compare(left: unknown, right: unknown): number {
   return String(left ?? '').localeCompare(String(right ?? ''));
 }
 
+/* --------------------------------------------------------------------------
+   PostgREST filter expressions, for or()
+
+   The string inside `or(...)` is its own little language:
+
+       feedback_at.gte.2026-07-08,and(feedback_at.is.null,responded_at.gte.…)
+
+   Commas join at the current level, `and(…)` / `or(…)` nest, and a leaf is
+   `column.operator.value`. Values carry dots of their own — every timestamp in
+   this codebase does — so a leaf splits on its first two dots only, never on
+   all of them.
+   -------------------------------------------------------------------------- */
+
+/** Split on the commas that belong to THIS level: not inside parens, not inside quotes. */
+function splitTopLevel(input: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let quoted = false;
+  let start = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (quoted) {
+      if (char === '"' && input[i - 1] !== '\\') quoted = false;
+      continue;
+    }
+    if (char === '"') quoted = true;
+    else if (char === '(') depth += 1;
+    else if (char === ')') depth -= 1;
+    else if (char === ',' && depth === 0) {
+      parts.push(input.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(input.slice(start));
+  return parts.map((part) => part.trim()).filter((part) => part.length > 0);
+}
+
+function parseFilterExpression(expression: string, join: 'and' | 'or'): Filter {
+  const terms = splitTopLevel(expression).map(parseTerm);
+  // An empty expression matching everything would be exactly the silent
+  // widening the original note warned about, so it is an error instead.
+  if (!terms.length) throw new Error(`demo client: empty filter expression in or("${expression}")`);
+  return join === 'and'
+    ? (row) => terms.every((term) => term(row))
+    : (row) => terms.some((term) => term(row));
+}
+
+function parseTerm(term: string): Filter {
+  const group = /^(and|or)\((.*)\)$/i.exec(term);
+  if (group) return parseFilterExpression(group[2], group[1].toLowerCase() as 'and' | 'or');
+  return parseLeaf(term);
+}
+
+function parseLeaf(leaf: string): Filter {
+  const firstDot = leaf.indexOf('.');
+  const secondDot = leaf.indexOf('.', firstDot + 1);
+  if (firstDot < 1 || secondDot < 0) {
+    throw new Error(`demo client: "${leaf}" is not a column.operator.value filter`);
+  }
+
+  const column = leaf.slice(0, firstDot);
+  let operator = leaf.slice(firstDot + 1, secondDot).toLowerCase();
+  let raw = leaf.slice(secondDot + 1);
+
+  // `column.not.eq.value` — negation wraps the operator that follows it.
+  let negated = false;
+  if (operator === 'not') {
+    const nextDot = raw.indexOf('.');
+    if (nextDot < 0) throw new Error(`demo client: "${leaf}" negates nothing`);
+    negated = true;
+    operator = raw.slice(0, nextDot).toLowerCase();
+    raw = raw.slice(nextDot + 1);
+  }
+
+  const test = leafTest(leaf, column, operator, raw);
+  return negated ? (row) => !test(row) : test;
+}
+
+function unquote(raw: string): string {
+  const trimmed = raw.trim();
+  return trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')
+    ? trimmed.slice(1, -1)
+    : trimmed;
+}
+
+function leafTest(leaf: string, column: string, operator: string, raw: string): Filter {
+  const literal = unquote(raw);
+  switch (operator) {
+    case 'eq':
+      return (row) => looseEquals(value(row, column), literal);
+    case 'neq':
+      return (row) => !looseEquals(value(row, column), literal);
+    case 'gt':
+      return (row) => compare(value(row, column), literal) > 0;
+    case 'gte':
+      return (row) => compare(value(row, column), literal) >= 0;
+    case 'lt':
+      return (row) => compare(value(row, column), literal) < 0;
+    case 'lte':
+      return (row) => compare(value(row, column), literal) <= 0;
+    case 'is': {
+      // `is` takes a keyword, not a value: null, true, false.
+      const target = literal === 'null' ? null : literal === 'true' ? true : literal === 'false' ? false : literal;
+      return (row) => (value(row, column) ?? null) === target;
+    }
+    case 'in': {
+      const targets = splitTopLevel(literal.replace(/^\(/, '').replace(/\)$/, '')).map(unquote);
+      return (row) => targets.some((target) => looseEquals(value(row, column), target));
+    }
+    default:
+      // The surviving half of the original doctrine: an operator this does not
+      // model must not be guessed at. Widening a filter here would show the
+      // demo rows the real query excludes, which is worse than a loud stop.
+      throw new Error(
+        `demo client: or() does not model the "${operator}" operator (in "${leaf}"). ` +
+          'Add it to leafTest() in src/lib/demo-supabase.ts.',
+      );
+  }
+}
+
 /**
  * One query in progress.
  *
@@ -129,9 +249,29 @@ class DemoQuery implements PromiseLike<{ data: unknown; error: null; count: numb
     return this;
   }
 
-  // No `or()`. Nothing the demo reads through uses it, and a no-op stub would
-  // silently widen a filter somebody later added — better to fail loudly with
-  // "or is not a function" than to quietly show rows a real query excluded.
+  /**
+   * A PostgREST `or` expression, parsed rather than stubbed.
+   *
+   * This used to be absent on purpose, and the reasoning was right: a no-op
+   * stub would silently widen a filter and show rows a real query excluded.
+   * What the note got wrong was "nothing the demo reads through uses it" —
+   * true when written, false four days later. `fa3993b` added
+   *
+   *     .or(`feedback_at.gte.${cutoff},and(feedback_at.is.null,…)`)
+   *
+   * to countRecentPrivateFeedback, which the dashboard home reads, which the
+   * demo home runs unmodified — so `/demo` answered 500 in production from
+   * 2026-08-03 until this. Failing loudly is only a virtue when somebody is
+   * listening; nothing was, so the fix is to mean the filter rather than to
+   * ignore it or die on it. test/demo-pages.test.ts is now what listens.
+   *
+   * An operator this does not understand still throws, deliberately — that is
+   * the part of the original doctrine worth keeping.
+   */
+  or(expression: string) {
+    this.filters.push(parseFilterExpression(expression, 'or'));
+    return this;
+  }
 
   order(column: string, options?: { ascending?: boolean }) {
     this.sort = { column, ascending: options?.ascending !== false };

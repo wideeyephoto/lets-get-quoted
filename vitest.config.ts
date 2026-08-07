@@ -6,7 +6,14 @@ import { fileURLToPath } from 'node:url';
 // alias mirrors tsconfig's paths so tests import lib code exactly as the app does.
 export default defineConfig({
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // A lib module that marks itself server-side was unimportable from a
+      // test, because Vitest has no Next resolver for this specifier. It is a
+      // build-time marker with no runtime behaviour, so standing it down here
+      // costs nothing and lets those modules be covered at all.
+      'server-only': fileURLToPath(new URL('./test/stubs/server-only.ts', import.meta.url)),
+    },
   },
   test: {
     environment: 'node',
