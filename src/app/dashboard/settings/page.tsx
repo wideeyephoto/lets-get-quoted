@@ -19,7 +19,7 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateReminderSettingsAction, sendReminderTestAction, updateFollowupSettingsAction, sendFollowupTestAction, updateBusinessAddressesAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReminderSettingsAction, sendReminderTestAction, updateFollowupSettingsAction, sendFollowupTestAction, updateBusinessAddressesAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import {
   appointmentReminderText,
   REMINDER_HOUR_CHOICES,
@@ -1178,26 +1178,29 @@ export default async function SettingsPage({
 
                 <p className="automation-group">Your briefing</p>
                 <AutomationCard group="briefing" id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
+                  {/* No checkbox. The card's own toggle already IS this setting
+                      — both wrote accounts.daily_digest_enabled — and two
+                      controls for one boolean is not merely clutter here:
+
+                        * they saved differently. The toggle applies on click;
+                          the checkbox needed a Save nobody had a reason to
+                          press, so unticking it and walking away changed
+                          nothing while looking exactly like it had.
+                        * only one was audited. toggleAutomationAction records
+                          an account event; the digest form wrote silently — so
+                          the "Who changed what" panel directly below this card
+                          would have been missing changes made six inches above
+                          it.
+                        * defaultChecked is uncontrolled, so once it had been
+                          clicked it stopped following the toggle, and Save
+                          would then write the stale value back and turn the
+                          digest on again. */}
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,
                     new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,
                     and clients due to rebook. It only sends on days with something to report.
                   </p>
-                  <form action={updateDigestSettingsAction} className="form-grid compact-form">
-                    <label className="checkbox-row" htmlFor="dailyDigest">
-                      <input
-                        id="dailyDigest"
-                        name="dailyDigest"
-                        type="checkbox"
-                        defaultChecked={dailyDigestEnabled}
-                      />
-                      <span>Email me a daily digest of my business</span>
-                    </label>
-                    <div className="form-actions">
-                      <SaveButton>Save digest settings</SaveButton>
-                    </div>
-                  </form>
-                  <form action={sendTestDigestAction} style={{ marginTop: '0.75rem' }}>
+                  <form action={sendTestDigestAction}>
                     <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent ✓">
                       Send me a test digest
                     </SaveButton>

@@ -794,19 +794,11 @@ export async function sendFollowupTestAction() {
 }
 
 // Opt-in: a once-daily digest email to the owner summarizing their business.
-export async function updateDigestSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
-  const dailyDigest = formData.get('dailyDigest') === 'on';
-
-  const { error } = await supabase
-    .from('accounts')
-    .update({ daily_digest_enabled: dailyDigest })
-    .eq('id', accountId);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath('/dashboard/settings');
-}
+// updateDigestSettingsAction is gone. It wrote the same column as
+// toggleAutomationAction('daily-digest') but without the audit event, so the
+// digest could be changed in a way the settings history never saw. A server
+// action is a public endpoint, and one that quietly bypasses an audit trail is
+// worth deleting rather than leaving unreferenced.
 
 // Sends the owner a one-off preview of their daily digest so they can see what
 // it looks like without waiting for the cron. Throws (surfacing the reason) if
