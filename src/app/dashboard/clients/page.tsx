@@ -4,6 +4,8 @@ import { listClientsWithStats } from '@/lib/clients';
 import { clientPins } from '@/lib/client-map';
 import { CLIENTS_VIEW_COOKIE, normalizeClientsView } from '@/lib/dashboard-views';
 import { toClientRows } from '@/lib/client-rows';
+import { findDuplicateGroups } from '@/lib/client-duplicates';
+import { mergeClientsAction } from './actions';
 import ClientsScreen from './ClientsScreen';
 
 /**
@@ -12,7 +14,7 @@ import ClientsScreen from './ClientsScreen';
  * The read only — the screen itself is in ClientsScreen so the logged-out demo
  * renders the same one.
  */
-export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string } }) {
+export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string; merged?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   // One query for the whole book's coordinates, not one per customer.
   const [clients, pinsByClient] = await Promise.all([
@@ -20,9 +22,28 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
     clientPins(supabase, accountId),
   ]);
 
+  // Computed from the book already in memory — no extra query. Only the fields
+  // the panel shows are passed on: this crosses to a client component, and the
+  // rest of ClientWithStats is nobody's business over the wire.
+  const duplicateGroups = findDuplicateGroups(clients).map((group) => ({
+    ...group,
+    members: group.members.map((member) => ({
+      id: member.id,
+      name: member.name,
+      phone: member.phone,
+      email: member.email,
+      address: member.address,
+      jobCount: member.jobCount,
+      created_at: member.created_at,
+    })),
+  }));
+
   return (
     <ClientsScreen
       rows={toClientRows(clients)}
+      duplicateGroups={duplicateGroups}
+      mergeAction={mergeClientsAction}
+      mergedCount={Number(searchParams.merged) || 0}
       pins={[...pinsByClient.values()].map((pin) => ({ clientId: pin.clientId, lat: pin.lat, lng: pin.lng }))}
       // 'YYYY-MM-DD' in the server's own zone. Decided here rather than in the
       // browser so the follow-up bands cannot differ between two views on the

@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import ClientsWorkspace, { type ClientRow } from './ClientsWorkspace';
+import DuplicateClients from './DuplicateClients';
+import type { DuplicateMember } from './DuplicateGroupForm';
 import type { ClientMapPin } from './ClientsMap';
 import type { ClientsView } from '@/lib/dashboard-views';
+import type { DuplicateGroup } from '@/lib/client-duplicates';
 
 /**
  * The customer book, given its rows.
@@ -17,6 +20,9 @@ export default function ClientsScreen({
   view,
   repeatCount,
   showExistingFlash = false,
+  mergedCount = 0,
+  duplicateGroups = [],
+  mergeAction,
   openAdd = false,
   basePath = '/dashboard',
   readOnly = false,
@@ -27,6 +33,11 @@ export default function ClientsScreen({
   view: ClientsView;
   repeatCount: number;
   showExistingFlash?: boolean;
+  /** How many records the merge just absorbed, for the confirmation line. */
+  mergedCount?: number;
+  duplicateGroups?: DuplicateGroup<DuplicateMember>[];
+  /** Withheld on the demo, where nothing may write. */
+  mergeAction?: (formData: FormData) => Promise<void>;
   openAdd?: boolean;
   basePath?: string;
   readOnly?: boolean;
@@ -50,6 +61,18 @@ export default function ClientsScreen({
       {showExistingFlash ? (
         <p className="flash flash-info">That phone or email is already on a customer — here they are, rather than a second copy.</p>
       ) : null}
+
+      {mergedCount > 0 ? (
+        <p className="flash flash-success">
+          Merged {mergedCount} duplicate record{mergedCount === 1 ? '' : 's'} into this customer. Their
+          jobs, leads, recurring plans and Quick Stop requests all moved across.
+        </p>
+      ) : null}
+
+      {/* Above the book, because it is about the book rather than about any one
+          customer in it — and collapsed, because it is a suggestion. Renders
+          nothing when there is nothing to suggest. */}
+      <DuplicateClients groups={duplicateGroups} action={readOnly ? undefined : mergeAction} />
 
       <section className="panel workspace-section-card">
         {rows.length === 0 ? (

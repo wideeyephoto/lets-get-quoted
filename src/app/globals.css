@@ -22395,6 +22395,42 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-kpi-info:hover, .ins-kpi-info:focus-visible {
   color: var(--text); border-color: var(--cedge-orange-5); outline: none;
 }
+/* ---- Possible duplicate customers ----
+   A proposal, dressed as one. Nothing in here is louder than the customer book
+   it sits above, because everything in it is a guess the owner has to confirm. */
+.dupe-panel { margin-bottom: 1rem; }
+.dupe-groups { display: grid; gap: 0.9rem; margin-top: 0.9rem; }
+.dupe-group {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.025);
+}
+.dupe-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.dupe-group-head strong { font-size: 0.9rem; font-weight: 750; }
+.dupe-group-head span { font-size: 0.82rem; color: var(--mute-i60); overflow-wrap: anywhere; }
+.dupe-members { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+.dupe-member {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.02);
+  cursor: pointer;
+}
+.dupe-member:hover { border-color: var(--edge-t22); }
+.dupe-member input { margin-top: 0.2rem; flex: none; }
+/* min-width: 0 so a long email ellipsises inside the row instead of widening it. */
+.dupe-member-body { display: grid; gap: 0.1rem; min-width: 0; }
+.dupe-member-body strong { font-size: 0.9rem; font-weight: 700; }
+.dupe-member-body small { font-size: 0.79rem; color: var(--mute-i60); overflow-wrap: anywhere; }
+.dupe-member-stats { font-variant-numeric: tabular-nums; }
+.dupe-demo-note { font-size: 0.8rem; color: var(--mute-t55); }
+
 /* The loss banner at the top of Insights. Loud enough to stop a scroll, quiet
    enough not to become the page's new hero — it is a pointer to the breakdown,
    not the breakdown. */

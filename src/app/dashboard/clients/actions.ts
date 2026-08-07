@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { updateClient } from '@/lib/clients';
+import { mergedFields } from '@/lib/client-duplicates';
 import {
   parseTable,
   applyMapping,
@@ -201,4 +202,103 @@ export async function createClientAction(formData: FormData) {
 
   revalidatePath('/dashboard/clients');
   redirect(`/dashboard/clients/${data.id as string}?created=1`);
+}
+
+/**
+ * Fold duplicate customer records into one.
+ *
+ * WHAT MOVES. Four tables carry a client_id — jobs, leads, recurring_plans and
+ * extra_stop_requests (see schema.sql). Every one is repointed at the survivor
+ * before the duplicates are deleted, so nothing is orphaned. All four writes
+ * are scoped by account_id as well as by client id: the ids arrive from a form,
+ * and an id belonging to another account must not be reachable even if one were
+ * guessed.
+ *
+ * WHAT DOES NOT MOVE. jobs.client_name / client_phone / client_email are a
+ * per-job SNAPSHOT of who the customer was when that job was written, and they
+ * stay exactly as they are. Rewriting them would edit history to match a
+ * decision made today, and the invoice a customer already has in their inbox
+ * would stop matching the job it came from.
+ *
+ * WHY IT FILLS ONLY BLANKS. mergedFields never overwrites a value somebody
+ * typed with a different value somebody typed. Where two records genuinely
+ * disagree, the survivor's own value stands and the discarded one is appended
+ * to the notes — losing a customer's real phone number to a merge would make
+ * this feature worse than the duplicates it cleans up.
+ *
+ * NOT UNDOABLE, so the UI asks first.
+ */
+export async function mergeClientsAction(formData: FormData): Promise<void> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const survivorId = String(formData.get('survivorId') ?? '').trim();
+  const duplicateIds = formData
+    .getAll('duplicateId')
+    .map((value) => String(value).trim())
+    .filter((id) => id && id !== survivorId);
+
+  if (!survivorId || duplicateIds.length === 0) return;
+
+  // Read them back rather than trusting the form's copy of the fields: the page
+  // may have been open a while, and the merge should combine what is in the
+  // book NOW.
+  const { data: rows } = await supabase
+    .from('clients')
+    .select('id, name, phone, email, address, notes, created_at')
+    .eq('account_id', accountId)
+    .in('id', [survivorId, ...duplicateIds]);
+
+  const found = (rows ?? []) as {
+    id: string; name: string; phone: string | null; email: string | null;
+    address: string | null; notes: string | null; created_at: string;
+  }[];
+  const survivor = found.find((row) => row.id === survivorId);
+  // Only what this account actually owns — anything else silently drops out.
+  const others = found.filter((row) => row.id !== survivorId);
+  if (!survivor || others.length === 0) return;
+
+  const merged = mergedFields(survivor, others);
+
+  // A disagreement is recorded, not resolved. The owner can read it and decide.
+  const noteParts = [
+    (survivor.notes ?? '').trim(),
+    ...others.map((other) => (other.notes ?? '').trim()).filter(Boolean),
+    merged.conflicts.length > 0
+      ? `Merged ${others.length} duplicate record${others.length === 1 ? '' : 's'}. ${merged.conflicts.join('; ')}.`
+      : `Merged ${others.length} duplicate record${others.length === 1 ? '' : 's'}.`,
+  ].filter(Boolean);
+
+  await supabase
+    .from('clients')
+    .update({
+      name: merged.name,
+      phone: merged.phone,
+      email: merged.email,
+      address: merged.address,
+      notes: noteParts.join('\n\n').slice(0, 4000),
+    })
+    .eq('account_id', accountId)
+    .eq('id', survivorId);
+
+  const loserIds = others.map((row) => row.id);
+  // Sequential, not concurrent. If one of these fails the ones before it have
+  // already landed, and a client whose jobs moved but whose leads did not is
+  // recoverable by merging again; a partially-applied concurrent batch with the
+  // delete already through is not.
+  for (const table of ['jobs', 'leads', 'recurring_plans', 'extra_stop_requests'] as const) {
+    const { error } = await supabase
+      .from(table)
+      .update({ client_id: survivorId })
+      .eq('account_id', accountId)
+      .in('client_id', loserIds);
+    // A table that does not exist yet on an older database must not take the
+    // whole merge down with it — the rest still moves and the delete is skipped.
+    if (error) throw new Error(`Could not move ${table} onto the surviving customer.`);
+  }
+
+  await supabase.from('clients').delete().eq('account_id', accountId).in('id', loserIds);
+
+  revalidatePath('/dashboard/clients');
+  revalidatePath(`/dashboard/clients/${survivorId}`);
+  redirect(`/dashboard/clients/${survivorId}?merged=${loserIds.length}`);
 }
