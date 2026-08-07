@@ -229,6 +229,16 @@ alter table accounts drop constraint if exists accounts_appointment_reminder_hou
 alter table accounts add constraint accounts_appointment_reminder_hour_check
   check (appointment_reminder_hour >= 0 and appointment_reminder_hour <= 23);
 
+-- Staff-imposed payout restriction, mirroring the suspended_at/_reason/_by
+-- triple. Enforced at all FOUR Connect charge-creation sites — lib/payments.ts,
+-- lib/recurring.ts, lib/payment-plans.ts and lib/dunning.ts. Dunning is the one
+-- that matters most and was the one initially missed: the other three are
+-- triggered by a person doing something, while dunning is a cron retrying saved
+-- cards unattended, which is exactly the traffic a restriction exists to stop.
+alter table accounts add column if not exists payouts_restricted_at timestamptz;
+alter table accounts add column if not exists payouts_restricted_reason text;
+alter table accounts add column if not exists payouts_restricted_by text;
+
 -- When quote follow-ups go out, and how. Days are absolute offsets from the day
 -- the quote was shared ({2,5} is the cadence that used to be hardcoded in
 -- lib/quote-followups.ts); the hour is in the ACCOUNT'S own timezone, and the
@@ -1923,6 +1933,184 @@ create index if not exists admin_actions_account_idx on admin_actions (account_i
 -- RLS on with NO policy: unreachable via the anon/authed keys. Only the
 -- service-role client (used inside requireAdmin's context) can read/write it.
 alter table admin_actions enable row level security;
+
+-- ----------------------------------------------------------------------------
+-- Admin dashboard build-out (Command Center, Universal Search, account profile)
+-- ----------------------------------------------------------------------------
+-- Every table below follows the admin_actions precedent exactly: RLS ENABLED
+-- WITH NO POLICY. They are staff surfaces, reachable only through the
+-- service-role client from createAdminClient(), and never read from the owner
+-- dashboard. Adding a policy to any of them would expose an internal surface.
+--
+-- These carry the same DDL as their migrations under migrations/2026-08-0*.sql.
+-- They belong HERE as well, for the same reason the lead-lost bound does: a
+-- database built from this file alone — which is how a staging or local
+-- environment gets created — would otherwise be missing every table the admin
+-- console reads, and every one of those screens would fail at runtime rather
+-- than at deploy.
+
+-- Inbound webhook deliveries we could not process: a bad signature, or a throw
+-- inside the handler. Surfaced on the Command Center with a "mark resolved".
+create table if not exists webhook_failures (
+  id               uuid primary key default gen_random_uuid(),
+  source           text not null check (source in ('stripe','twilio_inbound','twilio_status','resend')),
+  event_type       text,              -- Stripe event.type / Twilio MessageStatus / Resend event type, when we got far enough to know it
+  reference_id     text,              -- Stripe event id / Twilio MessageSid / Resend email_id, when known
+  error_message    text not null,
+  payload_excerpt  text,              -- small truncated snippet for debugging — never the full raw body
+  resolved_at      timestamptz,
+  resolved_by      text,
+  created_at       timestamptz not null default now()
+);
+create index if not exists webhook_failures_unresolved_idx on webhook_failures (created_at desc) where resolved_at is null;
+create index if not exists webhook_failures_source_idx on webhook_failures (source, created_at desc);
+alter table webhook_failures enable row level security;
+
+-- Delivery outcomes reported by Resend's webhook. One row per send, keyed by
+-- provider_id and upserted: a send's status only moves forward (sent ->
+-- delivered, or sent -> bounced), so the latest event is the one worth keeping.
+-- account_id is nullable because the tag that carries it can be absent.
+create table if not exists email_events (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid references accounts(id) on delete set null,
+  kind          text not null default 'unknown',
+  recipient     text not null,
+  provider_id   text not null,
+  status        text not null check (status in ('sent','delivered','delayed','bounced','complained')),
+  error_reason  text,
+  occurred_at   timestamptz not null default now(),
+  created_at    timestamptz not null default now(),
+  unique (provider_id)
+);
+create index if not exists email_events_status_idx on email_events (status, occurred_at desc);
+create index if not exists email_events_account_idx on email_events (account_id, occurred_at desc);
+alter table email_events enable row level security;
+
+-- Staff-authored release and incident log. Manually curated: there is no deploy
+-- tracking or incident management anywhere else in this codebase, and one small
+-- table staff write by hand is honest about that.
+create table if not exists platform_incidents (
+  id            uuid primary key default gen_random_uuid(),
+  kind          text not null check (kind in ('release','incident')),
+  title         text not null,
+  description   text,
+  severity      text not null default 'info' check (severity in ('info','warning','critical')),
+  started_at    timestamptz not null default now(),
+  resolved_at   timestamptz,
+  created_by    text not null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists platform_incidents_created_idx on platform_incidents (created_at desc);
+create index if not exists platform_incidents_active_idx on platform_incidents (started_at desc) where kind = 'incident' and resolved_at is null;
+alter table platform_incidents enable row level security;
+
+-- Lightweight internal support-case log. No external help desk exists in this
+-- codebase, so staff open a case, thread notes on it, and change its status from
+-- /admin. account_id is nullable: a case can be about the platform generally.
+create table if not exists support_cases (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid references accounts(id) on delete set null,
+  subject       text not null,
+  status        text not null default 'open' check (status in ('open', 'pending', 'resolved', 'closed')),
+  priority      text not null default 'normal' check (priority in ('low', 'normal', 'high', 'urgent')),
+  assigned_to   text,
+  sla_due_at    timestamptz,
+  created_by    text not null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists support_cases_sla_idx on support_cases (sla_due_at) where status not in ('resolved', 'closed');
+create index if not exists support_cases_assigned_idx on support_cases (assigned_to, status);
+create index if not exists support_cases_account_idx on support_cases (account_id);
+alter table support_cases enable row level security;
+
+-- Append-only thread per case: ordinary notes plus a kind='status_change' row
+-- written whenever the status moves, so the thread alone is a full history.
+create table if not exists support_case_notes (
+  id            uuid primary key default gen_random_uuid(),
+  case_id       uuid not null references support_cases(id) on delete cascade,
+  kind          text not null default 'note' check (kind in ('note', 'status_change')),
+  body          text not null,
+  created_by    text not null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists support_case_notes_case_idx on support_case_notes (case_id, created_at);
+alter table support_case_notes enable row level security;
+
+-- Staff notes on an account. Append-only, and deliberately distinct from
+-- clients.notes, which is a single owner-authored field about a customer.
+create table if not exists account_notes (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  body          text not null,
+  created_by    text not null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists account_notes_account_idx on account_notes (account_id, created_at desc);
+alter table account_notes enable row level security;
+
+create table if not exists account_tags (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  tag           text not null,
+  created_by    text not null,
+  created_at    timestamptz not null default now(),
+  unique (account_id, tag)
+);
+create index if not exists account_tags_account_idx on account_tags (account_id);
+alter table account_tags enable row level security;
+
+-- Staff-uploaded files against an account. The row is the metadata; the file
+-- lives in the private 'account-attachments' bucket created below, under
+-- ${accountId}/${uuid}.${ext} — the same path convention insurance proof uses,
+-- so ownership can be re-checked from the path alone.
+create table if not exists account_attachments (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  path          text not null,
+  filename      text not null,
+  content_type  text,
+  size_bytes    bigint,
+  uploaded_by   text not null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists account_attachments_account_idx on account_attachments (account_id, created_at desc);
+alter table account_attachments enable row level security;
+
+insert into storage.buckets (id, name, public)
+values ('account-attachments', 'account-attachments', false)
+on conflict (id) do nothing;
+
+-- GDPR/CCPA-style requests logged against an account, with who resolved them.
+create table if not exists privacy_requests (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  kind          text not null check (kind in ('access', 'deletion', 'correction', 'other')),
+  status        text not null default 'open' check (status in ('open', 'resolved')),
+  details       text,
+  created_by    text not null,
+  resolved_at   timestamptz,
+  resolved_by   text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists privacy_requests_account_idx on privacy_requests (account_id, created_at desc);
+create index if not exists privacy_requests_open_idx on privacy_requests (status) where status = 'open';
+alter table privacy_requests enable row level security;
+
+-- Sign-ins, recorded at the three OWNER auth callbacks (OAuth, magic link,
+-- phone). Not hooked into ensureAccountMembership, which also runs on every
+-- authenticated page load — that would record a "login" per navigation. The
+-- crew callback is excluded; this is scoped to the account profile.
+create table if not exists login_events (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  method        text not null check (method in ('oauth', 'magic_link', 'phone')),
+  ip            text,
+  user_agent    text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists login_events_account_idx on login_events (account_id, created_at desc);
+alter table login_events enable row level security;
 
 -- Platform-issued account credits (e.g. the goodwill credit on a verified Extra
 -- Stop no-show). A ledger, not a mutable balance: the current balance is the sum

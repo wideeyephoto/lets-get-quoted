@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
-import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents } from '@/lib/stripe';
+import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { sendPaymentSmsEvent } from '@/lib/sms';
@@ -243,10 +243,10 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     }
   }
 
-  if (!payment.account?.stripe_connect_id || !payment.account.connect_onboarded) {
-    throw new Error('This contractor has not finished setting up payments yet.');
-  }
-  if (payment.account.payouts_restricted_at) {
+  // Deliberately one message for both "never connected" and "staff restricted":
+  // this is customer-facing, and a homeowner who cannot pay does not need to be
+  // told the contractor is under review.
+  if (!canCreateConnectCharge(payment.account)) {
     throw new Error('This contractor has not finished setting up payments yet.');
   }
 

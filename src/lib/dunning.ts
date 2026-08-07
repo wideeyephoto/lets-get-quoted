@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
-import { getStripeClient, toCents } from '@/lib/stripe';
+import { getStripeClient, toCents, canCreateConnectCharge, CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createPaymentFeedEvent } from '@/lib/job-feed';
 import { sendPaymentSmsEvent, sendCardUpdateSms } from '@/lib/sms';
@@ -291,8 +291,24 @@ async function retryDunningPayment(admin: AdminClient, payment: SweptPayment): P
     await admin.from('payments').update({ dunning_state: 'needs_card', next_retry_at: null }).eq('id', payment.id);
     return 'gave_up';
   }
-  const { data: account } = await admin.from('accounts').select('stripe_connect_id, connect_onboarded').eq('id', payment.account_id).maybeSingle();
-  if (!account?.stripe_connect_id || !account.connect_onboarded) {
+  // The same gate as the other three Connect charge sites, then a decision this
+  // one has to make on its own: whether the reason is reversible.
+  //
+  // This site was the one the payout restriction originally missed. The other
+  // three run because a person did something; this is a cron retrying saved
+  // cards unattended — which is exactly the traffic staff mean to stop when they
+  // restrict an account they suspect of fraud or a chargeback storm.
+  const { data: account } = await admin.from('accounts').select(CONNECT_CHARGE_COLUMNS).eq('id', payment.account_id).maybeSingle();
+  if (!canCreateConnectCharge(account)) {
+    // HELD, not exhausted, when the block is a staff restriction: it is
+    // reversible by the staff member who set it, so defer and re-check like a
+    // paused plan does above. Marking it exhausted would mean lifting the
+    // restriction never resumed the payment. A missing Connect account, by
+    // contrast, is terminal for this payment.
+    if (account?.payouts_restricted_at) {
+      await admin.from('payments').update({ next_retry_at: new Date(Date.now() + 3 * DAY_MS).toISOString() }).eq('id', payment.id);
+      return 'held';
+    }
     await admin.from('payments').update({ dunning_state: 'exhausted', next_retry_at: null }).eq('id', payment.id);
     return 'gave_up';
   }

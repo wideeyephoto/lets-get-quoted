@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { getStripeClient, toCents, fromCents } from '@/lib/stripe';
+import { getStripeClient, toCents, fromCents, canCreateConnectCharge, CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 import { getQuotedFee, createDepositRequest } from '@/lib/payments';
 import { createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
 import { sendPaymentSmsEvent } from '@/lib/sms';
@@ -304,10 +304,10 @@ async function chargePlanInstallment(
 
   const { data: account } = await admin
     .from('accounts')
-    .select('stripe_connect_id, connect_onboarded, payouts_restricted_at')
+    .select(CONNECT_CHARGE_COLUMNS)
     .eq('id', plan.account_id)
     .maybeSingle();
-  if (!account?.stripe_connect_id || !account.connect_onboarded || account.payouts_restricted_at) return 'skipped';
+  if (!canCreateConnectCharge(account)) return 'skipped';
 
   // CLAIM: only one run may take this installment from requested/failed →
   // processing. A concurrent run (or a re-entry) sees 0 rows and bails, so the

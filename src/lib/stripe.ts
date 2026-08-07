@@ -60,6 +60,54 @@ export function getTierInfo(trailingVolume: number): TierInfo {
 }
 
 // -- Dollar <-> cent helpers (app stores amounts in dollars; Stripe wants cents) --
+/**
+ * The account fields that decide whether we may create a Connect charge on
+ * somebody's behalf. Structural, so every caller's own row type satisfies it.
+ */
+export type ConnectChargeable = {
+  stripe_connect_id?: string | null;
+  connect_onboarded?: boolean | null;
+  payouts_restricted_at?: string | null;
+};
+
+/**
+ * An account that passed the check — the connect id is known to be present.
+ *
+ * This is why the predicate below narrows rather than returning a plain boolean:
+ * every call site immediately reaches for stripe_connect_id to build
+ * transfer_data.destination, and without narrowing each one would need its own
+ * non-null assertion. An assertion is a place the invariant can be asserted
+ * WRONGLY; a narrowing predicate makes the compiler carry it instead.
+ */
+export type ChargeableAccount = ConnectChargeable & { stripe_connect_id: string };
+
+/**
+ * Whether money may be moved to this account right now.
+ *
+ * ONE PREDICATE, FOUR CALL SITES. There are four places that create a Connect
+ * charge — lib/payments.ts (checkout), lib/recurring.ts, lib/payment-plans.ts
+ * and lib/dunning.ts — and the condition has to be identical at all of them or
+ * the restriction has a hole. It had one: dunning checked connect_onboarded and
+ * stripe_connect_id but not payouts_restricted_at, so a cron kept retrying
+ * saved cards and routing funds to an account staff had explicitly restricted.
+ * That is the worst possible site to miss, because it is the only one that runs
+ * with nobody watching.
+ *
+ * Callers still decide what a `false` MEANS for them — dunning defers and
+ * re-checks because a restriction is reversible, while a missing Connect
+ * account is terminal. This answers only "may we", never "what now".
+ */
+export function canCreateConnectCharge(account: ConnectChargeable | null | undefined): account is ChargeableAccount {
+  if (!account) return false;
+  if (!account.stripe_connect_id) return false;
+  if (!account.connect_onboarded) return false;
+  if (account.payouts_restricted_at) return false;
+  return true;
+}
+
+/** The columns canCreateConnectCharge reads, for the select that feeds it. */
+export const CONNECT_CHARGE_COLUMNS = 'stripe_connect_id, connect_onboarded, payouts_restricted_at';
+
 export function toCents(dollars: number): number {
   return Math.round(dollars * 100);
 }

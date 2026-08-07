@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { createJob, type Job } from '@/lib/jobs';
-import { getStripeClient, toCents } from '@/lib/stripe';
+import { getStripeClient, toCents, canCreateConnectCharge, CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 import { getQuotedFee } from '@/lib/payments';
 import { normalizeUsPhone } from '@/lib/phone';
 import { findOrCreateClientId } from '@/lib/clients';
@@ -497,10 +497,10 @@ async function chargePlanVisit(
 
   const { data: account } = await admin
     .from('accounts')
-    .select('stripe_connect_id, connect_onboarded, payouts_restricted_at')
+    .select(CONNECT_CHARGE_COLUMNS)
     .eq('id', plan.account_id)
     .maybeSingle();
-  if (!account?.stripe_connect_id || !account.connect_onboarded || account.payouts_restricted_at) {
+  if (!canCreateConnectCharge(account)) {
     await createJobFeedEvent(admin, plan.account_id, job.id, {
       kind: 'recurring_charge_skipped',
       title: 'Auto-charge skipped',
