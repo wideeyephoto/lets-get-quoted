@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import { cronRoute } from '@/lib/cron-runs';
 import { getSiteContent, slugifyBlogTitle } from '@/lib/site-content';
 import { draftBlogPost } from '@/lib/blog-generate';
 import { shouldAutoPublish } from '@/lib/marketing-status';
@@ -14,21 +14,24 @@ const MAX_DRAFTS_PER_RUN = 40;
 // site with the blog section enabled, draft ONE fresh post and store it as an
 // unpublished draft — the owner still reviews and publishes it (Google's
 // scaled-content policy makes auto-publishing unreviewed AI content risky).
-export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const auth = request.headers.get('authorization');
-  // Fail closed: no secret configured, or a mismatched token, means no run.
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+//
+// The only cron whose work is inline rather than a library call, so it is the
+// only one that passes a closure to cronRoute rather than a function reference.
+// It was also the only one with no try/catch at all: a throw anywhere in the
+// loop below produced an unhandled 500 with nothing recorded. cronRoute catches
+// it now, and the message lands in cron_runs.error.
+export const GET = cronRoute('blog', async () => {
   const supabase = createAdminClient();
   const { data: sites, error } = await supabase
     .from('sites')
     .select('id, company_name, service_area, content')
     .limit(500);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Thrown rather than returned as a 500 body: this is a failed run, and the
+  // health page needs it recorded as one. Previously it returned early with the
+  // Postgres message and looked, from outside, exactly like a run that found
+  // nothing to do.
+  if (error) throw new Error(`sites query failed: ${error.message}`);
 
   const today = new Date().toISOString().slice(0, 10);
   // Auto-drafting stays biweekly (1st + 15th); the daily run otherwise just
@@ -103,5 +106,5 @@ export async function GET(request: Request) {
     if (updateError) failed++;
   }
 
-  return NextResponse.json({ drafted, published, skipped, failed });
-}
+  return { drafted, published, skipped, failed };
+});

@@ -29,6 +29,7 @@ import {
 } from '@/lib/admin-alerts';
 import { rangeWindow, computeTrend, type DateRange } from '@/lib/command-center-logic';
 import { fetchFeeWindow } from '@/lib/platform-fees';
+import { getCronTrouble, type CronTrouble } from '@/lib/cron-runs';
 
 export type { DateRange } from '@/lib/command-center-logic';
 
@@ -63,6 +64,8 @@ export type CommandCenterData = {
   /** Open cases the SLA card cannot see, because they have no SLA set. */
   casesWithoutSla: number;
   myCases: SupportCaseRow[];
+  /** Scheduled jobs that are failing or overdue. See lib/cron-jobs.ts. */
+  cronTrouble: CronTrouble[];
 };
 
 type MetricsWindow = {
@@ -128,6 +131,7 @@ export async function buildCommandCenterData(
     casesNearSla,
     casesWithoutSla,
     myCases,
+    cronTrouble,
   ] = await Promise.all([
     fetchMetricsWindow(admin, win.currentStart, win.currentEnd),
     fetchMetricsWindow(admin, win.previousStart, win.previousEnd),
@@ -145,6 +149,7 @@ export async function buildCommandCenterData(
     getCasesNearSla(admin, { now }),
     getCasesWithoutSlaCount(admin),
     getMyAssignedCases(admin, opts.staffEmail),
+    getCronTrouble(admin, now),
   ]);
 
   const metrics: CommandCenterMetric[] = [
@@ -157,6 +162,6 @@ export async function buildCommandCenterData(
   return {
     range, metrics, disputes, pausedPayouts, suspendedAccounts, notOnboardedCount, notOnboardedAccounts,
     dunningPayments, overdueQuickStops, failedSms, failedEmails, webhookFailures, incidents, casesNearSla,
-    casesWithoutSla, myCases,
+    casesWithoutSla, myCases, cronTrouble,
   };
 }

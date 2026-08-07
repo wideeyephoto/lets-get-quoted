@@ -266,7 +266,36 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     ) : undefined,
   }));
 
+  // A job that stops firing produces no errors, because nothing runs to produce
+  // them — so unlike every other card here, this one is not fed by a failure
+  // log. Jobs that have never reported are excluded upstream: right after the
+  // heartbeat ships that is all of them, and an alert everybody dismisses on
+  // day one is an alert nobody reads on day thirty.
+  const cronTroubleItems: AlertItem[] = data.cronTrouble.map((row) => ({
+    key: row.job,
+    severity: 'bad',
+    status: row.health === 'stale' ? 'Overdue' : 'Failing',
+    title: row.label,
+    subtitle: row.error ?? row.consequence,
+    age: row.lastSuccessAt ? `last worked ${relativeAge(row.lastSuccessAt, now)}` : 'never succeeded',
+    actionLabel: 'Service health',
+    actionHref: '/admin/health',
+  }));
+
   const boardCards: BoardCard[] = [
+    {
+      key: 'cronTrouble',
+      title: 'Scheduled jobs',
+      content: (
+        <AlertCard
+          title="Scheduled jobs"
+          items={cronTroubleItems}
+          emptyMessage="Every job that has reported is running on schedule."
+          viewAllHref="/admin/health"
+          viewAllLabel="Service health"
+        />
+      ),
+    },
     // Now leads somewhere, which it never did: the table had a reader and no
     // writer, so an empty card was permanent and looked like good news.
     { key: 'incidents', title: 'Recent releases & incidents', content: <AlertCard title="Recent releases & incidents" items={incidentItems} emptyMessage="Nothing logged yet — write one up on the Incidents page." viewAllHref="/admin/incidents" viewAllLabel="Releases & incidents" /> },

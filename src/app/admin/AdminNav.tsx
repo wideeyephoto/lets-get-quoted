@@ -16,6 +16,7 @@ const ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: '/admin/cases', label: 'Cases' },
   { href: '/admin/quick-stops', label: 'Quick Stops' },
   { href: '/admin/money', label: 'Money' },
+  { href: '/admin/health', label: 'Service health' },
   { href: '/admin/incidents', label: 'Incidents' },
   { href: '/admin/audit', label: 'Audit log' },
   // The only page that is nothing BUT a write surface, so it is the only one
