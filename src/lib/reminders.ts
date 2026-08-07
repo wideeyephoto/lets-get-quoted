@@ -13,7 +13,7 @@ import {
   isReminderHourNow,
   normalizeReminderHour,
   normalizeReminderLeadDays,
-  reminderTargetDateKey,
+  reminderWindow,
 } from '@/lib/appointment-reminders';
 
 // Bound the work one cron invocation will do.
@@ -176,39 +176,56 @@ export async function runAppointmentReminders(now = new Date()): Promise<Reminde
   }));
 
   // Whose hour is it? Each account resolves its own local date and time, and
-  // then its own target date — two accounts an hour apart can be reminding
-  // about different calendar days in the same run, which is the entire point.
-  const due = new Map<string, string>();
+  // then its own window — two accounts an hour apart can be reminding about
+  // different calendar days in the same run, which is the entire point.
+  const due = new Map<string, { from: string; to: string }>();
   for (const account of accounts) {
     const { dateKey, time } = zonedNowParts(now, account.timezone);
     if (!isReminderHourNow(time, account.hour)) continue;
-    due.set(account.id, reminderTargetDateKey(dateKey, account.leadDays));
+    due.set(account.id, reminderWindow(dateKey, account.leadDays));
   }
   if (due.size === 0) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, reason: 'no account is due this hour' };
   }
 
-  // Group by target date so this is one query per distinct date rather than one
-  // per account — in practice every US account due in the same hour shares a
-  // date, so this is almost always a single round trip.
-  const idsByTarget = new Map<string, string[]>();
-  for (const [accountId, target] of due) {
-    idsByTarget.set(target, [...(idsByTarget.get(target) ?? []), accountId]);
+  // Group by window so this is one query per distinct window rather than one
+  // per account — in practice every US account due in the same hour with the
+  // same lead shares one, so this is almost always a single round trip.
+  const idsByWindow = new Map<string, string[]>();
+  for (const [accountId, window] of due) {
+    const key = `${window.from}|${window.to}`;
+    idsByWindow.set(key, [...(idsByWindow.get(key) ?? []), accountId]);
   }
 
   const jobs: RemindableJob[] = [];
-  for (const [target, accountIds] of idsByTarget) {
+  for (const [key, accountIds] of idsByWindow) {
+    const [from, to] = key.split('|');
     // Still active only — a completed or archived job doesn't need a reminder,
     // and archiving is how this product expresses a cancellation.
+    //
+    // A RANGE, not one date: see reminderWindow. Everything already reminded
+    // for its own scheduled_for is filtered by sendJobAppointmentReminder, so
+    // widening this re-sends nothing; it only catches the jobs booked after
+    // their ideal reminder day had already passed.
+    //
+    // Ordered soonest-first so the 1000-row ceiling and MAX_SENDS_PER_RUN both
+    // drop the least urgent work rather than an arbitrary slice. Without the
+    // order, an account past the ceiling loses the same jobs every run,
+    // deterministically and invisibly.
     const { data: rows } = await admin
       .from('jobs')
       .select('id, account_id, ref, client_name, client_phone, client_email, address, scheduled_for, scheduled_time, status')
-      .eq('scheduled_for', target)
+      .gte('scheduled_for', from)
+      .lte('scheduled_for', to)
       .in('status', ['new_lead', 'in_progress'])
       .in('account_id', accountIds)
+      .order('scheduled_for', { ascending: true })
       .limit(1000);
     jobs.push(...((rows ?? []) as RemindableJob[]));
   }
+  // Across windows too, not just within one — the cap has to bite on the least
+  // urgent job overall.
+  jobs.sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? ''));
 
   let sent = 0;
   let skipped = 0;

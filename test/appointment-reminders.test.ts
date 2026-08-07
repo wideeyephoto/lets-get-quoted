@@ -12,6 +12,7 @@ import {
   reminderLeadLabel,
   reminderTargetDateKey,
   reminderTimingLabel,
+  reminderWindow,
   timeZoneAbbreviation,
 } from '@/lib/appointment-reminders';
 import { zonedNowParts } from '@/lib/quick-stop';
@@ -217,6 +218,55 @@ describe('labels', () => {
   it('puts the whole schedule in one line', () => {
     expect(reminderTimingLabel(1, 9, 'America/New_York', new Date('2026-08-06T12:00:00Z')))
       .toBe('1 day before at 9:00 AM EDT');
+  });
+});
+
+describe('reminderWindow — the gap that let a booking get no reminder at all', () => {
+  it('is a single day at the default lead, so nothing about the default changes', () => {
+    // The old query matched scheduled_for exactly against today + 1. With a lead
+    // of one day the window has to collapse back to that same single date, or
+    // this "fix" is a behaviour change for every account that never touched the
+    // setting.
+    expect(reminderWindow('2026-08-06', 1)).toEqual({ from: '2026-08-07', to: '2026-08-07' });
+  });
+
+  it('reaches back to tomorrow at longer leads, which is the whole bug', () => {
+    // A three-day lead used to look ONLY at the 9th. A job booked on the 7th for
+    // the 8th had already missed its one chance on the 5th, so it was never
+    // reminded — not late, never.
+    expect(reminderWindow('2026-08-06', 3)).toEqual({ from: '2026-08-07', to: '2026-08-09' });
+    expect(reminderWindow('2026-08-06', 7)).toEqual({ from: '2026-08-07', to: '2026-08-13' });
+  });
+
+  it('never includes today', () => {
+    // The sweep runs at a fixed hour, so a "reminder" for an 8am appointment
+    // sent at 9am is a message about something that already happened.
+    for (const lead of [1, 2, 3, 7]) {
+      expect(reminderWindow('2026-08-06', lead).from, String(lead)).toBe('2026-08-07');
+    }
+  });
+
+  it('crosses months and years like the calendar does', () => {
+    expect(reminderWindow('2026-08-30', 7)).toEqual({ from: '2026-08-31', to: '2026-09-06' });
+    expect(reminderWindow('2026-12-30', 7)).toEqual({ from: '2026-12-31', to: '2027-01-06' });
+    // 2028 is a leap year: Feb 29 exists and the window must step through it.
+    expect(reminderWindow('2028-02-27', 3)).toEqual({ from: '2028-02-28', to: '2028-03-01' });
+  });
+
+  it('takes the same liberties with a junk lead that the target-date maths does', () => {
+    // normalizeReminderLeadDays is the one place that decides what an
+    // out-of-range lead means; the window must not invent a second answer.
+    expect(reminderWindow('2026-08-06', 0)).toEqual(reminderWindow('2026-08-06', DEFAULT_REMINDER_LEAD_DAYS));
+    expect(reminderWindow('2026-08-06', 999)).toEqual(reminderWindow('2026-08-06', DEFAULT_REMINDER_LEAD_DAYS));
+  });
+
+  it('is never inverted, whatever it is given', () => {
+    // `from > to` would silently match nothing, which looks exactly like a quiet
+    // day and would hide the feature being broken all over again.
+    for (const lead of [0, 1, 2, 3, 7, 30, 999, -5, Number.NaN]) {
+      const window = reminderWindow('2026-08-06', lead);
+      expect(window.from <= window.to, String(lead)).toBe(true);
+    }
   });
 });
 

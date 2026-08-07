@@ -128,6 +128,40 @@ export function reminderTargetDateKey(localDateKey: string, leadDays: number): s
 }
 
 /**
+ * Which appointment dates a run happening on `localDateKey` should cover.
+ *
+ * THE BUG THIS FIXES. The sweep used to match `scheduled_for` EXACTLY against
+ * today + leadDays. A job scheduled for the 20th was therefore only ever looked
+ * at on the 17th, if the lead is three days. Book that job on the 18th and the
+ * 17th has already gone — the customer is never reminded at all. Not late:
+ * never.
+ *
+ * At the default of one day this was invisible, because a job booked today for
+ * tomorrow still lands on tomorrow's target. It only bit once somebody set the
+ * lead to 2, 3 or 7 — which is to say, once somebody used the setting. For a
+ * contractor taking short-notice work that is most of the book.
+ *
+ * So the run covers a RANGE: everything from tomorrow out to the target date.
+ * A job entering the window for the first time is reminded that day, whether it
+ * entered because the calendar advanced or because it was only just booked.
+ * Repeats are stopped by the per-(job, scheduled_for) check in
+ * sendJobAppointmentReminder, not by the narrowness of this query.
+ *
+ * TOMORROW, NOT TODAY, is the near edge. Same-day appointments are left out
+ * deliberately: the sweep runs at a fixed hour, so a "reminder" for an
+ * appointment at 8am sent at 9am is a message about something that already
+ * happened. That also keeps the default lead of one day behaving exactly as it
+ * did — with leadDays = 1 the window is a single day, tomorrow, which is the
+ * old query.
+ */
+export function reminderWindow(localDateKey: string, leadDays: number): { from: string; to: string } {
+  return {
+    from: reminderTargetDateKey(localDateKey, 1),
+    to: reminderTargetDateKey(localDateKey, leadDays),
+  };
+}
+
+/**
  * Whether an account should send during the hour this sweep is running.
  *
  * `localTime` is "HH:MM" in the account's own zone, as zonedNowParts returns it.
