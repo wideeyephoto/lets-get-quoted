@@ -268,6 +268,39 @@ const TWEAKS = `
   .root :global(.system-stage .system-pipeline) { animation: none; }
 }
 
+/* ---- two things the detail pages need and the source never had -------------
+
+   The source's detail template has no back-link out of a child page and no
+   reassurance line under the hero buttons. Ours carry both — a visitor deep in
+   /features/quick-stops should be one click from the index, and each page
+   answers its own "what does this cost me" question under the buttons rather
+   than in a band 2,000px further down. Styled to match .eyebrow and the hero
+   copy around them. */
+.root :global(.detail-back) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 22px;
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8fa3b0;
+  transition: color 0.2s ease;
+}
+.root :global(.detail-back:hover) {
+  color: var(--orange);
+}
+
+.root :global(.detail-hero-note) {
+  margin-top: 18px;
+  max-width: 54ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #8fa3b0;
+}
+
 /* ---- the pipeline, made readable ------------------------------------------
 
    The source set this readout at 6-7px. Not small-as-a-style — 6px is around

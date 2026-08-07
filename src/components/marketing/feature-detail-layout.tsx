@@ -1,12 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import SiteFooter from '@/components/site-footer';
-import StickyCta from '@/components/sticky-cta';
-import MarketingCta, { type MarketingCtaProps } from './marketing-cta';
-import MarketingHeader from './marketing-header';
-import { APP_SIGNUP_URL, CtaLink, FEATURES_URL, type CtaLinkSpec } from './links';
-import { MARKETING_MAIN_ID, MARKETING_PAGE_CLASS } from './marketing-page';
-import styles from './feature-detail-layout.module.css';
+import { PageCTA, SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
+import type { MarketingCtaProps } from './marketing-cta';
+import { APP_SIGNUP_URL, FEATURES_URL } from './links';
+import styles from '@/components/flagship/flagship.module.css';
 
 /** One cell of the proof bar under the hero. */
 export type FeatureProofPoint = {
@@ -21,108 +19,53 @@ export type FeatureDetailCard = {
 };
 
 export type FeatureDetailLayoutProps = {
-  /** Uppercase kicker above the headline. */
   eyebrow: string;
-  /**
-   * The page's one `<h1>`. Accepts a fragment: `<em>` inside it is rendered
-   * upright in gold, and `<span className="gradient-text">` gets the animated
-   * treatment from globals.
-   */
   title: ReactNode;
-  /** The paragraph under the headline. */
   lede: ReactNode;
-  /** Small reassurance line under the hero buttons. */
   heroNote?: ReactNode;
-
-  /**
-   * The product demonstration for the hero — wrap it in `<ExampleFrame>`.
-   * Omit and the hero runs full width.
-   */
   demo?: ReactNode;
-
-  /** Primary hero button. `href` defaults to the app sign-up URL. */
-  primary?: CtaLinkSpec;
-  /**
-   * Secondary hero button. Defaults to an anchor down to the story section.
-   * Pass `null` for a single-action hero.
-   */
-  secondary?: CtaLinkSpec | null;
-
-  /** The four-up bar under the hero. */
+  primary?: { label: string; href?: string };
+  secondary?: { label: string; href?: string } | null;
   proof: FeatureProofPoint[];
-
-  /** The "why this matters" block, and the benefits grid beside it. */
   story: {
     eyebrow: string;
     title: ReactNode;
     body: ReactNode;
   };
   benefits: FeatureDetailCard[];
-
-  /** The step sequence: kicker, the bridge line as its heading, then the steps. */
   stepsEyebrow?: string;
   stepsTitle: ReactNode;
   steps: FeatureDetailCard[];
-
-  /** The closing band. `variant` is fixed by the layout. */
   cta: Omit<MarketingCtaProps, 'variant'>;
-
-  /** Back to the features index. Pass `null` to drop it. */
   backLink?: { href: string; label: string } | null;
-
-  /** Anchor id on the story section — the hero's default secondary points here. */
   storyId?: string;
-
-  /**
-   * Extra sections, rendered between the steps and the closing band. Use
-   * globals' `.section-block` so they match the rest of the page.
-   */
   children?: ReactNode;
 };
 
 const DEFAULT_BACK_LINK = { href: FEATURES_URL, label: 'All features' };
 
-function NumberedCards({
-  items,
-  listClassName,
-  ordered,
-}: {
-  items: FeatureDetailCard[];
-  listClassName: string;
-  /** Steps are a sequence and get an `<ol>`; benefits are a set and get a `<ul>`. */
-  ordered: boolean;
-}) {
-  const className = `${styles.cardList} ${listClassName}`;
-  const cards = items.map((item, index) => (
-    <li key={item.title} className={styles.card}>
-      {/* The numeral is a visual rhythm, not information: the list element
-          already carries the order, and "01 Describe the work" read aloud is
-          noise. */}
-      <span className={styles.num} aria-hidden="true">
-        {String(index + 1).padStart(2, '0')}
-      </span>
-      <h3 className={styles.cardTitle}>{item.title}</h3>
-      <p className={styles.cardBody}>{item.body}</p>
-    </li>
-  ));
-
-  return ordered ? <ol className={className}>{cards}</ol> : <ul className={className}>{cards}</ul>;
-}
-
 /**
- * The shared shell for the five feature detail pages.
+ * The shared shell for the five feature detail pages, in the marketing site's
+ * visual language.
  *
- * Every page has the same spine — hero with a live product panel, a proof bar,
- * a "why this matters" block with a benefits grid, a numbered step sequence,
- * and a closing band — so the spine lives once, here, and the pages supply only
- * their copy and their demonstration.
+ * WHY THIS FILE AND NOT THE FIVE PAGES. The pages pass data — eyebrow, title,
+ * lede, proof, story, benefits, steps, cta — and that shape already matched the
+ * source site's own detail template almost field for field. So the aesthetic
+ * change lives here, once, and all five pages move without a line of their copy
+ * being touched. That matters: those pages carry content the source does not
+ * have (a six-stage intake flow against its four, a seven-beat Quick Stops
+ * mechanism, seventeen back-office capabilities), and a rewrite would have put
+ * every bit of it at risk for no reason.
  *
- * The chrome is entirely this app's: `.marketing-shell`, `.hero-grid`,
- * `.hero-copy`, `.section-block`, `.eyebrow`, `.btn`, `.cta-band`, the ambient
- * glows and the sticky mobile CTA. AppShell renders NO chrome for these routes
- * (OWN_CHROME_MARKETING_ROUTES in src/components/app-shell.tsx), so the shared
- * MarketingHeader is rendered here — otherwise these five pages would ship with
- * no site navigation at all.
+ * WHAT DELIBERATELY DID NOT COME ACROSS. The source's own template ships a
+ * DetailVisual switch whose mocks invent a 4.9-star rating, "12 yrs
+ * Experience", a LICENSED · INSURED · LOCAL badge, a per-lead "3.2 mi"
+ * distance the product never computes, and a greeting using the founder's real
+ * first name. All of that was removed from this codebase once already. The
+ * `demo` slot stays a slot, so each page passes its own labelled panel instead.
+ *
+ * Chrome is the shared flagship header and footer; AppShell renders none for
+ * these routes (OWN_CHROME_MARKETING_ROUTES).
  */
 export default function FeatureDetailLayout({
   eyebrow,
@@ -135,7 +78,7 @@ export default function FeatureDetailLayout({
   proof,
   story,
   benefits,
-  stepsEyebrow = 'Built into the workflow',
+  stepsEyebrow = 'BUILT INTO THE WORKFLOW',
   stepsTitle,
   steps,
   cta,
@@ -143,83 +86,101 @@ export default function FeatureDetailLayout({
   storyId = 'details',
   children,
 }: FeatureDetailLayoutProps) {
-  // "Build my free site" is the source draft's one primary label, on every page
-  // and in every position. Keeping it identical across the cluster is the point:
-  // a visitor who bounces between three feature pages should be looking at the
-  // same button each time, not three different offers.
-  const primarySpec: CtaLinkSpec = primary ?? { label: 'Build my free site' };
+  // One primary label across the whole cluster. A visitor bouncing between
+  // three feature pages should see the same button each time, not three offers.
+  const primaryLabel = primary?.label ?? 'Build my free site';
+  const primaryHref = primary?.href ?? APP_SIGNUP_URL;
   const secondarySpec =
     secondary === null ? null : (secondary ?? { label: 'See how it works', href: `#${storyId}` });
 
   return (
-    <>
-      <MarketingHeader current={FEATURES_URL} />
+    <main className={`${styles.root} inner-site`}>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <SiteHeader />
 
-      <main className={MARKETING_PAGE_CLASS} id={MARKETING_MAIN_ID}>
-        <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
-        <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
-
-        <div className="marketing-shell">
+      <section className="detail-hero" id="main-content">
+        <div className="detail-hero-copy">
           {backLink ? (
-            <Link href={backLink.href} className={styles.backLink}>
+            <Link href={backLink.href} className="detail-back">
               <span aria-hidden="true">&larr;</span> {backLink.label}
             </Link>
           ) : null}
-
-          <section className="hero-grid" aria-labelledby="feature-title">
-            <div className="hero-copy">
-              <p className="eyebrow">{eyebrow}</p>
-              <h1 id="feature-title" className={styles.title}>
-                {title}
-              </h1>
-              <p className={styles.lede}>{lede}</p>
-              <div className="actions">
-                <CtaLink spec={primarySpec} className="btn primary" arrow />
-                {secondarySpec ? <CtaLink spec={secondarySpec} className="btn secondary" /> : null}
-              </div>
-              {heroNote ? <p className={styles.heroNote}>{heroNote}</p> : null}
-            </div>
-
-            {demo ? <div className={styles.heroDemo}>{demo}</div> : null}
-          </section>
-
-          <ul className={styles.proof} aria-label="What this does">
-            {proof.map((point) => (
-              <li key={point.title} className={styles.proofItem}>
-                <span className={styles.proofTitle}>{point.title}</span>
-                <span className={styles.proofBody}>{point.body}</span>
-              </li>
-            ))}
-          </ul>
-
-          <section className="section-block" id={storyId} aria-labelledby="feature-story-title">
-            <div className={styles.storyGrid}>
-              <div className={styles.storyIntro}>
-                <p className="eyebrow">{story.eyebrow}</p>
-                <h2 id="feature-story-title">{story.title}</h2>
-                <p>{story.body}</p>
-              </div>
-              <NumberedCards items={benefits} listClassName={styles.benefitList} ordered={false} />
-            </div>
-          </section>
-
-          <section className="section-block" aria-labelledby="feature-steps-title">
-            <div className={styles.stepsHead}>
-              <p className="eyebrow">{stepsEyebrow}</p>
-              <h2 id="feature-steps-title">{stepsTitle}</h2>
-            </div>
-            <NumberedCards items={steps} listClassName={styles.stepList} ordered />
-          </section>
-
-          {children}
-
-          <MarketingCta {...cta} />
-
-          <SiteFooter />
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> {eyebrow}
+          </p>
+          <h1>{title}</h1>
+          <p>{lede}</p>
+          <div className="hero-actions">
+            <a className="button primary" href={primaryHref}>
+              {primaryLabel} <span aria-hidden="true">→</span>
+            </a>
+            {secondarySpec ? (
+              <a className="button secondary" href={secondarySpec.href ?? `#${storyId}`}>
+                {secondarySpec.label}
+              </a>
+            ) : null}
+          </div>
+          {heroNote ? <p className="detail-hero-note">{heroNote}</p> : null}
         </div>
 
-        <StickyCta href={APP_SIGNUP_URL} label="Build my free site" />
-      </main>
-    </>
+        {demo ?? null}
+      </section>
+
+      <section className="detail-proof" aria-label="What this does">
+        {proof.map((point) => (
+          <span key={point.title}>
+            <b>{point.title}</b>
+            <small>{point.body}</small>
+          </span>
+        ))}
+      </section>
+
+      <section className="detail-story" id={storyId}>
+        <div>
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> {story.eyebrow}
+          </p>
+          <h2>{story.title}</h2>
+          <p>{story.body}</p>
+        </div>
+        <div className="detail-benefits">
+          {benefits.map((item, index) => (
+            <article key={item.title}>
+              {/* The numeral is rhythm, not information — the heading already
+                  carries the meaning and "01 Ask better questions" read aloud
+                  is noise. */}
+              <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="detail-process">
+        <div className="detail-process-head">
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> {stepsEyebrow}
+          </p>
+          <h2>{stepsTitle}</h2>
+        </div>
+        <div className="process-steps">
+          {steps.map((item, index) => (
+            <article key={item.title}>
+              <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {children}
+
+      <PageCTA title={typeof cta.title === 'string' ? cta.title : undefined} />
+      <SiteFooter />
+    </main>
   );
 }
