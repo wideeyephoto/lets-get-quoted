@@ -72,6 +72,11 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
+  // Beside Account in the rail's footer rather than in a group. It is not part
+  // of the day's work, and it needs to be findable from every page — the only
+  // support route from inside the product used to be an email address on the
+  // account-suspended page, which you reach by being suspended.
+  { href: '/dashboard/help', label: 'Help', hint: 'Ask us a question and track the answer' },
 ];
 
 // The connected-pill "flow" styling now spans all three pipeline stages.
@@ -840,6 +845,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 Automations
               </Link>
             </div>
+            {/* Its own card under Account, not a child of it. Support is not an
+                account setting, and the footer is the one part of the rail that
+                never scrolls out of view — which matters most for the person
+                whose page has just stopped working. */}
+            <div className="sidenav-fcard">{renderSideLink('/dashboard/help')}</div>
             {/* One line, theme switch first. It used to sit inside the
                 scrolling nav list above, which is the part of the rail that
                 gets cut off on a short window — so the one control a contractor

@@ -67,6 +67,9 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // press to rate something.
   '/dashboard/reviews': '<rect x="3.3" y="3.3" width="17.4" height="17.4" rx="4.2"/><path d="M12 7.5l1.72 3.48 3.84.56-2.78 2.71.66 3.82L12 16.27l-3.44 1.8.66-3.82-2.78-2.71 3.84-.56z"/>',
   '/dashboard/settings': '<circle cx="12" cy="8.4" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
+  // Lucide help-circle. A question mark rather than a lifebuoy: this is where
+  // you ask something, not a rescue you have to be drowning to deserve.
+  '/dashboard/help': '<circle cx="12" cy="12" r="9.2"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.5-2.8 4"/><path d="M12 17.4h.01"/>',
   '/dashboard/sites': '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M3 9h18M8 20h8M12 16.5V20"/>',
 };
 

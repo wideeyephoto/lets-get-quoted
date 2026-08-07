@@ -6,6 +6,7 @@ import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices
 import type { Lead } from './leads';
 import { formatMoney } from './jobs';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
+import { APP_ORIGIN } from './app-origin';
 import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/brand';
 import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
@@ -1100,6 +1101,70 @@ export async function sendContactMessageEmail(input: {
   });
   if (result.error) {
     console.error('Failed to send contact message email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
+// --- Support cases -----------------------------------------------------------
+// A case thread lives in the database, not in an inbox — there is no inbound
+// mail parsing here, so a reply typed into an email client would never reach
+// support_case_notes. These emails therefore carry the message AND a link back
+// to where the conversation actually is, and never invite a reply by mail.
+
+/** Tells staff somebody is waiting. Reply-to is the contractor, so a hurried
+    reply from the inbox still reaches a human even though it will not thread. */
+export async function sendSupportCaseStaffEmail(input: {
+  kind: 'opened' | 'reply';
+  caseId: string;
+  subject: string;
+  body: string;
+  requesterEmail: string;
+  businessName: string | null;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) throw new Error('Email provider is not configured.');
+  const who = input.businessName?.trim() || input.requesterEmail;
+  const headline = input.kind === 'opened' ? `${who} opened a support request` : `${who} replied`;
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted Support <hello@letsgetquoted.com>",
+    to: 'hello@letsgetquoted.com',
+    subject: `[Support] ${input.subject} — ${who}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">SUPPORT REQUEST</p><h1 style="font-size:22px;margin:0 0 12px">${escapeHtml(headline)}</h1><p style="margin:0 0 6px"><strong>From:</strong> ${escapeHtml(input.requesterEmail)}</p><p style="margin:0 0 6px"><strong>Subject:</strong> ${escapeHtml(input.subject)}</p><div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.body).replace(/\n/g, '<br/>')}</div><p style="margin:18px 0 0"><a href="${APP_ORIGIN}/admin/cases/${input.caseId}" style="color:#b45309;font-weight:700">Open the case →</a></p><p style="margin:8px 0 0;color:#6b7280;font-size:13px">Replying here does not reach the customer — answer on the case so it lands in their thread.</p></div>`,
+    reply_to: input.requesterEmail,
+    tags: [{ name: 'kind', value: 'support_case_staff' }],
+  });
+  if (result.error) {
+    console.error('Failed to send support case staff email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
+/** Confirms receipt, or carries a staff reply. Never asks them to reply by
+    email — the link is the only way back into the thread. */
+export async function sendSupportCaseCustomerEmail(input: {
+  kind: 'received' | 'reply';
+  to: string;
+  caseId: string;
+  subject: string;
+  body?: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) throw new Error('Email provider is not configured.');
+  const received = input.kind === 'received';
+  const headline = received ? 'We have got your request' : 'Support replied to your request';
+  const lead = received
+    ? 'A real person will read this and come back to you. You can follow it here at any time.'
+    : 'Here is what we said. Carry on the conversation on the same page.';
+  const quote = input.body
+    ? `<div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.body).replace(/\n/g, '<br/>')}</div>`
+    : '';
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted Support <hello@letsgetquoted.com>",
+    to: input.to,
+    subject: received ? `We have your request: ${input.subject}` : `Re: ${input.subject}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><h1 style="font-size:22px;margin:0 0 10px">${escapeHtml(headline)}</h1><p style="margin:0 0 6px;color:#4b5563">${escapeHtml(lead)}</p><p style="margin:12px 0 0"><strong>${escapeHtml(input.subject)}</strong></p>${quote}<p style="margin:18px 0 0"><a href="${APP_ORIGIN}/dashboard/help/${input.caseId}" style="color:#b45309;font-weight:700">Open your request →</a></p></div>`,
+    tags: [{ name: 'kind', value: 'support_case_customer' }],
+  });
+  if (result.error) {
+    console.error('Failed to send support case customer email:', result.error);
     throw new Error(result.error.message);
   }
 }

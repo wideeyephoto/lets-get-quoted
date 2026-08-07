@@ -1,0 +1,177 @@
+/* HELP — the contractor's side of the support case system.
+ *
+ * Same tokens as the rest of the dashboard: this is one more workspace, not a
+ * support widget bolted on, and it should not announce itself as a different
+ * product. Orange stays reserved for the primary action.
+ *
+ * The status word is never carried by colour alone. Somebody on this page is
+ * already having a bad day; "is anyone looking at this" must survive a
+ * screenshot, a colour-blind reader and a dark-mode inversion. */
+
+.head { margin-bottom: 1.1rem; }
+.title { margin: 0.1rem 0 0; font-size: 1.6rem; line-height: 1.15; }
+.lead { margin: 0.4rem 0 0; font-size: 0.92rem; color: var(--muted); max-width: 46rem; }
+
+.banner {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: 12px;
+  font-size: 0.88rem;
+}
+.ok { border: 1px solid var(--cedge-green-30, rgba(74, 222, 128, 0.3)); background: rgba(74, 222, 128, 0.1); }
+.err { border: 1px solid var(--cedge-orange-30); background: rgba(255, 122, 33, 0.1); }
+
+/* --- the list of requests ------------------------------------------------- */
+
+.sectionTitle {
+  margin: 0 0 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i56);
+}
+
+.cases { list-style: none; margin: 0 0 1.6rem; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.case {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem 0.9rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--rule-g16);
+  border-left: 3px solid transparent;
+  border-radius: 14px;
+  background: rgba(var(--panel-rgb), 0.92);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.case:hover { background: rgba(var(--tint), 0.05); border-color: var(--edge-t22); }
+/* The two live states get the left bar. Resolved and closed do not — nothing
+   about a finished request should compete for attention with an open one. */
+.case[data-live='true'] { border-left-color: var(--accent); }
+
+.caseSubject { font-size: 0.98rem; font-weight: 700; }
+.caseMeta { margin-top: 0.2rem; font-size: 0.78rem; color: var(--mute-t55); }
+
+.status {
+  justify-self: end;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  color: var(--mute-t60);
+  font-size: 0.74rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.status[data-status='open'] { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-3); }
+.status[data-status='pending'] { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
+.status[data-status='resolved'] { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-1); }
+
+/* --- the form -------------------------------------------------------------- */
+
+.form {
+  padding: 1rem 1.15rem 1.1rem;
+  border: 1px solid var(--rule-g16);
+  border-radius: 18px;
+  background: rgba(var(--panel-rgb), 0.92);
+}
+.formTitle { margin: 0 0 0.15rem; font-size: 1.05rem; font-weight: 700; }
+.formNote { margin: 0 0 0.9rem; font-size: 0.85rem; color: var(--muted); }
+
+.field { display: block; margin-bottom: 0.8rem; }
+.label { display: block; margin-bottom: 0.3rem; font-size: 0.82rem; font-weight: 650; }
+.hint { font-weight: 400; color: var(--muted); }
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.input { min-height: 44px; }
+.textarea { min-height: 8rem; resize: vertical; line-height: 1.55; }
+.input::placeholder,
+.textarea::placeholder { color: var(--mute-i42); }
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: none;
+  border-color: var(--cedge-orange-30);
+  background: rgba(255, 138, 61, 0.05);
+}
+
+.submitRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; }
+.submitRow .btn { min-height: 44px; }
+.reassure { font-size: 0.8rem; color: var(--muted); }
+
+/* --- one request ----------------------------------------------------------- */
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink-sky-1);
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+.backLink:hover { text-decoration: underline; }
+
+.statusCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin: 0 0 1.2rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--rule-g16);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.02);
+}
+.statusNote { margin: 0; font-size: 0.86rem; color: var(--muted); }
+
+.thread { list-style: none; margin: 0 0 1.4rem; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+
+.message {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--rule-g16);
+  border-radius: 14px;
+  background: rgba(var(--panel-rgb), 0.92);
+}
+/* Theirs sits inset and tinted, ours plain — so the shape of the conversation
+   is readable before a single word is. The author line says which is which
+   regardless, because indentation does not survive a screen reader. */
+.message[data-mine='false'] {
+  border-color: var(--cedge-orange-30);
+  background: rgba(255, 122, 33, 0.06);
+}
+.messageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+.messageWho { font-size: 0.82rem; font-weight: 750; }
+.messageWhen { font-size: 0.75rem; color: var(--mute-t55); }
+.messageBody { margin: 0; font-size: 0.92rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.closedNote {
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--edge-t22);
+  border-radius: 14px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.closedNote a { color: var(--ink-sky-1); }
+
+@media (max-width: 560px) {
+  .case { grid-template-columns: minmax(0, 1fr); }
+  .status { justify-self: start; }
+}

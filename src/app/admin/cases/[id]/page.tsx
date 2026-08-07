@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 
 const DONE_MESSAGES: Record<string, string> = {
   created: 'Case created.',
-  noted: 'Note added.',
+  noted: 'Internal note added — the customer cannot see it.',
+  replied: 'Reply sent to the customer and emailed to them.',
   status: 'Status updated.',
   assigned: 'Assignment updated.',
 };
@@ -74,21 +75,37 @@ export default async function AdminCaseDetailPage({
             <dl className={styles.kv}>
               <dt>Account</dt>
               <dd>{account ? <Link href={`/admin/accounts/${account.id}`} className={styles.rowLink}>{accountDisplayName(account)}</Link> : <span className={styles.muted}>General / platform case</span>}</dd>
+              <dt>Raised by</dt>
+              <dd>
+                {supportCase.source === 'customer' ? 'The customer, from /dashboard/help' : 'Staff'}
+                {supportCase.requester_email ? <> — replies go to <strong>{supportCase.requester_email}</strong></> : null}
+                {supportCase.source === 'customer' && !supportCase.requester_email ? (
+                  <span className={styles.muted}> — no reply address on file, so a reply will not be emailed</span>
+                ) : null}
+              </dd>
               <dt>Assigned to</dt><dd>{supportCase.assigned_to || <span className={styles.muted}>Unassigned</span>}</dd>
               <dt>SLA due</dt><dd>{supportCase.sla_due_at ? new Date(supportCase.sla_due_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : <span className={styles.muted}>—</span>}</dd>
             </dl>
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Notes</p>
+            <p className={styles.panelTitle}>Thread</p>
+            {/* Staff see the whole thread; the customer sees only the rows
+                marked Shared. Marking every row means the distinction is read
+                off the note in front of you rather than inferred from who wrote
+                it — which is how somebody eventually pastes an internal note
+                into a reply. */}
             {notes.length === 0 ? (
-              <p className={styles.emptyState}>No notes yet.</p>
+              <p className={styles.emptyState}>Nothing on this case yet.</p>
             ) : (
               <ul className={styles.timeline}>
                 {notes.map((n) => (
                   <li key={n.id}>
                     <time>{new Date(n.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</time>
                     <span>
+                      <span className={`${styles.pill} ${n.visibility === 'customer' ? styles.good : styles.neutral}`}>
+                        {n.visibility === 'customer' ? 'Shared' : 'Internal'}
+                      </span>{' '}
                       <span className={styles.timelineActor}>{n.created_by}</span>
                       {n.kind === 'status_change' ? <span className={styles.muted}> ({n.body})</span> : <>{' — '}{n.body}</>}
                     </span>

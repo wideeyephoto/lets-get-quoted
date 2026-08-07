@@ -191,9 +191,33 @@ describe('Support cases — the full lifecycle against real tables', () => {
   });
 
   it('threads a note', async () => {
-    await addSupportCaseNote(admin, STAFF, caseId, 'A note from the staging suite.');
+    await addSupportCaseNote(admin, STAFF, caseId, 'A note from the staging suite.', 'internal');
     const notes = await listSupportCaseNotes(admin, caseId);
     expect(notes.some((n) => n.body.includes('staging suite'))).toBe(true);
+  });
+
+  // The column the customer-facing thread reads. Against the real database,
+  // because the default is the safety net: a note written without a visibility
+  // must come back internal, not customer.
+  it('defaults a note to internal and honours an explicit customer note', async () => {
+    await addSupportCaseNote(admin, STAFF, caseId, 'Internal by request.', 'internal');
+    await addSupportCaseNote(admin, STAFF, caseId, 'Shared by request.', 'customer');
+    const notes = await listSupportCaseNotes(admin, caseId);
+    expect(notes.find((n) => n.body === 'Internal by request.')?.visibility).toBe('internal');
+    expect(notes.find((n) => n.body === 'Shared by request.')?.visibility).toBe('customer');
+
+    // Every status_change row the library writes is internal — they name staff
+    // emails and use the queue's vocabulary.
+    expect(notes.filter((n) => n.kind === 'status_change').every((n) => n.visibility === 'internal')).toBe(true);
+
+    // Straight past the library: a bare insert with no visibility must land on
+    // internal, which is the database default doing the work rather than us.
+    const { data } = await admin
+      .from('support_case_notes')
+      .insert({ case_id: caseId, kind: 'note', body: 'No visibility given.', created_by: STAFF })
+      .select('visibility')
+      .single();
+    expect((data as { visibility: string } | null)?.visibility).toBe('internal');
   });
 
   it('records a status change INTO the note thread, not only on the row', async () => {

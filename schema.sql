@@ -2043,25 +2043,39 @@ create table if not exists support_cases (
   priority      text not null default 'normal' check (priority in ('low', 'normal', 'high', 'urgent')),
   assigned_to   text,
   sla_due_at    timestamptz,
+  -- Who opened it. A staff-opened case is a log; a customer-opened one is
+  -- somebody waiting, and the queue should not have to guess from created_by.
+  source        text not null default 'staff' check (source in ('staff', 'customer')),
+  -- Where a reply goes. Separate from created_by and from the account owner's
+  -- login: whoever typed the request is who is waiting on the answer.
+  requester_email text,
   created_by    text not null,
   created_at    timestamptz not null default now()
 );
 create index if not exists support_cases_sla_idx on support_cases (sla_due_at) where status not in ('resolved', 'closed');
 create index if not exists support_cases_assigned_idx on support_cases (assigned_to, status);
 create index if not exists support_cases_account_idx on support_cases (account_id);
+create index if not exists support_cases_account_created_idx on support_cases (account_id, created_at desc);
 alter table support_cases enable row level security;
 
 -- Append-only thread per case: ordinary notes plus a kind='status_change' row
 -- written whenever the status moves, so the thread alone is a full history.
+--
+-- The contractor reads this same thread from /dashboard/help, which is what
+-- `visibility` governs. It defaults to 'internal' so that a code path which
+-- forgets to set it publishes nothing — the only safe direction, since the
+-- customer who would see a leaked note is the subject of it.
 create table if not exists support_case_notes (
   id            uuid primary key default gen_random_uuid(),
   case_id       uuid not null references support_cases(id) on delete cascade,
   kind          text not null default 'note' check (kind in ('note', 'status_change')),
+  visibility    text not null default 'internal' check (visibility in ('internal', 'customer')),
   body          text not null,
   created_by    text not null,
   created_at    timestamptz not null default now()
 );
 create index if not exists support_case_notes_case_idx on support_case_notes (case_id, created_at);
+create index if not exists support_case_notes_visible_idx on support_case_notes (case_id, visibility, created_at);
 alter table support_case_notes enable row level security;
 
 -- Staff notes on an account. Append-only, and deliberately distinct from

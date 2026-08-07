@@ -8,15 +8,40 @@ import { logAdminAction } from '@/lib/admin';
 
 export type CaseStatus = 'open' | 'pending' | 'resolved' | 'closed';
 export type CasePriority = 'low' | 'normal' | 'high' | 'urgent';
+export type CaseSource = 'staff' | 'customer';
+
+/**
+ * Who a note is for.
+ *
+ * 'internal' never leaves /admin. 'customer' is published to the contractor at
+ * /dashboard/help. There is no third value and no "probably fine" — the person
+ * who would read a mislabelled internal note is the subject of it.
+ */
+export type NoteVisibility = 'internal' | 'customer';
 
 const CASE_STATUSES: CaseStatus[] = ['open', 'pending', 'resolved', 'closed'];
 const CASE_PRIORITIES: CasePriority[] = ['low', 'normal', 'high', 'urgent'];
+const NOTE_VISIBILITIES: NoteVisibility[] = ['internal', 'customer'];
 
 export function isCaseStatus(value: string | undefined | null): value is CaseStatus {
   return !!value && (CASE_STATUSES as string[]).includes(value);
 }
 export function isCasePriority(value: string | undefined | null): value is CasePriority {
   return !!value && (CASE_PRIORITIES as string[]).includes(value);
+}
+export function isNoteVisibility(value: string | undefined | null): value is NoteVisibility {
+  return !!value && (NOTE_VISIBILITIES as string[]).includes(value);
+}
+
+/**
+ * Read a visibility off a form, falling back to 'internal'.
+ *
+ * Never to 'customer'. A malformed or missing field is a bug, and the harmless
+ * outcome of a bug here is a note staff can still see; the harmful one is a
+ * private note landing in the contractor's thread.
+ */
+export function visibilityFromForm(value: string | undefined | null): NoteVisibility {
+  return isNoteVisibility(value) ? value : 'internal';
 }
 
 export type SupportCase = {
@@ -27,6 +52,8 @@ export type SupportCase = {
   priority: CasePriority;
   assigned_to: string | null;
   sla_due_at: string | null;
+  source: CaseSource;
+  requester_email: string | null;
   created_by: string;
   created_at: string;
 };
@@ -35,13 +62,15 @@ export type SupportCaseNote = {
   id: string;
   case_id: string;
   kind: 'note' | 'status_change';
+  visibility: NoteVisibility;
   body: string;
   created_by: string;
   created_at: string;
 };
 
-const CASE_COLUMNS = 'id, account_id, subject, status, priority, assigned_to, sla_due_at, created_by, created_at';
-const NOTE_COLUMNS = 'id, case_id, kind, body, created_by, created_at';
+const CASE_COLUMNS =
+  'id, account_id, subject, status, priority, assigned_to, sla_due_at, source, requester_email, created_by, created_at';
+const NOTE_COLUMNS = 'id, case_id, kind, visibility, body, created_by, created_at';
 
 export async function listSupportCases(
   admin: SupabaseClient,
@@ -85,7 +114,15 @@ export async function listSupportCaseNotes(admin: SupabaseClient, caseId: string
 export async function createSupportCase(
   admin: SupabaseClient,
   adminEmail: string,
-  input: { accountId?: string | null; subject: string; priority?: CasePriority; assignedTo?: string | null; slaDueAt?: string | null }
+  input: {
+    accountId?: string | null;
+    subject: string;
+    priority?: CasePriority;
+    assignedTo?: string | null;
+    slaDueAt?: string | null;
+    source?: CaseSource;
+    requesterEmail?: string | null;
+  }
 ): Promise<SupportCase> {
   const { data, error } = await admin
     .from('support_cases')
@@ -95,6 +132,8 @@ export async function createSupportCase(
       priority: input.priority ?? 'normal',
       assigned_to: input.assignedTo ?? null,
       sla_due_at: input.slaDueAt ?? null,
+      source: input.source ?? 'staff',
+      requester_email: input.requesterEmail ?? null,
       created_by: adminEmail,
     })
     .select(CASE_COLUMNS)
@@ -110,13 +149,34 @@ export async function createSupportCase(
   return data as SupportCase;
 }
 
-export async function addSupportCaseNote(admin: SupabaseClient, adminEmail: string, caseId: string, body: string): Promise<void> {
-  const { error } = await admin.from('support_case_notes').insert({ case_id: caseId, kind: 'note', body, created_by: adminEmail });
+/**
+ * `visibility` is required, with no default.
+ *
+ * A default would be one forgotten argument away from either publishing a staff
+ * note to the contractor or silently swallowing a reply they are waiting for.
+ * Making it explicit costs one word at each call site and makes the compiler
+ * find every one of them.
+ */
+export async function addSupportCaseNote(
+  admin: SupabaseClient,
+  adminEmail: string,
+  caseId: string,
+  body: string,
+  visibility: NoteVisibility,
+): Promise<void> {
+  const { error } = await admin
+    .from('support_case_notes')
+    .insert({ case_id: caseId, kind: 'note', visibility, body, created_by: adminEmail });
   if (error) {
     console.error('addSupportCaseNote failed:', error);
     return;
   }
-  await logAdminAction(admin, adminEmail, { action: 'support_case_note', targetType: 'support_case', targetId: caseId });
+  await logAdminAction(admin, adminEmail, {
+    action: 'support_case_note',
+    targetType: 'support_case',
+    targetId: caseId,
+    meta: { visibility },
+  });
 }
 
 export async function updateSupportCaseStatus(admin: SupabaseClient, adminEmail: string, caseId: string, status: CaseStatus): Promise<void> {
@@ -125,7 +185,16 @@ export async function updateSupportCaseStatus(admin: SupabaseClient, adminEmail:
     console.error('updateSupportCaseStatus failed:', error);
     return;
   }
-  await admin.from('support_case_notes').insert({ case_id: caseId, kind: 'status_change', body: `Status changed to ${status}`, created_by: adminEmail });
+  // Internal. The contractor already sees the live status as a badge on their
+  // own page, in their own words — 'pending' means "we are waiting on you",
+  // which is not what the raw word says.
+  await admin.from('support_case_notes').insert({
+    case_id: caseId,
+    kind: 'status_change',
+    visibility: 'internal',
+    body: `Status changed to ${status}`,
+    created_by: adminEmail,
+  });
   await logAdminAction(admin, adminEmail, { action: 'support_case_status_change', targetType: 'support_case', targetId: caseId, meta: { status } });
 }
 
@@ -135,9 +204,12 @@ export async function assignSupportCase(admin: SupabaseClient, adminEmail: strin
     console.error('assignSupportCase failed:', error);
     return;
   }
+  // Always internal — it names a staff email, and who is handling a case is
+  // not the contractor's business.
   await admin.from('support_case_notes').insert({
     case_id: caseId,
     kind: 'status_change',
+    visibility: 'internal',
     body: assignedTo ? `Assigned to ${assignedTo}` : 'Unassigned',
     created_by: adminEmail,
   });

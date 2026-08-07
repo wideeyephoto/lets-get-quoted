@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
 import { sendContactMessageEmail } from '@/lib/email';
+import { addSupportCaseNote, createSupportCase } from '@/lib/support-cases';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 
 export type ContactState = { ok: boolean; error?: string };
@@ -87,11 +88,52 @@ export async function submitContactMessage(formData: FormData): Promise<ContactS
     return { ok: false, error: 'Please complete the “I’m human” check and try again.' };
   }
 
+  // Log it as a case BEFORE sending, and never let the log's failure fail the
+  // form. Until now this endpoint only ever emailed hello@ — so every support
+  // request that arrived through the public site lived in an inbox, and
+  // /admin/cases only ever held what staff had typed in by hand. The SLA index
+  // and the assignment queue were running on a table nothing fed.
+  //
+  // account_id stays null: whoever filled this in is not signed in, and
+  // guessing an account from an email address would attach a stranger's message
+  // to somebody's record. Staff can link it from the case page.
+  const caseId = await logContactAsCase({ name, email, subject, message });
+
   try {
     await sendContactMessageEmail({ fromName: name, fromEmail: email, subject, message });
     return { ok: true };
   } catch (err) {
     console.error('Contact form send failed:', err);
+    // The case exists, so the message is not lost even though the email failed.
+    // Say so plainly rather than inviting a duplicate send.
+    if (caseId) {
+      return { ok: true };
+    }
     return { ok: false, error: 'Something went wrong sending your message. Please try again in a moment.' };
+  }
+}
+
+async function logContactAsCase(input: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<string | null> {
+  try {
+    const admin = createAdminClient();
+    const created = await createSupportCase(admin, input.email, {
+      accountId: null,
+      subject: input.subject || `Message from ${input.name}`,
+      source: 'customer',
+      requesterEmail: input.email,
+    });
+    // The message is note #1, the same shape every later reply takes, and
+    // shared so it reads as the customer's own words rather than a staff
+    // summary of them.
+    await addSupportCaseNote(admin, input.email, created.id, input.message, 'customer');
+    return created.id;
+  } catch (err) {
+    console.error('Contact form case log failed:', err);
+    return null;
   }
 }
