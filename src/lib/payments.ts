@@ -491,7 +491,17 @@ export async function refundPayment(
     // loses this write harmlessly — Stripe's idempotency already prevented double money.
     let casQuery = supabase
       .from('payments')
-      .update({ refunded_amount: refundedTotal, status: isFull ? 'refunded' : 'paid' })
+      .update({
+        refunded_amount: refundedTotal,
+        status: isFull ? 'refunded' : 'paid',
+        // Refund reporting dates off this, never off paid_at.
+        refunded_at: new Date().toISOString(),
+        platform_fee_refunded: reversedPlatformFee({
+          amount: payment.amount,
+          platformFee: payment.platform_fee,
+          refundedTotal,
+        }),
+      })
       .eq('id', paymentId)
       .eq('status', 'paid');
     casQuery = payment.refunded_amount == null ? casQuery.is('refunded_amount', null) : casQuery.eq('refunded_amount', payment.refunded_amount);
@@ -520,6 +530,37 @@ export async function refundPayment(
     console.error('Refund failed:', err);
     throw new Error(err instanceof Error ? err.message : 'Refund failed');
   }
+}
+
+/**
+ * How much of the platform fee has gone back, given how much of the payment has.
+ *
+ * Refunds are created with `refund_application_fee: true`, so Stripe returns our
+ * fee in proportion to the refund. This mirrors what actually happened rather
+ * than deciding it.
+ *
+ * Computed from the CUMULATIVE refunded total rather than incremented per
+ * refund, which is what makes it idempotent: the synchronous write in
+ * refundPayment and the charge.refunded webhook both run, in either order,
+ * sometimes twice, and every one of them lands on the same number.
+ *
+ * Pure, exported and tested — two write paths agreeing by coincidence is how a
+ * money column drifts.
+ */
+export function reversedPlatformFee(input: {
+  amount: number | string | null | undefined;
+  platformFee: number | string | null | undefined;
+  refundedTotal: number | string | null | undefined;
+}): number {
+  const amount = Number(input.amount);
+  const fee = Number(input.platformFee);
+  const refunded = Number(input.refundedTotal);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  if (!Number.isFinite(fee) || fee <= 0) return 0;
+  if (!Number.isFinite(refunded) || refunded <= 0) return 0;
+  // Never hand back more fee than was charged, whatever the inputs claim.
+  const share = Math.min(1, refunded / amount);
+  return Math.round(fee * share * 100) / 100;
 }
 
 function formatMoneyCents(cents: number): string {

@@ -61,7 +61,13 @@ export type CommandCenterData = {
   myCases: SupportCaseRow[];
 };
 
-type MetricsWindow = { newAccounts: number; paymentsProcessed: number; platformFees: number; refunds: number };
+type MetricsWindow = {
+  newAccounts: number;
+  paymentsProcessed: number;
+  /** NET of fees handed back with refunds issued in the same window. */
+  platformFees: number;
+  refunds: number;
+};
 
 // One window's worth of the "core metrics" row. Never throws — a Postgres
 // error surfaces via `.error` on each response, not an exception, so this
@@ -71,18 +77,31 @@ async function fetchMetricsWindow(admin: SupabaseClient, startIso: string, endIs
   const [accountsRes, paidRes, refundRes] = await Promise.all([
     admin.from('accounts').select('id', { count: 'exact', head: true }).gte('created_at', startIso).lt('created_at', endIso),
     admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', startIso).lt('paid_at', endIso),
-    admin.from('payments').select('refunded_amount').gt('refunded_amount', 0).gte('paid_at', startIso).lt('paid_at', endIso),
+    // Windowed on refunded_at, not paid_at. Dating a refund by the day the
+    // payment was collected put it in the wrong month whenever the two differed
+    // — which is every refund that is not same-day.
+    admin
+      .from('payments')
+      .select('refunded_amount, platform_fee_refunded')
+      .gt('refunded_amount', 0)
+      .gte('refunded_at', startIso)
+      .lt('refunded_at', endIso),
   ]);
   if (accountsRes.error) console.error('command center metrics (new accounts) failed:', accountsRes.error);
   if (paidRes.error) console.error('command center metrics (payments) failed:', paidRes.error);
   if (refundRes.error) console.error('command center metrics (refunds) failed:', refundRes.error);
 
   const paidRows = (paidRes.data ?? []) as { platform_fee: number | null }[];
-  const refundRows = (refundRes.data ?? []) as { refunded_amount: number | null }[];
+  const refundRows = (refundRes.data ?? []) as { refunded_amount: number | null; platform_fee_refunded: number | null }[];
+  const grossFees = paidRows.reduce((s, r) => s + (Number(r.platform_fee) || 0), 0);
+  // Refunds return our application fee in proportion, so the gross figure
+  // counted money already given back. The trend arrow beside this number made
+  // that worse: fees only ever moved up.
+  const feesReversed = refundRows.reduce((s, r) => s + (Number(r.platform_fee_refunded) || 0), 0);
   return {
     newAccounts: accountsRes.count ?? 0,
     paymentsProcessed: paidRows.length,
-    platformFees: paidRows.reduce((s, r) => s + (Number(r.platform_fee) || 0), 0),
+    platformFees: grossFees - feesReversed,
     refunds: refundRows.reduce((s, r) => s + (Number(r.refunded_amount) || 0), 0),
   };
 }

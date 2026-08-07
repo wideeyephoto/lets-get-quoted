@@ -930,6 +930,20 @@ alter table payments add column if not exists dispute_status text;
 -- Partial-refund tracking. A payment stays `paid` while partially refunded and
 -- only becomes `refunded` once refunded_amount reaches amount.
 alter table payments add column if not exists refunded_amount numeric(12,2) not null default 0;
+-- When the most recent refund on this payment was issued. Reporting MUST date
+-- refunds by this and never by paid_at: a refund issued today against a
+-- ninety-day-old charge belongs in this month, not in that one.
+-- (Two partials on different days share one timestamp — exact for the single
+-- refund case, which is nearly all of them. A per-refund ledger is the real fix
+-- and is deliberately not this column.)
+alter table payments add column if not exists refunded_at timestamptz;
+-- How much of platform_fee Stripe handed back with the refund. Refunds are
+-- created with refund_application_fee: true, so the fee returns in proportion.
+-- Kept SEPARATE from platform_fee, which is what was actually charged and is
+-- never retroactively re-rated — a correction that overwrites the original is
+-- not a correction anybody can audit.
+alter table payments add column if not exists platform_fee_refunded numeric(12,2) not null default 0;
+create index if not exists payments_refunded_at_idx on payments (refunded_at) where refunded_amount > 0;
 
 -- Historical payments brought in via the CRM import (migrated from another
 -- tool). They're real history but NOT new processed volume, so they're excluded

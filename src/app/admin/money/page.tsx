@@ -19,14 +19,27 @@ export default async function AdminMoneyPage() {
 
   const [feeRows, refundRows, disputes, pausedRows, notOnboardedCount] = await Promise.all([
     admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', since30),
-    admin.from('payments').select('refunded_amount, paid_at').gt('refunded_amount', 0).gte('paid_at', since30),
+    // Dated by refunded_at, NOT paid_at. Filtering refunds by the payment date
+    // meant "refunds on payments paid in the last 30 days" — a refund issued
+    // today against a ninety-day-old charge landed in no window at all.
+    admin
+      .from('payments')
+      .select('refunded_amount, platform_fee_refunded, refunded_at')
+      .gt('refunded_amount', 0)
+      .gte('refunded_at', since30),
     getOpenDisputes(admin),
     getPausedPayouts(admin),
     getNotOnboardedCount(admin),
   ]);
 
-  const fees30 = (feeRows.data ?? []).reduce((s, r) => s + (Number((r as { platform_fee: number }).platform_fee) || 0), 0);
-  const refunds30 = (refundRows.data ?? []).reduce((s, r) => s + (Number((r as { refunded_amount: number }).refunded_amount) || 0), 0);
+  const grossFees30 = (feeRows.data ?? []).reduce((s, r) => s + (Number((r as { platform_fee: number }).platform_fee) || 0), 0);
+  const refundRowsData = (refundRows.data ?? []) as { refunded_amount: number; platform_fee_refunded: number | null }[];
+  const refunds30 = refundRowsData.reduce((s, r) => s + (Number(r.refunded_amount) || 0), 0);
+  // Refunds are issued with refund_application_fee: true, so Stripe hands our
+  // fee back in proportion. Reporting the gross figure claimed money we had
+  // already returned.
+  const feesReversed30 = refundRowsData.reduce((s, r) => s + (Number(r.platform_fee_refunded) || 0), 0);
+  const fees30 = grossFees30 - feesReversed30;
 
   // Stitch display names (site company_name preferred) onto the dispute + paused
   // rows in one pass.
@@ -60,6 +73,14 @@ export default async function AdminMoneyPage() {
         <div className={`${styles.panel} ${styles.statCard}`}>
           <span className={styles.statValue}>{usd(fees30)}</span>
           <span className={styles.statLabel}>Platform fees (30 days)</span>
+          {/* The arithmetic is shown rather than hidden. A net figure with no
+              working is indistinguishable from the gross one that used to sit
+              here, and the whole point of the fix is that they differ. */}
+          {feesReversed30 > 0 ? (
+            <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
+              {usd(grossFees30)} charged − {usd(feesReversed30)} returned with refunds
+            </span>
+          ) : null}
         </div>
         <div className={`${styles.panel} ${styles.statCard}`}>
           <span className={styles.statValue} style={refunds30 > 0 ? { color: '#ffd166' } : undefined}>{usd(refunds30)}</span>

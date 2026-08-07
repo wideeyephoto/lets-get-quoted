@@ -13,6 +13,7 @@ import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
+import { reversedPlatformFee } from '@/lib/payments';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -268,7 +269,9 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
 
       const { data: payment } = await admin
         .from('payments')
-        .select('id, invoice_id, status, refunded_amount')
+        // amount + platform_fee ride along so the fee reversal can be computed
+        // from the same cumulative total Stripe just sent us.
+        .select('id, invoice_id, status, refunded_amount, amount, platform_fee')
         .eq('id', paymentId)
         .maybeSingle();
 
@@ -282,7 +285,21 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
       ) {
         const { data: transitioned } = await admin
           .from('payments')
-          .update({ refunded_amount: refundedTotal, status: isFull ? 'refunded' : 'paid' })
+          .update({
+            refunded_amount: refundedTotal,
+            status: isFull ? 'refunded' : 'paid',
+            // This branch only runs on NEW progress, so stamping the time here
+            // dates the refund that just happened rather than re-dating an old
+            // one on a redelivered event.
+            refunded_at: new Date().toISOString(),
+            // Derived from the cumulative total, so it agrees with the
+            // synchronous write in refundPayment whichever lands first.
+            platform_fee_refunded: reversedPlatformFee({
+              amount: payment.amount,
+              platformFee: payment.platform_fee,
+              refundedTotal,
+            }),
+          })
           .eq('id', payment.id)
           .in('status', ['paid', 'refunded'])
           .select('id, invoice_id')
