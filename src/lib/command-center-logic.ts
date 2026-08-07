@@ -143,6 +143,42 @@ const ROLE_DEFAULT_ORDER: Record<StaffRole, CardKey[]> = {
   read_only: SUPER_ADMIN_ORDER,
 };
 
+/**
+ * Move a card one place along the board, skipping the cards that aren't on it.
+ *
+ * The board only lays out a card that has rows in it; a card with nothing to
+ * report drops to the All-clear strip but KEEPS its slot in the saved order, so
+ * it returns to where you left it the day it has something to say. That is why
+ * this is not a swap with the neighbouring key: the neighbour is usually a
+ * quiet card, and swapping with it would move nothing on screen — the arrow
+ * would look broken. It swaps with the next card that is actually showing, and
+ * the quiet keys in between keep their positions.
+ *
+ * `visible` must be in saved order (it is derived from it). Returns `order`
+ * unchanged at either end, or if a key isn't in it.
+ */
+export function moveWithinVisible(
+  order: readonly string[],
+  visible: readonly string[],
+  key: string,
+  direction: -1 | 1,
+): string[] {
+  const shown = visible.filter((k) => order.includes(k));
+  const at = shown.indexOf(key);
+  if (at < 0) return order.slice();
+
+  const target = shown[at + direction];
+  if (target === undefined) return order.slice();
+
+  const from = order.indexOf(key);
+  const to = order.indexOf(target);
+  if (from < 0 || to < 0) return order.slice();
+
+  const next = order.slice();
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
+}
+
 // ORDER is not access. Every role still SEES every card — this only decides
 // what is at the top — and the permission matrix in lib/staff.ts is what
 // actually governs. Keeping them separate matters: a card order that hid things

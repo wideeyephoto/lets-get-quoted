@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
 import { buildCommandCenterData, type CommandCenterMetric } from '@/lib/admin-command-center';
@@ -10,6 +11,7 @@ import {
   severityForOnboardingAge,
   relativeAge,
   defaultCardOrder,
+  type CardKey,
   type DateRange,
 } from '@/lib/command-center-logic';
 import { permissionsFor } from '@/lib/staff';
@@ -78,6 +80,51 @@ const METRIC_DRILL: Record<string, string> = {
   platformFees: 'See the working',
   refunds: 'See each one',
 };
+
+type CardSpec = {
+  // Typed as CardKey rather than string so a card here that isn't in CARD_KEYS
+  // fails to compile. The board renders by looking each key up in the saved
+  // order, which is built from CARD_KEYS — a typo would silently render nothing.
+  key: CardKey;
+  title: string;
+  items: AlertItem[];
+  /**
+   * What an empty card means. One string, used both as the card's own empty
+   * state and as its line in the All-clear strip, so the two cannot drift —
+   * and so a caveat ("cases with no SLA cannot show up here") survives the card
+   * being collapsed. Several of these say what the check does NOT cover, which
+   * is the part worth keeping.
+   */
+  empty: string;
+  /** True total when `items` is a capped preview of a longer list. */
+  total?: number;
+  viewAllHref?: string;
+  viewAllLabel?: string;
+  headerExtra?: ReactNode;
+  /** Where the All-clear line leads, when that differs from the card's own footer. */
+  quietHref?: string;
+};
+
+function boardCard(spec: CardSpec): BoardCard {
+  return {
+    key: spec.key,
+    title: spec.title,
+    rows: spec.items.length,
+    quietNote: spec.empty,
+    quietHref: spec.quietHref ?? spec.viewAllHref,
+    content: (
+      <AlertCard
+        title={spec.title}
+        items={spec.items}
+        count={spec.total}
+        emptyMessage={spec.empty}
+        viewAllHref={spec.viewAllHref}
+        viewAllLabel={spec.viewAllLabel}
+        headerExtra={spec.headerExtra}
+      />
+    ),
+  };
+}
 
 export default async function AdminCommandCenterPage({ searchParams }: { searchParams: { range?: string } }) {
   const { admin, adminEmail, role } = await requireAdmin();
@@ -283,52 +330,55 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
   }));
 
   const boardCards: BoardCard[] = [
-    {
+    boardCard({
       key: 'cronTrouble',
       title: 'Scheduled jobs',
-      content: (
-        <AlertCard
-          title="Scheduled jobs"
-          items={cronTroubleItems}
-          emptyMessage="Every job that has reported is running on schedule."
-          viewAllHref="/admin/health"
-          viewAllLabel="Service health"
-        />
-      ),
-    },
+      items: cronTroubleItems,
+      empty: 'Every job that has reported is running on schedule.',
+      viewAllHref: '/admin/health',
+      viewAllLabel: 'Service health',
+    }),
     // Now leads somewhere, which it never did: the table had a reader and no
     // writer, so an empty card was permanent and looked like good news.
-    { key: 'incidents', title: 'Recent releases & incidents', content: <AlertCard title="Recent releases & incidents" items={incidentItems} emptyMessage="Nothing logged yet — write one up on the Incidents page." viewAllHref="/admin/incidents" viewAllLabel="Releases & incidents" /> },
-    { key: 'myCases', title: 'Assigned to you', content: <AlertCard title="Assigned to you" items={myCaseItems} emptyMessage="No cases assigned to you." /> },
+    boardCard({
+      key: 'incidents',
+      title: 'Recent releases & incidents',
+      items: incidentItems,
+      empty: 'Nothing logged yet — write one up on the Incidents page.',
+      viewAllHref: '/admin/incidents',
+      viewAllLabel: 'Releases & incidents',
+    }),
+    boardCard({ key: 'myCases', title: 'Assigned to you', items: myCaseItems, empty: 'No cases assigned to you.', quietHref: '/admin/cases' }),
     // The empty message says what the card COVERS, not just that it is empty.
     // Cases with no SLA set cannot appear here by construction, and that is
     // most of them — every case from the public contact form is created without
     // one — so "No cases approaching their SLA" was reading as an all-clear
     // over a blind spot. The count of the unseen goes in the header.
-    {
+    boardCard({
       key: 'casesNearSla',
       title: 'Cases nearing SLA',
-      content: (
-        <AlertCard
-          title="Cases nearing SLA"
-          items={casesNearSlaItems}
-          emptyMessage={
-            data.casesWithoutSla > 0
-              ? `No case is within 48 hours of its SLA. ${data.casesWithoutSla} open ${data.casesWithoutSla === 1 ? 'case has' : 'cases have'} no SLA set and cannot show up here.`
-              : 'No case is within 48 hours of its SLA.'
-          }
-          headerExtra={
-            data.casesWithoutSla > 0 ? (
-              <Link href="/admin/cases" className={styles.rowLink} style={{ fontSize: '.75rem' }}>
-                {data.casesWithoutSla} with no SLA →
-              </Link>
-            ) : undefined
-          }
-        />
-      ),
-    },
-    { key: 'disputes', title: 'Open disputes', content: <AlertCard title="Open disputes" items={disputeItems} emptyMessage="No open disputes." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
-    { key: 'suspendedAccounts', title: 'Suspended accounts', content: <AlertCard title="Suspended accounts" items={suspendedItems} emptyMessage="No suspended accounts." /> },
+      items: casesNearSlaItems,
+      empty:
+        data.casesWithoutSla > 0
+          ? `No case is within 48 hours of its SLA. ${data.casesWithoutSla} open ${data.casesWithoutSla === 1 ? 'case has' : 'cases have'} no SLA set and cannot show up here.`
+          : 'No case is within 48 hours of its SLA.',
+      headerExtra:
+        data.casesWithoutSla > 0 ? (
+          <Link href="/admin/cases" className={styles.rowLink} style={{ fontSize: '.75rem' }}>
+            {data.casesWithoutSla} with no SLA →
+          </Link>
+        ) : undefined,
+      quietHref: '/admin/cases',
+    }),
+    boardCard({ key: 'disputes', title: 'Open disputes', items: disputeItems, empty: 'No open disputes.', viewAllHref: '/admin/money', viewAllLabel: 'View money & disputes' }),
+    boardCard({
+      key: 'suspendedAccounts',
+      title: 'Suspended accounts',
+      items: suspendedItems,
+      empty: 'No suspended accounts.',
+      viewAllHref: '/admin/accounts?filter=suspended',
+      viewAllLabel: 'All suspended accounts',
+    }),
     // Renamed with the query. "Overdue" described a state the sweep clears
     // within fifteen minutes; what this can actually show is the requests that
     // ran out of time — which is the same event from the customer's side.
@@ -337,20 +387,40 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     // live overdue states within fifteen minutes — and "Active" is the one tab
     // that excludes exactly those, so the old link landed on a longer list
     // containing none of the rows you had just been looking at.
-    { key: 'overdueQuickStops', title: 'Quick Stops nobody answered', content: <AlertCard title="Quick Stops nobody answered" items={overdueQuickStopItems} emptyMessage="Every Quick Stop in the last two days got an answer." viewAllHref="/admin/quick-stops?f=unanswered" viewAllLabel="View all unanswered" /> },
+    boardCard({
+      key: 'overdueQuickStops',
+      title: 'Quick Stops nobody answered',
+      items: overdueQuickStopItems,
+      empty: 'Every Quick Stop in the last two days got an answer.',
+      viewAllHref: '/admin/quick-stops?f=unanswered',
+      viewAllLabel: 'View all unanswered',
+    }),
     // The count is the true total; the rows are capped at 50. Now that the card
     // can say so and hand over the rest, the number stops being a dead end.
-    { key: 'notOnboarded', title: 'Not onboarded', content: <AlertCard title="Not onboarded" items={notOnboardedItems} count={data.notOnboardedCount} emptyMessage="Every account is onboarded." viewAllHref="/admin/accounts?filter=not_onboarded" viewAllLabel="All not-onboarded accounts" /> },
-    { key: 'dunning', title: 'Payment issues', content: <AlertCard title="Payment issues" items={dunningItems} emptyMessage="No payments needing attention." /> },
-    { key: 'pausedPayouts', title: 'Payouts paused', content: <AlertCard title="Payouts paused" items={pausedPayoutItems} emptyMessage="No accounts with paused payouts." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
+    boardCard({
+      key: 'notOnboarded',
+      title: 'Not onboarded',
+      items: notOnboardedItems,
+      total: data.notOnboardedCount,
+      empty: 'Every account is onboarded.',
+      viewAllHref: '/admin/accounts?filter=not_onboarded',
+      viewAllLabel: 'All not-onboarded accounts',
+    }),
+    boardCard({ key: 'dunning', title: 'Payment issues', items: dunningItems, empty: 'No payments needing attention.' }),
+    boardCard({ key: 'pausedPayouts', title: 'Payouts paused', items: pausedPayoutItems, empty: 'No accounts with paused payouts.', viewAllHref: '/admin/money', viewAllLabel: 'View money & disputes' }),
     // The empty state says what it COVERS, not just that it is empty. Only the
     // payment and crew senders write sms_events; the rest of lib/sms.ts does
     // not, so a quiet card here has never meant "no texts failed". Saying so is
     // not a fix — logging every send is, and that is a bigger change — but a
     // card that overstates its own coverage is how staff stop checking Twilio.
-    { key: 'failedSms', title: 'Failed texts', content: <AlertCard title="Failed texts" items={failedSmsItems} emptyMessage="No failed payment or crew texts. Other kinds of text are not tracked here yet — see Webhook failures." /> },
-    { key: 'failedEmails', title: 'Failed emails', content: <AlertCard title="Failed emails" items={failedEmailItems} emptyMessage="No bounced or complained emails." /> },
-    { key: 'webhookFailures', title: 'Webhook failures', content: <AlertCard title="Webhook failures" items={webhookFailureItems} emptyMessage="No unresolved webhook failures." /> },
+    boardCard({
+      key: 'failedSms',
+      title: 'Failed texts',
+      items: failedSmsItems,
+      empty: 'No failed payment or crew texts. Other kinds of text are not tracked here yet — see Webhook failures.',
+    }),
+    boardCard({ key: 'failedEmails', title: 'Failed emails', items: failedEmailItems, empty: 'No bounced or complained emails.' }),
+    boardCard({ key: 'webhookFailures', title: 'Webhook failures', items: webhookFailureItems, empty: 'No unresolved webhook failures.' }),
   ];
 
   return (
@@ -358,7 +428,7 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Staff console</p>
         <h1 className={styles.title}>Command Center</h1>
-        <p className={styles.lead}>Exceptions and open work across every account, ordered by default for the {role} role — customize the layout below to reorder it for how you work.</p>
+        <p className={styles.lead}>Exceptions and open work across every account. Whatever has nothing to report collapses into All clear at the bottom; the rest is ordered by default for the {role} role, and you can reorder it for how you work.</p>
       </header>
 
       <div className={styles.filterTabs}>

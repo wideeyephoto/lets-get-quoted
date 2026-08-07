@@ -10,6 +10,7 @@ import {
   severityForOnboardingAge,
   relativeAge,
   defaultCardOrder,
+  moveWithinVisible,
   CARD_KEYS,
 } from '../src/lib/command-center-logic';
 
@@ -174,5 +175,61 @@ describe('defaultCardOrder', () => {
 
   it('falls back to the super-admin order for an unrecognized role', () => {
     expect(defaultCardOrder('superuser' as StaffRole)).toEqual(defaultCardOrder('super_admin'));
+  });
+});
+
+describe('moveWithinVisible', () => {
+  // The board lays out only the cards that have rows in them; the quiet ones
+  // drop to the All-clear strip but keep their saved slot, so they come back
+  // where you left them. That is what makes a plain neighbour-swap wrong.
+  const order = ['a', 'b', 'c', 'd', 'e'];
+
+  it('moves a card past the hidden ones between it and the next visible card', () => {
+    // b, c and d are quiet. Moving `a` later must land it after `e` on screen,
+    // which a swap with `b` would not do — nothing visible would have moved.
+    expect(moveWithinVisible(order, ['a', 'e'], 'a', 1)).toEqual(['e', 'b', 'c', 'd', 'a']);
+  });
+
+  it('leaves the hidden cards in their own slots', () => {
+    const next = moveWithinVisible(order, ['b', 'd'], 'd', -1);
+    expect(next).toEqual(['a', 'd', 'c', 'b', 'e']);
+    // a, c and e never moved: a quiet card returns to the position its owner
+    // last chose for it, not to wherever a neighbour's move pushed it.
+    expect(next[0]).toBe('a');
+    expect(next[2]).toBe('c');
+    expect(next[4]).toBe('e');
+  });
+
+  it('swaps adjacent visible cards the obvious way', () => {
+    expect(moveWithinVisible(order, ['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c', 'd', 'e']);
+    expect(moveWithinVisible(order, ['a', 'b', 'c'], 'b', 1)).toEqual(['a', 'c', 'b', 'd', 'e']);
+  });
+
+  it('does nothing at either end, rather than wrapping around', () => {
+    expect(moveWithinVisible(order, ['a', 'c'], 'a', -1)).toEqual(order);
+    expect(moveWithinVisible(order, ['a', 'c'], 'c', 1)).toEqual(order);
+  });
+
+  it('does nothing for a card that is not visible or not in the order', () => {
+    expect(moveWithinVisible(order, ['a', 'c'], 'b', 1)).toEqual(order);
+    expect(moveWithinVisible(order, ['a', 'zz'], 'zz', -1)).toEqual(order);
+  });
+
+  it('never drops, duplicates, or invents a key', () => {
+    for (const visible of [['a', 'e'], ['b', 'c', 'd'], ['a', 'b', 'c', 'd', 'e']]) {
+      for (const key of visible) {
+        for (const dir of [-1, 1] as const) {
+          const next = moveWithinVisible(order, visible, key, dir);
+          expect(next.length).toBe(order.length);
+          expect(new Set(next)).toEqual(new Set(order));
+        }
+      }
+    }
+  });
+
+  it('returns a copy, so a caller cannot mutate the saved order by accident', () => {
+    const next = moveWithinVisible(order, ['a', 'b'], 'a', 1);
+    expect(next).not.toBe(order);
+    expect(order).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
 });

@@ -5,6 +5,12 @@ import styles from './admin.module.css';
 // Every Command Center card renders its rows through this one shape, so
 // "severity, owner, age, status, direct action" is consistent across a dozen
 // very different signals instead of each card inventing its own layout.
+//
+// It is also what makes the cards the same SIZE. Three fixed parts — a header,
+// a list that scrolls inside its own bounds, and a footer pinned to the bottom
+// — so a card holding 46 rows is exactly as tall as a card holding one, and a
+// row of cards lines up along both edges. Before this, a single busy card was
+// 2,000px tall and sat alone on a grid row with five empty columns beside it.
 
 export type AlertSeverity = 'bad' | 'warn' | 'good' | 'neutral';
 
@@ -26,6 +32,13 @@ export type AlertItem = {
   actionExternal?: boolean;
   actionNode?: ReactNode;
 };
+
+// The lead line is clipped to one line so rows are a uniform height. Nothing is
+// lost — the full text is the row's tooltip, and a long Stripe error reading
+// "…is not a function" over two wrapped lines was never the readable option.
+function leadText(item: AlertItem): string {
+  return [item.status, item.title, item.subtitle].filter(Boolean).join(' — ');
+}
 
 export function AlertCard({
   title,
@@ -54,57 +67,63 @@ export function AlertCard({
   const truncated = shownCount > items.length;
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.7rem' }}>
-        <p className={styles.panelTitle} style={{ margin: 0 }}>
+      <div className={styles.cardHead}>
+        <p className={styles.panelTitle}>
           {title}
           {shownCount > 0 ? ` (${shownCount}${truncated ? ` — showing ${items.length}` : ''})` : ''}
         </p>
         {headerExtra}
       </div>
-      {items.length === 0 ? (
-        <p className={styles.emptyState} style={{ padding: '0.8rem 0' }}>{emptyMessage}</p>
-      ) : (
-        <ul className={styles.timeline}>
-          {items.map((item) => (
-            <li key={item.key} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'start' }}>
-              <span>
-                <span className={`${styles.pill} ${styles[item.severity] || ''}`}>{item.status}</span>{' '}
-                <span className={styles.timelineActor} style={{ textTransform: 'none' }}>{item.title}</span>
-                {item.subtitle ? <span className={styles.muted}> — {item.subtitle}</span> : null}
-                <br />
-                <span className={styles.muted}>
-                  {item.owner ? (
-                    <>
-                      {item.ownerHref ? <Link href={item.ownerHref} className={styles.rowLink}>{item.owner}</Link> : item.owner}
-                      {' · '}
-                    </>
-                  ) : null}
-                  {item.age}
+
+      {/* Scrolls within the card rather than stretching it. The rows are all
+          still here and all still reachable — several of these signals have no
+          full-list page to hand off to, so capping the rows would have put them
+          out of reach entirely. */}
+      <div className={styles.cardBody}>
+        {/* The board routes a card with no rows to its All-clear strip, so this
+            branch is a fallback for any other caller rather than the usual path. */}
+        {items.length === 0 ? (
+          <p className={styles.cardEmpty}>{emptyMessage}</p>
+        ) : (
+          <ul className={styles.alertList}>
+            {items.map((item) => (
+              <li key={item.key}>
+                <span className={styles.alertMain}>
+                  <span className={styles.alertLead} title={leadText(item)}>
+                    <span className={`${styles.pill} ${styles[item.severity] || ''}`}>{item.status}</span>{' '}
+                    <span className={styles.timelineActor} style={{ textTransform: 'none' }}>{item.title}</span>
+                    {item.subtitle ? <span className={styles.muted}> — {item.subtitle}</span> : null}
+                  </span>
+                  <span className={styles.alertMeta}>
+                    {item.owner ? (
+                      <>
+                        {item.ownerHref ? <Link href={item.ownerHref} className={styles.rowLink}>{item.owner}</Link> : item.owner}
+                        {' · '}
+                      </>
+                    ) : null}
+                    {item.age}
+                  </span>
                 </span>
-              </span>
-              <div>
-                {item.actionNode ? (
-                  item.actionNode
-                ) : item.actionHref && item.actionLabel ? (
-                  item.actionExternal ? (
-                    <a href={item.actionHref} target="_blank" rel="noreferrer" className={styles.rowLink}>{item.actionLabel} →</a>
-                  ) : (
-                    <Link href={item.actionHref} className={styles.rowLink}>{item.actionLabel} →</Link>
-                  )
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {/* Shown when the card is empty too. It used to be hidden precisely then,
-          which broke the incidents card worst: its empty state reads "Nothing
-          logged yet — write one up on the Incidents page" while suppressing its
-          own link to that page. When there is nothing in the list, the link IS
-          the content, so it gets the primary treatment. */}
+                <span className={styles.alertAction}>
+                  {item.actionNode ? (
+                    item.actionNode
+                  ) : item.actionHref && item.actionLabel ? (
+                    item.actionExternal ? (
+                      <a href={item.actionHref} target="_blank" rel="noreferrer" className={styles.rowLink}>{item.actionLabel} →</a>
+                    ) : (
+                      <Link href={item.actionHref} className={styles.rowLink}>{item.actionLabel} →</Link>
+                    )
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {viewAllHref ? (
         <div className={styles.actionRow}>
-          <Link href={viewAllHref} className={items.length === 0 ? 'btn primary' : 'btn secondary'}>
+          <Link href={viewAllHref} className="btn secondary">
             {viewAllLabel ?? 'View all'}
           </Link>
         </div>
