@@ -16,9 +16,11 @@ import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
+import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
 import LaborByJob from './LaborByJob';
+import TimeClockCard from './TimeClockCard';
 import styles from './crew.module.css';
 
 // Crew & Labor — one home for the roster, the hours those people logged, and
@@ -119,6 +121,17 @@ export default async function CrewLaborPage({
   }
 
   const onJobCount = activeCrew.filter((member) => (jobsByCrew[member.id]?.length ?? 0) > 0).length;
+
+  // The time clock's own card lives on the Crew members tab, so that tab pays
+  // for these reads and no other one does. `available` is a separate question
+  // from the mode: getTimeClockMode answers 'off' both when the migration has
+  // not run and when the owner genuinely turned it off, which is right for
+  // behaviour and useless for explaining. Open shifts are only worth a query
+  // when there is a clock that could have left one running.
+  const timeClockMode = tab === 'crew' ? await getTimeClockMode(supabase, accountId) : 'off';
+  const timeClockAvailable = tab === 'crew' ? await isTimeClockAvailable(supabase, accountId) : false;
+  const crewOpenShifts =
+    tab === 'crew' && timeClockMode !== 'off' ? await listOpenShifts(supabase, accountId) : [];
 
   // Hours for the roster's "this pay period" summary. Cheap enough to always
   // load: it's the number that makes a roster row worth reading.
@@ -310,7 +323,6 @@ export default async function CrewLaborPage({
             settings={settings}
             requireSeparatePayer={requireSeparatePayer}
             timeClockMode={payView.timeClockMode}
-            timeClockAvailable={payView.timeClockAvailable}
             openShifts={payView.openShifts}
           />
         ) : null}
@@ -355,6 +367,20 @@ export default async function CrewLaborPage({
             <span className="stat-ticker-label">Archived</span>
           </div>
         </div>
+      ) : null}
+
+      {/* The time clock, on the tab that renders with zero crew and zero hours.
+          Its only control used to be a <select> in the Hours & pay rail, and
+          that rail is not rendered when no hours exist for the period — so
+          switching the clock ON required hours to have already been logged
+          without it. See TimeClockCard. */}
+      {tab === 'crew' ? (
+        <TimeClockCard
+          mode={timeClockMode}
+          available={timeClockAvailable}
+          crewCount={activeCrew.length}
+          openShiftCount={crewOpenShifts.length}
+        />
       ) : null}
     </main>
   );

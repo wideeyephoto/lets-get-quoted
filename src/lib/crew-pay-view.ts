@@ -15,7 +15,7 @@ import {
 import { listOutstandingPeriods, listPayEvents, listPeriodEntryLines, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView } from '@/lib/pay-day';
 import { listLaborEntries } from '@/lib/labor-data';
-import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
+import { getTimeClockMode, listOpenShifts } from '@/lib/time-clock-data';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
 
 /**
@@ -71,7 +71,6 @@ export type CrewPayView = {
   hoursLastPeriod: number[];
   previousPayLabel: string;
   timeClockMode: Awaited<ReturnType<typeof getTimeClockMode>>;
-  timeClockAvailable: boolean;
   openShifts: OpenShiftViewType[];
 };
 
@@ -92,8 +91,11 @@ export async function loadCrewPayView(
   const { period, settings, timeZone, crew } = options;
   const crewId = options.crewId ?? null;
 
+  // The mode only, not availability: this screen states what the clock is set
+  // to and links to the card that changes it. Whether the migration has run is
+  // that card's question to answer, and asking it here cost a second round trip
+  // on every load of a screen that no longer had anything to do with the answer.
   const timeClockMode = await getTimeClockMode(supabase, accountId);
-  const timeClockAvailable = await isTimeClockAvailable(supabase, accountId);
 
   // Hours & pay reads through the pay context so the screen and the actions
   // that follow from it are looking at exactly the same rollup.
@@ -216,7 +218,6 @@ export async function loadCrewPayView(
     ),
     previousPayLabel: formatMoney(previousPay),
     timeClockMode,
-    timeClockAvailable,
     openShifts,
   };
 }

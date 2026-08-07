@@ -163,7 +163,6 @@ export default async function DemoCrewPage({ searchParams }: { searchParams: { t
               settings={settings}
               requireSeparatePayer={false}
               timeClockMode={payView.timeClockMode}
-              timeClockAvailable={payView.timeClockAvailable}
               openShifts={payView.openShifts}
             />
           ) : (

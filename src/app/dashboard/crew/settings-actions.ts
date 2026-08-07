@@ -8,18 +8,41 @@ import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { normalizeTimeClockMode } from '@/lib/time-clock';
 import { getTimeClockMode, setTimeClockMode } from '@/lib/time-clock-data';
 
+/**
+ * The time clock, saved from its own card on the Crew members tab.
+ *
+ * It used to be a <select> inside this file's saveLaborSettingsAction, driven by
+ * a field in the Labor settings form. Two problems, one of them serious:
+ *
+ *   1. That form is in the Hours & pay rail, which is not rendered at all when
+ *      no crew hours exist for the current period — so the only way to switch
+ *      the clock ON required hours to have already been logged without it.
+ *   2. Reading the field here meant a Labor settings save with no such field in
+ *      the payload would normalise to 'off' and switch the clock off silently.
+ *      Which is exactly what removing the control would have caused, had the
+ *      read not been removed with it.
+ *
+ * Per ACCOUNT, not per browser: the crew have to see the same rule the owner
+ * set, and they are on different devices.
+ */
+export async function setTimeClockModeAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const mode = normalizeTimeClockMode(formData.get('timeClockMode'));
+  const current = await getTimeClockMode(supabase, accountId);
+  if (mode !== current) await setTimeClockMode(supabase, accountId, mode);
+
+  revalidatePath('/dashboard/crew');
+}
+
 // Labor settings live in a cookie, like the dashboard's other view preferences.
 // Still owner-gated: it's an owner-only screen, and there's no reason for a
 // crew session to be able to write it.
 export async function saveLaborSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  // The time clock is per ACCOUNT, not per browser — the crew have to see the
-  // same rule the owner set, and they're on different devices. So it goes to
-  // the database while the display rules below stay in the cookie.
-  const mode = normalizeTimeClockMode(formData.get('timeClockMode'));
-  const current = await getTimeClockMode(supabase, accountId);
-  if (mode !== current) await setTimeClockMode(supabase, accountId, mode);
+  // NO TIME CLOCK HERE. It has its own card and its own action above — see the
+  // note there for why reading it from this form was able to switch it off.
 
   // The pay day is per ACCOUNT for the same reason the time clock is: the
   // reminder that goes out two days before it is sent by a cron with no cookie

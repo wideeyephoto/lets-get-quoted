@@ -228,7 +228,6 @@ export default function HoursAndPay({
   settings,
   requireSeparatePayer,
   timeClockMode,
-  timeClockAvailable,
   openShifts,
   initialView,
   initialSkin,
@@ -268,7 +267,6 @@ export default function HoursAndPay({
   /** Whether whoever approved is barred from recording the payment. */
   requireSeparatePayer: boolean;
   timeClockMode: TimeClockMode;
-  timeClockAvailable: boolean;
   openShifts: OpenShiftView[];
   initialView: CrewView;
   initialSkin: CrewSkin;
@@ -1103,13 +1101,33 @@ export default function HoursAndPay({
       ) : null}
 
       {rows.length === 0 ? (
+        // NOT A DEAD END. This branch replaces the entire layout — table, toolbar
+        // and the rail that carries every setting on this tab — so whatever is
+        // not said here is not reachable at all until somebody logs an hour.
+        // It used to offer two buttons and nothing else, which meant the way to
+        // change how hours get logged disappeared exactly when you had none.
         <div className={styles.empty}>
-          <h3>No crew hours have been logged for this period</h3>
-          <p>Hours logged through the field app or added to a job will appear here.</p>
+          <h3>No crew hours have been logged for {period.rangeLabel}</h3>
+          <p>
+            Hours logged through the field app or added to a job appear here. This is one pay period — earlier
+            hours are still on the account, under the period picker above.
+          </p>
           <div className={styles.emptyActions}>
             <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>Add labor manually</button>
             <Link href="/dashboard/crew?tab=crew" className="btn secondary">Invite crew to the field app</Link>
           </div>
+          <p className={styles.emptyNote}>
+            {timeClockMode === 'off'
+              ? 'Crew type their hours when the work is done. '
+              : `Crew ${timeClockMode === 'required' ? 'must clock' : 'can clock'} in and out from the job in the field app. `}
+            <Link href="/dashboard/crew?tab=crew#time-clock">
+              {timeClockMode === 'off' ? 'Turn on the time clock' : 'Change the time clock'}
+            </Link>
+            {' · '}
+            <button type="button" className="linklike" onClick={() => setSettingsOpen((value) => !value)}>
+              Labor settings
+            </button>
+          </p>
         </div>
       ) : (
         <div className={styles.payLayout} data-view={layout}>
@@ -1704,19 +1722,17 @@ export default function HoursAndPay({
                 : 'When each pay period is due to be settled.'}
             </em>
           </label>
-          <label>
-            <span>Time clock</span>
-            <select name="timeClockMode" defaultValue={timeClockMode} disabled={!timeClockAvailable}>
-              {TIME_CLOCK_MODES.map((mode) => (
-                <option key={mode.id} value={mode.id}>{mode.label}</option>
-              ))}
-            </select>
-            <em className={styles.settingHint}>
-              {timeClockAvailable
-                ? TIME_CLOCK_MODES.find((mode) => mode.id === timeClockMode)?.hint
-                : 'Run the time-clock migration to enable clock in / clock out.'}
-            </em>
-          </label>
+          {/* The time clock was a <select> here. It has its own card on Crew
+              members now — this panel lives in the rail, and the rail is not
+              rendered when no hours exist for the period, so the only control
+              that turns the clock ON was unreachable until hours had already
+              been logged without it. A pointer rather than a duplicate: two
+              controls for one setting can disagree. */}
+          <p className={styles.settingHint}>
+            Clock in / clock out is on <Link href="/dashboard/crew?tab=crew#time-clock">Crew members</Link>
+            {' — currently '}
+            <strong>{TIME_CLOCK_MODES.find((mode) => mode.id === timeClockMode)?.label.toLowerCase()}</strong>.
+          </p>
           <label>
             <span>Pay-period frequency</span>
             <select name="periodMode" defaultValue={settings.periodMode}>

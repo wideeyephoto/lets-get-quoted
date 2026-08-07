@@ -1254,6 +1254,71 @@
 .railActions button:hover, .railActions a:hover { background: rgba(var(--tint), 0.07); color: var(--text); }
 .railActions button:disabled { opacity: 0.6; cursor: progress; }
 
+/* --- the time clock card ---------------------------------------------------
+   On Crew members, not in the Hours & pay rail, because that rail is not
+   rendered when the period has no hours — which made the only control that
+   turns the clock ON unreachable until hours had been logged without it. */
+
+.clockCard { margin-top: 1rem; padding: 1.1rem 1.2rem; display: grid; gap: 0.85rem; }
+.clockHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.clockHead h2 { margin: 0.15rem 0 0; font-size: 1.05rem; }
+.clockState {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute-t60);
+}
+/* On is stated, not celebrated — and off is not a warning, so neither gets the
+   alarm palette. */
+.clockState[data-on] { border-color: var(--cedge-green-50); background: rgba(72, 199, 142, 0.12); color: var(--good); }
+.clockLede { margin: 0; font-size: 0.86rem; line-height: 1.55; color: var(--mute-t60); max-width: 62ch; }
+.clockWarn {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--cedge-amber-5);
+  background: rgba(255, 209, 102, 0.1);
+  font-size: 0.8rem;
+  color: var(--gold-ink);
+}
+
+.clockForm { display: grid; gap: 0.8rem; justify-items: start; }
+.clockForm fieldset { display: grid; gap: 0.45rem; margin: 0; padding: 0; border: 0; width: 100%; }
+/* THREE VISIBLE OPTIONS, not a <select>. "Optional" is the mode most
+   contractors want and it was invisible until you opened the dropdown. */
+.clockOption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+  cursor: pointer;
+}
+.clockOption:hover { background: rgba(var(--tint), 0.06); }
+.clockOption input { margin-top: 0.2rem; }
+.clockOption:has(input:checked) { border-color: var(--cedge-sky-24); background: rgba(169, 200, 255, 0.08); }
+.clockOption span { display: grid; gap: 0.15rem; }
+.clockOption strong { font-size: 0.88rem; color: var(--text); }
+.clockOption em { font-style: normal; font-size: 0.79rem; line-height: 1.5; color: var(--mute-t50); }
+.clockForm fieldset:disabled .clockOption { opacity: 0.55; cursor: not-allowed; }
+
+.clockNotes { display: grid; gap: 0.4rem; }
+.clockNotes p { margin: 0; font-size: 0.79rem; line-height: 1.55; color: var(--mute-t50); max-width: 66ch; }
+.clockNotes a { color: var(--accent-ink); }
+
+/* The empty state on Hours & pay stopped being a dead end: it now carries the
+   settings the rail would have carried, because the rail is what it replaces. */
+.emptyNote { margin: 0.9rem 0 0; font-size: 0.79rem; line-height: 1.55; color: var(--mute-t50); }
+.emptyNote a, .emptyNote .linklike { color: var(--accent-ink); }
+
 /* --- toast --- */
 
 .toast {
