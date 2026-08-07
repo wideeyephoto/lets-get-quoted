@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { isIncidentKind, isIncidentSeverity } from '@/lib/platform-incidents';
 
@@ -21,7 +21,8 @@ function back(query: string): never {
 }
 
 export async function logIncidentAction(formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('ops.manage');
+  const { admin } = ctx;
 
   const title = String(formData.get('title') ?? '').trim().slice(0, 200);
   const description = String(formData.get('description') ?? '').trim().slice(0, 4000) || null;
@@ -45,7 +46,7 @@ export async function logIncidentAction(formData: FormData) {
 
   const { data, error } = await admin
     .from('platform_incidents')
-    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: adminEmail })
+    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail })
     .select('id')
     .single();
   if (error || !data) {
@@ -53,7 +54,7 @@ export async function logIncidentAction(formData: FormData) {
     back('error=failed');
   }
 
-  await logAdminAction(admin, adminEmail, {
+  await logAdminAction(admin, ctx, {
     action: 'platform_incident_log',
     targetType: 'platform_incident',
     targetId: data.id,
@@ -66,7 +67,8 @@ export async function logIncidentAction(formData: FormData) {
 }
 
 export async function resolveIncidentAction(incidentId: string) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('ops.manage');
+  const { admin } = ctx;
 
   // Only an unresolved incident, so a second click cannot move the resolution
   // time and quietly change how long an outage is on record as having lasted.
@@ -84,7 +86,7 @@ export async function resolveIncidentAction(incidentId: string) {
   }
   if (!data) back('error=already_resolved');
 
-  await logAdminAction(admin, adminEmail, {
+  await logAdminAction(admin, ctx, {
     action: 'platform_incident_resolve',
     targetType: 'platform_incident',
     targetId: incidentId,

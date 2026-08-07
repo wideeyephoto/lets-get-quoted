@@ -42,10 +42,15 @@ describe('isAdminEmail', () => {
   });
 });
 
-// Roles are additive on top of the allowlist, never a stricter gate: every
-// entry above (bare or "email:role") must keep granting the same /admin access
-// it always did. See staffRoleFor's doc comment in auth.ts for why role is not
-// an authorization boundary.
+// ADMIN_EMAILS is now the OUTER gate only: it decides who can reach /admin at
+// all, and the staff row decides what they can do once inside. The role token
+// here is a SEED for that row on first sign-in, never the authority itself —
+// once a staff row exists the database wins, and editing this variable changes
+// who gets in rather than what they can do.
+//
+// 'admin' still resolves to full access (now spelled super_admin), and it must:
+// it is what every bare entry has always meant, and a security change that
+// silently demotes the person deploying it gets reverted rather than fixed.
 describe('staffRoleFor', () => {
   const original = process.env.ADMIN_EMAILS;
   afterEach(() => {
@@ -53,21 +58,29 @@ describe('staffRoleFor', () => {
     else process.env.ADMIN_EMAILS = original;
   });
 
-  it('defaults a bare email to the admin role', () => {
+  it('defaults a bare email to full access, as it always has', () => {
     process.env.ADMIN_EMAILS = 'boss@letsgetquoted.com';
-    expect(staffRoleFor('boss@letsgetquoted.com')).toBe('admin');
+    expect(staffRoleFor('boss@letsgetquoted.com')).toBe('super_admin');
   });
 
   it('parses "email:role" pairs, case-insensitively', () => {
     process.env.ADMIN_EMAILS = 'boss@letsgetquoted.com, support@letsgetquoted.com:support, cfo@letsgetquoted.com:finance';
     expect(staffRoleFor('support@letsgetquoted.com')).toBe('support');
     expect(staffRoleFor('CFO@LetsGetQuoted.com')).toBe('finance');
-    expect(staffRoleFor('boss@letsgetquoted.com')).toBe('admin');
+    expect(staffRoleFor('boss@letsgetquoted.com')).toBe('super_admin');
   });
 
-  it('falls back to admin for an unrecognized role token', () => {
+  // Deliberately fails OPEN, unlike every other parse in this codebase. A typo
+  // in ADMIN_EMAILS that silently downgraded somebody to read_only would look
+  // exactly like a bug in the new permission system, on the day it shipped.
+  it('falls back to full access for an unrecognized role token', () => {
     process.env.ADMIN_EMAILS = 'weird@letsgetquoted.com:superuser';
-    expect(staffRoleFor('weird@letsgetquoted.com')).toBe('admin');
+    expect(staffRoleFor('weird@letsgetquoted.com')).toBe('super_admin');
+  });
+
+  it('still understands the legacy admin token', () => {
+    process.env.ADMIN_EMAILS = 'boss@letsgetquoted.com:admin';
+    expect(staffRoleFor('boss@letsgetquoted.com')).toBe('super_admin');
   });
 
   it('still grants access regardless of role', () => {
@@ -75,8 +88,10 @@ describe('staffRoleFor', () => {
     expect(isAdminEmail('support@letsgetquoted.com')).toBe(true);
   });
 
-  it('defaults to admin for an unlisted email', () => {
+  // Never reached in practice — requireAdmin calls isAdminEmail first, and an
+  // unlisted email 404s before a role is ever asked for.
+  it('defaults to full access for an unlisted email', () => {
     delete process.env.ADMIN_EMAILS;
-    expect(staffRoleFor('nobody@letsgetquoted.com')).toBe('admin');
+    expect(staffRoleFor('nobody@letsgetquoted.com')).toBe('super_admin');
   });
 });

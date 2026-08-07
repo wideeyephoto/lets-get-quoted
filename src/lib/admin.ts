@@ -9,24 +9,64 @@ export type AdminActionInput = {
   accountId?: string | null;
   targetType?: string | null;
   targetId?: string | null;
+  /** WHY. The most valuable field in the trail and the one most often absent. */
+  reason?: string | null;
+  /** What the thing looked like before, and after. Enough to answer "what did
+      this used to be" without restoring a backup. */
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
   meta?: Record<string, unknown>;
 };
+
+/**
+ * Who is writing this row.
+ *
+ * The whole AdminContext rather than an email, so ip / requestId / staff_id
+ * cannot be omitted by a caller who did not think about them — which is every
+ * caller, because they are not about the action being taken. requirePermission
+ * returns exactly this shape, so the audit row is complete by construction.
+ */
+export type AuditActor = {
+  adminEmail: string;
+  ip?: string | null;
+  requestId?: string | null;
+  staff?: { id: string } | null;
+  permission?: string | null;
+};
+
+/**
+ * The actor for work nobody triggered.
+ *
+ * The automated Quick Stop no-show lockout writes to this trail, and it has no
+ * session, no address and no staff row. Naming that explicitly is better than
+ * an optional context that a human caller could also leave empty by accident.
+ */
+export function systemActor(): AuditActor {
+  return { adminEmail: 'system', ip: null, requestId: null, staff: null, permission: null };
+}
 
 // Append one row to the admin audit trail. Best-effort: a logging failure must
 // never block the underlying staff action (the refund still happened), but we
 // surface it to the server log so a broken audit path is noticed.
 export async function logAdminAction(
   admin: SupabaseClient,
-  adminEmail: string,
+  actor: AuditActor,
   input: AdminActionInput,
 ): Promise<void> {
   try {
     await admin.from('admin_actions').insert({
-      admin_email: adminEmail,
+      admin_email: actor.adminEmail,
+      staff_id: actor.staff?.id || null,
+      ip: actor.ip ?? null,
+      request_id: actor.requestId ?? null,
+      permission: actor.permission ?? null,
       action: input.action,
       account_id: input.accountId ?? null,
       target_type: input.targetType ?? null,
       target_id: input.targetId ?? null,
+      reason: input.reason ?? null,
+      before_value: input.before ?? null,
+      after_value: input.after ?? null,
       meta: input.meta ?? {},
     });
   } catch (error) {
@@ -41,6 +81,12 @@ export type AdminActionRow = {
   account_id: string | null;
   target_type: string | null;
   target_id: string | null;
+  reason: string | null;
+  before_value: Record<string, unknown> | null;
+  after_value: Record<string, unknown> | null;
+  ip: string | null;
+  request_id: string | null;
+  permission: string | null;
   meta: Record<string, unknown>;
   created_at: string;
 };
@@ -52,7 +98,7 @@ export async function listAdminActions(
 ): Promise<AdminActionRow[]> {
   let query = admin
     .from('admin_actions')
-    .select('id, admin_email, action, account_id, target_type, target_id, meta, created_at')
+    .select('id, admin_email, action, account_id, target_type, target_id, reason, before_value, after_value, ip, request_id, permission, meta, created_at')
     .order('created_at', { ascending: false })
     .limit(opts.limit ?? 100);
   if (opts.accountId) query = query.eq('account_id', opts.accountId);
@@ -78,7 +124,7 @@ export async function getAccountCreditBalanceCents(
 // for the Quick Stop no-show goodwill credit and manual staff comps.
 export async function issueAccountCredit(
   admin: SupabaseClient,
-  adminEmail: string,
+  actor: AuditActor,
   input: { accountId: string; amountCents: number; reason: string; source?: string; meta?: Record<string, unknown> },
 ): Promise<void> {
   await admin.from('account_credits').insert({
@@ -86,14 +132,17 @@ export async function issueAccountCredit(
     amount_cents: Math.round(input.amountCents),
     reason: input.reason,
     source: input.source ?? 'admin',
-    created_by: adminEmail,
+    created_by: actor.adminEmail,
     meta: input.meta ?? {},
   });
-  await logAdminAction(admin, adminEmail, {
+  await logAdminAction(admin, actor, {
     action: 'account_credit',
     accountId: input.accountId,
     targetType: 'account',
     targetId: input.accountId,
-    meta: { amountCents: Math.round(input.amountCents), reason: input.reason, source: input.source ?? 'admin' },
+    // Promoted out of meta: "why did we give this business money" is the
+    // question the row exists to answer.
+    reason: input.reason,
+    meta: { amountCents: Math.round(input.amountCents), source: input.source ?? 'admin' },
   });
 }

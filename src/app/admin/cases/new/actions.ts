@@ -1,11 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { createSupportCase, isCasePriority } from '@/lib/support-cases';
 
 export async function createCaseAction(formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('account.support');
+  const { admin } = ctx;
   const subject = String(formData.get('subject') ?? '').trim();
   const accountId = String(formData.get('account_id') ?? '').trim() || null;
   const priorityRaw = String(formData.get('priority') ?? '').trim();
@@ -14,7 +15,7 @@ export async function createCaseAction(formData: FormData) {
 
   if (!subject) redirect('/admin/cases/new?error=subject');
 
-  const created = await createSupportCase(admin, adminEmail, {
+  const created = await createSupportCase(admin, ctx, {
     accountId,
     subject,
     priority: isCasePriority(priorityRaw) ? priorityRaw : 'normal',

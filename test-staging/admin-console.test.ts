@@ -43,6 +43,10 @@ import { recordLoginEvent, listLoginEvents } from '@/lib/login-events';
 // test-staging/**.
 
 const admin = createAdminClient();
+// The audit actor the library now takes: a staff email plus the request
+// context that makes an audit row complete. Staging has no request, so ip and
+// requestId are null and the row still records who.
+const ACTOR = { adminEmail: 'staging@letsgetquoted.com', ip: null, requestId: null, staff: null, permission: null };
 const STAFF = 'staging-suite@letsgetquoted.com';
 
 beforeAll(() => {
@@ -151,7 +155,7 @@ describe('Command Center alert fetchers — each one against real tables', () =>
 
 describe('buildCommandCenterData', () => {
   it('builds for each role without throwing, at each range', async () => {
-    for (const role of ['admin', 'support', 'finance'] as const) {
+    for (const role of ['super_admin', 'support', 'finance', 'risk', 'ops', 'read_only'] as const) {
       for (const range of ['7d', '30d', '90d'] as const) {
         const data = await buildCommandCenterData(admin, { role, staffEmail: STAFF, range });
         expect(data).toBeTruthy();
@@ -164,7 +168,7 @@ describe('Support cases — the full lifecycle against real tables', () => {
   let caseId: string;
 
   it('creates a case', async () => {
-    const created = await createSupportCase(admin, STAFF, {
+    const created = await createSupportCase(admin, ACTOR, {
       subject: 'Staging suite — lifecycle case',
       priority: 'high',
       assignedTo: STAFF,
@@ -191,7 +195,7 @@ describe('Support cases — the full lifecycle against real tables', () => {
   });
 
   it('threads a note', async () => {
-    await addSupportCaseNote(admin, STAFF, caseId, 'A note from the staging suite.', 'internal');
+    await addSupportCaseNote(admin, ACTOR, caseId, 'A note from the staging suite.', 'internal');
     const notes = await listSupportCaseNotes(admin, caseId);
     expect(notes.some((n) => n.body.includes('staging suite'))).toBe(true);
   });
@@ -200,8 +204,8 @@ describe('Support cases — the full lifecycle against real tables', () => {
   // because the default is the safety net: a note written without a visibility
   // must come back internal, not customer.
   it('defaults a note to internal and honours an explicit customer note', async () => {
-    await addSupportCaseNote(admin, STAFF, caseId, 'Internal by request.', 'internal');
-    await addSupportCaseNote(admin, STAFF, caseId, 'Shared by request.', 'customer');
+    await addSupportCaseNote(admin, ACTOR, caseId, 'Internal by request.', 'internal');
+    await addSupportCaseNote(admin, ACTOR, caseId, 'Shared by request.', 'customer');
     const notes = await listSupportCaseNotes(admin, caseId);
     expect(notes.find((n) => n.body === 'Internal by request.')?.visibility).toBe('internal');
     expect(notes.find((n) => n.body === 'Shared by request.')?.visibility).toBe('customer');
@@ -224,7 +228,7 @@ describe('Support cases — the full lifecycle against real tables', () => {
     // The thread is meant to be a full history on its own, without joining
     // admin_actions. If the status_change row is missing, the case detail page
     // shows a status that changed with no record of who changed it.
-    await updateSupportCaseStatus(admin, STAFF, caseId, 'pending');
+    await updateSupportCaseStatus(admin, ACTOR, caseId, 'pending');
     const after = await getSupportCase(admin, caseId);
     expect(after?.status).toBe('pending');
     const notes = await listSupportCaseNotes(admin, caseId);
@@ -232,14 +236,14 @@ describe('Support cases — the full lifecycle against real tables', () => {
   });
 
   it('assigns and unassigns', async () => {
-    await assignSupportCase(admin, STAFF, caseId, 'someone-else@letsgetquoted.com');
+    await assignSupportCase(admin, ACTOR, caseId, 'someone-else@letsgetquoted.com');
     expect((await getSupportCase(admin, caseId))?.assigned_to).toBe('someone-else@letsgetquoted.com');
-    await assignSupportCase(admin, STAFF, caseId, null);
+    await assignSupportCase(admin, ACTOR, caseId, null);
     expect((await getSupportCase(admin, caseId))?.assigned_to).toBeNull();
   });
 
   it('surfaces a past-due open case on the SLA fetcher', async () => {
-    const overdue = await createSupportCase(admin, STAFF, {
+    const overdue = await createSupportCase(admin, ACTOR, {
       subject: 'Staging suite — already past SLA',
       priority: 'urgent',
       assignedTo: STAFF,
@@ -252,7 +256,7 @@ describe('Support cases — the full lifecycle against real tables', () => {
   });
 
   it('drops a resolved case off the SLA list', async () => {
-    await updateSupportCaseStatus(admin, STAFF, caseId, 'resolved');
+    await updateSupportCaseStatus(admin, ACTOR, caseId, 'resolved');
     const nearSla = await getCasesNearSla(admin);
     expect(nearSla.some((c) => c.id === caseId)).toBe(false);
   });

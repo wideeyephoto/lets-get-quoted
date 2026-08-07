@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { getQuickStopRequestById, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
@@ -16,7 +16,8 @@ function backTo(id: string, query: string): never {
 // remaining balance. Writes both the admin audit trail and the request's own
 // event log, and flips the request to 'refunded' when fully refunded.
 export async function adminRefundQuickStopAction(requestId: string, formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('money.refund');
+  const { admin } = ctx;
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) backTo(requestId, 'error=notfound');
   if (!req.payment_id || !req.paid_at) backTo(requestId, 'error=nopayment');
@@ -42,8 +43,8 @@ export async function adminRefundQuickStopAction(requestId: string, formData: Fo
     .update({ refund_cents: refundedTotalCents, ...(isFull ? { status: 'refunded' } : {}), updated_at: nowIso })
     .eq('id', requestId);
 
-  await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', meta: { adminRefund: true, refundedTotalCents, by: adminEmail } });
-  await logAdminAction(admin, adminEmail, { action: 'extra_stop_refund', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, meta: { amountDollars: amountDollars ?? 'full', refundedTotalCents, isFull } });
+  await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', meta: { adminRefund: true, refundedTotalCents, by: ctx.adminEmail } });
+  await logAdminAction(admin, ctx, { action: 'extra_stop_refund', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, meta: { amountDollars: amountDollars ?? 'full', refundedTotalCents, isFull } });
 
   revalidatePath(`/admin/quick-stops/${requestId}`);
   backTo(requestId, 'done=refunded');
@@ -53,9 +54,10 @@ export async function adminRefundQuickStopAction(requestId: string, formData: Fo
 // full cancellation path (tiered/forced refund + notify + archive job); the
 // others just set the status for record-keeping.
 export async function adminResolveQuickStopAction(requestId: string, formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('account.support');
+  const { admin } = ctx;
   const outcome = String(formData.get('outcome') ?? '').trim();
-  const reason = String(formData.get('reason') ?? '').trim() || `Resolved by ${adminEmail}`;
+  const reason = String(formData.get('reason') ?? '').trim() || `Resolved by ${ctx.adminEmail}`;
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) backTo(requestId, 'error=notfound');
 
@@ -64,15 +66,15 @@ export async function adminResolveQuickStopAction(requestId: string, formData: F
     await resolveQuickStopCancellation(admin, req.account_id, requestId, { kind: outcome === 'no_show' ? 'no_show' : 'contractor_cancel', reason });
   } else if (outcome === 'completed') {
     await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId);
-    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'completed', meta: { adminForced: true, by: adminEmail } });
+    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'completed', meta: { adminForced: true, by: ctx.adminEmail } });
   } else if (outcome === 'disputed') {
     await admin.from('extra_stop_requests').update({ status: 'disputed', updated_at: nowIso }).eq('id', requestId);
-    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'disputed', meta: { adminForced: true, reason, by: adminEmail } });
+    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'disputed', meta: { adminForced: true, reason, by: ctx.adminEmail } });
   } else {
     backTo(requestId, 'error=outcome');
   }
 
-  await logAdminAction(admin, adminEmail, { action: 'extra_stop_resolve', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, meta: { outcome, reason } });
+  await logAdminAction(admin, ctx, { action: 'extra_stop_resolve', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, reason, meta: { outcome } });
   revalidatePath(`/admin/quick-stops/${requestId}`);
   backTo(requestId, 'done=resolved');
 }

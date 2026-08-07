@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { logAdminAction } from '@/lib/admin';
+import { logAdminAction, type AuditActor } from '@/lib/admin';
 
 // Lightweight internal case log (Phase 3) — no external help-desk system
 // exists in this codebase. Staff open a case, thread notes on it, and change
@@ -113,7 +113,7 @@ export async function listSupportCaseNotes(admin: SupabaseClient, caseId: string
 
 export async function createSupportCase(
   admin: SupabaseClient,
-  adminEmail: string,
+  actor: AuditActor,
   input: {
     accountId?: string | null;
     subject: string;
@@ -134,12 +134,12 @@ export async function createSupportCase(
       sla_due_at: input.slaDueAt ?? null,
       source: input.source ?? 'staff',
       requester_email: input.requesterEmail ?? null,
-      created_by: adminEmail,
+      created_by: actor.adminEmail,
     })
     .select(CASE_COLUMNS)
     .single();
   if (error || !data) throw new Error(`createSupportCase failed: ${error?.message ?? 'no row returned'}`);
-  await logAdminAction(admin, adminEmail, {
+  await logAdminAction(admin, actor, {
     action: 'support_case_create',
     accountId: input.accountId ?? null,
     targetType: 'support_case',
@@ -159,19 +159,19 @@ export async function createSupportCase(
  */
 export async function addSupportCaseNote(
   admin: SupabaseClient,
-  adminEmail: string,
+  actor: AuditActor,
   caseId: string,
   body: string,
   visibility: NoteVisibility,
 ): Promise<void> {
   const { error } = await admin
     .from('support_case_notes')
-    .insert({ case_id: caseId, kind: 'note', visibility, body, created_by: adminEmail });
+    .insert({ case_id: caseId, kind: 'note', visibility, body, created_by: actor.adminEmail });
   if (error) {
     console.error('addSupportCaseNote failed:', error);
     return;
   }
-  await logAdminAction(admin, adminEmail, {
+  await logAdminAction(admin, actor, {
     action: 'support_case_note',
     targetType: 'support_case',
     targetId: caseId,
@@ -179,7 +179,7 @@ export async function addSupportCaseNote(
   });
 }
 
-export async function updateSupportCaseStatus(admin: SupabaseClient, adminEmail: string, caseId: string, status: CaseStatus): Promise<void> {
+export async function updateSupportCaseStatus(admin: SupabaseClient, actor: AuditActor, caseId: string, status: CaseStatus): Promise<void> {
   const { error } = await admin.from('support_cases').update({ status }).eq('id', caseId);
   if (error) {
     console.error('updateSupportCaseStatus failed:', error);
@@ -193,12 +193,12 @@ export async function updateSupportCaseStatus(admin: SupabaseClient, adminEmail:
     kind: 'status_change',
     visibility: 'internal',
     body: `Status changed to ${status}`,
-    created_by: adminEmail,
+    created_by: actor.adminEmail,
   });
-  await logAdminAction(admin, adminEmail, { action: 'support_case_status_change', targetType: 'support_case', targetId: caseId, meta: { status } });
+  await logAdminAction(admin, actor, { action: 'support_case_status_change', targetType: 'support_case', targetId: caseId, meta: { status } });
 }
 
-export async function assignSupportCase(admin: SupabaseClient, adminEmail: string, caseId: string, assignedTo: string | null): Promise<void> {
+export async function assignSupportCase(admin: SupabaseClient, actor: AuditActor, caseId: string, assignedTo: string | null): Promise<void> {
   const { error } = await admin.from('support_cases').update({ assigned_to: assignedTo }).eq('id', caseId);
   if (error) {
     console.error('assignSupportCase failed:', error);
@@ -211,7 +211,7 @@ export async function assignSupportCase(admin: SupabaseClient, adminEmail: strin
     kind: 'status_change',
     visibility: 'internal',
     body: assignedTo ? `Assigned to ${assignedTo}` : 'Unassigned',
-    created_by: adminEmail,
+    created_by: actor.adminEmail,
   });
-  await logAdminAction(admin, adminEmail, { action: 'support_case_assign', targetType: 'support_case', targetId: caseId, meta: { assignedTo } });
+  await logAdminAction(admin, actor, { action: 'support_case_assign', targetType: 'support_case', targetId: caseId, meta: { assignedTo } });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +9,11 @@ export const dynamic = 'force-dynamic';
 const TABLES = ['accounts', 'sites', 'clients', 'leads', 'jobs', 'invoices', 'payments', 'extra_stop_requests', 'account_credits'] as const;
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const { admin, adminEmail } = await requireAdmin();
+  // The widest PII surface in the product: every row this account owns, in one
+  // file. Its own permission, and audited with the request id so the download
+  // can be tied to whatever prompted it.
+  const ctx = await requirePermission('account.export');
+  const { admin } = ctx;
   const accountId = params.id;
 
   const { data: account } = await admin.from('accounts').select('id, account_number').eq('id', accountId).maybeSingle();
@@ -23,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     bundle[table] = data ?? [];
   }
 
-  await logAdminAction(admin, adminEmail, { action: 'account_export', accountId, targetType: 'account', targetId: accountId });
+  await logAdminAction(admin, ctx, { action: 'account_export', accountId, targetType: 'account', targetId: accountId });
 
   const filename = `account-${(account as { account_number: number }).account_number ?? accountId}-export.json`;
   return new NextResponse(JSON.stringify(bundle, null, 2), {

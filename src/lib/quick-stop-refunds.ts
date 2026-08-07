@@ -4,7 +4,7 @@ import { getQuickStopRequest, logQuickStopEvent, type QuickStopRequest } from '@
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { sendQuickStopStatusSms } from '@/lib/sms';
 import { centsToDollars, quickStopNoShowLock } from '@/lib/quick-stop';
-import { logAdminAction } from '@/lib/admin';
+import { logAdminAction, systemActor } from '@/lib/admin';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -150,7 +150,7 @@ export async function resolveQuickStopCancellation(
       .filter((d) => !Number.isNaN(d.getTime()));
     const lock = quickStopNoShowLock(priorDates);
     await admin.from('accounts').update({ extra_stop_locked_until: lock.untilIso, extra_stop_lock_reason: lock.reason }).eq('id', accountId);
-    await logAdminAction(admin, 'system', {
+    await logAdminAction(admin, systemActor(), {
       action: 'extra_stop_auto_lock',
       accountId,
       targetType: 'account',

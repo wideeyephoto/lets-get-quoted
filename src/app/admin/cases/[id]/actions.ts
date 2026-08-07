@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import {
   addSupportCaseNote,
   updateSupportCaseStatus,
@@ -18,7 +18,8 @@ function backTo(id: string, query: string): never {
 }
 
 export async function addNoteAction(caseId: string, formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('account.support');
+  const { admin } = ctx;
   const body = String(formData.get('body') ?? '').trim();
   if (!body) backTo(caseId, 'error=note');
 
@@ -26,7 +27,7 @@ export async function addNoteAction(caseId: string, formData: FormData) {
   // note only staff can see; the harmful one is working notes reaching the
   // customer they are about.
   const visibility = visibilityFromForm(String(formData.get('visibility') ?? ''));
-  await addSupportCaseNote(admin, adminEmail, caseId, body, visibility);
+  await addSupportCaseNote(admin, ctx, caseId, body, visibility);
 
   if (visibility === 'customer') {
     // Nobody watches a support page waiting for a reply to appear — the email
@@ -48,18 +49,20 @@ export async function addNoteAction(caseId: string, formData: FormData) {
 }
 
 export async function changeStatusAction(caseId: string, formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('account.support');
+  const { admin } = ctx;
   const status = String(formData.get('status') ?? '').trim();
   if (!isCaseStatus(status)) backTo(caseId, 'error=status');
-  await updateSupportCaseStatus(admin, adminEmail, caseId, status);
+  await updateSupportCaseStatus(admin, ctx, caseId, status);
   revalidatePath(`/admin/cases/${caseId}`);
   backTo(caseId, 'done=status');
 }
 
 export async function assignCaseAction(caseId: string, formData: FormData) {
-  const { admin, adminEmail } = await requireAdmin();
+  const ctx = await requirePermission('account.support');
+  const { admin } = ctx;
   const assignedTo = String(formData.get('assigned_to') ?? '').trim() || null;
-  await assignSupportCase(admin, adminEmail, caseId, assignedTo);
+  await assignSupportCase(admin, ctx, caseId, assignedTo);
   revalidatePath(`/admin/cases/${caseId}`);
   backTo(caseId, 'done=assigned');
 }

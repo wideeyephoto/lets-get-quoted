@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 
 // Command Center-level actions — not scoped to one account, so this lives
@@ -13,9 +13,10 @@ function backTo(query: string): never {
 }
 
 export async function resolveWebhookFailureAction(failureId: string) {
-  const { admin, adminEmail } = await requireAdmin();
-  await admin.from('webhook_failures').update({ resolved_at: new Date().toISOString(), resolved_by: adminEmail }).eq('id', failureId);
-  await logAdminAction(admin, adminEmail, { action: 'webhook_failure_resolve', targetType: 'webhook_failure', targetId: failureId });
+  const ctx = await requirePermission('ops.manage');
+  const { admin } = ctx;
+  await admin.from('webhook_failures').update({ resolved_at: new Date().toISOString(), resolved_by: ctx.adminEmail }).eq('id', failureId);
+  await logAdminAction(admin, ctx, { action: 'webhook_failure_resolve', targetType: 'webhook_failure', targetId: failureId });
   revalidatePath('/admin');
   backTo('done=webhook_resolved');
 }

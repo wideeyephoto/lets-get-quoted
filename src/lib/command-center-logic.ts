@@ -119,14 +119,30 @@ export const CARD_KEYS = [
 ] as const;
 export type CardKey = typeof CARD_KEYS[number];
 
+const SUPER_ADMIN_ORDER: CardKey[] = ['incidents', 'myCases', 'disputes', 'suspendedAccounts', 'overdueQuickStops', 'casesNearSla', 'notOnboarded', 'dunning', 'pausedPayouts', 'failedSms', 'failedEmails', 'webhookFailures'];
+const SUPPORT_ORDER: CardKey[] = ['myCases', 'casesNearSla', 'overdueQuickStops', 'suspendedAccounts', 'disputes', 'notOnboarded', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'];
+const FINANCE_ORDER: CardKey[] = ['disputes', 'dunning', 'pausedPayouts', 'suspendedAccounts', 'notOnboarded', 'incidents', 'myCases', 'casesNearSla', 'overdueQuickStops', 'failedSms', 'failedEmails', 'webhookFailures'];
+
 const ROLE_DEFAULT_ORDER: Record<StaffRole, CardKey[]> = {
-  admin: ['incidents', 'myCases', 'disputes', 'suspendedAccounts', 'overdueQuickStops', 'casesNearSla', 'notOnboarded', 'dunning', 'pausedPayouts', 'failedSms', 'failedEmails', 'webhookFailures'],
-  support: ['myCases', 'casesNearSla', 'overdueQuickStops', 'suspendedAccounts', 'disputes', 'notOnboarded', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'],
-  finance: ['disputes', 'dunning', 'pausedPayouts', 'suspendedAccounts', 'notOnboarded', 'incidents', 'myCases', 'casesNearSla', 'overdueQuickStops', 'failedSms', 'failedEmails', 'webhookFailures'],
+  super_admin: SUPER_ADMIN_ORDER,
+  support: SUPPORT_ORDER,
+  finance: FINANCE_ORDER,
+  // Enforcement first: what somebody on risk opens the console to look at is
+  // who has been suspended and which Quick Stops went wrong.
+  risk: ['suspendedAccounts', 'overdueQuickStops', 'disputes', 'myCases', 'casesNearSla', 'notOnboarded', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'],
+  // The plumbing, then everything else.
+  ops: ['incidents', 'webhookFailures', 'failedEmails', 'failedSms', 'dunning', 'pausedPayouts', 'disputes', 'suspendedAccounts', 'overdueQuickStops', 'myCases', 'casesNearSla', 'notOnboarded'],
+  read_only: SUPER_ADMIN_ORDER,
 };
 
-// Falls back to the admin order for an unrecognized role rather than throwing
-// — same fail-open posture as staffRoleFor itself.
+// ORDER is not access. Every role still SEES every card — this only decides
+// what is at the top — and the permission matrix in lib/staff.ts is what
+// actually governs. Keeping them separate matters: a card order that hid things
+// would look like a security boundary while being a preference.
+//
+// Falls back to the super-admin order for an unrecognized role rather than
+// throwing. Showing the wrong cards first is a cosmetic failure; a page that
+// throws mid-incident is not.
 export function defaultCardOrder(role: StaffRole): CardKey[] {
-  return ROLE_DEFAULT_ORDER[role] ?? ROLE_DEFAULT_ORDER.admin;
+  return ROLE_DEFAULT_ORDER[role] ?? SUPER_ADMIN_ORDER;
 }

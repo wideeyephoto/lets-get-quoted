@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { logAdminAction } from '@/lib/admin';
+import { logAdminAction, type AuditActor } from '@/lib/admin';
 
 // Data-consent / privacy-request history. Same shape as support_cases minus
 // SLA/priority — staff log an access/deletion/correction request against an
@@ -43,21 +43,21 @@ export async function listPrivacyRequests(admin: SupabaseClient, accountId: stri
 
 export async function logPrivacyRequest(
   admin: SupabaseClient,
-  adminEmail: string,
+  actor: AuditActor,
   accountId: string,
   kind: PrivacyRequestKind,
   details?: string | null,
 ): Promise<void> {
   const { data, error } = await admin
     .from('privacy_requests')
-    .insert({ account_id: accountId, kind, details: details ?? null, created_by: adminEmail })
+    .insert({ account_id: accountId, kind, details: details ?? null, created_by: actor.adminEmail })
     .select('id')
     .single();
   if (error || !data) {
     console.error('logPrivacyRequest failed:', error);
     return;
   }
-  await logAdminAction(admin, adminEmail, {
+  await logAdminAction(admin, actor, {
     action: 'privacy_request_log',
     accountId,
     targetType: 'privacy_request',
@@ -66,14 +66,14 @@ export async function logPrivacyRequest(
   });
 }
 
-export async function resolvePrivacyRequest(admin: SupabaseClient, adminEmail: string, requestId: string): Promise<void> {
+export async function resolvePrivacyRequest(admin: SupabaseClient, actor: AuditActor, requestId: string): Promise<void> {
   const { error } = await admin
     .from('privacy_requests')
-    .update({ resolved_at: new Date().toISOString(), resolved_by: adminEmail, status: 'resolved' })
+    .update({ resolved_at: new Date().toISOString(), resolved_by: actor.adminEmail, status: 'resolved' })
     .eq('id', requestId);
   if (error) {
     console.error('resolvePrivacyRequest failed:', error);
     return;
   }
-  await logAdminAction(admin, adminEmail, { action: 'privacy_request_resolve', targetType: 'privacy_request', targetId: requestId });
+  await logAdminAction(admin, actor, { action: 'privacy_request_resolve', targetType: 'privacy_request', targetId: requestId });
 }

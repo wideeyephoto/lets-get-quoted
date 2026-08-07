@@ -121,7 +121,12 @@ async function logContactAsCase(input: {
 }): Promise<string | null> {
   try {
     const admin = createAdminClient();
-    const created = await createSupportCase(admin, input.email, {
+    // Not staff. The actor on a public contact submission is the person who
+    // filled the form in, and they have no staff row, no permission and no
+    // request id worth correlating — naming that explicitly is better than
+    // reaching for systemActor(), which would claim the platform did this.
+    const submitter = { adminEmail: input.email, ip: null, requestId: null, staff: null, permission: null };
+    const created = await createSupportCase(admin, submitter, {
       accountId: null,
       subject: input.subject || `Message from ${input.name}`,
       source: 'customer',
@@ -130,7 +135,7 @@ async function logContactAsCase(input: {
     // The message is note #1, the same shape every later reply takes, and
     // shared so it reads as the customer's own words rather than a staff
     // summary of them.
-    await addSupportCaseNote(admin, input.email, created.id, input.message, 'customer');
+    await addSupportCaseNote(admin, submitter, created.id, input.message, 'customer');
     return created.id;
   } catch (err) {
     console.error('Contact form case log failed:', err);

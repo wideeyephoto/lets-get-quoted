@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { StaffRole } from '../src/lib/auth';
+import { STAFF_ROLES, type StaffRole } from '../src/lib/staff';
 import {
   isDateRange,
   rangeWindow,
@@ -154,16 +154,25 @@ describe('relativeAge', () => {
 });
 
 describe('defaultCardOrder', () => {
-  it('gives each known role a full permutation of every card key', () => {
-    const roles: StaffRole[] = ['admin', 'support', 'finance'];
-    for (const role of roles) {
+  // Drawn from STAFF_ROLES rather than a hand-written list, so a role added to
+  // the permission model without a card order fails here instead of silently
+  // falling back on the Command Center.
+  it('gives every role a full permutation of every card key', () => {
+    for (const role of STAFF_ROLES) {
       const order = defaultCardOrder(role);
-      expect(new Set(order)).toEqual(new Set(CARD_KEYS));
-      expect(order.length).toBe(CARD_KEYS.length);
+      expect(new Set(order), `${role} is missing or duplicating cards`).toEqual(new Set(CARD_KEYS));
+      expect(order.length, `${role} has the wrong number of cards`).toBe(CARD_KEYS.length);
     }
   });
 
-  it('falls back to the admin order for an unrecognized role', () => {
-    expect(defaultCardOrder('superuser' as StaffRole)).toEqual(defaultCardOrder('admin'));
+  // Order is a preference, not a permission. Every role sees every card; what
+  // a staff member may DO is lib/staff.ts's business, and if this ever started
+  // hiding cards it would look like a security boundary while being neither.
+  it('hides nothing from anybody, including read_only', () => {
+    expect(new Set(defaultCardOrder('read_only'))).toEqual(new Set(CARD_KEYS));
+  });
+
+  it('falls back to the super-admin order for an unrecognized role', () => {
+    expect(defaultCardOrder('superuser' as StaffRole)).toEqual(defaultCardOrder('super_admin'));
   });
 });
