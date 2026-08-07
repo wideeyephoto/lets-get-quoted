@@ -45,7 +45,7 @@ export default async function AdminQuickStopDetailPage({
   params: { id: string };
   searchParams: { done?: string; error?: string };
 }) {
-  const { admin } = await requireAdmin();
+  const { admin, role } = await requireAdmin();
   const detail = await getQuickStopAdminDetail(admin, params.id);
   if (!detail) notFound();
 
@@ -121,7 +121,7 @@ export default async function AdminQuickStopDetailPage({
         </div>
 
         <div>
-          <QuickStopAdminActions requestId={r.id} canRefund={canRefund} feeLabel={money(r.fee_cents)} />
+          <QuickStopAdminActions requestId={r.id} canRefund={canRefund} feeLabel={money(r.fee_cents)} role={role} />
         </div>
       </div>
     </>

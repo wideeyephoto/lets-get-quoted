@@ -10,7 +10,7 @@ export const metadata = { title: 'Staff console' };
 // Every /admin route inherits this guard: requireAdmin() 404s anyone who isn't
 // on the ADMIN_EMAILS allowlist before a single child renders.
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const { adminEmail } = await requireAdmin();
+  const { adminEmail, role } = await requireAdmin();
 
   return (
     <div className={styles.shell}>
@@ -22,11 +22,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <span className={styles.staffTag}>Staff</span>
         </div>
         <SearchBox />
-        <AdminNav />
+        <AdminNav role={role} />
         <div className={styles.sidebarFoot}>
           Signed in as
           <br />
           <strong>{adminEmail}</strong>
+          {/* The role is on screen at all times on purpose. A console where you
+              cannot tell what you are allowed to do until something refuses you
+              teaches people to avoid trying. */}
+          <br />
+          <span className={styles.staffTag}>{role.replace('_', ' ')}</span>
         </div>
       </aside>
       <main className={styles.main}>{children}</main>

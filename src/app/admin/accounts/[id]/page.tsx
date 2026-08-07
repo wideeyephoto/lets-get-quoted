@@ -55,7 +55,7 @@ export default async function AdminAccountDetailPage({
   params: { id: string };
   searchParams: { done?: string; error?: string };
 }) {
-  const { admin } = await requireAdmin();
+  const { admin, role } = await requireAdmin();
   const detail = await getAccountAdminDetail(admin, params.id);
   if (!detail || !detail.account) notFound();
 
@@ -323,6 +323,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <AccountActions
+            role={role}
             accountId={params.id}
             suspended={suspended}
             quickStopLockedUntil={lockedUntil}

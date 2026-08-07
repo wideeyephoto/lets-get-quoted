@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { permissionsFor, type Permission, type StaffRole } from '@/lib/staff';
 import styles from '../../admin.module.css';
 import {
   suspendAccountAction,
@@ -24,6 +25,7 @@ export default function AccountActions({
   businessName,
   plan,
   payoutsRestricted,
+  role,
 }: {
   accountId: string;
   suspended: boolean;
@@ -31,14 +33,25 @@ export default function AccountActions({
   businessName: string;
   plan: string;
   payoutsRestricted: boolean;
+  role: StaffRole;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // Hiding a control is an affordance, never the boundary — every one of these
+  // actions calls requirePermission on the server, because a server action is a
+  // public endpoint and a button that is not rendered is not a check. What this
+  // buys is a console that shows you your job instead of a wall of things that
+  // will refuse you.
+  const granted = permissionsFor(role);
+  const can = (permission: Permission) => granted.includes(permission);
+
 
   return (
     <>
       <section className={styles.panel}>
         <p className={styles.panelTitle}>Staff actions</p>
 
+        {can('money.credit') ? (
         <div className={styles.formStack}>
           <form action={issueAccountCreditAction.bind(null, accountId)} className={styles.formStack}>
             <label>Issue account credit</label>
@@ -49,10 +62,10 @@ export default function AccountActions({
             <button type="submit" className="btn secondary">Issue credit</button>
           </form>
         </div>
+        ) : null}
 
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
-        {quickStopLockedUntil ? (
+        {can('account.enforce') ? (quickStopLockedUntil ? (
           <form action={unlockQuickStopAction.bind(null, accountId)} className={styles.formStack}>
             <label>Quick Stop is locked until {new Date(quickStopLockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' })}</label>
             <button type="submit" className="btn secondary">Clear Quick Stop lock</button>
@@ -66,11 +79,11 @@ export default function AccountActions({
             </div>
             <button type="submit" className="btn secondary">Lock Quick Stop</button>
           </form>
-        )}
+        )) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
-        {suspended ? (
+        {can('account.enforce') ? (suspended ? (
           <form action={unsuspendAccountAction.bind(null, accountId)} className={styles.formStack}>
             <label>This account is suspended.</label>
             <button type="submit" className="btn primary">Lift suspension</button>
@@ -81,10 +94,11 @@ export default function AccountActions({
             <input className={styles.input} name="reason" placeholder="Reason (shown internally)" />
             <button type="submit" className="btn danger">Suspend account</button>
           </form>
-        )}
+        )) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
+        {can('money.plan') ? (
         <form action={changePlanAction.bind(null, accountId)} className={styles.formStack}>
           <label>Plan</label>
           <div className={styles.searchRow} style={{ margin: 0 }}>
@@ -96,17 +110,20 @@ export default function AccountActions({
             <button type="submit" className="btn secondary">Change plan</button>
           </div>
         </form>
+        ) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
+        {can('account.enforce') ? (
         <form action={resetVerificationAction.bind(null, accountId)} className={styles.formStack}>
           <label>Reset payment verification (clears the Stripe Connect link; the owner must reconnect)</label>
           <button type="submit" className="btn secondary">Reset verification</button>
         </form>
+        ) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
-        {payoutsRestricted ? (
+        {can('money.payouts') ? (payoutsRestricted ? (
           <form action={unrestrictPayoutsAction.bind(null, accountId)} className={styles.formStack}>
             <label>Payouts are restricted for this account.</label>
             <button type="submit" className="btn primary">Lift payout restriction</button>
@@ -117,21 +134,25 @@ export default function AccountActions({
             <input className={styles.input} name="reason" placeholder="Reason (shown internally)" />
             <button type="submit" className="btn danger">Restrict payouts</button>
           </form>
-        )}
+        )) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
+        {can('account.support') ? (
         <form action={resendOnboardingAction.bind(null, accountId)} className={styles.formStack}>
           <label>Resend the onboarding link to the owner&rsquo;s email</label>
           <button type="submit" className="btn secondary">Resend onboarding</button>
         </form>
+        ) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
+        {can('account.enforce') ? (
         <form action={signOutAllSessionsAction.bind(null, accountId)} className={styles.formStack}>
           <label>Sign out everywhere (blocks new sign-ins for 24h; does not revoke a still-valid access token already in hand)</label>
           <button type="submit" className="btn secondary">Sign out all sessions</button>
         </form>
+        ) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
@@ -143,13 +164,16 @@ export default function AccountActions({
         </div>
       </section>
 
+      {can('account.export') || can('account.delete') ? (
       <section className={`${styles.panel} ${styles.dangerZone}`}>
         <p className={styles.panelTitle}>Danger zone</p>
+        {can('account.export') ? (
         <div className={styles.actionRow} style={{ marginTop: 0 }}>
           <a href={`/admin/accounts/${accountId}/export`} className="btn secondary">Export account data (JSON)</a>
         </div>
+        ) : null}
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
-        {confirmingDelete ? (
+        {!can('account.delete') ? null : confirmingDelete ? (
           <form action={deleteAccountAction.bind(null, accountId)} className={styles.formStack}>
             <label>Type the account number to permanently delete <strong>{businessName}</strong> and all its data. This cannot be undone.</label>
             <input className={styles.input} name="confirm" placeholder="Account number" autoComplete="off" />
@@ -162,6 +186,7 @@ export default function AccountActions({
           <button type="button" className="btn danger" onClick={() => setConfirmingDelete(true)}>Delete account…</button>
         )}
       </section>
+      ) : null}
     </>
   );
 }
