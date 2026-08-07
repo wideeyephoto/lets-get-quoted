@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext, createAdminClient } from '@/lib/auth';
+import { pickBusinessName } from '@/lib/business-name';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getSiteContent, mergeSiteContent, slugifyBlogTitle } from '@/lib/site-content';
 import { draftBlogPost } from '@/lib/blog-generate';
@@ -63,7 +64,7 @@ export async function draftMarketingAction(
   const draft = await draftMarketing({
     beat,
     channel,
-    businessName: site?.company_name || account?.business_name || 'your business',
+    businessName: pickBusinessName(site, account, 'your business'),
     trade: content.trade.trim() || null,
     zone,
     monthName: new Date().toLocaleString('en-US', { month: 'long' }),
@@ -223,7 +224,7 @@ async function resolveSenderIdentity(
   ]);
   const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
   return {
-    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    businessName: pickBusinessName(site, account),
     mailingAddress: resolveMarketingMailingAddress(addressRow?.mailing_address as string | null),
   };
 }

@@ -6,6 +6,7 @@ import { formatJobSchedule } from '@/lib/jobs';
 import { recordSmsConsent, sendCrewScheduleSelectedSms, sendSchedulingOptionsSms } from '@/lib/sms';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { pickBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -58,7 +59,7 @@ async function hydratePublicScheduleRequest(admin: SupabaseClient, scheduleReque
 
   return {
     ...scheduleRequest,
-    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    businessName: pickBusinessName(site, account),
     job,
   } as PublicScheduleRequest;
 }
@@ -147,7 +148,7 @@ export async function createAndSendScheduleRequest(
   await recordSmsConsent(accountId, input.clientPhone, 'schedule_request');
   await sendSchedulingOptionsSms({
     phone: input.clientPhone,
-    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    businessName: pickBusinessName(site, account),
     jobRef: job?.ref ?? 'job',
     clientName: job?.client_name ?? 'client',
     token,

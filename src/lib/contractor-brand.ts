@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildBrandMarkSvg, DEFAULT_BRAND_ACCENT } from '@/lib/brand-mark';
+import { pickBusinessName } from '@/lib/business-name';
 import { getSiteContent, glyphForContent } from '@/lib/site-content';
 import { siteOrigin } from '@/lib/seo/site-pages';
 
@@ -65,8 +66,7 @@ export function shapeContractorBrand(
   account: { business_name?: string | null } | null | undefined,
   site: BrandSiteRow | null | undefined,
 ): ContractorBrand {
-  const businessName =
-    site?.company_name?.trim() || account?.business_name?.trim() || 'Your contractor';
+  const businessName = pickBusinessName(site, account);
   const accent = normalizeAccent(site?.accent_override);
   const logoUrl = site?.logo_url?.trim() || null;
 

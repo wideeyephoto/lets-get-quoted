@@ -12,6 +12,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { loadClientMilestones } from '@/lib/milestones-data';
 import type { MilestoneStatus } from '@/lib/milestones';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
+import { pickBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -613,7 +614,7 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
         admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
         admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
       ]);
-      const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+      const businessName = pickBusinessName(site, account);
       await sendContractorAlertEmail({
         recipientEmail: ownerEmail,
         businessName,

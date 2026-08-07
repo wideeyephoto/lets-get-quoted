@@ -34,10 +34,11 @@ describe('followupSchedule — the days the card claims', () => {
 describe('quoteFollowupText — the message the card shows', () => {
   const text = quoteFollowupText({ businessName: 'BrokePipes', clientName: 'Sarah', url: 'https://x.test/j/abc' });
 
-  it('carries the prefix every one of our texts carries', () => {
-    // The hand-written preview this replaced had lost it, so the contractor was
-    // shown a message that wasn't the one their client receives.
-    expect(text.startsWith("Let's Get Quoted:")).toBe(true);
+  it('is from the contractor, not from us', () => {
+    // It used to open "Let's Get Quoted:" — our name, on a text about somebody
+    // else's quote, to a homeowner who has never heard of us.
+    expect(text.startsWith('Hi Sarah,')).toBe(true);
+    expect(text).not.toContain("Let's Get Quoted");
   });
 
   it('carries the opt-out and the link', () => {

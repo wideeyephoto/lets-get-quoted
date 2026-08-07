@@ -4,6 +4,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { sendQuoteFollowupSms } from '@/lib/sms';
 import { sendQuoteFollowupEmail } from '@/lib/email';
+import { pickBusinessName } from '@/lib/business-name';
 import {
   FOLLOWUP_FIRST_DELAY_DAYS as FIRST_DELAY_DAYS,
   FOLLOWUP_INTERVAL_DAYS as INTERVAL_DAYS,
@@ -142,7 +143,7 @@ export async function runStalledQuoteFollowups(): Promise<FollowupRunSummary & {
         admin.from('accounts').select('business_name').eq('id', link.account_id).maybeSingle(),
         admin.from('sites').select('company_name').eq('account_id', link.account_id).maybeSingle(),
       ]);
-      const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+      const businessName = pickBusinessName(site, account);
       const firstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
 
       // Tokens are stored hashed and can't be recovered, so a follow-up mints a

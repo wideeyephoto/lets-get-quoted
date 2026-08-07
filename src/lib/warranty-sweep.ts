@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { sendContractorAlertEmail, getAccountOwnerEmail } from '@/lib/email';
 import { serviceDue, todayKey } from '@/lib/warranties';
+import { loadBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -70,15 +71,15 @@ export async function runServiceReminderSweep(): Promise<SweepResult> {
     }
 
     try {
-      const [ownerEmail, { data: account }] = await Promise.all([
+      const [ownerEmail, businessName] = await Promise.all([
         getAccountOwnerEmail(admin, accountId),
-        admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+        loadBusinessName(admin, accountId),
       ]);
       if (!ownerEmail) continue;
 
       await sendContractorAlertEmail({
         recipientEmail: ownerEmail,
-        businessName: account?.business_name || "Let's Get Quoted",
+        businessName,
         subject: `${items.length} job${items.length === 1 ? '' : 's'} due a service`,
         heading: 'Work you could book this month',
         bodyLines: [

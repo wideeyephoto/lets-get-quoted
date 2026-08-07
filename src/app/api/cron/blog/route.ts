@@ -65,6 +65,7 @@ export async function GET(request: Request) {
       try {
         const draft = await draftBlogPost({
           companyName: site.company_name || '',
+          trade: content.trade,
           serviceArea: site.service_area || '',
         });
         const slugBase = slugifyBlogTitle(draft.title) || 'post';

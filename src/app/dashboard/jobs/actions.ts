@@ -16,6 +16,7 @@ import { normalizeCostSource } from '@/lib/cost-truth';
 import { readReceipt, type ReceiptRead } from '@/lib/receipt-ocr';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { draftQuote, loadDraftContext } from '@/lib/quote-draft-ai';
 import { draftConfidenceNote, draftToQuoteItems, draftTotal, type SerializedDraft } from '@/lib/quote-draft';
@@ -127,11 +128,11 @@ export async function createJobAction(formData: FormData) {
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
 
   if (sendClientText && normalizedClientPhone) {
-    const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
+    const businessName = await loadBusinessName(supabase, accountId);
     await recordSmsConsent(accountId, normalizedClientPhone, 'client_job_dashboard');
     await sendClientJobDashboardSms({
       phone: normalizedClientPhone,
-      businessName: account?.business_name || "Let's Get Quoted contractor",
+      businessName,
       jobRef: job.ref,
       token,
       accountId,
@@ -464,14 +465,13 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
   const { added } = await setJobCrewAssignments(supabase, accountId, jobId, crewIds);
 
   if (notify && added.length > 0) {
-    const [job, { data: account }, crewMembers] = await Promise.all([
+    const [job, businessName, crewMembers] = await Promise.all([
       getJob(supabase, accountId, jobId),
-      supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+      loadBusinessName(supabase, accountId),
       listCrew(supabase, accountId),
     ]);
 
     if (job) {
-      const businessName = account?.business_name || "Let's Get Quoted contractor";
       const newlyAssigned = crewMembers.filter((member) => added.includes(member.id));
 
       // Push the field app (best-effort, never throws) alongside the SMS — the
@@ -532,15 +532,14 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
   const { assigned } = await toggleJobCrewAssignment(supabase, accountId, jobId, crewId);
 
   if (assigned && notify) {
-    const [job, { data: account }, crewMembers] = await Promise.all([
+    const [job, businessName, crewMembers] = await Promise.all([
       getJob(supabase, accountId, jobId),
-      supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+      loadBusinessName(supabase, accountId),
       listCrew(supabase, accountId),
     ]);
     const member = crewMembers.find((candidate) => candidate.id === crewId);
 
     if (job && member) {
-      const businessName = account?.business_name || "Let's Get Quoted contractor";
       await sendPushToCrew(accountId, member.id, {
         title: 'New job assigned',
         body: `${job.client_name} · ${job.ref}`,
@@ -585,9 +584,9 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
 
 export async function textCrewJobDateAction(jobId: string) {
   const { supabase, accountId } = await requireOwnerContext();
-  const [job, { data: account }, crewMembers, assignedCrewIds] = await Promise.all([
+  const [job, businessName, crewMembers, assignedCrewIds] = await Promise.all([
     getJob(supabase, accountId, jobId),
-    supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+    loadBusinessName(supabase, accountId),
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewIdsForJob(supabase, accountId, jobId),
   ]);
@@ -598,8 +597,6 @@ export async function textCrewJobDateAction(jobId: string) {
   const assignedCrewIdSet = new Set(assignedCrewIds);
   const assignedCrew = crewMembers.filter((member) => assignedCrewIdSet.has(member.id));
   if (assignedCrew.length === 0) throw new Error('Assign crew before texting the crew date.');
-
-  const businessName = account?.business_name || "Let's Get Quoted contractor";
 
   for (const member of assignedCrew) {
     try {
@@ -737,9 +734,9 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
   });
 
   if (notifyClientSms) {
-    const [job, { data: account }] = await Promise.all([
+    const [job, businessName] = await Promise.all([
       getJob(supabase, accountId, jobId),
-      supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+      loadBusinessName(supabase, accountId),
     ]);
     // The update is already posted above; texting the client is best-effort.
     // The composer only offers the text option when a phone is on file, so a
@@ -749,7 +746,7 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
       await recordSmsConsent(accountId, clientPhone, 'job_update');
       await sendJobUpdateSms({
         phone: clientPhone,
-        businessName: account?.business_name || "Let's Get Quoted contractor",
+        businessName,
         jobRef: job.ref,
         title,
         body,
@@ -978,8 +975,7 @@ async function deliverJobReviewRequest(
     return { ok: false, message: 'Link your Google Business Profile in the website builder first so the review has somewhere to go.' };
   }
 
-  const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
-  const businessName = account?.business_name || "Let's Get Quoted contractor";
+  const businessName = await loadBusinessName(supabase, accountId);
   // Defensive: mailing_address may be missing on an un-migrated DB, so read it in
   // its own query that degrades to null rather than failing the review send.
   const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
@@ -1079,16 +1075,16 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
   if (result.ok && job) {
     try {
       if (await wantsConfirmation(supabase, accountId, 'review_confirmation_email')) {
-        const [{ data: { user } }, { data: account }] = await Promise.all([
+        const [{ data: { user } }, businessName] = await Promise.all([
           supabase.auth.getUser(),
-          supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+          loadBusinessName(supabase, accountId, 'Your business'),
         ]);
         if (user?.email) {
           const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
           const phone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
           await sendReviewRequestConfirmationEmail({
             recipientEmail: user.email,
-            businessName: account?.business_name || 'Your business',
+            businessName,
             clientName: job.client_name,
             jobRef: job.ref,
             channel: phone ? 'sms' : job.client_email ? 'email' : 'none',

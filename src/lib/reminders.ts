@@ -8,6 +8,7 @@ import { sendAppointmentReminderSms } from '@/lib/sms';
 import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendReminderRunSummaryEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
 import { zonedNowParts } from '@/lib/quick-stop';
+import { pickBusinessName } from '@/lib/business-name';
 import {
   isReminderHourNow,
   normalizeReminderHour,
@@ -112,7 +113,7 @@ export async function sendJobAppointmentReminder(
     admin.from('accounts').select('business_name').eq('id', job.account_id).maybeSingle(),
     admin.from('sites').select('company_name').eq('account_id', job.account_id).maybeSingle(),
   ]);
-  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const businessName = pickBusinessName(site, account);
   const firstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
   const whenLabel = formatJobSchedule(job.scheduled_for, job.scheduled_time);
 
@@ -284,7 +285,7 @@ export async function confirmUpcomingAppointment(
     admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
     admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
-  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const businessName = pickBusinessName(site, account);
   const whenLabel = formatJobSchedule(match.scheduled_for, match.scheduled_time);
 
   try {

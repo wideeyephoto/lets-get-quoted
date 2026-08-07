@@ -73,7 +73,7 @@ export function reviewRequestText(input: {
 }): string {
   const business = input.businessName.trim() || 'your contractor';
   const who = input.clientName.trim() || 'there';
-  return `Let's Get Quoted: Hi ${who}, thanks for choosing ${business}! An honest review helps a small business a lot: ${input.reviewUrl}. Reply STOP to opt out.`;
+  return `Hi ${who}, thanks for choosing ${business}! An honest review helps a small business a lot: ${input.reviewUrl}. Reply STOP to opt out.`;
 }
 
 export type ReviewAcknowledgement = { title: string; lead: string };

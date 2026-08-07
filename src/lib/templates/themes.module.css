@@ -314,7 +314,6 @@
 .heroFormStatus { margin: 0; font-size: .78rem; }
 .heroFormStatus[data-tone='error'] { color: #b3341f; }
 .heroFormStatus[data-tone='success'] { color: #1f7a3f; }
-.heroFormHoneypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 /* Segmented single-select chips. Scoped under .heroQuickForm so they win over
    the generic `.heroQuickForm button` accent-fill rule (which is more specific
    than a bare `.heroFormChip`): without the prefix every chip inherited the

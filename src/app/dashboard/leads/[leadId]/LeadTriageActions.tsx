@@ -15,7 +15,7 @@ const DECLINE_LABELS: Record<string, string> = {
 // Mirrors sendLeadDeclineSms() so the owner previews the exact text the
 // homeowner would receive before choosing to send it.
 function declineTextPreview(businessName: string, leadName: string, reasonPhrase: string): string {
-  return `Let's Get Quoted: Hi ${leadName || 'there'}, thanks for reaching out to ${businessName}. Unfortunately ${reasonPhrase}, so we won't be able to take this one on. We appreciate you thinking of us! Reply STOP to opt out.`;
+  return `Hi ${leadName || 'there'}, thanks for reaching out to ${businessName}. Unfortunately ${reasonPhrase}, so we won't be able to take this one on. We appreciate you thinking of us! Reply STOP to opt out.`;
 }
 
 type LeadTriageActionsProps = {

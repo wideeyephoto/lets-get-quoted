@@ -1933,9 +1933,39 @@ export function getPublishedCertifications(content: Record<string, unknown> | nu
   return certifications.enabled && items.length > 0 ? { ...certifications, items } : null;
 }
 
+/**
+ * A stat is worth showing only if the NUMBER is worth showing.
+ *
+ * The value is free text, so this cannot just be `Number(value) > 0`. It has to
+ * cope with "100+", "$2M", "4.9★", "24/7" and "Same day". The rule that works
+ * for all of them: if there are digits, at least one run of them has to be
+ * non-zero. If there are no digits at all it is a phrase, not a count, and it
+ * stands on its own.
+ *
+ *   "150+"     → [150]   → keep
+ *   "24/7"     → [24, 7] → keep
+ *   "0+"       → [0]     → drop
+ *   "0"        → [0]     → drop
+ *   "0.0"      → [0, 0]  → drop
+ *   "Same day" → []      → keep
+ *
+ * Zeroes are what a brand-new site holds before its owner has filled anything
+ * in, and a band reading "0+ jobs completed · 0 years in business · 0% 5-star
+ * reviews" tells a homeowner this contractor has never worked and never will.
+ * That band was live. An empty section says nothing; that one said something
+ * false.
+ */
+function statHasValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const digitRuns = trimmed.match(/\d+/g);
+  if (!digitRuns) return true;
+  return digitRuns.some((run) => Number(run) > 0);
+}
+
 export function getPublishedStats(content: Record<string, unknown> | null | undefined): SiteStatsContent | null {
   const stats = getSiteContent(content).stats;
-  const items = stats.items.filter((item) => item.label.trim());
+  const items = stats.items.filter((item) => item.label.trim() && statHasValue(item.value));
   return stats.enabled && items.length > 0 ? { ...stats, items } : null;
 }
 

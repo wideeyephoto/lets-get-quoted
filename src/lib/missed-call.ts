@@ -15,7 +15,7 @@
  */
 export function missedCallTextBack(businessName: string): string {
   const name = businessName.trim() || 'us';
-  return `Let's Get Quoted: sorry we missed your call at ${name}! Reply here and we'll help you out. Reply STOP to opt out.`;
+  return `Sorry we missed your call at ${name}! Reply here and we'll help you out. Reply STOP to opt out.`;
 }
 
 export type MissedCallTone = 'live' | 'waiting' | 'setup' | 'error';

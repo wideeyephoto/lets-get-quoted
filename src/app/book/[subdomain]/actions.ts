@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
+import { pickBusinessName } from '@/lib/business-name';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
@@ -388,7 +389,9 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
         responseDeadlineMins: settings.responseDeadlineMins,
         lat: geo?.precise ? geo.lat : null,
         lng: geo?.precise ? geo.lng : null,
-        businessName: (accountRow as { business_name?: string } | null)?.business_name || site.company_name || 'your contractor',
+        // Site first. accounts.business_name is the "My Business" placeholder on
+        // every live account, and this name is texted to the customer.
+        businessName: pickBusinessName(site, accountRow as { business_name?: string } | null, 'your contractor'),
         requestedDate,
       },
     );

@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       const result = await confirmUpcomingAppointment(createAdminClient(), phone, toNumber);
       if (result.confirmed && result.job) {
         const greeting = result.job.clientFirst ? `Thanks ${result.job.clientFirst}` : 'Thanks';
-        return twiml(`Let's Get Quoted: ${greeting} — your appointment ${result.job.whenLabel} with ${result.job.businessName} is confirmed. See you then!`);
+        return twiml(`${greeting} — your appointment ${result.job.whenLabel} with ${result.job.businessName} is confirmed. See you then!`);
       }
     } catch (error) {
       console.error('Appointment confirmation failed:', error instanceof Error ? error.message : error);

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import { pickBusinessName } from '@/lib/business-name';
 import { getJob, parseQuoteItems, formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import PrintButton from '@/components/print-button';
@@ -23,7 +24,7 @@ export default async function QuotePrintPage({ params }: { params: { id: string 
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name, phone, license').eq('account_id', accountId).maybeSingle(),
   ]);
-  const businessName = site?.company_name || account?.business_name || 'My Business';
+  const businessName = pickBusinessName(site, account);
   const businessPhone = site?.phone || null;
   const license = site?.license || null;
 

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import {
   addInvoiceItem,
@@ -87,16 +88,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
 
       const { invoice, items } = invoiceData;
 
-      // Get account details
-      const { data: account } = await supabase
-        .from('accounts')
-        .select('business_name')
-        .eq('id', accountId)
-        .maybeSingle();
-
-      if (!account) {
-        throw new Error('Account not found');
-      }
+      const businessName = await loadBusinessName(supabase, accountId);
 
       // Get job details
       const job = await getJob(supabase, accountId, jobId);
@@ -122,7 +114,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
         await sendInvoiceEmail({
           invoice,
           items,
-          businessName: account.business_name,
+          businessName,
           clientName: job.client_name,
           jobRef: job.ref,
           recipientEmail: job.client_email,
@@ -140,7 +132,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
       if (user?.email) {
         await sendInvoiceSentConfirmationEmail({
           recipientEmail: user.email,
-          businessName: account.business_name,
+          businessName,
           clientName: job.client_name,
           invoiceRef: invoice.ref,
           total: Number(invoice.total),

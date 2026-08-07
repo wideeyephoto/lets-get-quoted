@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
+import { BUSINESS_NAME_FALLBACK, loadBusinessName } from '@/lib/business-name';
 import { createClientJobAccessToken, createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
@@ -132,14 +133,11 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
 
   if (formData.get('quoteVisitSmsConsent') === 'on') {
     if (!normalizedPhone) throw new Error('Add a valid client mobile number before sending a confirmation text.');
-    const [{ data: account }, { data: site }] = await Promise.all([
-      supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-      supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-    ]);
+    const businessName = await loadBusinessName(supabase, accountId);
     await recordSmsConsent(accountId, normalizedPhone, 'lead_quote_visit');
     await sendLeadQuoteVisitSms({
       phone: normalizedPhone,
-      businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+      businessName,
       leadName: lead.name || 'there',
       address: lead.address,
       scheduledFor,
@@ -180,15 +178,12 @@ export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: 
   const options = quoteVisitOptionsFromForm(formData);
   if (options.length === 0) throw new Error('Add at least 1 quote visit option before texting the client.');
 
-  const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-  ]);
+  const businessName = await loadBusinessName(supabase, accountId);
 
   await recordSmsConsent(accountId, clientPhone, 'lead_quote_visit_options');
   await sendLeadQuoteVisitOptionsSms({
     phone: clientPhone,
-    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    businessName,
     leadName: lead.name || 'there',
     address: lead.address,
     options,
@@ -343,10 +338,9 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const willEmail = Boolean(sendClientText && !clientPhone && clientEmail);
   const willDeliver = willText || willEmail;
 
-  let businessName = "Let's Get Quoted contractor";
+  let businessName = BUSINESS_NAME_FALLBACK;
   if (sendClientText) {
-    const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
-    businessName = account?.business_name || businessName;
+    businessName = await loadBusinessName(supabase, accountId);
   }
 
   if (quickBooking.hasInput && willDeliver) {
@@ -586,14 +580,11 @@ export async function declineLeadAction(leadId: string, reasonKey: string, notif
   const clientPhone = normalizeUsPhone(lead.phone ?? '');
   if (notify && clientPhone && !(await isPhoneOptedOut(accountId, clientPhone))) {
     try {
-      const [{ data: account }, { data: site }] = await Promise.all([
-        supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-        supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-      ]);
+      const businessName = await loadBusinessName(supabase, accountId);
       await recordSmsConsent(accountId, clientPhone, 'lead_decline');
       await sendLeadDeclineSms({
         phone: clientPhone,
-        businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+        businessName,
         leadName: lead.name || 'there',
         reason,
         accountId,

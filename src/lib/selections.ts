@@ -460,7 +460,7 @@ export function chaseMessage(input: {
   const body = input.overdue
     ? `we're waiting on ${what} from you before we can order`
     : `${what} to make when you get a minute`;
-  return `Let's Get Quoted: ${first}, ${input.businessName} here — ${body}: ${input.url}. Reply STOP to opt out.`;
+  return `${first}, ${input.businessName} here — ${body}: ${input.url}. Reply STOP to opt out.`;
 }
 
 // -- Changing your mind -------------------------------------------------------

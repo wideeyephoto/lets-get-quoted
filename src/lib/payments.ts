@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
 import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -182,7 +183,9 @@ export async function getPublicPayment(paymentId: string): Promise<PublicPayment
 
   return {
     ...payment,
-    display_business_name: site?.company_name || payment.account?.business_name || 'My Business',
+    // This name sits above a card form. "My Business" there is the moment a
+    // homeowner stops and rings somebody instead of paying.
+    display_business_name: pickBusinessName(site, payment.account),
   };
 }
 

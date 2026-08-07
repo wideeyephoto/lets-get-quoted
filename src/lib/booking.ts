@@ -10,6 +10,7 @@ import {
   SPAN_COLUMNS_BEFORE_END_DATE,
   type SchedulableJob,
 } from '@/lib/jobs';
+import { loadBusinessName } from '@/lib/business-name';
 import { createLead, type Lead } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
 import { bookingAvailabilityFromAccount, windowsForTimes, timeToMinutes, type BookingAvailability } from '@/lib/booking-availability';
@@ -408,8 +409,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     console.error(`Booking job creation failed for account ${accountId}:`, error instanceof Error ? error.message : error);
   }
 
-  const { data: account } = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
-  const businessName = account?.business_name || "Let's Get Quoted contractor";
+  const businessName = await loadBusinessName(admin, accountId);
 
   // Owner: notified like any website lead.
   try {
@@ -473,10 +473,9 @@ export async function createBookingRequestLead(
   try {
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
-      const { data: account } = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
       await sendLeadNotificationEmail({
         recipientEmail: ownerEmail,
-        businessName: account?.business_name || "Let's Get Quoted contractor",
+        businessName: await loadBusinessName(admin, accountId),
         lead,
         dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
       });

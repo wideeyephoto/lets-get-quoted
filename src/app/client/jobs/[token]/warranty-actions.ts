@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
@@ -55,14 +56,14 @@ export async function raiseWarrantyClaimAction(
   }
 
   try {
-    const [ownerEmail, { data: account }] = await Promise.all([
+    const [ownerEmail, businessName] = await Promise.all([
       getAccountOwnerEmail(admin, access.accountId),
-      admin.from('accounts').select('business_name').eq('id', access.accountId).maybeSingle(),
+      loadBusinessName(admin, access.accountId),
     ]);
     if (ownerEmail) {
       await sendContractorAlertEmail({
         recipientEmail: ownerEmail,
-        businessName: account?.business_name || "Let's Get Quoted",
+        businessName,
         subject: claim.inWarrantyAtClaim ? 'Warranty request — in warranty' : 'Warranty request — cover has ended',
         heading: 'A past customer has asked for help',
         bodyLines: [

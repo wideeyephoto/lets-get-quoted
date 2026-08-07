@@ -270,7 +270,7 @@ export async function generateSiteTextAction(
     '"seo_title":"<under 60 characters; when a location is given, lead with the primary city and trade then the business name (e.g. \'Austin Kitchen Remodeling | Northline Builders\'); otherwise lead with the trade and business name>",' +
     '"seo_description":"<under 160 characters; name the trade and the service area/city when given, and end with a clear call to action like \'Free estimates.\'>",' +
     '"hours":"<typical hours for this trade, e.g. \'Mon-Fri 8am-6pm, Sat 9am-2pm\'>",' +
-    '"service_area":"<the area served in a few words; if none was provided, a natural generic like \'your local area\'>",' +
+    '"service_area":"<the area served in a few words; an EMPTY STRING if no service area or ZIP was provided — never a generic stand-in like \'your local area\'>",' +
     '"cities":["<12 nearby city, town, or neighborhood names for the service area, casting a wide radius; empty array if the area is unknown>"],' +
     '"showcase_title":"<a photo-gallery heading under 50 characters naming the KIND of work this trade shows off, e.g. \'The roofing work we handle\'; NEVER claim the photos are this business\'s own finished jobs>",' +
     '"showcase_intro":"<under 180 characters; say what a homeowner is looking at for this trade, then state plainly that these are representative photos the business will swap for their own project photos>",' +
@@ -309,10 +309,27 @@ export async function generateSiteTextAction(
       .slice(0, 15)
       .map((s) => ({ icon: normalizeIcon(s.icon), title: asString(s.title, 60), description: asString(s.description, 140) }))
       .filter((s) => s.title);
-    const cities = asArray(parsed.cities)
-      .filter((c): c is string => typeof c === 'string')
-      .slice(0, 12)
-      .map((c) => c.slice(0, 50));
+    // DO WE ACTUALLY KNOW WHERE THIS BUSINESS IS?
+    //
+    // Without a ZIP or a service area there is nothing to localise to. The
+    // instructions say so twice, but a model asked for twelve nearby towns will
+    // produce twelve nearby towns regardless — real places, correctly spelled,
+    // and somewhere else entirely. Those get published on a live site under
+    // "Areas we serve", which is worse than saying nothing at all.
+    //
+    // So it is enforced here rather than requested there. No location in, no
+    // location out.
+    const locationKnown = Boolean(zip || serviceArea);
+    const cities = locationKnown
+      ? asArray(parsed.cities)
+          .filter((c): c is string => typeof c === 'string')
+          .slice(0, 12)
+          .map((c) => c.slice(0, 50))
+      : [];
+    // Empty rather than "your local area". A site that never names a town reads
+    // as a business that works everywhere; a site that says "serving your local
+    // area" reads as one that has not finished being built.
+    const generatedServiceArea = locationKnown ? asString(parsed.service_area, 120) : '';
 
     // Build SEO copy deterministically rather than trusting the model — the
     // generator guarantees the char limits, refuses to repeat the service
@@ -325,7 +342,7 @@ export async function generateSiteTextAction(
       primaryService: services[0]?.title || tradeInput || undefined,
       trade: tradeInput || undefined,
       city: cities[0] || undefined,
-      serviceArea: asString(parsed.service_area, 120) || serviceArea || undefined,
+      serviceArea: generatedServiceArea || serviceArea || undefined,
     });
 
     // Populate the site's image roles with trade-relevant Pexels photos so the
@@ -344,7 +361,7 @@ export async function generateSiteTextAction(
       seo_title: seo.title,
       seo_description: seo.description,
       hours: asString(parsed.hours, 80),
-      service_area: asString(parsed.service_area, 120),
+      service_area: generatedServiceArea,
       cities,
       showcase_title: asString(parsed.showcase_title, 80),
       showcase_intro: asString(parsed.showcase_intro, 220),
@@ -452,6 +469,7 @@ export async function generateBlogPostAction(topic?: string): Promise<GeneratedB
   try {
     const draft = await draftBlogPost({
       companyName: sites[0].company_name || '',
+      trade,
       serviceArea: sites[0].service_area || '',
       topic: typeof topic === 'string' ? topic : '',
     });

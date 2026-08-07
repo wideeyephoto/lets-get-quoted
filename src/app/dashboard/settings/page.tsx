@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import { pickBusinessName } from '@/lib/business-name';
 import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
 import SignInMethods from './SignInMethods';
@@ -142,7 +143,7 @@ export default async function SettingsPage({
     ]);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
-  const businessName = site?.company_name || account?.business_name || 'My Business';
+  const businessName = pickBusinessName(site, account);
   const arrivalSettings = arrivalSettingsFromAccount(account as Record<string, unknown> | null);
 
   // Read the auto-review toggle separately and defensively: on a DB where the
@@ -830,9 +831,7 @@ export default async function SettingsPage({
                           </div>
                           <div className="followup-phone-body">
                             {/* The sender's own function. The old preview here
-                                was hand-typed and had drifted: it had lost the
-                                "Let's Get Quoted:" prefix every one of our texts
-                                carries, and the address clause. */}
+                                was hand-typed and had drifted from it. */}
                             <p className="followup-bubble">
                               {appointmentReminderText({
                                 businessName,

@@ -7,6 +7,7 @@ import { sendContractorAlertEmail, getAccountOwnerEmail, sendCardUpdateEmail } f
 import { createCardSetupSession } from '@/lib/card-on-file';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import type { RecurringPlan } from '@/lib/recurring';
+import { pickBusinessName } from '@/lib/business-name';
 
 // Dunning for recurring off-session charges: capture the decline, then either
 // schedule automated retries (transient declines) or route the client to a
@@ -106,7 +107,7 @@ async function resolveBusinessName(admin: AdminClient, accountId: string): Promi
     admin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
     admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
   ]);
-  return site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  return pickBusinessName(site, account);
 }
 
 // Best-effort owner email alert about a failed recurring charge. Never throws

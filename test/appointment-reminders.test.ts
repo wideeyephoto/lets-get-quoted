@@ -221,14 +221,17 @@ describe('labels', () => {
 });
 
 describe('appointmentReminderText', () => {
-  it('carries the sender prefix and the opt-out, every time', () => {
+  it('opens with the contractor, never with us, and always carries the opt-out', () => {
     const text = appointmentReminderText({
       businessName: 'Lawn & Order Landscapers',
       clientName: 'Sarah',
       whenLabel: 'tomorrow at 10:00 AM',
     });
-    // Both are why this may be sent to a mobile at all.
-    expect(text.startsWith("Let's Get Quoted:")).toBe(true);
+    // The homeowner hired the landscaper, not the software. Two brands in the
+    // first four words is how a real reminder gets read as spam.
+    expect(text.startsWith('Lawn & Order Landscapers')).toBe(true);
+    expect(text).not.toContain("Let's Get Quoted");
+    // The opt-out is why this may be sent to a mobile at all.
     expect(text).toContain('Reply STOP to opt out.');
     expect(text).toContain('Reply C to confirm.');
   });

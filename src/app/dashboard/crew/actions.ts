@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
 import { normalizePayType } from '@/lib/pay-types';
 import { validateManualEnd } from '@/lib/time-clock';
@@ -207,11 +208,7 @@ export async function inviteCrewAction(crewId: string) {
   if (!member) throw new Error('Crew member not found.');
   if (!member.email) throw new Error('Add an email address for this crew member first, then send the invite.');
 
-  const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-  ]);
-  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const businessName = await loadBusinessName(supabase, accountId);
 
   await sendCrewMagicLink(member.email as string, businessName);
   revalidatePath('/dashboard/crew');
@@ -244,13 +241,12 @@ export async function assignCrewToJobAction(crewId: string, formData: FormData) 
 
   if (notify && added.includes(crewId)) {
     try {
-      const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
       const result = await sendCrewAssignmentSms({
         accountId,
         crewId: member.id,
         phone: member.phone,
         crewName: member.name,
-        businessName: account?.business_name || "Let's Get Quoted contractor",
+        businessName: await loadBusinessName(supabase, accountId),
         jobRef: job.ref,
         clientName: job.client_name,
         address: job.address,

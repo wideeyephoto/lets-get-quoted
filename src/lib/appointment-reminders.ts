@@ -148,14 +148,17 @@ export function isReminderHourNow(localTime: string, hour: number, catchupHours 
  *
  * Extracted from sendAppointmentReminderSms, which built it inline — the one
  * message in its family that never got a builder. The settings preview was
- * therefore hand-written beside it and had already drifted: it omitted the
- * "Let's Get Quoted:" prefix that every one of our texts actually carries, and
- * the address clause. A preview that is not the sender's own output is a
- * screenshot of an intention.
+ * therefore hand-written beside it and had already drifted from it. A preview
+ * that is not the sender's own output is a screenshot of an intention.
  *
- * The prefix and the STOP line are not decoration. The first identifies the
- * sender, the second is the opt-out; both are why this can be sent to a mobile
- * at all, so neither is assembled anywhere a caller could omit it.
+ * THE CONTRACTOR'S NAME COMES FIRST, and ours does not appear. Every text used
+ * to open "Let's Get Quoted:", so a homeowner who hired BrokePipes got a
+ * message from a company they had never heard of, about an appointment they had
+ * made with someone else. Two brands in the first four words is how a real
+ * reminder reads as spam.
+ *
+ * The STOP line is not decoration — it is the opt-out, and it is why this can be
+ * sent to a mobile at all, so it is assembled here where no caller can omit it.
  */
 export function appointmentReminderText(input: {
   businessName: string;
@@ -164,5 +167,5 @@ export function appointmentReminderText(input: {
   address?: string | null;
 }): string {
   const addressNote = input.address ? ` at ${input.address}` : '';
-  return `Let's Get Quoted: ${input.businessName} reminder — ${input.clientName}, your appointment is coming up ${input.whenLabel}${addressNote}. Reply C to confirm. Reply STOP to opt out.`;
+  return `${input.businessName} reminder — ${input.clientName}, your appointment is coming up ${input.whenLabel}${addressNote}. Reply C to confirm. Reply STOP to opt out.`;
 }

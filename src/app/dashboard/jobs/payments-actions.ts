@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
 import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, markPaymentPaidManually, retryPayment, type PaymentKind } from '@/lib/payments';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
@@ -52,16 +53,16 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
   // Receipt to the contractor. Never allowed to fail the request itself.
   try {
     if (await wantsConfirmation(supabase, accountId, 'payment_confirmation_email')) {
-      const [{ data: { user } }, { data: account }] = await Promise.all([
+      const [{ data: { user } }, businessName] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+        loadBusinessName(supabase, accountId, 'Your business'),
       ]);
       if (user?.email) {
         const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
         const job = await getJob(supabase, accountId, jobId);
         await sendPaymentRequestedConfirmationEmail({
           recipientEmail: user.email,
-          businessName: account?.business_name || 'Your business',
+          businessName,
           clientName: job?.client_name || 'your customer',
           label,
           amount,

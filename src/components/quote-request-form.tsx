@@ -5,6 +5,7 @@ import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
+import { HoneypotField } from '@/components/honeypot-field';
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import IntroVideo from '@/lib/templates/IntroVideo';
 import styles from './quote-request-form.module.css';
@@ -231,9 +232,7 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
         <p className={styles.reassure}>Free &amp; no obligation — we reply within about an hour.</p>
       </div>
 
-      {/* Honeypot: nonsense name on purpose — autofill fills "company" fields
-          and was silently flagging real visitors as bots. */}
-      <label className={styles.honeypot} aria-hidden="true">Leave this empty<input name="lgq_trap" tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" /></label>
+      <HoneypotField />
       {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" aria-label="Upload progress" /><span>{progress}%</span></div>}
 
       <div className={styles.stepNav}>

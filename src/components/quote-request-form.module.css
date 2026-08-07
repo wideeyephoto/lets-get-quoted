@@ -27,7 +27,6 @@
 .field input:hover, .field select:hover, .field textarea:hover { border-color: color-mix(in srgb, currentColor 30%, transparent); }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--theme-accent, #f0b429); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent, #f0b429) 25%, transparent); }
 .wide { grid-column: 1 / -1; }
-.honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .photoHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .photoHeader em { font-style: normal; opacity: .62; font-size: 12px; font-weight: 800; text-transform: none; letter-spacing: normal; }
 .photoDropzone { display: grid; gap: 12px; min-height: 112px; padding: 16px; border: 1px dashed color-mix(in srgb, var(--theme-accent, #f0b429) 55%, currentColor 18%); border-radius: var(--theme-radius, 4px); background: color-mix(in srgb, var(--theme-accent, #f0b429) 10%, rgba(255,255,255,.92)); }

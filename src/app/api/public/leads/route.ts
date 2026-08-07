@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import { HONEYPOT_FIELD } from '@/components/honeypot-field';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
@@ -73,11 +74,11 @@ async function notifyOwner(
 
 export async function POST(request: NextRequest) {
   const data = await request.formData();
-  // Honeypot. NOTE: never name this field "company" (or anything else
-  // autofill recognizes) — browser autofill/password managers fill such
-  // fields and silently drop real visitors as "bots". The legacy 'company'
-  // field is deliberately IGNORED so stale pages don't keep losing leads.
-  if (text(data, 'lgq_trap', 100)) return NextResponse.json({ ok: true });
+  // Honeypot — see src/components/honeypot-field.tsx for why the name is what
+  // it is. The legacy 'company' field is deliberately IGNORED: autofill and
+  // password managers fill anything called "company", so checking it silently
+  // dropped real visitors as "bots", and stale cached pages still post it.
+  if (text(data, HONEYPOT_FIELD, 100)) return NextResponse.json({ ok: true });
   const startedAt = Number(data.get('startedAt'));
   if (!Number.isFinite(startedAt) || Date.now() - startedAt < 1800) {
     return NextResponse.json({ error: 'Please take a moment to complete the form.' }, { status: 400 });

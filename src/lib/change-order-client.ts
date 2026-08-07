@@ -11,6 +11,7 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { formatMoney } from '@/lib/jobs';
 import { respondToChangeOrder } from '@/lib/change-orders-data';
+import { loadBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -109,14 +110,14 @@ export async function respondAsClient(
   // Tell the contractor immediately. A crew may be standing on site waiting to
   // know whether to carry on, and finding out tomorrow costs a day.
   try {
-    const [ownerEmail, { data: account }] = await Promise.all([
+    const [ownerEmail, businessName] = await Promise.all([
       getAccountOwnerEmail(admin, access.accountId),
-      admin.from('accounts').select('business_name').eq('id', access.accountId).maybeSingle(),
+      loadBusinessName(admin, access.accountId),
     ]);
     if (ownerEmail) {
       await sendContractorAlertEmail({
         recipientEmail: ownerEmail,
-        businessName: account?.business_name || "Let's Get Quoted",
+        businessName,
         subject: approved ? `Change order approved — ${formatMoney(order.amount)}` : 'Change order declined',
         heading: approved ? `${order.signatureName} approved “${order.title}”` : `${order.signatureName} declined “${order.title}”`,
         bodyLines: [

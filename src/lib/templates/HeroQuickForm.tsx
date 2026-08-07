@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
+import { HoneypotField } from '@/components/honeypot-field';
 import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import IntroVideo from './IntroVideo';
@@ -589,9 +590,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
       data-edit={wizardEnabled ? 'estimate' : 'quoteForm'}
     >
-      {/* Honeypot: the nonsense name matters — autofill/password managers fill
-          fields named "company", silently flagging real visitors as bots. */}
-      <label className={styles.heroFormHoneypot} aria-hidden="true">Leave this empty<input name="lgq_trap" tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" /></label>
+      <HoneypotField />
 
       {bookedNote && step !== 'result' && <p className={styles.heroFormBooked}>{bookedNote}</p>}
 

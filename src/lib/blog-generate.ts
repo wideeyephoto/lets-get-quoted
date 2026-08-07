@@ -34,6 +34,17 @@ function extractOutputText(payload: unknown): string {
 
 export async function draftBlogPost(input: {
   companyName: string;
+  /**
+   * The trade the site is actually configured for.
+   *
+   * PASS THIS. Without it the model is asked to guess the trade from the
+   * business name, and a plumbing site called "BrokePipes" got a post about
+   * window cleaning — published, on a live site, under the contractor's own
+   * name. The site has always known its trade; the drafter was simply never
+   * told. Guessing is now the fallback for sites saved before the trade field
+   * existed, not the normal path.
+   */
+  trade?: string;
   serviceArea?: string;
   topic?: string;
 }): Promise<GeneratedBlogPost> {
@@ -41,12 +52,15 @@ export async function draftBlogPost(input: {
   if (!apiKey) throw new Error('AI generation is not configured yet.');
 
   const company = input.companyName.trim() || 'this local business';
+  const trade = (input.trade || '').trim().slice(0, 80);
   const area = (input.serviceArea || '').trim();
   const topic = (input.topic || '').trim();
 
   const instructions =
     "You write genuinely useful, informational blog posts for a local home-services contractor's website, written for homeowners. " +
-    'Infer the trade (HVAC, plumbing, roofing, cleaning, painting, landscaping, electrical, remodeling, handyman, flooring, etc.) from the business name. ' +
+    (trade
+      ? `The business is a ${trade}. Write the post about that trade and no other — never about a different trade, however related, and never about work this business does not do. `
+      : 'Infer the trade (HVAC, plumbing, roofing, cleaning, painting, landscaping, electrical, remodeling, handyman, flooring, etc.) from the business name. ') +
     'The post MUST be helpful and educational — maintenance tips, seasonal advice, how-to guidance, warning signs to watch for, or what to know before hiring — NOT a sales pitch and NOT about the company itself. ' +
     'Write in a friendly, expert, plain-English tone. Do not use markdown headings, bullet characters, or links. Do not invent specific statistics, studies, prices, or brand names. ' +
     'Respond with strict JSON only, no other text, in this exact shape: ' +
@@ -57,7 +71,7 @@ export async function draftBlogPost(input: {
     '}';
 
   const userInput =
-    `Business name: ${company}. ${area ? `Service area: ${area}. ` : ''}` +
+    `Business name: ${company}. ${trade ? `Trade: ${trade}. ` : ''}${area ? `Service area: ${area}. ` : ''}` +
     (topic
       ? `Write the post about: ${topic}. `
       : 'Choose a seasonally useful, on-trade topic a homeowner in this area would search for. ') +

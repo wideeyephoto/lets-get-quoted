@@ -36,12 +36,15 @@ export function followupScheduleLabel(): string {
  * The nudge itself.
  *
  * Shared with the settings preview, like missedCallTextBack and
- * reviewRequestText. The hand-written preview it replaces had already lost the
- * "Let's Get Quoted:" prefix that every one of our texts carries — so the
- * contractor was shown a message that was not the one their client receives.
+ * reviewRequestText, so the contractor is never shown a message that differs
+ * from the one their client receives.
+ *
+ * Opens with the customer's name and names the contractor in the first line.
+ * It used to open "Let's Get Quoted:" — our name, on a text about somebody
+ * else's quote.
  */
 export function quoteFollowupText(input: { businessName: string; clientName: string; url: string }): string {
   const business = input.businessName.trim() || 'your contractor';
   const who = input.clientName.trim() || 'there';
-  return `Let's Get Quoted: Hi ${who}, just checking in on your quote from ${business}. Ready to move forward? Review and approve it here: ${input.url}. Reply STOP to opt out.`;
+  return `Hi ${who}, just checking in on your quote from ${business}. Ready to move forward? Review and approve it here: ${input.url}. Reply STOP to opt out.`;
 }

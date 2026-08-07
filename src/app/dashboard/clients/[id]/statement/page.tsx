@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import { pickBusinessName } from '@/lib/business-name';
 import { getClient, getClientStatement } from '@/lib/clients';
 import { formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
@@ -44,7 +45,7 @@ export default async function ClientStatementPage({ params }: { params: { id: st
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name, phone').eq('account_id', accountId).maybeSingle(),
   ]);
-  const businessName = site?.company_name || account?.business_name || 'My Business';
+  const businessName = pickBusinessName(site, account);
   const businessPhone = site?.phone || null;
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 

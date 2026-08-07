@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
 
@@ -15,6 +17,11 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
   const { invoice, items } = record;
   const totals = computeInvoiceTotals(items, Number(invoice.discount_percent) || 0, Number(invoice.tax_rate) || 0);
+  // The embedded `invoice.account` carries accounts.business_name, which is the
+  // "My Business" placeholder on every live account. The invoice page beside
+  // this route already resolves the real name via loadContractorBrand; the PDF
+  // a customer downloads and keeps has to agree with it.
+  const businessName = await loadBusinessName(createAdminClient(), invoice.account_id);
 
   // Generation is wrapped because it reaches the filesystem for its fonts, and
   // when that fails it fails for EVERY invoice at once. Without this the route
@@ -23,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   let pdf: Buffer;
   try {
     pdf = await generateInvoicePdf({
-      businessName: invoice.account?.business_name || 'Your contractor',
+      businessName,
       invoiceRef: invoice.ref,
       clientName: invoice.job?.client_name || 'Client',
       jobRef: invoice.job?.ref || '',

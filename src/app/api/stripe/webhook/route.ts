@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getStripeClient, fromCents, toCents } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
+import { loadBusinessName } from '@/lib/business-name';
 import { getRecipientTransferStatus } from '@/lib/stripe-connect';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
@@ -26,8 +27,8 @@ async function emailContractorAlert(
   alert: { subject: string; heading: string; bodyLines: string[]; ctaLabel: string; ctaPath: string; tone?: 'warning' | 'info' }
 ) {
   try {
-    const [{ data: account }, ownerEmail] = await Promise.all([
-      admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    const [businessName, ownerEmail] = await Promise.all([
+      loadBusinessName(admin, accountId),
       getAccountOwnerEmail(admin, accountId),
     ]);
     if (!ownerEmail) {
@@ -36,7 +37,7 @@ async function emailContractorAlert(
     }
     await sendContractorAlertEmail({
       recipientEmail: ownerEmail,
-      businessName: account?.business_name || "Let's Get Quoted",
+      businessName,
       subject: alert.subject,
       heading: alert.heading,
       bodyLines: alert.bodyLines,

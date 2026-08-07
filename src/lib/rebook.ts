@@ -4,6 +4,7 @@ import { listClientsWithStats, getClient, type Client } from '@/lib/clients';
 import { sendRebookInviteSms } from '@/lib/sms';
 import { sendRebookInviteEmail } from '@/lib/email';
 import { isEmailSuppressed, loadSuppressedEmails, resolveMarketingMailingAddress } from '@/lib/email-suppression';
+import { pickBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 const DAY = 24 * 60 * 60 * 1000;
@@ -54,7 +55,7 @@ export async function resolveRebookContext(supabase: SupabaseClient, accountId: 
   // Defensive: mailing_address may be absent on an un-migrated DB, so read it in
   // its own query that degrades to null instead of failing the whole context.
   const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
-  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const businessName = pickBusinessName(site, account);
   const bookingUrl = site?.subdomain && site.published ? `${APP_ORIGIN}/book/${site.subdomain}` : null;
   const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
   return { bookingUrl, businessName, mailingAddress };

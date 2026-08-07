@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { summariseReviewInvites, type ReviewInviteRow, type ReviewsSummary } from '@/lib/review-routing';
+import { loadBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -198,14 +199,14 @@ export async function submitPrivateFeedback(admin: SupabaseClient, token: string
   }
 
   try {
-    const [ownerEmail, { data: account }] = await Promise.all([
+    const [ownerEmail, businessName] = await Promise.all([
       getAccountOwnerEmail(admin, invite.account_id as string),
-      admin.from('accounts').select('business_name').eq('id', invite.account_id).maybeSingle(),
+      loadBusinessName(admin, invite.account_id as string),
     ]);
     if (ownerEmail) {
       await sendContractorAlertEmail({
         recipientEmail: ownerEmail,
-        businessName: account?.business_name || "Let's Get Quoted",
+        businessName,
         subject: `New private feedback${rating ? ` (${rating}★)` : ''}`,
         heading: `${clientName} left you private feedback`,
         bodyLines: [
