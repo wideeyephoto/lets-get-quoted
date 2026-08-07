@@ -427,9 +427,15 @@ export async function buildCampaignRecommendations(
   // ones here keeps a blog-only beat from ever becoming a campaign candidate.
 
   const seasonalMeta = templateById('seasonal-promotion');
-  const plannedBeats: PlannedBeat[] = planCalendar({ trade, zone, fromMonth: currentMonth, monthsAhead: 3 }).filter((planned) =>
-    planned.beat.channels.includes('email'),
-  );
+  const plannedBeats: PlannedBeat[] = planCalendar({
+    trade,
+    zone,
+    fromMonth: currentMonth,
+    monthsAhead: 3,
+    // Already loaded above for the other signals. A plumber with no heating
+    // work in their price book stops being recommended a heating tune-up.
+    services: services.map((service) => service.name),
+  }).filter((planned) => planned.beat.channels.includes('email'));
 
   function buildSeasonalInstanceCard(planned: PlannedBeat): TemplateCard {
     const audience = campaignAudienceForBeat(planned.beat.audience);

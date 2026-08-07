@@ -373,6 +373,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               isCurrent={isCurrent}
               optimizerHelps={optimizerHelps}
               stopCount={plan.planned.length}
+              timeChangeCount={pendingChanges.length}
               savedMiles={Math.round((current.miles - optimized.miles) * 10) / 10}
               savedMinutes={Math.round(current.minutes - optimized.minutes)}
               driveTimeSource={payload.driveTimeSource}
@@ -635,11 +636,22 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   );
 }
 
+/**
+ * The verdict on today's ORDER — which is not the same question as today's
+ * TIMES, and saying so is the whole job of this component.
+ *
+ * With one stop there is no order to improve, so this used to read "Nothing to
+ * optimize" while the save bar three feet below announced "1 arrival time will
+ * change" and offered a Save. Both were true. Neither said what it was about,
+ * so together they read as the page arguing with itself. `timeChangeCount` is
+ * here so the single-stop case can name the other thing rather than deny it.
+ */
 function RouteStatus({
   isOptimized,
   isCurrent,
   optimizerHelps,
   stopCount,
+  timeChangeCount,
   savedMiles,
   savedMinutes,
   driveTimeSource,
@@ -650,6 +662,7 @@ function RouteStatus({
   isCurrent: boolean;
   optimizerHelps: boolean;
   stopCount: number;
+  timeChangeCount: number;
   savedMiles: number;
   savedMinutes: number;
   driveTimeSource: 'drive_matrix' | 'straight_line';
@@ -665,7 +678,7 @@ function RouteStatus({
       <div>
         <strong>
           {stopCount < 2
-            ? 'Nothing to optimize'
+            ? 'Nothing to reorder'
             : isOptimized
               ? 'Route optimized'
               : optimizerHelps
@@ -678,7 +691,13 @@ function RouteStatus({
         </strong>
         <p>
           {stopCount < 2
-            ? 'A single stop has no order to improve.'
+            ? timeChangeCount > 0
+              ? // The arrival time still moves, and this is where that gets
+                // explained. A lone 8:00 job becoming 8:09 looks like a glitch
+                // until you know the plan is timing the drive out from your
+                // start address rather than assuming you teleport there.
+                'A single stop has no order to improve — but its arrival time still shifts, because the plan allows for the drive out from your start address. That is what Save would write.'
+              : 'A single stop has no order to improve.'
             : isOptimized
               ? 'This is the most efficient order we can find for today.'
               : optimizerHelps

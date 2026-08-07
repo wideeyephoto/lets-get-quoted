@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { fullDate } from '@/lib/recurring-display';
-import { groupByDay, groupRuns, initialsFor, messageContext } from '@/lib/message-context';
+import { conversationPreview, groupByDay, groupRuns, initialsFor, messageContext } from '@/lib/message-context';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
@@ -48,6 +48,12 @@ export default async function MessagesPage({
   const activePhone = searchParams.thread
     ? normalizeUsPhone(searchParams.thread) ?? searchParams.thread
     : conversations[0]?.phone ?? null;
+  // On a phone the two panes cannot sit side by side, so the page shows one at
+  // a time: the list until you pick a thread, the thread after. That needs to
+  // know whether a thread was CHOSEN or merely defaulted to — without the
+  // distinction, landing on /dashboard/messages would drop a phone straight
+  // into the newest conversation with no way back to the list.
+  const threadChosen = Boolean(searchParams.thread);
 
   const [messages, nameMap] = await Promise.all([
     activePhone ? getConversationMessages(supabase, accountId, activePhone) : Promise.resolve([]),
@@ -125,7 +131,7 @@ export default async function MessagesPage({
           </p>
         </section>
       ) : (
-        <section className="inbox-layout">
+        <section className={`inbox-layout${threadChosen ? ' show-thread' : ' show-list'}`}>
           <aside className="panel workspace-section-card inbox-list">
             <div className="section-heading workspace-section-heading compact-heading">
               <p className="eyebrow">Conversations</p>
@@ -150,7 +156,8 @@ export default async function MessagesPage({
                     {conversation.lastDirection === 'outbound' ? 'You: ' : ''}
                     {/* A photo-only text has no body, and previewing it as blank
                         reads as a bug rather than as a picture. */}
-                    {conversation.lastBody || (conversation.lastHasMedia ? 'Sent a photo' : '')}
+                    {conversationPreview(conversation.lastBody) ||
+                      (conversation.lastHasMedia ? 'Sent a photo' : '')}
                   </p>
                   {conversation.unread > 0 ? (
                     <span className="inbox-unread" aria-label={`${conversation.unread} unread`}>{conversation.unread}</span>
@@ -165,6 +172,12 @@ export default async function MessagesPage({
               <>
                 <div className="inbox-thread-head">
                   <div className="inbox-thread-who">
+                    {/* Only reachable on a phone, where it is the way back to
+                        the list. On a laptop both panes are already on screen
+                        and a Back link there would go nowhere useful. */}
+                    <Link href="/dashboard/messages" className="inbox-back" scroll={false}>
+                      <span aria-hidden="true">←</span> All conversations
+                    </Link>
                     <h2>{activeName ?? formatPhoneDashes(activePhone)}</h2>
                     {/* The number is only a subtitle when the heading is a NAME.
                         Unnamed, the heading already IS the number and repeating

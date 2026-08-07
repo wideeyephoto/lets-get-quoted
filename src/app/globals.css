@@ -8566,6 +8566,45 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 @media (max-width: 820px) {
   .inbox-layout { grid-template-columns: minmax(0, 1fr); }
 }
+/* Belt as well as braces. The tracks are already capped with minmax(0, …), but
+   a grid ITEM defaults to min-width:auto, and both of these hold content that
+   refuses to wrap — the thread previews are `white-space: nowrap` and a pasted
+   link has no break opportunity at all. Without this, one long URL in one
+   preview is enough to push the column open again. */
+.inbox-list, .inbox-thread, .inbox-context { min-width: 0; }
+
+/* --- one pane at a time on a phone ------------------------------------------ */
+/* Stacked, the list and the thread are two full-height panes on top of each
+   other: you scroll past every conversation you have ever had to reach the
+   reply box. So below the collapse the page shows the list OR the thread, and
+   `.inbox-back` is the way between them. The state is in the URL (?thread=…),
+   so the browser's own Back button does the same thing. */
+.inbox-back { display: none; }
+@media (max-width: 820px) {
+  .inbox-layout.show-list .inbox-thread { display: none; }
+  .inbox-layout.show-thread .inbox-list { display: none; }
+  .inbox-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.35rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .inbox-back:hover { color: var(--accent-ink); }
+  /* The composer has to be reachable without scrolling the thread to its end —
+     it is the reason the page was opened. */
+  .inbox-thread { min-height: 0; }
+  .inbox-messages { max-height: none; }
+  .inbox-reply-area {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: 0.5rem;
+    background: var(--chrome-solid, var(--bg));
+  }
+}
 
 /* --- header row ------------------------------------------------------------- */
 .inbox-header {
@@ -8680,9 +8719,11 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 .inbox-ctx-invoice:hover strong { text-decoration: underline; }
 .inbox-ctx-notes { margin: 0; color: var(--muted); font-size: 0.83rem; line-height: 1.5; }
 
-@media (max-width: 780px) {
-  .inbox-layout { grid-template-columns: 1fr; }
-}
+/* The single-column collapse lives with the other two at the top of this block.
+   A second copy used to sit here saying `1fr`, and because it came later it won
+   — `1fr` is `minmax(auto, 1fr)`, so the track could not shrink below the
+   widest item's min-content. On a phone that floated the inbox out to 892px
+   inside a 311px container and put a horizontal scrollbar on the whole page. */
 
 .inbox-thread-list {
   display: flex;
@@ -20937,6 +20978,19 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-accuracy-line { margin: 0; font-size: 0.95rem; line-height: 1.55; color: var(--text); font-weight: 600; }
 .cash-accuracy-note { margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.5; color: var(--mute-i60); }
 
+/* Warn-toned, not alert-toned: nothing is wrong, something is missing. */
+.cash-provisional-note {
+  margin: 0.7rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  background: rgba(255, 209, 102, 0.07);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mute-i60);
+}
+.cash-provisional-note strong { color: var(--text); }
+
 /* "Nobody knows you offer this" — the distribution hand-off. */
 .es-demand-tell {
   display: flex;
@@ -22433,7 +22487,10 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-donut-label { fill: var(--mute-t50); font-size: 11px; }
 
 @media (max-width: 1100px) {
-  .ins-row-analytics { grid-template-columns: 1fr; }
+  /* minmax(0, …), not a bare 1fr. `1fr` is `minmax(auto, 1fr)`, and the cards
+     in this row carry a fixed-width chart — so the track sized itself to the
+     chart and hung 16px off the right edge of a phone. */
+  .ins-row-analytics { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 720px) {
   .ins-funnel6-row { grid-template-columns: 6.5rem 1fr auto; gap: 0.5rem; }

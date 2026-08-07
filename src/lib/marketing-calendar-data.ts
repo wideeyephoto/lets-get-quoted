@@ -64,11 +64,14 @@ export async function buildCalendarView(
   accountId: string,
   monthsAhead: number,
 ): Promise<CalendarView> {
-  const [{ data: account }, { data: site }, recipients, sentBeats] = await Promise.all([
+  const [{ data: account }, { data: site }, recipients, sentBeats, { data: serviceRows }] = await Promise.all([
     supabase.from('accounts').select('business_name, mailing_address').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name, content, service_area').eq('account_id', accountId).maybeSingle(),
     loadRecipients(supabase, accountId),
     loadSentBeats(supabase, accountId),
+    // What they actually sell, so a beat from an adjacent trade has to be
+    // earned rather than assumed — see Beat.needs in marketing-calendar.ts.
+    supabase.from('services').select('name').eq('account_id', accountId).eq('active', true),
   ]);
 
   const content = getSiteContent(site?.content as Record<string, unknown> | null);
@@ -81,6 +84,7 @@ export async function buildCalendarView(
     zone,
     fromMonth: new Date().getMonth() + 1,
     monthsAhead,
+    services: (serviceRows ?? []).map((row) => String((row as { name?: unknown }).name ?? '')),
   });
 
   // Which topics already have a post drafted on the website. Matched on the

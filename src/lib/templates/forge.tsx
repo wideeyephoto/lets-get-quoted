@@ -79,11 +79,20 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <div className={styles.forgeIndex} data-parallax="0.18" aria-hidden="true">01 / 03</div>
       </section>
 
-      <section className={styles.forgeTrust} data-reveal aria-label="Business details">
-        <div data-edit="bizArea"><span>Service area</span><strong>{site.service_area || 'Local & regional'}</strong></div>
-        <div data-edit="bizHours"><span>Availability</span><strong>{site.hours || 'Weekdays, 7-5'}</strong></div>
-        <div data-edit="bizLicense"><span>Credentials</span><strong>{site.license || 'Licensed & insured'}</strong></div>
-      </section>
+      {/* Only the cells there is an answer for.
+          These fell back to "Local & regional", "Weekdays, 7-5" and — worst of
+          the three — "Licensed & insured", which asserted a regulated
+          credential in exactly the case where the contractor had told us
+          nothing about it. A homeowner reads that as a claim the business made;
+          a licensing board would too. An empty field is not a licence, and a
+          shorter strip is not a problem. */}
+      {site.service_area || site.hours || site.license ? (
+        <section className={styles.forgeTrust} data-reveal aria-label="Business details">
+          {site.service_area ? <div data-edit="bizArea"><span>Service area</span><strong>{site.service_area}</strong></div> : null}
+          {site.hours ? <div data-edit="bizHours"><span>Availability</span><strong>{site.hours}</strong></div> : null}
+          {site.license ? <div data-edit="bizLicense"><span>Credentials</span><strong>{site.license}</strong></div> : null}
+        </section>
+      ) : null}
 
       <SiteContentSections site={site} />
 

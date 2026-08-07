@@ -160,11 +160,22 @@ export default function CashFlowBoard({
   const activeDays = forecast.days.filter((day) => day.events.length > 0);
   const worstLine = lines.worst;
 
-  const status: { tone: 'ok' | 'warn' | 'alert'; text: string } = forecast.overdraft
-    ? { tone: 'alert', text: `Overdrawn ${dayLabel(forecast.overdraft.dateKey)}` }
-    : forecast.firstBelowBuffer
-      ? { tone: 'warn', text: `Dips into your buffer ${dayLabel(forecast.firstBelowBuffer.dateKey)}` }
-      : { tone: 'ok', text: 'Stays above your buffer' };
+  // Nobody has said what is in the bank yet, so the curve starts from a
+  // placeholder zero. Every bill then drives it negative and the pill announced
+  // "Overdrawn Tuesday" — a specific, authoritative-sounding claim about a
+  // business whose balance the product has never been told. Say what is
+  // actually true instead: the forecast cannot start until it has a starting
+  // point. `savedBalance`, not `balance`: dragging the slider explores a
+  // scenario, it does not commit a figure.
+  const balanceUnset = savedBalance === null;
+
+  const status: { tone: 'ok' | 'warn' | 'alert'; text: string } = balanceUnset
+    ? { tone: 'warn', text: 'Add your bank balance to start the forecast' }
+    : forecast.overdraft
+      ? { tone: 'alert', text: `Overdrawn ${dayLabel(forecast.overdraft.dateKey)}` }
+      : forecast.firstBelowBuffer
+        ? { tone: 'warn', text: `Dips into your buffer ${dayLabel(forecast.firstBelowBuffer.dateKey)}` }
+        : { tone: 'ok', text: 'Stays above your buffer' };
 
   const chart = (
     <>
@@ -256,6 +267,18 @@ export default function CashFlowBoard({
               <span className={`cash-status-pill tone-${status.tone}`}>{status.text}</span>
             </div>
             {chart}
+            {/* Under the chart rather than instead of it. The shape of the
+                week — what lands when — is real and useful even with the
+                starting point missing; it is only the absolute balance, and
+                therefore every claim about running out, that is not. */}
+            {balanceUnset ? (
+              <p className="cash-provisional-note">
+                <strong>Provisional.</strong> This line starts from $0 because your bank balance
+                hasn&rsquo;t been entered yet, so the money in and out is real but the balance
+                and any warning about running low are not. Set your starting balance below and
+                the forecast becomes yours.
+              </p>
+            ) : null}
           </div>
 
           {/* Directly under the lead, above the chart: whether to believe the

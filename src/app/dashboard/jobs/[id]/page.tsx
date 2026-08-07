@@ -497,6 +497,7 @@ export default async function JobDetailPage({
           draftAction={draftQuoteAction.bind(null, job.id)}
           reviewAction={reviewQuoteAction.bind(null, job.id)}
           initialItems={quoteItems}
+          quotedAmount={Number(job.quoted_amount) || 0}
           services={priceBook}
         />
       </section>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupRuns, initialsFor } from '../src/lib/message-context';
+import { conversationPreview, groupRuns, initialsFor } from '../src/lib/message-context';
 
 const at = (minutes: number, direction: string) => ({
   created_at: new Date(Date.UTC(2026, 7, 3, 9, minutes)).toISOString(),
@@ -67,5 +67,51 @@ describe('initialsFor', () => {
     expect(initialsFor('')).toBe('#');
     expect(initialsFor(null)).toBe('#');
     expect(initialsFor(undefined)).toBe('#');
+  });
+});
+
+describe('conversationPreview', () => {
+  it('shortens a link to its host so the preview is about the customer', () => {
+    expect(conversationPreview('Your quote is ready: https://letsgetquoted.com/p/8f2a1c9b4d')).toBe(
+      'Your quote is ready: letsgetquoted.com/…',
+    );
+  });
+
+  it('drops www so two hosts do not read as two places', () => {
+    expect(conversationPreview('See https://www.example.com/a/b')).toBe('See example.com/…');
+  });
+
+  it('shortens every link in the message, not just the first', () => {
+    expect(conversationPreview('Quote https://a.com/1 and invoice https://b.com/2')).toBe(
+      'Quote a.com/… and invoice b.com/…',
+    );
+  });
+
+  it('drops the compliance tail, which is identical in every thread', () => {
+    expect(conversationPreview('On my way, about 20 minutes. Reply STOP to opt out.')).toBe(
+      'On my way, about 20 minutes.',
+    );
+  });
+
+  // The tail is only boilerplate at the END. A customer quoting it back is a
+  // thread that needs a human, and hiding that would be the opposite of useful.
+  it('keeps the same words when they are not the tail', () => {
+    expect(conversationPreview('I tried to Reply STOP to opt out and it did nothing')).toBe(
+      'I tried to Reply STOP to opt out and it did nothing',
+    );
+  });
+
+  it('collapses the newlines a multi-line text would otherwise spill', () => {
+    expect(conversationPreview('Line one\n\nLine two')).toBe('Line one Line two');
+  });
+
+  it('survives empty and missing bodies, which a photo-only text has', () => {
+    expect(conversationPreview('')).toBe('');
+    expect(conversationPreview(null)).toBe('');
+    expect(conversationPreview(undefined)).toBe('');
+  });
+
+  it('leaves an ordinary message exactly as written', () => {
+    expect(conversationPreview('Can you come Tuesday?')).toBe('Can you come Tuesday?');
   });
 });

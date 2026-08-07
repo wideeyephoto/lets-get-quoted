@@ -530,11 +530,26 @@ export default async function SchedulePage({
               <strong>{formatMoney(estimatedRevenue)}</strong>
               <small>Revenue</small>
             </Link>
-            <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedProfit)} estimated profit in the next 30 days`}>
-              <StatIcon shape="trend" />
-              <strong>{formatMoney(estimatedProfit)}</strong>
-              <small>Profit</small>
-            </Link>
+            {/* "Profit" only once something has been taken off the top.
+                Costs land on a job as the work happens, so on a calendar of
+                FUTURE jobs the subtraction is usually revenue minus nothing —
+                and this card then printed the revenue figure a second time,
+                under a label promising margin. A booked job with no costs
+                against it yet has a known value and an unknown profit; say
+                which one this is. */}
+            {estimatedCost > 0 ? (
+              <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedProfit)} estimated profit in the next 30 days, after ${formatMoney(estimatedCost)} of recorded costs`}>
+                <StatIcon shape="trend" />
+                <strong>{formatMoney(estimatedProfit)}</strong>
+                <small>Profit</small>
+              </Link>
+            ) : (
+              <Link className="sched-stat" href="/dashboard/jobs" aria-label="No costs recorded against the next 30 days of jobs yet, so profit cannot be estimated">
+                <StatIcon shape="trend" />
+                <strong>{formatMoney(0)}</strong>
+                <small>Costs logged</small>
+              </Link>
+            )}
             <a
               className={`sched-stat${unscheduledJobs.length > 0 ? ' needs' : ''}`}
               href="#unscheduled-jobs"

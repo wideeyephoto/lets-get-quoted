@@ -30,6 +30,7 @@ export default function QuoteBuilder({
   draftAction,
   reviewAction,
   initialItems,
+  quotedAmount = 0,
   services = [],
   onItemsChange,
 }: {
@@ -47,6 +48,18 @@ export default function QuoteBuilder({
     lines: { id: string; label: string; amount: number; kind: QuoteItemKind; selected: boolean }[],
   ) => Promise<{ ok: true; findings: QuoteFinding[]; aiRan: boolean } | { ok: false; message: string }>;
   initialItems: QuoteItem[];
+  /**
+   * What the job says it is worth right now, itemized or not.
+   *
+   * An empty builder does NOT mean the job is worth nothing. A quote can be set
+   * straight on the job — from a lead's estimate, or typed into the header —
+   * without anybody breaking it into lines, and `saveQuoteItems` deliberately
+   * leaves `quoted_amount` alone when the list is empty (src/lib/jobs.ts). Left
+   * out, the summary below printed "Quote total $0.00" under a header reading
+   * $2,790 on the same screen, next to a Save button. Nothing was actually
+   * going to be zeroed, but there is no way to know that by looking.
+   */
+  quotedAmount?: number;
   services?: PriceBookItem[];
   onItemsChange?: (items: QuoteItem[]) => void;
 }) {
@@ -141,6 +154,9 @@ export default function QuoteBuilder({
   const subscriptionRows = rows.filter((row) => row.kind === 'subscription' && row.label.trim());
   // Nothing billable today, but a real recurring commitment.
   const planOnly = total === 0 && subscriptionRows.length > 0;
+  // Nothing itemized, but the job carries a price. The summary reports the
+  // job's number in this state, not the empty list's zero.
+  const unitemized = rows.length === 0 && quotedAmount > 0;
 
   // Fetch a draft and hold it for review. Deliberately never writes into `rows`
   // on its own: a quote is a number somebody sends to a customer, and it should
@@ -394,11 +410,21 @@ export default function QuoteBuilder({
       <div className="quote-builder-summary">
         {/* A plan-only quote genuinely has nothing due up front, so the total is
             $0 — but labelled "Quote total" that reads as an empty, broken quote
-            rather than "$99/mo, nothing today". Name what the number IS. */}
+            rather than "$99/mo, nothing today". Name what the number IS.
+
+            Same principle for an un-itemized job: the number is the job's
+            quoted amount, so say that, rather than reporting $0.00 for a job
+            the rest of the page prices in the thousands. */}
         <div className="quote-builder-total">
-          <span>{planOnly ? 'Due up front' : 'Quote total'}</span>
-          <strong>{formatUsd(total)}</strong>
+          <span>{unitemized ? 'Quoted amount' : planOnly ? 'Due up front' : 'Quote total'}</span>
+          <strong>{formatUsd(unitemized ? quotedAmount : total)}</strong>
         </div>
+        {unitemized ? (
+          <p className="quote-builder-note">
+            Set on the job rather than itemized here. Adding lines below replaces it with
+            their total — leaving this empty keeps it exactly as it is.
+          </p>
+        ) : null}
         {addonTotal > 0 ? (
           <p className="quote-builder-note">Up to {formatUsd(addonTotal)} more if the client accepts every add-on.</p>
         ) : null}

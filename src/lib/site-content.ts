@@ -983,10 +983,23 @@ export const DEFAULT_HOW_IT_WORKS_STEPS: SiteProcessStep[] = [
 export const DEFAULT_BLOG_TITLE = 'From our blog';
 export const DEFAULT_BEFORE_AFTER_INTRO = 'See the transformation';
 
+/**
+ * The chips offered by the trust strip, and which of them start ticked.
+ *
+ * Licensed, Insured and Bonded start OFF. The other two are the contractor's
+ * own business policy — they decide whether estimates are free — but those
+ * three are regulated claims about paperwork the product has not seen. Ticked
+ * by default, turning the strip on published all three at once, which is how a
+ * site came to advertise "Licensed · Insured · Bonded" while the account's own
+ * business settings still said the insurance details were incomplete.
+ *
+ * They stay in the list: a contractor who holds them ticks them in one motion.
+ * The default is only about who makes the claim.
+ */
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
-  { id: 'licensed', label: 'Licensed', enabled: true },
-  { id: 'insured', label: 'Insured', enabled: true },
-  { id: 'bonded', label: 'Bonded', enabled: true },
+  { id: 'licensed', label: 'Licensed', enabled: false },
+  { id: 'insured', label: 'Insured', enabled: false },
+  { id: 'bonded', label: 'Bonded', enabled: false },
   { id: 'free-estimates', label: 'Free estimates', enabled: true },
   { id: 'guaranteed', label: 'Satisfaction guaranteed', enabled: true },
 ];
@@ -1585,7 +1598,15 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       posts: parseBlogPosts(blog.posts),
     },
     heroBadge: {
-      preset: toString(heroBadge.preset, 'licensed'),
+      // 'estimates', not 'licensed'. The hero badge has no opt-in gate — unlike
+      // the trust strip, it publishes on a brand-new site — so whatever sits
+      // here is a claim the product makes on the contractor's behalf before
+      // they have seen the page. "Licensed & Insured / Fully vetted pros" is a
+      // statement about paperwork nobody has shown us, in the most prominent
+      // trust slot on the site. "Free Estimates" is the contractor's own
+      // pricing policy and is what the front page actually does. Every preset
+      // stays available; only the assumed one changed.
+      preset: toString(heroBadge.preset, 'estimates'),
       showStats: heroBadge.showStats !== false,
       style: HERO_BADGE_STYLE_KEYS.has(toString(heroBadge.style)) ? toString(heroBadge.style) : 'soft',
       customLabel: toString(heroBadge.customLabel).slice(0, 40),

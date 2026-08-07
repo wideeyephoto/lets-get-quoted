@@ -67,7 +67,11 @@ export default function GuildTemplate({ site }: TemplateProps) {
       <header className={styles.guildHeader}>
         <a className={styles.guildBrand} href="#top">
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.guildBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-          <span><strong data-edit="identity"><WordmarkName name={site.company_name} /></strong><small data-edit="bizLicense">{site.license || 'Licensed contractor'}</small></span>
+          {/* No fallback. This used to read "Licensed contractor" under the
+              business name whenever the licence field was empty — a credential
+              claimed by the template on behalf of a contractor who never made
+              it. Nothing under the wordmark is better than something untrue. */}
+          <span><strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>{site.license ? <small data-edit="bizLicense">{site.license}</small> : null}</span>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }]} />
         <a className={styles.guildQuote} data-edit="quoteForm" href="#contact">{estimateLabel}</a>

@@ -100,9 +100,25 @@ export type Beat = {
   title: string;
   /** What makes this the right month. The contractor reads this to decide. */
   whyNow: string;
+  /**
+   * Who this is for. The FIRST entry is the home trade — the one for whom the
+   * beat needs no justification. The rest are adjacent trades who often do this
+   * work too, and they are the ones `needs` exists to check.
+   */
   trades: TradeFamily[];
   channels: Channel[];
   audience: Audience;
+  /**
+   * Evidence required before offering this beat to a trade that isn't its home
+   * one, matched against the contractor's own service names.
+   *
+   * Plenty of plumbers service boilers and winterize irrigation, which is why
+   * those trades are listed at all. Plenty do not — and a plumbing business
+   * being told to promote a heating tune-up and an irrigation blow-out reads as
+   * a product that has not noticed what they sell. Their price book knows. When
+   * they have one and nothing in it matches, the beat is not for them.
+   */
+  needs?: RegExp;
   /** Months (1-12) per zone. A zone with no entry means the beat doesn't apply. */
   monthsByZone: Partial<Record<ClimateZone, number[]>>;
 };
@@ -120,6 +136,11 @@ export const BEATS: Beat[] = [
     title: 'Book a heating tune-up before the first cold snap',
     whyNow: 'Everyone calls the week it first gets cold, and by then you are booked out. Ask now and you fill October instead of scrambling in November.',
     trades: ['hvac', 'plumbing', 'general'],
+    // Space heating, specifically. A bare /heat/ matches "Water heater
+    // replacement", which is the single most common plumbing service there
+    // is — and offering that plumber a furnace tune-up is the exact mistake
+    // this check exists to stop.
+    needs: /furnace|boiler|hydronic|radiator|hvac|air handler|heat pump|\bheating\b/i,
     channels: ['email', 'blog'],
     audience: 'maintenance-due',
     // Absent in 'hot' on purpose. Nobody in Phoenix is thinking about a furnace.
@@ -202,6 +223,7 @@ export const BEATS: Beat[] = [
     title: 'Irrigation blow-out before the ground freezes',
     whyNow: 'Miss it and the system splits over winter. There is a real deadline, which is why this one converts.',
     trades: ['landscaping', 'plumbing'],
+    needs: /irrigat|sprinkler|winteriz/i,
     channels: ['email'],
     audience: 'past-service',
     monthsByZone: { cold: [9, 10], temperate: [10, 11] },
@@ -277,9 +299,28 @@ export function planCalendar(input: {
   zone: ClimateZone;
   fromMonth: number;
   monthsAhead?: number;
+  /**
+   * The contractor's own service names, from the price book.
+   *
+   * Optional, and absence means "no opinion" rather than "sells nothing": an
+   * account that has not built a price book yet still gets the full calendar,
+   * because hiding beats from someone mid-setup teaches them the feature is
+   * empty. Only a contractor who HAS said what they sell gets filtered by it.
+   */
+  services?: string[];
 }): PlannedBeat[] {
   const family = tradeFamily(input.trade);
   const ahead = Math.min(12, Math.max(1, input.monthsAhead ?? 3));
+  const services = (input.services ?? []).filter((name) => name.trim());
+
+  // A beat outside its home trade has to be earned by something in the price
+  // book. See Beat.needs.
+  const offered = (beat: Beat): boolean => {
+    if (!beat.needs) return true;
+    if (beat.trades[0] === family) return true;
+    if (services.length === 0) return true;
+    return services.some((name) => beat.needs!.test(name));
+  };
 
   // Walk the window in order and collect each beat's eligible months as we
   // meet them, so the FIRST month a beat appears fixes its place in the list.
@@ -290,6 +331,7 @@ export function planCalendar(input: {
     const month = ((input.fromMonth - 1 + offset) % 12) + 1;
     for (const beat of BEATS) {
       if (!beat.trades.includes(family)) continue;
+      if (!offered(beat)) continue;
       const months = beat.monthsByZone[input.zone];
       if (!months || !months.includes(month)) continue;
       if (!monthsByBeat.has(beat.id)) {

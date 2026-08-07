@@ -72,6 +72,17 @@
   transition: background .15s ease, border-color .15s ease;
 }
 .heroPhoneLink:hover, .heroPhoneLink:focus-visible { background: rgba(57,224,122,.24); border-color: var(--cedge-green-44); }
+/* Reachable, not recommended. Used for Call on a lead who asked to be texted:
+   an outline instead of a fill, and a size that reads as a secondary way out
+   rather than the thing to press. */
+.heroPhoneLinkQuiet {
+  display: inline-flex; align-items: center; gap: .35rem; width: fit-content; max-width: 100%;
+  margin: 0 0 .3rem; padding: .22rem .55rem; border-radius: 999px;
+  border: 1px solid var(--edge-t14); background: transparent;
+  color: var(--mute-t55) !important; font-size: .76rem !important; font-weight: 700 !important;
+  transition: border-color .15s ease, color .15s ease;
+}
+.heroPhoneLinkQuiet:hover, .heroPhoneLinkQuiet:focus-visible { border-color: var(--edge-t35); color: var(--text) !important; }
 .heroContactEmail {
   display: inline-flex; align-items: center; gap: .35rem; width: fit-content; max-width: 100%;
   padding: .3rem .65rem; border-radius: 999px;

@@ -253,14 +253,32 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <div className={styles.heroContactSummary}>
             <div className={styles.heroContactItem}>
               <span>Contact</span>
+              {/* The bright pill goes to the channel they asked for.
+                  This lead said "text me, don't call" and the page answered
+                  with a filled green Call button and a small grey line asking
+                  the contractor to please not press it. The warning was doing
+                  all the work and the styling was undoing it. Calling stays
+                  available — sometimes you have to — it is just no longer the
+                  loudest thing in the box. */}
               {lead.phone ? (
-                <a href={`tel:${lead.phone}`} className={styles.heroPhoneLink} aria-label={`Call ${lead.phone}`}>
-                  <span aria-hidden="true">📞</span> {formatPhoneDashes(lead.phone)}
-                </a>
+                triage.contactPreference === 'text_only' ? (
+                  <>
+                    <a href={`sms:${lead.phone}`} className={styles.heroPhoneLink} aria-label={`Text ${lead.phone}`}>
+                      <span aria-hidden="true">💬</span> Text {formatPhoneDashes(lead.phone)}
+                    </a>
+                    <a href={`tel:${lead.phone}`} className={styles.heroPhoneLinkQuiet} aria-label={`Call ${lead.phone} anyway — they asked not to be called`}>
+                      <span aria-hidden="true">📞</span> Call anyway
+                    </a>
+                  </>
+                ) : (
+                  <a href={`tel:${lead.phone}`} className={styles.heroPhoneLink} aria-label={`Call ${lead.phone}`}>
+                    <span aria-hidden="true">📞</span> {formatPhoneDashes(lead.phone)}
+                  </a>
+                )
               ) : (
                 <strong>No phone provided</strong>
               )}
-              {lead.phone && triage.contactPreference === 'text_only' ? <small className={styles.contactWarn}>💬 They asked for texts only — send a text before calling.</small> : null}
+              {lead.phone && triage.contactPreference === 'text_only' ? <small className={styles.contactWarn}>They asked for texts only.</small> : null}
               {lead.email ? (
                 <a href={`mailto:${lead.email}`} className={styles.heroContactEmail} aria-label={`Email ${lead.email}`}>
                   <span aria-hidden="true">📧</span> {lead.email}

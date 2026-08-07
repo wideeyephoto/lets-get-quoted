@@ -150,7 +150,11 @@ export default function QuickStopRequestCard({ request, photoUrls, route, defaul
 
   return (
     <section className="panel workspace-section-card" style={{ marginBottom: '1rem' }}>
-      <div className="section-heading workspace-section-heading compact-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.75rem' }}>
+      {/* flexWrap, because the countdown chip beside the title is nowrap by
+          necessity — "⏱ 41:59 to respond" broken across two lines is not a
+          countdown any more. Without somewhere to go it pushed the whole page
+          9px wider than a phone. */}
+      <div className="section-heading workspace-section-heading compact-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.75rem', flexWrap: 'wrap' }}>
         <div>
           <p className="eyebrow">Quick Stop · {QUICK_STOP_STATUS_LABEL[request.status]}</p>
           <h2 style={{ margin: 0 }}>{request.ai_summary || request.intake?.issue || 'Quick Stop request'}</h2>

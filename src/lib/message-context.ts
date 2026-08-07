@@ -172,6 +172,41 @@ export function groupRuns<T extends { created_at: string; direction: string }>(
   return runs;
 }
 
+/**
+ * What a conversation looks like in the LIST, which is not what it says.
+ *
+ * The inbox preview is one clipped line, and outbound texts spend most of that
+ * line on two things that are identical in every thread: a tracking link, and
+ * the compliance tail every automated message has to carry. A column of
+ * "https://letsgetquoted.com/p/8f2a… Reply STOP to opt out." rows tells you
+ * nothing about which customer needs you.
+ *
+ * DISPLAY ONLY. This never touches what was sent, what is stored, or what the
+ * thread renders — open the conversation and the message is verbatim, link and
+ * opt-out line included. Both are legally and practically load-bearing; this
+ * only declines to spend the preview on them.
+ */
+const OPT_OUT_TAIL = /\s*Reply\s+STOP\s+to\s+opt\s*out\.?\s*$/i;
+const URL_PATTERN = /https?:\/\/\S+/g;
+
+export function conversationPreview(body: string | null | undefined): string {
+  let text = (body ?? '').trim();
+  if (!text) return '';
+  // Only from the END. "Reply STOP to opt out" in the middle of a sentence is
+  // someone quoting it back at you, which is a thread you want to notice.
+  text = text.replace(OPT_OUT_TAIL, '');
+  text = text.replace(URL_PATTERN, (match) => {
+    try {
+      // The host is the recognisable part — "your quote" links and "pay this"
+      // links differ by a path segment nobody reads at this size.
+      return `${new URL(match).host.replace(/^www\./, '')}/…`;
+    } catch {
+      return 'link';
+    }
+  });
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 /** "MW" — the initials on a thread avatar; falls back to the first character. */
 export function initialsFor(name: string | null | undefined): string {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);

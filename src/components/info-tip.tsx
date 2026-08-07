@@ -19,24 +19,53 @@ import { useEffect, useId, useRef, useState } from 'react';
  * explanation, and it flips its horizontal alignment near a viewport edge — see
  * the measurement in `place()`. Without that, every icon in the right-hand
  * column of a metric grid opens a bubble that is half off-screen.
+ *
+ * WHY IT MEASURES BEFORE ANYONE TOUCHES IT. A closed bubble is `visibility:
+ * hidden`, not `display: none`, so it still occupies layout and still counts
+ * toward the document's scrollable width. `place()` used to run only on hover,
+ * focus and tap, which left every bubble left-aligned until first contact — and
+ * on a 375px phone the dashboard's metric tips stuck out to 551px and put a
+ * horizontal scrollbar on a page nobody had interacted with yet.
  */
 export default function InfoTip({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [align, setAlign] = useState<'start' | 'end'>('start');
+  // Null until measured, so the server render and the first client render agree
+  // and CSS keeps its own default.
+  const [maxWidth, setMaxWidth] = useState<number | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const bubbleId = useId();
 
-  // Which way the bubble opens. Measured from the icon rather than assumed,
-  // because the same component is used in a one-column list and in the last
-  // column of a four-across grid.
+  // Which way the bubble opens, and how wide it may be. Measured from the icon
+  // rather than assumed, because the same component is used in a one-column
+  // list and in the last column of a four-across grid.
   function place() {
     const node = wrapRef.current;
     if (!node) return;
-    const { left } = node.getBoundingClientRect();
-    // 18rem is the bubble's max-width below; if that much space is not left to
-    // the right of the icon, hang the bubble off its right edge instead.
-    setAlign(left + 18 * 16 > window.innerWidth - 12 ? 'end' : 'start');
+    const { left, right } = node.getBoundingClientRect();
+    const GUTTER = 12;
+    const IDEAL = 18 * 16; // .infotip-bubble's max-width in CSS.
+    // Hanging off the icon's LEFT edge, the bubble grows rightward; off its
+    // RIGHT edge, leftward. Take whichever side has room, preferring the
+    // reading direction when both do.
+    const roomRight = window.innerWidth - left - GUTTER;
+    const roomLeft = right - GUTTER;
+    const next = roomRight >= IDEAL || roomRight >= roomLeft ? 'start' : 'end';
+    setAlign(next);
+    // Flipping alone is not enough: on a narrow screen the far side can be
+    // shorter than the bubble too, and it would then hang off the OTHER edge.
+    // Never below 9rem, or the text becomes a column of single words.
+    setMaxWidth(Math.max(9 * 16, Math.min(IDEAL, next === 'start' ? roomRight : roomLeft)));
   }
+
+  // On mount and on resize, not just on interaction — see the note above about
+  // hidden bubbles still counting toward page width.
+  useEffect(() => {
+    place();
+    const onResize = () => place();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Tap elsewhere closes it. Pointerdown rather than click so it closes on the
   // press that begins a scroll, and capture so a tap on another InfoTip closes
@@ -81,7 +110,13 @@ export default function InfoTip({ label, children }: { label: string; children: 
           <path d="M12 16v-4M12 8h.01" />
         </svg>
       </button>
-      <span className="infotip-bubble" id={bubbleId} role="tooltip" data-open={open ? 'true' : 'false'}>
+      <span
+        className="infotip-bubble"
+        id={bubbleId}
+        role="tooltip"
+        data-open={open ? 'true' : 'false'}
+        style={maxWidth === null ? undefined : { maxWidth: `${Math.round(maxWidth)}px` }}
+      >
         {children}
       </span>
     </span>

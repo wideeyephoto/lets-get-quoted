@@ -296,3 +296,58 @@ describe('normalizeMarketingDraft', () => {
     expect(normalizeMarketingDraft({ ...good, body: ['Since 1994 we have.'] })).not.toBeNull();
   });
 });
+
+describe('planCalendar and what the contractor actually sells', () => {
+  // A plumber in a cold state in September is exactly the case the audit found:
+  // the calendar offered a heating tune-up and an irrigation blow-out to a
+  // business that does neither.
+  const plumberInSeptember = (services?: string[]) =>
+    planCalendar({ trade: 'Plumbing', zone: 'cold', fromMonth: 9, monthsAhead: 3, services }).map(
+      (planned) => planned.beat.id,
+    );
+
+  it('offers adjacent-trade beats when the price book is empty, rather than looking broken mid-setup', () => {
+    const ids = plumberInSeptember();
+    expect(ids).toContain('heating-tuneup');
+    expect(ids).toContain('irrigation-blowout');
+  });
+
+  it('withholds them once the price book says otherwise', () => {
+    const ids = plumberInSeptember(['Drain cleaning', 'Water heater replacement', 'Leak repair']);
+    expect(ids).not.toContain('heating-tuneup');
+    expect(ids).not.toContain('irrigation-blowout');
+  });
+
+  // A water heater is not a furnace, and "Water heater replacement" is about
+  // the most common line in a plumber's price book. Matching it would put the
+  // heating beat back in front of exactly the contractor it was hidden from.
+  it('does not read a water heater as space heating', () => {
+    expect(plumberInSeptember(['Water heater replacement'])).not.toContain('heating-tuneup');
+    expect(plumberInSeptember(['Tankless water heater install'])).not.toContain('heating-tuneup');
+  });
+
+  it('still offers them to the plumber who does that work', () => {
+    expect(plumberInSeptember(['Drain cleaning', 'Boiler service'])).toContain('heating-tuneup');
+    expect(plumberInSeptember(['Drain cleaning', 'Sprinkler winterization'])).toContain('irrigation-blowout');
+  });
+
+  // The filter is about ADJACENT trades. A plumber's own beats are never in
+  // question, whatever their price book happens to list.
+  it('never withholds a beat from its home trade', () => {
+    expect(plumberInSeptember(['Nothing recognisable'])).toContain('frozen-pipes');
+  });
+
+  it('leaves the HVAC contractor who owns the heating beat alone', () => {
+    const ids = planCalendar({ trade: 'HVAC', zone: 'cold', fromMonth: 9, monthsAhead: 3, services: ['Duct cleaning'] })
+      .map((planned) => planned.beat.id);
+    expect(ids).toContain('heating-tuneup');
+  });
+
+  it('only gates beats that declare what they need', () => {
+    for (const beat of BEATS) {
+      if (!beat.needs) continue;
+      // A gated beat must have somewhere to be gated FROM, or the rule is dead.
+      expect(beat.trades.length).toBeGreaterThan(1);
+    }
+  });
+});
