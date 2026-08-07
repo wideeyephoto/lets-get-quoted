@@ -38,7 +38,11 @@ export default function WebsiteBuilderPage() {
         </>
       }
       lede="Enter a few business basics and generate a complete contractor site with services, local pages, FAQs and Smart Intake already connected. Edit everything before you publish."
-      heroNote="The site, the subdomain and the instant estimate are included. There is no subscription and no setup fee — the platform fee applies only when a homeowner pays you."
+      // Not the fee — the closing band states it in full, with the rate range
+      // and Stripe's cut. What belongs here is what a contractor about to
+      // generate a site wants to know: that it is theirs. Custom domains are
+      // real (contractor-brand.ts carries custom_domain + custom_domain_verified_at).
+      heroNote="The site, the subdomain and the instant estimate are included. Connect your own domain when you are ready, and edit every word before anything goes live."
       demo={
         <ExampleFrame
           label="A generated site, before a word has been edited — with the instant estimate on the front page."

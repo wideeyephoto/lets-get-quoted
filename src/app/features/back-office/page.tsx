@@ -20,7 +20,18 @@ export const metadata: Metadata = {
 /* The one number the page quotes, taken from the canonical fee model rather
    than typed in — the rate a contractor reads here can then never drift from
    /pricing or from the calculator. */
-const LOWEST_RATE = FEE_TIERS[0].rate;
+// FEE_TIERS[0] is the rate a business STARTS on and falls from — 1.25%, the
+// highest of the four, not the lowest. Named accordingly: the previous name
+// said "lowest", which invited a well-meaning correction to
+// FEE_TIERS[length - 1] and would have quoted every contractor the 0.65% that
+// only applies above $750k of volume.
+const STARTING_RATE = FEE_TIERS[0].rate;
+
+// Deliberately not the fee. The closing band states it in full, with the rate
+// and Stripe's cut — saying it here too makes a page about running the work
+// argue about price twice before the reader has seen any of the work.
+const HERO_NOTE =
+  'Everything below is included. Not a tier, not an add-on, and not a module you unlock later — it is one product and this is what is in it.';
 
 /* ------------------------------------------------------------------------- */
 /* The hero panel: one job, part-way through the work.                        */
@@ -455,7 +466,7 @@ export default function BackOfficePage() {
         </>
       }
       lede="Create the quote, book the work, assign the crew, collect payment and follow up without rebuilding the same customer information in five different systems."
-      heroNote={`Everything below is included. There is no subscription — the platform fee is ${LOWEST_RATE} of what a homeowner pays you, falling as your volume grows, and there is nothing to pay until they do.`}
+      heroNote={HERO_NOTE}
       demo={
         <ExampleFrame
           label="One job record, part-way through the work"
@@ -502,7 +513,7 @@ export default function BackOfficePage() {
       ]}
       cta={{
         title: 'Put the entire job behind one front door.',
-        note: `No card required and no monthly subscription. The platform fee is ${LOWEST_RATE} of what a homeowner pays you and falls as your volume grows; card processing is Stripe’s standard ${STRIPE_PROCESSING_NOTE}.`,
+        note: `No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you and falls as your volume grows; card processing is Stripe’s standard ${STRIPE_PROCESSING_NOTE}.`,
       }}
     >
       <section className="section-block" aria-labelledby="back-office-capabilities">

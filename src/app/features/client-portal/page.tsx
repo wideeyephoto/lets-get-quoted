@@ -53,7 +53,11 @@ export default function ClientPortalPage() {
         </>
       }
       lede="Give every job its own client portal and keep two-way text conversations connected to the same customer record—from quote approval through final payment."
-      heroNote="Texting and the portal are included. Nothing here is a separate subscription, and nothing here charges you until a homeowner pays you."
+      // Not the fee — the closing band already states it. On a page about the
+      // conversation, the useful reassurance is that the homeowner does not
+      // have to install anything to take part: the portal is /client/jobs/[token]
+      // (a link, no account) and the texts go out over Twilio as ordinary SMS.
+      heroNote="Texting and the portal are both included. The homeowner needs no app and no account — the portal is a link, and the texts are ordinary texts."
       demo={
         <ExampleFrame
           label="The job record on the contractor’s side. The conversation is part of the record, not a separate inbox."

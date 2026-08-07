@@ -25,7 +25,11 @@ export const metadata: Metadata = {
 
 /* The one number on the page, read from the canonical fee model rather than
    typed in, so it cannot drift from /pricing or the calculator. */
-const LOWEST_RATE = FEE_TIERS[0].rate;
+// FEE_TIERS[0] is the rate a business STARTS on and falls from — 1.25%, the
+// highest of the four, not the lowest. The old name invited a correction to
+// FEE_TIERS[length - 1], which would have quoted everyone the 0.65% that only
+// applies above $750k of volume.
+const STARTING_RATE = FEE_TIERS[0].rate;
 
 /* Prose with apostrophes and quote marks lives in constants rather than inline
    JSX text: it keeps the curly punctuation intact without scattering entities
@@ -382,7 +386,7 @@ export default function FounderPage() {
           <MarketingCta
             kicker="The next chapter is your business"
             title="Build something customers trust—and a system your team can run."
-            note={`No card required and no monthly subscription. The platform fee is ${LOWEST_RATE} of what a homeowner pays you, falling as your volume grows, and applies only when they actually pay.`}
+            note={`No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you, falling as your volume grows, and applies only when they actually pay.`}
           />
 
           <SiteFooter />

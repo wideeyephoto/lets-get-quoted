@@ -24,3 +24,23 @@
   outline: 2px solid var(--accent-2);
   outline-offset: 2px;
 }
+
+/* Everything else focusable in the cluster.
+ *
+ * The rule above only ever covered `.btn`, which left every link that is not a
+ * button — the five feature cards on /features, the back-links out of each
+ * detail page, the in-page anchors, the footer — on the UA default outline. On
+ * this ground that is a thin dark ring on a dark field, which is not a visible
+ * focus indicator by any reading of it.
+ *
+ * Lower specificity than the `.btn` rule above, so a button keeps its own
+ * offset and this only fills the gap. `border-radius` because outlines follow
+ * it, and a square ring around a rounded card looks like a rendering fault. */
+.page :global(a:focus-visible),
+.page :global(button:focus-visible),
+.page :global(summary:focus-visible),
+.page :global([tabindex]:focus-visible) {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
