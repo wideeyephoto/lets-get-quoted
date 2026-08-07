@@ -178,6 +178,96 @@ const TWEAKS = `
   letter-spacing: -0.025em;
 }
 
+/* ---- the pipeline, put into space -----------------------------------------
+
+   The source's Product page renders .system-pipeline as a flat strip. The
+   homepage's .dashboard-card is the same site's answer to "make this look
+   photographed rather than drawn": a perspective container, a small two-axis
+   tilt, and a shadow stack under it. This borrows that treatment for the
+   pipeline without borrowing .dashboard-card itself, which is
+   position:absolute at a fixed 500px height tuned to .hero-product's box and
+   fights everything when reused.
+
+   The tilt is EXACTLY rotateY(-4deg) rotateX(1deg). It has to be: the
+   dashboardFloat keyframe restates the whole transform at its 50% frame rather
+   than animating translateY alone, so any other angle snaps to the homepage's
+   twice per eight-second cycle. */
+.root :global(.system-stage) {
+  position: relative;
+  width: 100%;
+  max-width: 1180px;
+  margin: 46px auto 0;
+  perspective: 1400px;
+}
+
+.root :global(.system-stage .system-pipeline) {
+  margin-top: 0;
+  transform: rotateY(-4deg) rotateX(1deg);
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.05) inset,
+    0 28px 42px rgba(0, 0, 0, 0.26),
+    0 65px 130px rgba(0, 0, 0, 0.46),
+    -25px 18px 80px rgba(20, 88, 110, 0.12);
+  animation: dashboardFloat 8s ease-in-out infinite;
+}
+
+/* The two interruptions, over the panel on a desktop. Positioned against the
+   stage rather than the pipeline, because the pipeline is the tilted element
+   and children of it would inherit the rotation and read as skewed labels. */
+.root :global(.system-stage .floating-alert) {
+  position: absolute;
+  top: 8px;
+  right: -18px;
+  z-index: 4;
+}
+.root :global(.system-stage .floating-paid) {
+  bottom: 42px;
+  left: -20px;
+  z-index: 4;
+}
+
+/* Truthfulness marker. Every mock in this cluster says it is a mock; the ported
+   sheet has no class for that because the source site never labelled one. */
+.root :global(.example-mark) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px auto 0;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  font-family: var(--font-geist-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8fa3b0;
+}
+.root :global(.example-mark) b {
+  font-weight: 700;
+  color: var(--orange);
+}
+
+@media (max-width: 1000px) {
+  /* Below this the notifications have nowhere to sit that is not on top of the
+     copy, so they rejoin the flow underneath. */
+  .root :global(.system-stage .floating-alert),
+  .root :global(.system-stage .floating-paid) {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .root :global(.system-stage .system-pipeline) {
+    transform: none;
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The tilt is composition and stays; the drift is decoration and goes. */
+  .root :global(.system-stage .system-pipeline) { animation: none; }
+}
+
 /* ---- the four promises -----------------------------------------------------
 
    They were two lines of small grey text in four boxes: a 10px label over an
