@@ -19,6 +19,7 @@ import {
   type StageFilter,
 } from '@/lib/lead-queue';
 import type { LeadViewItem } from './LeadsWorkspace';
+import { focusQueueRow, useQueueWindow } from '../use-queue-window';
 import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction } from './actions';
 import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
@@ -45,7 +46,9 @@ import styles from '../smoothie.module.css';
  *     annoyed.
  *   * One scroll context. Nothing here has its own scrollbar — not the queue,
  *     not the detail. On a phone the list and the detail are separate screens
- *     rather than a detail buried under a long list.
+ *     rather than a detail buried under a long list. The queue keeps that rule
+ *     by having an END instead: one page of rows and a control for the rest.
+ *     See @/lib/queue-window.
  */
 
 const HEAT_HELP: Record<LeadViewItem['score'], string> = {
@@ -103,10 +106,25 @@ export default function LeadSmoothieView({
     return sortQueue(filtered, sort);
   }, [leads, stage, query, sort]);
 
+  // Opens on the head of the QUEUE, not on leads[0]. The list arrives newest
+  // first and the queue is ordered by priority, so leads[0] is routinely a long
+  // way down it — the pane showed one lead while the orange row sat forty rows
+  // below, and the window below would have had to open that far to reach it.
   const [selectedId, setSelectedId] = useState<string | null>(
-    (initialLeadId && leads.some((lead) => lead.id === initialLeadId) ? initialLeadId : leads[0]?.id) ?? null,
+    (initialLeadId && leads.some((lead) => lead.id === initialLeadId) ? initialLeadId : shown[0]?.id) ?? null,
   );
   const selected = useMemo(() => leads.find((lead) => lead.id === selectedId) ?? null, [leads, selectedId]);
+
+  // How much of the queue is drawn. The whole thing was, which at a hundred
+  // leads is a column several times the height of the pane beside it.
+  const selectedIndex = useMemo(() => shown.findIndex((lead) => lead.id === selectedId), [shown, selectedId]);
+  const win = useQueueWindow({
+    total: shown.length,
+    selectedIndex,
+    resetKey: `${stage}|${sort}|${query}`,
+    plural: 'leads',
+  });
+  const visible = useMemo(() => shown.slice(0, win.end), [shown, win.end]);
 
   const { detail, loading, error, armPrefetch, cancelPrefetch } = useLeadDetail({ selectedId, leads, details });
 
@@ -144,7 +162,10 @@ export default function LeadSmoothieView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest?.nonce]);
 
-  // Keyboard traversal of the queue, matching Focus.
+  // Keyboard traversal of the queue, matching Focus. Arrowing past the last
+  // drawn row selects the next one anyway — selecting always draws it — so the
+  // window opens under the keyboard rather than the queue ending early for
+  // anyone not using a mouse.
   function onQueueKeyDown(event: React.KeyboardEvent) {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
@@ -152,7 +173,16 @@ export default function LeadSmoothieView({
     const next = event.key === 'ArrowDown' ? index + 1 : index - 1;
     if (next < 0 || next >= shown.length) return;
     select(shown[next].id);
-    document.getElementById(`lead-row-${shown[next].id}`)?.focus();
+    focusQueueRow(`lead-row-${shown[next].id}`, next < win.end);
+  }
+
+  // Reveal, then land on the first row that appeared. Without it the button can
+  // be the last thing revealed away, leaving focus on nothing.
+  function reveal(all: boolean) {
+    const first = shown[win.nextIndex];
+    if (all) win.showAll();
+    else win.showMore();
+    if (first) focusQueueRow(`lead-row-${first.id}`, false);
   }
 
   // Rows stay real links so cmd/middle-click opens the full lead page and the
@@ -263,8 +293,14 @@ export default function LeadSmoothieView({
 
       {/* Announced rather than merely displayed: filtering with a screen reader
           otherwise gives no feedback that anything happened. */}
+      {/* Filter results only. The WINDOW count deliberately stays out: it moves
+          every time the selection steps past the last drawn row, so putting it
+          in a live region made arrowing down the queue re-announce "Showing 26
+          of 100… 27 of 100…" over the top of each row. It is announced where it
+          belongs instead — as ordinary text at the foot of the list, in reading
+          order, next to the button that changes it. */}
       <p className={styles.srOnly} role="status">
-        {shown.length} of {leads.length} leads shown.
+        {shown.length} of {leads.length} leads match.
       </p>
 
       <div className={styles.body}>
@@ -284,7 +320,7 @@ export default function LeadSmoothieView({
           ) : (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
             <ul className={styles.rows} onKeyDown={onQueueKeyDown}>
-              {shown.map((lead) => {
+              {visible.map((lead) => {
                 const on = lead.id === selectedId;
                 return (
                   <li key={lead.id}>
@@ -325,6 +361,23 @@ export default function LeadSmoothieView({
               })}
             </ul>
           )}
+
+          {/* The end of the list, and the way past it. "Show all" only appears
+              while more than one page is left — with three rows to go it would
+              be a second button that does exactly what the first one does. */}
+          {win.truncated ? (
+            <div className={styles.more}>
+              <p className={styles.moreCount}>{win.countLabel}</p>
+              <button type="button" className={styles.moreBtn} onClick={() => reveal(false)}>
+                {win.moreLabel}
+              </button>
+              {win.step < win.hidden ? (
+                <button type="button" className={styles.moreAll} onClick={() => reveal(true)}>
+                  {win.allLabel}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         {/* --- the right pane: the selected lead, or the map --- */}

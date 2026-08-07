@@ -263,6 +263,56 @@
 .rowWait { font-size: 0.73rem; color: var(--mute-t55); }
 .rowValue { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* --- the end of the queue -------------------------------------------------
+   The list has an end rather than a scrollbar — @/lib/queue-window has the
+   reasoning. This is that end: what you are looking at, and the two ways to ask
+   for more of it. It only renders when something is actually being held back,
+   so a queue that fits still finishes on its last row. */
+
+.more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border-top: 1px solid var(--rule-g16);
+}
+/* Its own line: at the queue's 20rem minimum the count and both controls do not
+   fit on one, and a count that wraps mid-phrase is worse than a count above. */
+.moreCount {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--mute-t55);
+  font-variant-numeric: tabular-nums;
+}
+.moreBtn {
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.moreBtn:hover { border-color: var(--edge-t22); background: rgba(var(--tint), 0.06); }
+/* The escape hatch, deliberately quieter: one more page is the safe move, and
+   "show all" on a list of four hundred is a choice you should have to mean. */
+.moreAll {
+  min-height: 40px;
+  padding: 0 0.5rem;
+  border: 0;
+  background: none;
+  color: var(--ink-sky-1);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.moreAll:hover { text-decoration: underline; }
+
 .emptyQueue { margin: 0; padding: 1.2rem 1rem; font-size: 0.88rem; color: var(--muted); }
 .clearBtn {
   border: 0;
@@ -400,6 +450,8 @@
 .callQuiet:focus-visible,
 .addLead:focus-visible,
 .backBtn:focus-visible,
+.moreBtn:focus-visible,
+.moreAll:focus-visible,
 .clearBtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

@@ -20,6 +20,7 @@ import {
   type StageFilter,
 } from '@/lib/job-queue';
 import type { JobViewItem } from './JobsWorkspace';
+import { focusQueueRow, useQueueWindow } from '../use-queue-window';
 import { useJobDetail } from './use-job-detail';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
 import focusStyles from '../focus.module.css';
@@ -42,7 +43,8 @@ import styles from '../smoothie.module.css';
  *     row badge and the pane header cannot disagree.
  *   * One scroll context. Nothing here has its own scrollbar. On a phone the
  *     queue and the detail are separate screens rather than a detail buried
- *     under a long list.
+ *     under a long list. The queue keeps that rule by having an END instead:
+ *     one page of rows and a control for the rest. See @/lib/queue-window.
  *   * The pane is READ-ONLY, exactly as Focus is. Every action deep-links to
  *     the full job page: mutating money from a surface with a client-held cache
  *     means cache invalidation plus optimistic rollback on money, which is not
@@ -93,8 +95,23 @@ export default function JobSmoothieView({
     return sortQueue(filtered, sort, todayKey);
   }, [jobs, stage, query, sort, todayKey]);
 
-  const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
+  // Opens on the head of the QUEUE, not on jobs[0]. "Soonest first" puts
+  // tomorrow's work at the top and finished work at the bottom, so jobs[0] is
+  // routinely a long way down it — the pane showed one job while the orange row
+  // sat forty rows below, and the window would have had to open that far.
+  const [selectedId, setSelectedId] = useState<string | null>(shown[0]?.id ?? null);
   const selected = useMemo(() => jobs.find((job) => job.id === selectedId) ?? null, [jobs, selectedId]);
+
+  // How much of the queue is drawn. The whole thing was, which at a hundred
+  // jobs is a column several times the height of the pane beside it.
+  const selectedIndex = useMemo(() => shown.findIndex((job) => job.id === selectedId), [shown, selectedId]);
+  const win = useQueueWindow({
+    total: shown.length,
+    selectedIndex,
+    resetKey: `${stage}|${sort}|${query}`,
+    plural: 'jobs',
+  });
+  const visible = useMemo(() => shown.slice(0, win.end), [shown, win.end]);
 
   const { detail, loading, error, armPrefetch, cancelPrefetch } = useJobDetail({ selectedId, jobs, details });
 
@@ -127,6 +144,9 @@ export default function JobSmoothieView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest?.nonce]);
 
+  // Arrowing past the last drawn row selects the next one anyway — selecting
+  // always draws it — so the window opens under the keyboard rather than the
+  // queue ending early for anyone not using a mouse.
   function onQueueKeyDown(event: React.KeyboardEvent) {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
@@ -134,7 +154,16 @@ export default function JobSmoothieView({
     const next = event.key === 'ArrowDown' ? index + 1 : index - 1;
     if (next < 0 || next >= shown.length) return;
     select(shown[next].id);
-    document.getElementById(`job-row-${shown[next].id}`)?.focus();
+    focusQueueRow(`job-row-${shown[next].id}`, next < win.end);
+  }
+
+  // Reveal, then land on the first row that appeared. Without it the button can
+  // be the last thing revealed away, leaving focus on nothing.
+  function reveal(all: boolean) {
+    const first = shown[win.nextIndex];
+    if (all) win.showAll();
+    else win.showMore();
+    if (first) focusQueueRow(`job-row-${first.id}`, false);
   }
 
   // Rows stay real links so cmd/middle-click opens the full job page and the
@@ -226,8 +255,11 @@ export default function JobSmoothieView({
         </a>
       </div>
 
+      {/* Filter results only — the window count moves on every arrow keypress
+          past the window edge, so it is read at the foot of the list instead of
+          announced over each row. See LeadSmoothieView. */}
       <p className={styles.srOnly} role="status">
-        {shown.length} of {jobs.length} jobs shown.
+        {shown.length} of {jobs.length} jobs match.
       </p>
 
       <div className={styles.body}>
@@ -250,7 +282,7 @@ export default function JobSmoothieView({
           ) : (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
             <ul className={styles.rows} onKeyDown={onQueueKeyDown}>
-              {shown.map((job) => {
+              {visible.map((job) => {
                 const on = job.id === selectedId;
                 const when = scheduleNote(job, todayKey);
                 return (
@@ -287,6 +319,23 @@ export default function JobSmoothieView({
               })}
             </ul>
           )}
+
+          {/* The end of the list, and the way past it. "Show all" only appears
+              while more than one page is left — with three rows to go it would
+              be a second button that does exactly what the first one does. */}
+          {win.truncated ? (
+            <div className={styles.more}>
+              <p className={styles.moreCount}>{win.countLabel}</p>
+              <button type="button" className={styles.moreBtn} onClick={() => reveal(false)}>
+                {win.moreLabel}
+              </button>
+              {win.step < win.hidden ? (
+                <button type="button" className={styles.moreAll} onClick={() => reveal(true)}>
+                  {win.allLabel}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         {/* --- the right pane: the selected job, or the map --- */}
