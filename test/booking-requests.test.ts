@@ -21,6 +21,11 @@ const row = (over: Partial<PendingBookingRow> = {}): PendingBookingRow => ({
   scope: 'Water heater swap',
   booking_requested_date: '2026-08-06',
   booking_requested_time: '09:00',
+  // Both required and both nullable. The row gained them when booking requests
+  // grew an end time and a customer note; the fixture did not follow, so every
+  // row() call was a type error.
+  booking_requested_end_time: null,
+  booking_note: null,
   created_at: '2026-08-02T10:00:00.000Z',
   ...over,
 });

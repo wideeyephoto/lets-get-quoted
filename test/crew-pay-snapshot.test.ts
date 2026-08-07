@@ -14,6 +14,10 @@ const entry = (over: Partial<CrewPayRow['entries'][number]> = {}) => ({
   hours: 4,
   rate: 45,
   amount: 180,
+  // Required on LaborEntryView, and null is the meaningful default: these
+  // fixtures are well-formed entries, and null is how "nothing wrong with it"
+  // is spelled. Omitting it made every entry() call a type error.
+  issue: null,
   ...over,
 });
 

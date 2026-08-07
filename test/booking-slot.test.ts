@@ -6,14 +6,14 @@ const days: BookingDay[] = [
     dateKey: '2026-08-04',
     dayLabel: 'Tuesday, Aug 4',
     slots: [
-      { time: '08:00', label: 'Morning · 8:00 AM' },
-      { time: '13:00', label: 'Afternoon · 1:00 PM' },
+      { time: '08:00', endTime: '12:00', label: 'Morning · 8:00 AM' },
+      { time: '13:00', endTime: '17:00', label: 'Afternoon · 1:00 PM' },
     ],
   },
   {
     dateKey: '2026-08-05',
     dayLabel: 'Wednesday, Aug 5',
-    slots: [{ time: '13:00', label: 'Afternoon · 1:00 PM' }], // morning already taken
+    slots: [{ time: '13:00', endTime: '17:00', label: 'Afternoon · 1:00 PM' }], // morning already taken
   },
 ];
 

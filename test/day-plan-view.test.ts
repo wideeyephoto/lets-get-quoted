@@ -228,6 +228,19 @@ describe('costing straight off the serialized payload', () => {
     anchor: 'home_base',
     lockedCount: 0,
     filteredOutCount: 0,
+    // Eight fields the payload gained after this fixture was written: the
+    // anchor's provenance, the day's non-job stops and the place book behind
+    // them, the remembered last stop, and the reschedule-text state. None
+    // affect what this describe() costs, but a payload missing them is not a
+    // DayPlanPayload — and the point of typing the fixture is to notice.
+    anchorSource: 'business',
+    anchorCrewName: null,
+    routeStops: [],
+    savedPlaces: [],
+    preferredLastId: null,
+    businessName: 'BrokePipes',
+    rescheduleAvailable: false,
+    pendingRescheduleJobIds: [],
   };
 
   it('rebuilds the matrix so a reorder is costed for real', () => {

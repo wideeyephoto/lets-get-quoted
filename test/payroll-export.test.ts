@@ -8,7 +8,8 @@ import type { PayType } from '@/lib/pay-types';
 function row(over: Partial<CrewPayRow> & { name: string }): CrewPayRow {
   return {
     crewId: `id-${over.name.replace(/\s+/g, '')}`,
-    name: over.name,
+    // No `name` here: `over` is typed to always carry one, and the `...over`
+    // spread below already sets it. Writing it twice meant the first was dead.
     roleLabel: 'Crew',
     rate: 30,
     rateVaries: false,

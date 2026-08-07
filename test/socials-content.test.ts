@@ -6,14 +6,19 @@ import type { Site } from '@/lib/sites';
 function site(content: Record<string, unknown> = {}): Site {
   return {
     id: 's1', account_id: 'a1', subdomain: 'brokepipes', custom_domain: null,
-    custom_domain_verified_at: null, published: true, template: 'forge',
+    // 'forge' is a THEME name, not a template — it never appears in
+    // TemplateType. And portal_mode is light|dark; 'quote' was from an older
+    // shape. The `as Site` cast at the bottom is gone with them: it was
+    // suppressing exactly these two, and a fixture that has to be cast to
+    // become its own type has stopped standing in for one.
+    custom_domain_verified_at: null, published: true, template: 'carbon',
     header_font: null, button_style: null, accent_override: null,
     company_name: 'BrokePipes', headline: 'Fast, honest plumbing', tagline: null,
     phone: '555-0100', license: null, hours: null, service_area: 'Detroit, MI',
     logo_url: null, hero_url: null, seo_title: null, seo_description: null,
-    sections: {}, content, chrome: {}, reviews_cache: null, portal_mode: 'quote',
+    sections: {}, content, chrome: {}, reviews_cache: null, portal_mode: 'light',
     updated_at: '2026-08-03T00:00:00.000Z',
-  } as Site;
+  };
 }
 
 describe('parseSocials — the last gate before a URL is published', () => {

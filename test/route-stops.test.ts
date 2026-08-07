@@ -18,6 +18,9 @@ const stop = (over: Partial<RouteStop> = {}): RouteStop => ({
   account_id: 'acct',
   crew_id: null,
   saved_place_id: null,
+  // Required and nullable: set only when the stop is an estimate visit a lead
+  // accepted by text. Null is the ordinary case this fixture models.
+  lead_id: null,
   scheduled_for: '2026-07-30',
   scheduled_time: null,
   label: 'County dump',

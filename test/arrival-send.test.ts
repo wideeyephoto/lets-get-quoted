@@ -7,7 +7,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const smsOutcome = { value: { status: 'sent', sid: 'SM123' } as { status: string; sid?: string; error?: string } };
 const sentMessages: string[] = [];
-const feedEvents: Array<{ kind: string; title: string; body: string; author: string; meta: unknown }> = [];
+// `visibility` belongs here: createJobFeedEvent takes it, these tests assert on
+// it, and leaving it off the fixture type meant every one of those assertions
+// was a type error nothing was checking.
+const feedEvents: Array<{ kind: string; title: string; body: string; author: string; meta: unknown; visibility?: string }> = [];
 
 vi.mock('@/lib/sms', () => ({
   sendArrivalSms: vi.fn(async ({ message }: { message: string }) => {
@@ -30,6 +33,24 @@ const JOB = 'job-1';
 const PERMS = { send: true, shareLocation: true, viewContact: true, reschedule: true };
 
 type Row = Record<string, unknown>;
+
+/**
+ * What the tests need back from the fake, separately from what the code under
+ * test needs it to be.
+ *
+ * fakeDb used to return `as never`. That satisfied the client parameter — never
+ * is assignable to anything — but it also made `db.writes` a property access on
+ * never, so every assertion about what hit the database was a type error. The
+ * intersection below keeps both halves honest: `writes` and `active` stay typed
+ * for the assertions, and the whole thing is still accepted where a Supabase
+ * client is expected. Parameters<> rather than importing SupabaseClient, so this
+ * tracks the real signature if it ever changes.
+ */
+type FakeDb = {
+  writes: Array<{ table: string; op: 'insert' | 'update'; values: Row }>;
+  readonly active: Row | null;
+};
+type FakeClient = FakeDb & Parameters<typeof sendArrival>[0];
 
 /**
  * A fake PostgREST client, only as clever as these tests need. It records every
@@ -79,7 +100,7 @@ function fakeDb(options: { active?: Row | null; account?: Row } = {}) {
         update: (values: Row) => builder(table, 'update', values),
       };
     },
-  } as never;
+  } as unknown as FakeClient;
 }
 
 beforeEach(() => {

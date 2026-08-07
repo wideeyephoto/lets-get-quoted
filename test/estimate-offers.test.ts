@@ -115,6 +115,10 @@ describe('findPlacements', () => {
 });
 
 describe('offerWindow', () => {
+  // addedMinutes is what the whole day grows by — the detour plus the visit and
+  // buffer. offerWindow does not read it, but Placement requires it, and a
+  // fixture that omits a required field is a fixture that stopped modelling the
+  // thing it stands in for.
   const base = {
     index: 1,
     afterStopId: 'a',
@@ -122,6 +126,7 @@ describe('offerWindow', () => {
     beforeStopLabel: 'b',
     detourMiles: 1,
     detourMinutes: 10,
+    addedMinutes: 55,
   };
 
   it('sizes the window to the gap rather than using a fixed band', () => {

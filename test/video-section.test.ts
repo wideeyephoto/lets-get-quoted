@@ -12,7 +12,9 @@ const YT = 'dQw4w9WgXcQ';
 const FILE = 'https://xyz.supabase.co/storage/v1/object/public/site-videos/acct/clip.mp4';
 
 function video(overrides: Partial<SiteVideoItem> = {}): SiteVideoItem {
-  return { id: 'v1', url: FILE, posterUrl: '', label: '', duration: 0, quote: '', author: '', authorLabel: '', ...overrides };
+  // playbackWarning and uploadedAt are required and both use '' for "nothing to
+  // say" — '' is a real value on this type, not a placeholder for a missing one.
+  return { id: 'v1', url: FILE, posterUrl: '', label: '', duration: 0, playbackWarning: '', uploadedAt: '', quote: '', author: '', authorLabel: '', ...overrides };
 }
 
 describe('video section defaults', () => {

@@ -17,7 +17,14 @@
  * A per-person value of null means "use the account's figure" — 0 is a real and
  * different answer, so it can't stand in for "not set".
  */
-export function resolveBurdenPct(crewBurdenPct: number | null | undefined, accountDefaultPct: number | null | undefined): number {
+// `string` is in the signature because it is in the data. These values arrive
+// from Postgres numerics and from form fields, both of which hand back strings,
+// and toFiniteOrNull was written for exactly that — its `value === ''` branch
+// only means anything if a string can reach it. The narrower `number | null |
+// undefined` described a contract the callers were already breaking and the
+// implementation was already handling, which left the tests covering that
+// behaviour unable to compile.
+export function resolveBurdenPct(crewBurdenPct: number | string | null | undefined, accountDefaultPct: number | string | null | undefined): number {
   const own = toFiniteOrNull(crewBurdenPct);
   if (own !== null) return clampBurden(own);
   return clampBurden(toFiniteOrNull(accountDefaultPct) ?? DEFAULT_BURDEN_PCT);
@@ -97,7 +104,7 @@ export type LineMargin = {
  * every un-costed line at a perfect 100% margin, which is both wrong and
  * flattering — the two properties that make a number get believed.
  */
-export function lineMargin(unitPrice: number | null | undefined, unitCost: number | null | undefined): LineMargin {
+export function lineMargin(unitPrice: number | string | null | undefined, unitCost: number | string | null | undefined): LineMargin {
   const price = toFiniteOrNull(unitPrice);
   const cost = toFiniteOrNull(unitCost);
   if (price === null || cost === null || price <= 0) return { margin: null, profit: null, known: false };

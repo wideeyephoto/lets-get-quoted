@@ -26,7 +26,12 @@ describe('the customer-login link on a contractor site', () => {
     expect(getPortalNavLink({ clientPortal: { navEnabled: false } })).toBeNull();
     const stored = mergeSiteContent({}, { clientPortal: { navEnabled: false, navLabel: '' } });
     expect(getPortalNavLink(stored)).toBeNull();
-    expect(getPortalNavLink(mergeSiteContent(stored, { headline: 'Edited elsewhere' }))).toBeNull();
+    // An unrelated edit elsewhere in the builder must not switch the portal nav
+    // back on. `headline` was used here and is not a top-level content key —
+    // it lives inside a section — so the merge was being handed a field that
+    // does not exist. phonePublic is a real top-level toggle and makes the same
+    // point: something else changed, this stayed off.
+    expect(getPortalNavLink(mergeSiteContent(stored, { phonePublic: true }))).toBeNull();
   });
 
   it('only stays on for a real true, never a truthy value', () => {

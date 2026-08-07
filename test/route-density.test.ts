@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { rankByProximity } from '@/lib/route-density';
 import type { BookingDay } from '@/lib/booking';
 
-const slot = [{ time: '08:00', label: 'Morning' }];
+const slot = [{ time: '08:00', endTime: '12:00', label: 'Morning' }];
 const days: BookingDay[] = [
   { dateKey: '2026-08-04', dayLabel: 'Tue', slots: slot }, // far anchor (80mi)
   { dateKey: '2026-08-05', dayLabel: 'Wed', slots: slot }, // near anchor (3mi)
