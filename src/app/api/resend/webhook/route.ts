@@ -63,6 +63,21 @@ export async function POST(request: Request) {
 
   if (!secret) {
     console.error('RESEND_WEBHOOK_SECRET is not configured; rejecting Resend webhook');
+    // Logged, not just console.error'd. This is the likeliest webhook failure
+    // there is — it is the state between registering the endpoint at Resend and
+    // the env var reaching a deployment — and it was the one state the Webhook
+    // failures panel could not show. Every other branch here writes a row, so an
+    // empty panel read as "no webhook problems" while every delivery was being
+    // rejected with a 500.
+    //
+    // Resend retries, so a sustained misconfiguration writes repeat rows. That
+    // is the right trade: identical rows read as one problem in the panel, and
+    // the alternative is silence about a webhook that is dropping every event.
+    await logWebhookFailure({
+      source: 'resend',
+      errorMessage: 'RESEND_WEBHOOK_SECRET is not set — every delivery is being rejected',
+      payloadExcerpt: rawBody.slice(0, 500),
+    });
     return NextResponse.json({ error: 'Webhook not configured.' }, { status: 500 });
   }
 
