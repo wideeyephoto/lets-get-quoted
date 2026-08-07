@@ -8,6 +8,12 @@ import {
   issueAccountCreditAction,
   lockQuickStopAction,
   unlockQuickStopAction,
+  resetVerificationAction,
+  restrictPayoutsAction,
+  unrestrictPayoutsAction,
+  changePlanAction,
+  resendOnboardingAction,
+  signOutAllSessionsAction,
   deleteAccountAction,
 } from './actions';
 
@@ -16,11 +22,15 @@ export default function AccountActions({
   suspended,
   quickStopLockedUntil,
   businessName,
+  plan,
+  payoutsRestricted,
 }: {
   accountId: string;
   suspended: boolean;
   quickStopLockedUntil: string | null;
   businessName: string;
+  plan: string;
+  payoutsRestricted: boolean;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -72,6 +82,65 @@ export default function AccountActions({
             <button type="submit" className="btn danger">Suspend account</button>
           </form>
         )}
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        <form action={changePlanAction.bind(null, accountId)} className={styles.formStack}>
+          <label>Plan</label>
+          <div className={styles.searchRow} style={{ margin: 0 }}>
+            <select name="plan" defaultValue={plan} className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
+              <option value="free">Free</option>
+              <option value="pro">Pro</option>
+              <option value="crew_plus">Crew+</option>
+            </select>
+            <button type="submit" className="btn secondary">Change plan</button>
+          </div>
+        </form>
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        <form action={resetVerificationAction.bind(null, accountId)} className={styles.formStack}>
+          <label>Reset payment verification (clears the Stripe Connect link; the owner must reconnect)</label>
+          <button type="submit" className="btn secondary">Reset verification</button>
+        </form>
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        {payoutsRestricted ? (
+          <form action={unrestrictPayoutsAction.bind(null, accountId)} className={styles.formStack}>
+            <label>Payouts are restricted for this account.</label>
+            <button type="submit" className="btn primary">Lift payout restriction</button>
+          </form>
+        ) : (
+          <form action={restrictPayoutsAction.bind(null, accountId)} className={styles.formStack}>
+            <label>Restrict payouts (keeps dashboard access, blocks Connect charges)</label>
+            <input className={styles.input} name="reason" placeholder="Reason (shown internally)" />
+            <button type="submit" className="btn danger">Restrict payouts</button>
+          </form>
+        )}
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        <form action={resendOnboardingAction.bind(null, accountId)} className={styles.formStack}>
+          <label>Resend the onboarding link to the owner&rsquo;s email</label>
+          <button type="submit" className="btn secondary">Resend onboarding</button>
+        </form>
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        <form action={signOutAllSessionsAction.bind(null, accountId)} className={styles.formStack}>
+          <label>Sign out everywhere (blocks new sign-ins for 24h; does not revoke a still-valid access token already in hand)</label>
+          <button type="submit" className="btn secondary">Sign out all sessions</button>
+        </form>
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        <div className={styles.formStack}>
+          <label>Securely view the customer experience</label>
+          <button type="button" className="btn secondary" disabled title="Not available yet — impersonation hasn't been built.">
+            View as customer (coming soon)
+          </button>
+        </div>
       </section>
 
       <section className={`${styles.panel} ${styles.dangerZone}`}>

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { ensureAccountMembership } from '@/lib/auth';
+import { recordLoginEvent } from '@/lib/login-events';
+import { clientIpFrom } from '@/lib/rate-limit';
 import { safeNextPath } from '@/lib/app-origin';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 
@@ -40,7 +42,14 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         try {
-          await ensureAccountMembership(user.id);
+          const membership = await ensureAccountMembership(user.id);
+          await recordLoginEvent({
+            accountId: membership.account_id,
+            userId: user.id,
+            method: 'oauth',
+            ip: clientIpFrom(request.headers),
+            userAgent: request.headers.get('user-agent'),
+          });
         } catch (err) {
           console.error('ensureAccountMembership error in callback:', err);
           throw err;

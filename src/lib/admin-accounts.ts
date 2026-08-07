@@ -3,6 +3,10 @@ import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo, type TierInfo } from '@/lib/stripe';
 import { getAccountOwnerEmail } from '@/lib/email';
 import { getAccountCreditBalanceCents } from '@/lib/admin';
+import { listLoginEvents, type LoginEvent } from '@/lib/login-events';
+import { listAccountNotes, listAccountTags, type AccountNote, type AccountTag } from '@/lib/account-notes';
+import { listAccountAttachments, type AccountAttachment } from '@/lib/account-attachments';
+import { listPrivacyRequests, type PrivacyRequest } from '@/lib/privacy-requests';
 
 // Data layer for the admin console's account views. All reads use the passed-in
 // service-role client (RLS is owner-scoped, so a session client can't cross
@@ -117,6 +121,11 @@ export type AdminAccountDetail = {
   recentPayments: AdminPaymentRow[];
   creditBalanceCents: number;
   quickStop: { active: number; total: number; noShows: number };
+  loginEvents: LoginEvent[];
+  notes: AccountNote[];
+  tags: AccountTag[];
+  attachments: AccountAttachment[];
+  privacyRequests: PrivacyRequest[];
 };
 
 const THIRTY_DAYS = 30 * 24 * 3600 * 1000;
@@ -126,26 +135,48 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
   if (error || !account) return null;
 
   const since = new Date(Date.now() - THIRTY_DAYS).toISOString();
-  const [ownerEmail, siteRes, trailingVolume, leads30d, jobsActive, paidRows, disputes, recentPayments, creditBalanceCents, esActive, esTotal, esNoShows] =
-    await Promise.all([
-      getAccountOwnerEmail(admin, id).catch(() => null),
-      admin.from('sites').select('company_name, phone').eq('account_id', id).maybeSingle(),
-      getTrailingVolume(id).catch(() => 0),
-      admin.from('leads').select('id', { count: 'exact', head: true }).eq('account_id', id).gte('created_at', since),
-      admin.from('jobs').select('id', { count: 'exact', head: true }).eq('account_id', id).in('status', ['new_lead', 'in_progress']),
-      admin.from('payments').select('amount').eq('account_id', id).eq('status', 'paid').gte('paid_at', since),
-      admin.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', id).eq('status', 'disputed'),
-      admin
-        .from('payments')
-        .select('id, label, amount, status, kind, created_at, paid_at, refunded_amount')
-        .eq('account_id', id)
-        .order('created_at', { ascending: false })
-        .limit(12),
-      getAccountCreditBalanceCents(admin, id),
-      admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id).in('status', ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived']),
-      admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id),
-      admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id).eq('status', 'no_show_confirmed'),
-    ]);
+  const [
+    ownerEmail,
+    siteRes,
+    trailingVolume,
+    leads30d,
+    jobsActive,
+    paidRows,
+    disputes,
+    recentPayments,
+    creditBalanceCents,
+    esActive,
+    esTotal,
+    esNoShows,
+    loginEvents,
+    notes,
+    tags,
+    attachments,
+    privacyRequests,
+  ] = await Promise.all([
+    getAccountOwnerEmail(admin, id).catch(() => null),
+    admin.from('sites').select('company_name, phone').eq('account_id', id).maybeSingle(),
+    getTrailingVolume(id).catch(() => 0),
+    admin.from('leads').select('id', { count: 'exact', head: true }).eq('account_id', id).gte('created_at', since),
+    admin.from('jobs').select('id', { count: 'exact', head: true }).eq('account_id', id).in('status', ['new_lead', 'in_progress']),
+    admin.from('payments').select('amount').eq('account_id', id).eq('status', 'paid').gte('paid_at', since),
+    admin.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', id).eq('status', 'disputed'),
+    admin
+      .from('payments')
+      .select('id, label, amount, status, kind, created_at, paid_at, refunded_amount')
+      .eq('account_id', id)
+      .order('created_at', { ascending: false })
+      .limit(12),
+    getAccountCreditBalanceCents(admin, id),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id).in('status', ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived']),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id).eq('status', 'no_show_confirmed'),
+    listLoginEvents(admin, id, 10),
+    listAccountNotes(admin, id),
+    listAccountTags(admin, id),
+    listAccountAttachments(admin, id),
+    listPrivacyRequests(admin, id),
+  ]);
 
   const paidVolume30d = (paidRows.data ?? []).reduce((sum, r) => sum + (Number((r as { amount: number }).amount) || 0), 0);
 
@@ -164,5 +195,10 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
     recentPayments: (recentPayments.data ?? []) as AdminPaymentRow[],
     creditBalanceCents,
     quickStop: { active: esActive.count ?? 0, total: esTotal.count ?? 0, noShows: esNoShows.count ?? 0 },
+    loginEvents,
+    notes,
+    tags,
+    attachments,
+    privacyRequests,
   };
 }

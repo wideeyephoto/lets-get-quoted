@@ -212,3 +212,114 @@
 .formStack { display: flex; flex-direction: column; gap: 0.6rem; }
 .formStack label { font-size: 0.78rem; color: var(--ink-mod-grey-6); font-weight: 600; }
 .emptyState { text-align: center; padding: 2.4rem 1rem; color: var(--ink-mod-grey-2); font-size: 0.9rem; }
+
+/* Universal Search (sidebar SearchBox + its live dropdown) */
+.searchBox { position: relative; }
+.searchBoxInput {
+  width: 100%;
+  background: rgba(var(--tint), 0.05);
+  border: 1px solid var(--edge-t14);
+  border-radius: 0.55rem;
+  color: var(--text);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.84rem;
+}
+.searchBoxInput:focus { outline: 2px solid rgba(255, 122, 33, 0.5); outline-offset: 1px; }
+
+.searchDropdown {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--chrome);
+  border: 1px solid var(--edge-t14);
+  border-radius: 0.7rem;
+  padding: 0.35rem;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.searchDropdownLabel {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mod-grey-5);
+  margin: 0.3rem 0.5rem 0.15rem;
+}
+.searchDropdownEmpty { font-size: 0.8rem; color: var(--ink-mod-grey-2); padding: 0.5rem; margin: 0; }
+
+.searchResult {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.84rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.searchResult:hover, .searchResultActive { background: rgba(255, 122, 33, 0.12); }
+.searchResultSub { font-size: 0.72rem; color: var(--ink-mod-grey-2); }
+
+.searchSeeAll {
+  width: 100%;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--rule-t07);
+  margin-top: 0.2rem;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent, #ff7a21);
+  cursor: pointer;
+}
+.searchSeeAll:hover { color: var(--accent-2, #ffd166); }
+
+/* Command Center: core-metrics row + the customizable alert-card board */
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.4rem;
+}
+.metricTrend { font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.metricTrend.good { color: var(--good); }
+.metricTrend.bad { color: var(--bad); }
+.metricTrend.flat { color: var(--ink-mod-grey-2); }
+
+.boardHead { display: flex; justify-content: flex-end; gap: 0.5rem; margin-bottom: 0.9rem; }
+
+.boardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+.boardCard { position: relative; }
+.moveBtns { display: flex; gap: 0.3rem; position: absolute; top: 1.1rem; right: 1.2rem; }
+.moveBtn {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.4rem;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.05);
+  color: var(--ink-mod-grey-7);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.moveBtn:hover:not(:disabled) { border-color: var(--edge-t28); color: var(--text); }
+.moveBtn:disabled { opacity: 0.35; cursor: not-allowed; }

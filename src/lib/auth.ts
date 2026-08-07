@@ -180,22 +180,44 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
 // ADMIN_EMAILS is a comma-separated allowlist of letsgetquoted.com staff emails
 // allowed into the console. This keeps "who works here" out of the accounts a
 // contractor could ever see, and makes granting/revoking access a config change.
-function adminAllowlist(): string[] {
-  return (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
+//
+// Each entry is either a bare email (role defaults to 'admin') or "email:role".
+// Role is NOT an authorization boundary — every listed email is fully trusted
+// for every /admin server action, same as before this existed. It only drives
+// which Command Center cards a staff member sees by default and which nav
+// sections are shown. A real permissions system is a bigger, separate change.
+export type StaffRole = 'admin' | 'support' | 'finance';
+const STAFF_ROLES: StaffRole[] = ['admin', 'support', 'finance'];
+
+function adminAllowlist(): Map<string, StaffRole> {
+  const map = new Map<string, StaffRole>();
+  for (const entry of (process.env.ADMIN_EMAILS ?? '').split(',')) {
+    const [emailPart, rolePart] = entry.trim().split(':');
+    const email = emailPart?.trim().toLowerCase();
+    if (!email) continue;
+    const role = rolePart?.trim().toLowerCase() as StaffRole;
+    map.set(email, STAFF_ROLES.includes(role) ? role : 'admin');
+  }
+  return map;
 }
 
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return adminAllowlist().includes(email.trim().toLowerCase());
+  return adminAllowlist().has(email.trim().toLowerCase());
+}
+
+// Bare emails and unrecognized role tokens both resolve to 'admin' — the same
+// full-access default every ADMIN_EMAILS entry had before roles existed.
+export function staffRoleFor(email: string | null | undefined): StaffRole {
+  if (!email) return 'admin';
+  return adminAllowlist().get(email.trim().toLowerCase()) ?? 'admin';
 }
 
 export type AdminContext = {
   admin: ReturnType<typeof createAdminClient>;
   adminEmail: string;
   userId: string;
+  role: StaffRole;
 };
 
 // Guard for every /admin route. Requires a logged-in user whose email is on the
@@ -212,5 +234,6 @@ export async function requireAdmin(): Promise<AdminContext> {
     notFound();
   }
 
-  return { admin: createAdminClient(), adminEmail: user.email!.toLowerCase(), userId: user.id };
+  const adminEmail = user.email!.toLowerCase();
+  return { admin: createAdminClient(), adminEmail, userId: user.id, role: staffRoleFor(adminEmail) };
 }

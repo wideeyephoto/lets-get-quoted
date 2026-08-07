@@ -6,6 +6,7 @@ import { logInboundMessage } from '@/lib/messages';
 import { confirmUpcomingAppointment } from '@/lib/reminders';
 import { resolveOfferReply } from '@/lib/estimate-offers-data';
 import { resolveRescheduleReply } from '@/lib/reschedule-offers-data';
+import { logWebhookFailure } from '@/lib/webhook-failures';
 
 export const runtime = 'nodejs';
 
@@ -26,9 +27,38 @@ function twiml(message?: string) {
 }
 
 export async function POST(request: Request) {
-  if (!request.headers.get('x-twilio-signature')) return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
+  if (!request.headers.get('x-twilio-signature')) {
+    await logWebhookFailure({ source: 'twilio_inbound', errorMessage: 'Missing x-twilio-signature header' });
+    return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
+  }
   const data = await request.formData();
-  if (!validateTwilioSignature(request, data)) return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
+  if (!validateTwilioSignature(request, data)) {
+    await logWebhookFailure({
+      source: 'twilio_inbound',
+      referenceId: String(data.get('MessageSid') || '') || null,
+      errorMessage: 'Signature validation failed',
+    });
+    return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
+  }
+  // A signature-verified request that then throws mid-dispatch still has to
+  // come back as valid, empty TwiML — never an error status — or Twilio will
+  // retry the whole webhook and a customer could get a duplicate auto-reply.
+  // Same reasoning as the individual try/catches below, just covering the
+  // rest of the body too.
+  try {
+    return await dispatchInboundSms(data);
+  } catch (err) {
+    console.error('Twilio inbound webhook handler threw:', err);
+    await logWebhookFailure({
+      source: 'twilio_inbound',
+      referenceId: String(data.get('MessageSid') || '') || null,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    return twiml();
+  }
+}
+
+async function dispatchInboundSms(data: FormData): Promise<NextResponse> {
   const phone = normalizeUsPhone(String(data.get('From') || ''));
   // The number they texted. On one shared platform number this tells us nothing
   // yet, but it is the ONLY signal that identifies a contractor exactly, so it

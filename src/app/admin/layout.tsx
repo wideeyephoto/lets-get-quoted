@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { requireAdmin } from '@/lib/auth';
 import AdminNav from './AdminNav';
+import SearchBox from './SearchBox';
 import styles from './admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </span>
           <span className={styles.staffTag}>Staff</span>
         </div>
+        <SearchBox />
         <AdminNav />
         <div className={styles.sidebarFoot}>
           Signed in as

@@ -152,6 +152,10 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
             },
           ]
         : undefined,
+      tags: [
+        { name: 'kind', value: 'invoice' },
+        ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+      ],
     });
 
     if (result.error) {
@@ -207,6 +211,10 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
       cta: { label: 'View & approve your quote', url: input.quoteUrl },
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'client_quote' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -247,6 +255,7 @@ export async function sendContractorAlertEmail(input: {
     subject: input.subject,
     html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:${accent};font-weight:700;letter-spacing:0.04em">${eyebrow}</p><h1 style="font-size:24px;margin:0 0 16px">${escapeHtml(input.heading)}</h1>${paragraphs}<p style="margin-top:24px"><a href="${escapeHtml(input.ctaUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">${escapeHtml(input.ctaLabel)}</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
     reply_to: 'hello@letsgetquoted.com',
+    tags: [{ name: 'kind', value: 'contractor_alert' }],
   });
 
   if (result.error) {
@@ -451,6 +460,10 @@ export async function sendQuoteFollowupEmail(input: {
       cta: { label: copy.cta, url: input.url },
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'quote_followup' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -502,6 +515,10 @@ export async function sendSelectionRequestEmail(input: {
       cta: { label: input.count === 1 ? 'Make your choice' : 'Make your choices', url: input.url },
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'selection_request' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -544,6 +561,10 @@ export async function sendReviewRequestEmail(input: {
     }),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
+    tags: [
+      { name: 'kind', value: 'review_request' },
+      { name: 'account_id', value: input.accountId },
+    ],
   });
 
   if (result.error) {
@@ -586,6 +607,10 @@ export async function sendRebookInviteEmail(input: {
     }),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
+    tags: [
+      { name: 'kind', value: 'rebook_invite' },
+      { name: 'account_id', value: input.accountId },
+    ],
   });
 
   if (result.error) {
@@ -627,6 +652,10 @@ export async function sendAppointmentReminderEmail(input: {
       paragraphs,
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'appointment_reminder' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -669,6 +698,10 @@ export async function sendBookingConfirmationEmail(input: {
       paragraphs,
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'booking_confirmation' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -714,6 +747,10 @@ export async function sendClientPortalLinkEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">The link works for 90 days and only opens your own records. Do not forward it — anyone with it can see your job history. If you did not ask for this, you can ignore it; nothing has changed on your account.</p>`,
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'client_portal_link' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -750,6 +787,10 @@ export async function sendCardUpdateEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p>`,
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'card_update' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -789,6 +830,10 @@ export async function sendCardSetupEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p>`,
     }),
     reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'card_setup' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
   });
 
   if (result.error) {
@@ -862,6 +907,10 @@ export async function sendCampaignEmail(input: {
     html: await renderCampaignEmailHtml(input),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
+    tags: [
+      { name: 'kind', value: 'campaign' },
+      { name: 'account_id', value: input.accountId },
+    ],
   });
 
   if (result.error) {
@@ -985,6 +1034,7 @@ export async function sendDailyDigestEmail(input: {
     subject: `${input.isTest ? '[Test] ' : ''}Your ${input.businessName} daily digest`,
     html,
     reply_to: 'hello@letsgetquoted.com',
+    tags: [{ name: 'kind', value: 'daily_digest' }],
   });
   if (result.error) {
     console.error('Failed to send daily digest email:', result.error);
@@ -1022,6 +1072,7 @@ export async function sendLeadNotificationEmail(input: {
     subject,
     html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${banner}<p style="color:#b45309;font-weight:700">${eyebrow}</p><h1 style="font-size:26px">${escapeHtml(input.lead.name)} requested a quote</h1><p>${contact}</p><p><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b">${escapeHtml(input.lead.message)}</div><p style="margin-top:24px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:white;text-decoration:none;font-weight:700">Open quote request in ${escapeHtml(input.businessName)}</a></p></div>`,
     reply_to: input.lead.email || 'hello@letsgetquoted.com',
+    tags: [{ name: 'kind', value: 'lead_notification' }],
   });
   if (result.error) throw new Error(result.error.message);
 }
@@ -1045,6 +1096,7 @@ export async function sendContactMessageEmail(input: {
     subject: `[Contact] ${subjectLine} — ${input.fromName}`,
     html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">CONTACT FORM</p><h1 style="font-size:22px;margin:0 0 12px">${escapeHtml(input.fromName)} sent a message</h1><p style="margin:0 0 6px"><strong>Email:</strong> ${escapeHtml(input.fromEmail)}</p>${input.subject ? `<p style="margin:0 0 6px"><strong>Subject:</strong> ${escapeHtml(input.subject)}</p>` : ''}<div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.message).replace(/\n/g, '<br/>')}</div></div>`,
     reply_to: input.fromEmail,
+    tags: [{ name: 'kind', value: 'contact_message' }],
   });
   if (result.error) {
     console.error('Failed to send contact message email:', result.error);
