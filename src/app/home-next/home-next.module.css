@@ -1,0 +1,145 @@
+/* Scoped to the candidate homepage.
+
+   Deliberately a CSS module and not an addition to globals.css: every class in
+   globals is shared with the live homepage, and a page being judged against /
+   must not be able to change / while the judging happens. Everything this page
+   reuses unchanged — .hero-grid, .section-block, .compare-table, .pricing-tier,
+   .btn, .eyebrow, .gradient-text — it reuses from globals, read-only. Only the
+   genuinely new pieces are here. */
+
+/* ---- the draft banner ---------------------------------------------------- */
+
+.draftBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: rgba(255, 122, 33, 0.08);
+  border-bottom: 1px solid rgba(255, 122, 33, 0.24);
+}
+.draftBar a { color: var(--text); font-weight: 700; }
+.draftBar a:hover { color: var(--accent-2); }
+.draftTag {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--on-accent);
+  background: var(--accent-2);
+  padding: 0.14rem 0.45rem;
+  border-radius: 999px;
+}
+.draftLink { white-space: nowrap; }
+
+/* ---- the hero, rebuilt for comprehension --------------------------------- */
+
+/* The audience label. It is the first thing on the page for a reason: the live
+   page's first use of the word "contractor" is two and a half screens down, in
+   the eyebrow of the comparison band. */
+.audience { margin: 0 0 0.15rem; }
+
+/* globals sets `h1 { max-width: 11ch; font-size: clamp(2.6rem, 5vw, 5rem) }`,
+   which is tuned for a four-word slogan and stacks a sentence into a tower. A
+   headline that has to NAME the product needs more words and therefore less
+   size — at these values the longer headline still lands shorter on a phone
+   than the live one does, because six tight lines beat five enormous ones. */
+.h1 {
+  font-size: clamp(1.8rem, 3.3vw, 3.1rem);
+  line-height: 1.06;
+  max-width: 22ch;
+  margin: 0.3rem 0 0.9rem;
+}
+
+/* Two sentences, two lines. Left inline they run together and the break lands
+   mid-clause — "…from one place. Pay / nothing until a homeowner / pays you."
+   The second sentence is the differentiator and has to read as its own claim. */
+.h1 span { display: block; }
+
+.lede {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 54ch;
+  margin: 0;
+}
+
+/* The disambiguation, and the single highest-value line on the page.
+   "Let's Get Quoted" reads, to somebody who has never heard of it, like
+   somewhere a HOMEOWNER goes to get quotes. A wrong first guess is not
+   recoverable further down; it has to be corrected in the hero or not at all.
+   Styled as an aside rather than a claim — it is orientation, not marketing. */
+.notThis {
+  margin: 0.9rem 0 0;
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--cedge-orange-8, rgba(255, 122, 33, 0.45));
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+  max-width: 54ch;
+}
+
+/* ---- what you actually get ----------------------------------------------- */
+
+.whatBand { margin-top: 1.6rem; }
+
+.whatGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+.whatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+}
+
+.whatIcon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  color: var(--accent);
+  border: 1px solid rgba(255, 122, 33, 0.28);
+  background: rgba(255, 122, 33, 0.09);
+}
+
+/* globals sets h2 to clamp(1.8rem, 3vw, 2.8rem) — a section headline size.
+   These are card titles and have to be told so. */
+.whatTitle {
+  font-size: 1rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0.15rem 0 0;
+  max-width: none;
+}
+
+.whatBody {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+@media (max-width: 720px) {
+  .draftBar { font-size: 0.8rem; padding: 0.5rem 0.9rem; gap: 0.45rem; }
+  .notThis { font-size: 0.85rem; }
+  /* The banner is scaffolding, not the design. On a phone it was taking three
+     lines off the top of the very fold this draft exists to improve, which
+     would have made the page look worse at exactly the moment it is judged. */
+  .draftWhat { display: none; }
+}

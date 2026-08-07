@@ -1,0 +1,114 @@
+/* The side-by-side rig. Deliberately plain: any styling with a point of view
+   competes with the two pages it is supposed to be showing you. */
+
+.page {
+  min-height: 100vh;
+  padding: 1.4rem clamp(0.75rem, 2vw, 1.6rem) 3rem;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--gold-ink);
+  margin: 0 0 0.2rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0;
+  max-width: none;
+}
+
+.controls { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.widthBtn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.widthBtn:hover { border-color: rgba(255, 122, 33, 0.4); color: var(--text); }
+.widthBtn.on {
+  background: rgba(255, 122, 33, 0.14);
+  border-color: rgba(255, 122, 33, 0.5);
+  color: var(--text);
+}
+.widthPx {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-2);
+}
+.widthBtn.on .widthPx { color: var(--gold-ink); }
+
+.note {
+  margin: 0 0 1.1rem;
+  font-size: 0.84rem;
+  color: var(--muted-2);
+  max-width: 78ch;
+}
+
+.row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.pane { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+
+.paneHead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.paneLabel { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.paneSub { font-size: 0.75rem; color: var(--muted-2); font-family: var(--font-mono), monospace; }
+.paneOpen { font-size: 0.75rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
+.paneOpen:hover { color: var(--accent-2); }
+
+/* The stage is the SCALED footprint; the iframe inside it stays at true device
+   size and is transformed down, so the page inside lays out at the width it
+   thinks it has. Sizing the iframe itself would just make it a narrow desktop. */
+.stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-2);
+}
+
+.frame {
+  border: 0;
+  display: block;
+  transform-origin: top left;
+}
+
+/* Below this the two frames cannot both be useful, so they stack. */
+@media (max-width: 760px) {
+  .row { flex-direction: column; align-items: center; }
+}
