@@ -60,6 +60,7 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
         </p>
       </div>
     `,
+    tags: [{ name: 'kind', value: 'magic_link' }],
   });
 
   if (emailError) {

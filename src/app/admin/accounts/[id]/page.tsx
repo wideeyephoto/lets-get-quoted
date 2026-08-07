@@ -3,8 +3,19 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { getAccountAdminDetail, accountDisplayName } from '@/lib/admin-accounts';
 import { listAdminActions } from '@/lib/admin';
+import { listSupportCases } from '@/lib/support-cases';
+import { accountAttachmentUrl } from '@/lib/account-attachments';
 import styles from '../../admin.module.css';
 import AccountActions from './AccountActions';
+import {
+  addAccountNoteAction,
+  addAccountTagAction,
+  removeAccountTagAction,
+  uploadAccountAttachmentAction,
+  deleteAccountAttachmentAction,
+  logPrivacyRequestAction,
+  resolvePrivacyRequestAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +29,10 @@ function usdCents(cents: number | null | undefined): string {
 function fmtDate(v: unknown): string {
   if (!v || typeof v !== 'string') return '—';
   return new Date(v).toLocaleDateString('en-US', { dateStyle: 'medium' });
+}
+function fmtDateTime(v: unknown): string {
+  if (!v || typeof v !== 'string') return '—';
+  return new Date(v).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
 }
 function bool(v: unknown): boolean {
   return v === true;
@@ -47,11 +62,16 @@ export default async function AdminAccountDetailPage({
   const a = detail.account as Record<string, unknown>;
   const displayName = accountDisplayName({ company_name: detail.site?.company_name ?? null, business_name: (a.business_name as string | null) ?? null });
   const actions = await listAdminActions(admin, { accountId: params.id, limit: 12 });
+  const cases = await listSupportCases(admin, { accountId: params.id, limit: 5 });
+  const attachmentLinks = await Promise.all(
+    detail.attachments.map(async (att) => ({ att, url: await accountAttachmentUrl(att.account_id, att.path) })),
+  );
 
   const suspended = Boolean(a.suspended_at);
   const lockedUntil = a.extra_stop_locked_until && new Date(String(a.extra_stop_locked_until)).getTime() > Date.now() ? String(a.extra_stop_locked_until) : null;
   const paypaused = Boolean(a.connect_disabled_at);
   const connected = bool(a.connect_onboarded);
+  const payoutsRestricted = Boolean(a.payouts_restricted_at);
 
   return (
     <>
@@ -68,6 +88,7 @@ export default async function AdminAccountDetailPage({
           {suspended ? <span className={`${styles.pill} ${styles.bad}`}>Suspended</span> : <span className={`${styles.pill} ${styles.good}`}>Active</span>}
           <span className={`${styles.pill} ${styles.neutral}`}>{String(a.plan ?? 'free')}</span>
           {paypaused ? <span className={`${styles.pill} ${styles.bad}`}>Payouts paused</span> : connected ? <span className={`${styles.pill} ${styles.good}`}>Payouts connected</span> : <span className={`${styles.pill} ${styles.neutral}`}>Payouts not set up</span>}
+          {payoutsRestricted ? <span className={`${styles.pill} ${styles.bad}`}>Payouts restricted</span> : null}
           {lockedUntil ? <span className={`${styles.pill} ${styles.warn}`}>Quick Stop locked</span> : null}
         </div>
       </header>
@@ -126,6 +147,29 @@ export default async function AdminAccountDetailPage({
               </div>
             )}
           </section>
+
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Login & security history</p>
+            {detail.loginEvents.length === 0 ? (
+              <p className={styles.emptyState}>No sign-ins recorded yet.</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead><tr><th>When</th><th>Method</th><th>IP</th><th>Device</th></tr></thead>
+                  <tbody>
+                    {detail.loginEvents.map((e) => (
+                      <tr key={e.id}>
+                        <td className={styles.muted}>{fmtDateTime(e.created_at)}</td>
+                        <td>{e.method}</td>
+                        <td className={styles.muted}>{e.ip || '—'}</td>
+                        <td className={styles.muted} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.user_agent || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
 
         <div>
@@ -152,11 +196,134 @@ export default async function AdminAccountDetailPage({
             </dl>
           </section>
 
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Notes & tags</p>
+            <div className={styles.actionRow} style={{ marginTop: 0, marginBottom: detail.tags.length ? '0.8rem' : 0 }}>
+              {detail.tags.map((t) => (
+                <form key={t.id} action={removeAccountTagAction.bind(null, params.id)} style={{ display: 'inline' }}>
+                  <input type="hidden" name="tag_id" value={t.id} />
+                  <button type="submit" className={`${styles.pill} ${styles.accent}`} style={{ border: 'none', cursor: 'pointer' }} title="Remove tag">{t.tag} ×</button>
+                </form>
+              ))}
+            </div>
+            <form action={addAccountTagAction.bind(null, params.id)} className={styles.searchRow} style={{ margin: '0 0 1rem' }}>
+              <input className={styles.input} name="tag" placeholder="Add a tag" style={{ minWidth: 0, flex: '0 0 200px' }} />
+              <button type="submit" className="btn secondary">Add tag</button>
+            </form>
+
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+            {detail.notes.length === 0 ? (
+              <p className={styles.emptyState}>No notes yet.</p>
+            ) : (
+              <ul className={styles.timeline}>
+                {detail.notes.map((n) => (
+                  <li key={n.id}>
+                    <time>{fmtDateTime(n.created_at)}</time>
+                    <span><span className={styles.timelineActor}>{n.created_by}</span> — {n.body}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={addAccountNoteAction.bind(null, params.id)} className={styles.formStack} style={{ marginTop: '0.8rem' }}>
+              <textarea className={styles.input} name="body" rows={2} placeholder="Add an internal note…" style={{ minWidth: 0, width: '100%', resize: 'vertical' }} />
+              <button type="submit" className="btn secondary">Add note</button>
+            </form>
+          </section>
+
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Attachments</p>
+            {attachmentLinks.length === 0 ? (
+              <p className={styles.emptyState}>No files uploaded.</p>
+            ) : (
+              <ul className={styles.timeline}>
+                {attachmentLinks.map(({ att, url }) => (
+                  <li key={att.id}>
+                    <time>{fmtDateTime(att.created_at)}</time>
+                    <span>
+                      {url ? <a href={url} target="_blank" rel="noreferrer" className={styles.rowLink}>{att.filename}</a> : att.filename}
+                      <span className={styles.muted}> — {att.uploaded_by}{att.size_bytes ? ` · ${Math.round(att.size_bytes / 1024)} KB` : ''}</span>
+                      <form action={deleteAccountAttachmentAction.bind(null, params.id)} style={{ display: 'inline', marginLeft: '0.5rem' }}>
+                        <input type="hidden" name="attachment_id" value={att.id} />
+                        <button type="submit" className={styles.rowLink} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--bad)' }}>Delete</button>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={uploadAccountAttachmentAction.bind(null, params.id)} className={styles.formStack} style={{ marginTop: '0.8rem' }} encType="multipart/form-data">
+              <input type="file" name="file" className={styles.input} />
+              <button type="submit" className="btn secondary">Upload file</button>
+            </form>
+          </section>
+
+          <section className={styles.panel}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.7rem' }}>
+              <p className={styles.panelTitle} style={{ margin: 0 }}>Support cases</p>
+              <Link href={`/admin/cases/new?account_id=${params.id}`} className={styles.rowLink}>New case →</Link>
+            </div>
+            {cases.length === 0 ? (
+              <p className={styles.emptyState}>No cases for this account.</p>
+            ) : (
+              <ul className={styles.timeline}>
+                {cases.map((c) => (
+                  <li key={c.id}>
+                    <time>{new Date(c.created_at).toLocaleDateString('en-US', { dateStyle: 'short' })}</time>
+                    <span>
+                      <Link href={`/admin/cases/${c.id}`} className={styles.rowLink}>{c.subject}</Link>
+                      <span className={styles.muted}> — {c.status}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Privacy requests</p>
+            {detail.privacyRequests.length === 0 ? (
+              <p className={styles.emptyState}>No privacy requests logged.</p>
+            ) : (
+              <ul className={styles.timeline}>
+                {detail.privacyRequests.map((r) => (
+                  <li key={r.id}>
+                    <time>{fmtDateTime(r.created_at)}</time>
+                    <span>
+                      <span className={styles.timelineActor}>{r.kind}</span>
+                      <span className={styles.muted}> — {r.status}{r.details ? `: ${r.details}` : ''}</span>
+                      {r.status === 'open' ? (
+                        <form action={resolvePrivacyRequestAction.bind(null, params.id)} style={{ display: 'inline', marginLeft: '0.5rem' }}>
+                          <input type="hidden" name="request_id" value={r.id} />
+                          <button type="submit" className={styles.rowLink} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>Resolve</button>
+                        </form>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={logPrivacyRequestAction.bind(null, params.id)} className={styles.formStack} style={{ marginTop: '0.8rem' }}>
+              <div className={styles.searchRow} style={{ margin: 0 }}>
+                <select name="kind" defaultValue="access" className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
+                  <option value="access">Access</option>
+                  <option value="deletion">Deletion</option>
+                  <option value="correction">Correction</option>
+                  <option value="other">Other</option>
+                </select>
+                <input className={styles.input} name="details" placeholder="Details (optional)" />
+              </div>
+              <button type="submit" className="btn secondary">Log request</button>
+            </form>
+          </section>
+
           <AccountActions
             accountId={params.id}
             suspended={suspended}
             quickStopLockedUntil={lockedUntil}
             businessName={displayName}
+            plan={String(a.plan ?? 'free')}
+            payoutsRestricted={payoutsRestricted}
           />
 
           <section className={styles.panel}>
@@ -187,11 +354,30 @@ const DONE_MESSAGES: Record<string, string> = {
   es_locked: 'Quick Stop locked for this account.',
   es_unlocked: 'Quick Stop lock cleared.',
   exported: 'Account data exported.',
+  reset_verification: 'Payment verification reset. The owner will need to reconnect.',
+  payouts_restricted: 'Payouts restricted for this account.',
+  payouts_unrestricted: 'Payout restriction lifted.',
+  plan_changed: 'Plan updated.',
+  onboarding_resent: 'Onboarding link resent to the owner.',
+  signed_out: 'All sessions signed out.',
+  noted: 'Note added.',
+  tagged: 'Tag added.',
+  untagged: 'Tag removed.',
+  attached: 'File uploaded.',
+  attachment_deleted: 'File deleted.',
+  privacy_logged: 'Privacy request logged.',
+  privacy_resolved: 'Privacy request resolved.',
 };
 const ERROR_MESSAGES: Record<string, string> = {
   amount: 'Enter a valid dollar amount.',
   state: 'That action isn’t available right now.',
   confirm: 'Confirmation text didn’t match.',
+  plan: 'That isn’t a valid plan.',
+  no_owner: 'No owner email found for this account.',
+  note: 'Enter some text for the note.',
+  tag: 'Enter a tag.',
+  attachment: 'That file could not be uploaded.',
+  privacy_kind: 'Choose a request type.',
 };
 
 function PaymentStatusPill({ status }: { status: string | null }) {

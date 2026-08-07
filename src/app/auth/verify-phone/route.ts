@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { ensureAccountMembership } from '@/lib/auth';
+import { recordLoginEvent } from '@/lib/login-events';
+import { clientIpFrom } from '@/lib/rate-limit';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { normalizeUsPhone } from '@/lib/phone';
 
@@ -46,7 +48,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    await ensureAccountMembership(data.user.id);
+    const membership = await ensureAccountMembership(data.user.id);
+    await recordLoginEvent({
+      accountId: membership.account_id,
+      userId: data.user.id,
+      method: 'phone',
+      ip: clientIpFrom(request.headers),
+      userAgent: request.headers.get('user-agent'),
+    });
   } catch (err) {
     console.error('ensureAccountMembership error in phone verify:', err);
     return NextResponse.json({ error: 'Signed in, but account setup failed. Please try again.' }, { status: 500 });

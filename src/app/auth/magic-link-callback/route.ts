@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureAccountMembership } from '@/lib/auth';
+import { recordLoginEvent } from '@/lib/login-events';
+import { clientIpFrom } from '@/lib/rate-limit';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { safeNextPath } from '@/lib/app-origin';
@@ -45,7 +47,14 @@ export async function GET(request: Request) {
       throw new Error(error?.message || 'Unable to verify magic link');
     }
 
-    await ensureAccountMembership(data.user.id);
+    const membership = await ensureAccountMembership(data.user.id);
+    await recordLoginEvent({
+      accountId: membership.account_id,
+      userId: data.user.id,
+      method: 'magic_link',
+      ip: clientIpFrom(request.headers),
+      userAgent: request.headers.get('user-agent'),
+    });
     return NextResponse.redirect(new URL(safeNext, requestUrl.origin));
   } catch (error) {
     console.error('Magic link callback error:', error);

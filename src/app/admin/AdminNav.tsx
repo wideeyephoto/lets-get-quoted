@@ -5,8 +5,10 @@ import { usePathname } from 'next/navigation';
 import styles from './admin.module.css';
 
 const ITEMS: { href: string; label: string }[] = [
-  { href: '/admin', label: 'Overview' },
+  { href: '/admin', label: 'Command Center' },
+  { href: '/admin/search', label: 'Search' },
   { href: '/admin/accounts', label: 'Accounts' },
+  { href: '/admin/cases', label: 'Cases' },
   { href: '/admin/quick-stops', label: 'Quick Stops' },
   { href: '/admin/money', label: 'Money' },
   { href: '/admin/audit', label: 'Audit log' },

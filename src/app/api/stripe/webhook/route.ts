@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import type Stripe from 'stripe';
 import { getStripeClient, fromCents, toCents } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
+import { logWebhookFailure } from '@/lib/webhook-failures';
 import { getRecipientTransferStatus } from '@/lib/stripe-connect';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
@@ -111,16 +113,42 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   const stripe = getStripeClient();
 
-  let event;
+  let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     console.error('Stripe webhook signature verification failed:', err);
+    await logWebhookFailure({
+      source: 'stripe',
+      errorMessage: err instanceof Error ? err.message : 'Signature verification failed',
+      payloadExcerpt: rawBody.slice(0, 500),
+    });
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
   }
 
   const admin = createAdminClient();
 
+  // A signature-verified event that then throws mid-dispatch (a bad write, an
+  // unexpected shape) still needs to come back as a 500 so Stripe retries it —
+  // but only after we've logged which event tripped it, so a string of these
+  // shows up as a Command Center signal instead of silent 500s in a log.
+  try {
+    await dispatchStripeEvent(admin, event);
+  } catch (err) {
+    console.error(`Stripe webhook handler threw for event ${event.type} (${event.id}):`, err);
+    await logWebhookFailure({
+      source: 'stripe',
+      eventType: event.type,
+      referenceId: event.id,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json({ error: 'Webhook handler error.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, event: Stripe.Event) {
   // Checkout session completed — a one-off payment succeeded, OR a recurring
   // plan's card-setup session finished (mode='setup', no charge).
   if (event.type === 'checkout.session.completed') {
@@ -511,6 +539,4 @@ export async function POST(request: Request) {
       }
     }
   }
-
-  return NextResponse.json({ received: true });
 }

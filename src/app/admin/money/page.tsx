@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
+import { getOpenDisputes, getPausedPayouts, getNotOnboardedCount } from '@/lib/admin-alerts';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -16,23 +17,20 @@ export default async function AdminMoneyPage() {
   const { admin } = await requireAdmin();
   const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
 
-  const [feeRows, refundRows, disputeRows, paused, notOnboarded] = await Promise.all([
+  const [feeRows, refundRows, disputes, pausedRows, notOnboardedCount] = await Promise.all([
     admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', since30),
     admin.from('payments').select('refunded_amount, paid_at').gt('refunded_amount', 0).gte('paid_at', since30),
-    admin.from('payments').select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status, stripe_dispute_id, dispute_due_by').eq('status', 'disputed').order('disputed_at', { ascending: false }).limit(50),
-    admin.from('accounts').select('id, business_name, account_number, connect_disabled_at').not('connect_disabled_at', 'is', null).order('connect_disabled_at', { ascending: false }).limit(50),
-    admin.from('accounts').select('id', { count: 'exact', head: true }).eq('connect_onboarded', false),
+    getOpenDisputes(admin),
+    getPausedPayouts(admin),
+    getNotOnboardedCount(admin),
   ]);
 
   const fees30 = (feeRows.data ?? []).reduce((s, r) => s + (Number((r as { platform_fee: number }).platform_fee) || 0), 0);
   const refunds30 = (refundRows.data ?? []).reduce((s, r) => s + (Number((r as { refunded_amount: number }).refunded_amount) || 0), 0);
-  const disputes = disputeRows.data ?? [];
-
-  const pausedRows = (paused.data ?? []) as { id: string; business_name: string | null; account_number: number | null; connect_disabled_at: string | null }[];
 
   // Stitch display names (site company_name preferred) onto the dispute + paused
   // rows in one pass.
-  const acctIds = [...new Set([...disputes.map((d) => (d as { account_id: string }).account_id), ...pausedRows.map((p) => p.id)].filter(Boolean))];
+  const acctIds = [...new Set([...disputes.map((d) => d.account_id), ...pausedRows.map((p) => p.id)].filter(Boolean))];
   const nameMap = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
   if (acctIds.length) {
     const [acctsRes, sitesRes] = await Promise.all([
@@ -76,7 +74,7 @@ export default async function AdminMoneyPage() {
           <span className={styles.statLabel}>Payouts paused</span>
         </div>
         <div className={`${styles.panel} ${styles.statCard}`}>
-          <span className={styles.statValue}>{notOnboarded.count ?? 0}</span>
+          <span className={styles.statValue}>{notOnboardedCount}</span>
           <span className={styles.statLabel}>Not onboarded</span>
         </div>
       </section>
@@ -90,8 +88,7 @@ export default async function AdminMoneyPage() {
             <table className={styles.table}>
               <thead><tr><th>Opened</th><th>Account</th><th>Charge</th><th className="num">Amount</th><th>Reason</th><th>Respond by</th><th /></tr></thead>
               <tbody>
-                {disputes.map((d) => {
-                  const row = d as { id: string; account_id: string; amount: number | null; label: string | null; disputed_at: string | null; dispute_reason: string | null; dispute_status: string | null; stripe_dispute_id: string | null; dispute_due_by: string | null };
+                {disputes.map((row) => {
                   const acct = nameMap.get(row.account_id);
                   const dueMs = row.dispute_due_by ? new Date(row.dispute_due_by).getTime() : NaN;
                   const overdue = Number.isFinite(dueMs) && dueMs < Date.now();

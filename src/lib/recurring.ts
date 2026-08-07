@@ -497,10 +497,10 @@ async function chargePlanVisit(
 
   const { data: account } = await admin
     .from('accounts')
-    .select('stripe_connect_id, connect_onboarded')
+    .select('stripe_connect_id, connect_onboarded, payouts_restricted_at')
     .eq('id', plan.account_id)
     .maybeSingle();
-  if (!account?.stripe_connect_id || !account.connect_onboarded) {
+  if (!account?.stripe_connect_id || !account.connect_onboarded || account.payouts_restricted_at) {
     await createJobFeedEvent(admin, plan.account_id, job.id, {
       kind: 'recurring_charge_skipped',
       title: 'Auto-charge skipped',

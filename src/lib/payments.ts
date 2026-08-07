@@ -153,7 +153,7 @@ export async function createDepositRequest(
 
 type PublicPaymentRecord = Payment & {
   job: { client_name: string; ref: string } | null;
-  account: { business_name: string; stripe_connect_id: string | null; connect_onboarded: boolean } | null;
+  account: { business_name: string; stripe_connect_id: string | null; connect_onboarded: boolean; payouts_restricted_at: string | null } | null;
   display_business_name: string;
 };
 
@@ -165,7 +165,7 @@ export async function getPublicPayment(paymentId: string): Promise<PublicPayment
 
   const { data, error } = await admin
     .from('payments')
-    .select('*, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded)')
+    .select('*, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)')
     .eq('id', paymentId)
     .maybeSingle();
 
@@ -241,6 +241,9 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   }
 
   if (!payment.account?.stripe_connect_id || !payment.account.connect_onboarded) {
+    throw new Error('This contractor has not finished setting up payments yet.');
+  }
+  if (payment.account.payouts_restricted_at) {
     throw new Error('This contractor has not finished setting up payments yet.');
   }
 

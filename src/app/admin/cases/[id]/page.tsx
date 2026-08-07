@@ -1,0 +1,108 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { requireAdmin } from '@/lib/auth';
+import { getSupportCase, listSupportCaseNotes } from '@/lib/support-cases';
+import { accountDisplayName } from '@/lib/admin-accounts';
+import styles from '../../admin.module.css';
+import CaseActions from './CaseActions';
+
+export const dynamic = 'force-dynamic';
+
+const DONE_MESSAGES: Record<string, string> = {
+  created: 'Case created.',
+  noted: 'Note added.',
+  status: 'Status updated.',
+  assigned: 'Assignment updated.',
+};
+const ERROR_MESSAGES: Record<string, string> = {
+  note: 'Enter a note before submitting.',
+  status: 'Pick a valid status.',
+};
+
+function statusPill(status: string) {
+  const cls = status === 'open' ? styles.warn : status === 'pending' ? styles.neutral : styles.good;
+  return <span className={`${styles.pill} ${cls}`}>{status}</span>;
+}
+function priorityPill(priority: string) {
+  const cls = priority === 'urgent' ? styles.bad : priority === 'high' ? styles.warn : styles.neutral;
+  return <span className={`${styles.pill} ${cls}`}>{priority}</span>;
+}
+
+export default async function AdminCaseDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { done?: string; error?: string };
+}) {
+  const { admin } = await requireAdmin();
+  const supportCase = await getSupportCase(admin, params.id);
+  if (!supportCase) notFound();
+
+  const notes = await listSupportCaseNotes(admin, params.id);
+  type CaseAccountRow = { id: string; business_name: string | null; account_number: number | null };
+  let account: CaseAccountRow | null = null;
+  if (supportCase.account_id) {
+    const { data, error } = await admin.from('accounts').select('id, business_name, account_number').eq('id', supportCase.account_id).maybeSingle();
+    if (error) console.error('case account lookup failed:', error);
+    account = data as CaseAccountRow | null;
+  }
+
+  return (
+    <>
+      <Link href="/admin/cases" className={styles.backLink}>← Cases</Link>
+
+      <header className={styles.pageHead}>
+        <p className={styles.eyebrow}>Case</p>
+        <h1 className={styles.title}>{supportCase.subject}</h1>
+        <p className={styles.lead}>
+          Opened by <strong>{supportCase.created_by}</strong> on {new Date(supportCase.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+        </p>
+        <div className={styles.actionRow} style={{ marginTop: '.6rem' }}>
+          {statusPill(supportCase.status)}
+          {priorityPill(supportCase.priority)}
+        </div>
+      </header>
+
+      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE_MESSAGES[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+
+      <div className={styles.detailGrid}>
+        <div>
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Summary</p>
+            <dl className={styles.kv}>
+              <dt>Account</dt>
+              <dd>{account ? <Link href={`/admin/accounts/${account.id}`} className={styles.rowLink}>{accountDisplayName(account)}</Link> : <span className={styles.muted}>General / platform case</span>}</dd>
+              <dt>Assigned to</dt><dd>{supportCase.assigned_to || <span className={styles.muted}>Unassigned</span>}</dd>
+              <dt>SLA due</dt><dd>{supportCase.sla_due_at ? new Date(supportCase.sla_due_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : <span className={styles.muted}>—</span>}</dd>
+            </dl>
+          </section>
+
+          <section className={styles.panel}>
+            <p className={styles.panelTitle}>Notes</p>
+            {notes.length === 0 ? (
+              <p className={styles.emptyState}>No notes yet.</p>
+            ) : (
+              <ul className={styles.timeline}>
+                {notes.map((n) => (
+                  <li key={n.id}>
+                    <time>{new Date(n.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</time>
+                    <span>
+                      <span className={styles.timelineActor}>{n.created_by}</span>
+                      {n.kind === 'status_change' ? <span className={styles.muted}> ({n.body})</span> : <>{' — '}{n.body}</>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <div>
+          <CaseActions caseId={supportCase.id} status={supportCase.status} assignedTo={supportCase.assigned_to} />
+        </div>
+      </div>
+    </>
+  );
+}

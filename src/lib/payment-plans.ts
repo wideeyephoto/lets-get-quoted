@@ -304,10 +304,10 @@ async function chargePlanInstallment(
 
   const { data: account } = await admin
     .from('accounts')
-    .select('stripe_connect_id, connect_onboarded')
+    .select('stripe_connect_id, connect_onboarded, payouts_restricted_at')
     .eq('id', plan.account_id)
     .maybeSingle();
-  if (!account?.stripe_connect_id || !account.connect_onboarded) return 'skipped';
+  if (!account?.stripe_connect_id || !account.connect_onboarded || account.payouts_restricted_at) return 'skipped';
 
   // CLAIM: only one run may take this installment from requested/failed →
   // processing. A concurrent run (or a re-entry) sees 0 rows and bails, so the

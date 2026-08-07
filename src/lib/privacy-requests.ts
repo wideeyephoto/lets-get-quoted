@@ -1,0 +1,79 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { logAdminAction } from '@/lib/admin';
+
+// Data-consent / privacy-request history. Same shape as support_cases minus
+// SLA/priority — staff log an access/deletion/correction request against an
+// account and mark it resolved once handled.
+
+export type PrivacyRequestKind = 'access' | 'deletion' | 'correction' | 'other';
+export type PrivacyRequestStatus = 'open' | 'resolved';
+
+const KINDS: PrivacyRequestKind[] = ['access', 'deletion', 'correction', 'other'];
+
+export function isPrivacyRequestKind(value: string | undefined | null): value is PrivacyRequestKind {
+  return !!value && (KINDS as string[]).includes(value);
+}
+
+export type PrivacyRequest = {
+  id: string;
+  account_id: string;
+  kind: PrivacyRequestKind;
+  status: PrivacyRequestStatus;
+  details: string | null;
+  created_by: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  created_at: string;
+};
+
+const COLUMNS = 'id, account_id, kind, status, details, created_by, resolved_at, resolved_by, created_at';
+
+export async function listPrivacyRequests(admin: SupabaseClient, accountId: string): Promise<PrivacyRequest[]> {
+  const { data, error } = await admin
+    .from('privacy_requests')
+    .select(COLUMNS)
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('listPrivacyRequests failed:', error);
+    return [];
+  }
+  return (data ?? []) as PrivacyRequest[];
+}
+
+export async function logPrivacyRequest(
+  admin: SupabaseClient,
+  adminEmail: string,
+  accountId: string,
+  kind: PrivacyRequestKind,
+  details?: string | null,
+): Promise<void> {
+  const { data, error } = await admin
+    .from('privacy_requests')
+    .insert({ account_id: accountId, kind, details: details ?? null, created_by: adminEmail })
+    .select('id')
+    .single();
+  if (error || !data) {
+    console.error('logPrivacyRequest failed:', error);
+    return;
+  }
+  await logAdminAction(admin, adminEmail, {
+    action: 'privacy_request_log',
+    accountId,
+    targetType: 'privacy_request',
+    targetId: data.id,
+    meta: { kind },
+  });
+}
+
+export async function resolvePrivacyRequest(admin: SupabaseClient, adminEmail: string, requestId: string): Promise<void> {
+  const { error } = await admin
+    .from('privacy_requests')
+    .update({ resolved_at: new Date().toISOString(), resolved_by: adminEmail, status: 'resolved' })
+    .eq('id', requestId);
+  if (error) {
+    console.error('resolvePrivacyRequest failed:', error);
+    return;
+  }
+  await logAdminAction(admin, adminEmail, { action: 'privacy_request_resolve', targetType: 'privacy_request', targetId: requestId });
+}
