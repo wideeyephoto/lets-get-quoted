@@ -20,10 +20,12 @@ import pg from 'pg';
 // internal tooling would be a migration for its own sake. The markers below are
 // descriptive of how the data was actually seeded, not a convention anyone has
 // to remember:
-//   crew  — an @example.com email, or a phone on the 555 exchange, which is
-//           reserved and never assigned to real service, so it cannot collide
-//           with a contractor's actual number
-//   jobs  — a J-DEMO- reference prefix
+//   crew     — an @example.com email, or a phone on the 555 exchange, which is
+//              reserved and never assigned to real service, so it cannot collide
+//              with a contractor's actual number
+//   jobs     — a J-DEMO- reference prefix
+//   customers— the same email/phone markers, which is what seed-customers.mjs
+//              writes onto every client and lead it creates
 // Anything else is treated as real. Pass --all-crew to override the crew match
 // on an account you know has no real crew; it still lists what it will remove.
 //
@@ -35,7 +37,11 @@ import pg from 'pg';
 //   3. crew                                    — cascades assignments, prefs,
 //      push subscriptions, sms events, time entries
 //   4. demo jobs                               — cascades their own costs, feed,
-//      tasks, tracking, invoices, payments
+//      tasks, tracking, invoices, payments, customer links
+//   5. demo leads, then demo clients           — clients LAST, because
+//      jobs.client_id and leads.client_id are both ON DELETE SET NULL: remove a
+//      client while a REAL job still points at them and that job silently loses
+//      its customer instead of failing loudly.
 //
 // Run:
 //   node scripts/remove-demo-data.mjs --account <uuid>              (dry run: counts only)
@@ -81,6 +87,20 @@ if (!ACCOUNT || typeof ACCOUNT !== 'string') {
 const CREW_MATCH = ALL_CREW
   ? `c.account_id = $1`
   : `c.account_id = $1 and (c.email ilike '%@example.com' or regexp_replace(c.phone, '\\D', '', 'g') ~ '555[0-9]{4}$')`;
+
+// The same two markers, for the customers seed-customers.mjs writes. Spelled as
+// a fragment rather than a whole clause so the count and the delete cannot drift
+// — the bug this file exists to avoid is a match that means one thing when it
+// reports and another when it deletes. `t` is whichever of clients/leads the
+// caller aliased.
+// COALESCE IS LOad-BEARING. A client with no email and no phone makes both sides
+// NULL, so the match is NULL: `where MATCH` excludes it (safe) but `where not
+// MATCH` excludes it too, and the row vanishes from BOTH counts. The first run
+// of this reported "2 to delete, 0 being kept" on an account holding 21 clients
+// — a dry run that under-reports what survives is worse than no dry run, because
+// this file's whole claim is that an over-broad match is visible before it is
+// destructive.
+const CUSTOMER_MATCH = `coalesce(t.email ilike '%@example.com' or regexp_replace(t.phone, '\\D', '', 'g') ~ '555[0-9]{4}$', false)`;
 
 const money = (value) => `$${(Number(value) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -147,6 +167,10 @@ try {
   await count('job assignments', `select count(*)::int as n from crew_assignments where account_id = $1 and crew_id = any($2::uuid[])`, [ACCOUNT, crewIds]);
   await count('time entries', `select count(*)::int as n from time_entries where account_id = $1 and crew_id = any($2::uuid[])`, [ACCOUNT, crewIds]);
   await count('demo jobs', `select count(*)::int as n from jobs where account_id = $1 and ref like 'J-DEMO-%'`, [ACCOUNT]);
+  await count('demo clients', `select count(*)::int as n from clients t where t.account_id = $1 and ${CUSTOMER_MATCH}`, [ACCOUNT]);
+  await count('demo leads', `select count(*)::int as n from leads t where t.account_id = $1 and ${CUSTOMER_MATCH}`, [ACCOUNT]);
+  await count('kept clients', `select count(*)::int as n from clients t where t.account_id = $1 and not ${CUSTOMER_MATCH}`, [ACCOUNT]);
+  await count('kept leads', `select count(*)::int as n from leads t where t.account_id = $1 and not ${CUSTOMER_MATCH}`, [ACCOUNT]);
 
   console.log('\nAttached to them:');
   console.log(`  labor costs        ${counts['labor costs'].n} (${counts['labor costs'].hours} h · ${money(counts['labor costs'].amount)})`);
@@ -156,6 +180,11 @@ try {
   console.log(`  job assignments    ${counts['job assignments'].n}`);
   console.log(`  time entries       ${counts['time entries'].n}`);
   console.log(`  demo jobs (J-DEMO) ${counts['demo jobs'].n}   <- cascades their own costs, feed, tasks, invoices`);
+  console.log('\nSeeded customers (seed-customers.mjs):');
+  console.log(`  demo clients       ${counts['demo clients'].n}   <- @example.com or a 555-01xx phone`);
+  console.log(`  demo leads         ${counts['demo leads'].n}`);
+  console.log(`  clients being KEPT ${counts['kept clients'].n}`);
+  console.log(`  leads being KEPT   ${counts['kept leads'].n}`);
 
   // Labor costs sitting on jobs that are NOT demo jobs are worth calling out:
   // removing them changes what a real job cost, which is a real edit even when
@@ -202,8 +231,18 @@ try {
   //    entries all cascade.
   await del('crew members', `delete from crew where account_id = $1 and id = any($2::uuid[])`, [ACCOUNT, crewIds]);
 
-  // 4. Demo jobs last — independent of the crew, and cascades widely.
+  // 4. Demo jobs — independent of the crew, and cascades widely: their invoices,
+  //    payments and customer links all go with them.
   await del('demo jobs', `delete from jobs where account_id = $1 and ref like 'J-DEMO-%'`, [ACCOUNT]);
+
+  // 5. Seeded customers. Leads first — leads.client_id is SET NULL, so removing
+  //    the client first would leave a lead on the board with no customer behind
+  //    it rather than removing the pair.
+  await del('demo leads', `delete from leads t where t.account_id = $1 and ${CUSTOMER_MATCH}`, [ACCOUNT]);
+  //    Clients LAST of everything: jobs.client_id is SET NULL too, so a real job
+  //    pointing at one of these would silently lose its customer instead of
+  //    raising. By here the demo jobs are already gone, so nothing real can.
+  await del('demo clients', `delete from clients t where t.account_id = $1 and ${CUSTOMER_MATCH}`, [ACCOUNT]);
 
   if (REHEARSE) {
     await client.query('rollback');
