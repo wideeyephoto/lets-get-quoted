@@ -119,7 +119,19 @@ export default async function AdminAccountDetailPage({
               <dt>Fee tier</dt><dd>Tier {detail.tier.tier} · {(detail.tier.rate * 100).toFixed(2)}%</dd>
               <dt>Trailing 12-mo volume</dt><dd>{usd(detail.trailingVolume)}</dd>
               <dt>Paid (30 days)</dt><dd>{usdCents(detail.activity.paidVolume30dCents)}</dd>
-              <dt>Open disputes</dt><dd>{detail.activity.openDisputes > 0 ? <span className={`${styles.pill} ${styles.bad}`}>{detail.activity.openDisputes}</span> : '0'}</dd>
+              {/* A red count with nothing behind it was the sharpest dead end
+                  on the page: everything needed to act on a dispute — reason,
+                  respond-by date, the Stripe deep link — is already fetched and
+                  rendered on the Money page, which just could not be scoped to
+                  one account. Now it can. */}
+              <dt>Open disputes</dt>
+              <dd>
+                {detail.activity.openDisputes > 0 ? (
+                  <Link href={`/admin/money?account=${params.id}#disputes`} className={styles.rowLink}>
+                    <span className={`${styles.pill} ${styles.bad}`}>{detail.activity.openDisputes}</span> See them →
+                  </Link>
+                ) : '0'}
+              </dd>
               <dt>Credit balance</dt><dd>{detail.creditBalanceCents !== 0 ? <strong>{usdCents(detail.creditBalanceCents)}</strong> : '$0'}</dd>
             </dl>
           </section>
@@ -174,13 +186,37 @@ export default async function AdminAccountDetailPage({
 
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Activity (30 days)</p>
+            {/* Retitled. Two of the five rows below are all-time and say so, so
+                a panel headed "Activity (30 days)" was labelling the no-show
+                count — the one staff act on when applying a lock — as a 30-day
+                figure when its query has no date filter at all. */}
+            <p className={styles.panelTitle}>Activity</p>
             <dl className={styles.kv}>
-              <dt>New leads</dt><dd>{detail.activity.leads30d}</dd>
+              <dt>New leads (30 days)</dt><dd>{detail.activity.leads30d}</dd>
               <dt>Active jobs</dt><dd>{detail.activity.jobsActive}</dd>
-              <dt>Quick Stops (active)</dt><dd>{detail.quickStop.active}</dd>
-              <dt>Quick Stops (all-time)</dt><dd>{detail.quickStop.total}</dd>
-              <dt>No-shows</dt><dd>{detail.quickStop.noShows > 0 ? <span className={`${styles.pill} ${styles.warn}`}>{detail.quickStop.noShows}</span> : '0'}</dd>
+              <dt>Quick Stops (active)</dt>
+              <dd>
+                {detail.quickStop.active > 0 ? (
+                  <Link href={`/admin/quick-stops?f=active&account=${params.id}`} className={styles.rowLink}>{detail.quickStop.active} →</Link>
+                ) : '0'}
+              </dd>
+              <dt>Quick Stops (all-time)</dt>
+              <dd>
+                {detail.quickStop.total > 0 ? (
+                  <Link href={`/admin/quick-stops?f=all&account=${params.id}`} className={styles.rowLink}>{detail.quickStop.total} →</Link>
+                ) : '0'}
+              </dd>
+              {/* The number the Quick Stop lock decision is made on, so it has
+                  to open the requests it counts — the lock form is six inches
+                  away in the next column and captures no evidence of its own. */}
+              <dt>No-shows (all-time)</dt>
+              <dd>
+                {detail.quickStop.noShows > 0 ? (
+                  <Link href={`/admin/quick-stops?f=no_shows&account=${params.id}`} className={styles.rowLink}>
+                    <span className={`${styles.pill} ${styles.warn}`}>{detail.quickStop.noShows}</span> See them →
+                  </Link>
+                ) : '0'}
+              </dd>
             </dl>
           </section>
 

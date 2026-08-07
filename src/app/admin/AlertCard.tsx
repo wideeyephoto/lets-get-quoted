@@ -47,10 +47,18 @@ export function AlertCard({
   headerExtra?: ReactNode;
 }) {
   const shownCount = count ?? items.length;
+  // When `count` is the true total and the rows are capped, the header used to
+  // print the total alone above a shorter list — "Not onboarded (214)" over 50
+  // rows, with nothing saying so. That is the same quiet lie as a number that
+  // leads nowhere: the reader takes the list to be the number.
+  const truncated = shownCount > items.length;
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.7rem' }}>
-        <p className={styles.panelTitle} style={{ margin: 0 }}>{title}{shownCount > 0 ? ` (${shownCount})` : ''}</p>
+        <p className={styles.panelTitle} style={{ margin: 0 }}>
+          {title}
+          {shownCount > 0 ? ` (${shownCount}${truncated ? ` — showing ${items.length}` : ''})` : ''}
+        </p>
         {headerExtra}
       </div>
       {items.length === 0 ? (
@@ -89,9 +97,16 @@ export function AlertCard({
           ))}
         </ul>
       )}
-      {viewAllHref && items.length > 0 ? (
+      {/* Shown when the card is empty too. It used to be hidden precisely then,
+          which broke the incidents card worst: its empty state reads "Nothing
+          logged yet — write one up on the Incidents page" while suppressing its
+          own link to that page. When there is nothing in the list, the link IS
+          the content, so it gets the primary treatment. */}
+      {viewAllHref ? (
         <div className={styles.actionRow}>
-          <Link href={viewAllHref} className="btn secondary">{viewAllLabel ?? 'View all'}</Link>
+          <Link href={viewAllHref} className={items.length === 0 ? 'btn primary' : 'btn secondary'}>
+            {viewAllLabel ?? 'View all'}
+          </Link>
         </div>
       ) : null}
     </>

@@ -20,13 +20,21 @@ export type DisputeRow = {
   dispute_due_by: string | null;
 };
 
-export async function getOpenDisputes(admin: SupabaseClient, opts?: { limit?: number }): Promise<DisputeRow[]> {
-  const { data, error } = await admin
+export async function getOpenDisputes(
+  admin: SupabaseClient,
+  opts?: { limit?: number; accountId?: string },
+): Promise<DisputeRow[]> {
+  let q = admin
     .from('payments')
     .select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status, stripe_dispute_id, dispute_due_by')
     .eq('status', 'disputed')
     .order('disputed_at', { ascending: false })
     .limit(opts?.limit ?? 50);
+  // So the per-account dispute count can open its own rows. Everything a staff
+  // member needs to respond is in this shape already; it just had no way to be
+  // asked for one account.
+  if (opts?.accountId) q = q.eq('account_id', opts.accountId);
+  const { data, error } = await q;
   if (error) {
     console.error('getOpenDisputes failed:', error);
     return [];
@@ -335,11 +343,26 @@ export type SupportCaseRow = {
 const SUPPORT_CASE_ROW_COLUMNS = 'id, account_id, subject, status, priority, assigned_to, sla_due_at, created_at';
 const OPEN_CASE_STATUSES = '(resolved,closed)';
 
-export async function getCasesNearSla(admin: SupabaseClient, opts?: { limit?: number }): Promise<SupportCaseRow[]> {
+/**
+ * Open cases whose SLA is close.
+ *
+ * "Close" used to mean nothing at all: the query bounded null-ness and
+ * open-ness and nothing else, and severityForDeadline paints every unpassed
+ * deadline 'warn', so a case due in six months looked exactly as urgent as one
+ * due this afternoon. `withinMs` is the missing bound — the card is titled
+ * "nearing SLA" and now means it.
+ */
+export async function getCasesNearSla(
+  admin: SupabaseClient,
+  opts?: { limit?: number; withinMs?: number; now?: Date },
+): Promise<SupportCaseRow[]> {
+  const now = opts?.now ?? new Date();
+  const horizon = new Date(now.getTime() + (opts?.withinMs ?? 48 * 60 * 60 * 1000)).toISOString();
   const { data, error } = await admin
     .from('support_cases')
     .select(SUPPORT_CASE_ROW_COLUMNS)
     .not('sla_due_at', 'is', null)
+    .lt('sla_due_at', horizon)
     .not('status', 'in', OPEN_CASE_STATUSES)
     .order('sla_due_at', { ascending: true })
     .limit(opts?.limit ?? 20);
@@ -348,6 +371,30 @@ export async function getCasesNearSla(admin: SupabaseClient, opts?: { limit?: nu
     return [];
   }
   return (data ?? []) as SupportCaseRow[];
+}
+
+/**
+ * How many open cases have no SLA at all.
+ *
+ * The card above cannot see them by construction, and they are not a rare edge:
+ * sla_due_at is nullable with no default, blank on the staff form, unsettable
+ * after creation, and every case from the public contact form is created
+ * without one. So the class of case with a real person waiting was invisible on
+ * a card that then reported "No cases approaching their SLA" — a coverage
+ * overstatement rather than good news. Surfacing the number does not fix the
+ * scheduling gap, but it stops the silence from reading as an all-clear.
+ */
+export async function getCasesWithoutSlaCount(admin: SupabaseClient): Promise<number> {
+  const { count, error } = await admin
+    .from('support_cases')
+    .select('id', { count: 'exact', head: true })
+    .is('sla_due_at', null)
+    .not('status', 'in', OPEN_CASE_STATUSES);
+  if (error) {
+    console.error('getCasesWithoutSlaCount failed:', error);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export async function getMyAssignedCases(admin: SupabaseClient, staffEmail: string, opts?: { limit?: number }): Promise<SupportCaseRow[]> {

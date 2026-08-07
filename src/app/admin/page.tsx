@@ -12,8 +12,10 @@ import {
   defaultCardOrder,
   type DateRange,
 } from '@/lib/command-center-logic';
+import { permissionsFor } from '@/lib/staff';
 import { AlertCard, type AlertItem } from './AlertCard';
 import { CommandCenterBoard, type BoardCard } from './CommandCenterBoard';
+import { StatCard } from './StatCard';
 import { resolveWebhookFailureAction } from './actions';
 import styles from './admin.module.css';
 
@@ -45,6 +47,37 @@ function trendLabel(m: CommandCenterMetric): string {
 function cap(s: string): string {
   return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
+
+/**
+ * Where each headline number opens, carrying the range it was counted over.
+ *
+ * "Payments processed" is the one that returns null, and deliberately: there is
+ * no payments ledger in the console yet, so every candidate destination shows a
+ * different population from the one counted. A card that links somewhere
+ * plausible-but-wrong is worse than one that does not link — it teaches staff
+ * that the numbers and the lists agree, right up until one matters.
+ */
+function metricHref(key: string, range: DateRange): string | undefined {
+  switch (key) {
+    case 'newAccounts':
+      return `/admin/accounts?joined=${range}`;
+    // Both land on Money, which now honours the same range. Fees go to the top,
+    // where the gross-minus-returned working is; refunds go to the table of the
+    // individual refunds that make up the total.
+    case 'platformFees':
+      return `/admin/money?range=${range}`;
+    case 'refunds':
+      return `/admin/money?range=${range}#refunds`;
+    default:
+      return undefined;
+  }
+}
+
+const METRIC_DRILL: Record<string, string> = {
+  newAccounts: 'See who',
+  platformFees: 'See the working',
+  refunds: 'See each one',
+};
 
 export default async function AdminCommandCenterPage({ searchParams }: { searchParams: { range?: string } }) {
   const { admin, adminEmail, role } = await requireAdmin();
@@ -211,6 +244,12 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     actionHref: row.account_id ? `/admin/accounts/${row.account_id}` : undefined,
   }));
 
+  // resolveWebhookFailureAction requires ops.manage, which only ops and
+  // super_admin hold. The button used to render for every role, and since
+  // requirePermission throws before anything else runs — with no error boundary
+  // under /app — a support user clicking it got Next's generic crash screen and
+  // lost their range selection. Hide the control, keep the server check.
+  const mayManageOps = permissionsFor(role).includes('ops.manage');
   const webhookFailureItems: AlertItem[] = data.webhookFailures.map((row) => ({
     key: row.id,
     severity: 'bad',
@@ -218,13 +257,13 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     title: row.event_type || row.reference_id || 'Webhook failure',
     subtitle: row.error_message,
     age: relativeAge(row.created_at, now),
-    actionNode: (
+    actionNode: mayManageOps ? (
       <form action={resolveWebhookFailureAction.bind(null, row.id)}>
         <button type="submit" className={styles.rowLink} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>
           Mark resolved →
         </button>
       </form>
-    ),
+    ) : undefined,
   }));
 
   const boardCards: BoardCard[] = [
@@ -232,14 +271,47 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     // writer, so an empty card was permanent and looked like good news.
     { key: 'incidents', title: 'Recent releases & incidents', content: <AlertCard title="Recent releases & incidents" items={incidentItems} emptyMessage="Nothing logged yet — write one up on the Incidents page." viewAllHref="/admin/incidents" viewAllLabel="Releases & incidents" /> },
     { key: 'myCases', title: 'Assigned to you', content: <AlertCard title="Assigned to you" items={myCaseItems} emptyMessage="No cases assigned to you." /> },
-    { key: 'casesNearSla', title: 'Cases nearing SLA', content: <AlertCard title="Cases nearing SLA" items={casesNearSlaItems} emptyMessage="No cases approaching their SLA." /> },
+    // The empty message says what the card COVERS, not just that it is empty.
+    // Cases with no SLA set cannot appear here by construction, and that is
+    // most of them — every case from the public contact form is created without
+    // one — so "No cases approaching their SLA" was reading as an all-clear
+    // over a blind spot. The count of the unseen goes in the header.
+    {
+      key: 'casesNearSla',
+      title: 'Cases nearing SLA',
+      content: (
+        <AlertCard
+          title="Cases nearing SLA"
+          items={casesNearSlaItems}
+          emptyMessage={
+            data.casesWithoutSla > 0
+              ? `No case is within 48 hours of its SLA. ${data.casesWithoutSla} open ${data.casesWithoutSla === 1 ? 'case has' : 'cases have'} no SLA set and cannot show up here.`
+              : 'No case is within 48 hours of its SLA.'
+          }
+          headerExtra={
+            data.casesWithoutSla > 0 ? (
+              <Link href="/admin/cases" className={styles.rowLink} style={{ fontSize: '.75rem' }}>
+                {data.casesWithoutSla} with no SLA →
+              </Link>
+            ) : undefined
+          }
+        />
+      ),
+    },
     { key: 'disputes', title: 'Open disputes', content: <AlertCard title="Open disputes" items={disputeItems} emptyMessage="No open disputes." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
     { key: 'suspendedAccounts', title: 'Suspended accounts', content: <AlertCard title="Suspended accounts" items={suspendedItems} emptyMessage="No suspended accounts." /> },
     // Renamed with the query. "Overdue" described a state the sweep clears
     // within fifteen minutes; what this can actually show is the requests that
     // ran out of time — which is the same event from the customer's side.
-    { key: 'overdueQuickStops', title: 'Quick Stops nobody answered', content: <AlertCard title="Quick Stops nobody answered" items={overdueQuickStopItems} emptyMessage="Every Quick Stop in the last two days got an answer." viewAllHref="/admin/quick-stops" viewAllLabel="View all Quick Stops" /> },
-    { key: 'notOnboarded', title: 'Not onboarded', content: <AlertCard title="Not onboarded" items={notOnboardedItems} count={data.notOnboardedCount} emptyMessage="Every account is onboarded." /> },
+    // Pointed at the matching tab rather than at the default one. The card is
+    // almost entirely offer_expired rows in steady state — the sweep clears the
+    // live overdue states within fifteen minutes — and "Active" is the one tab
+    // that excludes exactly those, so the old link landed on a longer list
+    // containing none of the rows you had just been looking at.
+    { key: 'overdueQuickStops', title: 'Quick Stops nobody answered', content: <AlertCard title="Quick Stops nobody answered" items={overdueQuickStopItems} emptyMessage="Every Quick Stop in the last two days got an answer." viewAllHref="/admin/quick-stops?f=unanswered" viewAllLabel="View all unanswered" /> },
+    // The count is the true total; the rows are capped at 50. Now that the card
+    // can say so and hand over the rest, the number stops being a dead end.
+    { key: 'notOnboarded', title: 'Not onboarded', content: <AlertCard title="Not onboarded" items={notOnboardedItems} count={data.notOnboardedCount} emptyMessage="Every account is onboarded." viewAllHref="/admin/accounts?filter=not_onboarded" viewAllLabel="All not-onboarded accounts" /> },
     { key: 'dunning', title: 'Payment issues', content: <AlertCard title="Payment issues" items={dunningItems} emptyMessage="No payments needing attention." /> },
     { key: 'pausedPayouts', title: 'Payouts paused', content: <AlertCard title="Payouts paused" items={pausedPayoutItems} emptyMessage="No accounts with paused payouts." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
     // The empty state says what it COVERS, not just that it is empty. Only the
@@ -266,13 +338,23 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
         ))}
       </div>
 
+      {/* Every metric that has rows behind it now opens them, carrying the
+          range so the destination covers the same window the number does.
+          "Platform fees" is the one that stays inert: it is a sum of money
+          rather than a set of records, and its working — gross charged minus
+          fees returned — is on the Money page it would otherwise link to,
+          which the Refunds card already reaches. */}
       <section className={styles.metricsRow}>
         {data.metrics.map((m) => (
-          <div key={m.key} className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue}>{fmtMetric(m)}</span>
-            <span className={styles.statLabel}>{m.label}</span>
+          <StatCard
+            key={m.key}
+            value={fmtMetric(m)}
+            label={m.label}
+            href={metricHref(m.key, range)}
+            drill={METRIC_DRILL[m.key]}
+          >
             <span className={`${styles.metricTrend} ${styles[trendClass(m)]}`}>{trendLabel(m)}</span>
-          </div>
+          </StatCard>
         ))}
       </section>
 

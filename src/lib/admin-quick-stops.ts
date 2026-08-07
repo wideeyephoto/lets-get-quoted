@@ -16,10 +16,13 @@ const LIST_COLUMNS =
 
 export async function listQuickStopRequestsForAdmin(
   admin: SupabaseClient,
-  opts: { statuses?: string[]; limit?: number } = {},
+  opts: { statuses?: string[]; limit?: number; accountId?: string } = {},
 ): Promise<AdminQuickStopRow[]> {
   let q = admin.from('extra_stop_requests').select(LIST_COLUMNS).order('created_at', { ascending: false }).limit(opts.limit ?? 100);
   if (opts.statuses && opts.statuses.length) q = q.in('status', opts.statuses);
+  // Lets the per-account no-show and Quick Stop counts open the requests they
+  // count, instead of pointing at a capped cross-account list.
+  if (opts.accountId) q = q.eq('account_id', opts.accountId);
   const { data, error } = await q;
   if (error || !data) return [];
 

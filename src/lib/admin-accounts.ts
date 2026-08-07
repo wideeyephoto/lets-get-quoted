@@ -7,6 +7,7 @@ import { listLoginEvents, type LoginEvent } from '@/lib/login-events';
 import { listAccountNotes, listAccountTags, type AccountNote, type AccountTag } from '@/lib/account-notes';
 import { listAccountAttachments, type AccountAttachment } from '@/lib/account-attachments';
 import { listPrivacyRequests, type PrivacyRequest } from '@/lib/privacy-requests';
+import type { AccountFilter } from '@/lib/admin-account-filters';
 
 // Data layer for the admin console's account views. All reads use the passed-in
 // service-role client (RLS is owner-scoped, so a session client can't cross
@@ -23,13 +24,71 @@ export type AdminAccountRow = {
   company_name: string | null;
   plan: string | null;
   connect_onboarded: boolean | null;
+  // Selected so the list can say HOW FAR through payout setup an account got,
+  // not merely that it is unfinished. See lib/admin-account-filters.ts.
+  stripe_connect_id: string | null;
   connect_disabled_at: string | null;
   suspended_at: string | null;
+  suspended_reason: string | null;
+  suspended_by: string | null;
   created_at: string;
 };
 
 const ACCOUNT_LIST_COLUMNS =
-  'id, account_number, business_name, plan, connect_onboarded, connect_disabled_at, suspended_at, created_at';
+  'id, account_number, business_name, plan, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at';
+
+/**
+ * Narrow a query to one of the named slices the console counts.
+ *
+ * Every filter here is the exact predicate of a number rendered somewhere else
+ * — `not_onboarded` matches getNotOnboardedCount, `payouts_paused` matches
+ * getPausedPayouts — so a card's count and the list it links to cannot disagree.
+ * Keeping them in one place is the point: two copies of "what counts as not
+ * onboarded" drift, and the drift shows up as a number that opens the wrong
+ * rows, which is worse than a number that opens nothing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyAccountFilter(query: any, filter: AccountFilter | undefined, joinedSinceIso?: string) {
+  // Composes with the named filter rather than replacing it, so "not onboarded
+  // AND joined this month" is expressible. Applied first because it is the
+  // cheaper predicate on an indexed column.
+  if (joinedSinceIso) query = query.gte('created_at', joinedSinceIso);
+  switch (filter) {
+    case 'not_onboarded':
+      return query.eq('connect_onboarded', false);
+    case 'connect_incomplete':
+      return query.eq('connect_onboarded', false).not('stripe_connect_id', 'is', null);
+    case 'payouts_paused':
+      return query.not('connect_disabled_at', 'is', null);
+    case 'suspended':
+      return query.not('suspended_at', 'is', null);
+    default:
+      return query;
+  }
+}
+
+/**
+ * The true size of a slice, independent of the page limit.
+ *
+ * Without this the list header can only report how many rows it fetched, and a
+ * capped list that says "50" when the answer is 180 is a number that lies
+ * quietly — the failure mode the drill-downs exist to remove.
+ */
+export async function countAccountsForAdmin(
+  admin: SupabaseClient,
+  opts: { filter?: AccountFilter; joinedSince?: string } = {},
+): Promise<number> {
+  const { count, error } = await applyAccountFilter(
+    admin.from('accounts').select('id', { count: 'exact', head: true }),
+    opts.filter,
+    opts.joinedSince,
+  );
+  if (error) {
+    console.error('countAccountsForAdmin failed:', error);
+    return 0;
+  }
+  return count ?? 0;
+}
 
 // The name to show for an account: the site's company_name wins, then the
 // account's business_name (unless it's the signup placeholder), then a fallback.
@@ -46,35 +105,42 @@ export function accountDisplayName(row: { company_name?: string | null; business
 // the detail page, not here.
 export async function listAccountsForAdmin(
   admin: SupabaseClient,
-  opts: { query?: string; limit?: number } = {},
+  opts: { query?: string; limit?: number; filter?: AccountFilter; joinedSince?: string } = {},
 ): Promise<AdminAccountRow[]> {
   const limit = opts.limit ?? 50;
   const term = opts.query?.trim();
+  const filter = opts.filter;
+  // Every branch below narrows through this, so a search and a filter compose
+  // rather than one silently winning.
+  const base = () => applyAccountFilter(admin.from('accounts').select(ACCOUNT_LIST_COLUMNS), filter, opts.joinedSince);
   let rows: AdminAccountRow[] = [];
 
   if (term) {
     const digits = term.replace(/[^0-9]/g, '');
     if (/^\d+$/.test(digits) && Number(digits) > 0) {
-      const { data } = await admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).eq('account_number', Number(digits)).limit(limit);
+      const { data } = await base().eq('account_number', Number(digits)).limit(limit);
       rows = (data ?? []) as AdminAccountRow[];
     } else {
       // Match either the account's business_name OR the site's company_name.
       const [byBiz, bySite] = await Promise.all([
-        admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).ilike('business_name', `%${term}%`).limit(limit),
+        base().ilike('business_name', `%${term}%`).limit(limit),
         admin.from('sites').select('account_id').ilike('company_name', `%${term}%`).limit(limit),
       ]);
-      const base = (byBiz.data ?? []) as AdminAccountRow[];
-      const haveIds = new Set(base.map((r) => r.id));
+      const found = (byBiz.data ?? []) as AdminAccountRow[];
+      const haveIds = new Set(found.map((r) => r.id));
       const siteIds = (bySite.data ?? []).map((s) => (s as { account_id: string }).account_id).filter((id) => id && !haveIds.has(id));
       if (siteIds.length) {
-        const { data: extra } = await admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).in('id', siteIds).limit(limit);
-        rows = [...base, ...((extra ?? []) as AdminAccountRow[])];
+        // Re-filtered, not just re-fetched. The sites table knows nothing about
+        // onboarding or suspension, so without this a name match could smuggle
+        // an account into a filtered list it does not belong in.
+        const { data: extra } = await base().in('id', siteIds).limit(limit);
+        rows = [...found, ...((extra ?? []) as AdminAccountRow[])];
       } else {
-        rows = base;
+        rows = found;
       }
     }
   } else {
-    const { data } = await admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).order('created_at', { ascending: false }).limit(limit);
+    const { data } = await base().order('created_at', { ascending: false }).limit(limit);
     rows = (data ?? []) as AdminAccountRow[];
   }
 
