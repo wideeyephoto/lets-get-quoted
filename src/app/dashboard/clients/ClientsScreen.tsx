@@ -38,7 +38,7 @@ export default function ClientsScreen({
           <p className="eyebrow">Clients</p>
           <h1 className="workspace-title">Your customers</h1>
           <p className="workspace-lead">
-            One profile per customer — their whole job history in a place, so repeat business is easy to spot.
+            One profile per customer, with their complete job history in one place, so repeat business is easy to spot.
           </p>
           <div className="workspace-inline-row">
             <span className="status-badge status-in_progress">{rows.length} client{rows.length === 1 ? '' : 's'}</span>

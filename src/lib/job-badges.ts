@@ -1,6 +1,7 @@
 import type { Invoice } from '@/lib/invoices';
 import { formatJobSchedule, formatMoney, type Job, type JobStatus } from '@/lib/jobs';
 import type { Payment } from '@/lib/payments';
+import { WORKFLOW_STAGE_LABEL } from '@/lib/workflow-stages';
 
 export type JobListBadgeTone = JobStatus | 'flag';
 
@@ -92,27 +93,29 @@ export function deriveJobListBadge(
   if (job.status === 'archived') return { label: 'Archived', tone: 'archived' };
   if (job.status === 'complete') return { label: 'Complete', tone: 'complete' };
   if (failedPayment) return { label: 'Payment issue', tone: 'flag', title: 'A payment attempt failed.' };
-  if (requestedPayment) return { label: 'Invoice sent · Awaiting payment', tone: 'in_progress' };
+  if (requestedPayment) return { label: WORKFLOW_STAGE_LABEL.invoice_sent, tone: 'in_progress' };
   if (processingPayment) return { label: 'Payment processing', tone: 'in_progress' };
   if (quoteNeedsRevision) return { label: 'Send revised quote', tone: 'flag', title: 'Current job quote differs from an existing quote/invoice total.' };
   if (signedInvoice && !paidPayment) return { label: 'Client signed invoice', tone: 'in_progress' };
-  if (sentInvoice) return { label: 'Invoice sent · Awaiting sign-off', tone: 'in_progress' };
+  // Not the canonical "Invoice sent — awaiting payment": this one is waiting on
+  // a signature, which is a different wait with a different fix.
+  if (sentInvoice) return { label: 'Invoice sent — awaiting signature', tone: 'in_progress' };
   if (paidPayment && !job.scheduled_for) return { label: 'Paid · Schedule work', tone: 'in_progress' };
   // Pressing "Job started" has to move this badge. It sat below the
-  // scheduled_for branch and so kept reading "Work scheduled" with a crew
-  // already on site — the exact ambiguity the start button exists to remove.
-  // Same wording as the pipeline's schedule step, which already commits to
-  // "Work underway" once there's a start time, so the two can't disagree.
-  if (job.started_at) return { label: 'Work underway', tone: 'in_progress', title: formatStartedOn(job.started_at) ?? undefined };
-  if (job.scheduled_for) return { label: 'Work scheduled', tone: 'in_progress' };
-  if (job.status === 'in_progress') return { label: 'Ready for invoice', tone: 'in_progress' };
+  // scheduled_for branch and so kept reading "Scheduled" with a crew already on
+  // site — the exact ambiguity the start button exists to remove. Same wording
+  // as the pipeline's schedule step, which also commits to "Work in progress"
+  // once there's a start time, so the two can't disagree.
+  if (job.started_at) return { label: WORKFLOW_STAGE_LABEL.in_progress, tone: 'in_progress', title: formatStartedOn(job.started_at) ?? undefined };
+  if (job.scheduled_for) return { label: WORKFLOW_STAGE_LABEL.scheduled, tone: 'in_progress' };
+  if (job.status === 'in_progress') return { label: WORKFLOW_STAGE_LABEL.ready_to_invoice, tone: 'in_progress' };
   // Three consecutive states, named for the thing that's actually missing.
   // They used to read "Send quote" and "Add quote" — three characters apart,
   // both parsing as "quote stuff to do", so nobody could tell which step a job
   // was on. No two of these share a word now.
   if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Send to client', tone: 'new_lead', title: 'Priced, but the customer has no link to view it yet.' };
   if (job.quoted_amount > 0) return { label: 'Awaiting approval', tone: 'new_lead', title: 'The customer can see the quote — waiting on them.' };
-  return { label: 'Needs price', tone: 'new_lead', title: 'No amount on this job yet.' };
+  return { label: 'Quote needed', tone: 'new_lead', title: 'No amount on this job yet.' };
 }
 
 export type PipelineChecklistItem = {
@@ -151,7 +154,7 @@ export function buildPipelineChecklist(
       key: 'quote',
       // Same split deriveJobListBadge uses, so the badge and this row never
       // disagree about whether the quote has gone out.
-      label: milestones.quoteShared ? 'Sent to client' : job.quoted_amount > 0 ? 'Send to client' : 'Needs price',
+      label: milestones.quoteShared ? 'Sent to client' : job.quoted_amount > 0 ? 'Send to client' : 'Quote needed',
       detail:
         job.quoted_amount > 0
           ? `${formatMoney(job.quoted_amount)} quoted · ${feedDetail}`
@@ -175,7 +178,7 @@ export function buildPipelineChecklist(
       // underway" covered both a job sitting on Tuesday's calendar and a job
       // with a crew in the driveway, which is the ambiguity the start button
       // exists to remove — so when it has been pressed, say which one it is.
-      label: startedLabel ? 'Work underway' : milestones.scheduled ? 'Scheduled / underway' : 'Schedule the work',
+      label: startedLabel ? WORKFLOW_STAGE_LABEL.in_progress : milestones.scheduled ? WORKFLOW_STAGE_LABEL.scheduled : 'Schedule the work',
       detail:
         startedLabel ??
         (job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until) : 'No date set'),

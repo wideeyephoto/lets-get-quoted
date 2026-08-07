@@ -134,7 +134,7 @@ export default function QuickStopExplainer({
             Earn more from customers willing to <span className="es-accent">pay for speed</span>
           </h2>
           <p className="es-lead">
-            Quick Stop lets nearby customers ask to be squeezed onto the end of today&apos;s route. You review the
+            Quick Stops lets nearby customers request a paid same-day visit. You review the
             request, choose the arrival window, set the fee, and accept only when it suits you.
           </p>
 
@@ -212,7 +212,7 @@ export default function QuickStopExplainer({
               <span className="es-phone-avatar" aria-hidden="true">{businessName.slice(0, 1)}</span>
               {businessName}
             </p>
-            <p className="es-phone-bubble">We&apos;re in your area today. Want us to squeeze you into the schedule?</p>
+            <p className="es-phone-bubble">We&apos;re in your area today. Want a same-day visit?</p>
             <p className="es-phone-sub">Choose faster service for a Quick Stop fee, or carry on as a normal enquiry.</p>
             <p className="es-phone-choice primary">
               Pay for faster service <span aria-hidden="true">→</span>

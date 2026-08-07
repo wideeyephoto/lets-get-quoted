@@ -233,7 +233,7 @@ export default function BlogWorkspace({
           <h2>Reminders</h2>
         </div>
         <label className="cash-bill-field">
-          <span>Remind me to publish</span>
+          <span>Publishing reminders</span>
           <select
             value={reminder}
             onChange={(event) => {
@@ -250,7 +250,7 @@ export default function BlogWorkspace({
             <option value={8}>Every 8 weeks</option>
           </select>
           <small className="cash-bill-note">
-            We&apos;ll nudge you on your dashboard when it&apos;s been this long since you last published. Keeping a
+            We&apos;ll remind you on your dashboard when it&apos;s been this long since you last published. Keeping a
             blog current is one of the slowest and most reliable SEO moves there is.
           </small>
         </label>

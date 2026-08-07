@@ -198,7 +198,7 @@ export default function FocusView({
                   <strong>{selected.quotedAmount > 0 ? selected.quotedLabel : 'No quote yet'}</strong>
                 </span>
                 <span>
-                  <small>Still owed</small>
+                  <small>Balance due</small>
                   <strong className={styles.owed}>{selected.outstandingLabel}</strong>
                 </span>
               </div>

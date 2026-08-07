@@ -104,12 +104,11 @@ export function buildInsightsCsv(insights: Insights, meta: InsightsExportMeta): 
   rows.push(['Total', money2(trend.total), money2(trend.previousTotal)]);
   blank();
 
-  // Sales funnel
-  const funnel = insights.funnel6;
-  section('Sales funnel', 'Stage volumes this period — not a tracked cohort');
-  rows.push(['Stage', 'Count', '% of previous stage']);
-  for (const stage of funnel.stages) rows.push([stage.label, String(stage.count), stage.rateOfPrev === null ? '—' : `${stage.rateOfPrev}%`]);
-  rows.push(['Overall lead → paid', '', funnel.overallPct === null ? '—' : `${funnel.overallPct}%`]);
+  // Sales activity. No conversion column: these are six independent counts, so
+  // the ratio of two of them is not a rate. See buildSalesActivity.
+  section('Sales activity', 'What happened this period, counted — not one group of customers followed through');
+  rows.push(['Stage', 'Count']);
+  for (const stage of insights.salesActivity.stages) rows.push([stage.label, String(stage.count)]);
   blank();
 
   // Schedule utilization
@@ -287,16 +286,14 @@ export function buildInsightsPdf(insights: Insights, meta: InsightsExportMeta): 
         kv('No payments recorded in this period', '—');
       }
 
-      // Sales funnel
-      const funnel = insights.funnel6;
-      heading('Sales funnel', 'Stage volumes this period — not a tracked cohort');
+      // Sales activity. No conversion column — see buildSalesActivity.
+      heading('Sales activity', 'What happened this period, counted — not one group of customers followed through');
       table(
-        ['Stage', 'Count', '% of previous'],
-        funnel.stages.map((stage) => [stage.label, String(stage.count), stage.rateOfPrev === null ? '—' : `${stage.rateOfPrev}%`]),
-        [CONTENT_WIDTH - 220, 110, 110],
-        ['left', 'right', 'right'],
+        ['Stage', 'Count'],
+        insights.salesActivity.stages.map((stage) => [stage.label, String(stage.count)]),
+        [CONTENT_WIDTH - 110, 110],
+        ['left', 'right'],
       );
-      kv('Overall lead → paid', funnel.overallPct === null ? '—' : `${funnel.overallPct}%`);
 
       // Schedule utilization
       const su = insights.scheduleUtilization;

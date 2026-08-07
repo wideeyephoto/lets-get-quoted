@@ -5,7 +5,7 @@ import {
   computeKpis,
   chooseGrouping,
   buildRevenueTrend,
-  buildFunnel6,
+  buildSalesActivity,
   computeScheduleUtilization,
   computePaymentHealth,
   computeCustomerInsights,
@@ -254,9 +254,9 @@ describe('buildRevenueTrend', () => {
   });
 });
 
-describe('buildFunnel6', () => {
-  it('reports each stage as a count plus its conversion from the prior stage', () => {
-    const funnel = buildFunnel6({
+describe('buildSalesActivity', () => {
+  it('is six counts and nothing else', () => {
+    const activity = buildSalesActivity({
       leadsCreated: 10,
       quotesSent: 8,
       quotesApproved: 5,
@@ -264,23 +264,27 @@ describe('buildFunnel6', () => {
       jobsCompleted: 3,
       jobsPaid: 3,
     });
-    expect(funnel.stages.map((s) => s.label)).toEqual([
+    expect(activity.stages.map((s) => s.label)).toEqual([
       'Leads',
-      'Quotes Sent',
-      'Quotes Approved',
-      'Jobs Scheduled',
-      'Jobs Completed',
-      'Jobs Paid',
+      'Quotes sent',
+      'Quotes approved',
+      'Jobs scheduled',
+      'Jobs completed',
+      'Jobs paid',
     ]);
-    expect(funnel.stages.map((s) => s.count)).toEqual([10, 8, 5, 4, 3, 3]);
-    expect(funnel.stages.map((s) => s.rateOfPrev)).toEqual([null, 80, 63, 80, 75, 100]);
-    expect(funnel.overallPct).toBe(30); // 3 paid ÷ 10 leads
+    expect(activity.stages.map((s) => s.count)).toEqual([10, 8, 5, 4, 3, 3]);
   });
 
-  it('leaves a rate above 100% truthful — this is period volume, not a cohort', () => {
-    // More jobs got paid this period than quotes went out; clamping it to 100%
-    // would hide that the funnel counts events in a window, not one lead's journey.
-    const funnel = buildFunnel6({
+  it('carries no conversion rate, because there is no cohort to convert', () => {
+    // This used to publish a percentage per stage and an overall lead → paid.
+    // Both were ratios of counts that do not belong to each other: the lead
+    // counted this period need not be the record that got paid this period.
+    //
+    // The tell was on screen — more jobs paid than quotes sent gives a stage
+    // reading 150%, printed directly under a caption saying this is NOT a
+    // tracked funnel. The old test asserted that 150% and called it truthful.
+    // It was arithmetically faithful to a calculation that should not exist.
+    const activity = buildSalesActivity({
       leadsCreated: 5,
       quotesSent: 5,
       quotesApproved: 5,
@@ -288,11 +292,16 @@ describe('buildFunnel6', () => {
       jobsCompleted: 2,
       jobsPaid: 3,
     });
-    expect(funnel.stages[5].rateOfPrev).toBe(150); // 3 paid ÷ 2 completed
+    for (const stage of activity.stages) {
+      expect(Object.keys(stage).sort(), stage.key).toEqual(['count', 'key', 'label']);
+    }
+    expect('overallPct' in activity).toBe(false);
   });
 
-  it('has no conversion where the prior stage was empty, and no overall without leads', () => {
-    const funnel = buildFunnel6({
+  it('reports an empty period as zeroes rather than as nothing', () => {
+    // Six zeroes is a real answer — "you did no work this month" — and it is
+    // the caller's job to decide whether that is worth a card.
+    const activity = buildSalesActivity({
       leadsCreated: 0,
       quotesSent: 0,
       quotesApproved: 2,
@@ -300,9 +309,8 @@ describe('buildFunnel6', () => {
       jobsCompleted: 0,
       jobsPaid: 0,
     });
-    expect(funnel.stages[0].rateOfPrev).toBeNull();
-    expect(funnel.stages[2].rateOfPrev).toBeNull(); // prior stage (quotes sent) was 0
-    expect(funnel.overallPct).toBeNull();
+    expect(activity.stages).toHaveLength(6);
+    expect(activity.stages.map((s) => s.count)).toEqual([0, 0, 2, 0, 0, 0]);
   });
 });
 

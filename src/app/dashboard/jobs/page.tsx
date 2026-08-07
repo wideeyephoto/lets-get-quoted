@@ -253,7 +253,7 @@ export default async function JobsPage({
       <details id="new-job" className="panel workspace-section-card workspace-details" open={shouldAutoOpenCreate(allJobs.length, searchParams.new)}>
         <summary className="workspace-details-summary">
           <span className="btn primary">+ New job</span>
-          <span className="workspace-details-copy">Capture the next signed opportunity.</span>
+          <span className="workspace-details-copy">Create a job for approved work.</span>
         </summary>
         <form action={createJobAction} className="form-grid">
           <PastClientsPicker clients={pastClients} />

@@ -137,7 +137,7 @@ export default function DemoPlanPage() {
               <h2>A Quick Stop paid its way in</h2>
             </div>
             <p className="cash-bills-lead">
-              Priya Shah asked to be squeezed in this morning. Her address is five minutes off the leg you were already
+              Priya Shah requested a same-day visit this morning. Her address is five minutes off the leg you were already
               driving between Berkley and Clawson, so the fee is on top of a trip that was happening anyway.
             </p>
             <p className="plan-drag-hint">

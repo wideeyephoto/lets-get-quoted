@@ -71,7 +71,22 @@ export function bandFor(client: FollowUpClient, todayKey: string): FollowUpBand 
   return daysBetweenKeys(client.lastVisitAt, todayKey) <= RECENT_DAYS ? 'recent' : 'drifting';
 }
 
-/** "Thursday" / "In 6 days" / "12 days ago" / "Never been out". */
+/**
+ * What whenLabel is going to be ABOUT for this customer.
+ *
+ * whenLabel answers two different questions depending on the record: when you
+ * are next at their house, or when you last were. The Clients panel printed it
+ * under a hardcoded "Next visit", so a customer with nothing booked read
+ * "Next visit: 18 days ago" — a date in the past, under a heading promising the
+ * future. It looked like a bug in the scheduler rather than an empty diary.
+ *
+ * The heading has to come from the same branch the value does, so pair them.
+ */
+export function whenHeading(client: FollowUpClient): string {
+  return client.nextJobAt ? 'Next visit' : 'Last visit';
+}
+
+/** "Today" / "In 6 days" / "12 days ago" / "Never been out". Pairs with whenHeading. */
 export function whenLabel(client: FollowUpClient, todayKey: string): string {
   if (client.nextJobAt) {
     const days = daysBetweenKeys(todayKey, client.nextJobAt);

@@ -273,7 +273,7 @@ export default async function BookingPage({
             <BookingSteps steps={steps} />
             {searchParams.error === 'incomplete' ? (
               <p className="payment-banner muted book-alert" role="status">
-                Please pick a time and fill in your name, address, and a phone or email.
+                Please request a time and fill in your name, address, and a phone or email.
               </p>
             ) : null}
             {searchParams.error === 'slot_taken' ? (

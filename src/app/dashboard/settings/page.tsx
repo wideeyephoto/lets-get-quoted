@@ -603,7 +603,6 @@ export default async function SettingsPage({
                     <IntakeContentSection
                       leadFilters={businessBasics.leadFilters}
                       emailField={businessBasics.estimateRanges.emailField}
-                      estimateLabel={businessBasics.quoteForm.estimateLabel}
                       hasCities={businessBasics.serviceAreas.cities.some((city) => city.trim())}
                       smartIntakeOn={smartIntakeOn}
                       preview={<IntakePreviewModal site={site as Site} compact />}
@@ -895,9 +894,9 @@ export default async function SettingsPage({
                 >
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     A job stops dead while nobody picks the tile. When on, a customer sitting on a decision gets a
-                    nudge as your <strong>needed-by date</strong> approaches, and once more if it passes &mdash; with a
-                    link straight to the choices. Everything on one job is one message, however many choices are
-                    waiting.
+                    reminder as your <strong>needed-by date</strong> approaches, and once more if it passes &mdash;
+                    with a link straight to the choices. Everything on one job is one message, however many choices
+                    are waiting.
                   </p>
                   <div className="automation-prereq">
                     <span aria-hidden="true">🗓️</span>

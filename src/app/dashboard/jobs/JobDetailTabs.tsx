@@ -181,7 +181,7 @@ export default function JobDetailTabs({
           <div><dt>Quoted</dt><dd>{job.quotedAmount > 0 ? job.quotedLabel : 'No quote yet'}</dd></div>
           <div><dt>Invoice</dt><dd>{detail.invoice ? `${detail.invoice.ref} · ${detail.invoice.statusLabel}` : 'None raised'}</dd></div>
           <div><dt>Paid</dt><dd>{detail.money.paidLabel}</dd></div>
-          <div><dt>Still owed</dt><dd className={styles.owed}>{detail.money.outstandingLabel}</dd></div>
+          <div><dt>Balance due</dt><dd className={styles.owed}>{detail.money.outstandingLabel}</dd></div>
           <div><dt>Payment</dt><dd>{detail.paymentStatusLabel ?? 'None requested'}</dd></div>
         </dl>
         <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}?open=payment#request-payment`}>

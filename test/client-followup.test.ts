@@ -6,6 +6,7 @@ import {
   flagsFor,
   followUpHeadline,
   groupByFollowUp,
+  whenHeading,
   whenLabel,
   type FollowUpClient,
 } from '@/lib/client-followup';
@@ -72,6 +73,29 @@ describe('whenLabel', () => {
   it('distinguishes never-booked from booked-but-undated', () => {
     expect(whenLabel(client({ id: 'a', name: 'A', jobCount: 0 }), TODAY)).toBe('Never been out');
     expect(whenLabel(client({ id: 'a', name: 'A', jobCount: 1 }), TODAY)).toBe('Job with no date on it');
+  });
+});
+
+describe('whenHeading', () => {
+  // The panel used to print this value under a hardcoded "Next visit", so a
+  // customer with nothing booked read "Next visit: 18 days ago" — a past date
+  // under a heading promising the future. The heading has to come from the same
+  // branch the value does.
+  it('never promises a future date the value does not have', () => {
+    const booked = client({ id: 'a', name: 'A', nextJobAt: '2026-08-06' });
+    expect(whenHeading(booked)).toBe('Next visit');
+    expect(whenLabel(booked, TODAY)).toBe('In 6 days');
+
+    const drifting = client({ id: 'b', name: 'B', lastVisitAt: '2026-07-13' });
+    expect(whenHeading(drifting)).toBe('Last visit');
+    expect(whenLabel(drifting, TODAY)).toBe('18 days ago');
+  });
+
+  it('says Last visit when there is nothing at either end', () => {
+    // "Last visit — Never been out" is coherent; "Next visit — Never been out"
+    // is a promise and a denial in the same breath.
+    expect(whenHeading(client({ id: 'a', name: 'A', jobCount: 0 }))).toBe('Last visit');
+    expect(whenHeading(client({ id: 'a', name: 'A', jobCount: 1 }))).toBe('Last visit');
   });
 });
 

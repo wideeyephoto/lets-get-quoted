@@ -5,7 +5,7 @@ import { bookingAvailabilityFromAccount } from './booking-availability';
 import {
   computeKpis,
   buildRevenueTrend,
-  buildFunnel6,
+  buildSalesActivity,
   countDistinctJobsInRange,
   computeScheduleUtilization,
   computePaymentHealth,
@@ -15,7 +15,7 @@ import {
   buildTopOpportunities,
   type InsightsKpis,
   type RevenueTrend,
-  type Funnel6,
+  type SalesActivity,
   type ScheduleUtilization,
   type PaymentHealth,
   type CustomerInsights,
@@ -672,7 +672,7 @@ export type Insights = {
   // --- Second-generation dashboard metrics (additive; existing callers unaffected). ---
   kpis: InsightsKpis;
   revenueTrend: RevenueTrend;
-  funnel6: Funnel6;
+  salesActivity: SalesActivity;
   scheduleUtilization: ScheduleUtilization;
   paymentHealth: PaymentHealth;
   customerInsights: CustomerInsights;
@@ -961,13 +961,14 @@ export async function buildInsights(
   const revenueTrend = buildRevenueTrend(data.paid, period);
 
   // Jobs paid in the window — distinct job_id among payments that landed in it,
-  // the final funnel stage. paid_at is the date the money arrived.
+  // the last of the six sales-activity counts. paid_at is the date the money
+  // arrived.
   const paidJobIds = new Set<string>();
   for (const payment of data.paid) {
     const at = new Date(payment.paid_at).getTime();
     if (payment.job_id && Number.isFinite(at) && at >= period.fromMs && at < period.toMs) paidJobIds.add(payment.job_id);
   }
-  const funnel6 = buildFunnel6({
+  const salesActivity = buildSalesActivity({
     leadsCreated: cur.leads,
     quotesSent: countDistinctJobsInRange(quoteSentEvents, period.fromMs, period.toMs),
     quotesApproved: countDistinctJobsInRange(data.approvals, period.fromMs, period.toMs),
@@ -1092,7 +1093,7 @@ export async function buildInsights(
     costsRecorded: data.costs.length > 0,
     kpis,
     revenueTrend,
-    funnel6,
+    salesActivity,
     scheduleUtilization,
     paymentHealth,
     customerInsights,

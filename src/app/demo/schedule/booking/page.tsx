@@ -2,7 +2,7 @@ import { Icon } from '@/app/dashboard/schedule/booking/icons';
 import { WEEKDAY_LABELS, formatWindowClock } from '@/lib/booking-availability';
 import { DEMO_BOOKING, DEMO_SITE_HOST } from '@/lib/demo-data';
 
-export const metadata = { title: 'Instant Online Booking — demo' };
+export const metadata = { title: 'Online booking — demo' };
 export const dynamic = 'force-dynamic';
 
 // A read-only mirror of the real booking screen. The live version is one client
@@ -34,7 +34,7 @@ export default function DemoBookingPage() {
       <header className="bset-head">
         <div>
           <h1>
-            Instant Online Booking and Availability <Icon name="calendar" />
+            Online booking <Icon name="calendar" />
           </h1>
           <p>Control when customers can book and how your time is managed.</p>
         </div>
@@ -128,7 +128,7 @@ export default function DemoBookingPage() {
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Who gets to book instantly</p>
+          <p className="eyebrow">Whose requests are accepted automatically</p>
           <h2>The gate</h2>
         </div>
         <ul className="cash-where-list">

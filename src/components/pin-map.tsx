@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 // One shared loader for the whole app — see lib/maps-loader for why a second
 // copy of the module-scoped promise would inject a second <script>.
 import { loadGoogleMaps, MAP_DARK_STYLE } from '@/lib/maps-loader';
+import { WORKFLOW_STAGE_LABEL } from '@/lib/workflow-stages';
 
 // A pin on the dashboard map. `kind` drives the marker colour + legend.
 export type MapPinKind = 'lead' | 'unscheduled' | 'scheduled';
@@ -21,14 +22,15 @@ export type MapPin = {
 
 const PIN_COLORS: Record<MapPinKind, string> = {
   lead: '#ff7a21', // needs response
-  unscheduled: '#ffd166', // quote out / needs scheduling
+  unscheduled: '#ffd166', // approved, no date yet
   scheduled: '#4ade80', // has a date
 };
 
+// Straight from the canonical stage names, so the legend and the pipeline agree.
 const KIND_LABEL: Record<MapPinKind, string> = {
-  lead: 'Lead — needs response',
-  unscheduled: 'Quote out — needs scheduling',
-  scheduled: 'Scheduled job',
+  lead: WORKFLOW_STAGE_LABEL.needs_response,
+  unscheduled: WORKFLOW_STAGE_LABEL.approved,
+  scheduled: WORKFLOW_STAGE_LABEL.scheduled,
 };
 
 const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];

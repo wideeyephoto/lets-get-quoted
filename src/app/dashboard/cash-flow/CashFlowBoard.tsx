@@ -243,10 +243,11 @@ export default function CashFlowBoard({
       <section className="workspace-hero panel workspace-hero-solo cash-hero">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Cash flow</p>
-          <h1 className="workspace-title">Will the money be there?</h1>
+          <h1 className="workspace-title">Cash-flow forecast</h1>
           <p className="workspace-lead">
             Payroll, bills and materials going out; deposits, invoices and plans coming in. Put in what&rsquo;s actually in the
-            bank and this shows you the balance day by day — and the first day it gets uncomfortable.
+            bank and this shows you the balance day by day — and the first day your balance falls below its safety
+            buffer.
           </p>
 
           <div className="cash-hero-chart">

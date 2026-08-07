@@ -739,7 +739,13 @@ export function getEstimateButtonLabel(
   quoteForm: Pick<SiteQuoteFormContent, 'estimateLabel' | 'enabled' | 'formHeading'>,
 ): string {
   if (quoteForm.enabled) return quoteForm.formHeading?.trim() || DEFAULT_QUOTE_FORM_HEADING;
-  return quoteForm.estimateLabel === 'instant' ? 'Instant Estimate' : 'Instant Quote';
+  // ALWAYS "Instant Estimate". This used to honour an owner setting that could
+  // switch it to "Instant Quote", so the same tool had two names across the
+  // product and inside one site. A quote is the document that follows approval;
+  // calling the on-the-spot number a quote promises a firm price nobody has
+  // committed to. The stored field is left alone — sites holding 'quick' simply
+  // render the accurate wording now, with no migration needed.
+  return 'Instant Estimate';
 }
 
 // The smart-intake estimator: the AI scopes the described job and prices it
@@ -964,10 +970,15 @@ export const DEFAULT_SERVICES_TITLE = 'What we do';
 export const DEFAULT_HOW_IT_WORKS_TITLE = 'How it works';
 // Starter steps a brand-new site's "How it works" section shows until the owner
 // edits them (an explicit steps array — even empty — is respected as-is).
+// Written for the homeowner reading them, in their order of doing them. The
+// previous set was written from the contractor's side ("We provide instant
+// quotes", "We send you 3 times"), used a different name for the estimate in
+// step one than the rest of the site does, and named step three after the
+// document rather than the action.
 export const DEFAULT_HOW_IT_WORKS_STEPS: SiteProcessStep[] = [
-  { id: 'step-1', title: 'Instant Quote with Smart Intake', description: 'We provide instant quotes by asking you a few questions' },
-  { id: 'step-2', title: 'Schedule a Free Estimate', description: 'We send you 3 times that would work for us to come assess the jobsite' },
-  { id: 'step-3', title: 'Quote for the job at hand', description: 'You will receive a text message to sign-off and be scheduled to start the job. A deposit may be required for larger jobs' },
+  { id: 'step-1', title: 'Get an instant estimate', description: 'Answer a few questions to see a ballpark price range.' },
+  { id: 'step-2', title: 'Request an appointment', description: 'Choose an available arrival window that works for you.' },
+  { id: 'step-3', title: 'Review and approve your quote', description: 'We’ll confirm the work and send your final quote by text. A deposit may be required for larger jobs.' },
 ];
 export const DEFAULT_BLOG_TITLE = 'From our blog';
 export const DEFAULT_BEFORE_AFTER_INTRO = 'See the transformation';

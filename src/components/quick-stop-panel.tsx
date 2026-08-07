@@ -50,7 +50,7 @@ export default function QuickStopPanel({
             {state === 'locked'
               ? `Paused by support${lockLabel ? ` until ${lockLabel}` : ''}. Nothing new can be added to a day while it is.`
               : state === 'on'
-                ? 'Customers can ask to be squeezed into today. Anything that fits your rules is offered at your fee.'
+                ? 'Nearby customers can request a paid same-day visit. Anything that fits your rules is offered at your fee.'
                 : 'Nobody can ask to be added to today. Your normal booking is unaffected.'}
             {todayCount > 0 ? ` ${todayCount} already on this day.` : ''}
           </small>

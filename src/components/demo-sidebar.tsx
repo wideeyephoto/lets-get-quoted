@@ -29,7 +29,7 @@ const STATE_BY_HREF: Record<string, { label: string; title: string }> = {
   },
   '/demo/quick-stops': {
     label: 'ON',
-    title: 'Quick Stops is ON — customers can ask to be squeezed into today',
+    title: 'Quick Stops is ON — nearby customers can request a paid same-day visit',
   },
 };
 

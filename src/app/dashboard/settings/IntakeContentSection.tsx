@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
-import type { SiteEstimateRangesContent, SiteLeadFiltersContent, SiteQuoteFormContent } from '@/lib/site-content';
+import type { SiteEstimateRangesContent, SiteLeadFiltersContent } from '@/lib/site-content';
 import { intakeQuality, groupStatus } from '@/lib/intake-quality';
 import { updateIntakeContentAction } from './actions';
 
@@ -28,7 +28,6 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type Props = {
   leadFilters: SiteLeadFiltersContent;
   emailField: SiteEstimateRangesContent['emailField'];
-  estimateLabel: SiteQuoteFormContent['estimateLabel'];
   hasCities: boolean;
   /** Smart Intake off means the classic form is running and none of this applies. */
   smartIntakeOn: boolean;
@@ -69,14 +68,12 @@ function Row({
 export default function IntakeContentSection({
   leadFilters: initialFilters,
   emailField: initialEmailField,
-  estimateLabel: initialLabel,
   hasCities,
   smartIntakeOn,
   preview,
 }: Props) {
   const [filters, setFilters] = useState(initialFilters);
   const [emailField, setEmailField] = useState(initialEmailField);
-  const [estimateLabel, setEstimateLabel] = useState(initialLabel);
   const [save, setSave] = useState<SaveState>('idle');
   const [, startSaving] = useTransition();
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,7 +129,7 @@ export default function IntakeContentSection({
   // setting it describes does.
   const quality = intakeQuality(qualityInput);
   const status = groupStatus(qualityInput);
-  const buttonText = estimateLabel === 'quick' ? 'Get my instant quote' : 'Get my instant estimate';
+  const buttonText = 'Get my instant estimate';
 
   return (
     <div className={`intake-quality${smartIntakeOn ? '' : ' is-paused'}`}>
@@ -194,34 +191,13 @@ export default function IntakeContentSection({
               }
             />
 
-            {/* Always on — the intake has a heading and a button whatever you
-                call them, so this is a naming choice, not a switch. */}
-            <div className="iq-row is-on is-fixed">
-              <div className="iq-row-head">
-                <span className="iq-tick" aria-hidden="true">✓</span>
-                <span className="iq-row-copy">
-                  <strong>What visitors see it called</strong>
-                  <small>The heading and button text.</small>
-                </span>
-              </div>
-              <div className="iq-row-detail">
-                <label className="iq-field">
-                  <span>Wording</span>
-                  <select
-                    value={estimateLabel}
-                    onChange={(event) => {
-                      const value = event.target.value as Props['estimateLabel'];
-                      const previous = estimateLabel;
-                      setEstimateLabel(value);
-                      persist({ estimateLabel: value }, () => setEstimateLabel(previous));
-                    }}
-                  >
-                    <option value="instant">&ldquo;Instant Estimate&rdquo;</option>
-                    <option value="quick">&ldquo;Instant Quote&rdquo;</option>
-                  </select>
-                </label>
-              </div>
-            </div>
+            {/* The "Instant Estimate" / "Instant Quote" wording picker was here.
+                It let one product call the same tool two things, and the second
+                name was the wrong one: a quote is the document that follows
+                approval, so promising a "quote" on the spot promises a firm
+                price nobody has committed to. getEstimateButtonLabel now always
+                says Instant Estimate; sites still storing the old value simply
+                render the accurate wording. */}
           </section>
 
           <section className="iq-group">

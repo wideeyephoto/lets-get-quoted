@@ -47,8 +47,8 @@ export default function ReviewsScreen({
           <p className="eyebrow">Reviews</p>
           <h1 className="workspace-title">Reputation &amp; feedback</h1>
           <p className="workspace-lead">
-            Every review ask in one place — how customers rated the work, who went on to review you publicly, and what
-            came back privately.
+            Every review request in one place — how customers rated the work, who went on to review you publicly, and
+            what came back privately.
           </p>
           <p className="review-policy-note">
             Every customer is offered both routes: a public review and a private word with you. We don&apos;t screen by
@@ -70,8 +70,8 @@ export default function ReviewsScreen({
       {summary.totalInvites === 0 ? (
         <section className="panel workspace-section-card">
           <p className="empty-state">
-            No review asks yet. Every request routes through a &ldquo;how did we do?&rdquo; page that offers a public
-            review and a private note, and the results show up here.
+            No review requests yet. Every request routes through a &ldquo;how did we do?&rdquo; page that offers a
+            public review and a private note, and the results show up here.
           </p>
         </section>
       ) : (
@@ -85,7 +85,7 @@ export default function ReviewsScreen({
             <article className="workspace-metric-card">
               <span className="workspace-metric-label">Went to Google</span>
               <strong className="workspace-metric-value">{summary.googleCount}</strong>
-              <p className="workspace-metric-note">Took the public route. Whether they posted is between them and Google.</p>
+              <p className="workspace-metric-note">Opened your Google review page. Google does not report whether a review was posted.</p>
             </article>
             <article className="workspace-metric-card">
               <span className="workspace-metric-label">Private feedback</span>

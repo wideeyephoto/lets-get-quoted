@@ -374,7 +374,7 @@ export default function JobSmoothieView({
                     <dd>{selected.quotedAmount > 0 ? selected.quotedLabel : 'No quote yet'}</dd>
                   </div>
                   <div>
-                    <dt>Still owed</dt>
+                    <dt>Balance due</dt>
                     <dd className={styles.waiting}>{selected.outstandingLabel}</dd>
                   </div>
                 </dl>

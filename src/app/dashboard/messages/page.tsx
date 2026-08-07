@@ -354,7 +354,7 @@ export default async function MessagesPage({
         <details className="workspace-details" open={templates.length > 0}>
           <summary className="workspace-details-summary">
             <span className="btn secondary">Saved replies{templates.length > 0 ? ` · ${templates.length}` : ''}</span>
-            <span className="workspace-details-copy">Canned replies you can drop into a text in one tap.</span>
+            <span className="workspace-details-copy">Reuse common responses with one tap.</span>
           </summary>
           <div className="template-manager">
             {templates.length > 0 ? (

@@ -27,13 +27,12 @@ function makeInsights(): Insights {
       previousTotal: 80,
       hasData: true,
     },
-    funnel6: {
+    salesActivity: {
       stages: [
-        { key: 'leads', label: 'Leads', count: 10, rateOfPrev: null },
-        { key: 'quotes_sent', label: 'Quotes Sent', count: 8, rateOfPrev: 80 },
-        { key: 'jobs_paid', label: 'Jobs Paid', count: 2, rateOfPrev: 25 },
+        { key: 'leads', label: 'Leads', count: 10 },
+        { key: 'quotes_sent', label: 'Quotes sent', count: 8 },
+        { key: 'jobs_paid', label: 'Jobs paid', count: 2 },
       ],
-      overallPct: 20,
     },
     scheduleUtilization: { configured: true, lookaheadDays: 21, workingDays: 15, bookedDays: 9, openDays: 6, utilizationPct: 60, estimatedOpportunity: 3000, avgJobValue: 500 },
     paymentHealth: { overdueBalance: 1200, overdueCount: 2, avgDaysToCollect: 9, failedPayments: 1 },
@@ -90,9 +89,14 @@ describe('buildInsightsCsv', () => {
     expect(lines).toContain('Total,300.25,80.00');
   });
 
-  it('renders funnel stages with an em-dash for the first stage rate', () => {
-    expect(lines).toContain('Leads,10,—');
-    expect(lines).toContain('Quotes Sent,8,80%');
+  it('exports sales activity as counts, with no conversion column', () => {
+    // The export used to carry a "% of previous stage" column and an overall
+    // lead → paid. A spreadsheet outlives the caption that disclaimed them, so
+    // the numbers that could not survive being read alone are gone.
+    expect(lines).toContain('Leads,10');
+    expect(lines).toContain('Quotes sent,8');
+    expect(lines.some((line) => line.includes('% of previous'))).toBe(false);
+    expect(lines.some((line) => line.startsWith('Overall lead'))).toBe(false);
   });
 
   it('renders marketing with human channel/audience labels and a UTC date', () => {

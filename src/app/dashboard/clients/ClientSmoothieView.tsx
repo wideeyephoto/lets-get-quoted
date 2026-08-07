@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { BAND_LABEL, bandFor, whenLabel } from '@/lib/client-followup';
+import { BAND_LABEL, bandFor, whenHeading, whenLabel } from '@/lib/client-followup';
 import {
   CLIENT_SORTS,
   CLIENT_STAGES,
@@ -335,7 +335,7 @@ export default function ClientSmoothieView({
                     <dd>{selected.lastLabel}</dd>
                   </div>
                   <div>
-                    <dt>Next visit</dt>
+                    <dt>{whenHeading(selected)}</dt>
                     <dd className={bandFor(selected, todayKey) === 'drifting' ? styles.waiting : undefined}>
                       {whenLabel(selected, todayKey)}
                     </dd>

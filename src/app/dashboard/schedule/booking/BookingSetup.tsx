@@ -309,7 +309,7 @@ export default function BookingSetup({
       <header className="bset-head">
         <div>
           <h1>
-            Instant Online Booking and Availability <Icon name="calendar" />
+            Online booking <Icon name="calendar" />
           </h1>
           <p>Control when customers can book and how your time is managed.</p>
         </div>
@@ -347,7 +347,7 @@ export default function BookingSetup({
                   ? 'No days are open, so nothing is on offer.'
                   : windowTimes.length === 0
                     ? 'No arrival windows are offered, so nothing is on offer.'
-                    : 'Your booking page is active and accepting requests.'}
+                    : 'Customers can request an available arrival window from your website.'}
           </small>
         </div>
 
@@ -574,7 +574,7 @@ export default function BookingSetup({
               <span className="bset-num">3</span>
               <span className="bset-section-copy">
                 <strong>Advanced booking rules</strong>
-                <small>Fine-tune how and who can book instantly.</small>
+                <small>Fine-tune whose requests are accepted without your review.</small>
               </span>
               <span className="bset-expand">{isOpen('advanced') ? 'Collapse' : 'Expand'} <Icon name="chevronDown" className={`bset-chev${isOpen('advanced') ? ' open' : ''}`} /></span>
             </button>
@@ -585,7 +585,7 @@ export default function BookingSetup({
                   <input type="checkbox" checked={instant.enabled} onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })} />
                   <span className="bset-switch-track small" aria-hidden="true"><span /></span>
                   <span className="bset-check-copy">
-                    <strong>Only let qualified jobs book instantly</strong>
+                    <strong>Only accept qualified jobs without review</strong>
                     <small>The Book page asks a few questions for an instant estimate first. Small, out-of-area or work-you-don’t-take jobs are routed to a callback instead.</small>
                   </span>
                 </label>
@@ -676,7 +676,7 @@ export default function BookingSetup({
               ) : (
                 <>
                   <strong className="bset-phone-title">Choose a date &amp; time</strong>
-                  <p className="bset-phone-sub">We’ll confirm the exact time with you.</p>
+                  <p className="bset-phone-sub">We’ll confirm your arrival window after reviewing the request.</p>
                   <div className="bset-phone-days">
                     {previewDays.map((key, i) => {
                       const d = formatDay(key);

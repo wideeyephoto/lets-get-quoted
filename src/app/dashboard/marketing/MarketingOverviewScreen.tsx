@@ -4,6 +4,7 @@ import { shortDate } from '@/lib/marketing-status';
 import type { PostCounts } from '@/lib/marketing-status';
 import type { overviewSummary, PreparedRecommendation } from '@/lib/marketing-overview';
 import type { CalendarView } from '@/lib/marketing-calendar-data';
+import { stateName } from '@/lib/marketing-calendar';
 import MarketingNav from './MarketingNav';
 
 /**
@@ -66,8 +67,8 @@ export default function MarketingOverviewScreen({
           <p className="eyebrow">Marketing overview</p>
           <h1 className="workspace-title">Keep your pipeline moving</h1>
           <p className="workspace-lead">
-            Your next best marketing actions, timed to {view.businessName}
-            {view.state ? ` and ${view.state} weather` : ' and your local weather'}.
+            Marketing recommendations tailored to {view.businessName}
+            {stateName(view.state) ? ` and ${stateName(view.state)}’s seasons` : ' and your local seasons'}.
           </p>
         </div>
         <div className="mkt-hero-action">

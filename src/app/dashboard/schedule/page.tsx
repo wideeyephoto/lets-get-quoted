@@ -729,7 +729,7 @@ export default async function SchedulePage({
                   </div>
                   <div className="schedule-action-buttons">
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Add Start Date</summary>
+                      <summary className="btn secondary">Add start date</summary>
                       <div className="schedule-popover-panel schedule-start-panel">
                         <form action={boundSchedule} className="schedule-inline-form schedule-start-form">
                           <div className="schedule-inline-field schedule-inline-date">
@@ -752,7 +752,7 @@ export default async function SchedulePage({
                       </div>
                     </details>
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Let the client choose</summary>
+                      <summary className="btn secondary">Send booking options</summary>
                       <div className="schedule-popover-panel">
                         <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
                           <div className="schedule-client-options-intro">
@@ -796,7 +796,7 @@ export default async function SchedulePage({
       <Link className="schedule-setup-link" href="/dashboard/schedule/booking" id="booking-availability">
         <span className="schedule-setup-link-copy">
           <span className="eyebrow">Setup</span>
-          <strong>Instant Online Booking and Availability</strong>
+          <strong>Online booking</strong>
           <span>
             {bookingStatus === 'Not live'
               ? 'Publish your website to let customers book themselves.'

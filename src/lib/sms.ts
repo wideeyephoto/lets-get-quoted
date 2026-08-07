@@ -608,7 +608,7 @@ export async function sendRebookInviteSms(params: {
   url: string;
   accountId?: string;
 }) {
-  const message = `Hi ${params.clientName}, it's ${params.businessName} — it's been a while! Ready to book us again? Grab a time here: ${params.url}. Reply STOP to opt out.`;
+  const message = `Hi ${params.clientName}, it's ${params.businessName} — it's been a while! Ready to book us again? Request a time here: ${params.url}. Reply STOP to opt out.`;
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

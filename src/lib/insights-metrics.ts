@@ -360,23 +360,44 @@ export function buildRevenueTrend(paid: MetricPayment[], period: Period): Revenu
 }
 
 /* -------------------------------------------------------------------------- */
-/* Sales funnel — six stages                                                    */
+/* Sales activity — six stage volumes                                           */
 /* -------------------------------------------------------------------------- */
 
-export type Funnel6Stage = {
+/**
+ * WHY THERE ARE NO PERCENTAGES HERE.
+ *
+ * This used to be called a funnel and carried a conversion rate on every stage
+ * plus an overall "lead → paid". Both were arithmetic on numbers that do not
+ * belong to each other.
+ *
+ * It is period VOLUME, not a tracked cohort. A lead counted this month need not
+ * be the record that got paid this month; the link from one lead to its own
+ * eventual payment is not reliably recorded anywhere. So the ratio of two of
+ * these counts is not a conversion rate — it is a comparison of two unrelated
+ * populations that happen to share a date range.
+ *
+ * The tell was visible on screen: stages read ABOVE 100% (more jobs paid this
+ * month than quotes sent this month), immediately below a caption explaining
+ * that this is not a tracked funnel. A number that has to be disclaimed to be
+ * read is not a number worth showing, and the disclaimer does not survive the
+ * screenshot somebody pastes into a group chat.
+ *
+ * The counts themselves are honest and useful: six real things that happened in
+ * a window. They are what is left. If a true conversion rate is wanted later it
+ * needs cohort tracking — following each lead to its own outcome — not a ratio
+ * of these six.
+ */
+
+export type SalesActivityStage = {
   key: string;
   label: string;
   count: number;
-  /** % of the previous stage that reached here. null for the first stage. */
-  rateOfPrev: number | null;
 };
-export type Funnel6 = {
-  stages: Funnel6Stage[];
-  /** Leads → paid, as a percentage. null when no leads came in. */
-  overallPct: number | null;
+export type SalesActivity = {
+  stages: SalesActivityStage[];
 };
 
-export type Funnel6Input = {
+export type SalesActivityInput = {
   leadsCreated: number;
   quotesSent: number;
   quotesApproved: number;
@@ -385,27 +406,17 @@ export type Funnel6Input = {
   jobsPaid: number;
 };
 
-// The funnel is period VOLUME, not a tracked cohort: a lead counted here need not
-// be the same record that got paid here. Every stage is honestly the count of
-// that event in the window, and the page labels it as such — connecting a single
-// lead all the way to its own payment isn't reliably recorded, so we don't imply
-// it. rateOfPrev can exceed 100% (more jobs paid this month than quotes sent
-// this month) and that's left truthful rather than clamped.
-export function buildFunnel6(input: Funnel6Input): Funnel6 {
-  const rows: Array<{ key: string; label: string; count: number }> = [
-    { key: 'leads', label: 'Leads', count: input.leadsCreated },
-    { key: 'quotes_sent', label: 'Quotes Sent', count: input.quotesSent },
-    { key: 'quotes_approved', label: 'Quotes Approved', count: input.quotesApproved },
-    { key: 'jobs_scheduled', label: 'Jobs Scheduled', count: input.jobsScheduled },
-    { key: 'jobs_completed', label: 'Jobs Completed', count: input.jobsCompleted },
-    { key: 'jobs_paid', label: 'Jobs Paid', count: input.jobsPaid },
-  ];
-  const stages: Funnel6Stage[] = rows.map((row, index) => {
-    if (index === 0) return { ...row, rateOfPrev: null };
-    const prev = rows[index - 1].count;
-    return { ...row, rateOfPrev: prev > 0 ? Math.round((row.count / prev) * 100) : null };
-  });
-  return { stages, overallPct: input.leadsCreated > 0 ? Math.round((input.jobsPaid / input.leadsCreated) * 100) : null };
+export function buildSalesActivity(input: SalesActivityInput): SalesActivity {
+  return {
+    stages: [
+      { key: 'leads', label: 'Leads', count: input.leadsCreated },
+      { key: 'quotes_sent', label: 'Quotes sent', count: input.quotesSent },
+      { key: 'quotes_approved', label: 'Quotes approved', count: input.quotesApproved },
+      { key: 'jobs_scheduled', label: 'Jobs scheduled', count: input.jobsScheduled },
+      { key: 'jobs_completed', label: 'Jobs completed', count: input.jobsCompleted },
+      { key: 'jobs_paid', label: 'Jobs paid', count: input.jobsPaid },
+    ],
+  };
 }
 
 /* -------------------------------------------------------------------------- */

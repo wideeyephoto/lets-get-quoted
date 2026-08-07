@@ -148,7 +148,7 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
             <strong>
               Quick Stops is <em className={enabled && !locked ? 'on' : 'off'}>{locked ? 'PAUSED' : enabled ? 'ON' : 'OFF'}</em>
             </strong>
-            <small>Customers can ask to be squeezed into today, at a fee you set.</small>
+            <small>Nearby customers can request a paid same-day visit, at a fee you set.</small>
           </span>
         </label>
 
@@ -213,7 +213,7 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           <span className="bset-card-icon tone-off"><Icon name="cash" /></span>
           <span className="bset-card-label">Your fee</span>
           <strong>{props.feeLabel}</strong>
-          <small>What a same-day squeeze-in costs the customer</small>
+          <small>What a same-day visit costs the customer</small>
           <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
         </Link>
 
@@ -272,7 +272,10 @@ export function QuickStopHead({ bookingUrl }: { bookingUrl: string | null }) {
             className="qs-logo-badge"
           />
         </h1>
-        <p>Let customers pay to be squeezed into a day you&apos;re already working near them.</p>
+        <p>
+          Quick Stops lets nearby customers request a paid same-day visit. You review every request, choose the
+          arrival window and fee, and accept only when it fits your route. Nothing is booked until the customer pays.
+        </p>
       </div>
       {bookingUrl ? (
         <a className="btn secondary bset-head-cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">

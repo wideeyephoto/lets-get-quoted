@@ -25,7 +25,7 @@ type SectionKey = 'when' | 'what' | 'far' | 'charge' | 'terms';
 
 const SECTIONS: Array<{ key: SectionKey; num: number; title: string; blurb: string }> = [
   { key: 'when', num: 1, title: 'When you’ll take them', blurb: 'The days, and the earliest and latest an arrival window can run.' },
-  { key: 'what', num: 2, title: 'What kind of work', blurb: 'The jobs you’ll squeeze in — and what the AI screens out.' },
+  { key: 'what', num: 2, title: 'What kind of work', blurb: 'The jobs you’ll fit into today’s route — and what the AI screens out.' },
   { key: 'far', num: 3, title: 'How far you’ll go', blurb: 'How much of a detour off your route is worth it.' },
   { key: 'charge', num: 4, title: 'What you’ll charge', blurb: 'Your fee range, and how many you’ll take in a day.' },
   { key: 'terms', num: 5, title: 'Deadlines & refunds', blurb: 'How long each side has to respond, and what a cancellation returns.' },
@@ -203,7 +203,7 @@ export default function QuickStopConfigurator({
                     </div>
 
                     <div className="field">
-                      <label htmlFor="quickStopMaxVisitMinutes">Longest visit you’ll squeeze in (minutes)</label>
+                      <label htmlFor="quickStopMaxVisitMinutes">Longest same-day visit you’ll take (minutes)</label>
                       <input id="quickStopMaxVisitMinutes" name="quickStopMaxVisitMinutes" type="number" min="5" max="600" step="5" inputMode="numeric" defaultValue={s.maxVisitMinutes} />
                       <small className="field-hint">Jobs the AI estimates will run longer than this are turned away.</small>
                     </div>

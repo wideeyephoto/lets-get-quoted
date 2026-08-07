@@ -36,7 +36,7 @@ export default async function DemoLeadsPage({ initialLeadId }: { initialLeadId?:
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
-          <h2>Current leads</h2>
+          <h2>Work pipeline</h2>
         </div>
         <LeadsWorkspace
           leads={demoLeadViews()}

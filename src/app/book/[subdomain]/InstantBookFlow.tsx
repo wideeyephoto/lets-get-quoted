@@ -22,7 +22,7 @@ type Props = {
 const STEPS = [
   { n: 1, label: 'The job' },
   { n: 2, label: 'Your estimate' },
-  { n: 3, label: 'Pick a time' },
+  { n: 3, label: 'Request a time' },
 ];
 
 type Phase = 'describe' | 'asking' | 'thinking' | 'result';
@@ -188,7 +188,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           <div className="field full">
             <label htmlFor="flow-address">Address</label>
             <input id="flow-address" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
-            <small className="field-hint">Prices the job and finds days {businessName} is already near you.</small>
+            <small className="field-hint">Helps us estimate the job and show availability in your area.</small>
           </div>
           <div className="field full">
             <button type="submit" className="btn primary book-submit">Get my estimate</button>

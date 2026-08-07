@@ -8,7 +8,7 @@ import ArrivalPerformance from './ArrivalPerformance';
 import KpiCard from './KpiCard';
 import InsightsHeaderControls from './InsightsHeaderControls';
 import RevenueOverTimeChart from './RevenueOverTimeChart';
-import SalesFunnelCard from './SalesFunnelCard';
+import SalesActivityCard from './SalesActivityCard';
 import ScheduleUtilizationCard from './ScheduleUtilizationCard';
 import QuotesFollowUpCard from './QuotesFollowUpCard';
 import PaymentHealthCard from './PaymentHealthCard';
@@ -516,7 +516,7 @@ export default function InsightsScreen({
           />
         </section>
 
-        <SalesFunnelCard funnel={insights.funnel6} windowLabel={insights.windowLabel} />
+        <SalesActivityCard activity={insights.salesActivity} windowLabel={insights.windowLabel} />
       </div>
 
       {/* Action grid — schedule / quotes / payment / customers, then the ranked

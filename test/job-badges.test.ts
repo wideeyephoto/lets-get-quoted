@@ -47,8 +47,8 @@ describe('the header badge and the pipeline checklist agree', () => {
 
   it('says the price is missing in both places when there is no amount yet', () => {
     const noQuote = job();
-    expect(badge(noQuote).label).toBe('Needs price');
-    expect(checklist(noQuote)[0].label).toBe('Needs price');
+    expect(badge(noQuote).label).toBe('Quote needed');
+    expect(checklist(noQuote)[0].label).toBe('Quote needed');
   });
 
   it('only says it went out once a client link exists', () => {
@@ -88,7 +88,7 @@ describe('no step claims something that has not happened', () => {
       job({ quoted_amount: 11800, status: 'in_progress' }),
       job({ quoted_amount: 11800, scheduled_for: '2026-08-04' }),
     ];
-    const pastTense = ['Sent to client', 'Quote approved', 'Scheduled / underway', 'Invoice / payment requested', 'Paid / signed off'];
+    const pastTense = ['Sent to client', 'Quote approved', 'Scheduled', 'Invoice / payment requested', 'Paid / signed off'];
 
     for (const j of cases) {
       for (const step of checklist(j)) {
@@ -99,7 +99,7 @@ describe('no step claims something that has not happened', () => {
 
   it('never shows an outstanding-action label on a finished step', () => {
     const done = job({ quoted_amount: 11800, status: 'complete', scheduled_for: '2026-08-04' });
-    const todo = ['Needs price', 'Send to client', 'Awaiting approval', 'Schedule the work', 'Request payment', 'Awaiting payment'];
+    const todo = ['Quote needed', 'Send to client', 'Awaiting approval', 'Schedule the work', 'Request payment', 'Awaiting payment'];
 
     for (const step of checklist(done, [paid(11800)], [invoice('paid', 11800)], 1)) {
       expect(step.complete).toBe(true);
@@ -156,18 +156,19 @@ describe('checklist details', () => {
 describe('the schedule step stops hedging once work has started', () => {
   // "Scheduled / underway" covered both a job on next Tuesday's calendar and a
   // job with a crew in the driveway. Pressing "Job started" is what tells the
-  // two apart, so the step has to say which one it means.
+  // two apart, so the step has to say which one it means — and it now says so
+  // in the canonical stage words rather than a slash between two of them.
   const scheduled = job({ quoted_amount: 11800, status: 'in_progress', scheduled_for: '2026-08-04' });
 
-  it('hedges while the job is only scheduled', () => {
+  it('says only that it is scheduled while that is all that is true', () => {
     const step = checklist(scheduled)[2];
-    expect(step.label).toBe('Scheduled / underway');
+    expect(step.label).toBe('Scheduled');
     expect(step.detail).toContain('Aug');
   });
 
   it('commits once there is a start time, and shows the day', () => {
     const step = checklist({ ...scheduled, started_at: '2026-08-04T14:20:00.000Z' })[2];
-    expect(step.label).toBe('Work underway');
+    expect(step.label).toBe('Work in progress');
     expect(step.detail).toMatch(/^Started /);
   });
 
@@ -181,17 +182,17 @@ describe('the schedule step stops hedging once work has started', () => {
 
 describe('the header badge moves when work starts', () => {
   // The reported bug: press "Job started" and the status card carried on saying
-  // "Work scheduled", because the badge only ever looked at scheduled_for.
+  // "Scheduled", because the badge only ever looked at scheduled_for.
   const scheduled = job({ quoted_amount: 11800, scheduled_for: '2026-08-04' });
   const started = { ...scheduled, status: 'in_progress' as const, started_at: '2026-08-04T14:20:00.000Z' };
 
   it('says scheduled while it is only scheduled', () => {
-    expect(badge(scheduled).label).toBe('Work scheduled');
+    expect(badge(scheduled).label).toBe('Scheduled');
   });
 
   it('stops saying scheduled once there is a start time', () => {
-    expect(badge(started).label).not.toBe('Work scheduled');
-    expect(badge(started).label).toBe('Work underway');
+    expect(badge(started).label).not.toBe('Scheduled');
+    expect(badge(started).label).toBe('Work in progress');
   });
 
   it('says the same thing the pipeline step beside it says', () => {
@@ -208,13 +209,13 @@ describe('the header badge moves when work starts', () => {
     // Used to fall through to "Ready for invoice" — a job with a crew on site
     // is not waiting to be invoiced.
     const noDate = job({ quoted_amount: 11800, status: 'in_progress', started_at: '2026-08-04T14:20:00.000Z' });
-    expect(badge(noDate).label).toBe('Work underway');
+    expect(badge(noDate).label).toBe('Work in progress');
   });
 
   it('still lets money states outrank it', () => {
     // An invoice awaiting payment is the more urgent fact, and completion ends
     // the story regardless of when it started.
-    expect(badge(started, [requested()]).label).toBe('Invoice sent · Awaiting payment');
+    expect(badge(started, [requested()]).label).toBe('Invoice sent — awaiting payment');
     expect(badge({ ...started, status: 'complete' }).label).toBe('Complete');
   });
 });

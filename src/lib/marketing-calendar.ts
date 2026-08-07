@@ -44,6 +44,33 @@ export function climateZoneForState(state: string | null | undefined): ClimateZo
   return ZONE_BY_STATE[(state ?? '').trim().toUpperCase()] ?? 'temperate';
 }
 
+/**
+ * The state's name, for prose.
+ *
+ * A two-letter code is the right thing to store and the wrong thing to read.
+ * The marketing page said "timed to BrokePipes and MI weather", which is a
+ * database value wearing a sentence — nobody says "MI weather" out loud. Only
+ * for display; every comparison stays on the code.
+ */
+const STATE_NAME: Record<string, string> = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+  CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'Washington, D.C.', FL: 'Florida',
+  GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana',
+  IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine',
+  MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
+  MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
+  NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota',
+  OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island',
+  SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah',
+  VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin',
+  WY: 'Wyoming',
+};
+
+/** Null rather than the raw code, so a caller never prints "MI" by accident. */
+export function stateName(state: string | null | undefined): string | null {
+  return STATE_NAME[(state ?? '').trim().toUpperCase()] ?? null;
+}
+
 /** Pull a state code off the end of a US address. Returns null when unsure. */
 export function stateFromAddress(address: string | null | undefined): string | null {
   const match = /\b([A-Z]{2})\b(?:\s+\d{5}(?:-\d{4})?)?\s*$/.exec((address ?? '').trim().toUpperCase());

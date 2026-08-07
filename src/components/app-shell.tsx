@@ -68,7 +68,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // reason to send something, so it is surfaced on the Marketing overview
   // instead. The page itself is still at /dashboard/rebook, still linked from
   // there and from the dashboard.
-  { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
+  { href: '/dashboard/insights', label: 'Insights', hint: 'Sales activity & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
@@ -144,7 +144,7 @@ export type NavState = 'on' | 'off' | 'paused' | 'unknown';
 // colour only agrees with it, so it still reads without colour vision.
 const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { label: string; title: string }>> = {
   '/dashboard/quick-stops': {
-    on: { label: 'ON', title: 'Quick Stops is ON — customers can ask to be squeezed into today' },
+    on: { label: 'ON', title: 'Quick Stops is ON — nearby customers can request a paid same-day visit' },
     off: { label: 'OFF', title: 'Quick Stops is OFF — nobody can ask to be added to today' },
     paused: { label: 'PAUSED', title: 'Quick Stops is paused by support — nothing new can be added to a day' },
   },

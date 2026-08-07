@@ -109,19 +109,19 @@ export default function BookingAvailabilitySection({ bookingSettings }: { bookin
         </fieldset>
 
         <fieldset className="form-group">
-          <legend>Who can book instantly</legend>
+          <legend>Whose requests are accepted automatically</legend>
           <div className="form-grid compact-form">
             <label className="checkbox-row" htmlFor="instantBookEnabled">
               <input id="instantBookEnabled" name="instantBookEnabled" type="checkbox" defaultChecked={instantBookEnabled} />
               <span>
-                <strong>Only let qualified jobs book instantly.</strong> The Book page asks a couple of quick
+                <strong>Only accept qualified jobs without review.</strong> The Book page asks a couple of quick
                 questions for an instant estimate first &mdash; small, out-of-area, or work-you-don&apos;t-take
-                jobs are routed to &ldquo;request a callback&rdquo; instead of grabbing a slot. Off means booking is
-                open to everyone.
+                jobs are routed to &ldquo;request a callback&rdquo; instead of requesting a window. Off means
+                requests are open to everyone.
               </span>
             </label>
             <div className="field full">
-              <label htmlFor="instantBookMinAmount">Minimum estimated job value to book instantly ($)</label>
+              <label htmlFor="instantBookMinAmount">Minimum estimated job value to accept without review ($)</label>
               <input className="input-narrow" id="instantBookMinAmount" name="instantBookMinAmount" type="number" min="0" step="100" inputMode="numeric" placeholder="e.g. 500" defaultValue={instantBookMinAmount || ''} />
               <small className="field-hint">A job estimating below this is sent to request-a-callback instead of taking a premium slot. Blank or 0 for no floor. Only applies when the setting above is on.</small>
             </div>
