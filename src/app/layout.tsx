@@ -87,7 +87,7 @@ export const metadata: Metadata = {
     template: "%s · Let's Get Quoted",
   },
   description:
-    'The all-in-one platform for contractors: a website with an AI estimator that qualifies leads 24/7, quotes and e-signatures, scheduling, and Stripe payments straight to your bank. No subscription — you only pay when you get paid.',
+    'The all-in-one platform for contractors: a website with an AI estimator that collects job details, shows an estimated range, and lets customers request an available arrival window 24/7 — plus quotes and e-signatures, scheduling, and Stripe payments straight to your bank. No monthly subscription; platform and Stripe processing fees apply when you collect payment.',
   applicationName: "Let's Get Quoted",
   alternates: { canonical: '/' },
   openGraph: {

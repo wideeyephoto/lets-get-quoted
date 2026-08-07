@@ -167,7 +167,7 @@ const compareRows: CompareRow[] = [
     label: 'Quote → e-signature → payment, one flow',
     cells: [
       { tone: 'good', text: 'Built in, unbroken' },
-      { tone: 'bad', text: 'Not offered' },
+      { tone: 'bad', text: 'Not typically built in' },
       { tone: 'mid', text: 'Add-ons, often disconnected' },
     ],
   },
@@ -175,8 +175,8 @@ const compareRows: CompareRow[] = [
     label: '24/7 AI Estimator on your site',
     cells: [
       { tone: 'good', text: 'Yes — qualifies leads 24/7' },
-      { tone: 'bad', text: 'Not offered' },
-      { tone: 'bad', text: 'Not offered' },
+      { tone: 'bad', text: 'Not typically built in' },
+      { tone: 'bad', text: 'Not typically built in' },
     ],
   },
   {
@@ -191,15 +191,15 @@ const compareRows: CompareRow[] = [
     label: 'Online booking & client self-scheduling',
     cells: [
       { tone: 'good', text: 'Built in' },
-      { tone: 'bad', text: 'Not offered' },
+      { tone: 'bad', text: 'Not typically built in' },
       { tone: 'good', text: 'Usually included' },
     ],
   },
   {
-    label: 'Reviews: Google import + smart routing',
+    label: 'Review requests and Google review links',
     cells: [
       { tone: 'good', text: 'Built in' },
-      { tone: 'bad', text: 'Not offered' },
+      { tone: 'bad', text: 'Not typically built in' },
       { tone: 'mid', text: 'Sometimes' },
     ],
   },
@@ -207,7 +207,7 @@ const compareRows: CompareRow[] = [
     label: 'Recurring visits & auto-billing',
     cells: [
       { tone: 'good', text: 'Built in' },
-      { tone: 'bad', text: 'Not offered' },
+      { tone: 'bad', text: 'Not typically built in' },
       { tone: 'mid', text: 'Higher tiers only' },
     ],
   },
@@ -327,12 +327,12 @@ export default function HomePage() {
         <div className="hero-copy">
           <h1>Quote it. Sign it. Get paid. <span className="gradient-text">Straight to your bank.</span></h1>
           <p className="hero-text">
-            The contractor website with a 24/7 AI Estimator that turns visitors into booked jobs &mdash; then quote,
-            e-sign, and get paid in one flow, straight to your bank. No web guy, no paper contracts, no chasing checks.
+            Turn website visitors into qualified leads and booking requests, then send quotes, collect signatures,
+            schedule work, and get paid in one connected workflow.
           </p>
           <div className="actions">
             <Link href="/login?intent=signup" className="btn primary">
-              Create Free Account
+              Create free account
             </Link>
             <Link href="/demo" className="btn secondary">
               Explore the demo &mdash; no signup
@@ -340,9 +340,9 @@ export default function HomePage() {
           </div>
           <p className="hero-reassure hero-reassure-pill">Free to start &middot; No credit card &middot; <strong>you only pay when a homeowner pays you.</strong></p>
           <ul className="hero-trust-row">
-            <li><MessageIcon /><span>24/7 AI Estimator prices &amp; books leads for you</span></li>
+            <li><MessageIcon /><span>Collects job details, provides an estimated range, and accepts booking requests 24/7</span></li>
             <li><SignatureIcon /><span>Quote, e-sign &amp; get paid on Stripe</span></li>
-            <li><TrendDownIcon /><span>No monthly bill &mdash; a small fee only when you get paid (1.25% &rarr; 0.65% as you grow)</span></li>
+            <li><TrendDownIcon /><span>No monthly subscription. Platform and Stripe processing fees apply when you collect payment (1.25% &rarr; 0.65% as you grow)</span></li>
           </ul>
         </div>
 
@@ -368,13 +368,14 @@ export default function HomePage() {
 
       <div className="marketing-shell">
 
-      {/* Peak-intent CTA right after the command center, so the desire built
-          across the wheel has a button in reach before the comparison. */}
-      <div className="mid-cta mid-cta-lead">
-        <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
-        <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
-      </div>
-
+      {/* The sign-up CTA used to appear five times on this page, each with the
+          same no-card promise underneath. Past about three it stops reading as
+          confidence and starts reading as anxiety — the page arguing with an
+          objection nobody raised. Three remain: the hero, one after the pricing
+          section where somebody has just worked out what it costs, and the
+          closing band. This one, and the one after the comparison table, are
+          gone; the demo link a few lines down still catches the same intent
+          without asking for a signup. */}
       <section className="section-block compare-band">
         <div className="section-heading">
           <p className="eyebrow">Why contractors switch</p>
@@ -420,16 +421,15 @@ export default function HomePage() {
         <p className="compare-legend">
           <span><span className="compare-mark tone-good" aria-hidden="true">✓</span> Built in</span>
           <span><span className="compare-mark tone-mid" aria-hidden="true">~</span> Partial or extra cost</span>
-          <span><span className="compare-mark tone-bad" aria-hidden="true">✕</span> Not offered</span>
+          <span><span className="compare-mark tone-bad" aria-hidden="true">✕</span> Not typically built in</span>
         </p>
         <p className="compare-source">
           Category comparison vs. typical published plans as of 2026 &mdash; field-service CRMs commonly run
           $50&ndash;$300+/mo per seat and website builders $16&ndash;$49/mo, billed whether or not you book work.
         </p>
-        <div className="mid-cta">
-          <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
-          <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
-        </div>
+        {/* Second of the two removed sign-up CTAs — see the note above the
+            comparison band. The pricing section immediately below carries the
+            one that matters here. */}
       </section>
 
       <section className="section-block pricing-band">
@@ -462,13 +462,13 @@ export default function HomePage() {
             <li className="keep"><span>You keep</span><span className="v">~$2,051</span></li>
           </ul>
           <p className="pricing-takehome-note">
-            Take the deposit by bank/ACH and Stripe&rsquo;s cut nearly disappears. Slow month with no jobs?
-            <strong> $0</strong> &mdash; while a monthly CRM still bills you $200+.
+            ACH processing is typically less expensive than card processing. Current Stripe fees apply. Slow month
+            with no jobs? <strong>$0</strong> &mdash; while a monthly CRM still bills you $200+.
           </p>
         </div>
         <HomeFeeCalculator />
         <div className="mid-cta">
-          <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
+          <Link href="/login?intent=signup" className="btn primary">Create free account</Link>
           <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>
         </div>
       </section>
@@ -548,10 +548,13 @@ export default function HomePage() {
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
           <h2>Your next quote could be the fastest payday you&apos;ve had yet.</h2>
-          <p>You&apos;ve read this far and we still haven&apos;t asked for a card &mdash; and we won&apos;t until a homeowner pays you. No subscription, no setup fee, no contract, cancel anytime, and your site and clients stay yours.</p>
+          {/* The no-card promise is already made in the hero, in the pricing
+              section and on the "Never locked in" card. Saying it a fourth time
+              here, at length, was the page protesting. */}
+          <p>No card required. Platform and Stripe processing fees apply only when you collect a payment.</p>
           <div className="actions">
             <Link href="/login?intent=signup" className="btn primary">
-              Create Free Account
+              Create free account
             </Link>
             <Link href="/demo" className="btn secondary">
               Explore the demo &mdash; no signup

@@ -4,7 +4,7 @@ import DemoBanner from '@/components/demo-banner';
 import DemoSidebar from '@/components/demo-sidebar';
 
 export const metadata: Metadata = {
-  title: "Example dashboard | Let's Get Quoted",
+  title: 'Example dashboard',
   robots: { index: false, follow: false },
 };
 

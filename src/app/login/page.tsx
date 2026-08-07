@@ -237,7 +237,14 @@ function LoginInner() {
             <>New here? <a href="/login?intent=signup">Create a free account</a></>
           )}
         </p>
-        <p className="auth-trust"><LockIcon /> Encrypted. We never store passwords.</p>
+        {/* "Encrypted" on its own is a word, not a claim — and "we never store
+            passwords" is true only because there are none, which is the
+            interesting part. Say that instead. The disclosure below it is the
+            one thing somebody deciding whether to sign up actually needs. */}
+        <p className="auth-trust"><LockIcon /> Passwordless sign-in secured with a one-time code.</p>
+        <p className="auth-trust auth-trust-fine">
+          No card required. Platform and Stripe processing fees apply only when you collect a payment.
+        </p>
         <p className="auth-crew-link"><a href="/field/login">On a crew? Open the field app →</a></p>
       </section>
     </main>

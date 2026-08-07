@@ -13,7 +13,9 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   const article = getArticle(params.slug);
   if (!article) return {};
   return {
-    title: `${article.title} · Let’s Get Quoted`,
+    // The root layout's title template appends the brand; carrying it here too
+    // printed it twice.
+    title: article.title,
     description: article.excerpt,
     alternates: { canonical: `https://letsgetquoted.com/resources/${article.slug}` },
     openGraph: {
@@ -73,7 +75,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           <h2>Start free — you only pay when a homeowner pays you.</h2>
           <p>No subscription. No setup fee. The whole toolkit, from your first quote.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create Free Account</Link>
+            <Link href="/login" className="btn primary">Create free account</Link>
             <Link href="/resources" className="btn secondary">More resources</Link>
           </div>
         </div>

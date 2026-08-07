@@ -7,7 +7,7 @@ import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
 
 export const metadata: Metadata = {
-  title: 'Pricing — Let’s Get Quoted',
+  title: 'Pricing',
   description:
     'No subscription and no setup fee. A platform fee of 0.65%–1.25% applies only when a homeowner pays you, and drops as you grow. Try the fee calculator.',
   alternates: { canonical: 'https://letsgetquoted.com/pricing' },
@@ -69,13 +69,17 @@ export default function PricingPage() {
               land on from search and navigate by heading; it started at h2,
               which left it with no name at all. See .section-heading h1. */}
           <h1>No subscription. You only pay when you get paid.</h1>
+          {/* No "+" after a generated count. FEATURE_COUNT is ALL_FEATURES.length,
+              so the number is exact — "74+" hedges a figure we know precisely and
+              reads as marketing rounding. */}
           <p>
-            Every one of the {FEATURE_COUNT}+ features is included from day one. There&apos;s no setup fee and nothing to
-            cancel — just a small platform fee when a homeowner actually pays you, and it drops as you grow.
+            All {FEATURE_COUNT} features are included from day one. There&apos;s no setup fee and no monthly
+            subscription to cancel — just a small platform fee when a homeowner actually pays you, and it drops as you
+            grow.
           </p>
         </div>
         <div className="actions">
-          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/login" className="btn primary">Create free account</Link>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
       </section>
@@ -122,7 +126,7 @@ export default function PricingPage() {
           ))}
         </ul>
         <div className="mid-cta">
-          <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT}+ features &rarr;</Link>
+          <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
         </div>
       </section>
 
@@ -146,7 +150,7 @@ export default function PricingPage() {
           <h2>Start free &mdash; the first quote costs you nothing.</h2>
           <p>No subscription. No setup fee. You only pay our platform fee when a homeowner actually pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create Free Account</Link>
+            <Link href="/login" className="btn primary">Create free account</Link>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>
           </div>
         </div>

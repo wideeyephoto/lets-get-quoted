@@ -110,7 +110,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     features: [
       { id: 'calendar', name: 'Drag-and-drop calendar', desc: 'Place and reschedule jobs; multi-day work auto-expands across days.' },
       { id: 'self-scheduling', name: 'Client self-scheduling', desc: 'Text up to 3 windows; the client picks one and it books itself.' },
-      { id: 'online-booking', name: 'Online booking page', desc: 'Customers grab a real open slot right from your public site.', favorite: true },
+      { id: 'online-booking', name: 'Online booking page', desc: 'Customers request an available arrival window right from your public site.', favorite: true },
       { id: 'reminders', name: 'Appointment reminders', desc: 'Text or email ahead of the job, on your schedule; reply "C" to confirm.' },
       { id: 'estimate-visits', name: 'Estimate visits', desc: 'Schedule free in-person estimates with SMS options.' },
     ],

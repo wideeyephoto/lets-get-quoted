@@ -45,7 +45,7 @@ export const TRADES: Trade[] = [
     subhead:
       'Capture the lead the moment a roof leaks, quote big jobs with deposits and payment plans, and get paid to your bank — with every photo on the record.',
     pains: [
-      { title: 'Win the high-ticket job', body: 'Offer a deposit plus 0%-interest payment plans so a $15k roof is an easy yes, not a financing headache.' },
+      { title: 'Win the high-ticket job', body: 'Offer a deposit plus 0%-interest payment plans so larger projects are easier for customers to budget.' },
       { title: 'Answer first, win first', body: 'An AI estimator qualifies the homeowner 24/7 and flags high-value leads so you respond before the next roofer does.' },
       { title: 'Document everything', body: 'Photos attach to every job and quote — handy when the claim or the customer asks later.' },
     ],
@@ -63,7 +63,7 @@ export const TRADES: Trade[] = [
     subhead:
       'Be the plumber homeowners reach at 9pm — instant estimates, online booking, and card-or-bank payment before you pull out of the driveway.',
     pains: [
-      { title: 'Catch after-hours leads', body: 'The AI intake takes the details and books a window while you sleep — no missed 2am water heater.' },
+      { title: 'Catch after-hours leads', body: 'The AI intake collects job details and a preferred arrival window after hours — no missed 2am water heater.' },
       { title: 'Get paid on site', body: 'Send a pay link or take card and bank payment the moment the job is done.' },
       { title: 'Keep the maintenance', body: 'Recurring plans and cards on file turn one repair into a standing customer.' },
     ],
@@ -118,7 +118,7 @@ export const TRADES: Trade[] = [
       'Capture summer breakdown calls, quote replacements with payment plans, and auto-bill maintenance memberships that carry you through the shoulder season.',
     pains: [
       { title: 'Survive the surge', body: 'AI intake and online booking handle the heat-wave rush so no call goes to voicemail.' },
-      { title: 'Finance the replacement', body: '0%-interest payment plans make a new system an easy yes at the worst possible time for the homeowner.' },
+      { title: 'Finance the replacement', body: '0%-interest installments on a saved card can make a new system easier to budget at the worst possible time for the homeowner.' },
       { title: 'Recurring memberships', body: 'Seasonal maintenance plans schedule and auto-charge themselves, all year.' },
     ],
     services: ['AC repair', 'Furnaces', 'System installs', 'Maintenance plans', 'Indoor air', 'Heat pumps'],
@@ -352,7 +352,7 @@ export const TRADES: Trade[] = [
       'Quote vinyl, fiber-cement, and repairs with material options and photos, take a deposit before you order, and offer payment plans on the big wraps.',
     pains: [
       { title: 'Let them choose the look', body: 'Itemized quotes with material and color options let a homeowner compare vinyl and fiber-cement and watch the price update — then sign.' },
-      { title: 'Finance the whole wrap', body: '0%-interest payment plans make a full re-side an easy yes instead of a financing headache.' },
+      { title: 'Finance the whole wrap', body: '0%-interest installments on a saved card can make a full re-side easier for customers to budget.' },
       { title: 'Show the before/after', body: 'A photo-first gallery of finished exteriors turns your past jobs into your strongest close.' },
     ],
     services: ['Vinyl siding', 'Fiber-cement', 'Wood & cedar', 'Repairs', 'Trim & soffit', 'Insulated siding'],
@@ -497,7 +497,7 @@ export const TRADES: Trade[] = [
     pains: [
       { title: 'Catch the rebate lead', body: 'An AI estimator captures and qualifies energy-upgrade inquiries 24/7 so the homeowner chasing a rebate books with you first.' },
       { title: 'Quote the whole home', body: 'Itemized quotes lay out attic, wall, and crawlspace work by area so a homeowner sees exactly what they’re paying for — then e-signs.' },
-      { title: 'Finance the upgrade', body: '0%-interest payment plans make a whole-home insulation job an easy yes at the worst time for the homeowner’s wallet.' },
+      { title: 'Finance the upgrade', body: '0%-interest installments on a saved card can make a whole-home insulation job easier to budget.' },
     ],
     services: ['Spray foam', 'Blown-in', 'Batt & roll', 'Attic & crawlspace', 'Air sealing', 'Removal & replace'],
     templateIds: ['professional', 'handy'],
@@ -783,7 +783,7 @@ export const TRADES: Trade[] = [
     subhead:
       'Let buyers and agents book an inspection online, collect payment before you arrive, and keep your calendar full without the back-and-forth.',
     pains: [
-      { title: 'Book without the phone tag', body: 'Online booking lets agents and buyers grab an inspection slot 24/7 — no missed calls while you’re in a crawlspace.' },
+      { title: 'Book without the phone tag', body: 'Online booking lets agents and buyers request an available inspection window 24/7 — no missed calls while you’re in a crawlspace.' },
       { title: 'Collect before you arrive', body: 'Take payment or a deposit at booking so you’re never chasing a check after the report goes out.' },
       { title: 'Win repeat agent business', body: 'A clean site, reviews, and easy rebooking make you the inspector agents send every client to.' },
     ],

@@ -86,7 +86,11 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
   {
     id: 'fixit',
     name: 'Tinker',
-    description: 'Clean, professional handyman look — orange accent, angular hero, parallax + motion',
+    // Described by its LOOK, not by a trade. Every template is offered on
+    // several trade pages, so naming one trade in the description put "handyman
+    // look" on the plumbing page — a personalisation claim contradicting itself
+    // in the same sentence.
+    description: 'Clean, professional service-trade look — orange accent, angular hero, parallax + motion',
     accent: '#f5822a',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },

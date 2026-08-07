@@ -169,7 +169,7 @@ export const STRIPE_SETUP_HREF = '/dashboard/settings#payments';
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
 function getPrimaryAction() {
-  return { href: '/login', label: 'Create Free Account' };
+  return { href: '/login', label: 'Create free account' };
 }
 
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
@@ -565,7 +565,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // A contractor's public booking page wears THEIR brand, not ours (see
   // book/[subdomain]/BookingChrome.tsx). This shell has no business around it:
   // a homeowner was being shown the whole locked app nav — eighteen padlocked
-  // rows of a CRM they will never own — with "Create Free Account" as the
+  // rows of a CRM they will never own — with "Create free account" as the
   // largest button on the page, competing with the one that books the job. And
   // a signed-in owner opening their own booking link (the dashboard's own
   // Preview does exactly that) got the full dashboard rail, live lead counts
@@ -913,7 +913,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         );
       }
       return (
-        <Link href="/login" key={href} className={`${cls} preview`} title="Create a free account to unlock this">
+        <Link href="/login" key={href} className={`${cls} preview`} title="Included — create a free account to use it">
           <NavIcon href={href} />
           <span>{item.label}</span>
           <svg className="sidenav-lock" viewBox="0 0 24 24" aria-hidden="true">
@@ -963,7 +963,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             {isLoggedIn ? (
               <p className="sidenav-glabel">Your workspace</p>
             ) : (
-              <p className="sidenav-glabel sidenav-lockhdr"><span aria-hidden="true">🔒</span> Locked — sign in to unlock</p>
+              // "Locked — sign in to unlock" reads as a gate on something the
+              // visitor was already entitled to. They are browsing a product
+              // they have not bought; the honest framing is that this is a
+              // preview of what is included.
+              <p className="sidenav-glabel sidenav-lockhdr"><span aria-hidden="true">✦</span> Preview everything included</p>
             )}
             {NAV_GROUPS.map((group) => (
               <div className="sidenav-group" key={group.label}>

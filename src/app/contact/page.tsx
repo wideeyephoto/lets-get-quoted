@@ -4,8 +4,13 @@ import styles from '../legal.module.css';
 import ContactForm from './ContactForm';
 
 export const metadata: Metadata = {
-  title: 'Contact | Let\'s Get Quoted',
+  title: 'Contact',
   description: 'Get in touch with Let\'s Get Quoted — questions about the platform, support, or privacy requests.',
+  // Without this the page inherits the root layout's `canonical: '/'`, which
+  // told search engines the contact page WAS the homepage — so it was a
+  // duplicate of a page it shares nothing with, and its own URL was never the
+  // canonical one.
+  alternates: { canonical: 'https://letsgetquoted.com/contact' },
 };
 
 export default function ContactPage() {

@@ -55,19 +55,19 @@ export const ARTICLES: Article[] = [
     body: [
       { type: 'p', text: 'Most contractors don’t have a lead problem so much as a leak problem. The calls and form fills come in — they just slip away before they turn into signed work. Here are the seven most common leaks and how to close them.' },
       { type: 'h2', text: '1. You answer too slowly' },
-      { type: 'p', text: 'The first contractor to respond usually wins. If a homeowner fills out your form at 8pm and hears back in two days, they’ve already booked someone else. An instant estimate or an auto-reply that sets expectations buys you the time to follow up properly.' },
+      { type: 'p', text: 'Fast responses improve your chances of winning the job. If a homeowner fills out your form at 8pm and hears back in two days, they’ve often already booked someone else. An instant estimate or an auto-reply that sets expectations buys you the time to follow up properly.' },
       { type: 'h2', text: '2. No price, no trust' },
       { type: 'p', text: 'Homeowners are nervous about calling because they’re afraid of the unknown number. Giving a realistic ballpark up front — even a range — lowers the barrier to reaching out and filters out the people who were never going to hire you anyway.' },
       { type: 'h2', text: '3. The lead lands nowhere' },
       { type: 'p', text: 'If leads arrive as scattered texts, emails, and voicemails, some will get buried. Every lead needs one place to live, with a status, so nothing goes cold by accident.' },
       { type: 'h2', text: '4. You treat every lead the same' },
-      { type: 'p', text: 'A $40,000 remodel and a “just researching” tire-kicker don’t deserve the same response time. Sort leads by value so the big ones get your attention first and the noise doesn’t interrupt your day.' },
+      { type: 'p', text: 'A $40,000 remodel and a “just researching” low-intent shopper don’t deserve the same response time. Sort leads by value so the big ones get your attention first and the noise doesn’t interrupt your day.' },
       { type: 'h2', text: '5. You quote once and never follow up' },
       { type: 'p', text: 'Plenty of jobs are won on the second or third touch. A homeowner who didn’t reply isn’t always a no — often they got busy. A polite nudge a couple of days later recovers a surprising number of jobs.' },
       { type: 'h2', text: '6. Booking is a phone-tag marathon' },
       { type: 'p', text: 'Every round of “what day works for you?” is a chance to lose momentum. Letting a customer pick an open window themselves closes the gap between interested and booked.' },
       { type: 'h2', text: '7. You never ask past customers back' },
-      { type: 'p', text: 'Your warmest leads are people who already paid you. A simple reminder to a customer whose last job was months ago costs nothing and books work no ad can match.' },
+      { type: 'p', text: 'Your warmest leads are people who already paid you. A simple reminder to a customer whose last job was months ago costs very little and books work no ad can match.' },
       { type: 'p', text: 'You don’t need a tool to fix most of these — you need a habit. But if you want the habits handled for you, instant estimates, lead sorting, follow-ups, self-scheduling, and rebook reminders are all part of Let’s Get Quoted.' },
     ],
   },
@@ -86,7 +86,7 @@ export const ARTICLES: Article[] = [
       { type: 'h2', text: 'Gate the schedule on it' },
       { type: 'p', text: 'The cleanest way to make deposits stick is to require one before the job goes on the calendar. No awkward chasing — the booking simply isn’t confirmed until the deposit is paid. It sounds firm, but customers read it as organized and professional.' },
       { type: 'h2', text: 'Payment plans win the big jobs' },
-      { type: 'p', text: 'On a large project, sticker shock loses sales. Breaking the total into a deposit plus a few fixed installments makes a $12,000 job feel manageable without you becoming a bank. Done as simple 0%-interest installments on a card you keep on file, it’s not lending — it’s just a friendlier way to pay for work that’s already scoped.' },
+      { type: 'p', text: 'On a large project, sticker shock loses sales. Breaking the total into a deposit plus a few fixed installments can make a $12,000 job easier for a customer to budget. The mechanism is simple: split an approved balance into scheduled, 0%-interest installments charged to a saved card. Whether an arrangement like that creates financing or disclosure obligations depends on your state and how you present it — worth checking with your own advisor before you offer it.' },
       { type: 'ul', items: [
         'Ask for a deposit that at least covers your materials',
         'Tie the balance to a milestone: completion, or a stage',
@@ -105,16 +105,23 @@ export const ARTICLES: Article[] = [
     readMinutes: 4,
     datePublished: '2026-07-25',
     body: [
-      { type: 'p', text: 'For a local contractor, Google reviews are worth more than almost any ad. They’re the first thing a homeowner checks, and a steady stream of recent 5-star reviews wins jobs while you sleep. The good news: earning them is mostly about timing and asking.' },
+      { type: 'p', text: 'For a local contractor, Google reviews are worth more than almost any ad. They’re the first thing a homeowner checks, and a steady stream of recent reviews wins work. The good news: earning them is mostly about timing and asking.' },
       { type: 'h2', text: 'Ask at the peak moment' },
-      { type: 'p', text: 'The best time to ask is right after the job wraps and the customer is happy — not a week later when the glow has faded. A short, friendly message the same day, with a direct link to your Google profile, gets far more responses than “leave us a review sometime.”' },
+      { type: 'p', text: 'The best time to ask is right after the job wraps, while it’s fresh — not a week later when the memory has faded. A short, friendly message the same day, with a direct link to your Google profile, gets far more responses than “leave us a review sometime.”' },
       { type: 'h2', text: 'Make it one tap' },
       { type: 'p', text: 'Every extra step loses people. Send the review link by text so it’s one tap from their phone to the review box. Don’t make them search for your business or log into anything they don’t have to.' },
-      { type: 'h2', text: 'Catch the unhappy ones privately first' },
-      { type: 'p', text: 'This is the honest version of “review gating,” and the line matters. It’s fine to ask happy customers to post publicly and to give unhappy customers an easy private channel to tell you first — so you can make it right. What’s not okay is suppressing negative reviews or writing fake ones. Earn the good ones; fix the bad experiences.' },
+      { type: 'h2', text: 'Ask everyone the same way' },
+      // THE ADVICE THIS REPLACES was "catch the unhappy ones privately first",
+      // which is review gating with a friendlier name — and it directly
+      // contradicted the product page, which correctly says customers must not
+      // be routed differently by rating. Google's policy is about the OFFER, not
+      // about who ends up posting: sorting people by how they feel before you
+      // show them the public option is the thing that gets a Business Profile
+      // restricted, and it is the contractor's profile at risk, not ours.
+      { type: 'p', text: 'Send every customer the same neutral review request. Give everyone access to the public-review option and a separate way to contact you directly — without changing the options based on their rating. Sorting customers by how happy they seem, and showing the public link only to the happy ones, is review gating however it is worded. Suppressing negative reviews or writing fake ones is worse. Earn the good ones; fix the bad experiences.' },
       { type: 'h2', text: 'Make it a routine, not a one-off' },
       { type: 'p', text: 'A single review push gives you a bump; a routine gives you a reputation. Ask after every completed job and it compounds. Automating the ask — a message that goes out on completion — is the difference between meaning to and actually doing it.' },
-      { type: 'p', text: 'Let’s Get Quoted can send review requests automatically after a job, route the ratings, and import your existing Google reviews onto your site. However you do it, the formula is the same: ask happy customers, ask fast, make it one tap, and never fake it.' },
+      { type: 'p', text: 'Let’s Get Quoted sends review requests automatically after a job and offers every customer both routes — the public review page and a private note to you — with no branching on what they rated. However you do it, the formula is the same: ask everyone, ask fast, make it one tap, and never fake it.' },
     ],
   },
 ];

@@ -4,7 +4,7 @@ import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
 
 export const metadata: Metadata = {
-  title: 'FAQ — Let’s Get Quoted',
+  title: 'FAQ',
   description:
     'Answers to the common questions about Let’s Get Quoted: is it really free, how payments work, whether you need a domain, how the AI estimate works, and how your data is kept safe.',
   alternates: { canonical: 'https://letsgetquoted.com/faq' },
@@ -42,7 +42,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'Can customers pay a deposit or spread payments out?',
-        a: 'Yes. You can require a deposit before a job is scheduled or before work starts, collect stage/progress payments, and offer payment plans — a deposit plus fixed, 0%-interest installments that auto-charge a saved card. Payment plans are your own installments, not third-party lending.',
+        a: 'Yes. You can require a deposit before a job is scheduled or before work starts, collect stage/progress payments, and split an approved balance into scheduled, 0%-interest installments charged to a saved card. Whether an arrangement like that creates financing or disclosure obligations depends on your state — worth checking with your own advisor before you offer it.',
       },
       {
         q: 'Do you offer bank (ACH) payments for big jobs?',
@@ -63,7 +63,12 @@ const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'I already have customers and maybe a website — can I switch?',
-        a: 'Yes. You can import your existing customer list, connect your current domain, and keep your existing phone number for texting while routing web contact through your new site.',
+        // The "keep your existing phone number for texting" claim was removed:
+        // texting runs on one platform Messaging Service (TWILIO_MESSAGING_
+        // SERVICE_SID, set once in env), so there is no per-account number and
+        // no way to bring your own. Somebody choosing this product because
+        // their number would carry over would have found out after switching.
+        a: 'Yes. You can import your existing customer list and connect your current domain. Texts sent from the platform go out from a Let’s Get Quoted number rather than your own — your existing business line keeps working exactly as it does now for calls.',
       },
     ],
   },
@@ -72,11 +77,11 @@ const FAQ_GROUPS: FaqGroup[] = [
     items: [
       {
         q: 'What is the AI instant estimate?',
-        a: 'It’s a conversational estimator on your site that asks a homeowner a few quick questions and returns a realistic price range for their job, 24/7. You control how aggressively it prices, and it hands you a qualified lead — flagging the high-value ones so you can respond fast.',
+        a: 'It’s a conversational estimator on your site that asks a homeowner a few quick questions and returns a realistic price range for their job, 24/7. The range is an automated, nonbinding estimate — not a quote you have seen or approved. Nothing is committed until you send an actual quote. You control how aggressively it prices, and it hands you a qualified lead, flagging the high-value ones so you can respond fast.',
       },
       {
         q: 'Can I text my customers?',
-        a: 'Yes. Two-way SMS keeps every conversation in one inbox, and the platform sends appointment reminders, review requests, and payment updates — all with built-in consent handling (STOP/START/HELP).',
+        a: 'Yes. Two-way SMS keeps every conversation in one inbox, and the platform sends appointment reminders, review requests, and payment updates — with built-in opt-out handling (STOP/START/HELP). Obtaining consent to text your customers remains your responsibility.',
       },
       {
         q: 'Can my crew use it too?',
@@ -89,7 +94,7 @@ const FAQ_GROUPS: FaqGroup[] = [
     items: [
       {
         q: 'Is my data and my customers’ payment info safe?',
-        a: 'Card payments are handled entirely by Stripe, so sensitive card data never touches our servers. Every request is encrypted in transit, and each contractor’s data is walled off from every other account.',
+        a: 'Card payments are handled entirely by Stripe, so sensitive card data never touches our servers. Every request is encrypted in transit using HTTPS/TLS, and row-level security policies are designed to isolate each contractor’s data from every other account.',
       },
       {
         q: 'How is this different from other contractor software?',
@@ -126,7 +131,7 @@ export default function FaqPage() {
           <p>No subscription, no catch — here’s exactly how Let’s Get Quoted works, what it costs, and how you get paid.</p>
         </div>
         <div className="actions">
-          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/login" className="btn primary">Create free account</Link>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
       </section>
@@ -153,7 +158,7 @@ export default function FaqPage() {
           <h2>The fastest way to see it is to try it.</h2>
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create Free Account</Link>
+            <Link href="/login" className="btn primary">Create free account</Link>
             <Link href="/#wheel" className="btn secondary">Browse all features</Link>
           </div>
         </div>

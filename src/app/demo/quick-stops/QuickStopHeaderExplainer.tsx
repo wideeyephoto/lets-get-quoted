@@ -37,9 +37,12 @@ function clockLabel(hhmm: string): string {
 // An illustrative day for a landscaping crew, matching the trade the demo
 // requests describe. Marked as an example in the panel heading.
 const DAY = [
-  { kind: 'job', time: '8:00 AM', label: 'Roof inspection' },
+  // Landscaping work, because the comment above says so and the demo account is
+  // Evergreen Lawn & Landscape. These read "Roof inspection" and "Gutter
+  // cleaning" — a roofer's morning on a landscaper's calendar.
+  { kind: 'job', time: '8:00 AM', label: 'Spring cleanup' },
   { kind: 'gap', time: '8:45 – 10:15', label: 'Open window' },
-  { kind: 'job', time: '10:30 AM', label: 'Gutter cleaning' },
+  { kind: 'job', time: '10:30 AM', label: 'Hedge trimming' },
   { kind: 'gap', time: '11:10 – 12:45', label: 'Open window' },
   { kind: 'job', time: '1:00 PM', label: 'Landscaping' },
   { kind: 'gap', time: '2:00 – 3:00', label: 'Open window' },

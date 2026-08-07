@@ -9,7 +9,10 @@ import styles from '../legal.module.css';
 // is about their trade work. Contractor sites are rewritten to /site/<subdomain>
 // by middleware, so this route only ever serves letsgetquoted.com/terms.
 export const metadata: Metadata = {
-  title: 'Terms of Service | Let\'s Get Quoted',
+  title: 'Terms of Service',
+  // Without its own canonical this page inherited the root layout's
+  // `canonical: '/'` and declared itself a duplicate of the homepage.
+  alternates: { canonical: 'https://letsgetquoted.com/terms' },
   description: 'The agreement between Let\'s Get Quoted and the contractors who use it.',
 };
 

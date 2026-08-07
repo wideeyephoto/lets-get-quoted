@@ -40,7 +40,7 @@ export default function StickyCta() {
   return (
     <div className={`sticky-cta${show ? ' is-on' : ''}`} aria-hidden={show ? undefined : true}>
       <Link href="/login?intent=signup" className="btn primary" tabIndex={show ? undefined : -1}>
-        Create Free Account
+        Create free account
       </Link>
       <span className="sticky-cta-sub">Free &middot; no card &middot; pay only when a homeowner pays you</span>
     </div>

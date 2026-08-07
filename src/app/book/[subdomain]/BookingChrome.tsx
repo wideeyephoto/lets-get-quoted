@@ -11,7 +11,7 @@ import type { Site } from '@/lib/sites';
 //
 // This page is the ONLY thing a homeowner sees of us, and it used to render
 // inside the platform's marketing rail: eighteen padlocked rows of a CRM they
-// will never own, and a "Create Free Account" button larger than the one that
+// will never own, and a "Create free account" button larger than the one that
 // books the job. A plumber's customer was being sold plumbing software.
 //
 // So the page brings its own chrome — the CONTRACTOR's, not ours. Their mark,

@@ -14,7 +14,12 @@ export function generateMetadata({ params }: { params: { trade: string } }): Met
   const trade = getTrade(params.trade);
   if (!trade) return {};
   return {
-    title: `${trade.metaTitle} · Let’s Get Quoted`,
+    // No brand here — the root layout's title template appends "· Let's Get
+    // Quoted" to every page title, so carrying it produced
+    // "Pricing — Let's Get Quoted · Let's Get Quoted" in the tab and in search
+    // results. openGraph.title below keeps it, because the template does not
+    // apply there.
+    title: trade.metaTitle,
     description: trade.metaDescription,
     alternates: { canonical: `https://letsgetquoted.com/for/${trade.slug}` },
     openGraph: {
@@ -42,7 +47,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
         <h1>{trade.headline}</h1>
         <p className="hero-text">{trade.subhead}</p>
         <div className="actions">
-          <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
+          <Link href="/login?intent=signup" className="btn primary">Create free account</Link>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
         <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a homeowner pays you.</p>
@@ -71,8 +76,13 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       <section className="section-block">
         <div className="section-heading">
           <p className="eyebrow">The whole toolkit</p>
-          <h2>Everything a {trade.name.toLowerCase().replace(/s$/, '')} business needs to run.</h2>
-          <p>One login for your site, leads, quotes, scheduling, and getting paid &mdash; a slice of the {FEATURE_COUNT}+ features that come standard.</p>
+          {/* trade.work, not a de-pluralised trade.name. Stripping the "s" off
+              "Plumbers" gives "a plumber business" and off "Roofers" gives "a
+              roofer business" — the practitioner where the trade belongs.
+              `work` is already the noun for the work itself ("plumbing",
+              "roofing", "landscaping & lawn care"). */}
+          <h2>Everything a {trade.work} business needs to run.</h2>
+          <p>One login for your site, leads, quotes, scheduling, and getting paid &mdash; a slice of the {FEATURE_COUNT} features that come standard.</p>
         </div>
         <div className="feature-grid fav-grid">
           {FAVORITE_FEATURES.map((feature) => (
@@ -84,7 +94,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           ))}
         </div>
         <div className="mid-cta">
-          <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT}+ features &rarr;</Link>
+          <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
         </div>
       </section>
 
@@ -115,7 +125,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           <h2>Start free &mdash; you only pay when a homeowner pays you.</h2>
           <p>No subscription. No setup fee. Everything a {trade.work} business needs, from your first quote.</p>
           <div className="actions">
-            <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
+            <Link href="/login?intent=signup" className="btn primary">Create free account</Link>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>
           </div>
         </div>

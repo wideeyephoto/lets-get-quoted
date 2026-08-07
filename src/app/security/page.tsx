@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import SiteFooter from '@/components/site-footer';
 
 export const metadata: Metadata = {
-  title: 'Security — Let’s Get Quoted',
+  title: 'Security',
   description:
     'How Let’s Get Quoted keeps your money and your customers’ data safe: payments handled by Stripe, encryption in transit, per-account data isolation, verified-webhook payments, and passwordless sign-in.',
   alternates: { canonical: 'https://letsgetquoted.com/security' },
@@ -16,7 +16,10 @@ const pillars = [
   },
   {
     title: 'Encrypted in transit',
-    body: 'Every request is served over HTTPS/TLS, so data moving between you, your customers, and the platform is encrypted end to end.',
+    // NOT "end to end". End-to-end encryption means the server cannot read the
+    // content; ours can, because it has to render your quotes. What is true is
+    // that the transport is encrypted, so that is what this says.
+    body: 'Every request is served over HTTPS/TLS, so data moving between you, your customers, and the platform is encrypted in transit.',
   },
   {
     title: 'Payments confirmed by verified webhooks',
@@ -24,15 +27,20 @@ const pillars = [
   },
   {
     title: 'Your data is isolated',
-    body: 'Every contractor’s data is walled off from every other account at the database level, so one business can never see another’s leads, jobs, or customers.',
+    // "can never" is a guarantee no software gets to make about itself. What we
+    // can say is what we built and what it is for.
+    body: 'Row-level security policies run on every query, so access controls are designed to isolate each business’s leads, jobs, and customers from every other account.',
   },
   {
     title: 'Passwordless sign-in',
     body: 'You log in with a one-time code sent by text or email — there’s no password to be guessed, reused, or leaked in a breach somewhere else.',
   },
   {
-    title: 'Consent & compliance built in',
-    body: 'Texting honors STOP, START, and HELP and enforces opt-outs; marketing email carries your mailing address and a one-click unsubscribe. Compliance isn’t an afterthought.',
+    title: 'Opt-out handling built in',
+    // Built-in OPT-OUT handling, not built-in consent. We can honour STOP; we
+    // cannot obtain permission on somebody else's behalf, and implying we do
+    // would leave a contractor thinking a legal obligation was taken care of.
+    body: 'Texting honors STOP, START, and HELP and enforces opt-outs; marketing email carries your mailing address and a one-click unsubscribe. Obtaining consent to contact your customers remains your responsibility.',
   },
   {
     title: 'Managed cloud infrastructure',
@@ -52,14 +60,18 @@ export default function SecurityPage() {
       <section className="section-block features-hero">
         <div className="section-heading">
           <p className="eyebrow">Security &amp; trust</p>
-          <h2>Built to be trusted with real money.</h2>
+          {/* An <h1>, not an <h2>: this page had no page-level heading at all, so
+              a screen-reader user navigating by heading found no page name and
+              the hierarchy started at h2. `.section-heading h1` keeps it
+              section-sized rather than letting the global hero h1 dwarf it. */}
+          <h1>Built to be trusted with real money.</h1>
           <p>
             You&apos;re tracking crew hours and collecting payments through this tool — it has to earn that. Here&apos;s
             plainly how your money and your customers&apos; information are kept safe.
           </p>
         </div>
         <div className="actions">
-          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/login" className="btn primary">Create free account</Link>
           <Link href="/faq" className="btn secondary">Read the FAQ</Link>
         </div>
       </section>
@@ -93,7 +105,7 @@ export default function SecurityPage() {
           <h2>Get paid with confidence.</h2>
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create Free Account</Link>
+            <Link href="/login" className="btn primary">Create free account</Link>
             <Link href="/pricing" className="btn secondary">See pricing</Link>
           </div>
         </div>

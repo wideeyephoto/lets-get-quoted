@@ -4,7 +4,7 @@ import { ARTICLES, formatArticleDate } from '@/lib/resources';
 import SiteFooter from '@/components/site-footer';
 
 export const metadata: Metadata = {
-  title: 'Resources — Let’s Get Quoted',
+  title: 'Resources',
   description:
     'Practical, no-fluff guides for contractors: how to price for real margin, stop losing leads, get paid faster, and earn more 5-star reviews.',
   alternates: { canonical: 'https://letsgetquoted.com/resources' },
@@ -20,7 +20,7 @@ export default function ResourcesPage() {
           <p className="eyebrow">Resources</p>
           {/* The page's own title, so it's the h1. See .section-heading h1. */}
           <h1>Straight-talk guides for running a contracting business.</h1>
-          <p>No fluff and no upsell — practical advice on pricing, leads, getting paid, and reputation that works whatever tools you use.</p>
+          <p>Practical guidance for running a contracting business — pricing, leads, getting paid, and reputation, whatever tools you use.</p>
         </div>
       </section>
 
@@ -43,7 +43,7 @@ export default function ResourcesPage() {
           <h2>Put the advice to work.</h2>
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create Free Account</Link>
+            <Link href="/login" className="btn primary">Create free account</Link>
             <Link href="/#wheel" className="btn secondary">Browse all features</Link>
           </div>
         </div>

@@ -44,7 +44,11 @@ export default function PricingCalculator() {
 
       <div className="calc-readout">
         <div className="calc-stat accent">
-          <span className="calc-stat-label">Your platform rate</span>
+          {/* The MARGINAL rate — what the next dollar is charged at, not the
+              blended rate across everything collected. Calling it "your platform
+              rate" invited people to multiply it by their whole volume and get a
+              number lower than the bill. */}
+          <span className="calc-stat-label">Rate on your next dollar</span>
           <strong>{stats.tier.rate}</strong>
           <span className="calc-stat-note">Tier {stats.tier.tier} · on the next dollar you collect</span>
         </div>

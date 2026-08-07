@@ -6,7 +6,7 @@ import { initialBusinessName, needsFirstRun, TERMS_EFFECTIVE_DATE } from '@/lib/
 import WelcomeForm from './WelcomeForm';
 
 export const metadata: Metadata = {
-  title: 'Welcome | Let\'s Get Quoted',
+  title: 'Welcome',
   robots: { index: false, follow: false },
 };
 

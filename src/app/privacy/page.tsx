@@ -3,8 +3,9 @@ import Link from 'next/link';
 import styles from '../legal.module.css';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Let\'s Get Quoted',
-  description: 'Privacy practices for Let\'s Get Quoted, including our transactional SMS program.',
+  title: 'Privacy Policy',
+  description: 'Privacy practices for Let\'s Get Quoted, including how mobile numbers and SMS consent are handled.',
+  alternates: { canonical: 'https://letsgetquoted.com/privacy' },
 };
 
 export default function PrivacyPolicyPage() {
@@ -39,7 +40,14 @@ export default function PrivacyPolicyPage() {
           <h2>Mobile information and SMS privacy</h2>
           <p><strong>We do not sell, rent, or share mobile phone numbers, SMS opt-in data, or SMS consent with third parties or affiliates for their marketing or promotional purposes.</strong></p>
           <p>Mobile information may be shared only with service providers that help us deliver and support the requested messaging service, such as telecommunications carriers, messaging platforms, authentication providers, and contractors involved in the homeowner&apos;s requested project. Those providers may use the information only to perform services on our behalf or as required by law.</p>
-          <p>Consent to receive text messages is not a condition of purchasing goods or services. Message frequency varies based on account login attempts and payment activity. Message and data rates may apply. Reply <strong>STOP</strong> to opt out of transactional payment texts, <strong>START</strong> to resume, or <strong>HELP</strong> for help.</p>
+          {/* "based on account login attempts and payment activity" described
+              two of the platform's message categories. It sends appointment
+              reminders, quote follow-ups, review requests, scheduling and
+              arrival messages, crew notifications and marketing campaigns as
+              well. The full list, with who sends each and how often, is on the
+              SMS Terms page rather than duplicated here where the two could
+              drift apart. */}
+          <p>Consent to receive text messages is not a condition of purchasing goods or services. Message frequency varies with the messages you have opted into &mdash; sign-in codes, appointment and scheduling messages, quote and payment messages, review requests, crew notifications, and marketing campaigns a contractor chooses to send. The full breakdown is in our <Link href="/sms-terms">SMS Terms</Link>. Message and data rates may apply. Reply <strong>STOP</strong> to opt out, <strong>START</strong> to resume, or <strong>HELP</strong> for help.</p>
         </section>
 
         <section>
@@ -56,7 +64,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2>Your choices</h2>
           <p>You may request access, correction, or deletion of personal information by contacting us. Certain records may be retained where required for legal, security, accounting, or fraud-prevention purposes.</p>
-          <p>To stop payment-related text messages, reply STOP. To stop authentication texts, do not request additional codes. You may still use email-based sign-in where available.</p>
+          <p>To stop text messages of any kind from a contractor, reply STOP to one of them &mdash; that stops marketing and transactional messages alike from that sender, including appointment reminders. Reply START to resume. Sign-in codes are only ever sent when you request one; to stop receiving them, use email-based sign-in instead.</p>
         </section>
 
         <section>
