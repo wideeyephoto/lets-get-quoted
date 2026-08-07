@@ -224,6 +224,18 @@ const LEAD_STATUS = {
 // How old the first contact is, per stage. Older the further along, because a
 // finished job started as a lead months ago and a lead that arrived this morning
 // has not been anywhere yet.
+// THE FLOORS MATTER AS MUCH AS THE CEILINGS. These started at complete: [35,
+// 150] and invoice_sent: [25, 80], which meant no seeded job could have been
+// paid within the last 30 days — the age is the whole lifetime, and payment
+// happens near the end of it. Every 30-day money figure on the admin Money page
+// and in Insights therefore read $0 on a freshly seeded account holding
+// hundreds of thousands in completed work. Working pages looked broken, which is
+// the worst failure mode for demo data: it costs you the trust you seeded it to
+// build.
+//
+// A small job can go quote -> work -> invoice -> paid inside a week, so a floor
+// of a few days is realistic as well as necessary. The ceilings still stretch
+// months back, so the trend comparisons have a previous period to compare to.
 const AGE_DAYS = {
   needs_response: [0, 3],
   contacted: [2, 12],
@@ -231,9 +243,9 @@ const AGE_DAYS = {
   approved: [6, 30],
   scheduled: [10, 45],
   in_progress: [14, 55],
-  ready_to_invoice: [18, 60],
-  invoice_sent: [25, 80],
-  complete: [35, 150],
+  ready_to_invoice: [8, 60],
+  invoice_sent: [6, 80],
+  complete: [5, 150],
 };
 
 function buildPerson(index) {

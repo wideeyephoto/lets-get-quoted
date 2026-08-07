@@ -252,7 +252,12 @@ export default async function AdminAccountDetailPage({
                 ))}
               </ul>
             )}
-            <form action={uploadAccountAttachmentAction.bind(null, params.id)} className={styles.formStack} style={{ marginTop: '0.8rem' }} encType="multipart/form-data">
+            {/* No encType: React sets multipart itself for a form whose action
+                is a server function, and specifying it logs a warning on every
+                render of this page saying it will be overridden. The file still
+                arrives as a File in the FormData — the attribute was doing
+                nothing except making the upload look like it depended on it. */}
+            <form action={uploadAccountAttachmentAction.bind(null, params.id)} className={styles.formStack} style={{ marginTop: '0.8rem' }}>
               <input type="file" name="file" className={styles.input} />
               <button type="submit" className="btn secondary">Upload file</button>
             </form>
