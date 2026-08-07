@@ -1,0 +1,72 @@
+/* ExampleFrame — the "this is a mock" marker.
+ *
+ * Built from the destination tokens only. Nothing here is ported from the
+ * Codex draft; the badge borrows the one shape this app already uses for an
+ * unmissable-but-small status flag (home-next's .draftTag): gold ground, dark
+ * ink, pill. That pairing measures well over 4.5:1 in both themes, which is
+ * the whole point — a marker nobody can read is a marker that isn't there. */
+
+.frame {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* figcaption, so the description is programmatically the caption of the panel
+   rather than a stray line of text sitting above it. */
+.head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  order: -1;
+}
+
+.badge {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--on-accent);
+  background: var(--accent-2);
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.label {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--muted-2);
+  min-width: 0;
+}
+
+/* The card variant supplies the chrome. The plain variant assumes the child
+   already brings its own (HeroDashboard, QuickStopPanel, the maps) and would
+   otherwise sit inside a second nested box. */
+.card {
+  min-width: 0;
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--bg-elevated);
+}
+
+.plain {
+  min-width: 0;
+}
+
+.note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+@media (max-width: 720px) {
+  .card { padding: 0.9rem; border-radius: 20px; }
+  .label { font-size: 0.78rem; }
+}

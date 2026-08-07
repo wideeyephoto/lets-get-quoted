@@ -1,0 +1,200 @@
+/* /features/ai-intake — page-local pieces only.
+ *
+ * Same discipline as src/app/home-next/home-next.module.css and
+ * feature-detail-layout.module.css: the shell, the hero grid, the section
+ * blocks, the eyebrows, the buttons and the closing band all come from globals
+ * unchanged, and globals.css is never edited. Only the two things globals has
+ * no class for live here — the arriving lead card, and the ladder showing which
+ * leads are allowed to interrupt you.
+ *
+ * Nothing here is ported from the Codex draft. The copy came from there; every
+ * colour, radius and font below is a destination token. */
+
+/* ---- the lead card, as it lands in the priority inbox -------------------- */
+
+.leadCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.leadHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.leadName {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+  min-width: 0;
+}
+
+/* The queue tier, printed the way the real inbox prints it. */
+.leadTier {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--on-accent);
+  background: var(--accent-2);
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.leadHeat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  white-space: nowrap;
+}
+
+/* The facts the intake collected. auto-fit so it never forces a sideways
+   scroll inside the hero column on a phone. */
+.leadFacts {
+  list-style: none;
+  margin: 0;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.8rem 1rem;
+}
+.leadFacts > li + li { margin-top: 0; }
+
+.fact {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.factLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.factValue {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.leadSummary {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.leadSummary strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Photo placeholders: squares that say what they are rather than fake
+   photographs of somebody's boiler. */
+.leadPhotos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.leadPhotos > li + li { margin-top: 0; }
+
+.photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border: 1px dashed var(--edge-t18);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  text-align: center;
+}
+
+/* ---- who is allowed to interrupt you ------------------------------------ */
+
+.ladder {
+  list-style: none;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.9rem;
+}
+.ladder > li + li { margin-top: 0; }
+
+.rung {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cedge-orange-2);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+}
+
+/* The quietest rung is the point of the section, so it is drawn as the
+   deliberate non-event it is rather than as a failure state. */
+.rung[data-tone='quiet'] { border-left-color: var(--edge-t18); }
+
+.rungChannel {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+.rung[data-tone='quiet'] .rungChannel { color: var(--muted-2); }
+
+.rungTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.rungBody {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+}
+
+.ladderNote {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+  max-width: 60ch;
+}
+
+@media (max-width: 720px) {
+  .leadName { font-size: 1rem; }
+  .rung { padding: 1rem 1.05rem 1.1rem; }
+}

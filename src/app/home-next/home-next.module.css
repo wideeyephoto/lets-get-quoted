@@ -1,11 +1,22 @@
 /* Scoped to the candidate homepage.
 
-   Deliberately a CSS module and not an addition to globals.css: every class in
-   globals is shared with the live homepage, and a page being judged against /
-   must not be able to change / while the judging happens. Everything this page
-   reuses unchanged — .hero-grid, .section-block, .compare-table, .pricing-tier,
-   .btn, .eyebrow, .gradient-text — it reuses from globals, read-only. Only the
-   genuinely new pieces are here. */
+   THE DISCIPLINE. Everything this page can take from globals.css it takes,
+   unchanged and read-only: .marketing-shell, .hero-grid, .hero-copy,
+   .section-block, .section-heading, .eyebrow, .gradient-text, .btn, .actions,
+   .hero-reassure-pill, .fastpath*, .compare-table, .compare-mark, .pricing-tier*,
+   .cta-band, .ambient-glow, .fx-page. What is left here is only what globals has
+   no class for — the flagship scroll stage, the product mocks, the AI rail and
+   the client-portal demo. None of it is ported Codex CSS; the Codex draft
+   supplied the words and nothing else.
+
+   It is a module and not an addition to globals for a second reason: every class
+   in globals is shared with the live homepage, and a page being judged against /
+   must not be able to change / while the judging happens.
+
+   Only tokens are used for colour — --text, --muted, --muted-2, --accent,
+   --accent-2, --on-accent, --gold-ink, --line, --bg-elevated, --good and the
+   --tint/--ink-rgb channels — so every panel below flips with the theme instead
+   of pinning the Codex draft's dark palette onto a page that has a light mode. */
 
 /* ---- the draft banner ---------------------------------------------------- */
 
@@ -35,29 +46,19 @@
 }
 .draftLink { white-space: nowrap; }
 
-/* ---- the hero, rebuilt for comprehension --------------------------------- */
+/* ---- hero ---------------------------------------------------------------- */
 
-/* The audience label. It is the first thing on the page for a reason: the live
-   page's first use of the word "contractor" is two and a half screens down, in
-   the eyebrow of the comparison band. */
-.audience { margin: 0 0 0.15rem; }
-
-/* globals sets `h1 { max-width: 11ch; font-size: clamp(2.6rem, 5vw, 5rem) }`,
-   which is tuned for a four-word slogan and stacks a sentence into a tower. A
-   headline that has to NAME the product needs more words and therefore less
-   size — at these values the longer headline still lands shorter on a phone
-   than the live one does, because six tight lines beat five enormous ones. */
+/* globals sets `h1 { font-size: clamp(2.6rem, 5vw, 5rem); max-width: 11ch }`,
+   which is tuned for a four-word slogan. This headline is three full sentences
+   stacked deliberately — at the global size the third line ("Run everything
+   behind it.") wraps and the stack reads as five ragged lines instead of three
+   deliberate ones. */
 .h1 {
-  font-size: clamp(1.8rem, 3.3vw, 3.1rem);
-  line-height: 1.06;
-  max-width: 22ch;
+  font-size: clamp(2.1rem, 4.2vw, 3.9rem);
+  line-height: 1.02;
+  max-width: 16ch;
   margin: 0.3rem 0 0.9rem;
 }
-
-/* Two sentences, two lines. Left inline they run together and the break lands
-   mid-clause — "…from one place. Pay / nothing until a homeowner / pays you."
-   The second sentence is the differentiator and has to read as its own claim. */
-.h1 span { display: block; }
 
 .lede {
   font-size: 1.05rem;
@@ -67,79 +68,980 @@
   margin: 0;
 }
 
-/* The disambiguation, and the single highest-value line on the page.
-   "Let's Get Quoted" reads, to somebody who has never heard of it, like
-   somewhere a HOMEOWNER goes to get quotes. A wrong first guess is not
-   recoverable further down; it has to be corrected in the hero or not at all.
-   Styled as an aside rather than a claim — it is orientation, not marketing. */
-.notThis {
-  margin: 0.9rem 0 0;
-  padding-left: 0.85rem;
-  border-left: 2px solid var(--cedge-orange-8, rgba(255, 122, 33, 0.45));
-  font-size: 0.88rem;
-  line-height: 1.5;
-  color: var(--muted-2);
-  max-width: 54ch;
+/* The two audiences, side by side, because the eyebrow promises both. */
+.scalePair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.7rem;
+  margin-top: 1.4rem;
 }
+.scalePair span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.03);
+}
+.scalePair small {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--gold-ink);
+}
+.scalePair b { font-size: 0.95rem; line-height: 1.35; color: var(--text); }
 
-/* ---- what you actually get ----------------------------------------------- */
+/* .hero-grid stretches its children; the figure has to pass that down or the
+   dashboard floats against the top of a full-height column. */
+.heroFigure { justify-content: center; }
 
-.whatBand { margin-top: 1.6rem; }
+/* ---- trust strip --------------------------------------------------------- */
 
-.whatGrid {
+.trustStrip { margin-top: 1.25rem; }
+.trustStrip ul {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-  gap: 0.9rem;
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.75rem;
 }
-
-.whatCard {
+.trustStrip li {
+  min-width: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.15rem 1.2rem 1.25rem;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.02);
+}
+.trustStrip b {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  color: var(--gold-ink);
+}
+.trustStrip span { font-size: 0.92rem; color: var(--text); }
+
+/* ---- flagship scrollytelling --------------------------------------------- */
+
+.scrolly {
+  margin-top: 1.8rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: clamp(1.25rem, 3vw, 2.75rem);
+  align-items: start;
+}
+
+.steps { display: flex; flex-direction: column; gap: clamp(2rem, 18vh, 9rem); }
+
+/* Dimmed until it is the step driving the visual. The dim is what makes the
+   pairing legible — without it three equally-bright cards sit beside one panel
+   and nothing says which produced which. */
+.step {
+  min-width: 0;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(var(--tint), 0.02);
+  opacity: 0.55;
+  transition: opacity 0.35s ease, border-color 0.35s ease, background 0.35s ease;
+}
+.stepOn {
+  opacity: 1;
+  border-color: rgba(255, 122, 33, 0.34);
   background: var(--bg-elevated);
 }
 
-.whatIcon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  color: var(--accent);
-  border: 1px solid rgba(255, 122, 33, 0.28);
-  background: rgba(255, 122, 33, 0.09);
+.stepNumber {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--muted-2);
+}
+.stepKicker {
+  margin: 0.55rem 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--gold-ink);
+}
+.stepTitle { font-size: clamp(1.15rem, 2.1vw, 1.6rem); line-height: 1.2; color: var(--text); }
+.stepBody { margin: 0.6rem 0 0; font-size: 0.95rem; color: var(--muted); max-width: 44ch; }
+
+.handoff {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.05rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+}
+.handoff > span { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.handoff small {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--muted-2);
+}
+.handoff b { font-size: 0.86rem; line-height: 1.3; color: var(--text); }
+.handoff i { flex: 0 0 auto; font-style: normal; color: var(--accent); }
+
+.proofList { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.proofList li {
+  margin: 0;
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.87rem;
+  color: var(--muted);
+}
+.proofList li span { flex: 0 0 auto; color: var(--good); font-weight: 800; }
+
+/* The mock, repeated inside each step for phones only.
+   Scrollytelling needs the visual to be on screen while the step that explains
+   it is. Below ~720px the mocks stack internally and a sticky panel would be
+   two-thirds of the viewport, so the pairing is made the other way: each step
+   carries its own mock and the sticky stage is switched off entirely. */
+.stepDemo { display: none; margin-top: 1.2rem; }
+
+/* The stage tracks the steps rather than scrolling with them. `top` clears the
+   app's fixed top bar. */
+.stage { position: sticky; top: 5.25rem; min-width: 0; }
+.stageInner { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.dial { display: flex; align-items: center; gap: 0.4rem; }
+.dialNode {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.dialNode:hover { color: var(--text); border-color: rgba(255, 122, 33, 0.4); }
+.dialNodeOn {
+  color: var(--on-accent);
+  background: var(--accent-2);
+  border-color: transparent;
+}
+.dialNode:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+.dialCore {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+.dialCore b { font-size: 1rem; color: var(--text); }
+.dialCore small { font-size: 0.62rem; letter-spacing: 0.14em; color: var(--muted-2); }
+
+/* Only the active mock is mounted, so the swap is an entrance, not a crossfade
+   between two panels that both exist. */
+.layer { animation: layer-in 0.4s ease both; min-width: 0; }
+@keyframes layer-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
-/* globals sets h2 to clamp(1.8rem, 3vw, 2.8rem) — a section headline size.
-   These are card titles and have to be told so. */
-.whatTitle {
-  font-size: 1rem;
-  line-height: 1.3;
+.scrollPrompt {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--muted-2);
+}
+.scrollPrompt i { font-style: normal; animation: prompt-bob 2s ease-in-out infinite; }
+@keyframes prompt-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+/* ---- the product mocks (shared chrome) ----------------------------------- */
+
+.mock {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.mockTop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--tint), 0.03);
+}
+.mockDots { display: inline-flex; gap: 0.28rem; }
+.mockDots i { width: 7px; height: 7px; border-radius: 999px; background: rgba(var(--ink-rgb), 0.22); }
+.mockTitle { font-size: 0.76rem; font-weight: 700; color: var(--muted); }
+.mockPill {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--on-accent);
+  background: var(--accent-2);
+}
+/* Three tones, all built from tokens so they flip with the theme. The ink on
+   the two filled ones is --on-accent rather than white: white on #ff7a21 is
+   2.9:1, and a 0.6rem uppercase badge is the last place that can carry it. */
+.mockPill[data-tone='live'] {
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.mockPill[data-tone='hot'] { background: var(--accent); color: var(--on-accent); }
+
+/* Every "button" in a mock is a span — see the note in page.tsx. These give it
+   the shape without the keyboard trap. */
+.mockPrimary,
+.mockSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+.mockPrimary {
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.mockSecondary { color: var(--text); border: 1px solid var(--line); background: rgba(var(--tint), 0.04); }
+
+.miniLabel {
+  margin: 0;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--muted-2);
+}
+
+/* ---- mock 01 · the website builder --------------------------------------- */
+
+.builderLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 0.85rem;
+  padding: 0.85rem;
+}
+.builderControls { min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.fakeField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+}
+.fakeField small { font-size: 0.6rem; letter-spacing: 0.1em; color: var(--muted-2); }
+.fakeField strong { font-size: 0.8rem; color: var(--text); }
+.genStatus { display: flex; gap: 0.3rem; }
+.genStatus span {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.5);
+  animation: gen-pulse 1.6s ease-in-out infinite;
+}
+.genStatus span:nth-child(2) { animation-delay: 0.2s; }
+.genStatus span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes gen-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.preview {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.04);
+  overflow: hidden;
+}
+.previewNav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.58rem;
+}
+.previewNav b { color: var(--text); letter-spacing: 0.08em; }
+.previewNav span { color: var(--muted-2); }
+.previewNav em {
+  margin-left: auto;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: var(--accent-2);
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.previewHero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 1rem 0.85rem;
+  background: radial-gradient(circle at 20% 0%, rgba(255, 122, 33, 0.16), transparent 60%);
+}
+.previewHero h4 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; line-height: 1.15; color: var(--text); }
+.previewStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
+  gap: 0.4rem;
+  padding: 0.6rem 0.85rem 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.previewStats span { min-width: 0; font-size: 0.6rem; color: var(--muted-2); }
+.previewStats b { display: block; font-size: 0.74rem; color: var(--text); }
+
+/* ---- mock 02 · smart intake ---------------------------------------------- */
+
+.intakeLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 0.85rem;
+  padding: 0.85rem;
+}
+
+.phone {
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.1rem 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(var(--tint), 0.04);
+}
+.phoneNotch {
+  position: absolute;
+  top: 0.45rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.2);
+}
+.phoneQuestion { margin: 0; font-size: 0.9rem; line-height: 1.25; color: var(--text); }
+.bubble {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 12px 12px 12px 4px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text);
+  background: rgba(var(--tint), 0.06);
+}
+.aiQuestion {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.aiQuestion b { color: var(--accent-2); }
+.choiceRow { display: flex; gap: 0.4rem; }
+.choiceRow span {
+  flex: 1;
+  text-align: center;
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.76rem;
   font-weight: 700;
   color: var(--text);
-  margin: 0.15rem 0 0;
-  max-width: none;
+}
+.meter { height: 4px; border-radius: 999px; background: rgba(var(--tint), 0.08); overflow: hidden; }
+.meter span { display: block; width: 62%; height: 100%; border-radius: 999px; background: var(--accent); }
+
+.leadCard {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 122, 33, 0.3);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.03);
+}
+.leadHead { display: flex; align-items: center; gap: 0.55rem; }
+.leadHead > div { min-width: 0; display: flex; flex-direction: column; }
+.leadHead small { font-size: 0.58rem; letter-spacing: 0.13em; color: var(--muted-2); }
+.leadHead strong { font-size: 0.88rem; color: var(--text); }
+.avatar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--on-accent);
+  background: var(--accent-2);
+}
+.leadScore {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.aiSummary {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 209, 102, 0.08);
+}
+.aiSummary span { font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; color: var(--gold-ink); }
+.aiSummary p { margin: 0.25rem 0 0; font-size: 0.76rem; line-height: 1.45; color: var(--muted); }
+.leadGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr)); gap: 0.45rem; }
+.leadGrid span { min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.leadGrid small { font-size: 0.56rem; letter-spacing: 0.12em; color: var(--muted-2); }
+.leadGrid b { font-size: 0.8rem; color: var(--text); }
+
+/* ---- mock 03 · quick stops ----------------------------------------------- */
+
+.routeLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.85rem;
+  padding: 0.85rem;
+}
+.routeMap {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.04);
+  overflow: hidden;
+}
+.routeSvg { display: block; width: 100%; height: auto; }
+.routeStreets path { stroke: rgba(var(--ink-rgb), 0.1); stroke-width: 6; fill: none; }
+.routePath { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
+.routeDetour { stroke: var(--accent-2); stroke-width: 2.5; stroke-dasharray: 5 5; fill: none; stroke-linecap: round; }
+.routeNodes circle { fill: var(--accent); stroke: rgba(var(--ink-rgb), 0.18); stroke-width: 1.5; }
+.routeNodes circle.routeQuick { fill: var(--accent-2); }
+.routeNums text {
+  fill: var(--on-accent);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+.routeHome,
+.detourLabel {
+  position: absolute;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 0.18rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.routeHome { left: 0.5rem; top: 0.5rem; }
+.detourLabel { right: 0.5rem; bottom: 0.5rem; color: var(--gold-ink); }
+
+.quickCard { min-width: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.quickTitle { display: flex; align-items: center; gap: 0.55rem; }
+.quickTitle > span {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--on-accent);
+  background: var(--accent-2);
+}
+.quickTitle > div { min-width: 0; }
+.quickTitle h4 { margin: 0; font-size: 0.92rem; color: var(--text); }
+.quickTitle p { margin: 0.1rem 0 0; font-size: 0.72rem; color: var(--muted-2); }
+.quickMetrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr)); gap: 0.45rem; }
+.quickMetrics span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.quickMetrics small { font-size: 0.56rem; letter-spacing: 0.12em; color: var(--muted-2); }
+.quickMetrics b { font-size: 0.82rem; color: var(--text); }
+.offerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 122, 33, 0.3);
+  border-radius: 14px;
+  background: rgba(255, 122, 33, 0.07);
+}
+.offerRow > div { min-width: 0; display: flex; flex-direction: column; }
+.offerRow small { font-size: 0.56rem; letter-spacing: 0.12em; color: var(--muted-2); }
+.offerRow strong { font-size: 1.15rem; color: var(--text); }
+.offerRow .mockPrimary { margin-left: auto; }
+
+.paidNote {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--muted-2);
+}
+.paidNote b { color: var(--good); }
+
+/* ---- the job pipeline ---------------------------------------------------- */
+
+/* Reuses globals' .fastpath row/step/ic/t. Two overrides, both forced by the
+   count: the shared strip was built for four steps with `white-space: nowrap`,
+   and five nowrap labels overflow the flex row between about 560px (where
+   globals switches to a two-up grid) and 800px — which would scroll the page
+   body sideways. Letting the labels wrap is the whole fix. */
+.pipeline { margin-top: 1.6rem; }
+.pipelineRow :global(.fastpath-t) { white-space: normal; }
+.pipelineRow :global(.fastpath-step) { text-align: center; }
+.pipelineRow :global(.fastpath-ic) {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
-.whatBody {
+.pipelineHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+.pipelineHead p { margin: 0; }
+.pipelineNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--muted-2);
+}
+.pipelineNote i { width: 7px; height: 7px; border-radius: 999px; background: var(--good); }
+
+/* ---- the AI rail --------------------------------------------------------- */
+
+.contextNote {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.4rem 0 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--muted-2);
+}
+.contextNote span {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.03);
+}
+.contextNote i { font-style: normal; color: var(--accent); }
+
+.railHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.6rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.railHead span { color: var(--gold-ink); }
+.railHead small { color: var(--muted-2); letter-spacing: 0.14em; }
+
+.rail {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+.rail > li { margin: 0; display: flex; align-items: center; gap: 0.6rem; flex: 1 1 0; min-width: 0; }
+.railCard {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(var(--tint), 0.02);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.railCard:hover { border-color: rgba(255, 122, 33, 0.34); transform: translateY(-2px); }
+.railCard > div { min-width: 0; }
+.railNum {
+  flex: 0 0 auto;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.railStage {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--gold-ink);
+}
+.railCard h3 { margin: 0.25rem 0 0; font-size: 0.98rem; line-height: 1.25; color: var(--text); }
+.railCard p { margin: 0.4rem 0 0; font-size: 0.82rem; line-height: 1.45; color: var(--muted); }
+.railArrow { flex: 0 0 auto; font-style: normal; color: var(--accent); }
+
+/* ---- texting + the client portal ----------------------------------------- */
+
+.clientGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+.clientBenefits { list-style: none; margin: 1.4rem 0 0; padding: 0; display: grid; gap: 0.7rem; }
+.clientBenefits li { margin: 0; display: flex; gap: 0.6rem; }
+.clientBenefits > li > span { flex: 0 0 auto; color: var(--good); font-weight: 800; }
+.clientBenefits div { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.clientBenefits b { font-size: 0.92rem; color: var(--text); }
+.clientBenefits small { font-size: 0.82rem; line-height: 1.45; color: var(--muted-2); }
+
+.clientProduct { display: grid; gap: 0.9rem; }
+
+.console,
+.portal {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.consoleTop,
+.portalTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--tint), 0.03);
+}
+.consoleTop span,
+.portalTop b { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+.consoleTop small,
+.portalTop small { font-size: 0.58rem; letter-spacing: 0.12em; color: var(--muted-2); }
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+.contactRow > div { min-width: 0; display: flex; flex-direction: column; }
+.contactRow b { font-size: 0.85rem; color: var(--text); }
+.contactRow small { font-size: 0.68rem; color: var(--muted-2); }
+.contactRow i {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--good);
+}
+
+.stream { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.85rem; }
+.msg { max-width: 88%; display: flex; flex-direction: column; gap: 0.2rem; padding: 0.55rem 0.7rem; border-radius: 14px; }
+.msg p { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--text); }
+.msg small { font-size: 0.55rem; font-weight: 800; letter-spacing: 0.12em; color: var(--muted-2); }
+.msg > span { font-size: 0.6rem; color: var(--muted-2); }
+.msgOut { align-self: flex-end; border-bottom-right-radius: 4px; background: rgba(255, 122, 33, 0.12); }
+.msgIn { align-self: flex-start; border-bottom-left-radius: 4px; background: rgba(var(--tint), 0.05); }
+
+.messageFooter {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border-top: 1px solid var(--line);
+}
+.messageFooter > span:first-child { flex: 1; min-width: 0; font-size: 0.78rem; color: var(--muted-2); }
+
+.portalStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.85rem;
+}
+.portalStatus > span { min-width: 0; display: flex; flex-direction: column; }
+.portalStatus small { font-size: 0.58rem; letter-spacing: 0.12em; color: var(--muted-2); }
+.portalStatus b { font-size: 0.92rem; color: var(--text); }
+.portalStatus em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  color: var(--on-accent);
+  background: var(--accent-2);
+}
+
+.timeline { list-style: none; margin: 0; padding: 0 0.85rem; display: grid; gap: 0.55rem; }
+.timeline li { margin: 0; display: flex; align-items: center; gap: 0.6rem; }
+.timeline i {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--muted-2);
+}
+.timeline div { min-width: 0; display: flex; flex-direction: column; }
+.timeline b { font-size: 0.85rem; color: var(--text); }
+.timeline small { font-size: 0.7rem; color: var(--muted-2); }
+/* Tinted ground, --good ink. A filled --good chip with dark ink works in the
+   dark theme and fails in the light one, where --good is itself a dark green. */
+.tlDone i { color: var(--good); background: rgba(127, 224, 178, 0.16); border-color: transparent; }
+.tlNext i { color: var(--on-accent); background: var(--accent-2); border-color: transparent; }
+
+.portalActions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.85rem 0.85rem 0.5rem; }
+.portal .paidNote { padding: 0 0.85rem 0.85rem; }
+
+/* ---- the rest of the suite ----------------------------------------------- */
+
+.suiteGrid {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.8rem;
+}
+.suiteCard {
+  min-width: 0;
   margin: 0;
-  font-size: 0.88rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.suiteCard:hover { border-color: rgba(255, 122, 33, 0.34); transform: translateY(-2px); }
+.suiteNum {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.suiteCard h3 { font-size: 1rem; line-height: 1.25; color: var(--text); }
+.suiteCard p { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--muted-2); }
+
+/* ---- patchwork vs connected ---------------------------------------------- */
+
+.differenceProof {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+}
+.differenceProof span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.02);
+}
+.differenceProof b { font-size: 0.92rem; color: var(--text); }
+.differenceProof small { font-size: 0.78rem; line-height: 1.4; color: var(--muted-2); }
+
+/* The two columns list DIFFERENT items, so there is no row-label column and
+   therefore no visible name for what the rows have in common. The caption says
+   it once, for everyone. */
+.compareCaption {
+  caption-side: top;
+  text-align: left;
+  padding: 0 0 0.8rem;
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+.compareStatus {
+  display: block;
+  margin-top: 0.25rem;
+  margin-left: 1.9rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--muted-2);
+}
+.compareFoot {
+  font-size: 0.82rem;
   line-height: 1.5;
   color: var(--muted-2);
+  border-bottom: 0;
+}
+
+/* ---- pricing ------------------------------------------------------------- */
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: center;
+}
+.priceZero {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  margin: 0;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+.priceZero span { font-size: 1.6rem; color: var(--accent); }
+.priceZero strong { font-size: clamp(4rem, 11vw, 7rem); color: var(--text); }
+.priceZero small {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--muted-2);
+}
+
+.pricingPoints {
+  list-style: none;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.pricingPoints li {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: rgba(var(--tint), 0.02);
+}
+.pricingPoints li::before { content: '✓'; margin-right: 0.4rem; color: var(--good); font-weight: 800; }
+
+.fineprint { margin: 1.4rem 0 0; font-size: 0.78rem; line-height: 1.5; color: var(--muted-2); max-width: 66ch; }
+
+/* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 1000px) {
+  .rail { flex-direction: column; }
+  .rail > li { flex-direction: column; align-items: stretch; }
+  .railArrow { align-self: center; transform: rotate(90deg); }
+}
+
+@media (max-width: 900px) {
+  /* Scrollytelling with the visual beside the steps needs two columns. On one
+     column the stage moves to the top and stays pinned there while the steps
+     pass under it, which is the same relationship with the axis rotated. */
+  .scrolly { grid-template-columns: 1fr; }
+  .stage { order: -1; top: 4.25rem; }
+  .steps { gap: 2rem; }
+  .clientGrid { grid-template-columns: 1fr; }
+  .pricingGrid { grid-template-columns: 1fr; }
+  .priceZero { justify-content: flex-start; }
 }
 
 @media (max-width: 720px) {
   .draftBar { font-size: 0.8rem; padding: 0.5rem 0.9rem; gap: 0.45rem; }
-  .notThis { font-size: 0.85rem; }
   /* The banner is scaffolding, not the design. On a phone it was taking three
-     lines off the top of the very fold this draft exists to improve, which
-     would have made the page look worse at exactly the moment it is judged. */
+     lines off the top of the very fold this draft exists to be judged on. */
   .draftWhat { display: none; }
+  .builderLayout,
+  .intakeLayout,
+  .routeLayout { grid-template-columns: 1fr; }
+  /* The sticky stage hands over to the per-step mocks. Both are never visible
+     at once, so the page never shows the same panel twice. */
+  .stage { display: none; }
+  .stepDemo { display: block; }
+  /* Nothing is dimmed once every step owns its own visual — the pairing is
+     adjacency, and dimming two of three long cards just makes them hard to
+     read on the screen that can least afford it. */
+  .step { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer { animation: none; }
+  .scrollPrompt i { animation: none; }
+  .genStatus span { animation: none; opacity: 0.8; }
+  .step { transition: none; }
+  .railCard:hover,
+  .suiteCard:hover { transform: none; }
 }

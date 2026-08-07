@@ -7,6 +7,16 @@ import { ARTICLES } from '@/lib/resources';
 
 export const dynamic = 'force-dynamic';
 
+// The five feature detail routes, derived from one list so the sitemap cannot
+// drift from the directories under src/app/features.
+const FEATURE_SLUGS = [
+  'ai-intake',
+  'quick-stops',
+  'client-portal',
+  'website-builder',
+  'back-office',
+] as const;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${rootDomain}`;
@@ -18,6 +28,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: appUrl, changeFrequency: 'monthly', priority: 1 },
     { url: `${appUrl}/pricing`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${appUrl}/features`, changeFrequency: 'monthly', priority: 0.8 },
+    ...FEATURE_SLUGS.map((slug) => ({
+      url: `${appUrl}/features/${slug}`,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+    { url: `${appUrl}/how-it-works`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${appUrl}/for`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${appUrl}/faq`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${appUrl}/security`, changeFrequency: 'yearly', priority: 0.5 },
@@ -34,6 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     })),
     { url: `${appUrl}/contact`, changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${appUrl}/founder`, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${appUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     // Shipped with the signup terms gate and never added here.
     { url: `${appUrl}/terms`, changeFrequency: 'yearly', priority: 0.3 },

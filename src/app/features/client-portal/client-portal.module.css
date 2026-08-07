@@ -1,0 +1,441 @@
+/* /features/client-portal — the two-panel demonstration only.
+ *
+ * Same discipline as src/app/home-next/home-next.module.css and
+ * FeatureDetailLayout's own module: the shell, the hero, the section blocks,
+ * the eyebrows, the buttons and the closing band all come from globals.css
+ * unchanged, and globals.css is never edited. What is left is the one thing
+ * globals has no class for — a text thread and a job portal drawn side by side —
+ * and that is all this file contains.
+ *
+ * Nothing here is ported from the Codex draft. The copy came from there; every
+ * colour, radius and font below is a destination token. */
+
+/* ---- the demonstration section ------------------------------------------- */
+
+.demoHead {
+  max-width: 46rem;
+}
+.demoHead h2 {
+  max-width: 26ch;
+}
+.demoHead > p {
+  margin: 0.9rem 0 0;
+  max-width: 56ch;
+}
+
+/* auto-fit rather than a fixed 1fr 1fr: at 20rem the two panels sit beside each
+   other on a laptop and stack on a tablet without a second breakpoint, and
+   min(100%, …) stops the track floor from forcing a horizontal scroll. */
+.twoPanel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+  margin-top: 1.5rem;
+}
+
+/* ---- the strip that proves both panels are one job ----------------------- */
+
+/* The whole point of showing two panels is that they are the SAME customer and
+   the SAME job. That is easy to assert in a caption and easy to miss in a
+   picture, so both panels open with this identical strip. */
+.jobStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.7rem;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+}
+.jobWho {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.jobWhat {
+  font-size: 0.8rem;
+  color: var(--muted-2);
+}
+.jobRef {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--gold-ink);
+  white-space: nowrap;
+}
+
+/* ---- the text thread ----------------------------------------------------- */
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dayRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0.1rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.dayRow::before,
+.dayRow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.msg {
+  max-width: 92%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.04);
+}
+
+/* Outbound sits left, the homeowner's replies sit right. The alignment is the
+   fast read; .msgWho underneath is the one that survives a screen reader, a
+   narrow column and a colour-blind visitor, so both are always present. */
+.msgOut {
+  align-self: flex-start;
+  border-bottom-left-radius: 6px;
+}
+.msgIn {
+  align-self: flex-end;
+  border-bottom-right-radius: 6px;
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+}
+
+.msgWho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--muted-2);
+}
+.msgWhoName {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.msgBody {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.msgLink {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--gold-ink);
+  overflow-wrap: anywhere;
+}
+.msgOptOut {
+  font-size: 0.7rem;
+  color: var(--muted-2);
+}
+
+/* The marker on a message the system sent by itself — the arrival texts and the
+   invoice. Without it a visitor reads the whole thread as hand-typing. */
+.tag {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t18);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tagArrival {
+  border-color: var(--cedge-orange-2);
+  color: var(--accent-ink);
+}
+.tagMoney {
+  border-color: rgba(127, 224, 178, 0.4);
+  color: var(--good);
+}
+
+/* A ledger line, not a message: the payment receipt and the delivery receipt. */
+.sysRow {
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--muted-2);
+  text-align: center;
+}
+.sysDot {
+  color: var(--good);
+}
+
+/* ---- the job portal ------------------------------------------------------ */
+
+.portal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.portalTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.portalBrand {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.statusPill {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 224, 178, 0.4);
+  background: rgba(127, 224, 178, 0.1);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--good);
+  white-space: nowrap;
+}
+
+.nextLine {
+  margin: 0;
+  padding-left: 0.8rem;
+  border-left: 2px solid var(--cedge-orange-2);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.nextLabel {
+  font-weight: 700;
+  color: var(--gold-ink);
+}
+
+.blockTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.timeline > li + li {
+  margin-top: 0;
+}
+.tlItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 0.65rem;
+}
+/* The rail between the dots. Drawn per item so the last one has no tail. */
+.tlItem:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1rem;
+  bottom: -0.75rem;
+  width: 1px;
+  background: var(--line);
+}
+.tlDot {
+  width: 11px;
+  height: 11px;
+  margin-top: 0.28rem;
+  border-radius: 999px;
+  background: var(--good);
+}
+.tlDotArrival {
+  background: var(--accent);
+}
+.tlTitle {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+}
+.tlMeta {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+.tlAmend {
+  color: var(--accent-ink);
+}
+
+.kvList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.kvList > li + li {
+  margin-top: 0;
+}
+.kv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.kvKey {
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+.kvVal {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.money {
+  font-family: var(--font-mono);
+}
+.paid {
+  color: var(--good);
+}
+
+/* The row of things the homeowner can do from their own page. */
+.portalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--line);
+}
+
+/* A control the mock only depicts. A <span>, deliberately: a real <button> here
+   would take a tab stop on a marketing page and do nothing when pressed. */
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+/* ---- the hero panel: the job record on the contractor's side ------------- */
+
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.recordTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+}
+.recordName {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.recordJob {
+  font-size: 0.82rem;
+  color: var(--muted-2);
+  width: 100%;
+}
+
+.recordRows {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.42rem 0.9rem;
+  font-size: 0.82rem;
+}
+.recordRows dt {
+  color: var(--muted-2);
+}
+.recordRows dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.recordFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+.unread {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: var(--on-accent);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .msg {
+    max-width: 96%;
+  }
+  .jobRef {
+    margin-left: 0;
+  }
+  .recordRows {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+  .recordRows dd {
+    text-align: left;
+    margin-bottom: 0.35rem;
+  }
+}

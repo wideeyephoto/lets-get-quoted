@@ -173,6 +173,20 @@ export const STRIPE_SETUP_HREF = '/dashboard/settings#payments';
 
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
+// Marketing pages that draw their OWN header — see the early return below. One
+// list rather than eight prefix checks so adding a page is one line and cannot
+// drift from the others.
+//
+// Matching is `=== route` OR `startsWith(route + '/')`, never a bare prefix.
+// A bare prefix is wrong twice over here: '/for' would swallow the live
+// /for/[trade] pages, and '/features' would swallow any future /features-*
+// route. The trailing slash makes /features cover its five sub-pages
+// (/features/ai-intake, /quick-stops, /client-portal, /website-builder,
+// /back-office) without covering anything else.
+//
+// /home-next is deliberately NOT here: it still wants the shell's chrome.
+const OWN_CHROME_MARKETING_ROUTES = ['/features', '/how-it-works', '/founder'];
+
 function getPrimaryAction() {
   return { href: '/login', label: 'Create free account' };
 }
@@ -232,6 +246,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     pathname.startsWith('/portal');
   // First run (/welcome) renders bare — see the early return below.
   const isFirstRun = pathname === '/welcome';
+  // The marketing cluster that ships its own header/footer (see the route list
+  // above) — the shell stays out of its way so the page has one header, not two.
+  const isOwnChromeMarketing = OWN_CHROME_MARKETING_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
   // A signed-in contractor gets the FULL dashboard rail on every app/marketing
   // page (incl. the homepage) — same live counts, Website badge, New button and
   // Stripe pill as inside /dashboard — never the logged-out marketing teaser.
@@ -536,6 +555,16 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // The /demo experience renders its own sidebar chrome (see demo/layout.tsx),
   // so the app shell stays out of its way — no marketing top bar wrapping it.
   if (pathname.startsWith('/demo')) {
+    return <>{children}</>;
+  }
+
+  // /features (+ its five sub-pages), /how-it-works and /founder each render a
+  // full marketing header and SiteFooter of their own. Unconditional, like
+  // /demo above: this is the same page for a prospect and for a signed-in
+  // owner, and the alternative — letting `showAppRail` win below — would wrap
+  // an indexed marketing page in the dashboard rail, live lead counts and all,
+  // underneath the header the page already drew.
+  if (isOwnChromeMarketing) {
     return <>{children}</>;
   }
 

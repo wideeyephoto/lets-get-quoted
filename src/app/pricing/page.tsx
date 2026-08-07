@@ -5,11 +5,14 @@ import { FEATURE_COUNT } from '@/lib/features';
 import PricingCalculator from './PricingCalculator';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
+import styles from './pricing.module.css';
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description:
-    'No subscription and no setup fee. A platform fee of 0.65%–1.25% applies only when a homeowner pays you, and drops as you grow. Try the fee calculator.',
+  // Read from FEE_TIERS, not typed out: this description and the FAQ answer
+  // below are the two places a stale rate would ship to search engines rather
+  // than merely to the page.
+  description: `No subscription and no setup fee. A platform fee of ${FEE_TIERS[FEE_TIERS.length - 1].rate}–${FEE_TIERS[0].rate} applies only when a homeowner pays you, and drops as you grow. Try the fee calculator.`,
   alternates: { canonical: 'https://letsgetquoted.com/pricing' },
 };
 
@@ -27,6 +30,101 @@ const included = [
   'Insights, tax reports & QuickBooks export',
 ];
 
+// The pricing-model comparison. Deliberately a comparison of two BILLING
+// MODELS, not of two products: no vendor is named, and no competitor's price is
+// stated as fact — plans vary, they change, and quoting someone else's number
+// on a page this page's job is to be trusted on would be the one claim here we
+// couldn't stand behind. Every "them" cell is written about the conventional
+// per-seat subscription model in general and hedged accordingly.
+//
+// The homepage table at src/app/page.tsx compares CAPABILITY across three
+// product categories. This one compares only what you're billed and when, which
+// is what someone who has just dragged the calculator above is actually asking.
+const FIRST_TIER_RATE = FEE_TIERS[0].rate;
+const LAST_TIER_RATE = FEE_TIERS[FEE_TIERS.length - 1].rate;
+
+const modelColumns = [
+  {
+    key: 'lgq',
+    label: 'Let’s Get Quoted',
+    tag: 'One platform fee, only on money you collect',
+    highlight: true,
+  },
+  {
+    key: 'sub',
+    label: 'Per-seat monthly software',
+    tag: 'The conventional contractor suite',
+    highlight: false,
+  },
+];
+
+type ModelCell = { tone: 'good' | 'mid' | 'bad'; value?: string; text: string };
+type ModelRow = { label: string; cells: [ModelCell, ModelCell] };
+
+const MODEL_TONE_MARK: Record<ModelCell['tone'], string> = { good: '✓', mid: '~', bad: '✕' };
+
+const modelRows: ModelRow[] = [
+  {
+    label: 'Monthly software subscription',
+    cells: [
+      { tone: 'good', value: '$0', text: 'No per-seat bill before the company earns.' },
+      {
+        tone: 'bad',
+        text: 'A flat monthly bill, usually priced per seat, due on the same date whether or not the month brought work.',
+      },
+    ],
+  },
+  {
+    label: 'When a homeowner pays you',
+    cells: [
+      { tone: 'good', value: 'Aligned', text: 'A platform fee applies to completed transactions.' },
+      {
+        tone: 'mid',
+        text: 'Nothing extra at that moment — the subscription was already paid, collected or not.',
+      },
+    ],
+  },
+  {
+    label: 'As the business grows',
+    cells: [
+      {
+        tone: 'good',
+        value: 'Lower rate',
+        text: `The platform rate drops with growth — marginal rate falls from ${FIRST_TIER_RATE} to ${LAST_TIER_RATE} across your trailing 12-month volume, automatically.`,
+      },
+      {
+        tone: 'bad',
+        text: 'Growth typically means more seats and a higher plan tier, so the bill rises as the crew does.',
+      },
+    ],
+  },
+  {
+    label: 'A slow month',
+    cells: [
+      {
+        tone: 'good',
+        value: '$0',
+        text: 'If customers do not pay you through the platform, your monthly software bill is $0.',
+      },
+      { tone: 'bad', text: 'The subscription renews on schedule regardless.' },
+    ],
+  },
+  {
+    label: 'What you get on day one',
+    cells: [
+      {
+        tone: 'good',
+        value: 'Everything',
+        text: `Full-featured from the beginning — all ${FEATURE_COUNT} features on every account.`,
+      },
+      {
+        tone: 'mid',
+        text: 'Feature tiers and paid add-ons are common, so the entry price is rarely the whole product.',
+      },
+    ],
+  },
+];
+
 const pricingFaqs = [
   {
     q: 'What do I pay to start?',
@@ -42,7 +140,7 @@ const pricingFaqs = [
   },
   {
     q: 'How does the rate drop?',
-    a: 'The platform fee is marginal across your trailing-12-month volume — as you collect more, each new bracket is charged at a lower rate, all the way down to 0.65%. It happens automatically, with no call to sales.',
+    a: `The platform fee is marginal across your trailing-12-month volume — as you collect more, each new bracket is charged at a lower rate, all the way down to ${LAST_TIER_RATE}. It happens automatically, with no call to sales.`,
   },
 ];
 
@@ -128,6 +226,72 @@ export default function PricingPage() {
         <div className="mid-cta">
           <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
         </div>
+      </section>
+
+      {/* Sits here, after "no per-seat pricing, no premium tier, no feature
+          paywall" has been asserted above and before the FAQ, because that
+          sentence is the setup and this table is the evidence for it. Putting
+          it earlier would make that line an echo of a point already proved. */}
+      <section className="section-block compare-band">
+        <div className="section-heading">
+          <p className="eyebrow">One model from one truck to ten crews</p>
+          <h2>When business is slow, <span className="gradient-text">your software bill is $0.</span></h2>
+          <p>
+            The business just starting out gets the same operational foundation as the company doing $2 million a year.
+            The conventional way to buy contractor software is a monthly subscription per seat, billed the same in a
+            slow month as a busy one &mdash; here is that model next to this one.
+          </p>
+        </div>
+        <div className="compare-scroll">
+          <table className={`compare-table ${styles.modelTable}`}>
+            <caption className="sr-only">
+              How the no-subscription model compares with conventional per-seat monthly contractor software, by what
+              you are billed and when.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" className="compare-corner"><span className="compare-corner-label">Two ways to pay</span></th>
+                {modelColumns.map((col) => (
+                  <th scope="col" key={col.key} className={col.highlight ? 'compare-col-head is-us' : 'compare-col-head'}>
+                    {col.highlight ? <span className="compare-head-badge">No monthly fee</span> : null}
+                    <strong>{col.label}</strong>
+                    <span className="compare-head-tag">{col.tag}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {modelRows.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row" className="compare-row-label">{row.label}</th>
+                  {row.cells.map((cell, index) => (
+                    <td
+                      key={modelColumns[index].key}
+                      className={`compare-cell tone-${cell.tone}${modelColumns[index].highlight ? ' is-us' : ''}`}
+                    >
+                      <span className="compare-mark" aria-hidden="true">{MODEL_TONE_MARK[cell.tone]}</span>
+                      <span className="compare-cell-text">
+                        {cell.value ? (
+                          <>
+                            <b className={`${styles.value}${modelColumns[index].highlight ? ` ${styles.usValue}` : ''}`}>
+                              {cell.value}
+                            </b>{' '}
+                          </>
+                        ) : null}
+                        {cell.text}
+                      </span>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="compare-source">
+          A comparison of pricing models, not of specific products &mdash; plans vary by vendor and change often, so we
+          don&apos;t quote anyone else&apos;s price here. Platform fee only: standard Stripe processing (
+          {STRIPE_PROCESSING_NOTE}) applies separately and goes to Stripe, not to us.
+        </p>
       </section>
 
       <section className="section-block">

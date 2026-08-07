@@ -1,0 +1,359 @@
+/* /features/website-builder — the site preview, the publish panel and the
+ * request card. Nothing else.
+ *
+ * Same discipline as src/app/home-next/home-next.module.css: the shell, the
+ * hero grid, the section blocks, the eyebrows, the buttons and the closing band
+ * come from globals.css unchanged, and globals.css is never edited. Only the
+ * pieces globals has no class for live here, and every colour, radius and font
+ * below is a destination token — none of it is ported from the Codex draft. */
+
+/* ---- the generated site, in a browser frame ------------------------------ */
+
+.browser {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+}
+
+.browserBar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--tint), 0.04);
+}
+.dots {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.28rem;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--edge-t18);
+}
+.url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted-2);
+}
+
+.site {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.95rem;
+}
+
+.siteTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.siteBrand {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.sitePhone {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted-2);
+}
+.siteNav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.siteNav > li + li {
+  margin-top: 0;
+}
+
+.siteHeadline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text);
+}
+.siteSub {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+/* The instant estimate is the site's front door, so it is drawn as the loudest
+   thing on the preview rather than a footnote below the fold. */
+.estimate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--cedge-orange-2);
+  border-radius: 14px;
+  background: rgba(255, 122, 33, 0.07);
+}
+.estimateTitle {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.estimateAsk {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.estimateField {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.estimateOut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem 0.7rem;
+}
+.estimateLabel {
+  font-size: 0.72rem;
+  color: var(--muted-2);
+}
+.estimateRange {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--gold-ink);
+}
+
+/* ---- the publish + first-request section --------------------------------- */
+
+.sectionHead {
+  max-width: 46rem;
+}
+.sectionHead h2 {
+  max-width: 28ch;
+}
+.sectionHead > p {
+  margin: 0.9rem 0 0;
+  max-width: 58ch;
+}
+
+.twoPanel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+  margin-top: 1.5rem;
+}
+
+.panelStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.blockTitle {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.rowTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* draft -> live, said once and plainly. */
+.statusFlow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+.pill {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  white-space: nowrap;
+}
+.pillLive {
+  border-color: rgba(127, 224, 178, 0.4);
+  background: rgba(127, 224, 178, 0.1);
+  color: var(--good);
+}
+.pillNew {
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+  color: var(--accent-ink);
+}
+.arrow {
+  color: var(--muted-2);
+}
+
+.addrList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.addrList > li + li {
+  margin-top: 0;
+}
+.addr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem 0.8rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.addrName {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.addrNote {
+  font-size: 0.72rem;
+  color: var(--muted-2);
+}
+.addrOk {
+  color: var(--good);
+}
+.dnsLine {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+  overflow-wrap: anywhere;
+}
+
+.ownership {
+  margin: 0;
+  padding-left: 0.8rem;
+  border-left: 2px solid var(--cedge-orange-2);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* A control the mock only depicts. A <span>, deliberately: a real <button>
+   would take a tab stop on a marketing page and do nothing when pressed. */
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.34rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+.ghostRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+/* ---- the request that arrives ------------------------------------------- */
+
+.quote {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--edge-t18);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.factList {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+}
+.factList dt {
+  color: var(--muted-2);
+}
+.factList dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+.money {
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 720px) {
+  .site {
+    padding: 0.8rem;
+  }
+  .siteHeadline {
+    font-size: 1.05rem;
+  }
+  .factList {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+  .factList dd {
+    text-align: left;
+    margin-bottom: 0.35rem;
+  }
+}

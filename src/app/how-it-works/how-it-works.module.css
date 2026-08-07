@@ -1,0 +1,399 @@
+/* /how-it-works — scoped styling for the five-stage matrix.
+ *
+ * Same discipline as src/app/home-next/home-next.module.css and
+ * src/components/marketing/feature-detail-layout.module.css: the shell, the
+ * hero card, the section cards, the eyebrows, the buttons, the closing band and
+ * the ambient glows all come from globals.css unchanged, and globals.css is
+ * never touched. Only the pieces globals has no class for are defined here.
+ *
+ * Nothing below is ported from the Codex draft. The COPY came from there; every
+ * colour, radius, font and spacing value is this app's own token. */
+
+/* ---- own chrome ---------------------------------------------------------- */
+
+/* AppShell early-returns for this route (see OWN_CHROME_MARKETING_ROUTES in
+   src/components/app-shell.tsx), so the page draws its own header — and so do
+   the other seven routes in the cluster. The bar therefore lives in
+   src/components/marketing/marketing-header.module.css rather than here, where
+   only this page could reach it. */
+
+/* ---- hero ---------------------------------------------------------------- */
+
+/* globals sets h1 to clamp(2.6rem, 5vw, 5rem) with max-width: 11ch — tuned for
+   a four-word homepage slogan. This headline is two sentences and at that size
+   it becomes a five-line tower that pushes the stage list off the first
+   screen. */
+.title {
+  font-size: clamp(1.9rem, 3.4vw, 3.05rem);
+  line-height: 1.06;
+  max-width: 18ch;
+  margin: 0.3rem 0 0.9rem;
+}
+
+/* The Codex headline accents its second sentence with <em>. Italic display type
+   at this weight reads as a typo rather than as emphasis, so the accent is
+   carried by colour — and --gold-ink is the token that already flips per theme.
+   Matches how FeatureDetailLayout treats the same <em>, so the two pages accent
+   a headline the same way. */
+.title em {
+  font-style: normal;
+  color: var(--gold-ink);
+}
+
+.lede {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 56ch;
+  margin: 0;
+}
+
+.heroNote {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+  max-width: 52ch;
+}
+
+/* ---- the pipeline preview ------------------------------------------------ */
+
+/* Five chips that are also the page's in-page nav: a visitor who only wants
+   "get paid" should not have to scroll past four stages to find it. Links, not
+   decoration, so they are keyboard reachable and carry a focus ring. */
+.pipeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 0.6rem;
+  align-content: center;
+}
+.pipeline > li + li { margin-top: 0; }
+
+.pipelineLink {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.pipelineLink:hover {
+  border-color: var(--edge-t18);
+  transform: translateX(2px);
+}
+.pipelineLink:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+.pipelineNum {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold-ink);
+  flex: 0 0 auto;
+}
+
+.pipelineTitle {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  min-width: 0;
+}
+
+/* ---- how to read the matrix ---------------------------------------------- */
+
+.legendHead { max-width: 46rem; }
+.legendHead h2 { max-width: 24ch; }
+.legendHead > p {
+  margin: 0.9rem 0 0;
+  max-width: 56ch;
+}
+
+.legend {
+  list-style: none;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.legend > li + li { margin-top: 0; }
+
+.legendItem {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--cedge-orange-2);
+}
+
+.legendBody {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+/* ---- the five stages ----------------------------------------------------- */
+
+.stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+.stages > li + li { margin-top: 0; }
+
+.stage {
+  min-width: 0;
+  scroll-margin-top: 1.5rem;
+}
+
+.stageHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 62rem;
+}
+
+.stageNum {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 16px;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gold-ink);
+  border: 1px solid var(--cedge-orange-2);
+  background: rgba(var(--tint), 0.03);
+}
+
+.stageCopy { min-width: 0; }
+
+.stageKicker {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+/* globals sets h2 to clamp(1.8rem, 3vw, 2.8rem) — a section headline. These are
+   five sub-headings inside one section and have to be told so. */
+.stageTitle {
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  line-height: 1.2;
+  margin: 0.2rem 0 0;
+  max-width: none;
+}
+
+.stageSummary {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+/* ---- the four axes ------------------------------------------------------- */
+
+/* The matrix proper: four fixed columns, identical in every stage, so a reader
+   can run their eye DOWN a column ("what does the homeowner get, at each
+   stage?") as easily as across a row. Explicit column counts rather than
+   auto-fit — auto-fit would resolve to 3 + 1 at some widths, which reads as a
+   ragged fifth thing rather than as a fourth axis. */
+.axes {
+  margin: 1.1rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+/* A <div> grouping a <dt> with its <dd> is valid inside a <dl>, which is what
+   lets each pair be one card. */
+.cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.05rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.cell:hover {
+  border-color: var(--edge-t18);
+  transform: translateY(-2px);
+}
+
+.axisLabel {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--gold-ink);
+}
+
+/* The fourth axis is the only one describing something the product does on its
+   own, so it gets a mark the other three don't. A glyph rather than a colour:
+   the app has two brand hues and four axes, and colour alone should not be
+   what tells a reader which column they are in. */
+.axisLabelAuto::before {
+  content: '\2192\00a0';
+  color: var(--accent);
+}
+
+/* globals styles a bare <dd> for prose and indents it. */
+.cellBody {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+}
+
+/* The contractor-action column is a checklist rather than a sentence — it is
+   the one axis that is a sequence of moves, and flattening it into prose would
+   lose that. The <dd> still needs its own reset: the UA default indents it by
+   40px, which would knock this one column out of alignment with the other
+   three. */
+.cellList { margin: 0; }
+
+.doList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.doList > li + li { margin-top: 0; }
+
+.doItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.87rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.doTick {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+/* ---- the continuity band ------------------------------------------------- */
+
+.continuityGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.continuityCopy { min-width: 0; }
+.continuityCopy > p {
+  margin: 0.9rem 0 0;
+  max-width: 46ch;
+}
+.continuityCopy h2 { max-width: 22ch; }
+
+/* ---- the job-record example --------------------------------------------- */
+
+.record {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.record > li + li { margin-top: 0; }
+
+.recordRow {
+  display: grid;
+  grid-template-columns: 3.1rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--edge-t08);
+}
+.record > li:last-child .recordRow {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.recordStage {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gold-ink);
+}
+
+.recordEvent {
+  min-width: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.recordDetail {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+
+/* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 1040px) {
+  /* Two columns, never three: at three, the fourth axis drops alone onto a
+     second row in every stage and stops looking like part of the set. */
+  .axes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .continuityGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  /* Stacked cards. Each one still carries its own axis label, which is why the
+     matrix survives the collapse — nothing here depended on a header row that
+     has now scrolled away. */
+  .axes { grid-template-columns: 1fr; }
+  .legend { grid-template-columns: 1fr; }
+  .lede { font-size: 1rem; }
+  .cell { padding: 0.9rem 1rem 1rem; }
+  .stageHead { gap: 0.75rem; }
+  .stageNum { width: 2.5rem; height: 2.5rem; border-radius: 13px; font-size: 0.95rem; }
+  .headerNav { margin-left: 0; width: 100%; }
+  .headerCta { width: 100%; }
+  .recordRow { grid-template-columns: 1fr; gap: 0.15rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell,
+  .pipelineLink { transition: border-color 0.2s ease; }
+  .cell:hover,
+  .pipelineLink:hover { transform: none; }
+}

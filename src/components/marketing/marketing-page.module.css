@@ -1,0 +1,26 @@
+/* Keyboard focus for the marketing cluster's buttons.
+ *
+ * globals.css scopes its only :focus-visible ring for `.btn` to three
+ * selectors — `.fx-hero a.btn`, `.fx-tile a` and `.cta-band a.btn` — and there
+ * is no generic `a:focus-visible` anywhere in it. The heroes on /features,
+ * /how-it-works, /founder and the five feature detail pages render
+ * `.hero-copy > .actions > a.btn` inside `.fx-page > .marketing-shell`, which
+ * matches none of the three. Without this rule the keyboard path through the
+ * loudest button on each page falls back to the UA default outline, which is
+ * close to invisible on the dark ground.
+ *
+ * globals.css is never edited, so the rule lives here and every page in the
+ * cluster puts `MARKETING_PAGE_CLASS` on its `<main>`. `:global` on the inner
+ * half because `.btn` is globals' own class; the local `.page` is what keeps
+ * the rule scoped to these eight routes.
+ *
+ * Same token and offset as the closing band's ring in globals and as
+ * marketing-cta.module.css, so a page has one focus treatment top to bottom.
+ * `.cta-band` sits inside this scope too and is already covered by globals; the
+ * identical declaration is a harmless duplicate. */
+
+.page :global(a.btn:focus-visible),
+.page :global(button.btn:focus-visible) {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}

@@ -1,0 +1,278 @@
+/* /features/back-office — only the two pieces this page adds.
+ *
+ * Same discipline as src/app/home-next/home-next.module.css and the shared
+ * FeatureDetailLayout module: the shell, the hero grid, the section blocks, the
+ * eyebrows, the buttons and the closing band all come from globals.css
+ * unchanged, and globals.css is never edited. What is defined here is only what
+ * globals has no class for:
+ *
+ *   1. the hero's job-record panel — the page's whole argument in one object,
+ *      so it has to show a real record and not a decorative rectangle;
+ *   2. the seventeen-capability inventory, grouped by stage.
+ *
+ * No Codex CSS is ported. The copy came from there; every colour, radius and
+ * font below resolves to one of this app's tokens. */
+
+/* ---- the hero job record ------------------------------------------------- */
+
+/* One card, five bands, in the order the page claims they stay connected:
+   who and where, what the work is, where the job has got to, what has been
+   said, and what the money is doing. Separating them with rules rather than
+   nesting more cards keeps it reading as ONE record — which is the point being
+   made — instead of five widgets that happen to sit together. */
+.record {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+
+.band {
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--edge-t08);
+}
+.band:first-child { padding-top: 0; border-top: none; }
+.band:last-child { padding-bottom: 0; }
+
+.recordHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.recordTitle {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0;
+}
+
+.stageTag {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  border: 1px solid var(--cedge-orange-2);
+  border-radius: 999px;
+  padding: 0.14rem 0.5rem;
+  white-space: nowrap;
+}
+
+.who { margin: 0.3rem 0 0; }
+
+/* The band labels. Mono and tiny so they read as chrome, not as content — the
+   record's own words are the content. */
+.bandLabel {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  opacity: 0.75;
+  margin-bottom: 0.35rem;
+}
+
+.scope { margin: 0; color: var(--text); }
+
+.upgrade {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+}
+.upgradeCost { color: var(--gold-ink); font-weight: 700; white-space: nowrap; }
+
+/* The stage rail. Done / current / still to come, marked by more than colour:
+   each state carries its own glyph and its own weight, so it survives both a
+   greyscale print and a red-green colour deficiency. */
+.stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.stages > li + li { margin-top: 0; }
+
+.stage {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.stageMark {
+  flex: none;
+  width: 1.05rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.stageDone .stageMark { color: var(--gold-ink); }
+.stageNow { color: var(--text); font-weight: 700; }
+.stageNow .stageMark { color: var(--accent); }
+.stageNext { opacity: 0.7; }
+
+.stageWhen {
+  margin-left: auto;
+  padding-left: 0.5rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/* Two texts, one thread. Deliberately not a chat UI — it is an excerpt of the
+   conversation living on the record, and dressing it as a live inbox would
+   promise a screen this panel is not. */
+.thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.thread > li + li { margin-top: 0; }
+
+.msg {
+  padding: 0.45rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t08);
+  background: rgba(var(--tint), 0.03);
+  max-width: 92%;
+}
+.msgOut {
+  margin-left: auto;
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+  color: var(--text);
+}
+
+.msgWho {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 0.12rem;
+}
+
+.money {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.28rem;
+}
+.money > li + li { margin-top: 0; }
+
+.moneyRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.moneyRow b { color: var(--text); font-variant-numeric: tabular-nums; }
+.moneyDue { color: var(--text); }
+.moneyDue b { color: var(--gold-ink); }
+
+/* ---- the seventeen capabilities ------------------------------------------ */
+
+.capIntro { max-width: 46rem; }
+.capIntro h2 { max-width: 28ch; }
+.capIntro > p { margin: 0.9rem 0 0; max-width: 56ch; }
+
+/* Two columns at full width, not four. Four groups would fit across the shell,
+   but each column would then be ~250px of dense definition text, and the group
+   with five entries would tower over the others. Two wide columns keep the
+   lines readable and the height difference to one row. */
+.capGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.capGroup {
+  min-width: 0;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+}
+
+.capGroupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+/* globals sets h3 to 1.2rem — a section sub-head. These head a column inside a
+   four-up grid and have to be told they are smaller than that. */
+.capGroupTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  margin: 0;
+}
+
+.capCount {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold-ink);
+  white-space: nowrap;
+}
+
+/* A description list, not a card grid: each entry really is a term and its
+   definition, and seventeen more bordered boxes would drown the four groups
+   that give them their shape. */
+.capList { margin: 0.9rem 0 0; padding: 0; }
+
+/* The gap goes on the wrapper, not on `dt:first-of-type` — every dt here is the
+   first of ITS wrapping div, so that selector would zero all of them. */
+.capList > div + div { margin-top: 0.85rem; }
+
+.capList dt {
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+  margin: 0;
+}
+
+.capList dd {
+  margin: 0.2rem 0 0;
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--cedge-orange-2);
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+/* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .record { font-size: 0.8rem; }
+  .capGroup { padding: 1rem 1.05rem 1.1rem; }
+  /* The timestamps are the first thing to give up their column on a narrow
+     screen — without this the stage label wraps to two lines to keep "TUE
+     9–11 AM" on the same row as it. */
+  .stageWhen { margin-left: 0; padding-left: 0; }
+  .stage { flex-wrap: wrap; }
+}

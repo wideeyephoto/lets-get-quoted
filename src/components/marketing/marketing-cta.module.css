@@ -1,0 +1,54 @@
+/* MarketingCta.
+ *
+ * The band itself is globals' .cta-band / .cta-band-inner / .actions, unchanged.
+ * Only the pieces globals has no class for live here. */
+
+/* The reassurance line under the buttons. Smaller and quieter than the body
+   copy so it reads as a footnote to the action, not a second pitch. */
+.note {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+  max-width: 46ch;
+}
+
+/* ---- inline variant ------------------------------------------------------
+   A mid-page nudge with no band chrome: heading, one line, the .mid-cta button
+   row. Used where a full CTA band would be a wall between two sections. */
+
+.inline {
+  text-align: center;
+  margin-top: 2.4rem;
+}
+
+.inlineTitle {
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+  line-height: 1.15;
+  margin: 0.35rem 0 0;
+  max-width: 26ch;
+  margin-inline: auto;
+}
+
+.inlineBody {
+  margin: 0.7rem auto 0;
+  max-width: 46ch;
+  color: var(--muted);
+}
+
+.inline .note {
+  margin-inline: auto;
+}
+
+/* globals scopes its band focus ring to `.cta-band a.btn` — the inline variant
+   is outside that selector and would otherwise fall back to the UA default,
+   which is close to invisible on the dark ground. */
+.inline a.btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .note { font-size: 0.82rem; }
+  .inline { margin-top: 1.8rem; }
+}

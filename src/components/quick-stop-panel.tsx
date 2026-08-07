@@ -20,6 +20,7 @@ export default function QuickStopPanel({
   lockedUntil,
   configured,
   todayCount,
+  inert = false,
 }: {
   enabled: boolean;
   /** Staff/auto lock from the no-show escalation. Overrides `enabled`. */
@@ -29,6 +30,16 @@ export default function QuickStopPanel({
   configured: boolean;
   /** Quick Stops already accepted for this day. */
   todayCount: number;
+  /**
+   * Renders the panel as a picture of itself: the actions become plain text
+   * with the same styling, and nothing is focusable or clickable.
+   *
+   * The public marketing page uses this. Its version of the panel sits inside
+   * an "Example" frame, and a signed-out prospect who tabbed into a live
+   * "Set up Quick Stops" would be thrown at the login wall from a page whose
+   * every other button goes to the sign-up host.
+   */
+  inert?: boolean;
 }) {
   const state = locked ? 'locked' : enabled ? 'on' : 'off';
   const lockLabel =
@@ -57,7 +68,14 @@ export default function QuickStopPanel({
         </div>
 
         <div className="extrastop-actions">
-          {!configured ? (
+          {inert ? (
+            // A picture of the button, not the button. Same classes so the
+            // panel looks identical; a <span> so there is nothing to tab to
+            // and nothing to click.
+            <span className="btn primary" aria-hidden="true">
+              {!configured ? 'Set up Quick Stops' : locked ? 'Why is this paused?' : enabled ? 'Turn off for now' : 'Turn on'}
+            </span>
+          ) : !configured ? (
             // Nothing to switch on yet: an on/off toggle over an unset fee band
             // and no detour limits would offer work on rules nobody chose.
             <Link href="/dashboard/quick-stops#quick-stop-setup" className="btn primary">

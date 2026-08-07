@@ -1,0 +1,37 @@
+/* /pricing — the pricing-model comparison only.
+ *
+ * The discipline here is the one home-next.module.css states: the comparison
+ * reuses globals' .compare-* chrome wholesale (scroll container, sticky row
+ * labels, the accent spine on the winning column, the tone marks, the hover
+ * rows, the reduced-motion handling). This file defines the two things globals
+ * has no class for, and nothing else. If you find yourself re-declaring a
+ * .compare-* rule below, the answer is to use the globals class instead.
+ */
+
+/* globals sets .compare-table { min-width: 720px } — sized for the homepage's
+ * four columns. This table has three, so it stops needing the scroll well
+ * before 720px and forcing one there would make a phone swipe a table that
+ * already fits. Below this width .compare-scroll still takes over, so the page
+ * body never scrolls sideways either way. */
+.modelTable {
+  min-width: 34rem;
+}
+
+/* The Codex pricing page led with three oversized values — $0, Aligned, Lower
+ * rate — and they carried the whole argument at a glance. Dropped into a table
+ * cell they would flatten into the surrounding sentence, so they keep the
+ * display face and lead their line. Inline rather than block on purpose: the
+ * .compare-mark before them is vertical-align: middle, and a block here would
+ * break it onto its own row. */
+.value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Matches .pricing-tier-best .pricing-tier-rate a few sections up the page, so
+ * the "this is the good number" signal is the same colour in both places. */
+.usValue {
+  color: var(--gold-ink);
+}

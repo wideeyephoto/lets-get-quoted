@@ -1,0 +1,205 @@
+/* FeatureDetailLayout — the shell behind the five /features/* pages.
+ *
+ * Same discipline as src/app/home-next/home-next.module.css: the shell, the
+ * hero grid, the section cards, the eyebrows, the buttons and the closing band
+ * all come from globals unchanged. Only the pieces globals has no class for are
+ * defined here, and globals.css is never touched.
+ *
+ * Nothing below is ported from the Codex draft. The copy came from there; the
+ * look comes from this app's tokens. */
+
+/* ---- back to the index --------------------------------------------------- */
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted-2);
+  border-radius: 999px;
+  padding: 0.2rem 0.1rem;
+}
+.backLink:hover { color: var(--text); }
+.backLink:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+/* ---- hero ---------------------------------------------------------------- */
+
+/* globals sets h1 to clamp(2.6rem, 5vw, 5rem) with max-width: 11ch — tuned for
+   a four-word homepage slogan. These headlines are full sentences; at that size
+   they stack into a tower that pushes the product panel off the first screen. */
+.title {
+  font-size: clamp(1.9rem, 3.4vw, 3.05rem);
+  line-height: 1.06;
+  max-width: 20ch;
+  margin: 0.3rem 0 0.9rem;
+}
+
+/* Codex accents part of each headline with <em>. Italic display type at this
+   weight reads as a typo rather than emphasis, so the accent is carried by
+   colour instead — and --gold-ink is the token that already flips per theme.
+   Pages that want the animated treatment can pass <span class="gradient-text">
+   instead; both are supported. */
+.title em {
+  font-style: normal;
+  color: var(--gold-ink);
+}
+
+.lede {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 56ch;
+  margin: 0;
+}
+
+.heroNote {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+  max-width: 52ch;
+}
+
+/* The demo column. min-width:0 matters — a grid child with a wide panel inside
+   will otherwise refuse to shrink and push the page into a horizontal scroll. */
+.heroDemo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ---- proof bar ----------------------------------------------------------- */
+
+.proof {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 1.25rem;
+  border: 1px solid var(--edge-t08);
+  border-radius: 24px;
+  background: rgba(var(--tint), 0.02);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem 1.5rem;
+}
+.proof > li + li { margin-top: 0; }
+
+.proofItem {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--cedge-orange-2);
+}
+
+.proofTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.proofBody {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+/* ---- story + benefits ---------------------------------------------------- */
+
+.storyGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+}
+
+.storyIntro > p {
+  margin: 0.9rem 0 0;
+  max-width: 44ch;
+}
+
+/* ---- numbered card lists (benefits + steps) ------------------------------ */
+
+/* globals styles bare <ul>/<ol> for prose: a left pad, a bullet, and 0.45rem
+   between items. These are card grids and have to say so. */
+.cardList {
+  list-style: none;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+.cardList > li + li { margin-top: 0; }
+
+.benefitList { grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); margin-top: 0; }
+.stepList { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+
+.card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.card:hover {
+  border-color: var(--edge-t18);
+  transform: translateY(-2px);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold-ink);
+}
+
+/* globals sets h3 to 1.2rem, which is right for a section sub-head and a touch
+   loud for a card inside a grid of eight. */
+.cardTitle {
+  font-size: 1rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.cardBody {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+}
+
+/* ---- steps section head -------------------------------------------------- */
+
+.stepsHead { max-width: 44rem; }
+.stepsHead h2 { max-width: 26ch; }
+
+/* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .storyGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .proof { padding: 1rem; border-radius: 20px; gap: 0.9rem; }
+  .lede { font-size: 1rem; }
+  .card { padding: 1rem 1.05rem 1.1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: border-color 0.2s ease; }
+  .card:hover { transform: none; }
+}

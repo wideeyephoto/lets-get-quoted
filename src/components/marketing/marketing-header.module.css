@@ -1,0 +1,73 @@
+/* The marketing header for the routes AppShell steps aside for.
+ *
+ * Same discipline as the rest of the cluster: the wordmark (.brand-mark,
+ * .brand-logo-img, .brand-title), the nav links (.topnav-link) and the button
+ * (.btn.primary) are all globals' own classes, unchanged, and globals.css is
+ * never touched. Only the bar around them is defined here.
+ *
+ * Deliberately NOT globals' `.topbar`: that one is `position: fixed` and pairs
+ * with a `.nav-panel` that is `display: none` under 900px until a client-side
+ * toggle opens it. A static bar whose nav simply wraps needs no JavaScript, so
+ * these pages stay server components and their nav can never be stuck closed. */
+
+.header {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 0;
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--chrome-soft);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.headerNav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+/* globals scopes its :focus-visible ring for .btn to .fx-hero, .fx-tile and
+   .cta-band, and has no rule at all for .topnav-link. Neither selector reaches
+   this bar, so without these two rules the keyboard path through the site's
+   primary navigation falls back to the UA default outline, which is close to
+   invisible on the dark ground. Same token the closing band uses. */
+.headerNav a:focus-visible,
+.header .headerCta:focus-visible,
+.header .brandLink:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* globals' .btn is sized for a hero. In a header row it should not out-weigh
+   the wordmark beside it. */
+.headerCta {
+  padding: 0.6rem 0.95rem;
+  font-size: 0.9rem;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 40;
+  padding: 0.7rem 1rem;
+  border-radius: 0 0 12px 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+.skip:focus {
+  left: 0;
+}

@@ -63,11 +63,13 @@ const nextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];
   },
-  // /features folded into the homepage — keep the old URL alive for inbound
-  // links, the footer, and any indexed pages.
+  // /features is a real page again — it is no longer folded into the homepage,
+  // so there is deliberately no rule for it here. Do not re-add one: a redirect
+  // on that source would shadow the live route and take its five sub-pages with
+  // it (/features/ai-intake and friends inherit nothing from this rule, but the
+  // index they all link back to would 308 away).
   async redirects() {
     return [
-      { source: '/features', destination: '/', permanent: true },
       // "Extra Stops" became "Quick Stops". These sources are the OLD paths and
       // must stay spelled that way — a find-and-replace over this file turns
       // every rule below into a redirect to itself.

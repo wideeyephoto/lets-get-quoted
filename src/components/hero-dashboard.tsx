@@ -182,7 +182,10 @@ export default function HeroDashboard() {
             <div className="fh-vmain">
               <div className="l">Your website, live</div>
               <div className="amt sm">apexroofing.com</div>
-              <div className="fh-trend">Your own domain &middot; 4.9&#9733; &middot; 850+ jobs</div>
+              {/* Product facts, not credentials. A star rating and a job count
+                  in a sample panel are somebody's reputation invented on their
+                  behalf; what the site actually ships with is not. */}
+              <div className="fh-trend">Your own domain &middot; instant estimate built in</div>
             </div>
             <div className="fh-vis fh-web">
               <div className="wb">
@@ -219,12 +222,12 @@ export default function HeroDashboard() {
           <div className="fh-view v-reviews" data-view="reviews">
             <div className="fh-vmain">
               <div className="l">Reviews on Google</div>
-              <div className="amt">4.9&#9733;</div>
+              <div className="amt sm">Request sent</div>
               <div className="fh-trend">Auto-requested after every job</div>
             </div>
             <div className="fh-vis fh-stars">
               <div className="s">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-              <div className="c">128 reviews &middot; 96% response</div>
+              <div className="c">Asked once, after the job closes</div>
             </div>
           </div>
         </div>
@@ -268,7 +271,7 @@ export default function HeroDashboard() {
               <b>Reviews &rarr; Google</b>
               <small>Auto-requested</small>
             </div>
-            <span className="fh-tag">4.9★</span>
+            <span className="fh-tag">Auto</span>
           </div>
         </div>
       </div>
