@@ -103,6 +103,29 @@ export async function isEmailSuppressed(supabase: SupabaseClient, accountId: str
 // Record an opt-out. Idempotent on (account_id, lower(email)) — a repeat click is
 // a no-op. Uses whatever client is passed; the public routes pass the admin
 // (service-role) client since there's no session. Returns whether it succeeded.
+/**
+ * Whether a delivery event means "never send here again", and why.
+ *
+ * Pure, because getting this wrong is expensive in both directions and neither
+ * direction announces itself. Suppress too eagerly and a real customer silently
+ * stops receiving their quotes and invoices; too reluctantly and a dead address
+ * is re-sent to forever, which is what costs the sending domain its reputation
+ * for every contractor sharing it.
+ *
+ *   complained  → always. An explicit "never again" from the recipient.
+ *   bounced     → only when the provider says Permanent. Transient is a full or
+ *                 briefly unreachable mailbox. Undetermined means the far end
+ *                 did not say, and treating a maybe as a no is the costly guess.
+ */
+export function suppressionReasonFor(input: {
+  status: string;
+  bounceType?: string | null;
+}): 'complaint' | 'hard_bounce' | null {
+  if (input.status === 'complained') return 'complaint';
+  if (input.status !== 'bounced') return null;
+  return (input.bounceType ?? '').trim().toLowerCase() === 'permanent' ? 'hard_bounce' : null;
+}
+
 export async function suppressEmail(
   supabase: SupabaseClient,
   accountId: string,

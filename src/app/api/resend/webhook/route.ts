@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
+import { suppressEmail, suppressionReasonFor } from '@/lib/email-suppression';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,11 @@ type ResendWebhookEvent = {
     email_id?: string;
     to?: string[] | string;
     tags?: ResendTag[];
-    bounce?: { message?: string } | null;
+    // `type` decides whether we ever send here again. Resend passes Amazon SES's
+    // classification through: Permanent means the address does not exist,
+    // Transient means it was busy or full, Undetermined means the far end did
+    // not say. Only Permanent is a reason to stop.
+    bounce?: { message?: string; type?: string; subType?: string } | null;
     [key: string]: unknown;
   };
 };
@@ -137,6 +142,15 @@ export async function POST(request: Request) {
       { onConflict: 'provider_id' },
     );
     if (error) throw new Error(error.message);
+
+    // Recording the bounce was never the point — not sending again was.
+    //
+    // Until now this handler wrote email_events and stopped there, and
+    // suppressEmail was reachable only from the two human unsubscribe routes.
+    // So a hard-bouncing address stayed on the list and was re-sent to on every
+    // campaign, forever, and the only thing between a contractor's list and a
+    // mailbox-provider reputation hit was a syntactic placeholder check.
+    await maybeSuppress(admin, { status, accountId, recipient, bounce: event.data.bounce ?? null });
   } catch (err) {
     console.error(`Resend webhook handler threw for event ${event.type}:`, err);
     await logWebhookFailure({
@@ -149,4 +163,55 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+/**
+ * Stop sending to an address that told us to stop.
+ *
+ * Two signals, and only two:
+ *
+ *   complained  — always. A spam complaint is an explicit "never again", and
+ *                 continuing costs the sending domain's reputation for every
+ *                 other contractor on it, not just this one.
+ *   bounced     — only when Resend classifies it Permanent. A Transient bounce
+ *                 is a full or briefly unreachable mailbox, and suppressing on
+ *                 one would silently cut a real customer off from their quotes
+ *                 and invoices over a bad afternoon. Undetermined is treated as
+ *                 transient: the far end did not say, and guessing wrong in
+ *                 that direction is the expensive one.
+ *
+ * Best-effort by design, and deliberately AFTER the email_events write rather
+ * than beside it. Suppression failing must not fail the webhook and cost us the
+ * delivery record; Resend retries, and a retry re-runs this.
+ */
+async function maybeSuppress(
+  admin: ReturnType<typeof createAdminClient>,
+  input: {
+    status: string;
+    accountId: string | null;
+    recipient: string | undefined;
+    bounce: { message?: string; type?: string } | null;
+  },
+): Promise<void> {
+  if (!input.recipient || input.recipient === 'unknown') return;
+
+  const reason = suppressionReasonFor({ status: input.status, bounceType: input.bounce?.type });
+  if (!reason) return;
+
+  // email_suppression is account-scoped, so an untagged send has nowhere to
+  // record this. Say so out loud — silently skipping would mean the one send
+  // that most needs suppressing is the one that never gets it.
+  if (!input.accountId) {
+    console.error(
+      `Resend ${input.status} for ${input.recipient} carried no account_id tag — cannot suppress. Tag the send.`,
+    );
+    return;
+  }
+
+  try {
+    const ok = await suppressEmail(admin, input.accountId, input.recipient, reason);
+    if (!ok) console.error(`suppressEmail returned false for ${input.recipient} on account ${input.accountId}`);
+  } catch (err) {
+    console.error('suppressEmail threw from the Resend webhook:', err);
+  }
 }

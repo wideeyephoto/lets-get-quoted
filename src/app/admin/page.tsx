@@ -242,7 +242,12 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     { key: 'notOnboarded', title: 'Not onboarded', content: <AlertCard title="Not onboarded" items={notOnboardedItems} count={data.notOnboardedCount} emptyMessage="Every account is onboarded." /> },
     { key: 'dunning', title: 'Payment issues', content: <AlertCard title="Payment issues" items={dunningItems} emptyMessage="No payments needing attention." /> },
     { key: 'pausedPayouts', title: 'Payouts paused', content: <AlertCard title="Payouts paused" items={pausedPayoutItems} emptyMessage="No accounts with paused payouts." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
-    { key: 'failedSms', title: 'Failed texts', content: <AlertCard title="Failed texts" items={failedSmsItems} emptyMessage="No failed texts." /> },
+    // The empty state says what it COVERS, not just that it is empty. Only the
+    // payment and crew senders write sms_events; the rest of lib/sms.ts does
+    // not, so a quiet card here has never meant "no texts failed". Saying so is
+    // not a fix — logging every send is, and that is a bigger change — but a
+    // card that overstates its own coverage is how staff stop checking Twilio.
+    { key: 'failedSms', title: 'Failed texts', content: <AlertCard title="Failed texts" items={failedSmsItems} emptyMessage="No failed payment or crew texts. Other kinds of text are not tracked here yet — see Webhook failures." /> },
     { key: 'failedEmails', title: 'Failed emails', content: <AlertCard title="Failed emails" items={failedEmailItems} emptyMessage="No bounced or complained emails." /> },
     { key: 'webhookFailures', title: 'Webhook failures', content: <AlertCard title="Webhook failures" items={webhookFailureItems} emptyMessage="No unresolved webhook failures." /> },
   ];

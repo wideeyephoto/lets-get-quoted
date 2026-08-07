@@ -27,10 +27,28 @@ export async function POST(request: Request) {
   // left to disappear into a retry that happens to succeed the second time.
   try {
     if (providerId && ['failed', 'undelivered'].includes(providerStatus)) {
-      await createAdminClient().from('sms_events').update({
-        status: 'failed',
-        error_reason: String(data.get('ErrorMessage') || data.get('ErrorCode') || providerStatus),
-      }).eq('provider_id', providerId);
+      const reason = String(data.get('ErrorMessage') || data.get('ErrorCode') || providerStatus);
+      const { data: updated, error } = await createAdminClient()
+        .from('sms_events')
+        .update({ status: 'failed', error_reason: reason })
+        .eq('provider_id', providerId)
+        .select('id');
+      if (error) throw new Error(error.message);
+
+      // Twilio just told us a text did not arrive, and there was no row to say
+      // so on. Only the payment and crew senders write sms_events; the other
+      // ~30 send functions in lib/sms.ts do not, so their delivery failures
+      // updated zero rows and vanished — which is exactly why the Failed texts
+      // card looks healthy. Recording it as a webhook failure is not where this
+      // belongs long-term, but it is visible, and silence was the bug.
+      if (!updated || updated.length === 0) {
+        await logWebhookFailure({
+          source: 'twilio_status',
+          eventType: providerStatus,
+          referenceId: providerId,
+          errorMessage: `Delivery failure with no sms_events row to record it on: ${reason}`,
+        });
+      }
     }
   } catch (err) {
     console.error('Twilio status webhook handler threw:', err);
