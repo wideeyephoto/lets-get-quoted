@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SiteFooter, SiteHeader } from './site-chrome';
-import styles from './home-flagship.module.css';
+import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
+import styles from '@/components/flagship/flagship.module.css';
 
 type Feature = {
   number: string;

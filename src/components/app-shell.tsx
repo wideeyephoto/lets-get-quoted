@@ -201,6 +201,10 @@ const OWN_CHROME_MARKETING_ROUTES = [
   '/home-flagship',
   '/home-editorial',
   '/home-compact',
+  // The reproduction of the source site's Product page, shown beside our own
+  // /features. It ships that site's header and footer, so the shell stands
+  // aside here exactly as it does for /home-flagship.
+  '/features-flagship',
 ];
 
 function getPrimaryAction() {
