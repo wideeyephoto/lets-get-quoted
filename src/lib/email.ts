@@ -9,6 +9,7 @@ import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-su
 import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/brand';
 import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
+import { quoteFollowupEmailPreview } from './quote-followups';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -432,17 +433,22 @@ export async function sendQuoteFollowupEmail(input: {
   }
 
   const brand = await brandFor(input);
+  // Subject and body come from lib/quote-followups, the same place the settings
+  // card reads them, so the email preview on that card cannot drift from what
+  // actually lands in the customer's inbox. The SMS half has worked this way
+  // since quoteFollowupText was extracted; this is the email half catching up.
+  const copy = quoteFollowupEmailPreview({ businessName: input.businessName, clientName: input.clientName });
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
-    subject: `Still thinking it over? Your quote from ${input.businessName}`,
+    subject: copy.subject,
     html: renderBrandedEmail({
       brand,
       preheader: `Your quote from ${input.businessName} is still open`,
       eyebrow: 'Your quote',
-      heading: `${input.clientName}, ready to move forward?`,
-      paragraphs: [`Just checking in on your quote from ${input.businessName}. When you are ready, you can review and approve it online — no login needed.`],
-      cta: { label: 'View & approve your quote', url: input.url },
+      heading: copy.heading,
+      paragraphs: [copy.body],
+      cta: { label: copy.cta, url: input.url },
     }),
     reply_to: replyAddress(brand),
   });

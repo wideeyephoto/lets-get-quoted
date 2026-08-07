@@ -39,7 +39,10 @@ import { mergeRefundTiers } from '@/lib/quick-stop-refunds';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 import { normalizeReminderHour, normalizeReminderLeadDays } from '@/lib/appointment-reminders';
-import { getAccountOwnerEmail, sendAppointmentReminderEmail } from '@/lib/email';
+import { normalizeFollowupChannel, normalizeFollowupDays, normalizeFollowupHour } from '@/lib/quote-followups';
+import { pickBusinessName } from '@/lib/business-name';
+import { APP_ORIGIN } from '@/lib/app-origin';
+import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendQuoteFollowupEmail } from '@/lib/email';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -708,6 +711,82 @@ export async function sendReminderTestAction() {
     whenLabel: 'tomorrow at 10:00 AM',
     address: null,
     jobRef: 'TEST',
+    accountId,
+  });
+
+  revalidatePath('/dashboard/settings');
+}
+
+/**
+ * WHEN quote follow-ups go out and how — not WHETHER.
+ *
+ * The switch in the card header owns whether, the same split appointment
+ * reminders uses. This form owns the schedule, the send hour, the channel and
+ * the weekend rule; none of them existed before, so a contractor selling $200
+ * drain clears and one selling $40k roofs chased on identical days.
+ *
+ * The three day fields are read as one array. An empty second or third field is
+ * "don't send that one", which is why the schedule can be one, two or three
+ * nudges rather than always the maximum — normalizeFollowupDays then sorts and
+ * de-duplicates, so a schedule typed out of order is still the schedule the
+ * owner meant.
+ */
+export async function updateFollowupSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const days = ['followupDay1', 'followupDay2', 'followupDay3']
+    .map((field) => formData.get(field))
+    .filter((value) => value !== null && String(value).trim() !== '' && String(value) !== 'off');
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      quote_followup_days: normalizeFollowupDays(days),
+      quote_followup_hour: normalizeFollowupHour(formData.get('followupHour')),
+      quote_followup_channel: normalizeFollowupChannel(formData.get('followupChannel')),
+      quote_followup_skip_weekends: formData.get('followupSkipWeekends') === 'on',
+    })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+  // The jobs page carries the on/off pill for this automation.
+  revalidatePath('/dashboard/jobs');
+}
+
+/**
+ * Send the owner the follow-up their own customers would get.
+ *
+ * Goes to the account email for the same reason the reminder test does: a test
+ * that needs a verified, opted-in mobile on file would fail for most people the
+ * first time they pressed it, and "it didn't arrive" is the worst possible
+ * answer from a button whose whole job is to prove delivery works.
+ *
+ * sendQuoteFollowupEmail builds its subject and body from
+ * quoteFollowupEmailPreview — the same function the card previews — so this
+ * proves the actual message rather than a rehearsal of it.
+ */
+export async function sendFollowupTestAction() {
+  const { supabase, accountId } = await requireOwnerContext();
+  const admin = createAdminClient();
+
+  const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+  if (!ownerEmail) throw new Error('No account email to send a test to.');
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+  const businessName = pickBusinessName(site, account);
+
+  await sendQuoteFollowupEmail({
+    recipientEmail: ownerEmail,
+    businessName,
+    clientName: 'there',
+    // A real, resolvable page rather than a dead example link: the point of the
+    // test is that the whole message works, and the button is most of it.
+    url: `${APP_ORIGIN}/dashboard/jobs`,
     accountId,
   });
 

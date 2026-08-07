@@ -229,6 +229,33 @@ alter table accounts drop constraint if exists accounts_appointment_reminder_hou
 alter table accounts add constraint accounts_appointment_reminder_hour_check
   check (appointment_reminder_hour >= 0 and appointment_reminder_hour <= 23);
 
+-- When quote follow-ups go out, and how. Days are absolute offsets from the day
+-- the quote was shared ({2,5} is the cadence that used to be hardcoded in
+-- lib/quote-followups.ts); the hour is in the ACCOUNT'S own timezone, and the
+-- sweep runs hourly to catch it. Before these existed the send moment was
+-- whatever 16:00 UTC happened to be locally — 6am in Honolulu, chosen by nobody.
+-- See the 2026-08-06 migration.
+alter table accounts add column if not exists quote_followup_days integer[] not null default '{2,5}';
+alter table accounts add column if not exists quote_followup_hour integer not null default 10;
+alter table accounts add column if not exists quote_followup_channel text not null default 'auto';
+alter table accounts add column if not exists quote_followup_skip_weekends boolean not null default false;
+-- Bounds only: ascending-and-distinct is enforced by normalizeFollowupDays on
+-- the read path as well as the write, and a CHECK cannot contain the subquery it
+-- would take to say it here.
+alter table accounts drop constraint if exists accounts_quote_followup_days_check;
+alter table accounts add constraint accounts_quote_followup_days_check
+  check (
+    quote_followup_days is not null
+    and cardinality(quote_followup_days) between 1 and 3
+    and quote_followup_days <@ '{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30}'::integer[]
+  );
+alter table accounts drop constraint if exists accounts_quote_followup_hour_check;
+alter table accounts add constraint accounts_quote_followup_hour_check
+  check (quote_followup_hour >= 0 and quote_followup_hour <= 23);
+alter table accounts drop constraint if exists accounts_quote_followup_channel_check;
+alter table accounts add constraint accounts_quote_followup_channel_check
+  check (quote_followup_channel in ('auto', 'email'));
+
 alter table accounts add column if not exists instant_book_enabled boolean not null default false;
 -- Minimum estimated job value ($) to self-book a premium slot. 0 = no floor.
 alter table accounts add column if not exists instant_book_min_amount numeric(12,2) not null default 0;

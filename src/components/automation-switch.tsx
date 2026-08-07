@@ -13,10 +13,19 @@ export default function AutomationSwitch({
   label,
   on,
   action,
+  // "Off" states what is true; it does not state what tapping would do. A row
+  // whose off state is a dead end for the reader can override the words —
+  // "Turn on" reads as the invitation it is. Defaults keep every other card
+  // exactly as it was. The accessible name is unaffected: it already spells out
+  // the automation and its current state in full.
+  onLabel = 'On',
+  offLabel = 'Off',
 }: {
   label: string;
   on: boolean;
   action: (next: boolean) => Promise<void>;
+  onLabel?: string;
+  offLabel?: string;
 }) {
   const [optimistic, setOptimistic] = useState(on);
   const [failed, setFailed] = useState(false);
@@ -62,7 +71,7 @@ export default function AutomationSwitch({
         <span className="automation-switch-track">
           <span className="automation-switch-knob" />
         </span>
-        <span className="automation-switch-text">{checked ? 'On' : 'Off'}</span>
+        <span className="automation-switch-text">{checked ? onLabel : offLabel}</span>
       </button>
       {failed ? <span className="automation-switch-error">Didn&apos;t save</span> : null}
     </span>

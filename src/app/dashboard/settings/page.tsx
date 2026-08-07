@@ -19,7 +19,7 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateReminderSettingsAction, sendReminderTestAction, updateBusinessAddressesAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReminderSettingsAction, sendReminderTestAction, updateFollowupSettingsAction, sendFollowupTestAction, updateBusinessAddressesAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import {
   appointmentReminderText,
   REMINDER_HOUR_CHOICES,
@@ -52,12 +52,19 @@ import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-post
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import {
-  FOLLOWUP_MAX_AGE_DAYS,
-  MAX_FOLLOWUPS,
-  followupSchedule,
-  followupScheduleLabel,
+  FOLLOWUP_CHANNELS,
+  FOLLOWUP_CHANNEL_LABELS,
+  FOLLOWUP_DAY_CHOICES,
+  FOLLOWUP_HOUR_CHOICES,
+  followupHourLabel,
+  followupMaxAgeDays,
+  followupSequence,
+  followupSettingsFromAccount,
+  followupTimingLabel,
+  quoteFollowupEmailPreview,
   quoteFollowupText,
 } from '@/lib/quote-followups';
+import { countEligibleQuotes } from '@/lib/followups';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { getTrailingVolume } from '@/lib/payments';
@@ -92,7 +99,7 @@ function AutomationCard({
   title: string;
   subtitle: string;
   status?: AutomationStatus;
-  toggle?: { on: boolean; action: (next: boolean) => Promise<void> };
+  toggle?: { on: boolean; action: (next: boolean) => Promise<void>; onLabel?: string; offLabel?: string };
   // Cards sharing a group name behave as one accordion — opening any of them
   // closes the rest. Native <details name>, the same mechanism the schedule
   // popovers use; browsers without support simply allow several open, which is
@@ -108,7 +115,7 @@ function AutomationCard({
           <span className="automation-sub">{subtitle}</span>
         </span>
         {toggle ? (
-          <AutomationSwitch label={title} on={toggle.on} action={toggle.action} />
+          <AutomationSwitch label={title} on={toggle.on} action={toggle.action} onLabel={toggle.onLabel} offLabel={toggle.offLabel} />
         ) : status ? (
           <span className={`automation-status ${status.tone}`}>{status.label}</span>
         ) : null}
@@ -258,12 +265,21 @@ export default async function SettingsPage({
     .maybeSingle();
   const reviewFeedbackPageEnabled = Boolean(reviewPageSettings?.review_feedback_page_enabled);
 
-  const { data: followupSettings } = await supabase
+  const { data: followupRow } = await supabase
     .from('accounts')
-    .select('quote_followups_enabled')
+    .select('quote_followups_enabled, quote_followup_days, quote_followup_hour, quote_followup_channel, quote_followup_skip_weekends')
     .eq('id', accountId)
     .maybeSingle();
-  const quoteFollowupsEnabled = Boolean(followupSettings?.quote_followups_enabled);
+  const quoteFollowupsEnabled = Boolean(followupRow?.quote_followups_enabled);
+  // Normalised on the way in, so a database built before the schedule migration —
+  // where every column reads as undefined — renders the cadence that used to be
+  // hardcoded rather than an empty schedule at midnight.
+  const followupSettings = followupSettingsFromAccount(followupRow as Record<string, unknown> | null);
+  // How many customers would actually hear from you. Asked before the switch is
+  // flipped, because "turn it on and find out" is a bad deal when finding out
+  // means texting real people. Only worth the query while it is off — once it is
+  // on, the answer is visible in the job feed.
+  const eligibleQuotes = quoteFollowupsEnabled ? 0 : await countEligibleQuotes(supabase, accountId);
 
   const { data: reminderSettings } = await supabase
     .from('accounts')
@@ -282,6 +298,10 @@ export default async function SettingsPage({
   const reminderNow = new Date();
   const reminderTiming = reminderTimingLabel(reminderLeadDays, reminderHour, accountTimeZone, reminderNow);
   const accountTimeZoneLabel = timeZoneAbbreviation(accountTimeZone, reminderNow);
+  // The follow-up schedule reads out of the same clock. Its label takes the
+  // abbreviation as an argument rather than deriving it, which is what keeps
+  // lib/quote-followups pure and free of Intl.
+  const followupTiming = followupTimingLabel(followupSettings.days, followupSettings.hour, accountTimeZoneLabel);
 
   const { data: mailingSettings } = await supabase
     .from('accounts')
@@ -679,43 +699,159 @@ export default async function SettingsPage({
                   />
                 </AutomationCard>
 
-                {/* No form: the checkbox in here wrote quote_followups_enabled,
-                    which is the card's own switch. Nothing else was tunable, so
-                    what's left is what the automation does and what it says —
-                    the cadence read from the constants the cron actually uses,
-                    not written out in prose beside them. */}
-                <AutomationCard group="follow-through" id="followups" title="Quote follow-ups" subtitle="Remind clients about unanswered quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
+                {/* The card used to have no controls at all: three sentences
+                    reciting four constants nobody could change. The cadence, the
+                    hour, the channel and the weekend rule are settings now, and
+                    the sequence strip states the whole schedule at a glance —
+                    "day 2 and day 5" is fine as prose for two nudges and
+                    unreadable for three.
+
+                    The switch in the header is still the only enablement
+                    control; this form owns the schedule and nothing else, the
+                    same split appointment reminders uses. */}
+                <AutomationCard group="follow-through" id="followups" title="Automatic quote follow-ups" subtitle="Chase quotes nobody has answered" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups'), offLabel: 'Turn on' }}>
                   <div className={`followup-card${quoteFollowupsEnabled ? '' : ' is-paused'}`}>
+                    {/* NOT A WARNING. Off used to render in alarm orange, which
+                        is the colour this app uses for something going wrong —
+                        and an automation you have not switched on is not a
+                        fault. It states what happens instead, and what would
+                        happen if you turned it on. */}
                     <p className="followup-state">
                       {quoteFollowupsEnabled
-                        ? 'A quote that goes quiet gets a reminder, so you never have to remember which ones did.'
-                        : 'Paused — a quote nobody answers stays that way until you chase it yourself.'}
+                        ? `On — a quote that goes quiet is chased on ${followupTiming}, so you never have to remember which ones did.`
+                        : 'Off. Nobody is chased, so a quote nobody answers stays that way until you follow up yourself.'}
                     </p>
+
+                    {!quoteFollowupsEnabled ? (
+                      <p className="followup-eligible">
+                        {eligibleQuotes === 0 ? (
+                          <>
+                            <strong>No open quotes are waiting right now.</strong> Turning this on affects
+                            quotes you share from here on, not ones already answered.
+                          </>
+                        ) : (
+                          <>
+                            <strong>
+                              Up to {eligibleQuotes} open {eligibleQuotes === 1 ? 'quote is' : 'quotes are'} eligible.
+                            </strong>{' '}
+                            {eligibleQuotes === 1 ? 'That customer' : 'Those customers'} would be chased on the
+                            schedule below — approved quotes and quotes past day {followupMaxAgeDays(followupSettings.days)} are
+                            never touched.
+                          </>
+                        )}
+                      </p>
+                    ) : null}
+
+                    {/* The whole schedule as one row, read from the same array
+                        the cron sweeps on. */}
+                    <ol className="followup-sequence" aria-label="Follow-up schedule">
+                      {followupSequence(followupSettings.days).map((step) => (
+                        <li key={step.key} className={`followup-step is-${step.key === 'sent' ? 'start' : step.key === 'stop' ? 'end' : 'send'}`}>
+                          <strong>{step.label}</strong>
+                          <span>{step.detail}</span>
+                        </li>
+                      ))}
+                    </ol>
 
                     <div className="followup-grid">
                       <div className="followup-facts">
                         <div className="followup-fact">
-                          <strong>{followupScheduleLabel()}</strong>
+                          <strong>Schedule</strong>
+                          <span>{followupTiming}</span>
+                          <details className="reminder-edit">
+                            <summary>Edit</summary>
+                            <form action={updateFollowupSettingsAction} className="reminder-edit-form">
+                              {/* Three selects rather than one repeating field:
+                                  the maximum is three, so a fixed set of rows is
+                                  the honest shape and needs no client JS. Days
+                                  are ABSOLUTE offsets from the share date, not
+                                  gaps — "day 5" is day 5 whatever ran before. */}
+                              {[0, 1, 2].map((slot) => (
+                                <label key={slot}>
+                                  <span>{slot === 0 ? 'First reminder' : slot === 1 ? 'Second' : 'Third'}</span>
+                                  <select name={`followupDay${slot + 1}`} defaultValue={String(followupSettings.days[slot] ?? '')}>
+                                    {/* The first is not optional: a schedule with
+                                        no nudges is the switch turned off, and
+                                        this form does not own that. */}
+                                    {slot > 0 ? <option value="">Don&apos;t send</option> : null}
+                                    {FOLLOWUP_DAY_CHOICES.map((day) => (
+                                      <option key={day} value={String(day)}>
+                                        Day {day} after the quote
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ))}
+                              <label>
+                                <span>At</span>
+                                <select name="followupHour" defaultValue={String(followupSettings.hour)}>
+                                  {FOLLOWUP_HOUR_CHOICES.map((hour) => (
+                                    <option key={hour} value={String(hour)}>{followupHourLabel(hour)}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                <span>Send by</span>
+                                <select name="followupChannel" defaultValue={followupSettings.channel}>
+                                  {FOLLOWUP_CHANNELS.map((channel) => (
+                                    <option key={channel} value={channel}>{FOLLOWUP_CHANNEL_LABELS[channel]}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="followup-check">
+                                <input type="checkbox" name="followupSkipWeekends" defaultChecked={followupSettings.skipWeekends} />
+                                <span>Hold weekend sends until Monday</span>
+                              </label>
+                              <p className="reminder-edit-note">
+                                Times are {accountTimeZoneLabel} — your own clock, not the server&apos;s.{' '}
+                                <Link href="/dashboard/settings#business">Change your timezone</Link>
+                              </p>
+                              <SaveButton className="btn primary" onlyWhenChanged>Save changes</SaveButton>
+                            </form>
+                          </details>
+                        </div>
+
+                        <div className="followup-fact">
+                          <strong>Delivery</strong>
                           <span>
-                            Counted from the day you shared the quote. {MAX_FOLLOWUPS} reminders, then it leaves them alone.
+                            {followupSettings.channel === 'email'
+                              ? 'Email only — nobody is texted, even if they opted in.'
+                              : 'Text clients who opted in to texts. If there is no mobile on file, or they never opted in, we email them instead.'}{' '}
+                            A STOP reply ends texts for good.
                           </span>
                         </div>
+
+                        {/* The stop rules in full, because every one of them is a
+                            question an owner actually asks before switching this
+                            on — and "does it keep texting after they say yes" is
+                            the one that stops people. */}
                         <div className="followup-fact">
-                          <strong>Stops the moment they approve</strong>
+                          <strong>Stops automatically</strong>
                           <span>
-                            And never chases a quote more than {FOLLOWUP_MAX_AGE_DAYS / 7} weeks old — by then it&apos;s
-                            a phone call, not a text.
+                            The moment they approve, and any time the job leaves the quote stage — scheduled,
+                            completed or archived. Also once the quote passes day{' '}
+                            {followupMaxAgeDays(followupSettings.days)}, by then a phone call rather than a text.
+                            {' '}Never more than {followupSettings.days.length === 1 ? 'one reminder' : `${followupSettings.days.length} reminders`} in total.
                           </span>
                         </div>
+
                         <div className="followup-fact">
-                          <strong>Texted, or emailed with no mobile</strong>
-                          <span>Only to clients who opted in to texts. A STOP reply ends it for good.</span>
+                          <strong>A missed day is skipped, not stacked</strong>
+                          {/* Worth stating: it is the behaviour people expect
+                              least and fear most about turning an automation on
+                              over old data. */}
+                          <span>
+                            Switch this on with quotes already open and nobody gets a backlog. Each quote
+                            picks up at the point of the schedule it has actually reached.
+                          </span>
                         </div>
                       </div>
 
                       <div className="followup-preview">
                         <p className="eyebrow">What the client sees</p>
-                        <p className="followup-lede">The first reminder, {followupSchedule()[0]} days after you share a quote.</p>
+                        <p className="followup-lede">
+                          The first reminder, day {followupSettings.days[0]} after you share a quote.
+                        </p>
                         <div className="followup-phone">
                           <div className="followup-phone-head">
                             <span className="followup-phone-avatar" aria-hidden="true">
@@ -736,6 +872,37 @@ export default async function SettingsPage({
                             </p>
                           </div>
                         </div>
+
+                        {/* The email is not a second-class copy of the text — it
+                            is what most customers get, because most have never
+                            opted in to SMS. It was never previewed at all. Now
+                            it renders from quoteFollowupEmailPreview, which
+                            sendQuoteFollowupEmail builds its own subject and
+                            body from. */}
+                        <details className="followup-email">
+                          <summary>{followupSettings.channel === 'email' ? 'Preview the email' : 'Preview the email version'}</summary>
+                          {(() => {
+                            const email = quoteFollowupEmailPreview({ businessName, clientName: 'Sarah' });
+                            return (
+                              <div className="followup-email-body">
+                                <p className="followup-email-subject">
+                                  <span>Subject</span>
+                                  {email.subject}
+                                </p>
+                                <p className="followup-email-heading">{email.heading}</p>
+                                <p className="followup-email-text">{email.body}</p>
+                                <span className="followup-email-cta" aria-hidden="true">{email.cta}</span>
+                              </div>
+                            );
+                          })()}
+                        </details>
+
+                        <form action={sendFollowupTestAction} className="reminder-test">
+                          <SaveButton className="btn ghost" pendingLabel="Sending…" savedLabel="Test sent ✓">
+                            Send a test
+                          </SaveButton>
+                          <small>Goes to your account email.</small>
+                        </form>
                       </div>
                     </div>
                   </div>

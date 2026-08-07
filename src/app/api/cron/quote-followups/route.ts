@@ -4,9 +4,13 @@ import { runStalledQuoteFollowups } from '@/lib/followups';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-// Daily sweep (scheduled in vercel.json) that nudges clients who were sent a
-// quote but haven't approved it — up to twice, spaced out, texting when they
-// have SMS consent and emailing otherwise. Opt-in per account.
+// HOURLY sweep (scheduled in vercel.json) that nudges clients who were sent a
+// quote but haven't approved it, on the schedule the account chose, texting when
+// they have SMS consent and emailing otherwise. Opt-in per account.
+//
+// Hourly rather than daily because the send hour is a setting now. Most runs do
+// nothing: runStalledQuoteFollowups returns immediately for every account whose
+// own local clock has not reached its chosen hour.
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get('authorization');

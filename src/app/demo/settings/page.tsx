@@ -98,8 +98,8 @@ export default function DemoSettingsPage() {
                 </div>
                 <p className="workspace-card-copy">
                   Each of these is a switch with a plain description of exactly what it sends and when:
-                  review requests after a finished job, follow-ups on quotes nobody has answered, day-before
-                  appointment reminders, a daily digest, missed-call texts, arrival updates, and the AI that
+                  review requests after a finished job, follow-ups on quotes nobody has answered, appointment
+                  reminders, a daily digest, missed-call texts, arrival updates, and the AI that
                   reads and scores incoming leads.
                 </p>
                 <p className="workspace-card-copy">

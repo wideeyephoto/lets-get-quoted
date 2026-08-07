@@ -3445,7 +3445,13 @@ h3 {
 }
 .followup-card.is-paused .followup-preview { opacity: 0.45; }
 .followup-card .followup-state { margin: 0 0 1rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
-.followup-card.is-paused .followup-state { color: var(--ink-orange-1); }
+/* OFF IS NOT A WARNING.
+   This used to render the paused line in --ink-orange-1, the colour this app
+   uses for something going wrong: an expiring card, a failed send, a job with no
+   address. An automation you have not switched on is a choice, not a fault, and
+   painting it as a fault trains people to stop reading the colour. The state
+   line stays a state line; the switch beside it already says which way it is. */
+.followup-card.is-paused .followup-state { color: var(--mute-t60); }
 
 .followup-card .followup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
 .followup-card .followup-lede { margin: 0.2rem 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
@@ -3500,6 +3506,133 @@ h3 {
 
 @media (max-width: 900px) {
   .followup-card .followup-grid { grid-template-columns: 1fr; gap: 1.1rem; }
+}
+
+/* --- Quote follow-ups: the schedule as a strip -----------------------------
+   "day 2 and day 5" is a readable sentence for two nudges and an unreadable one
+   for three, and it never said where the sequence starts or stops. The row does:
+   Quote sent → Day 2 → Day 5 → Stop, built from the same array the cron sweeps
+   on, so it cannot describe a cadence the sweep does not run. */
+.followup-sequence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+.followup-step {
+  display: grid;
+  gap: 0.1rem;
+  flex: 1 1 5.5rem;
+  min-width: 5.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.04);
+}
+.followup-step strong { font-size: 0.82rem; color: var(--text); }
+.followup-step span { font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--mute-i55); }
+/* The two ends are landmarks, not steps — dimmer, so the eye lands on the days
+   something actually happens. */
+.followup-step.is-start,
+.followup-step.is-end { background: transparent; }
+.followup-step.is-start strong,
+.followup-step.is-end strong { color: var(--mute-t60); font-weight: 600; }
+/* The arrow between steps. A pseudo-element rather than markup: it is decoration
+   and must never reach a screen reader, which reads the ordered list correctly
+   already. */
+.followup-step + .followup-step { position: relative; margin-left: 0.5rem; }
+.followup-step + .followup-step::before {
+  content: '→';
+  position: absolute;
+  left: -0.72rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.72rem;
+  color: var(--mute-i55);
+}
+
+/* How many customers this would actually reach, asked before the switch is
+   flipped. Informational, not a warning — see the note on .followup-state. */
+.followup-eligible {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mute-t60);
+}
+.followup-eligible strong { color: var(--text); }
+
+/* The weekend rule is a checkbox in a form of selects, so it needs the label
+   beside the box rather than above it like the rest. */
+.reminder-edit-form label.followup-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.reminder-edit-form label.followup-check > span {
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--mute-t60);
+}
+
+/* --- Quote follow-ups: the email version ----------------------------------
+   Most customers get the email, not the text: texting needs a recorded opt-in
+   and most people never gave one. It was the message this card never showed.
+   Folded away because the text is the shorter read and the common question. */
+.followup-email { margin-top: 0.7rem; }
+.followup-email > summary {
+  display: inline-block;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  list-style: none;
+}
+.followup-email > summary::-webkit-details-marker { display: none; }
+.followup-email > summary:hover { text-decoration: underline; }
+.followup-email[open] > summary { margin-bottom: 0.5rem; }
+.followup-email-body {
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.04);
+}
+.followup-email-subject {
+  margin: 0 0 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rule-t10);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.followup-email-subject > span {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mute-i55);
+}
+.followup-email-heading { margin: 0 0 0.35rem; font-size: 0.88rem; font-weight: 700; color: var(--text); }
+.followup-email-text { margin: 0 0 0.6rem; font-size: 0.8rem; line-height: 1.55; color: var(--mute-t50); }
+/* A picture of the button, not a button: nothing here is clickable, and a real
+   <button> or <a> would put a dead control in the tab order. */
+.followup-email-cta {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.14);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 /* --- Appointment reminders: editing the schedule in place ------------------
