@@ -11,6 +11,7 @@ const ITEMS: { href: string; label: string }[] = [
   { href: '/admin/cases', label: 'Cases' },
   { href: '/admin/quick-stops', label: 'Quick Stops' },
   { href: '/admin/money', label: 'Money' },
+  { href: '/admin/incidents', label: 'Incidents' },
   { href: '/admin/audit', label: 'Audit log' },
 ];
 

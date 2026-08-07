@@ -146,13 +146,42 @@ export type OverdueQuickStopRow = {
   status: string;
   response_deadline_at: string | null;
   payment_deadline_at: string | null;
+  /** When the sweep closed it out — the only timestamp an expired row has. */
+  updated_at: string | null;
 };
 
-export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit?: number }): Promise<OverdueQuickStopRow[]> {
+/** How far back an already-expired request still counts as news. */
+const EXPIRED_LOOKBACK_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Quick Stops nobody answered.
+ *
+ * This used to look ONLY for requests sitting past their deadline in
+ * awaiting_contractor / more_information_requested / awaiting_customer_payment
+ * — which is exactly, precisely the set sweepQuickStopOffers expires. The sweep
+ * runs every fifteen minutes on a cron AND lazily on every owner dashboard
+ * load, so the card was a detector racing its own janitor: in steady state it
+ * could only ever be empty, for at most a fifteen-minute window between a
+ * deadline lapsing and the sweep tidying it away.
+ *
+ * An empty card does not read as "this cannot show you anything". It reads as
+ * good news, and staff learn to trust it.
+ *
+ * So it now also returns what the sweep LEFT BEHIND: requests it closed out as
+ * offer_expired in the last two days. That is the same event from the only
+ * point of view that matters — somebody asked for a visit and got nothing —
+ * and unlike the live states it survives long enough to be read.
+ *
+ * The pre-sweep states are still included. They are real while they last, and
+ * dropping them would lose the one case the sweep has not reached yet.
+ */
+export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit?: number; now?: Date }): Promise<OverdueQuickStopRow[]> {
   const limit = opts?.limit ?? 50;
-  const nowIso = new Date().toISOString();
-  const columns = 'id, account_id, client_name, status, response_deadline_at, payment_deadline_at';
-  const [awaitingPayment, awaitingResponse] = await Promise.all([
+  const now = opts?.now ?? new Date();
+  const nowIso = now.toISOString();
+  const sinceIso = new Date(now.getTime() - EXPIRED_LOOKBACK_MS).toISOString();
+  const columns = 'id, account_id, client_name, status, response_deadline_at, payment_deadline_at, updated_at';
+  const [awaitingPayment, awaitingResponse, expired] = await Promise.all([
     admin
       .from('extra_stop_requests')
       .select(columns)
@@ -167,10 +196,23 @@ export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit
       .lt('response_deadline_at', nowIso)
       .order('response_deadline_at', { ascending: true })
       .limit(limit),
+    admin
+      .from('extra_stop_requests')
+      .select(columns)
+      .eq('status', 'offer_expired')
+      .gte('updated_at', sinceIso)
+      .order('updated_at', { ascending: false })
+      .limit(limit),
   ]);
   if (awaitingPayment.error) console.error('getOverdueQuickStops (payment) failed:', awaitingPayment.error);
   if (awaitingResponse.error) console.error('getOverdueQuickStops (response) failed:', awaitingResponse.error);
-  const rows = [...(awaitingPayment.data ?? []), ...(awaitingResponse.data ?? [])] as OverdueQuickStopRow[];
+  if (expired.error) console.error('getOverdueQuickStops (expired) failed:', expired.error);
+  // Live ones first — they can still be saved. The expired are a record.
+  const rows = [
+    ...(awaitingPayment.data ?? []),
+    ...(awaitingResponse.data ?? []),
+    ...(expired.data ?? []),
+  ] as OverdueQuickStopRow[];
   return rows.slice(0, limit);
 }
 
@@ -259,12 +301,14 @@ export type PlatformIncidentRow = {
   severity: string;
   started_at: string;
   resolved_at: string | null;
+  /** Who wrote it down. These rows are hand-authored, so it always matters. */
+  created_by: string | null;
 };
 
 export async function getRecentIncidents(admin: SupabaseClient, opts?: { limit?: number }): Promise<PlatformIncidentRow[]> {
   const { data, error } = await admin
     .from('platform_incidents')
-    .select('id, kind, title, description, severity, started_at, resolved_at')
+    .select('id, kind, title, description, severity, started_at, resolved_at, created_by')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 8);
   if (error) {

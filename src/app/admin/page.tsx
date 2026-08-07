@@ -133,15 +133,21 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
   }));
 
   const overdueQuickStopItems: AlertItem[] = data.overdueQuickStops.map((row) => {
-    const deadline = row.payment_deadline_at ?? row.response_deadline_at;
+    // An already-expired row has no deadline left to be overdue against — the
+    // sweep closed it and updated_at is when. Dating it by a lapsed deadline
+    // would show the moment it BECAME late rather than the moment it was lost.
+    const expired = row.status === 'offer_expired';
+    const when = expired ? row.updated_at : (row.payment_deadline_at ?? row.response_deadline_at);
     return {
       key: row.id,
-      severity: severityForDeadline(deadline, now, DAY_MS),
-      status: cap(row.status.replace(/_/g, ' ')),
+      // Expired is settled, not urgent: nobody can save it now. The live ones
+      // still can be, so they keep the deadline-driven severity.
+      severity: expired ? 'warn' : severityForDeadline(row.payment_deadline_at ?? row.response_deadline_at, now, DAY_MS),
+      status: expired ? 'Expired unanswered' : cap(row.status.replace(/_/g, ' ')),
       title: row.client_name || 'Quick Stop',
       owner: acctName(row.account_id),
       ownerHref: `/admin/accounts/${row.account_id}`,
-      age: relativeAge(deadline ?? now.toISOString(), now),
+      age: relativeAge(when ?? now.toISOString(), now),
       actionLabel: 'View Quick Stop',
       actionHref: `/admin/quick-stops/${row.id}`,
     };
@@ -222,12 +228,17 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
   }));
 
   const boardCards: BoardCard[] = [
-    { key: 'incidents', title: 'Recent releases & incidents', content: <AlertCard title="Recent releases & incidents" items={incidentItems} emptyMessage="No releases or incidents logged recently." /> },
+    // Now leads somewhere, which it never did: the table had a reader and no
+    // writer, so an empty card was permanent and looked like good news.
+    { key: 'incidents', title: 'Recent releases & incidents', content: <AlertCard title="Recent releases & incidents" items={incidentItems} emptyMessage="Nothing logged yet — write one up on the Incidents page." viewAllHref="/admin/incidents" viewAllLabel="Releases & incidents" /> },
     { key: 'myCases', title: 'Assigned to you', content: <AlertCard title="Assigned to you" items={myCaseItems} emptyMessage="No cases assigned to you." /> },
     { key: 'casesNearSla', title: 'Cases nearing SLA', content: <AlertCard title="Cases nearing SLA" items={casesNearSlaItems} emptyMessage="No cases approaching their SLA." /> },
     { key: 'disputes', title: 'Open disputes', content: <AlertCard title="Open disputes" items={disputeItems} emptyMessage="No open disputes." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
     { key: 'suspendedAccounts', title: 'Suspended accounts', content: <AlertCard title="Suspended accounts" items={suspendedItems} emptyMessage="No suspended accounts." /> },
-    { key: 'overdueQuickStops', title: 'Overdue Quick Stops', content: <AlertCard title="Overdue Quick Stops" items={overdueQuickStopItems} emptyMessage="No overdue Quick Stops." viewAllHref="/admin/quick-stops" viewAllLabel="View all Quick Stops" /> },
+    // Renamed with the query. "Overdue" described a state the sweep clears
+    // within fifteen minutes; what this can actually show is the requests that
+    // ran out of time — which is the same event from the customer's side.
+    { key: 'overdueQuickStops', title: 'Quick Stops nobody answered', content: <AlertCard title="Quick Stops nobody answered" items={overdueQuickStopItems} emptyMessage="Every Quick Stop in the last two days got an answer." viewAllHref="/admin/quick-stops" viewAllLabel="View all Quick Stops" /> },
     { key: 'notOnboarded', title: 'Not onboarded', content: <AlertCard title="Not onboarded" items={notOnboardedItems} count={data.notOnboardedCount} emptyMessage="Every account is onboarded." /> },
     { key: 'dunning', title: 'Payment issues', content: <AlertCard title="Payment issues" items={dunningItems} emptyMessage="No payments needing attention." /> },
     { key: 'pausedPayouts', title: 'Payouts paused', content: <AlertCard title="Payouts paused" items={pausedPayoutItems} emptyMessage="No accounts with paused payouts." viewAllHref="/admin/money" viewAllLabel="View money & disputes" /> },
