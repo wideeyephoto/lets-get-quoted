@@ -638,7 +638,13 @@ create table if not exists time_entries (
   note          text,
 
   -- The labor cost this shift turned into. Null while the shift is open.
-  cost_id       uuid references costs(id) on delete set null,
+  --
+  -- The foreign key is declared further down, immediately after `costs` is
+  -- created, NOT here: this table is defined before that one, and an inline
+  -- reference made this file fail on the first statement when building a
+  -- database from scratch. Production never hit it because production was built
+  -- up migration by migration, against a database that already had `costs`.
+  cost_id       uuid,
   -- True when the owner closed it from the dashboard because the crew member
   -- forgot. Worth showing: an owner-guessed end time is not a clocked one.
   closed_by_owner boolean not null default false,
@@ -779,6 +785,14 @@ where costs.crew_id = crew.id
   and costs.account_id = crew.account_id
   and costs.type = 'labor'
   and (costs.crew_name is null or costs.crew_role_label is null);
+
+-- The deferred half of time_entries.cost_id, declared here because this is the
+-- first point at which `costs` exists. Same constraint, same ON DELETE — only
+-- the position differs.
+do $$ begin
+  alter table time_entries add constraint time_entries_cost_id_fkey
+    foreign key (cost_id) references costs(id) on delete set null;
+exception when duplicate_object then null; end $$;
 
 -- ----------------------------------------------------------------------------
 -- JOB_FEED  — the activity/timeline per job.
@@ -928,8 +942,10 @@ alter table payments add column if not exists imported boolean not null default 
 -- insufficient_funds) or route it to a client "update your card" link (expired
 -- card, SCA / authentication_required — a blind retry can never succeed).
 -- recurring_plan_id links a payment back to its plan so a retry can find the
--- saved card (a plain payments row otherwise has no path to the plan).
-alter table payments add column if not exists recurring_plan_id uuid references recurring_plans(id) on delete set null;
+-- saved card (a plain payments row otherwise has no path to the plan). The
+-- foreign key is added after recurring_plans is created, further down — see the
+-- note on time_entries.cost_id for why an inline reference cannot work here.
+alter table payments add column if not exists recurring_plan_id uuid;
 alter table payments add column if not exists failure_code text;      -- Stripe error code (card_declined, authentication_required, expired_card, …)
 alter table payments add column if not exists failure_message text;   -- decline_code / human message
 alter table payments add column if not exists failed_at timestamptz;  -- first failure time (preserved across retries)
@@ -1187,8 +1203,10 @@ create table if not exists lead_blocklist (
   created_at   timestamptz not null default now()
 );
 alter table lead_blocklist enable row level security;
-drop policy if exists lead_blocklist_all on lead_blocklist;
-create policy lead_blocklist_all on lead_blocklist for all using ( is_owner(account_id) );
+-- Its policy is declared with every other policy in the RLS section below, not
+-- here: is_owner() is defined down there, and a policy cannot reference a
+-- function that does not exist yet. This was the only table declaring its own
+-- policy inline, and it stopped this file building from scratch.
 create index if not exists lead_blocklist_account_idx on lead_blocklist (account_id, created_at desc);
 
 -- ----------------------------------------------------------------------------
@@ -1320,6 +1338,14 @@ create table if not exists recurring_plans (
   updated_at                timestamptz not null default now()
 );
 create index if not exists recurring_plans_due_idx on recurring_plans (account_id, active, next_run_date);
+
+-- The deferred half of payments.recurring_plan_id — payments is defined ~400
+-- lines above this, so the reference could not be inline. Same constraint, same
+-- ON DELETE.
+do $$ begin
+  alter table payments add constraint payments_recurring_plan_id_fkey
+    foreign key (recurring_plan_id) references recurring_plans(id) on delete set null;
+exception when duplicate_object then null; end $$;
 
 -- Recurring visits, created as real jobs ahead of the day they happen. The
 -- visit date is stored on the job and never moves, so the daily sweep can find
@@ -1601,6 +1627,7 @@ drop policy if exists feed_owner on job_feed;
 drop policy if exists feed_crew_read on job_feed;
 drop policy if exists feed_crew_insert on job_feed;
 drop policy if exists client_access_all on client_job_access;
+drop policy if exists lead_blocklist_all on lead_blocklist;
 drop policy if exists inv_all on invoices;
 drop policy if exists pay_all on payments;
 drop policy if exists plan_all on finance_plans;
@@ -1712,6 +1739,7 @@ create policy feed_crew_insert on job_feed for insert with check ( crew_on_job(j
 create policy client_access_all on client_job_access for all using ( is_owner(account_id) );
 
 -- Financials, CRM, comms, marketing config: OWNER-ONLY. Crew touch none of these.
+create policy lead_blocklist_all on lead_blocklist for all using ( is_owner(account_id) );
 create policy inv_all    on invoices         for all using ( is_owner(account_id) );
 create policy pay_all    on payments         for all using ( is_owner(account_id) );
 create policy plan_all   on finance_plans    for all using ( is_owner(account_id) );

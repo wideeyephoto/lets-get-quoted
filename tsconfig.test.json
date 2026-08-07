@@ -6,6 +6,11 @@
   //
   // Run via `npm run typecheck` (not part of `next build`, which keeps using
   // tsconfig.json).
+  // test-staging is here for the same reason test is. It was added without
+  // being typechecked, and immediately paid for it: a call passing `status` to a
+  // function whose parameter is `statuses` compiled fine as an excess property
+  // nobody was checking, then failed against a real database as if the LIBRARY
+  // were broken. It cost a detour through library code that was correct.
   "extends": "./tsconfig.json",
-  "include": ["next-env.d.ts", "src", "test", ".next/types/**/*.ts"]
+  "include": ["next-env.d.ts", "src", "test", "test-staging", ".next/types/**/*.ts"]
 }
