@@ -185,7 +185,12 @@ const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 // /back-office) without covering anything else.
 //
 // /home-next is deliberately NOT here: it still wants the shell's chrome.
-const OWN_CHROME_MARKETING_ROUTES = ['/features', '/how-it-works', '/founder'];
+//
+// /home-flagship IS here, for the opposite reason. It is a homepage candidate
+// reproducing a standalone marketing site, and it ships that site's own fixed
+// header and footer. Letting the shell draw a second one would put two brands
+// on top of each other and make the candidate impossible to judge.
+const OWN_CHROME_MARKETING_ROUTES = ['/features', '/how-it-works', '/founder', '/home-flagship'];
 
 function getPrimaryAction() {
   return { href: '/login', label: 'Create free account' };
