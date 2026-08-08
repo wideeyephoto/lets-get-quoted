@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from 'next/image';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
+import CommandCenterDeck from '@/components/command-center-deck';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import styles from './flagship.module.css';
 
@@ -397,7 +398,7 @@ export default function FlagshipHome() {
               </div>
             </div>
           </div>
-          <div className="floating-alert" data-plane="front"><span className="alert-icon">✦</span><div><small>AI LEAD ALERT</small><b>Panel upgrade · in your service area</b></div><em>NOW</em></div>
+          <div className="floating-alert" data-plane="front"><span className="alert-icon">✦</span><div><small>AI LEAD ALERT</small><b>Kitchen remodel · in your service area</b></div><em>NOW</em></div>
           <div className="floating-paid" data-plane="front"><i>✓</i><div><small>PAYMENT RECEIVED</small><b>$4,250 headed to your bank</b></div></div>
           {/* The panel quotes $18.4k of revenue, six booked jobs and a $4,250
               payment. None of it happened. "EXAMPLE BUSINESS" in the title bar
@@ -481,32 +482,12 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* THE LINE DRAWS ITSELF.
-          Five boxes in a row is a set, not a sequence — you could shuffle them
-          and nothing would look wrong. One stroke travelling left to right as
-          the section arrives says the order out loud, and each stage's accent
-          bar fills as the line reaches it. The --at values below are where in
-          the section's 0–1 progress each stage lights; they are spaced to land
-          just after the stroke passes, not with it. */}
-      <section className="workflow workflow-pipeline" aria-label="Connected contractor workflow" data-track>
-        <div className="pipeline-head">
-          <p>THE JOB PIPELINE</p>
-          <span><i /> ONE CUSTOMER RECORD · START TO FINISH</span>
-        </div>
-        <div className="pipeline-draw" aria-hidden="true">
-          <svg viewBox="0 0 1000 44" preserveAspectRatio="none" focusable="false">
-            <path className="pipeline-track" d="M4 34 C 130 34, 150 10, 254 10 S 376 34, 500 34 S 624 10, 746 10 S 872 30, 996 24" />
-            <path className="pipeline-ink" d="M4 34 C 130 34, 150 10, 254 10 S 376 34, 500 34 S 624 10, 746 10 S 872 30, 996 24" />
-          </svg>
-        </div>
-        <div className="workflow-row">
-          <span style={cssVars({ '--at': 0.06 })}><small>01</small><b>Build the site</b></span>
-          <span style={cssVars({ '--at': 0.2 })}><small>02</small><b>Qualify the lead</b></span>
-          <span style={cssVars({ '--at': 0.34 })}><small>03</small><b>Win the job</b></span>
-          <span style={cssVars({ '--at': 0.48 })}><small>04</small><b>Run the work</b></span>
-          <span style={cssVars({ '--at': 0.62 })}><small>05</small><b>Get paid + grow</b></span>
-        </div>
-      </section>
+      {/* The five-stage pipeline band used to sit here. Removed: the five
+          labels named the same stages the feature tour above had just walked
+          through in full, so the band re-listed what the visitor had already
+          been shown, and the wandering stroke never touched the boxes it was
+          meant to connect. The sequence itself is not lost — /how-it-works is
+          built on those five stages and goes into each one. */}
 
       <section className="ai-layer ai-split-story" aria-labelledby="ai-title" data-track>
         <div className="ai-layer-head" data-rise>
@@ -563,12 +544,6 @@ export default function FlagshipHome() {
             </div>
           </article>
         </div>
-        {/* The trace above names a request, a priority and a drafted quote. It
-            reads like a log, and a log is the last thing a visitor would think
-            to doubt. Same marker as the hero's and the tour's. */}
-        <p className="example-mark ai-example-mark">
-          <b>Example</b> — one invented request, shown end to end.
-        </p>
       </section>
 
       <section className="client-experience" aria-labelledby="client-experience-title">
@@ -643,6 +618,20 @@ export default function FlagshipHome() {
             </article>
           ))}
         </div>
+      </section>
+
+      {/* THE CARDS THAT WERE ALREADY BUILT.
+          The bento above NAMES eight capabilities in a sentence each. These six
+          cards SHOW them — a real screen per capability, at a size you can
+          actually read. They were built for the previous homepage and have been
+          stranded on /home-classic ever since; nothing was redrawn to bring
+          them here.
+
+          Directly after the bento on purpose: it is the one place on the page
+          where a visitor has just been told what is included and has no reason
+          yet to believe it. */}
+      <section className="command-band" aria-label="What each part looks like">
+        <CommandCenterDeck />
       </section>
 
       <section className="difference" id="difference">

@@ -587,8 +587,14 @@
   .cc-bars-x{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:7px;font-family:var(--mono);font-size:9px;color:var(--muted-2);text-align:center}
 
   @container fw (max-width:720px){
-    .cc-stats{grid-template-columns:1fr 1fr}
-    .cc-cols{grid-template-columns:1fr}
+    .cc-stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    /* minmax(0,1fr), not 1fr. A grid item's default min-width is auto, which
+       is its MIN-CONTENT width, and 1fr will not shrink below that — so the
+       "Today" card's single column resolved to 319px inside a 289px screen and
+       6px of every row was clipped at 390. Only visible on a narrow phone,
+       because that is the only place the column is narrower than its longest
+       unbreakable row. */
+    .cc-cols{grid-template-columns:minmax(0,1fr)}
     .cc-week{display:flex;overflow-x:auto;scrollbar-width:none}
     .cc-week::-webkit-scrollbar{display:none}
     .cc-day{flex:0 0 148px}

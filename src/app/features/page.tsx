@@ -176,7 +176,7 @@ export default function FeaturesPage() {
             </span>
             <div>
               <small>AI LEAD ALERT</small>
-              <b>Panel upgrade · in your service area</b>
+              <b>Kitchen remodel · in your service area</b>
             </div>
             <em>NOW</em>
           </div>

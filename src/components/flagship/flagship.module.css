@@ -3193,43 +3193,9 @@
   .root[data-motion="on"] :global(.tour-rail) { display: none; }
 }
 
-/* ===========================================================================
-   §03 — THE PIPELINE DRAWS ITSELF
-   =========================================================================== */
-
-.root :global(.pipeline-draw) {
-  position: relative;
-  z-index: 1;
-  margin: 0 0 -6px;
-  padding: 0 8px;
-}
-.root :global(.pipeline-draw svg) { display: block; width: 100%; height: 44px; overflow: visible; }
-.root :global(.pipeline-draw path) { fill: none; stroke-width: 2; stroke-linecap: round; }
-.root :global(.pipeline-track) { stroke: rgba(174, 199, 211, .2); stroke-width: 1; }
-.root :global(.pipeline-ink) { stroke: var(--orange); filter: drop-shadow(0 0 6px rgba(255, 106, 36, .45)); }
-
-/* Ungated, the stroke would sit at a full dash offset — an invisible line. So
-   the resting state is the finished line, and only the motion build draws it.
-   1600 is comfortably longer than the path, so the offset always clears it. */
-.root[data-motion="on"] :global(.pipeline-ink) {
-  stroke-dasharray: 1600;
-  stroke-dashoffset: calc(1600 * (1 - var(--sp, 0)));
-}
-
-/* The accent bar under each stage already existed as a hover affordance. It
-   becomes the progress readout: each stage fills as the stroke reaches it.
-   The floor is .22 — exactly the value it rested at before — so the section
-   looks identical to today when nothing is driving it. */
-.root[data-motion="on"] :global(.workflow-pipeline .workflow-row > span)::after {
-  transform: scaleX(clamp(.22, calc((var(--sp, 0) - var(--at, 0)) * 7), 1));
-  transition: none;
-}
-.root[data-motion="on"] :global(.workflow-pipeline .workflow-row > span:hover)::after {
-  transform: scaleX(1);
-}
-@media (max-width: 760px) {
-  .root :global(.pipeline-draw) { display: none; }
-}
+/* §03 — the pipeline band and its self-drawing stroke lived here. The section
+   is gone from the markup (see the note where it used to be in
+   flagship-home.tsx), so its rules went with it. */
 
 /* ===========================================================================
    §04 — THE TRACE UNDER EACH HANDOFF
@@ -3271,18 +3237,10 @@
    copy it belongs to. Anchored to the text block instead. */
 .root :global(.ai-rail-traced article) { justify-content: flex-start; gap: 16px; }
 
-/* Third child of a two-column section grid, so it landed in column one under
-   the dark copy. Spanning both puts it under the cards it describes. */
-.root :global(.ai-example-mark) {
-  grid-column: 1 / -1;
-  margin: 26px 0 0;
-  text-align: right;
-  color: #5c6870;
-}
-.root :global(.ai-example-mark b) { color: #1d2b33; }
-@media (max-width: 1100px) {
-  .root :global(.ai-example-mark) { text-align: left; }
-}
+/* The section's own "invented request" marker was removed — three of them in
+   the first two screens read as hedging rather than candour. The disclosure
+   itself is not gone: the hero console and the feature tour each still carry
+   one, and the command-center deck labels its own figures as sample data. */
 
 /* ===========================================================================
    §05 — THE CONVERSATION PLAYS
@@ -3566,3 +3524,67 @@
 .root :global(.home-faq-dark .home-faq-list summary:hover) { color: #fff; }
 .root :global(.home-faq-dark .home-faq-list summary)::after { color: var(--orange); }
 .root :global(.home-faq-dark .home-faq-list details p) { color: #a9bac4; }
+
+/* ===========================================================================
+   THE COMMAND-CENTER BAND
+
+   Six dashboard cards that were built for the previous homepage and stranded
+   on /home-classic. The cards themselves are not restyled here — they are the
+   same markup and the same generated rules /home-classic renders, so the two
+   cannot drift. What this block does is make the band they sit in belong to
+   this page.
+
+   IT HAS TO BE A DARK BAND. The deck is built for one: --ink is #f7f5ef and
+   every card face is a near-black panel. It lands between .included and
+   .difference, which are both cream, so without a ground of its own the cards
+   would be light-on-light. Dark here is not a rhythm choice, it is the only
+   legible option — though it does give the page the alternation it wanted
+   anyway, and matches .pricing-band further down.
+   =========================================================================== */
+
+.root :global(.command-band) {
+  position: relative;
+  padding: clamp(64px, 8vw, 118px) clamp(24px, 5vw, 86px);
+  background:
+    radial-gradient(circle at 84% 8%, rgba(255, 106, 36, .13), transparent 26%),
+    radial-gradient(circle at 10% 88%, rgba(42, 130, 161, .12), transparent 28%),
+    linear-gradient(160deg, #0d222e, #091923);
+  border-top: 1px solid rgba(174, 199, 211, .12);
+  border-bottom: 1px solid rgba(174, 199, 211, .12);
+}
+
+/* The deck centres itself at 1280px with its own gutters, which put its cards
+   inboard of the bento's directly above — two grids of cards, not quite
+   aligned, is the kind of near-miss that reads as a mistake. The band supplies
+   the gutter instead, using the same clamp .included does, so the two grids
+   share an edge. */
+.root :global(.command-band .cc) {
+  max-width: none;
+  padding: 0;
+}
+
+/* The deck declares its own type stack (--sans: system-ui) because it shipped
+   as a self-contained artifact. On this page that means one band rendering in
+   the system font while everything above and below it is Geist — subtle enough
+   to miss in a screenshot and obvious in the flow. Pointed at the app's fonts;
+   --mono carries the app's alias, so the card labels match the page's other
+   mono labels rather than Consolas. */
+.root :global(.command-band .cc-root) {
+  --sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* --font-geist-mono is this file's own alias and already carries a fallback
+     chain, so it is used bare here rather than followed by a second copy. */
+  --mono: var(--font-geist-mono);
+}
+
+/* The band already has an orange bloom in its own gradient; the deck's aurora
+   on top of it is two soft glows fighting in the same corner. The deck keeps
+   its film grain. */
+.root :global(.command-band .cc-root)::before { display: none; }
+
+/* .included drops to a 20px gutter on a phone, and the band's clamp bottoms out
+   at 24 — close enough to look like a mistake rather than a difference. Matched
+   exactly, so the cards and the bento cells above share both edges at every
+   width. */
+@media (max-width: 760px) {
+  .root :global(.command-band) { padding-left: 20px; padding-right: 20px; }
+}
