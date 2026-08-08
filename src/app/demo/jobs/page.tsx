@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { formatMoney } from '@/lib/jobs';
 import { DEMO_JOBS, dateKeyFromNow } from '@/lib/demo-data';
 import { demoJobDetails, demoJobViews } from '@/lib/demo-focus';
@@ -7,6 +6,7 @@ import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
 import { demoSupabase } from '@/lib/demo-rows';
 import { todayKeyOf } from '@/lib/job-queue';
 import JobsWorkspace from '@/app/dashboard/jobs/JobsWorkspace';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,9 +90,9 @@ export default async function DemoJobsPage() {
           Creating jobs, logging costs, and tracking margin is instant once you&apos;re signed in — this
           demo account is read-only.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

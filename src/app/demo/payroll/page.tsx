@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { formatMoney } from '@/lib/jobs';
 import {
   PAYROLL_PERIODS,
@@ -8,6 +7,7 @@ import {
 } from '@/lib/payroll';
 import type { CrewMember } from '@/lib/crew';
 import { DEMO_CREW } from '@/lib/demo-data';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,9 +136,9 @@ export default function DemoPayrollPage() {
           Your crew logs hours from the field, and every pay period totals up here ready to export — this demo account
           is read-only.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

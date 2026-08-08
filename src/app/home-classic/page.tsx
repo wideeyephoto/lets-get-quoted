@@ -6,6 +6,7 @@ import StickyCta from '@/components/sticky-cta';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import FeatureWheelStory from '../features/FeatureWheelStory';
 import { cspNonce } from '@/lib/csp-nonce';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 function QuoteIcon() {
   return (
@@ -331,9 +332,9 @@ export default function HomePage() {
             schedule work, and get paid in one connected workflow.
           </p>
           <div className="actions">
-            <Link href="/login?intent=signup" className="btn primary">
-              Create free account
-            </Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">
+              Build my free site
+            </a>
             <Link href="/demo" className="btn secondary">
               Explore the demo &mdash; no signup
             </Link>
@@ -468,7 +469,7 @@ export default function HomePage() {
         </div>
         <HomeFeeCalculator />
         <div className="mid-cta">
-          <Link href="/login?intent=signup" className="btn primary">Create free account</Link>
+          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>
         </div>
       </section>
@@ -553,9 +554,9 @@ export default function HomePage() {
               here, at length, was the page protesting. */}
           <p>No card required. Platform and Stripe processing fees apply only when you collect a payment.</p>
           <div className="actions">
-            <Link href="/login?intent=signup" className="btn primary">
-              Create free account
-            </Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">
+              Build my free site
+            </a>
             <Link href="/demo" className="btn secondary">
               Explore the demo &mdash; no signup
             </Link>

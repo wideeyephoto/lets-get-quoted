@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { formatDuration, getAverageRequestResponseMs } from '@/lib/leads';
 import { DEMO_ACCOUNT_ID, DEMO_LEADS } from '@/lib/demo-data';
 import { demoLeadDetails, demoLeadViews } from '@/lib/demo-focus';
@@ -6,6 +5,7 @@ import { getMapPins } from '@/lib/map-pins';
 import { demoSupabase } from '@/lib/demo-rows';
 import LeadsWorkspace from '@/app/dashboard/leads/LeadsWorkspace';
 import styles from '../../dashboard/leads/leads.module.css';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,9 +83,9 @@ export default async function DemoLeadsPage({ initialLeadId }: { initialLeadId?:
           Every website lead lands here automatically, and you can log phone or referral leads by
           hand too. This demo account is read-only.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

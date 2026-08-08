@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { COLOR_SCHEMES } from '@/lib/site-content';
 import ThemeIcon from '@/app/dashboard/sites/ThemeIcon';
 import themeStyles from '@/app/dashboard/sites/SiteEditor.module.css';
 import DemoVideoStudio from './DemoVideoStudio';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 // PURPOSE-BUILT ON PURPOSE — the second deliberate exception to this demo's
 // "render the real screen" rule, alongside Settings.
@@ -157,7 +157,7 @@ export default function DemoSitesPage() {
 
           <div className="template-preview-cta demo-builder-cta">
             <p>Changed it in seconds? That&apos;s the builder. Create a free account to make it your own and publish.</p>
-            <Link href="/login" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           </div>
         </div>
 

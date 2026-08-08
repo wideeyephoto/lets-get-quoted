@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
 
 // Pinned to the top of every /demo page — makes it unmissable that this is a
 // sample account (fictional data, no real business) while funneling visitors
@@ -19,12 +20,16 @@ export default function DemoBanner() {
           <Link href="/" className="demo-banner-back">
             <span aria-hidden="true">←</span> Exit the LIVE Demo
           </Link>
-          <Link href="/login" className="btn secondary">
+          {/* Plain anchors on the app host. next/link prefetched a bare
+              /login on the marketing host — a route that only ever redirects —
+              on every demo page, and logged an error for each before falling
+              back to a normal navigation. */}
+          <a href={APP_LOGIN_URL} className="btn secondary">
             Log in
-          </Link>
-          <Link href="/login" className="btn primary">
-            Create free account
-          </Link>
+          </a>
+          <a href={APP_SIGNUP_URL} className="btn primary">
+            Build my free site
+          </a>
         </div>
       </div>
     </div>

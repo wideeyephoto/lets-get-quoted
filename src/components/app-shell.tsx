@@ -1014,7 +1014,23 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const brand = <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>;
 
     return (
-      <div className="chrome-shell chrome-shell-sidenav">
+      /* THE APP PREVIEW IS A DRAWER NOW, NOT FURNITURE.
+         ------------------------------------------------------------------
+         These are the public pages — /for, /pricing, /faq, /security,
+         /resources — and every one of them spent 244px of every desktop
+         screen, permanently, on a locked preview of software the reader does
+         not have yet. Eighteen padlocked rows competing with the pricing
+         narrative, as the audit put it, while the actual site navigation was
+         somewhere below them.
+
+         Inverted: the public site is a top bar, and the preview is behind one
+         button that says what it is. Nothing is removed — the same rail, the
+         same rows, the same "free to unlock" note — it is one tap away instead
+         of always there, and the page gets its full width back.
+
+         The signed-in dashboard rail (the branch above) is untouched. That one
+         is a tool somebody uses all day and it earns its width. */
+      <div className="chrome-shell chrome-shell-public">
         {/* THE FIRST TAB STOP, AND IT HAS TO LIVE HERE.
             The page can't supply this one: the rail is rendered by the shell
             and comes before {children} in the DOM, so a skip link written into
@@ -1023,11 +1039,38 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             page's own link was somewhere past row nineteen. */}
         <a className="skip-link shell-skip-link" href="#app-main">Skip to content</a>
 
-        <header className="sidenav-mobilebar">
-          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
+        <header className="public-topbar">
+          <Link href={brandHref} className="public-topbar-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
+          {/* The real site, on the bar. On a phone it is hidden and the same
+              five links are the first thing inside the drawer. */}
+          <nav className="public-topbar-nav" aria-label="Site">
+            {PUBLIC_NAV.map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                className={isActiveNav(pathname, href) ? 'active' : undefined}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          {/* NAMED FOR WHAT IS BEHIND IT. "Menu" was the old label and the old
+              contents were the app nav, which is not a menu of anywhere this
+              visitor can go — it is a look at what they would get. */}
           <button
             type="button"
-            className="nav-toggle"
+            className="public-topbar-preview"
+            onClick={toggleNav}
+            aria-expanded={isNavOpen}
+            aria-controls="primary-nav"
+          >
+            <span aria-hidden="true">✦</span> See everything included
+          </button>
+          <a className="public-topbar-signin" href={APP_LOGIN_URL}>Sign in</a>
+          <a className="btn primary public-topbar-cta" href={primaryAction.href}>{primaryAction.label}</a>
+          <button
+            type="button"
+            className="nav-toggle public-topbar-toggle"
             onClick={toggleNav}
             aria-expanded={isNavOpen}
             aria-controls="primary-nav"
@@ -1038,7 +1081,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
-        <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}${!isLoggedIn ? ' marketing-locked' : ''}`} aria-label="Primary">
+        <aside
+          id="primary-nav"
+          ref={railRef}
+          className={`sidenav sidenav-drawer${isNavOpen ? ' open' : ''}${!isLoggedIn ? ' marketing-locked' : ''}`}
+          aria-label="Everything included"
+        >
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
           {/* Escape and a tap outside both closed the drawer already, and
               neither is visible. This is. Rendered only while the drawer is
@@ -1143,7 +1191,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         {/* tabIndex -1 so the skip link can actually put focus here; without
             it the browser scrolls to the target and leaves focus behind, which
             means the next Tab lands back at the top of the rail. */}
-        <div id="app-main" tabIndex={-1} className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
+        <div id="app-main" tabIndex={-1} className={`app-main app-main-public${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
       </div>
     );
   }

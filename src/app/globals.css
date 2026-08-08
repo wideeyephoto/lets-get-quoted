@@ -2575,7 +2575,21 @@ h3 {
 .app-main-sidenav .page-shell,
 .app-main-sidenav .wide-shell { min-height: calc(100vh - 1.6rem); }
 
-@media (max-width: 900px) {
+/* THE RAIL BECOMES A MENU AT 1080, NOT 900.
+   ---------------------------------------------------------------------------
+   244px is a fair trade on a 1440 desktop and a bad one on a tablet in
+   landscape: on a 1024 iPad it is a quarter of the screen, spent permanently,
+   on navigation nobody is reading while they work. Measured on the schedule at
+   1440 the rail leaves a 1090px workspace and the month grid gets 634px of it;
+   at 1024 the same arithmetic leaves the calendar under 500px, which is where
+   a day column stops being able to hold a customer's name.
+
+   1080 rather than some tablet-specific number, because it is the same width
+   the marketing header switches at (see §98 in the flagship generator). One
+   rule for the whole product: below 1080, navigation is a menu. The drawer is
+   one tap away and the mobile bar keeps the brand and the toggle on screen, so
+   nothing becomes unreachable — it stops being permanently present. */
+@media (max-width: 1080px) {
   .sidenav-mobilebar {
     display: flex;
     align-items: center;
@@ -2674,7 +2688,7 @@ h3 {
    way, the footer rises from below, and the whole nav is reachable in a single
    gesture. A tall desktop window is untouched — brand and account footer stay
    exactly where they were. */
-@media (max-width: 900px), (max-height: 660px) {
+@media (max-width: 1080px), (max-height: 660px) {
   .sidenav {
     overflow-y: auto;
     /* The "+ New" menu is 12.5rem inside a 15.25rem rail, so losing the
@@ -26162,7 +26176,7 @@ body[data-schedule-overlay="job"] .sched-queue {
   border-radius: 6px;
   background: var(--job-fill, rgba(var(--tint), 0.04));
   color: var(--job-ink, var(--ink));
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   text-align: left;
   cursor: pointer;
   touch-action: none;
@@ -26172,9 +26186,11 @@ body[data-schedule-overlay="job"] .sched-queue {
   margin-left: auto;
   flex: 0 0 auto;
   color: var(--mute-i60);
-  font-size: 0.6rem;
+  /* "No time" is the whole reason this chip is above the axis instead of on
+     it, so it was the wrong thing on the card to set in 9.6px. */
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 .sched-tl-chip-planned {
   border-style: dashed;
@@ -26290,10 +26306,17 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-tl-job:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 4; }
 .sched-tl-job.dragging { opacity: 0.45; }
 
+/* THE TYPE FLOOR ON THIS CARD IS 12px.
+   Everything here ran between 9.3px and 12.2px, which is caption size for what
+   is not a caption — a customer's name, when they are coming, and whether the
+   job is booked. The card can afford it now: the lane cap keeps blocks at 84px
+   or wider and the container queries below drop whole lines rather than
+   shrinking them, so nothing has to be small to fit. Where a line genuinely
+   will not fit it is removed, which is legible; shrinking it to 9px is not. */
 .sched-tl-job-time {
   color: inherit;
   opacity: 0.85;
-  font-size: 0.63rem;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -26305,7 +26328,7 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-tl-job-time i { display: none; font-style: normal; opacity: 0.75; }
 .sched-tl[data-days='1'] .sched-tl-job-time i { display: inline; }
 .sched-tl-job-name {
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.2;
   overflow: hidden;
@@ -26316,7 +26339,7 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-tl-job-span {
   color: inherit;
   opacity: 0.78;
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -26334,9 +26357,11 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-tl-job-crew {
   color: inherit;
   opacity: 0.8;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  /* The tracking went with the 9.6px size. At 12px an uppercase label with
+     0.05em on it is wider than the crew initials it is labelling. */
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -26347,11 +26372,11 @@ body[data-schedule-overlay="job"] .sched-queue {
    thousand pixels from the job it belongs to. */
 .sched-tl-job-badge {
   flex: 0 0 auto;
-  padding: 0.05rem 0.32rem;
+  padding: 0.08rem 0.36rem;
   border-radius: 999px;
   background: rgba(var(--panel-rgb), 0.55);
   color: inherit;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -26378,11 +26403,9 @@ body[data-schedule-overlay="job"] .sched-queue {
    47px on a tablet, which is not enough for a city, a crew, a status badge and
    a "Day 2/4" — they all ellipsised to a single character. Time and name only;
    the tooltip still carries the whole job. */
-.sched-tl-job[data-narrow] .sched-tl-job-city,
-.sched-tl-job[data-narrow] .sched-tl-job-foot,
-.sched-tl-job[data-narrow] .sched-tl-job-span { display: none; }
-.sched-tl-job[data-narrow] .sched-tl-job-time { font-size: 0.58rem; }
-.sched-tl-job[data-narrow] .sched-tl-job-name { font-size: 0.7rem; }
+/* [data-narrow] was here. It keyed off a column count the lane cap made
+   impossible, so it stopped matching anything the day capLanes shipped.
+   Container queries on .sched-tl-job do the width half of the job now. */
 
 /* ---- crew lanes ---------------------------------------------------------- */
 
@@ -27186,3 +27209,164 @@ body[data-schedule-overlay="job"] .sched-queue {
 }
 .sched-primary-go { margin-left: 0.35rem; opacity: 0.8; }
 .month-nav-today:disabled { opacity: 0.45; cursor: default; }
+
+/* ===========================================================================
+   THE PUBLIC PAGES GET THEIR WIDTH BACK
+   ===========================================================================
+   /for, /pricing, /faq, /security and /resources wore the app's left rail:
+   244px of every desktop screen, permanently, showing a locked preview of
+   software the reader has not bought. Eighteen padlocked rows competing with
+   the pricing narrative, and the actual site navigation somewhere below them.
+
+   Inverted. The public site is a top bar; the preview is a drawer behind one
+   button that says what it is. Nothing was removed — same rail, same rows,
+   same "free to unlock" note — it is one tap away instead of always there.
+
+   The signed-in dashboard rail is a different branch and is untouched: that
+   one is a tool somebody uses all day and it earns its width.
+   =========================================================================== */
+
+.chrome-shell-public {
+  min-height: 100vh;
+  /* The ambient glow is a 430px blur positioned off the right edge of a column
+     that used to be 244px narrower. `clip` rather than `hidden` on purpose:
+     hidden would make this a scroll container and the sticky bar above would
+     stop sticking. */
+  overflow-x: clip;
+}
+
+.public-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 1.6vw, 1.4rem);
+  min-height: 4.4rem;
+  padding: 0 clamp(1rem, 3vw, 2.2rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--chrome-solid);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.public-topbar-brand { flex: none; text-decoration: none; }
+
+.public-topbar-nav { display: flex; align-items: center; gap: clamp(0.5rem, 1.4vw, 1.3rem); }
+.public-topbar-nav a {
+  padding: 0.4rem 0.15rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.16s ease;
+}
+.public-topbar-nav a:hover { color: var(--text); }
+.public-topbar-nav a.active { color: var(--accent-ink); }
+
+/* Pushed right, and the first of the three things on that side. */
+.public-topbar-preview {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px dashed rgba(var(--tint), 0.3);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+.public-topbar-preview:hover { border-color: var(--cedge-orange-9); color: var(--text); }
+.public-topbar-preview[aria-expanded='true'] { border-style: solid; border-color: var(--accent); color: var(--text); }
+.public-topbar-signin {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.public-topbar-signin:hover { color: var(--text); }
+.public-topbar-cta { flex: none; white-space: nowrap; }
+.public-topbar-toggle { display: none; }
+
+.app-main.app-main-public {
+  /* No rail to clear. This is the whole point of the change. */
+  padding: 1.4rem clamp(1rem, 3vw, 2.2rem) 0;
+}
+.app-main-public .page-shell,
+.app-main-public .wide-shell { min-height: calc(100vh - 5.8rem); }
+
+/* -- the drawer ------------------------------------------------------------ */
+/* The rail's own rules still describe it — width, padding, the group cards, the
+   footer. These only change where it starts from and what it sits on. */
+.sidenav-drawer {
+  transform: translateX(-100%);
+  transition: transform 0.24s ease;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+  /* Genuinely opaque, for the same reason the mobile drawer is: --chrome-solid
+     is still 8% see-through, which is a texture against a page gutter and a
+     legibility problem over a full page of copy. */
+  background: rgb(var(--chrome-rgb));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  z-index: 41;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sidenav-drawer.open { transform: translateX(0); }
+/* The scrim is display:none above the old 900px drawer breakpoint; this drawer
+   exists at every width, so it needs one at every width too. */
+.chrome-shell-public .sidenav-scrim {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(4, 9, 16, 0.6);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidenav-drawer { transition: none; }
+}
+
+/* 1080, the same width the marketing header and the dashboard rail switch at.
+   Measured at 1024 before this: brand + five links + the preview button + Sign
+   in + the CTA came to 1109px of content in a 1024px bar, and the CTA was the
+   thing hanging off the end. */
+@media (max-width: 1080px) {
+  /* The five public links move inside the drawer, where they are already the
+     first thing in it, and the bar keeps the brand, the promise and the way in
+     for somebody who already has an account. */
+  .public-topbar-nav,
+  .public-topbar-preview { display: none; }
+  .public-topbar-toggle { display: inline-flex; margin-left: auto; }
+  .public-topbar { min-height: 3.9rem; }
+  .app-main.app-main-public { padding-inline: 1rem; }
+}
+@media (max-width: 560px) {
+  /* On the narrowest screens the bar is brand + Menu; the CTA is the fixed
+     bottom bar's job on those pages that have one, and the hero's on the rest. */
+  .public-topbar-signin,
+  .public-topbar-cta { display: none; }
+}
+
+/* -- marketing headings get a measure, not a column ------------------------ */
+/* There is a bare `h1 { max-width: 11ch }` in this file, and 11ch of display
+   type is about two words a line. Measured on /for at 768px: the hero is 696px
+   wide and the heading was capped at 297px of it, so "One tool, tuned to the
+   way your trade works." wrapped to four lines with 400px of empty hero beside
+   it. At 1280 it was 456px inside a 960px hero — the same four lines.
+
+   Scoped to the marketing heroes rather than fixed on the global rule, because
+   that rule reaches every h1 in the product and this is not the change to make
+   to a dashboard page title. 22ch is roughly two lines for a headline of this
+   length, which is what a hero headline wants. */
+.marketing-shell .hero-copy h1,
+.marketing-shell .section-heading h1 { max-width: 22ch; }

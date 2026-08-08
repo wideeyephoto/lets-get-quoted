@@ -7,6 +7,7 @@ import { DEMO_ACCOUNT_ID, DEMO_BOOKING } from '@/lib/demo-data';
 import { demoSupabase } from '@/lib/demo-rows';
 import ScheduleCalendar, { type CalendarCell, type CalendarJob } from '@/app/dashboard/schedule/schedule-calendar';
 import ScheduleDragProvider from '@/app/dashboard/schedule/ScheduleDragProvider';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Schedule — Live Demo' };
@@ -173,9 +174,9 @@ export default async function DemoSchedulePage({ searchParams }: { searchParams:
           In your own account you can drag an unscheduled job straight onto a date, assign crew from the
           calendar, and text them the day — this demo account is read-only.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

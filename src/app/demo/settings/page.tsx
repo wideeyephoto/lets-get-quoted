@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { DEMO_COMPANY_NAME, DEMO_SERVICE_AREA, DEMO_SITE_HOST } from '@/lib/demo-data';
 import SettingsTabs from '@/app/dashboard/settings/SettingsTabs';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Account settings — Live Demo' };
@@ -144,9 +145,9 @@ export default function DemoSettingsPage() {
           Every switch and figure above is editable in your own account, and none of it is required to start —
           the app works with the defaults and tells you when a setting would help.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

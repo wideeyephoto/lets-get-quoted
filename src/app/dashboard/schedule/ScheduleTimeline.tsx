@@ -418,14 +418,13 @@ export default function ScheduleTimeline({
                         entry.columns > 1 ? 'shared' : '',
                       ].filter(Boolean).join(' ')}
                       data-size={size}
-                      /* WIDTH MATTERS AS MUCH AS HEIGHT, and data-size only
-                         knows about height. A three-way overlap in a 190px
-                         column is 47px a block: an eight-hour job is still
-                         "md" and was printing a city, a crew, a status badge
-                         and "Day 2/4" into it, all four ellipsised to nothing.
-                         Past two columns the block keeps the time and the name
-                         and gives up the rest to the tooltip. */
-                      data-narrow={entry.columns >= 3 ? 'true' : undefined}
+                      /* data-narrow used to live here, keyed off
+                         `entry.columns >= 3`. capLanes caps columns at two, so
+                         that condition became unreachable the moment the lane
+                         cap shipped — the attribute never appeared and four CSS
+                         rules keyed off it could never match. The job it was
+                         doing (width, which data-size cannot see) is done
+                         properly now by container queries on the card itself. */
                       /* Percentages while the column is uncrowded. Once a
                          marker is drawn beside them the lanes have to give up
                          its fixed width, which no percentage can express — so

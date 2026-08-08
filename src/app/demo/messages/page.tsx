@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import type { SmsMessage } from '@/lib/messages';
 import { groupRuns } from '@/lib/message-context';
 import DemoInbox, { type DemoThreadView } from './DemoInbox';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,9 +137,9 @@ export default function DemoMessagesPage() {
           When a customer texts your business number, their message threads here automatically and you
           can reply in one tap. This demo account is read-only.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

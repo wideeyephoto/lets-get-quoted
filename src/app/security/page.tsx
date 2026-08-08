@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteFooter from '@/components/site-footer';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const metadata: Metadata = {
   title: 'Security',
@@ -71,7 +72,7 @@ export default function SecurityPage() {
           </p>
         </div>
         <div className="actions">
-          <Link href="/login" className="btn primary">Create free account</Link>
+          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/faq" className="btn secondary">Read the FAQ</Link>
         </div>
       </section>
@@ -105,7 +106,7 @@ export default function SecurityPage() {
           <h2>Get paid with confidence.</h2>
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/pricing" className="btn secondary">See pricing</Link>
           </div>
         </div>

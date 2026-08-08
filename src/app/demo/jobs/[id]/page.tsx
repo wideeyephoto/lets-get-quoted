@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatJobSchedule, formatMoney, formatPercent, type JobStatus } from '@/lib/jobs';
 import { DEMO_JOBS, getDemoCosts, getDemoMargin, getDemoPayments } from '@/lib/demo-data';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,9 +132,9 @@ export default function DemoJobDetailPage({ params }: { params: { id: string } }
             payment link — all from this page. This demo account is read-only.
           </p>
           <div className="actions">
-            <Link href="/login" className="btn primary">
-              Create free account
-            </Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">
+              Build my free site
+            </a>
             <Link href="/demo/jobs" className="btn secondary">
               ← Back to jobs
             </Link>

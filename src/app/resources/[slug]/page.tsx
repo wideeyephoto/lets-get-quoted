@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ARTICLES, getArticle, formatArticleDate } from '@/lib/resources';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
@@ -75,7 +76,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           <h2>Start free — you only pay when a homeowner pays you.</h2>
           <p>No subscription. No setup fee. The whole toolkit, from your first quote.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/resources" className="btn secondary">More resources</Link>
           </div>
         </div>

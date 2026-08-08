@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const metadata: Metadata = {
   title: 'FAQ',
@@ -131,7 +132,7 @@ export default function FaqPage() {
           <p>No subscription, no catch — here’s exactly how Let’s Get Quoted works, what it costs, and how you get paid.</p>
         </div>
         <div className="actions">
-          <Link href="/login" className="btn primary">Create free account</Link>
+          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
       </section>
@@ -158,7 +159,7 @@ export default function FaqPage() {
           <h2>The fastest way to see it is to try it.</h2>
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/features" className="btn secondary">Browse all features</Link>
           </div>
         </div>

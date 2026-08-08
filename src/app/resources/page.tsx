@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ARTICLES, formatArticleDate } from '@/lib/resources';
 import SiteFooter from '@/components/site-footer';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const metadata: Metadata = {
   title: 'Resources',
@@ -43,7 +44,7 @@ export default function ResourcesPage() {
           <h2>Put the advice to work.</h2>
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/features" className="btn secondary">Browse all features</Link>
           </div>
         </div>

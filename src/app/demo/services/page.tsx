@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import type { Service } from '@/lib/services';
 import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import PriceBookStats from '@/components/price-book-stats';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,9 +108,9 @@ export default function DemoServicesPage() {
           Build your own price book once, then reuse every service in quotes and recurring plans. This demo
           account is read-only.
         </p>
-        <Link href="/login" className="btn primary">
-          Create free account
-        </Link>
+        <a href={APP_SIGNUP_URL} className="btn primary">
+          Build my free site
+        </a>
       </section>
     </main>
   );

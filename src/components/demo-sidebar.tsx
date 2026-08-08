@@ -9,6 +9,7 @@ import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
 import { AUTOMATIONS_BOLT_PATH } from '@/lib/nav-helpers';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 const DEMO_HOST = DEMO_SITE_HOST;
 
@@ -188,9 +189,9 @@ export default function DemoSidebar() {
               <ActionIcon name="plan" />
               Plan my day
             </Link>
-            <Link href="/login" className="sidenav-new" title="Create a free account to add work">
+            <a href={APP_SIGNUP_URL} className="sidenav-new" title="Create a free account to add work">
               <span className="sidenav-new-plus" aria-hidden="true">+</span> New
-            </Link>
+            </a>
           </div>
         </div>
 
