@@ -2512,6 +2512,83 @@
    routes never set it, so their bar is untouched. */
 .root[data-hero-cta='visible'] :global(.mobile-cta) { display: none; }
 
+/* ---- the homepage FAQ ------------------------------------------------------
+
+   New to this page, and not a port: the source tour had no FAQ. It is here
+   because the site's FAQPage structured data has to describe content a visitor
+   can actually see, and the seven questions moved across with the homepage.
+
+   Cream, between the dark pricing band and the dark closing CTA, so the page
+   keeps alternating rather than running dark from pricing to footer. */
+.root :global(.home-faq) {
+  padding: 110px clamp(24px, 6vw, 100px);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 106, 36, 0.09), transparent 26%),
+    linear-gradient(150deg, #fffdf9, #efe9df);
+  color: var(--ink);
+  border-top: 1px solid #ded7cc;
+}
+.root :global(.home-faq-head) { max-width: 780px; margin: 0 auto 44px; text-align: center; }
+.root :global(.home-faq-head h2) {
+  margin: 14px 0 0;
+  font-size: clamp(30px, 3.6vw, 46px);
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  color: var(--ink);
+}
+.root :global(.home-faq-head .eyebrow) { justify-content: center; color: var(--orange); }
+.root :global(.home-faq-list) { max-width: 860px; margin: 0 auto; display: grid; gap: 12px; }
+.root :global(.home-faq-list details) {
+  border: 1px solid rgba(164, 153, 137, 0.5);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(247, 242, 233, 0.66));
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.9) inset;
+  overflow: hidden;
+}
+.root :global(.home-faq-list summary) {
+  padding: 20px 54px 20px 22px;
+  position: relative;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  list-style: none;
+}
+.root :global(.home-faq-list summary)::-webkit-details-marker { display: none; }
+/* A rotating chevron rather than the UA triangle, which sits at a different
+   place in every browser and cannot be coloured. */
+.root :global(.home-faq-list summary)::after {
+  content: "";
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--orange);
+  border-bottom: 2px solid var(--orange);
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 0.18s ease;
+}
+.root :global(.home-faq-list details[open] summary)::after { transform: translateY(-30%) rotate(-135deg); }
+.root :global(.home-faq-list summary:hover) { color: var(--orange); }
+.root :global(.home-faq-list summary:focus-visible) {
+  outline: 2px solid var(--orange);
+  outline-offset: -3px;
+}
+.root :global(.home-faq-list details p) {
+  margin: 0;
+  padding: 0 54px 22px 22px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #5f635e;
+}
+@media (max-width: 760px) {
+  .root :global(.home-faq) { padding: 76px 20px; }
+  .root :global(.home-faq-list summary) { font-size: 15.5px; padding-right: 46px; }
+  .root :global(.home-faq-list details p) { padding-right: 22px; font-size: 14.5px; }
+}
+
 /* ---- something to press at the price ---------------------------------------
 
    The pricing band is where the decision gets made and it had no button in it.

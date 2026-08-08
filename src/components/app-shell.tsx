@@ -10,6 +10,7 @@ import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
 import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
+import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, AUTOMATIONS_BOLT_PATH, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
@@ -189,28 +190,25 @@ const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 // (/features/ai-intake, /quick-stops, /client-portal, /website-builder,
 // /back-office) without covering anything else.
 //
+// '/' IS here now. The flagship tour won the homepage bake-off and ships its
+// own fixed header and footer, so the shell has to stand aside exactly as it
+// does for /features — a second header on top would put two brands on the one
+// page every visitor sees first.
+//
+// That has a consequence worth naming: this early-return drops the dashboard
+// rail for a SIGNED-IN owner on '/' too. The flagship header covers it — it
+// swaps its CTA to "Dashboard" when there is a session (site-chrome.tsx) — and
+// that swap is the reason removing the rail here is acceptable rather than a
+// dead end back into the product.
+//
 // /home-next is deliberately NOT here: it still wants the shell's chrome.
 //
-// /home-flagship IS here, for the opposite reason. It is a homepage candidate
-// reproducing a standalone marketing site, and it ships that site's own fixed
-// header and footer. Letting the shell draw a second one would put two brands
-// on top of each other and make the candidate impossible to judge.
-// /home-editorial and /home-compact are here for the same reason as
-// /home-flagship: each is a homepage candidate carrying its own header and
-// footer, and a candidate wearing this app's chrome on top of its own is not
-// the design being judged.
-const OWN_CHROME_MARKETING_ROUTES = [
-  '/features',
-  '/how-it-works',
-  '/founder',
-  '/home-flagship',
-  '/home-editorial',
-  '/home-compact',
-  // The reproduction of the source site's Product page, shown beside our own
-  // /features. It ships that site's header and footer, so the shell stands
-  // aside here exactly as it does for /home-flagship.
-  '/features-flagship',
-];
+// /home-editorial, /home-compact and /home-classic are here because each is a
+// homepage candidate (or the previous homepage) carrying its own header and
+// footer, and one wearing this app's chrome on top of its own is not the
+// design being compared.
+// The list and the matcher live in lib/marketing-chrome.ts so the '/' special
+// case can be tested — see the note there.
 
 function getPrimaryAction() {
   return { href: '/login', label: 'Create free account' };
@@ -273,9 +271,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const isFirstRun = pathname === '/welcome';
   // The marketing cluster that ships its own header/footer (see the route list
   // above) — the shell stays out of its way so the page has one header, not two.
-  const isOwnChromeMarketing = OWN_CHROME_MARKETING_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  const isOwnChromeMarketing = isOwnChromeRoute(pathname);
   // A signed-in contractor gets the FULL dashboard rail on every app/marketing
   // page (incl. the homepage) — same live counts, Website badge, New button and
   // Stripe pill as inside /dashboard — never the logged-out marketing teaser.
