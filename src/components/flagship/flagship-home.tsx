@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import CommandCenterDeck from '@/components/command-center-deck';
+import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
@@ -33,6 +34,46 @@ const PLANE_TRAVEL = 118;
 
 /** Type-safe inline custom properties, which React's CSSProperties omits. */
 const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProperties;
+
+/**
+ * The four pillars under the hero copy, from the mockup.
+ *
+ * Labelled icons rather than links, which is what the mockup shows and also
+ * what the routes support: there is no /features/scheduling, /features/payments
+ * or /features/reviews to point at, and sending three of the four to the same
+ * back-office page would be worse than not linking at all. The named sections
+ * further down the page are where a visitor goes next.
+ *
+ * The tone is a category colour, not a status.
+ */
+const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+
+const PILLARS = [
+  {
+    label: 'Plan & Schedule', tone: 'violet',
+    icon: (
+      <svg viewBox="0 0 24 24" {...stroke}><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M8 15h4" /></svg>
+    ),
+  },
+  {
+    label: 'Automate & Follow Up', tone: 'orange',
+    icon: (
+      <svg viewBox="0 0 24 24" {...stroke}><path d="M21 12a8 8 0 1 1-3.2-6.4" /><path d="M21 4v5h-5" /><path d="M9 12h6M9 15h4" /></svg>
+    ),
+  },
+  {
+    label: 'Get Paid Faster', tone: 'green',
+    icon: (
+      <svg viewBox="0 0 24 24" {...stroke}><circle cx="12" cy="12" r="9" /><path d="M12 7v10M14.5 9.5A2.5 2.5 0 0 0 12 8h-.3a2.2 2.2 0 0 0-.3 4.4h1.2a2.2 2.2 0 0 1-.3 4.4H12a2.5 2.5 0 0 1-2.5-1.5" /></svg>
+    ),
+  },
+  {
+    label: 'Grow Your Business', tone: 'blue',
+    icon: (
+      <svg viewBox="0 0 24 24" {...stroke}><path d="M5 20V11M12 20V5M19 20v-6" /><path d="M3 20h18" /></svg>
+    ),
+  },
+];
 
 /**
  * Quick Stops has its own wordmark, and the mocks were spelling the name in
@@ -360,60 +401,55 @@ export default function FlagshipHome() {
       <a className="skip-link" href="#main-content">Skip to content</a>
       <SiteHeader />
 
-      {/* THE RISING CONSOLE.
-          This was a 50/50 split with the dashboard at about 40% of the screen —
-          the best asset on the page rendered at the smallest size on it. The
-          copy is centred and the console goes full width beneath it, tilted
-          back on arrival and levelling as you scroll (see .hero-stage in the
-          generator). Two things had to move for that: the floating badges now
-          hang off the console's corners rather than the panel's sides, and the
-          one-truck/ten-crews scale row is a footer under the console instead of
-          a column under the copy. */}
-      <section className="hero hero-stage" id="main-content" data-track="hero">
+      {/* THE HERO, TO THE MOCKUP.
+          Copy left, product right, four pillars along the bottom of the copy.
+
+          The dashboard here is no longer DRAWN. It was a stack of divs shaped
+          like a product — an "EXAMPLE BUSINESS" title bar, invented figures,
+          and a layout that only ever resembled the app. It is now four real
+          screenshots of the running product, captured from the /demo routes by
+          scripts/capture-product-shots.mjs, rotating. That is the audit's
+          "show the actual product, not only a stylized representation", and it
+          means the hero cannot drift from the thing it is selling.
+
+          Gone with it: the two floating badges and the one-truck/ten-crews
+          scale row. Neither is in the mockup, and the badges in particular
+          would now be sitting on top of real UI rather than beside a drawing
+          of it. */}
+      <section className="hero hero-split" id="main-content">
         <div className="hero-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> ONE TRUCK OR TEN CREWS. THE FULL SUITE IS YOURS.</p>
-          <h1>Build the website.<br />Win better jobs.<br /><em>Run everything behind it.</em></h1>
-          <p className="hero-sub">Launch a professional site in minutes. AI qualifies every request, alerts you to the best opportunities, and keeps each job moving from quote to payment.</p>
-          {/* The primary CTA goes to the app, not to an anchor.
-              It used to be href="#final-cta" — the loudest button on the page,
-              at the top of the page, scrolling you to the bottom of the page to
-              find another button. Anyone ready to start had to be asked twice.
-              The secondary keeps its in-page jump, which is what a secondary is
-              for. */}
+          <h1>Run your contracting business.<br /><em>All in one place.</em></h1>
+          <p className="hero-sub">
+            From jobs to payments, automations to Quick Stops, LGQ helps you save time, earn more,
+            and stay organized.
+          </p>
           <div className="hero-actions">
-            <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>Build my free site <span>→</span></a>
-            <a className="button secondary" href="#included">Explore everything included</a>
+            <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>Create Free Account <span>→</span></a>
+            <a className="button secondary" href="/demo">Try the Demo</a>
           </div>
           <p className="hero-note"><i>✓</i> Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Pay only when you get paid</p>
+
+          <ul className="hero-pillars">
+            {PILLARS.map(({ label, tone, icon }) => (
+              <li key={label} data-tone={tone}>
+                <span className="pillar-icon" aria-hidden="true">{icon}</span>
+                <b>{label}</b>
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="hero-product" aria-label="Let's Get Quoted dashboard preview">
-          <div className="hero-orbit orbit-one" data-plane="back" /><div className="hero-orbit orbit-two" data-plane="back" />
-          <div className="dashboard-card">
-            <div className="dash-top"><b>Let’s Get <span>Quoted</span></b><small>EXAMPLE BUSINESS · LIVE</small><i>BA</i></div>
-            <div className="dash-body">
-              <aside><span className="selected">⌂</span><span>◎</span><span>□</span><span>↗</span><span>✦</span></aside>
-              <div className="dash-main">
-                <div className="dash-greeting"><div><small>FRIDAY, AUGUST 7</small><h2>Good morning.</h2></div><button>+ New</button></div>
-                <div className="attention-card"><small>NEEDS YOUR ATTENTION</small><div className="attention-row"><b>3</b><span>New leads need a response</span><em>Review leads →</em></div><div className="attention-row"><b>2</b><span>Quotes awaiting approval</span><em>Follow up →</em></div></div>
-                <div className="dash-grid"><div><small>NEXT 7 DAYS</small><strong>6 jobs</strong><p>3 crews assigned</p></div><div><small>ESTIMATED REVENUE</small><strong>$18.4k</strong><p className="up">↑ 14% this month</p></div><div className="quick-mini"><QuickStopsMark width={104} /><strong>Nearby request</strong><p>0.7 mi off route · $149</p></div></div>
-              </div>
-            </div>
-          </div>
-          <div className="floating-alert" data-plane="front"><span className="alert-icon">✦</span><div><small>AI LEAD ALERT</small><b>Kitchen remodel · in your service area</b></div><em>NOW</em></div>
-          <div className="floating-paid" data-plane="front"><i>✓</i><div><small>PAYMENT RECEIVED</small><b>$4,250 headed to your bank</b></div></div>
-          {/* The panel quotes $18.4k of revenue, six booked jobs and a $4,250
-              payment. None of it happened. "EXAMPLE BUSINESS" in the title bar
-              is the kind of label you notice only once you already believed the
-              numbers — /features carries this same marker under its mock for
-              the same reason. */}
+
+        <div className="hero-product">
+          <HeroShowcase />
+          {/* Accurate about what these are. They are screenshots of the real
+              product, taken from a seeded account — so the SCREENS are the
+              product and the FIGURES are sample data. The old hero's marker
+              said "invented figures" because the whole panel was drawn; that
+              would understate these, and "real results" would overstate them. */}
           <p className="example-mark">
-            <b>Example</b> — invented figures, not a real customer.{' '}
-            <a href="/demo">See the live demo</a>
+            <b>Real screens</b> — the actual product, with sample data.{' '}
+            <a href="/demo">Try the live demo</a>
           </p>
-        </div>
-        <div className="hero-scale" data-rise>
-          <span><small>STARTING OUT?</small><b>Look established on day one.</b></span>
-          <span><small>ALREADY GROWING?</small><b>Give every crew one system.</b></span>
         </div>
       </section>
 

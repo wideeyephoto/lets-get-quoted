@@ -2852,261 +2852,224 @@
 .root[data-motion="on"] :global(.ai-rail article[data-rise].is-in:hover) { transform: translateY(-4px); }
 
 /* ===========================================================================
-   §01 — THE RISING CONSOLE
+   §01 — THE HERO
 
-   Was a 50/50 split with the dashboard mock at about 40% of the screen. The
-   copy is centred and the console goes full width beneath it, tilted back on
-   arrival and levelling as the visitor scrolls.
+   Copy left, product right, four pillars along the bottom of the copy.
+
+   The rising console that used to live here — a drawn dashboard that tilted
+   back on arrival and levelled as you scrolled — is gone, and so are its ~250
+   lines. What replaced it is four real screenshots of the running app, so
+   there is nothing left to draw, tilt or keep in sync with the product.
    =========================================================================== */
 
-.root :global(.hero-stage) {
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  align-items: start;
-  text-align: center;
-  gap: 0;
-  min-height: 0;
-  padding: 148px clamp(20px, 5vw, 86px) 92px;
+.root :global(.hero-split) {
+  display: grid;
+  grid-template-columns: minmax(0, .84fr) minmax(0, 1.16fr);
+  gap: clamp(36px, 5vw, 84px);
+  align-items: center;
+  padding: clamp(48px, 6vw, 96px) clamp(20px, 5vw, 86px) clamp(56px, 7vw, 104px);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 6% 2%, rgba(124, 92, 255, .16), transparent 38%),
+    radial-gradient(circle at 92% 86%, rgba(255, 106, 36, .10), transparent 34%),
+    linear-gradient(165deg, #0a1017, #0b1a24 62%, #0a1720);
 }
 
-/* The centred glow and the orbit rings were both sited against the old
-   right-hand column. Re-centred behind the console. */
-.root :global(.hero-stage)::before {
-  left: 50%; right: auto; margin-left: -270px; top: 26%;
+.root :global(.hero-split .hero-copy) {
+  max-width: 620px;
+  padding: 0; background: none; border: 0; border-radius: 0;
 }
-.root :global(.hero-stage .orbit-one) {
-  width: 940px; height: 940px; top: -300px; right: auto; left: 50%; margin-left: -470px;
-}
-.root :global(.hero-stage .orbit-two) {
-  width: 680px; height: 680px; top: -170px; right: auto; left: 50%; margin-left: -340px;
-}
-
-/* A class collision, and exactly the one this file's header warns about.
-   src/app/globals.css:4045 gives .hero-copy a 32px-radius card — a gradient
-   face, a border and 1.5rem of padding — and the flagship's own .hero-copy
-   rule sets position, z-index and max-width, so it never resets any of it.
-   Measured: rgba(8,18,31,.82) + linear-gradient, border-radius 32px.
-
-   It has been leaking since the route was built. At 690px in the old left
-   column it read as part of the composition; centred at 940px behind a
-   headline it is unmistakably a stray panel. Reset explicitly — the flagship
-   hero copy sits on the section, not on a card. */
-.root :global(.hero-copy) {
-  padding: 0;
-  background: none;
-  border: 0;
-  border-radius: 0;
-}
-/* The measure and the size are set together, because the third line — "Run
-   everything behind it." — is the longest and it is the one that decides both.
-   At 940px and 94px it broke after "behind", leaving "it." alone on a fourth
-   line; centred, a two-character widow is the first thing you see.
-   balance gives an even break at the widths where it still has to wrap. */
-.root :global(.hero-stage .hero-copy) { max-width: 1060px; }
-.root :global(.hero-stage h1) {
-  font-size: clamp(40px, 5.5vw, 86px);
+.root :global(.hero-split h1) {
+  margin: 0;
+  font-size: clamp(40px, 4.6vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -.035em;
   text-wrap: balance;
 }
-.root :global(.hero-stage .hero-sub) { max-width: 660px; margin: 28px auto 34px; }
-.root :global(.hero-stage .hero-actions) { justify-content: center; }
+.root :global(.hero-split h1 em) { color: var(--orange); font-style: normal; display: block; }
+.root :global(.hero-split .hero-sub) {
+  margin: 22px 0 0;
+  max-width: 46ch;
+  font-size: clamp(16px, 1.35vw, 19px);
+  line-height: 1.62;
+  color: #a9bac4;
+}
+.root :global(.hero-split .hero-actions) { margin-top: 32px; justify-content: flex-start; }
+.root :global(.hero-split .hero-note) { margin-top: 18px; }
 
-/* text-align:left, because the section centres its copy and that inherits
-   straight into the product mock: "NEEDS YOUR ATTENTION", the attention rows
-   and both badge labels were centred inside a panel that is supposed to look
-   like software. A dashboard does not centre its own labels. */
-.root :global(.hero-stage .hero-product) {
+/* ---- the four pillars ---------------------------------------------------- */
+
+.root :global(.hero-pillars) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: clamp(34px, 4vw, 54px) 0 0;
+  padding-top: clamp(26px, 3vw, 38px);
+  border-top: 1px solid rgba(174, 199, 211, .13);
+}
+/* margin:0 is the load-bearing one. globals.css carries an "li + li" rule worth
+   7.2px, so the first pillar sat 7px above the other three at every width —
+   nothing to do with alignment, which is what it looked like. PREFLIGHT resets
+   ul and ol margins inside .root but not the list items' own. */
+.root :global(.hero-pillars li) {
+  display: grid;
+  margin: 0;
+  align-self: start;
+  justify-items: start;
+  align-content: start;
+  gap: 11px;
+}
+.root :global(.pillar-icon) {
+  display: grid; place-items: center;
+  width: 46px; height: 46px;
+  border-radius: 13px;
+  border: 1px solid var(--tone-line);
+  background: var(--tone-fill);
+  color: var(--tone);
+}
+.root :global(.pillar-icon svg) { width: 21px; height: 21px; }
+.root :global(.hero-pillars b) {
+  font-size: 13px; font-weight: 650; line-height: 1.35;
+  color: #cfdbe2;
+  text-wrap: balance;
+}
+
+/* Category colours, not status. One custom property per tone so the icon rule
+   above stays a single rule. */
+.root :global(.hero-pillars li[data-tone="violet"]) { --tone: #a394ff; --tone-fill: rgba(124, 92, 255, .13); --tone-line: rgba(124, 92, 255, .34); }
+.root :global(.hero-pillars li[data-tone="orange"]) { --tone: #ff9257; --tone-fill: rgba(255, 106, 36, .13); --tone-line: rgba(255, 106, 36, .36); }
+.root :global(.hero-pillars li[data-tone="green"])  { --tone: #5ed6a0; --tone-fill: rgba(53, 201, 138, .13); --tone-line: rgba(53, 201, 138, .34); }
+.root :global(.hero-pillars li[data-tone="blue"])   { --tone: #6fb4f5; --tone-fill: rgba(77, 157, 240, .13); --tone-line: rgba(77, 157, 240, .34); }
+
+/* ---- the product slider -------------------------------------------------- */
+
+/* The old .hero-product was a 660-726px box with a 1200px perspective, sized
+   to hold a drawn console that no longer exists — and its .example-mark was
+   absolutely positioned to the bottom-right corner of that box, which stranded
+   the marker a screen away from the thing it labels. Both undone here. */
+.root :global(.hero-split .hero-product) {
+  position: relative;
   width: 100%;
-  max-width: 1140px;
   height: auto;
-  margin-top: 50px;
-  perspective: 1700px;
+  perspective: none;
   text-align: left;
 }
+.root :global(.hero-showcase) { position: relative; }
 
-/* In flow now, not absolutely placed in a fixed-height box. transform-origin
-   above the top edge is what makes the tilt read as the panel rising toward
-   you rather than rocking about its middle.
-
-   animation:none is required, not tidying: dashboardFloat restates the whole
-   transform at its 50% frame, and an animation's transform beats a
-   stylesheet's — the scroll tilt would have been silently overridden. */
-.root :global(.hero-stage .dashboard-card) {
+/* The frame is sized by aspect ratio rather than by the image, so swapping a
+   screenshot for one a few pixels different cannot shift the whole hero. */
+.root :global(.showcase-frame) {
   position: relative;
-  top: 0; left: 0;
-  width: 100%;
-  height: 604px;
-  transform-origin: 50% -14%;
-  transform: none;
-  animation: none;
-}
-.root[data-motion="on"] :global(.hero-stage .dashboard-card) {
-  transform: rotateX(calc(13deg - var(--sp, 0) * 13deg));
-}
-.root :global(.hero-stage .dash-body) { height: calc(100% - 58px); }
-
-/* The console is now ~1140px rather than ~669px, so the panel's type — which
-   was scaled for the narrow column — reads small again in the wider box. */
-.root :global(.hero-stage .dash-greeting h2) { font-size: 29px; }
-.root :global(.hero-stage .attention-row) { font-size: 13.5px; }
-.root :global(.hero-stage .attention-row b) { font-size: 21px; }
-.root :global(.hero-stage .dash-grid strong) { font-size: 26px; }
-.root :global(.hero-stage .dash-grid p) { font-size: 11.5px; }
-.root :global(.hero-stage .dash-grid > div) { min-height: 132px; }
-
-/* THE TWO NOTIFICATIONS.
-
-   These are the moments the product exists to create — a lead worth calling,
-   and money arriving — and on a 1254px console they were 310px and 265px cards
-   in the same grey as the panel behind them, with 7px labels. Bigger, brighter,
-   and each carrying its own accent so which one arrived reads at a glance:
-   orange for the lead, mint for the money.
-
-   alertFloat is dropped for the same reason dashboardFloat was — an animation
-   owns the transform, and the front plane needs it.
-
-   PLACEMENT. The alert was at top:-24px, which put it straight over the title
-   bar: measured at every width from 390 to 1440 it covered "EXAMPLE BUSINESS ·
-   LIVE" and the avatar. That label is the marker that stops a visitor
-   believing the invented figures, so covering it is not a cosmetic problem.
-
-   translateY(-100%) against top:9px lands the badge's BOTTOM 9px inside the
-   card whatever height it grows to — over the top border and the rounded
-   corner, clear of the 58px title bar's text. The plane offset has to be
-   restated in the same transform or it is lost.
-
-   And it is CLAMPED: min(0px, --plane-y). A front-plane element drifts both
-   ways, and the downward half is what put the badge back on the title bar —
-   measured +21px of drift at a 950px viewport, +49px at 700px, because the
-   journey fraction grows as the viewport shrinks. There is no single offset
-   that clears it at every height. Clamped, the badge can only ever travel AWAY
-   from the card, which is the interesting direction anyway: it sweeps off as
-   you scroll and it can never sweep onto the label underneath. */
-.root :global(.hero-stage .floating-alert),
-.root :global(.hero-stage .floating-paid) {
-  animation: none;
-  border-width: 1.5px;
-  border-radius: 14px;
-  padding: 15px 17px;
-  background: linear-gradient(150deg, rgba(19,44,58,.985), rgba(9,23,33,.985));
-}
-.root :global(.hero-stage .floating-alert) {
-  top: 0; right: 4px; bottom: auto;
-  width: 372px;
-  transform: translateY(-100%) translate3d(0, min(0px, var(--plane-y, 0px)), 0);
-  border-color: rgba(255,106,36,.66);
+  aspect-ratio: 1600 / 1000;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(174, 199, 211, .18);
+  background: #0a1017;
   box-shadow:
-    0 2px 0 rgba(255,255,255,.07) inset,
-    0 28px 64px rgba(0,0,0,.52),
-    0 0 50px rgba(255,106,36,.3);
+    0 40px 90px -30px rgba(0, 0, 0, .7),
+    0 0 0 1px rgba(255, 255, 255, .03) inset;
 }
-.root :global(.hero-stage .floating-paid) {
-  /* The console's content ends about 140px above its lower edge, and that band
-     is where this sits. Its drift is bounded UPWARD rather than clamped to
-     zero: as the page scrolls, plane offsets go negative, so a min(0px,...)
-     clamp like the alert's would pin this one still and it would have no
-     parallax at all. 18px of travel, which measured leaves 17px between the
-     badge and the stats row above it. */
-  bottom: 34px; left: 8px;
-  width: 330px;
-  transform: translate3d(0, clamp(-18px, var(--plane-y, 0px), 0px), 0);
-  border-color: rgba(80,227,189,.58);
-  box-shadow:
-    0 2px 0 rgba(255,255,255,.06) inset,
-    0 28px 64px rgba(0,0,0,.5),
-    0 0 46px rgba(80,227,189,.24);
+.root :global(.showcase-shot) {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  opacity: 0;
+  transition: opacity .55s ease;
+}
+.root :global(.showcase-shot[data-on="true"]) { opacity: 1; }
+
+/* ---- the tabs ------------------------------------------------------------ */
+
+.root :global(.showcase-tabs) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.root :global(.showcase-tabs button) {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 14px 9px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(174, 199, 211, .17);
+  background: rgba(255, 255, 255, .03);
+  color: #9db0bd;
+  font-size: 12.5px; font-weight: 600;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+.root :global(.showcase-tabs button:hover) { color: #e6eef2; border-color: rgba(255, 106, 36, .4); }
+.root :global(.showcase-tabs button[data-on="true"]) {
+  color: #f3f7f8;
+  border-color: rgba(255, 106, 36, .5);
+  background: rgba(255, 106, 36, .09);
 }
 
-/* The eyebrow takes the accent. Measured on this ground: orange 5.2:1, mint
-   9.4:1 — both clear AA at 9.5px/800. */
-.root :global(.hero-stage .floating-alert small),
-.root :global(.hero-stage .floating-paid small) {
-  font-size: 9.5px; letter-spacing: 1.5px; font-weight: 800;
+/* The dot doubles as the dwell timer, so the rotation is legible rather than
+   something that just happens to you. */
+.root :global(.showcase-tabs i) {
+  position: relative;
+  display: block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(174, 199, 211, .3);
+  overflow: hidden;
 }
-.root :global(.hero-stage .floating-alert small) { color: var(--orange); }
-.root :global(.hero-stage .floating-paid small) { color: var(--mint); }
-.root :global(.hero-stage .floating-alert b),
-.root :global(.hero-stage .floating-paid b) {
-  font-size: 15px; margin-top: 5px; letter-spacing: -.012em; color: #f3f8f9;
+.root :global(.showcase-tabs button[data-on="true"] i) { background: rgba(255, 106, 36, .3); }
+.root :global(.showcase-tabs button[data-on="true"] i s) {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--orange);
+  transform: scale(0);
+  animation-name: showcaseDwell;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }
-.root :global(.hero-stage .floating-alert .alert-icon) {
-  width: 42px; height: 42px; border-radius: 10px; margin-right: 13px;
-  font-size: 15px;
-  background: rgba(255,106,36,.2);
-  border: 1px solid rgba(255,106,36,.48);
-}
-.root :global(.hero-stage .floating-paid > i) {
-  width: 40px; height: 40px; margin-right: 13px; font-size: 15px;
-  background: rgba(80,227,189,.18);
-  border: 1px solid rgba(80,227,189,.45);
-}
-/* NOW is the whole reason the alert matters, and it was 8px mint text. */
-.root :global(.hero-stage .floating-alert em) {
-  margin-left: 12px; padding: 3px 7px; border-radius: 4px;
-  background: var(--orange); color: #2a0c00;
-  font-size: 8.5px; font-weight: 800; letter-spacing: .1em;
+@keyframes showcaseDwell { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* Paused on hover, and never animated for a visitor who asked for less motion —
+   in both cases the dot is simply filled, because a half-filled timer that is
+   not counting is a lie about what is about to happen. */
+.root :global(.hero-showcase:hover .showcase-tabs button[data-on="true"] i s) { animation: none; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.showcase-shot) { transition: none; }
+  .root :global(.showcase-tabs button[data-on="true"] i s) { animation: none; transform: scale(1); }
 }
 
-/* Room for the alert to overhang without reaching the hero note above it. */
-.root :global(.hero-stage .hero-product) { margin-top: 72px; }
-
-/* ---- the Quick Stops wordmark ---------------------------------------------
-
-   Sized against the label it replaces so the tiles keep their rhythm: the
-   dash-grid's own <small> is 11px with a 4px gap, about 15px of band. */
-.root :global(.quick-mini .qs-mark) { margin-bottom: 6px; }
-.root :global(.quick-card .qs-mark) { margin: 10px 0 0; }
-
-/* Centred under the console. text-align on the marker itself does nothing —
-   it is display:inline-flex, so its own box is placed by the PARENT's
-   text-align, and the parent is deliberately left-aligned so the dashboard
-   labels inside it read as software. flex + max-content makes auto margins
-   work on it directly. */
-.root :global(.hero-stage .hero-product .example-mark) {
+.root :global(.hero-split .hero-product .example-mark) {
   position: static;
   display: flex;
   width: max-content;
   max-width: 100%;
-  margin: 18px auto 0;
+  margin: 12px 0 0;
   white-space: normal;
 }
 
-/* The scale row was a column under the copy; centred layout leaves it no
-   column, so it becomes a footer rule under the console. */
-.root :global(.hero-stage .hero-scale) {
-  width: 100%;
-  max-width: 780px;
-  margin-top: 46px;
-  text-align: left;
-}
+/* ---- narrower ------------------------------------------------------------ */
 
 @media (max-width: 1100px) {
-  .root :global(.hero-stage) { padding-top: 128px; }
-  /* 578, not 520: the panel's content needs 473px and the payment notification
-     needs the band under it. At 520 the band was 55px and a 72px badge sat on
-     the "6 jobs / 3 crews assigned" tile — measured at 1100 and at 900. */
-  .root :global(.hero-stage .dashboard-card) { width: 100%; left: 0; height: 578px; }
-  .root :global(.hero-stage .dash-grid > div) { min-height: 118px; }
+  .root :global(.hero-split) { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .root :global(.hero-split .hero-copy) { max-width: 720px; }
 }
-/* The card clips silently — overflow:hidden and a definite height — so these
-   numbers are measured against the panel's real content height at each width,
-   not estimated. Measured slack at 760/600/390: 0px, 0px, 0px. */
 @media (max-width: 760px) {
-  .root :global(.hero-stage) { padding: 112px 20px 64px; }
-  .root :global(.hero-stage .hero-product) { margin-top: 34px; }
-  .root :global(.hero-stage .dashboard-card) {
-    width: 100%; left: 0; height: 452px; transform: none;
-  }
-  .root[data-motion="on"] :global(.hero-stage .dashboard-card) { transform: none; }
-  .root :global(.hero-stage .floating-alert) { top: -18px; right: -6px; }
-  .root :global(.hero-stage .dash-greeting h2) { font-size: 22px; }
-  .root :global(.hero-stage .dash-grid strong) { font-size: 20px; }
-  .root :global(.hero-stage .hero-scale) { margin-top: 34px; }
+  .root :global(.hero-pillars) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+  .root :global(.hero-split .hero-actions) { display: grid; }
+  .root :global(.hero-split .hero-actions .button) { justify-content: center; }
+  .root :global(.showcase-tabs) { gap: 6px; }
+  .root :global(.showcase-tabs button) { padding: 8px 11px 8px 9px; font-size: 11.5px; }
+
+  /* A 1400px desktop screen shown 350px wide is a 4x reduction — a picture of
+     a dashboard with nothing on it you can read, which is the thing worth
+     avoiding rather than the thing worth doing. The frame goes portrait and
+     crops INTO the screen instead: the same asset, about 2.3x rather than 4x,
+     showing the left of the content column where the headline figures are.
+     object-position starts past the sidebar, which is the least informative
+     strip of any of the four screens. */
+  .root :global(.showcase-frame) { aspect-ratio: 4 / 5; }
+  .root :global(.showcase-shot) { object-position: 26% 0; }
 }
-/* Below 480 the attention rows and the three stat tiles both wrap, which adds
-   about 40px of content the 452px box has no room for. */
-@media (max-width: 480px) {
-  .root :global(.hero-stage .dashboard-card) { height: 500px; }
-}
+
 
 /* ===========================================================================
    §02 — THE FEATURE TOUR, ELEVATED
