@@ -3030,7 +3030,45 @@ const TWEAKS = `
 }
 .root :global(.suite-tabs button:focus-visible) { outline: 2px solid var(--orange); outline-offset: 2px; }
 
+/* The dwell timer on the active tab. The rotation is fast, and a screen that
+   changes for no visible reason reads as a bug rather than as a tour. */
+.root :global(.suite-tabs button) { position: relative; overflow: hidden; }
+.root :global(.suite-tab-dwell) {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--orange);
+  transform-origin: left;
+  animation: lgqSuiteDwell var(--dwell) linear forwards;
+}
+@keyframes lgqSuiteDwell { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.suite-tab-dwell) { display: none; }
+}
+
+/* THE PANEL MUST NOT JUMP AS THE SCREENS ROTATE.
+   The five mockups are different heights and a panel that resizes five times
+   in six seconds drags every section below it up and down the page. Measured
+   at 1440 the box ran 595–722px, so 740 holds all five with the shortest
+   centred rather than top-aligned above a gap.
+
+   THE RESERVATION IS DESKTOP-ONLY, and so is the rotation (see SUITE_ROTATE_MIN
+   in flagship-home). The spread is 123px between the tallest and shortest card
+   at 1440 and 476px at 390, where the leads pipeline is more than twice the
+   height of the schedule — reserving for that would put a screen and a half of
+   whitespace under every short one. Below the breakpoint the tabs still work,
+   they just wait to be pressed. */
 .root :global(.suite-screen) { margin-bottom: clamp(34px, 4vw, 54px); }
+
+@media (min-width: 1024px) {
+  .root :global(.suite-screen) {
+    display: grid;
+    align-content: center;
+    min-height: 740px;
+  }
+}
 
 /* One screen, not six stacked. The deck's own layout gapped six full-height
    cards down the page; with one card there is nothing to gap. */

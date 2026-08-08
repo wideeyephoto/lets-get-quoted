@@ -26590,3 +26590,81 @@ body[data-schedule-overlay="job"] .sched-queue {
 @media (max-width: 640px) {
   .sched-tl-job-city, .sched-tl-job-foot { display: none; }
 }
+
+/* ===========================================================================
+   GETTING BACK, AND GETTING OUT OF THE WAY
+   ===========================================================================
+   Four small things the time views were missing once they existed. */
+
+/* -- back to the month you came from --------------------------------------- */
+/* Clicking a date in Month drops you into Day, and the only route back was the
+   View dropdown — something you have to remember exists, and which returns you
+   to the top of a month you had already scrolled through. This restores the
+   month, the scroll position and the date. */
+.sched-back-to-month {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  margin-right: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--mute-i60);
+  font: inherit;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.sched-back-to-month:hover {
+  border-color: rgba(var(--tint), 0.3);
+  background: rgba(var(--tint), 0.07);
+  color: var(--ink);
+}
+.sched-back-to-month:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* -- hiding the rail on a wide screen -------------------------------------- */
+.sched-rail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--mute-i60);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sched-rail-toggle svg { width: 15px; height: 15px; }
+.sched-rail-toggle:hover { border-color: rgba(var(--tint), 0.3); color: var(--ink); }
+.sched-rail-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-rail-toggle[aria-pressed='true'] {
+  border-color: var(--cedge-orange-8);
+  background: rgba(255, 138, 61, 0.09);
+  color: var(--ink-orange-4);
+}
+
+/* One column instead of two, and the rail out of the layout entirely rather
+   than merely invisible: `visibility: hidden` would leave the grid track and
+   the calendar exactly as narrow as it was. */
+@media (min-width: 1280px) {
+  body[data-sched-rail='collapsed'] .schedule-shell { grid-template-columns: minmax(0, 1fr); }
+  body[data-sched-rail='collapsed'] .schedule-rail { display: none; }
+}
+
+/* -- the mouse-only half of the queue instruction -------------------------- */
+/* Hidden where there is no pointer to drag with. A width query would guess
+   wrong on a touchscreen laptop in one direction and a mouse-driven small
+   window in the other; `hover: hover` asks the question that actually matters. */
+.schedule-drag-hint-mouse { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .schedule-drag-hint-mouse { display: inline; }
+}
+

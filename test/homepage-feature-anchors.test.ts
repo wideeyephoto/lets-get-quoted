@@ -86,9 +86,11 @@ describe('the homepage stops saying things twice', () => {
   });
 
   it('has no standalone AI section re-explaining the flagship cards', () => {
+    // It was first merged down to a four-step row under the cards, then removed
+    // outright — the cards already say what the chain does, and a row repeating
+    // "attract, qualify" under them was the same duplication in less space.
     expect(HOME).not.toContain('ai-split-story');
-    // What survives is the chain, as a row.
-    expect(HOME).toContain('flow-strip');
+    expect(HOME).not.toContain('flow-strip');
   });
 
   it('does not name the client portal in the suite grid as well as demonstrating it', () => {

@@ -20,6 +20,7 @@ import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
 import UnscheduledQueue from './UnscheduledQueue';
+import RailToggle from './RailToggle';
 import { ScheduleJobButton, UnscheduledBanner } from './QueueTriggers';
 import ScheduleMap from './ScheduleMap';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
@@ -645,6 +646,9 @@ export default async function SchedulePage({
           }
           weekendDays={weekendDays}
           initialView={calendarView}
+          /* Sits with the view menu because it is the same kind of decision:
+             what am I looking at, and how much room does it get. */
+          toolbarActions={unscheduledJobs.length > 0 ? <RailToggle count={approvedUnscheduled} /> : null}
           /* NO "Plan my day" HERE ANY MORE. It sat in this toolbar at every
              width, in the accent colour, permanently — the loudest control on a
              page whose job is booking work, pointed at a route optimiser for
@@ -701,9 +705,18 @@ export default async function SchedulePage({
                 every device, including the ones with no pointer to drag with and
                 no keyboard to do it another way. "Choose date & time" is on every
                 card and always was; it just read as the fallback. */}
+            {/* THE MOUSE SENTENCE IS HIDDEN WHERE THERE IS NO MOUSE.
+                It was a second instruction on every device, and on a phone it
+                described something the reader cannot do — the calendar it
+                refers to is not even on screen, and the queue is a full-height
+                overlay covering it. `(hover: hover)` in globals.css is what
+                shows it; a width query would guess wrong on a touchscreen
+                laptop in either direction. */}
             <p className="schedule-drag-hint">
-              Use <strong>Choose date &amp; time</strong> on any job below. On a mouse you can also drag a
-              job straight onto a calendar date.
+              Use <strong>Choose date &amp; time</strong> on any job below.
+              <span className="schedule-drag-hint-mouse">
+                {' '}On a mouse you can also drag a job straight onto a calendar date.
+              </span>
             </p>
           </div>
           <div className="sign-in-methods-list">

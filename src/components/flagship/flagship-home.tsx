@@ -132,21 +132,6 @@ const features: Feature[] = [
   },
 ];
 
-/**
- * The four handoffs, as a row rather than as a section.
- *
- * This is what survives of "Four places AI saves you time" — a full-length
- * block whose first two steps re-explained the first two flagship cards
- * directly above it. The claim worth keeping is not any one of the four, it is
- * that they are a CHAIN and the same details travel down it, which is a shape
- * and reads better as one line than as four articles.
- */
-const WORKFLOW: Array<[step: string, what: string]> = [
-  ['Attract', 'A job-ready site, written for your trade'],
-  ['Qualify', 'Trade-specific follow-ups, photos and timing'],
-  ['Prioritize', 'Fit, urgency, value and service area, scored'],
-  ['Follow through', 'Quote, schedule, texts and payment'],
-];
 
 /**
  * The rest of the job, and where each part is explained in full.
@@ -160,6 +145,24 @@ const WORKFLOW: Array<[step: string, what: string]> = [
  * Every card is a link now. Four go to the capability groups on /features
  * (which is what those groups are for) and two to the pages that go deeper.
  */
+/** How long each product screen holds before the next one. */
+const SUITE_DWELL = 1250;
+
+/**
+ * The narrowest width the screens rotate at.
+ *
+ * Not a performance guard — a layout one. The five mockups are different
+ * heights, and a panel that resizes every 1.25s drags every section below it up
+ * and down the page. Above this width the spread is 123px and is absorbed by a
+ * reserved min-height with the shorter screens centred (see §97). Below it the
+ * spread is 476px — the leads pipeline is more than twice the height of the
+ * schedule at 390px — and reserving for that would put a screen and a half of
+ * empty space under every short one.
+ *
+ * The tabs still work below it. They just wait to be pressed.
+ */
+const SUITE_ROTATE_MIN = 1024;
+
 const suite: Array<[title: string, body: string, href: string]> = [
   ["Quotes + e-sign", "Professional, itemized quotes with optional upgrades.", "/features/back-office"],
   ["Scheduling", "Arrival windows, capacity and weather-aware planning.", "/features#planning-and-scheduling"],
@@ -294,6 +297,68 @@ export default function FlagshipHome() {
      deck's own list so this cannot start on a screen that does not exist. */
   const [screen, setScreen] = useState(COMMAND_CENTER_SCREENS[0]?.id ?? '');
 
+  /**
+   * THE SCREENS ADVANCE ON THEIR OWN, UNTIL SOMEBODY TAKES OVER.
+   *
+   * A tab strip that never moves reads as five labels rather than as five
+   * things to look at, and most visitors will see the first screen and scroll
+   * past. Rotating them shows the product does more than one thing without
+   * asking anyone to press anything.
+   *
+   * FOUR CONDITIONS STOP IT, and all four matter:
+   *
+   *   off screen      this sits most of the way down a very long page; a timer
+   *                   swapping DOM for the whole scroll is work nobody sees.
+   *   pointer inside  you are reading it. Moving it under a reader is the thing
+   *                   that makes carousels hated.
+   *   focus inside    the keyboard equivalent, and the one usually forgotten —
+   *                   tabbing into a strip that then changes under you is worse
+   *                   than a mouse, because you cannot see where it went.
+   *   a click         you have said which screen you want. It never resumes.
+   *
+   * Plus prefers-reduced-motion, where it never starts, and document.hidden.
+   */
+  const suiteRef = useRef<HTMLElement>(null);
+  const [suitePaused, setSuitePaused] = useState(false);
+  const [suiteTaken, setSuiteTaken] = useState(false);
+
+  useEffect(() => {
+    if (suiteTaken || suitePaused) return;
+    if (COMMAND_CENTER_SCREENS.length < 2) return;
+    if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    if (!window.matchMedia(`(min-width: ${SUITE_ROTATE_MIN}px)`).matches) return;
+
+    let onScreen = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const advance = () => setScreen((current) => {
+      const ids = COMMAND_CENTER_SCREENS.map((option) => option.id);
+      const at = ids.indexOf(current);
+      return ids[(at + 1) % ids.length] ?? current;
+    });
+    const start = () => { timer ??= setInterval(advance, SUITE_DWELL); };
+    const stop = () => { if (timer) { clearInterval(timer); timer = undefined; } };
+
+    let io: IntersectionObserver | undefined;
+    if (suiteRef.current && 'IntersectionObserver' in window) {
+      io = new IntersectionObserver(([entry]) => {
+        onScreen = entry.isIntersecting;
+        if (onScreen && !document.hidden) start(); else stop();
+      }, { threshold: 0.25 });
+      io.observe(suiteRef.current);
+    } else {
+      start();
+    }
+
+    const onVisibility = () => { if (document.hidden) stop(); else if (onScreen) start(); };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      stop();
+      io?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [suitePaused, suiteTaken]);
+
   /* A tablist is expected to move with the arrow keys, and Home/End to the
      ends. Without this the strip is a row of buttons that happens to say
      role="tab" — the role promises behaviour a screen-reader user will look
@@ -311,6 +376,7 @@ export default function FlagshipHome() {
     if (event.key === 'End') next = ids[ids.length - 1] ?? null;
     if (!next) return;
     event.preventDefault();
+    setSuiteTaken(true);
     setScreen(next);
     // Focus follows selection, which is what a tablist with automatic
     // activation does; the panel below has already changed.
@@ -584,36 +650,6 @@ export default function FlagshipHome() {
           </div>
         </div>
 
-      {/* THE AI SECTION WAS A THIRD FULL-LENGTH BLOCK SAYING THE FIRST TWO AGAIN.
-
-          "Four places AI saves you time" ran the width of the page with four
-          articles, a head, a context strip and an animated trace. Its first two
-          steps — launches a job-ready website, turns a request into a real
-          scope — are the first two flagship cards immediately above, told a
-          second time with different nouns.
-
-          What it had that the cards did not is the SHAPE: that the four things
-          are one chain, and the same details travel down it. That is one row
-          and one sentence, and it belongs under the cards it is describing
-          rather than in a section of its own.
-
-          The two steps that were only here — prioritize, follow through — keep
-          their own words. Nothing is dropped; /how-it-works walks all four in
-          full. */}
-      <div className="flow-strip" aria-label="How the four steps connect">
-        <ol>
-          {WORKFLOW.map(([step, what], index) => (
-            <li key={step} data-rise style={cssVars({ '--rise-i': index })}>
-              <span className="flow-step">{step}</span>
-              <small>{what}</small>
-            </li>
-          ))}
-        </ol>
-        <p>
-          The same customer details move from the first request to the quote, schedule and
-          payment&mdash;without being entered twice.
-        </p>
-      </div>
       </section>
 
       <section className="client-experience" aria-labelledby="client-experience-title">
@@ -682,7 +718,18 @@ export default function FlagshipHome() {
 
           A card with no screen behind it is still a link to the page that
           explains it — which is the honest version of "we have this too". */}
-      <section className="included" id="included">
+      <section
+        className="included"
+        id="included"
+        ref={suiteRef}
+        /* Hovering or tabbing in stops the rotation. onFocus/onBlur rather than
+           focusin/focusout listeners because React's versions already bubble,
+           which the DOM ones do not. */
+        onMouseEnter={() => setSuitePaused(true)}
+        onMouseLeave={() => setSuitePaused(false)}
+        onFocus={() => setSuitePaused(true)}
+        onBlur={() => setSuitePaused(false)}
+      >
         <div className="included-head" data-rise>
           <p className="eyebrow"><span>✦</span> THE REST OF THE JOB IS INCLUDED</p>
           <h2>One system from quote to review.</h2>
@@ -703,10 +750,16 @@ export default function FlagshipHome() {
               aria-controls="suite-screen"
               tabIndex={option.id === screen ? 0 : -1}
               className={option.id === screen ? 'is-on' : undefined}
-              onClick={() => setScreen(option.id)}
+              onClick={() => { setSuiteTaken(true); setScreen(option.id); }}
               onKeyDown={onScreenKeys}
             >
               {option.label}
+              {/* The dwell, drawn on the active tab. Without it the screens
+                  change for no visible reason and the strip looks broken; with
+                  it the rotation is something you can see coming and stop. */}
+              {option.id === screen && !suiteTaken ? (
+                <i className="suite-tab-dwell" aria-hidden="true" style={cssVars({ '--dwell': `${SUITE_DWELL}ms` })} />
+              ) : null}
             </button>
           ))}
         </div>

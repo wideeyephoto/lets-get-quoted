@@ -76,8 +76,40 @@ export default function UnscheduledQueue({
 
   const label = `${count} ${count === 1 ? 'job needs' : 'jobs need'} a date`;
 
+  /**
+   * A CLOSED DIALOG MUST NOT BE IN THE ACCESSIBILITY TREE.
+   *
+   * On a tablet this is a full-screen overlay that is closed almost all of the
+   * time, and it stayed in the document the whole while carrying
+   * role="dialog" — so a screen reader walking the page met a dialog nobody
+   * had opened, sitting between the calendar and the settings. `visibility:
+   * hidden` in the stylesheet was doing the real work, which is correct but
+   * invisible from the markup and one `visibility: visible` on a child away
+   * from silently coming back.
+   *
+   * `inert` states it in the markup instead: out of the tab order and out of
+   * the accessibility tree, in one attribute that a child cannot override.
+   *
+   * Set through the DOM rather than as a prop because React 18 has no typing
+   * for `inert` and passing a boolean makes it warn about a non-boolean
+   * attribute. React 19 takes it as a prop and this can go.
+   */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const hidden = isOverlay && !open;
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    if (hidden) {
+      node.setAttribute('inert', '');
+      node.setAttribute('aria-hidden', 'true');
+    } else {
+      node.removeAttribute('inert');
+      node.removeAttribute('aria-hidden');
+    }
+  }, [hidden]);
+
   return (
-    <div className={`sched-queue${open ? ' is-open' : ''}`} data-count={count}>
+    <div className={`sched-queue${open ? ' is-open' : ''}`} data-count={count} ref={rootRef}>
       {/* The backdrop only exists in overlay mode; on desktop the whole wrapper
           is display:contents and this never paints. */}
       <div className="sched-queue-scrim" onClick={close} aria-hidden="true" />

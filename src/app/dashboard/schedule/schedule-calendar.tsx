@@ -645,12 +645,45 @@ export default function ScheduleCalendar({
     if (monthKeyOf(todayKey) !== monthOfGrid) router.push(`${basePath}/schedule?month=${monthKeyOf(todayKey)}&day=${todayKey}`);
   }, [basePath, monthOfGrid, router, todayKey]);
 
-  /** Month cell -> that day, in the view with the room to show it. */
+  /**
+   * WHERE THE DAY VIEW WAS OPENED FROM, SO THERE IS A WAY BACK.
+   *
+   * Clicking a date in Month drops you into Day, and the only route back was
+   * the View menu — a dropdown you have to remember exists and re-navigate,
+   * which lands you at the top of a month you had already scrolled through.
+   * Nothing on screen said where you had come from or how to undo it.
+   *
+   * This holds the month label and the scroll position at the moment of the
+   * click, which is what "back" has to restore for it to feel like going back
+   * rather than navigating somewhere new. Cleared whenever the view changes by
+   * any other route, so the control can never offer to return you somewhere you
+   * did not come from.
+   */
+  const [cameFromMonth, setCameFromMonth] = useState<{ label: string; scrollY: number } | null>(null);
+
   const openDay = useCallback((dateKey: string) => {
+    setCameFromMonth({
+      label: new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      scrollY: window.scrollY,
+    });
     setAnchorDayKey(dateKey);
     setCalendarView('day');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const backToMonth = useCallback(() => {
+    const from = cameFromMonth;
+    setCameFromMonth(null);
+    setCalendarView('month');
+    // After paint, or the month grid does not exist yet to scroll within.
+    if (from) requestAnimationFrame(() => window.scrollTo({ top: from.scrollY, behavior: 'auto' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameFromMonth]);
+
+  // Any other change of view means the breadcrumb is no longer true.
+  useEffect(() => {
+    if (effectiveView !== 'day') setCameFromMonth(null);
+  }, [effectiveView]);
 
   function handleToggle(jobId: string, crewId: string) {
     // Assigning somebody to a job sends them a text. Not something a public
@@ -704,6 +737,15 @@ export default function ScheduleCalendar({
       <div className="calendar-toolbar">
         {TIME_VIEWS.has(effectiveView) ? (
           <div className="month-nav sched-range-nav">
+            {/* Only when you actually arrived here from Month. A permanent
+                "back to month" would be a fourth navigation control competing
+                with the three beside it, and it would be lying about half the
+                time. */}
+            {cameFromMonth ? (
+              <button type="button" className="sched-back-to-month" onClick={backToMonth}>
+                <span aria-hidden="true">←</span> Back to {cameFromMonth.label}
+              </button>
+            ) : null}
             <button
               type="button"
               className="month-nav-arrow"
