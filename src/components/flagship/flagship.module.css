@@ -2550,13 +2550,25 @@
    the RIGHT of the product panel like a stray caption, and the width it took
    squeezed the stage enough to push the wheel onto the phone mock.
 
-   Out of flow, bottom-left, opposite the scroll prompt. */
+   Out of flow, bottom-left, opposite the scroll prompt.
+
+   ONE LINE, and max-width is exactly what it must not have. .example-mark is
+   display:inline-flex, so <b>Example</b> and the sentence after it are two
+   separate flex items: a max-width wraps the sentence to three lines inside its
+   own box while align-items:center parks "EXAMPLE" against the middle of it.
+   Rendered, that read "— AN INVENTED / EXAMPLE BUSINESS, NOT A REAL /
+   CUSTOMER." — the same trap as the hero's marker, from the fix for a different
+   problem. Smaller type instead, so one line still clears the scroll prompt in
+   the 451px panel at 1101px. */
 .root :global(.sticky-product .example-mark) {
   position: absolute;
   left: 0;
   bottom: 4vh;
   margin: 0;
-  max-width: 40ch;
+  max-width: none;
+  white-space: nowrap;
+  font-size: 8.5px;
+  letter-spacing: 0.09em;
 }
 
 /* ---- the step wheel, off the mock ------------------------------------------
@@ -2800,3 +2812,654 @@
   margin-top: 22px;
   align-self: start;
 }
+
+/* ===========================================================================
+   §00 — THE MOTION SYSTEM
+
+   Three declared planes and one reveal, applied page-wide. The rates live in
+   flagship-home.tsx (PLANES); this is only what they paint.
+
+   data-motion="on" is set by the motion effect after mount, and never when the
+   visitor has asked for reduced motion. EVERY rule that would leave content
+   hidden, untilted or half-wiped without JavaScript is gated behind it — the
+   pre-JS render and the reduced-motion render both show the page fully
+   composed. Get this wrong and the failure is invisible in development and
+   total in production.
+   =========================================================================== */
+
+.root :global([data-plane]) {
+  transform: translate3d(0, var(--plane-y, 0px), 0);
+  will-change: transform;
+}
+
+.root[data-motion="on"] :global([data-rise]) {
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+  transition:
+    opacity .8s cubic-bezier(.2, .7, .3, 1),
+    transform .8s cubic-bezier(.2, .7, .3, 1);
+  transition-delay: calc(var(--rise-i, 0) * 75ms);
+}
+.root[data-motion="on"] :global([data-rise].is-in) {
+  opacity: 1;
+  transform: none;
+}
+
+/* Two grids get both a reveal and a lift-on-hover, and the reveal's resting
+   `transform: none` outranks the hover rule it was written before. Restated
+   here at a specificity that wins, or the cards stop lifting once revealed. */
+.root[data-motion="on"] :global(.suite-grid article[data-rise].is-in:hover) { transform: translateY(-7px); }
+.root[data-motion="on"] :global(.ai-rail article[data-rise].is-in:hover) { transform: translateY(-4px); }
+
+/* ===========================================================================
+   §01 — THE RISING CONSOLE
+
+   Was a 50/50 split with the dashboard mock at about 40% of the screen. The
+   copy is centred and the console goes full width beneath it, tilted back on
+   arrival and levelling as the visitor scrolls.
+   =========================================================================== */
+
+.root :global(.hero-stage) {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-items: start;
+  text-align: center;
+  gap: 0;
+  min-height: 0;
+  padding: 148px clamp(20px, 5vw, 86px) 92px;
+}
+
+/* The centred glow and the orbit rings were both sited against the old
+   right-hand column. Re-centred behind the console. */
+.root :global(.hero-stage)::before {
+  left: 50%; right: auto; margin-left: -270px; top: 26%;
+}
+.root :global(.hero-stage .orbit-one) {
+  width: 940px; height: 940px; top: -300px; right: auto; left: 50%; margin-left: -470px;
+}
+.root :global(.hero-stage .orbit-two) {
+  width: 680px; height: 680px; top: -170px; right: auto; left: 50%; margin-left: -340px;
+}
+
+/* A class collision, and exactly the one this file's header warns about.
+   src/app/globals.css:4045 gives .hero-copy a 32px-radius card — a gradient
+   face, a border and 1.5rem of padding — and the flagship's own .hero-copy
+   rule sets position, z-index and max-width, so it never resets any of it.
+   Measured: rgba(8,18,31,.82) + linear-gradient, border-radius 32px.
+
+   It has been leaking since the route was built. At 690px in the old left
+   column it read as part of the composition; centred at 940px behind a
+   headline it is unmistakably a stray panel. Reset explicitly — the flagship
+   hero copy sits on the section, not on a card. */
+.root :global(.hero-copy) {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+/* The measure and the size are set together, because the third line — "Run
+   everything behind it." — is the longest and it is the one that decides both.
+   At 940px and 94px it broke after "behind", leaving "it." alone on a fourth
+   line; centred, a two-character widow is the first thing you see.
+   balance gives an even break at the widths where it still has to wrap. */
+.root :global(.hero-stage .hero-copy) { max-width: 1060px; }
+.root :global(.hero-stage h1) {
+  font-size: clamp(40px, 5.5vw, 86px);
+  text-wrap: balance;
+}
+.root :global(.hero-stage .hero-sub) { max-width: 660px; margin: 28px auto 34px; }
+.root :global(.hero-stage .hero-actions) { justify-content: center; }
+
+/* text-align:left, because the section centres its copy and that inherits
+   straight into the product mock: "NEEDS YOUR ATTENTION", the attention rows
+   and both badge labels were centred inside a panel that is supposed to look
+   like software. A dashboard does not centre its own labels. */
+.root :global(.hero-stage .hero-product) {
+  width: 100%;
+  max-width: 1140px;
+  height: auto;
+  margin-top: 50px;
+  perspective: 1700px;
+  text-align: left;
+}
+
+/* In flow now, not absolutely placed in a fixed-height box. transform-origin
+   above the top edge is what makes the tilt read as the panel rising toward
+   you rather than rocking about its middle.
+
+   animation:none is required, not tidying: dashboardFloat restates the whole
+   transform at its 50% frame, and an animation's transform beats a
+   stylesheet's — the scroll tilt would have been silently overridden. */
+.root :global(.hero-stage .dashboard-card) {
+  position: relative;
+  top: 0; left: 0;
+  width: 100%;
+  height: 604px;
+  transform-origin: 50% -14%;
+  transform: none;
+  animation: none;
+}
+.root[data-motion="on"] :global(.hero-stage .dashboard-card) {
+  transform: rotateX(calc(13deg - var(--sp, 0) * 13deg));
+}
+.root :global(.hero-stage .dash-body) { height: calc(100% - 58px); }
+
+/* The console is now ~1140px rather than ~669px, so the panel's type — which
+   was scaled for the narrow column — reads small again in the wider box. */
+.root :global(.hero-stage .dash-greeting h2) { font-size: 29px; }
+.root :global(.hero-stage .attention-row) { font-size: 13.5px; }
+.root :global(.hero-stage .attention-row b) { font-size: 21px; }
+.root :global(.hero-stage .dash-grid strong) { font-size: 26px; }
+.root :global(.hero-stage .dash-grid p) { font-size: 11.5px; }
+.root :global(.hero-stage .dash-grid > div) { min-height: 132px; }
+
+/* Off the console's corners rather than the old column's sides. alertFloat is
+   dropped for the same reason dashboardFloat was — it owns the transform, and
+   the front plane needs it. */
+.root :global(.hero-stage .floating-alert) {
+  top: -24px; right: -12px; animation: none;
+}
+.root :global(.hero-stage .floating-paid) {
+  bottom: 84px; left: -14px; animation: none;
+}
+
+.root :global(.hero-stage .hero-product .example-mark) {
+  position: static;
+  margin: 18px auto 0;
+  text-align: center;
+  white-space: normal;
+}
+
+/* The scale row was a column under the copy; centred layout leaves it no
+   column, so it becomes a footer rule under the console. */
+.root :global(.hero-stage .hero-scale) {
+  width: 100%;
+  max-width: 780px;
+  margin-top: 46px;
+  text-align: left;
+}
+
+@media (max-width: 1100px) {
+  .root :global(.hero-stage) { padding-top: 128px; }
+  .root :global(.hero-stage .dashboard-card) { width: 100%; left: 0; height: 520px; }
+  .root :global(.hero-stage .dash-grid > div) { min-height: 118px; }
+}
+/* The card clips silently — overflow:hidden and a definite height — so these
+   numbers are measured against the panel's real content height at each width,
+   not estimated. Measured slack at 760/600/390: 0px, 0px, 0px. */
+@media (max-width: 760px) {
+  .root :global(.hero-stage) { padding: 112px 20px 64px; }
+  .root :global(.hero-stage .hero-product) { margin-top: 34px; }
+  .root :global(.hero-stage .dashboard-card) {
+    width: 100%; left: 0; height: 452px; transform: none;
+  }
+  .root[data-motion="on"] :global(.hero-stage .dashboard-card) { transform: none; }
+  .root :global(.hero-stage .floating-alert) { top: -18px; right: -6px; }
+  .root :global(.hero-stage .dash-greeting h2) { font-size: 22px; }
+  .root :global(.hero-stage .dash-grid strong) { font-size: 20px; }
+  .root :global(.hero-stage .hero-scale) { margin-top: 34px; }
+}
+/* Below 480 the attention rows and the three stat tiles both wrap, which adds
+   about 40px of content the 452px box has no room for. */
+@media (max-width: 480px) {
+  .root :global(.hero-stage .dashboard-card) { height: 500px; }
+}
+
+/* ===========================================================================
+   §02 — THE FEATURE TOUR, ELEVATED
+   =========================================================================== */
+
+/* ---- the step wheel, finally clear of the mock ----------------------------
+
+   Measured at every width: the wheel was overlapping the product frame by
+   31-33px, and at steps 01 and 03 that is real content — it covered the left
+   edge of "Generate full site with AI" and the service-area field, and two
+   street lines of the route map. A previous pass moved it to left:-92px and
+   checked it against the PHONE inside step 02's frame, which is inset; the
+   frame itself is not. The frame's left edge sits at the panel's left edge
+   exactly (measured: -1px), so anything inside the panel is on top of it.
+
+   Position alone cannot fix this. .scrolly-layout's gap is clamp(40px, 6vw,
+   100px) — 66px at 1101px — and the wheel is 124px wide with a 9px spread
+   ring, so it does not fit the gutter at any width the tour is used at.
+
+   Both sides give a little: the wheel comes down to 104px with 24px nodes (the
+   size the sub-1100px layout already uses) and a 6px ring, and the stage takes
+   34px of left padding so the mock starts clear of it. The mock loses 34px of
+   width; the alternative was a 132px gutter, which at 1101px there is no room
+   for at all. */
+@media (min-width: 1101px) {
+  .root :global(.wheel-wrap) {
+    left: -86px;
+    width: 104px;
+    height: 104px;
+    box-shadow:
+      0 2px 0 rgba(255, 255, 255, .05) inset,
+      0 20px 44px rgba(0, 0, 0, .5),
+      0 0 0 6px rgba(7, 19, 29, .74),
+      0 0 44px rgba(255, 106, 36, .08);
+  }
+  .root :global(.wheel-node) { width: 24px; height: 24px; }
+  .root :global(.wheel-core) { inset: 26px; }
+  .root :global(.wheel-core b) { font-size: 15px; }
+  .root :global(.sticky-product .visual-stage) { padding-left: 34px; }
+}
+
+/* A deeper swap between the three panels: they were fading with a 1.5% scale,
+   which reads as a dissolve. Further back and further down is a handover. */
+.root :global(.visual-layer) {
+  transform: translateY(30px) scale(.955);
+  transition: opacity .5s ease, transform .72s cubic-bezier(.2, .7, .2, 1);
+}
+.root :global(.visual-layer.is-active) { transform: none; }
+
+/* The panel leans with the scroll. Small on purpose — it sits still for most
+   of a 2,725px section, and anything larger would be a distraction. */
+.root :global(.sticky-product) { perspective: 1600px; }
+.root[data-motion="on"] :global(.sticky-product .visual-stage) {
+  transform: rotateX(calc(3.2deg - var(--sp, 0) * 6.4deg));
+}
+
+/* How far through the three you are. The wheel says which; this says how much
+   is left. No JS state — it reads the section's own progress.
+
+   At the TOP of the pinned panel, not the bottom. The bottom is already two
+   deep: the example marker sits at bottom:4vh and the scroll prompt beside it,
+   and the marker is a 58px three-line pill — measured, a rail at 4vh+30px
+   landed inside it and drew a line straight through the words. The panel
+   centres a 565px visual in 868px, so the band above the visual is free. */
+.root :global(.tour-rail) { display: none; }
+.root[data-motion="on"] :global(.tour-rail) {
+  display: block;
+  position: absolute;
+  left: 0; right: 0;
+  top: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(174, 199, 211, .17);
+  overflow: hidden;
+}
+.root[data-motion="on"] :global(.tour-rail s) {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange), var(--yellow));
+  transform: scaleX(var(--sp, 0));
+  transform-origin: 0 50%;
+}
+@media (max-width: 1100px) {
+  .root[data-motion="on"] :global(.tour-rail) { display: none; }
+}
+
+/* ===========================================================================
+   §03 — THE PIPELINE DRAWS ITSELF
+   =========================================================================== */
+
+.root :global(.pipeline-draw) {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 -6px;
+  padding: 0 8px;
+}
+.root :global(.pipeline-draw svg) { display: block; width: 100%; height: 44px; overflow: visible; }
+.root :global(.pipeline-draw path) { fill: none; stroke-width: 2; stroke-linecap: round; }
+.root :global(.pipeline-track) { stroke: rgba(174, 199, 211, .2); stroke-width: 1; }
+.root :global(.pipeline-ink) { stroke: var(--orange); filter: drop-shadow(0 0 6px rgba(255, 106, 36, .45)); }
+
+/* Ungated, the stroke would sit at a full dash offset — an invisible line. So
+   the resting state is the finished line, and only the motion build draws it.
+   1600 is comfortably longer than the path, so the offset always clears it. */
+.root[data-motion="on"] :global(.pipeline-ink) {
+  stroke-dasharray: 1600;
+  stroke-dashoffset: calc(1600 * (1 - var(--sp, 0)));
+}
+
+/* The accent bar under each stage already existed as a hover affordance. It
+   becomes the progress readout: each stage fills as the stroke reaches it.
+   The floor is .22 — exactly the value it rested at before — so the section
+   looks identical to today when nothing is driving it. */
+.root[data-motion="on"] :global(.workflow-pipeline .workflow-row > span)::after {
+  transform: scaleX(clamp(.22, calc((var(--sp, 0) - var(--at, 0)) * 7), 1));
+  transition: none;
+}
+.root[data-motion="on"] :global(.workflow-pipeline .workflow-row > span:hover)::after {
+  transform: scaleX(1);
+}
+@media (max-width: 760px) {
+  .root :global(.pipeline-draw) { display: none; }
+}
+
+/* ===========================================================================
+   §04 — THE TRACE UNDER EACH HANDOFF
+   =========================================================================== */
+
+/* .ai-split-story is a LIGHT/dark split — the copy column is on ink and the
+   rail beside it is on cream, with near-white cards. Styled for a dark ground
+   first time round, the trace measured 1.16:1: grey on white, invisible. These
+   are the light-ground values, and they are measured, not guessed. */
+.root :global(.ai-trace) {
+  display: block;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed rgba(31, 45, 54, .18);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: .2px;
+  color: #5c6870;
+}
+.root :global(.ai-trace i) { font-style: normal; color: #c2440e; margin-right: 5px; }
+.root :global(.ai-trace b) { color: #1d2b33; font-weight: 650; }
+
+/* Same ground, same problem, and these two predate the trace.
+
+   The eyebrow labels — ATTRACT, QUALIFY, ONE CONNECTED WORKFLOW — were brand
+   orange at 8px on a near-white card: about 2.9:1. And the rail's body copy,
+   which is the actual explanation of what the AI does, was #6f7472 at 10px:
+   measured 3.68:1. On a saturated brand hue the only readable direction is
+   down, which is what the closing band already had to do.
+
+   #c2440e measured 4.02:1 rather than the 4.89 its values predict — at 8px
+   with letter-spacing, antialiasing never lets a glyph reach its full colour.
+   Darker again, and verified rather than calculated. */
+.root :global(.ai-split-story .ai-rail small) { color: #8f2f08; }
+.root :global(.ai-split-story .ai-rail p) { color: #4e5a62; }
+
+/* The rail's cards justify head-to-foot, which pushed the trace away from the
+   copy it belongs to. Anchored to the text block instead. */
+.root :global(.ai-rail-traced article) { justify-content: flex-start; gap: 16px; }
+
+/* Third child of a two-column section grid, so it landed in column one under
+   the dark copy. Spanning both puts it under the cards it describes. */
+.root :global(.ai-example-mark) {
+  grid-column: 1 / -1;
+  margin: 26px 0 0;
+  text-align: right;
+  color: #5c6870;
+}
+.root :global(.ai-example-mark b) { color: #1d2b33; }
+@media (max-width: 1100px) {
+  .root :global(.ai-example-mark) { text-align: left; }
+}
+
+/* ===========================================================================
+   §05 — THE CONVERSATION PLAYS
+
+   One shared clock: --beat is the beat number an element belongs to, 620ms
+   apart. The portal steps sit on half-beats after the message that causes
+   them, so the homeowner's "approved" visibly moves the job rather than
+   arriving with it.
+
+   It plays once, on reveal. A loop beside body copy competes with reading it.
+   =========================================================================== */
+
+.root[data-motion="on"] :global(.client-plays .msg),
+.root[data-motion="on"] :global(.client-plays .portal-timeline > span) {
+  opacity: 0;
+}
+.root[data-motion="on"] :global(.client-plays.is-in .msg),
+.root[data-motion="on"] :global(.client-plays.is-in .portal-timeline > span) {
+  animation: flagshipBeat .62s cubic-bezier(.2, .7, .3, 1) forwards;
+  animation-delay: calc(var(--beat, 0) * 620ms + 260ms);
+}
+/* The last portal step has no --beat: it is the future, and it should arrive
+   with the panel rather than appear to complete. */
+.root[data-motion="on"] :global(.client-plays.is-in .portal-timeline > span:last-child) {
+  animation-delay: 260ms;
+  opacity: .55;
+}
+
+@keyframes flagshipBeat {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ===========================================================================
+   §06 — BENTO
+
+   Eight identical cells said nothing here matters more than anything else.
+   Quotes (01) and Payments (04) are what turn a lead into money; Texts + the
+   client portal (07) is the one a homeowner actually touches. Those get the
+   room. Nothing is dropped and no copy changes.
+   =========================================================================== */
+
+/* EVERY CELL IS PLACED EXPLICITLY, and it has to be. Auto-placement is sparse:
+   the cursor never moves backwards, so a cell that spans two ROWS leaves the
+   column beside it unreachable for everything that follows. A first pass with
+   one 2x2 and one 2x1 in four columns left four empty cells — a hole in the
+   right-hand column two rows deep.
+
+   Three columns, eight items, twelve cells, no holes:
+     ┌───────────┬─────┐
+     │     01    │ 02  │   01 Quotes + e-sign, 2x2
+     │  (2 x 2)  ├─────┤
+     │           │ 03  │
+     ├─────┬─────┼─────┤
+     │ 04  │ 05  │ 06  │
+     ├─────┴─────┼─────┤
+     │     07    │ 08  │   07 Texts + client portal, 2x1
+     └───────────┴─────┘
+   Three columns rather than four for a second reason: at four, every small
+   cell's description broke to three lines. */
+.root :global(.suite-bento) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(158px, auto);
+}
+.root :global(.suite-bento article) { min-height: 0; }
+.root :global(.suite-bento article:nth-child(1)) { grid-column: 1 / span 2; grid-row: 1 / span 2; }
+.root :global(.suite-bento article:nth-child(2)) { grid-column: 3; grid-row: 1; }
+.root :global(.suite-bento article:nth-child(3)) { grid-column: 3; grid-row: 2; }
+.root :global(.suite-bento article:nth-child(4)) { grid-column: 1; grid-row: 3; }
+.root :global(.suite-bento article:nth-child(5)) { grid-column: 2; grid-row: 3; }
+.root :global(.suite-bento article:nth-child(6)) { grid-column: 3; grid-row: 3; }
+.root :global(.suite-bento article:nth-child(7)) { grid-column: 1 / span 2; grid-row: 4; }
+.root :global(.suite-bento article:nth-child(8)) { grid-column: 3; grid-row: 4; }
+
+/* The card body copy is #6a706f on a near-white card face, which measures
+   4.41-4.57:1 depending on where the sampler lands on the gradient — sitting
+   exactly on the AA floor, sometimes over it and sometimes under. Not a
+   judgement call worth leaving to antialiasing. */
+.root :global(.suite-grid p) { color: #5f6564; }
+
+/* The two given the room have to use it, or the grid reads as a mistake in the
+   small cells' favour. The big cell's content sits at the bottom of its box —
+   centred, a 2x2 cell with three lines in it looks empty rather than important. */
+.root :global(.suite-bento article:nth-child(1)) { padding: 34px; align-content: end; }
+.root :global(.suite-bento article:nth-child(1) h3) { font-size: 28px; }
+.root :global(.suite-bento article:nth-child(1) p) { font-size: 15px; max-width: 36ch; }
+.root :global(.suite-bento article:nth-child(7) h3) { font-size: 21px; }
+
+/* Two columns, and NO spans — eight equal cells across four rows, which is the
+   only arrangement that tiles. With item 1 and item 7 spanning, the five
+   single cells between them add up to two and a half rows, so the grid ends up
+   with a hole beside item 6 and another beside item 8: measured 78.7% coverage.
+   A bento needs three columns to be a bento; below that it is a grid. */
+@media (max-width: 1100px) {
+  .root :global(.suite-bento) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* :nth-child(n) matches every child at the SAME specificity as the
+     :nth-child(2..8) placements above, so this reset can actually beat them.
+     A plain `article` selector cannot — it is a class-and-type (0,2,1) against
+     their class-pseudo-type (0,3,1), so column 3 survived into the two-column
+     layout and grid created an implicit third track to hold it. */
+  .root :global(.suite-bento article:nth-child(n)) { grid-column: auto; grid-row: auto; }
+}
+@media (max-width: 760px) {
+  .root :global(.suite-bento) { grid-template-columns: minmax(0, 1fr); }
+  .root :global(.suite-bento article:nth-child(n)) { grid-column: auto; grid-row: auto; }
+  .root :global(.suite-bento article:nth-child(1)) { padding: 27px; align-content: start; }
+  .root :global(.suite-bento article:nth-child(1) h3) { font-size: 22px; }
+  .root :global(.suite-bento article:nth-child(1) p) { font-size: 14px; }
+}
+
+/* ===========================================================================
+   §07 — THE SCROLL WIPE
+
+   Both cards occupy one grid cell; the patchwork sits on top and is clipped
+   away left-to-right by the section's own progress, with a lit edge at the
+   boundary carrying the VS label.
+
+   Gated, and this one matters most: parked at --sp 0 the section would show
+   nothing but the column arguing against us.
+   =========================================================================== */
+
+.root[data-motion="on"] :global(.stack-wipe) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* stretch, not the inherited center: the two cards have different content
+     heights (437 and 430 measured), and centring each in the row left the
+     shorter one inset — so the wipe exposed a sliver of the card underneath
+     above and below it. Both fill the cell, so the boundary is one clean edge. */
+  align-items: stretch;
+  position: relative;
+}
+.root[data-motion="on"] :global(.stack-wipe .stack-card) { grid-area: 1 / 1; }
+
+/* BOTH cards lean in 3D against the parent's perspective — the patchwork
+   rotateY(3deg), the connected one rotateY(-3deg) translateZ(15px), so they
+   splay away from each other like an open book. It is a nice touch beside a
+   42px gutter and it cannot survive a wipe: two cards rotated opposite ways
+   project to different boxes, and measured here they landed 4px apart and 7px
+   different in height — so the clip edge and the card edge underneath it would
+   not line up, and the seam would show all the way across.
+   Flat for the wipe. Both keep their gradient, glow and accent bar. */
+.root[data-motion="on"] :global(.stack-wipe .stack-card) { transform: none; }
+/* THE EDGE SWEEPS DOWN, NOT ACROSS.
+   The board's specimen wiped left to right, and measured on the real cards that
+   is wrong: both are a list of "label … value" rows, so a VERTICAL boundary
+   cuts every row in half and you read the label from one card beside the value
+   from the other — "Website builder … CONNECTED". It looks like a rendering
+   bug, not a comparison.
+   A horizontal boundary swaps WHOLE ROWS, top to bottom, so each row is only
+   ever one card or the other and the four capabilities convert one at a time.
+   Same idea, axis corrected by measurement. */
+.root[data-motion="on"] :global(.stack-wipe .stack-card.patchwork) {
+  z-index: 2;
+  -webkit-clip-path: inset(calc(var(--sp, 0) * 100%) 0 0 0);
+  clip-path: inset(calc(var(--sp, 0) * 100%) 0 0 0);
+}
+.root[data-motion="on"] :global(.stack-wipe .versus) {
+  position: absolute;
+  left: -12px; right: -12px;
+  top: calc(var(--sp, 0) * 100%);
+  z-index: 3;
+  height: 2px;
+  width: auto;
+  min-height: 0;
+  display: block;
+  background: linear-gradient(90deg, transparent, var(--orange) 14%, var(--orange) 86%, transparent);
+  box-shadow: 0 0 18px 2px rgba(255, 106, 36, .4);
+  /* Fully hidden at both ends, so the edge is never parked on a card face. */
+  opacity: clamp(0, calc(min(var(--sp, 0), 1 - var(--sp, 0)) * 22), 1);
+}
+.root[data-motion="on"] :global(.stack-wipe .versus b) {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 9px;
+  border-radius: 3px;
+  background: var(--orange);
+  color: #35120a;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+/* Below 760px the comparison is already one column per card, and a horizontal
+   wipe has nowhere to travel. Both cards, side by side, as they are today. */
+@media (max-width: 760px) {
+  .root[data-motion="on"] :global(.stack-wipe) { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .root[data-motion="on"] :global(.stack-wipe .stack-card) { grid-area: auto; }
+  .root[data-motion="on"] :global(.stack-wipe .stack-card.patchwork) { -webkit-clip-path: none; clip-path: none; }
+  .root[data-motion="on"] :global(.stack-wipe .versus) { display: none; }
+}
+
+/* ===========================================================================
+   §08 — THE FEE CALCULATOR ON A DARK BAND
+
+   components/home-fee-calculator.tsx is shared with the other homepage
+   candidates and styled in globals.css against the app's LIGHT tokens —
+   --text, --accent, --gold-ink, --ink-rgb. Those resolve here too, to their
+   light values, on a #0d222e band. Restated for this ground only.
+   =========================================================================== */
+
+.root :global(.hcalc) {
+  max-width: 100%;
+  margin: 30px 0 0;
+  border-color: rgba(174, 199, 211, .19);
+  border-radius: 14px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .012));
+  box-shadow: 0 2px 0 rgba(255, 255, 255, .05) inset, 0 22px 50px rgba(0, 0, 0, .26);
+}
+.root :global(.hcalc-eyebrow) { color: var(--orange); }
+.root :global(.hcalc-vol) { color: #cddae1; }
+.root :global(.hcalc-vol strong) { color: #fff; }
+.root :global(.hcalc-slider) { background: rgba(174, 199, 211, .18); }
+.root :global(.hcalc-slider)::-webkit-slider-thumb { background: #fff; border: 3px solid var(--orange); }
+.root :global(.hcalc-slider)::-moz-range-thumb { background: #fff; border: 3px solid var(--orange); }
+/* The presets are buttons and were reading as plain text. globals gives them a
+   1px border in var(--line) and a face of rgba(var(--tint), .03) — but --line
+   is redefined inside .root as rgba(174,199,211,.17), and --tint is an app
+   token that means nothing here, so the border and the face both vanished. */
+.root :global(.hcalc-chip) {
+  border-color: rgba(174, 199, 211, .34);
+  background: rgba(255, 255, 255, .05);
+  color: #b3c3cd;
+}
+.root :global(.hcalc-chip:hover) { color: #eef5f6; border-color: rgba(255, 106, 36, .6); }
+.root :global(.hcalc-chip.is-on) { background: var(--orange); color: #35120a; border-color: var(--orange); }
+.root :global(.hcalc-result) { border-color: rgba(174, 199, 211, .16); background: rgba(7, 19, 29, .34); }
+.root :global(.hcalc-result-l) { color: #9db0bd; }
+.root :global(.hcalc-result-v) { color: var(--orange); }
+.root :global(.hcalc-result-s) { color: #9db0bd; }
+.root :global(.hcalc-result-s strong) { color: #fff; }
+.root :global(.hcalc-compare) { color: #a9bac4; }
+.root :global(.hcalc-compare strong) { color: #fff; }
+.root :global(.hcalc-kicker) { color: #a9bac4; }
+.root :global(.hcalc-kicker strong) { color: var(--yellow); }
+
+/* The band is a two-column grid whose copy column now carries the calculator,
+   so the $0 dial no longer needs to be the same height as its neighbour. */
+.root :global(.pricing-band) { align-items: center; }
+.root :global(.pricing-copy) { max-width: 720px; }
+
+/* ===========================================================================
+   §09 — ONE DARK RUN TO THE END
+
+   Measured from painted pixels, the page carried 8 tonal breaks and about
+   2,000px of light section. The FAQ was one of them, sitting between a dark
+   pricing band and the orange close. On ink it removes two breaks, and the
+   closing band becomes the only one left — which is what makes it land as an
+   arrival rather than the fourth change of ground.
+
+   The <details> rows, the chevron and the structured data are untouched; this
+   is a repaint.
+   =========================================================================== */
+
+.root :global(.home-faq-dark) {
+  background:
+    radial-gradient(circle at 88% 8%, rgba(255, 106, 36, .09), transparent 30%),
+    linear-gradient(160deg, #0a1a25, #07131d);
+  color: #eef5f6;
+  border-top-color: rgba(174, 199, 211, .14);
+}
+/* The seven rows are CARDS, not bare text: rgba(255,255,255,.82) faces built
+   for the cream band. Repainting the section and not them left #eef5f6 text on
+   a near-white card — measured 2.13:1, the worst reading on the page and
+   invisible in a screenshot of the band as a whole. Repaint the components on
+   a ground, not just the ground. */
+.root :global(.home-faq-dark .home-faq-list details) {
+  border-color: rgba(174, 199, 211, .17);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .014));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset;
+}
+.root :global(.home-faq-dark .home-faq-list details[open]) {
+  border-color: rgba(255, 106, 36, .3);
+  background: linear-gradient(150deg, rgba(255, 106, 36, .07), rgba(255, 255, 255, .015));
+}
+.root :global(.home-faq-dark .home-faq-head h2) { color: #f3f7f8; }
+.root :global(.home-faq-dark .home-faq-head > p) { color: #9db0bd; }
+.root :global(.home-faq-dark .home-faq-list) { border-top-color: rgba(174, 199, 211, .16); }
+.root :global(.home-faq-dark .home-faq-list details) { border-bottom-color: rgba(174, 199, 211, .16); }
+.root :global(.home-faq-dark .home-faq-list summary) { color: #eef5f6; }
+.root :global(.home-faq-dark .home-faq-list summary:hover) { color: #fff; }
+.root :global(.home-faq-dark .home-faq-list summary)::after { color: var(--orange); }
+.root :global(.home-faq-dark .home-faq-list details p) { color: #a9bac4; }
