@@ -18,8 +18,26 @@ import { supabase } from '@/lib/supabase';
  * to a form headed "Sign in", with the actual signup one more click away behind
  * "New here?". The signup screen is the same route with an intent.
  */
-const SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
+export const SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
 const LOGIN_URL = 'https://app.letsgetquoted.com/login';
+
+/**
+ * ONE PROMISE, EVERYWHERE ON THIS SITE.
+ *
+ * A visitor working down /features met four different offers: the header said
+ * "Create free account", the hero said "Build my free site", the closing band
+ * said "Build my free site" again but pointed somewhere else, and the phone bar
+ * said "Create free account". Two of those were the same thing under different
+ * names and two of them were the same name pointing at different URLs — the
+ * hero's and the closing band's went to the app ROOT, which is the sign-in
+ * screen, while the header's went to signup.
+ *
+ * "Build my free site" wins over "Create free account" because it names what
+ * happens next rather than what gets created, and because it is what the two
+ * largest buttons on the page already said. Exported so no page has to retype
+ * either half of the pair.
+ */
+export const SIGNUP_LABEL = 'Build my free site';
 
 /**
  * Is somebody already signed in?
@@ -115,7 +133,7 @@ export function SiteHeader() {
 
   const cta = signedIn
     ? { href: '/dashboard', label: 'Dashboard' }
-    : { href: SIGNUP_URL, label: 'Create free account' };
+    : { href: SIGNUP_URL, label: SIGNUP_LABEL };
 
   return (
     <header className="site-header" data-menu={open ? 'open' : 'closed'}>
@@ -229,7 +247,7 @@ export function SiteFooter() {
       {signedIn ? (
         <a className="mobile-cta" ref={barRef} data-redundant="true" href="/dashboard">Go to my dashboard <span>→</span></a>
       ) : (
-        <a className="mobile-cta" ref={barRef} data-redundant="true" href={SIGNUP_URL}>Create free account <span>→</span></a>
+        <a className="mobile-cta" ref={barRef} data-redundant="true" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
       )}
       <footer>
         <a className="brand brand-logo footer-logo" href="/" aria-label="Let’s Get Quoted home">
@@ -273,7 +291,7 @@ export function PageCTA({
       <p className="eyebrow"><span>✦</span> {kicker}</p>
       <h2>{title}</h2>
       <p>{body}</p>
-      <a className="button primary light" href="https://app.letsgetquoted.com/">Build my free site <span>→</span></a>
+      <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
       <small>No card required · No monthly subscription</small>
     </section>
   );

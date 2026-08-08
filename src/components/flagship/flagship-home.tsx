@@ -12,11 +12,12 @@ import { HOME_FAQS } from '@/lib/home-faqs';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 
-/** One place, so a rename cannot leave a button pointing at the old host. */
-/* The app root lands on the SIGN-IN screen, so every "Create free account" on
-   this page was sending a first-time visitor to a form headed "Sign in" with
-   the actual signup a further click away. Same route, with the intent. */
-const SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
+/* The URL and the words both come from site-chrome, which is where the header,
+   the phone bar and the closing band already read them. This page used to
+   declare its own copy of the URL and then say three different things next to
+   it — "Start free" at the price, "Create my account" at the close, and
+   whatever the header said above both. */
+import { SIGNUP_URL, SIGNUP_LABEL } from './site-chrome';
 
 /**
  * THREE DECLARED PLANES.
@@ -833,7 +834,7 @@ export default function FlagshipHome() {
           {/* The price is where the decision actually gets made, and this band
               had nothing to press — you read "$0 / month", agreed with it, and
               then scrolled on looking for somewhere to act. */}
-          <a className="button primary" href={SIGNUP_URL}>Start free <span>→</span></a>
+          <a className="button primary" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
           <small className="pricing-fineprint">
             Card payments run through <b>Stripe Checkout</b>, so card details are entered on
             Stripe&apos;s own page and never reach our servers. Stripe&apos;s processing fee
@@ -875,7 +876,7 @@ export default function FlagshipHome() {
         <p className="eyebrow"><span>✦</span> BUILT FOR THE ONE-TRUCK OPERATOR—AND THE CREW DOING $2M</p>
         <h2>One truck or ten crews.<br />Your next stage starts here.</h2>
         <p>Launch the site, connect the work and give your growing business one place to run.</p>
-        <a className="button primary light" href={SIGNUP_URL}>Create my account <span>→</span></a>
+        <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
         <small>No card required · No monthly subscription · Cancel anytime</small>
       </section>
 

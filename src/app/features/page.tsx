@@ -1,7 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { PageCTA, SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
+import {
+  PageCTA,
+  SiteFooter,
+  SiteHeader,
+  SIGNUP_LABEL,
+  SIGNUP_URL,
+} from '@/components/flagship/site-chrome';
 import { FEE_TIERS } from '@/lib/pricing';
 import styles from '@/components/flagship/flagship.module.css';
 
@@ -79,6 +85,16 @@ type Flagship = {
   body: string;
   href: string;
   kicker: string;
+  /**
+   * WHAT THE FEATURE HANDS YOU, in the software's own nouns.
+   *
+   * Each card was a number, a label, a sentence and 65px of nothing — five
+   * claims a visitor had to take on faith, on a page whose whole argument is
+   * that the parts connect. These are not benefits restated; they are the
+   * things that exist in the product once the feature runs, which is the
+   * shortest honest way to show a feature on a page with no screenshots.
+   */
+  produces: [string, string, string];
 };
 
 const FLAGSHIPS: Flagship[] = [
@@ -89,6 +105,7 @@ const FLAGSHIPS: Flagship[] = [
     body: 'Launch a complete, editable contractor site with Smart Intake connected from day one.',
     href: '/features/website-builder',
     kicker: 'BUILD THE FRONT DOOR',
+    produces: ['Trade-matched pages', 'Intake form wired in', 'Your own domain'],
   },
   {
     number: '02',
@@ -97,6 +114,7 @@ const FLAGSHIPS: Flagship[] = [
     body: 'Ask better questions, build a useful project summary and surface the leads that deserve attention first.',
     href: '/features/ai-intake',
     kicker: 'QUALIFY THE OPPORTUNITY',
+    produces: ['A written job summary', 'Budget and urgency read', 'Leads ranked by value'],
   },
   {
     number: '03',
@@ -105,6 +123,7 @@ const FLAGSHIPS: Flagship[] = [
     body: 'Turn an opening in today’s route into an optional, prepaid nearby job at a price you choose.',
     href: '/features/quick-stops',
     kicker: 'EARN BETWEEN JOBS',
+    produces: ['Openings in today’s route', 'Paid before you arrive', 'Your price, your radius'],
   },
   {
     number: '04',
@@ -113,6 +132,7 @@ const FLAGSHIPS: Flagship[] = [
     body: 'Keep every conversation, approval, update and payment connected to the right job.',
     href: '/features/client-portal',
     kicker: 'KEEP CUSTOMERS INFORMED',
+    produces: ['Two-way texting', 'Approvals and e-signature', 'Live job status'],
   },
   {
     number: '05',
@@ -121,6 +141,7 @@ const FLAGSHIPS: Flagship[] = [
     body: 'Move from quote to schedule, crew, payment, review and recurring work without rebuilding the record.',
     href: '/features/back-office',
     kicker: 'RUN THE WORK',
+    produces: ['Quote → schedule → crew', 'Deposits and balances', 'Reviews and repeat visits'],
   },
 ];
 
@@ -209,8 +230,10 @@ export default function FeaturesPage() {
           connected workflow—with no monthly subscription.
         </p>
         <div className="hero-actions">
-          <a className="button primary" href="https://app.letsgetquoted.com/">
-            Build my free site <span aria-hidden="true">→</span>
+          {/* Was the app ROOT, which is the sign-in screen — the biggest button
+              on the page promised a site and delivered a password field. */}
+          <a className="button primary" href={SIGNUP_URL}>
+            {SIGNUP_LABEL} <span aria-hidden="true">→</span>
           </a>
           <a className="button secondary" href="#flagship-index">
             Explore the suite
@@ -293,7 +316,7 @@ export default function FeaturesPage() {
           </h2>
         </div>
         <div className="feature-link-grid">
-          {FLAGSHIPS.map(({ number, id, title, body, href, kicker }) => (
+          {FLAGSHIPS.map(({ number, id, title, body, href, kicker, produces }) => (
             /* The id is on the link itself, so a visitor arriving from the
                homepage lands on the card rather than near it. scroll-margin-top
                keeps it clear of the sticky header — see §96. */
@@ -302,6 +325,13 @@ export default function FeaturesPage() {
               <small>{kicker}</small>
               <h3>{title}</h3>
               <p>{body}</p>
+              {/* A list, not three styled spans: read aloud it is "three items,
+                  a written job summary, …", which is the whole point of it. */}
+              <ul className="feature-produces" aria-label={`What ${title} gives you`}>
+                {produces.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
               <b>
                 Explore feature <span aria-hidden="true">→</span>
               </b>

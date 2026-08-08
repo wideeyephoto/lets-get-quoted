@@ -5,9 +5,18 @@ import type { ReactNode } from 'react';
  *
  * Every primary call to action on the public marketing site points at the app's
  * sign-up host. It lives here as one constant so a change is one edit and not a
- * grep across nine pages. */
+ * grep across nine pages.
+ *
+ * AND THE PATH IS THE POINT, not just the host. This constant was the app ROOT
+ * for every acquisition button on /founder, /how-it-works and all five feature
+ * detail pages — and the app root lands on a form headed "Sign in", with the
+ * actual signup one more click away behind "New here?". So a page could promise
+ * "Build my free site", spend a screen earning the click, and answer it with a
+ * password field. `?intent=signup` is the same route asked for the right form;
+ * site-chrome.tsx has used it since the header was fixed, and this is the rest
+ * of the site catching up to it. */
 
-export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/';
+export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
 export const DEMO_URL = '/demo';
 export const FEATURES_URL = '/features';
 

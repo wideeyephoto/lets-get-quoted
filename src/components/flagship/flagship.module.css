@@ -5140,3 +5140,178 @@
   text-decoration: none;
 }
 .root :global(.footer-legal a:hover) { color: #cfdbe2; text-decoration: underline; }
+
+/* ===========================================================================
+   §98 — THE FEATURES PAGE STOPS READING AS A BROCHURE
+   ===========================================================================
+   Four measured problems, all on /features, all of them structural.
+
+   Every number below was read off painted pixels at the width named, not off
+   the declared values — see the note on each block for what was measured. */
+
+/* -- the closing band, which nobody could read ------------------------------
+
+   Measured at 1440 against the band's own gradient, sampled with the glyphs
+   hidden so the sample is the real backdrop and not a blend:
+
+     the fee explanation   1.12:1   (needs 4.5)
+     the reassurance line  3.60:1   (needs 4.5, and set at 9px)
+     the eyebrow           4.41:1   (needs 4.5, so it missed by a hair)
+     the headline          2.55:1   (needs 3, and it is the biggest thing here)
+
+   THE CAUSE OF THE FIRST ONE IS WORTH WRITING DOWN, because it is invisible in
+   the source. .page-cta sets `color: white` on the SECTION, and there is a
+   bare `p { color: var(--muted) }` type rule in globals.css. A type selector
+   beats inheritance every time, so the paragraph never saw the white it was
+   nominally given and rendered dark-theme grey on orange instead. The one line
+   carrying the actual price of the product was, in practice, not there.
+
+   .final-cta — the homepage's closing band, the same design — was measured and
+   fixed months ago and this one was never given the same treatment. Same
+   colours, deliberately: #4a1704 measures 5.9–6.2:1 across this band's
+   gradient, and --ink-on-orange 6.8:1. White cannot fix a saturated orange; on
+   this hue the readable direction is down. */
+.root :global(.page-cta h2) { color: var(--ink-on-orange); }
+.root :global(.page-cta > p:not(.eyebrow)),
+.root :global(.page-cta > small),
+.root :global(.page-cta .eyebrow) { color: #4a1704; }
+/* The mark inside the eyebrow stays white — it is a glyph, not a word. */
+.root :global(.page-cta .eyebrow span) { color: #ffffff; }
+/* 9px, for the sentence that answers "what will this cost me to try". */
+.root :global(.page-cta > small) { font-size: 12.5px; letter-spacing: .02em; }
+
+/* -- the nav switches to a menu 320px earlier -------------------------------
+
+   The five nav links never wrapped to a second row — measured rows=1 at every
+   width — so the visible symptom was somewhere else: the account button's
+   LABEL wrapped to two lines at 960, 820 and 768 (41px tall becoming 58px),
+   and the gap between the logo and the first link closed from 35px at 1440 to
+   18px at 768. The row was not broken, it was out of room, and the button that
+   matters was the thing paying for it.
+
+   The drawer already exists and is already what a phone gets. It just started
+   too late. Sticky positioning stays at 760 on purpose: above that the header
+   is `position: fixed` and every hero's padding-top is measured against a
+   header that takes no space in flow — switching earlier would push the hero
+   down by 82px, which is the exact opposite of the block below. Fixed is a
+   containing block too, so the panel still hangs off it correctly. */
+/* `> nav` and not `nav`: the drawer lives INSIDE .site-header and carries a
+   nav of its own, so the loose descendant selector the base sheet uses hides
+   the drawer's links too. It gets away with it there only because
+   `.site-menu nav { display: grid }` is declared later in the file and wins on
+   source order — which stops being true for anything written after it. */
+@media (max-width: 1080px) {
+  .root :global(.site-header > nav) { display: none; }
+  .root :global(.nav-toggle) { display: flex; }
+}
+/* The 761px floor in the base sheet hid the panel outright above the old
+   breakpoint. `:not([hidden])` both raises the specificity over it and says
+   the thing that is true: the panel is hidden when it is closed, by the
+   attribute, at every width. */
+@media (min-width: 761px) and (max-width: 1080px) {
+  .root :global(.site-menu:not([hidden])) { display: block; }
+}
+/* Whatever else is on the row, the promise is one line. */
+.root :global(.header-cta),
+.root :global(.site-menu-cta) { white-space: nowrap; }
+@media (max-width: 900px) {
+  /* Sign in has gone into the drawer by here, and with the nav gone too
+     nothing was left to push the account controls to the right edge —
+     space-between would have parked the button in the middle of the row. */
+  .root :global(.site-header .header-cta) { margin-left: auto; }
+}
+
+/* -- the hero stops burying the product -------------------------------------
+
+   Measured at 1280x720, which is the most common laptop viewport: the pipeline
+   — the one piece of the page that shows the software doing something — began
+   655px down and had 65 of its 281px above the fold. At 390x844 the hero alone
+   ran 1574px and 41 of the pipeline's 622px were visible.
+
+   Nothing is removed. The savings come from five places that were each a
+   little generous: 155px of top padding over an 82px fixed header, a headline
+   at 6.6vw, 24px under the eyebrow, 60px around the supporting line, and 46px
+   above the stage. min-height goes because with all of that tightened it was
+   the only thing still holding the band open. */
+.root :global(.index-hero) {
+  min-height: 0;
+  padding-top: clamp(96px, 8.2vw, 124px);
+  padding-bottom: 70px;
+}
+.root :global(.index-hero .eyebrow) { margin-bottom: 14px; }
+.root :global(.index-hero h1) {
+  max-width: 940px;
+  font-size: clamp(38px, 4.4vw, 76px);
+  line-height: 1.02;
+  /* Proportional, because the base sheet's flat -5.4px was tuned for 100px and
+     would have crushed the letterforms at 38. */
+  letter-spacing: -.038em;
+}
+.root :global(.index-hero > p:not(.eyebrow)) {
+  max-width: 700px;
+  margin: 16px 0 22px;
+  font-size: 16.5px;
+}
+.root :global(.index-hero .system-stage) { margin-top: 26px; }
+@media (max-width: 760px) {
+  .root :global(.index-hero) { padding-top: 92px; padding-bottom: 56px; }
+  .root :global(.index-hero h1) { font-size: 40px; letter-spacing: -1.6px; }
+  .root :global(.index-hero > p:not(.eyebrow)) { margin: 14px 0 20px; font-size: 15.5px; }
+  .root :global(.index-hero .system-stage) { margin-top: 22px; }
+}
+
+/* -- the five cards show what they hand you ---------------------------------
+
+   Each card was 300px tall carrying 235px of ink, and 48px of that was a hard
+   `margin-top` under the number holding the card open. Body copy ran at 11px
+   and the kicker at 8px, both under this sheet's own 12px floor for real copy.
+   So: five attractive rectangles making five claims, on a page whose argument
+   is that the parts connect.
+
+   The list of three is what the feature produces, in the software's nouns. The
+   card is no longer given a fixed height — its content sets it, and the link
+   at the foot is pushed down by the column rather than pinned to the box, so
+   adding a fourth line somewhere can never run underneath it. */
+.root :global(.feature-link-grid a) {
+  min-height: 0;
+  padding: 22px 22px 20px;
+  display: flex;
+  flex-direction: column;
+}
+.root :global(.feature-link-grid a > span) { font-size: 10.5px; letter-spacing: .06em; }
+.root :global(.feature-link-grid small) { margin-top: 11px; font-size: 9.5px; letter-spacing: 1.3px; }
+.root :global(.feature-link-grid h3) { margin: 8px 0 0; font-size: 22px; letter-spacing: -.9px; }
+.root :global(.feature-link-grid p) { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }
+.root :global(.feature-produces) {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 13px 0 0; padding: 0;
+  list-style: none;
+}
+.root :global(.feature-produces li) {
+  padding: 5px 10px;
+  border: 1px solid rgba(174, 199, 211, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .04);
+  color: #d3dfe6;
+  font-size: 12px; font-weight: 600; line-height: 1.3;
+}
+.root :global(.feature-link-grid a > b) {
+  position: static;
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 12.5px;
+}
+/* The base sheet drops the cards to one column here and re-asserts a height.
+   THE HONEST TRADE, since it is measurable: three chips per card cost a phone
+   about 45px each, and this hero gave back 196. The page is a little longer
+   than it was and a great deal less empty; the padding below is what keeps
+   "a little" true. */
+@media (max-width: 760px) {
+  .root :global(.feature-link-grid a),
+  .root :global(.feature-link-grid a:nth-child(4)),
+  .root :global(.feature-link-grid a:nth-child(5)) { min-height: 0; padding: 19px 18px 17px; }
+  .root :global(.feature-link-grid p) { font-size: 12.5px; }
+  .root :global(.feature-produces) { gap: 5px; margin-top: 11px; }
+  .root :global(.feature-produces li) { padding: 4px 9px; }
+  .root :global(.feature-link-grid a > b) { padding-top: 14px; }
+}
