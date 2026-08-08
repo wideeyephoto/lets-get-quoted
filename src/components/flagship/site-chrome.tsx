@@ -241,6 +241,17 @@ export function SiteFooter() {
               page has scrolled away. */}
           {!signedIn ? <a href={LOGIN_URL}>Sign in</a> : null}
         </p>
+        {/* PRIVACY, TERMS AND A WAY TO REACH A HUMAN.
+            All three routes existed and none of them was linked from anywhere
+            on the marketing site — which for the first two is what the footer
+            is for, and for the third is the thing a contractor looks for before
+            handing over their business. Kept on their own line, quieter than
+            the product nav, because that is the convention people scan for. */}
+        <p className="footer-legal">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/contact">Contact</a>
+        </p>
         <span>© 2026 Let’s Get Quoted</span>
       </footer>
     </>

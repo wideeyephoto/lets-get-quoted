@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
-import CommandCenterDeck from '@/components/command-center-deck';
+import CommandCenterDeck, { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
@@ -40,69 +40,30 @@ const PLANE_TRAVEL = 118;
 const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProperties;
 
 /**
- * The four pillars under the hero copy, from the mockup.
+ * ONE NAVIGATION STRIP UNDER THE HERO, NOT TWO.
  *
- * THESE ARE LINKS NOW, AND THE DESTINATIONS HAD TO BE BUILT FOR THEM.
+ * There were eight links between the hero and the first real section: four
+ * outcome badges (Plan & Schedule, Automate & Follow Up, Get Paid Faster, Grow
+ * Your Business) and these four tiles. Eight choices before a visitor has been
+ * told anything is not navigation, it is a decision they have no basis to make
+ * — and the two rows overlapped, because "Get Paid Faster" and "Back office
+ * included · Quote, schedule and collect" are the same claim at two levels of
+ * abstraction.
  *
- * They used to be labelled icons, because nothing on the site answered any of
- * the four: /features listed eight tools in one flat grid with no landing point
- * inside it, and three of the four would have had to share the back-office page.
- * Four named groups now exist on /features — see CAPABILITIES there — and each
- * href below is the id of one of them. The names match on both ends on purpose:
- * a visitor who presses "Get Paid Faster" arrives at a heading that says "Get
- * Paid Faster", not at a grid they have to search.
+ * The concrete one survives. It names things that exist rather than outcomes,
+ * so it also says what the product IS while it is offering somewhere to go.
  *
- * If a slug here changes, change it there. The features page has a test that
- * asserts these four ids exist for exactly this reason.
- *
- * The tone is a category colour, not a status.
- */
-const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-
-const PILLARS = [
-  {
-    label: 'Plan & Schedule', tone: 'violet', href: '/features#planning-and-scheduling',
-    icon: (
-      <svg viewBox="0 0 24 24" {...stroke}><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M8 15h4" /></svg>
-    ),
-  },
-  {
-    label: 'Automate & Follow Up', tone: 'orange', href: '/features#automations',
-    icon: (
-      <svg viewBox="0 0 24 24" {...stroke}><path d="M21 12a8 8 0 1 1-3.2-6.4" /><path d="M21 4v5h-5" /><path d="M9 12h6M9 15h4" /></svg>
-    ),
-  },
-  {
-    label: 'Get Paid Faster', tone: 'green', href: '/features#payments',
-    icon: (
-      <svg viewBox="0 0 24 24" {...stroke}><circle cx="12" cy="12" r="9" /><path d="M12 7v10M14.5 9.5A2.5 2.5 0 0 0 12 8h-.3a2.2 2.2 0 0 0-.3 4.4h1.2a2.2 2.2 0 0 1-.3 4.4H12a2.5 2.5 0 0 1-2.5-1.5" /></svg>
-    ),
-  },
-  {
-    label: 'Grow Your Business', tone: 'blue', href: '/features#website-and-growth',
-    icon: (
-      <svg viewBox="0 0 24 24" {...stroke}><path d="M5 20V11M12 20V5M19 20v-6" /><path d="M3 20h18" /></svg>
-    ),
-  },
-];
-
-/**
- * The four-cell strip directly under the hero.
- *
- * These point at the five-card index on /features, not at the deep feature
- * pages: the card is a one-line summary, so the visitor lands on the matching
- * summary with its four siblings visible and chooses whether to go deeper. The
- * ids are on the cards themselves — see FLAGSHIPS in src/app/features/page.tsx.
- *
- * The label was orange on cream at 2.5:1, which is under the 4.5:1 a 13px
- * uppercase label needs and was the visible complaint; §95 in the generator
- * darkens it and raises both sizes.
+ * AND IT GOES STRAIGHT TO THE FEATURE PAGES. These used to point at the card
+ * index (/features#website-builder), which was a summary of a summary — one
+ * more click to reach the page that actually answers the tile. The four groups
+ * on /features are still linked, from the suite cards further down, where the
+ * broader framing is what the visitor is looking at.
  */
 const PROMISES = [
-  { label: 'WEBSITE INCLUDED', blurb: 'One-click AI builder', href: '/features#website-builder' },
-  { label: 'SMART INTAKE INCLUDED', blurb: 'Qualify every request', href: '/features#smart-intake' },
-  { label: 'BACK OFFICE INCLUDED', blurb: 'Quote, schedule and collect', href: '/features#back-office' },
-  { label: 'QUICK STOPS INCLUDED', blurb: 'Nearby prepaid work', href: '/features#quick-stops' },
+  { label: 'WEBSITE INCLUDED', blurb: 'One-click AI builder', href: '/features/website-builder' },
+  { label: 'SMART INTAKE INCLUDED', blurb: 'Qualify every request', href: '/features/ai-intake' },
+  { label: 'BACK OFFICE INCLUDED', blurb: 'Quote, schedule and collect', href: '/features/back-office' },
+  { label: 'QUICK STOPS INCLUDED', blurb: 'Nearby prepaid work', href: '/features/quick-stops' },
 ];
 
 /**
@@ -132,6 +93,10 @@ type Feature = {
   proof: string[];
   input: string;
   output: string;
+  /** The page that answers the card. All three had none — this section made
+      the strongest claims on the page and was the only one a visitor could not
+      follow up on. */
+  href: string;
 };
 
 const features: Feature[] = [
@@ -143,6 +108,7 @@ const features: Feature[] = [
     proof: ["Your own domain", "Built for 49 contractor trades", "Edit everything before you publish"],
     input: "Three business basics",
     output: "A complete, editable site",
+    href: "/features/website-builder",
   },
   {
     number: "02",
@@ -152,6 +118,7 @@ const features: Feature[] = [
     proof: ["Hot, warm and low lead scoring", "Project-specific follow-ups", "Instant high-value alerts"],
     input: "One homeowner request",
     output: "A prioritized lead with context",
+    href: "/features/ai-intake",
   },
   {
     number: "03",
@@ -161,18 +128,46 @@ const features: Feature[] = [
     proof: ["Route-aware matching", "You control every offer", "Always optional—never auto-booked"],
     input: "A gap in today’s route",
     output: "A prepaid offer you approve",
+    href: "/features/quick-stops",
   },
 ];
 
-const suite = [
-  ["Quotes + e-sign", "Professional, itemized quotes with optional upgrades."],
-  ["Scheduling", "Arrival windows, capacity and weather-aware planning."],
-  ["Crew + labor", "Assignments, time clock, hours and estimated pay."],
-  ["Payments", "Deposits, balances and payment plans through Stripe."],
-  ["Recurring work", "Automatic visits, saved cards and predictable revenue."],
-  ["Cash flow", "See payroll, bills and customer money before it moves."],
-  ["Texts + client portal", "Two-way messages, job updates, quotes, scheduling and payment in one customer view."],
-  ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing."],
+/**
+ * The four handoffs, as a row rather than as a section.
+ *
+ * This is what survives of "Four places AI saves you time" — a full-length
+ * block whose first two steps re-explained the first two flagship cards
+ * directly above it. The claim worth keeping is not any one of the four, it is
+ * that they are a CHAIN and the same details travel down it, which is a shape
+ * and reads better as one line than as four articles.
+ */
+const WORKFLOW: Array<[step: string, what: string]> = [
+  ['Attract', 'A job-ready site, written for your trade'],
+  ['Qualify', 'Trade-specific follow-ups, photos and timing'],
+  ['Prioritize', 'Fit, urgency, value and service area, scored'],
+  ['Follow through', 'Quote, schedule, texts and payment'],
+];
+
+/**
+ * The rest of the job, and where each part is explained in full.
+ *
+ * SEVEN, NOT EIGHT. "Texts + client portal" was here as a one-line card, one
+ * section below a full-width demonstration of the texting and the portal with
+ * a live conversation playing in it. Naming a thing in a sentence directly
+ * after showing it working is not reinforcement, it is the reader wondering
+ * whether they missed something. The section above is the version that stays.
+ *
+ * Every card is a link now. Four go to the capability groups on /features
+ * (which is what those groups are for) and two to the pages that go deeper.
+ */
+const suite: Array<[title: string, body: string, href: string]> = [
+  ["Quotes + e-sign", "Professional, itemized quotes with optional upgrades.", "/features/back-office"],
+  ["Scheduling", "Arrival windows, capacity and weather-aware planning.", "/features#planning-and-scheduling"],
+  ["Crew + labor", "Assignments, time clock, hours and estimated pay.", "/features/back-office"],
+  ["Payments", "Deposits, balances and payment plans through Stripe.", "/features#payments"],
+  ["Recurring work", "Automatic visits, saved cards and predictable revenue.", "/features#automations"],
+  ["Cash flow", "See payroll, bills and customer money before it moves.", "/features#payments"],
+  ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing.", "/features#website-and-growth"],
 ];
 
 function SiteBuilderVisual() {
@@ -203,7 +198,7 @@ function SiteBuilderVisual() {
                 holds any of them, and the site templates were changed this week
                 to stop asserting them by default. */}
             <p>ELECTRICIAN · ROYAL OAK, MI</p>
-            <h3>Power your home.<br />Protect what matters.</h3>
+            <p className="preview-headline">Power your home.<br />Protect what matters.</p>
             <button>Get an instant estimate →</button>
           </div>
           {/* Three things the generated site genuinely ships with, in place
@@ -229,7 +224,7 @@ function IntakeVisual() {
         <div className="phone-shell">
           <div className="phone-notch" />
           <p className="mini-label">INSTANT ESTIMATE</p>
-          <h3>What do you need done?</h3>
+          <p className="intake-headline">What do you need done?</p>
           <div className="message-bubble">My basement drain is backing up and water is spreading.</div>
           <p className="ai-question"><span>✦</span> Is wastewater actively entering the room?</p>
           <div className="choice-row"><button>Yes</button><button>No</button></div>
@@ -267,7 +262,7 @@ function QuickStopVisual() {
               It is 5.7:1, so it cannot sit in the square's place inside the
               title row — it goes above, and the row keeps its two lines. */}
           <QuickStopsMark width={116} />
-          <div className="quick-title"><div><h3>Leaking shutoff valve</h3><p>Royal Oak · same-day request</p></div></div>
+          <div className="quick-title"><div><p className="quick-headline">Leaking shutoff valve</p><p>Royal Oak · same-day request</p></div></div>
           <div className="quick-metrics"><span><small>ADDED DRIVE</small><b>6 min</b></span><span><small>OPEN WINDOW</small><b>2:15–4:15</b></span></div>
           <div className="offer-row"><div><small>YOUR QUICK STOP FEE</small><strong>$149</strong></div><button>Send offer</button></div>
           <p className="paid-note"><i>✓</i> Nothing books until the customer pays.</p>
@@ -294,6 +289,33 @@ export default function FlagshipHome() {
   const [active, setActive] = useState(0);
   const stepRefs = useRef<Array<HTMLElement | null>>([]);
   const rotations = useMemo(() => [0, -120, -240], []);
+
+  /* Which product screen the merged suite section is showing. Seeded from the
+     deck's own list so this cannot start on a screen that does not exist. */
+  const [screen, setScreen] = useState(COMMAND_CENTER_SCREENS[0]?.id ?? '');
+
+  /* A tablist is expected to move with the arrow keys, and Home/End to the
+     ends. Without this the strip is a row of buttons that happens to say
+     role="tab" — the role promises behaviour a screen-reader user will look
+     for and not find. */
+  const onScreenKeys = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const ids = COMMAND_CENTER_SCREENS.map((option) => option.id);
+    const at = ids.indexOf(screen);
+    const step =
+      event.key === 'ArrowRight' ? 1
+        : event.key === 'ArrowLeft' ? -1
+          : 0;
+    let next: string | null = null;
+    if (step !== 0) next = ids[(at + step + ids.length) % ids.length] ?? null;
+    if (event.key === 'Home') next = ids[0] ?? null;
+    if (event.key === 'End') next = ids[ids.length - 1] ?? null;
+    if (!next) return;
+    event.preventDefault();
+    setScreen(next);
+    // Focus follows selection, which is what a tablist with automatic
+    // activation does; the panel below has already changed.
+    document.getElementById(`suite-tab-${next}`)?.focus();
+  };
 
   /**
    * Hide the sticky mobile bar while the hero's own button is on screen.
@@ -459,16 +481,9 @@ export default function FlagshipHome() {
           </div>
           <p className="hero-note"><i>✓</i> Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Pay only when you get paid</p>
 
-          <ul className="hero-pillars">
-            {PILLARS.map(({ label, tone, href, icon }) => (
-              <li key={label} data-tone={tone}>
-                <Link href={href}>
-                  <span className="pillar-icon" aria-hidden="true">{icon}</span>
-                  <b>{label}</b>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {/* The four outcome badges sat here. Removed — see PROMISES above:
+              they were the second of two navigation strips in the same screen,
+              and the concrete one is the one worth keeping. */}
         </div>
 
         <div className="hero-product">
@@ -501,7 +516,12 @@ export default function FlagshipHome() {
               together made one long strip of uppercase nobody reads to the end
               of. */}
           <p className="section-kicker">BUILT TO DO MORE</p>
-          <h2>Your website should work<br /><em>as hard as you do.</em></h2>
+          {/* Was "Your website should work as hard as you do." Two of the three
+              cards under it are not website capabilities — Quick Stops fills
+              gaps in a route and Smart Intake ranks leads — so the heading was
+              promising less than the section delivers. "Front door" keeps the
+              website first without claiming it is the whole building. */}
+          <h2>Turn your website into<br /><em>the front door of your business.</em></h2>
           <p>Let it capture job details, prioritize leads, and help fill gaps in your schedule.</p>
         </div>
 
@@ -523,6 +543,15 @@ export default function FlagshipHome() {
                   <span><small>GET</small><b>{feature.output}</b></span>
                 </div>
                 <ul>{feature.proof.map((proof) => <li key={proof}><span>✓</span>{proof}</li>)}</ul>
+                {/* All three cards ended here, with nothing to press. This is
+                    the section that makes the page's strongest claims, and it
+                    was the only one a visitor could not follow up on. Same
+                    wording on all three so it reads as one affordance rather
+                    than three different offers. */}
+                <Link className="feature-step-link" href={feature.href}>
+                  Explore this feature <span aria-hidden="true">→</span>
+                  <span className="sr-only">: {feature.title}</span>
+                </Link>
               </article>
             ))}
           </div>
@@ -554,70 +583,37 @@ export default function FlagshipHome() {
             <div className="scroll-prompt"><span>SCROLL TO EXPLORE</span><i>↓</i></div>
           </div>
         </div>
-      </section>
 
-      {/* The five-stage pipeline band used to sit here. Removed: the five
-          labels named the same stages the feature tour above had just walked
-          through in full, so the band re-listed what the visitor had already
-          been shown, and the wandering stroke never touched the boxes it was
-          meant to connect. The sequence itself is not lost — /how-it-works is
-          built on those five stages and goes into each one. */}
+      {/* THE AI SECTION WAS A THIRD FULL-LENGTH BLOCK SAYING THE FIRST TWO AGAIN.
 
-      <section className="ai-layer ai-split-story" aria-labelledby="ai-title" data-track>
-        <div className="ai-layer-head" data-rise>
-          <p className="eyebrow"><span>✦</span> FOUR PLACES AI SAVES YOU TIME</p>
-          <h2 id="ai-title">It writes the site.<br />Qualifies every lead.<br /><em>Tells you who to call first.</em></h2>
-          <p>Then it keeps those same details attached to the quote, schedule and follow-up—so nobody has to start over.</p>
-          <div className="ai-context-note"><span>REQUEST + PHOTOS</span><i>→</i><span>FIT + VALUE + SERVICE AREA</span><i>→</i><span>READY-TO-ACT LEAD</span></div>
-        </div>
-        {/* WATCH IT THINK.
-            The four handoffs used to describe a machine without ever showing it
-            run. Each now carries the trace of the SAME request the feature tour
-            demonstrates above — a backing-up basement drain — so the page tells
-            one story end to end instead of four summaries. The traces land in
-            sequence as the section arrives (--rise-i), which is what turns a
-            list of claims into something you watch happen.
+          "Four places AI saves you time" ran the width of the page with four
+          articles, a head, a context strip and an animated trace. Its first two
+          steps — launches a job-ready website, turns a request into a real
+          scope — are the first two flagship cards immediately above, told a
+          second time with different nouns.
 
-            Every word of the original copy is still here. The trace is added
-            evidence, not a replacement for the explanation. */}
-        <div className="ai-rail ai-rail-traced" aria-label="AI-supported contractor workflow">
-          <div className="ai-list-head"><span>FOUR BUILT-IN HANDOFFS</span><small>ONE CONNECTED WORKFLOW</small></div>
-          <article data-rise style={cssVars({ '--rise-i': 0 })}>
-            <span>01</span>
-            <div>
-              <small>ATTRACT</small><h3>Launches a job-ready website</h3>
-              <p>Writes service pages, FAQs and local copy, then connects Smart Intake.</p>
-              <code className="ai-trace"><i>▸</i> Site published · <b>Smart Intake connected</b></code>
-            </div>
-          </article>
-          <i>→</i>
-          <article data-rise style={cssVars({ '--rise-i': 1 })}>
-            <span>02</span>
-            <div>
-              <small>QUALIFY</small><h3>Turns a request into a real scope</h3>
-              <p>Asks trade-specific follow-ups and collects photos, timing, budget and contact details.</p>
-              <code className="ai-trace"><i>▸</i> Asked: <b>is wastewater entering the room?</b> · 2 photos in</code>
-            </div>
-          </article>
-          <i>→</i>
-          <article data-rise style={cssVars({ '--rise-i': 2 })}>
-            <span>03</span>
-            <div>
-              <small>PRIORITIZE</small><h3>Ranks what deserves attention</h3>
-              <p>Scores fit, urgency, estimated value and whether it’s in your service area—then sends instant high-value alerts.</p>
-              <code className="ai-trace"><i>▸</i> In service area · wants help today · <b>HOT</b></code>
-            </div>
-          </article>
-          <i>→</i>
-          <article data-rise style={cssVars({ '--rise-i': 3 })}>
-            <span>04</span>
-            <div>
-              <small>FOLLOW THROUGH</small><h3>Keeps the job record moving</h3>
-              <p>Carries the same details into quote, schedule, texts, the client portal and payment—without retyping.</p>
-              <code className="ai-trace"><i>▸</i> Quote drafted · <b>nothing retyped</b></code>
-            </div>
-          </article>
-        </div>
+          What it had that the cards did not is the SHAPE: that the four things
+          are one chain, and the same details travel down it. That is one row
+          and one sentence, and it belongs under the cards it is describing
+          rather than in a section of its own.
+
+          The two steps that were only here — prioritize, follow through — keep
+          their own words. Nothing is dropped; /how-it-works walks all four in
+          full. */}
+      <div className="flow-strip" aria-label="How the four steps connect">
+        <ol>
+          {WORKFLOW.map(([step, what], index) => (
+            <li key={step} data-rise style={cssVars({ '--rise-i': index })}>
+              <span className="flow-step">{step}</span>
+              <small>{what}</small>
+            </li>
+          ))}
+        </ol>
+        <p>
+          The same customer details move from the first request to the quote, schedule and
+          payment&mdash;without being entered twice.
+        </p>
+      </div>
       </section>
 
       <section className="client-experience" aria-labelledby="client-experience-title">
@@ -671,41 +667,73 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* BENTO.
-          Eight identical boxes told a visitor that nothing here matters more
-          than anything else. Something does: quotes and payments are what turn
-          a lead into money, and the client portal is the one a homeowner
-          actually touches. Those three get the room (see .suite-bento in the
-          generator) and the other five stay legible without competing.
+      {/* ONE SECTION, NOT TWO. This was the largest duplication on the page.
 
-          Nothing is dropped and no copy changes — this is a grid decision. */}
+          "One system from quote to review" NAMED eight capabilities in a
+          sentence each. The command centre directly under it SHOWED six of
+          them, each a heading plus a dashboard mockup taller than most
+          viewports — six screens of scrolling to see one product from six
+          angles, immediately after being told about it in a grid.
+
+          The grid now drives the screens. Choosing a card changes what is
+          rendered underneath, so the two halves are one thing: the claim and
+          the evidence for it, in the same place, at the visitor's pace rather
+          than the page's.
+
+          A card with no screen behind it is still a link to the page that
+          explains it — which is the honest version of "we have this too". */}
       <section className="included" id="included">
         <div className="included-head" data-rise>
           <p className="eyebrow"><span>✦</span> THE REST OF THE JOB IS INCLUDED</p>
           <h2>One system from quote to review.</h2>
           <p>Your website is the front door. Quotes, scheduling, crews, payments and follow-up are already connected behind it.</p>
         </div>
-        <div className="suite-grid suite-bento">
-          {suite.map(([title, body], index) => (
+
+        {/* The screens that exist, as a tab strip. Built from the deck itself
+            (COMMAND_CENTER_SCREENS) rather than from a list written here, so a
+            tab can never name a screen that is not in the markup. */}
+        <div className="suite-tabs" role="tablist" aria-label="Product screens">
+          {COMMAND_CENTER_SCREENS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="tab"
+              id={`suite-tab-${option.id}`}
+              aria-selected={option.id === screen}
+              aria-controls="suite-screen"
+              tabIndex={option.id === screen ? 0 : -1}
+              className={option.id === screen ? 'is-on' : undefined}
+              onClick={() => setScreen(option.id)}
+              onKeyDown={onScreenKeys}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="suite-screen" id="suite-screen" role="tabpanel" aria-labelledby={`suite-tab-${screen}`}>
+          <CommandCenterDeck activeId={screen} />
+        </div>
+
+        {/* Below the screen, not above it: these are the parts with no mockup,
+            so they read as "and the rest" rather than as the main event. */}
+        {/* THE CARD STAYS AN <article> AND THE LINK STRETCHES OVER IT.
+            Roughly twenty rules across five breakpoints are written against
+            `.suite-grid article` — the grid, the borders, the corner circle,
+            the hover lift, the reveal. Swapping the element for an <a> would
+            have silently dropped every one of them. The title is the link, so
+            it is also the accessible name, and its ::after covers the card so
+            the whole tile is the target (see §97). */}
+        <div className="suite-grid suite-linked">
+          {suite.map(([title, body, href], index) => (
             <article key={title} data-rise style={cssVars({ '--rise-i': index })}>
-              <span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{body}</p>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <h3><Link className="suite-card-link" href={href}>{title}</Link></h3>
+              <p>{body}</p>
+              <b className="suite-card-go" aria-hidden="true">→</b>
             </article>
           ))}
         </div>
-      </section>
-
-      {/* THE CARDS THAT WERE ALREADY BUILT.
-          The bento above NAMES eight capabilities in a sentence each. These six
-          cards SHOW them — a real screen per capability, at a size you can
-          actually read. They were built for the previous homepage and have been
-          stranded on /home-classic ever since; nothing was redrawn to bring
-          them here.
-
-          Directly after the bento on purpose: it is the one place on the page
-          where a visitor has just been told what is included and has no reason
-          yet to believe it. */}
-      <section className="command-band" aria-label="What each part looks like">
-        <CommandCenterDeck />
       </section>
 
       {/* THEIR OWN NUMBERS.

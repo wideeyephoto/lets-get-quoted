@@ -2867,6 +2867,232 @@ const TWEAKS = `
   font-size: 12.5px;
   line-height: 1.6;
 }
+
+/* ===========================================================================
+   §97 — THE HOMEPAGE STOPS SAYING THINGS TWICE
+   ===========================================================================
+   Four merges, one deletion, and the styling that follows from them.
+
+   The page ran: hero, four outcome badges, four "included" tiles, three
+   flagship cards, a full-length AI section whose first two steps re-explained
+   the flagship cards, a client-portal demonstration, a grid naming eight
+   capabilities, and then six full-height product screens showing six of those
+   same eight. A visitor was told about the product three times before being
+   shown it, and the showing was six screens of scrolling.
+
+   Nothing below is decoration. Each block is what one of those merges needs. */
+
+/* -- decorative headings, demoted ------------------------------------------ */
+/* Three <h3>s belonged to DRAWINGS of a product, not to this document: a fake
+   homeowner's website headline, a fake intake question and a fake job title,
+   sitting in the heading outline between real section headings with nothing to
+   say they were part of a picture. They are paragraphs now, and these three
+   rules carry the exact type they had as headings. */
+.root :global(.preview-headline) {
+  margin: 13px 0 22px;
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -1.2px;
+  line-height: 1.05;
+}
+.root :global(.phone-shell .intake-headline) {
+  margin: 8px 0 14px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.root :global(.quick-title .quick-headline) {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* -- the flagship cards get somewhere to go -------------------------------- */
+.root :global(.feature-step-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 20px;
+  padding: 9px 15px;
+  border: 1px solid rgba(255, 106, 36, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 106, 36, 0.07);
+  color: #ffb071;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.root :global(.feature-step-link:hover) {
+  background: rgba(255, 106, 36, 0.16);
+  border-color: var(--orange);
+}
+.root :global(.feature-step-link:focus-visible) { outline: 2px solid var(--orange); outline-offset: 3px; }
+
+/* -- the four handoffs, as a row ------------------------------------------- */
+/* This replaces a full-length section. It sits INSIDE .flagships, after the
+   scrolly layout, so the chain reads as a footnote to the three cards it is
+   describing rather than as a fourth claim of its own. */
+.root :global(.flow-strip) {
+  margin: clamp(44px, 5vw, 72px) auto 0;
+  max-width: 1180px;
+  padding-top: clamp(28px, 3vw, 40px);
+  border-top: 1px solid rgba(174, 199, 211, 0.14);
+}
+.root :global(.flow-strip ol) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: lgq-flow;
+}
+.root :global(.flow-strip li) {
+  position: relative;
+  margin: 0;
+  padding-left: 18px;
+}
+/* The arrow between steps is drawn, not typed: four literal → characters would
+   be read out by a screen reader as four stray glyphs, and the last one would
+   point at nothing. */
+.root :global(.flow-strip li)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-top: 1.5px solid var(--orange);
+  border-right: 1.5px solid var(--orange);
+  transform: rotate(45deg);
+}
+.root :global(.flow-strip li:first-child)::before { opacity: 0.35; }
+.root :global(.flow-step) {
+  display: block;
+  color: #e7eef2;
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+.root :global(.flow-strip small) {
+  display: block;
+  margin-top: 5px;
+  color: #93a7b3;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.root :global(.flow-strip > p) {
+  margin: clamp(22px, 2.4vw, 30px) 0 0;
+  max-width: 62ch;
+  color: #a9bac4;
+  font-size: clamp(14px, 1.15vw, 16px);
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .root :global(.flow-strip ol) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; }
+}
+
+/* -- the merged suite section ---------------------------------------------- */
+/* The tab strip that drives the product screen. Scrolls rather than wraps: a
+   second row of tabs moves the screen down the page every time it happens, and
+   these are short enough that a swipe is the natural gesture. */
+.root :global(.suite-tabs) {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.root :global(.suite-tabs)::-webkit-scrollbar { display: none; }
+.root :global(.suite-tabs button) {
+  flex: 0 0 auto;
+  /* 44px of target, from the padding rather than from a min-height, so the
+     text stays vertically centred at every font size. */
+  padding: 12px 17px;
+  border: 1px solid rgba(164, 153, 137, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  color: #4a5158;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.root :global(.suite-tabs button:hover) { background: var(--paper); color: var(--ink); }
+.root :global(.suite-tabs button.is-on) {
+  border-color: var(--orange);
+  background: rgba(255, 106, 36, 0.12);
+  color: #a3511b;
+}
+.root :global(.suite-tabs button:focus-visible) { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+.root :global(.suite-screen) { margin-bottom: clamp(34px, 4vw, 54px); }
+
+/* One screen, not six stacked. The deck's own layout gapped six full-height
+   cards down the page; with one card there is nothing to gap. */
+.root :global(.cc-single .cc-deck) { display: block; gap: 0; }
+.root :global(.cc-single .cc-card) { margin: 0; }
+
+/* -- the suite cards become links ------------------------------------------ */
+/* The <article> is untouched — roughly twenty rules across five breakpoints
+   are written against it. The title is the link and its ::after covers the
+   card, so the whole tile is the target and the accessible name is the title
+   rather than "read more". */
+.root :global(.suite-card-link) { color: inherit; text-decoration: none; }
+.root :global(.suite-card-link)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.root :global(.suite-grid article:hover .suite-card-link) { color: #a3511b; }
+.root :global(.suite-card-link:focus-visible)::after { outline: 2px solid var(--orange); outline-offset: -3px; }
+
+/* Sits over the decorative corner circle the card already draws, which is why
+   it is positioned rather than placed in flow. */
+.root :global(.suite-card-go) {
+  position: absolute;
+  right: 18px;
+  bottom: 15px;
+  z-index: 1;
+  color: var(--orange);
+  font-size: 15px;
+  opacity: 0.55;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.root :global(.suite-grid article:hover .suite-card-go) { opacity: 1; transform: translateX(3px); }
+
+/* -- the hero was sized around the badges that are no longer in it ---------- */
+/* min-height: 900px was tuned to a copy column that ended with four pillar
+   tiles. Take them out and the number stops describing anything — measured at
+   1440 it left about 200px of empty gradient under the CTA, which reads as the
+   page having lost something rather than as breathing room. The content sets
+   the height now, with a floor low enough that a short viewport is not padded
+   and high enough that the hero still fills a laptop screen. */
+.root :global(.hero.hero-split) {
+  min-height: min(760px, 88vh);
+  padding-top: clamp(128px, 13vw, 160px);
+  padding-bottom: clamp(56px, 6vw, 84px);
+}
+
+/* -- the footer's legal row ------------------------------------------------ */
+.root :global(.footer-legal) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  margin: 14px 0 0;
+}
+.root :global(.footer-legal a) {
+  color: #7e9099;
+  font-size: 12px;
+  text-decoration: none;
+}
+.root :global(.footer-legal a:hover) { color: #cfdbe2; text-decoration: underline; }
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.
