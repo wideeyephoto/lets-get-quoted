@@ -47,3 +47,35 @@ export function marginalTierForVolume(volume: number): FeeTier {
   const safe = Number.isFinite(volume) && volume > 0 ? volume : 0;
   return FEE_TIERS.find((tier) => tier.upTo === null || safe < tier.upTo) ?? FEE_TIERS[FEE_TIERS.length - 1];
 }
+
+/**
+ * The volume at which a year of platform fees equals a given amount.
+ *
+ * The inverse of platformFeeForVolume, and the number the /pricing calculator
+ * needs to answer the question it was raising and not answering: the default
+ * example shows a $1,450 platform fee beside a $1,188 subscription, which is
+ * 22% more, and the page said nothing about where the two cross. "Below
+ * $X you pay less than the plan" is that sentence.
+ *
+ * Exact rather than searched: the fee is piecewise linear in volume, so walk
+ * the brackets, and inside the one that contains the target divide back out by
+ * its rate. Returns Infinity when no volume reaches the target — which cannot
+ * happen while the top bracket is uncapped, but would the moment one is added.
+ */
+export function volumeForPlatformFee(targetFee: number): number {
+  if (!Number.isFinite(targetFee) || targetFee <= 0) return 0;
+
+  let feeSoFar = 0;
+  let lowerBound = 0;
+  for (const tier of FEE_TIERS) {
+    const upper = tier.upTo ?? Infinity;
+    const rate = tier.ratePct / 100;
+    const feeAtTop = feeSoFar + (upper - lowerBound) * rate;
+    if (targetFee <= feeAtTop) {
+      return lowerBound + (targetFee - feeSoFar) / rate;
+    }
+    feeSoFar = feeAtTop;
+    lowerBound = upper;
+  }
+  return Infinity;
+}

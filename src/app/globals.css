@@ -5129,23 +5129,51 @@ li + li { margin-top: 0.45rem; }
   font-size: 2rem; font-weight: 800; color: var(--gold-ink); letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
+/* THE CONTROL IS 28px TALL; THE TRACK IS THE PICTURE.
+   This input was 8px tall with a 22px thumb drawn on top of it. The thumb you
+   can see is not the thumb you can grab: a range input's hit area is its own
+   border box, so everything overhanging that 8px band did nothing, and the
+   whole control sat at a third of the 24px minimum target size. Reported as
+   "the slider does not work", and from the outside that is exactly what it is
+   — the value wiring was always fine, and still is; it is now reachable.
+
+   The visible 8px bar moves to ::-webkit-slider-runnable-track / ::-moz-range-
+   track, which is what those pseudo-elements are for, and the thumb is pulled
+   back up by half the difference to sit centred on it. */
 .calc-field input[type="range"] {
   -webkit-appearance: none; appearance: none;
-  width: 100%; height: 8px; margin: 0.5rem 0 0.2rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  width: 100%; height: 28px; margin: 0.35rem 0 0.1rem;
+  background: transparent;
   cursor: pointer;
+}
+.calc-field input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+.calc-field input[type="range"]::-moz-range-track {
+  height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 .calc-field input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: 22px; height: 22px; border-radius: 50%;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent);
+  box-shadow: 0 4px 12px rgba(255, 122, 33, 0.5);
+  margin-top: -8px;                      /* (8 - 24) / 2 */
+}
+.calc-field input[type="range"]::-moz-range-thumb {
+  width: 24px; height: 24px; border-radius: 50%;
   background: #fff; border: 3px solid var(--accent);
   box-shadow: 0 4px 12px rgba(255, 122, 33, 0.5);
 }
-.calc-field input[type="range"]::-moz-range-thumb {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: #fff; border: 3px solid var(--accent);
-  box-shadow: 0 4px 12px rgba(255, 122, 33, 0.5);
+/* Keyboard is the way this control was hardest to find, so the focused state
+   goes on the thumb rather than on a ring around a 28px transparent box. */
+.calc-field input[type="range"]:focus-visible { outline: none; }
+.calc-field input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(255, 122, 33, 0.55);
+}
+.calc-field input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgba(255, 122, 33, 0.55);
 }
 .calc-range-ends { display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--faint, rgba(var(--grey-3), 0.55)); }
 
@@ -5180,7 +5208,15 @@ li + li { margin-top: 0.45rem; }
   width: 4.5rem; border: 0; background: transparent; color: inherit;
   font-size: 1rem; font-weight: 800; padding: 0;
 }
+/* The ring was removed from the input and nothing replaced it, so tabbing into
+   the comparison field left no visible focus at all. It moves to the wrapper,
+   which is the thing that looks like the field. */
 .calc-inline-input input:focus-visible { outline: none; }
+.calc-inline-input:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .calc-compare-out { font-size: 0.92rem; color: var(--muted); }
 .calc-compare-out strong { color: var(--text); font-variant-numeric: tabular-nums; }
 .calc-honest { margin: 0.9rem 0 0; font-size: 0.83rem; color: var(--mute-g362); max-width: 74ch; line-height: 1.6; }
@@ -26908,3 +26944,113 @@ body[data-schedule-overlay="job"] .sched-queue {
   color: var(--accent-ink);
   font-weight: 750;
 }
+
+/* ===========================================================================
+   /pricing: THE COMPARISON, ANSWERED
+   =========================================================================== */
+
+/* -- the verdict under the calculator -------------------------------------- */
+/* The calculator used to stop at "= $1,188/yr" and leave the reader to do the
+   subtraction. At the default settings that subtraction comes out against us,
+   and a pricing page hoping nobody does the arithmetic is worse than one that
+   does it first. data-side carries which way it fell, so the border can agree
+   with the sentence without the sentence having to be colour to be read. */
+.calc-verdict {
+  margin: 1rem 0 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+}
+.calc-verdict[data-side='lower'] { border-left-color: var(--accent); }
+.calc-verdict[data-side='higher'] { border-left-color: var(--gold-ink); }
+.calc-verdict-line { margin: 0; font-size: 1rem; line-height: 1.5; }
+.calc-verdict-line strong { font-variant-numeric: tabular-nums; }
+.calc-verdict-break {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.calc-verdict-break strong { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.calc-stack { margin-top: 0.9rem; padding-top: 0.85rem; border-top: 1px solid var(--line); }
+.calc-stack-head {
+  margin: 0 0 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i62);
+}
+.calc-stack ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.calc-stack li {
+  padding: 0.28rem 0.62rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* -- "swipe to compare" ---------------------------------------------------- */
+/* Hidden at every width where the 720px table fits, so the page never promises
+   a gesture that does nothing. */
+.compare-swipe { display: none; }
+@media (max-width: 800px) {
+  .compare-swipe {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 1.4rem 0 -0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--mute-i62);
+  }
+  .compare-swipe-arrow { animation: comparePeek 2.4s ease-in-out infinite; }
+}
+@keyframes comparePeek {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .compare-swipe-arrow { animation: none; }
+}
+/* Keyboard users get the scroller as a focus stop (tabIndex on the region), so
+   it needs to show that it has focus. */
+.compare-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* -- the tier chart at phone widths ---------------------------------------- */
+/* Two columns held all the way down to 320px, which put a rate, a range label
+   and a bar into about 140px each. One column below 520px. */
+@media (max-width: 520px) {
+  .pricing-tiers { grid-template-columns: 1fr; gap: 0.75rem; }
+  .pricing-tier { flex-direction: row; align-items: center; gap: 0.75rem; }
+  .pricing-tier-chart { height: auto; width: 84px; flex: none; }
+}
+
+/* -- something checkable beside the last ask ------------------------------- */
+.cta-trust {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  max-width: 62ch;
+  margin: 1.4rem auto 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--mute-i62);
+  text-align: center;
+}
+.cta-trust strong { color: var(--text); font-weight: 700; }
+.cta-trust a { color: var(--gold-ink); font-weight: 650; }

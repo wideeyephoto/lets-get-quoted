@@ -4,6 +4,7 @@ import { FEE_TIERS, STRIPE_PROCESSING_NOTE, marginalTierForVolume } from '@/lib/
 import { FEATURE_COUNT } from '@/lib/features';
 import PricingCalculator from './PricingCalculator';
 import { ExampleFrame, PriceZeroDial } from '@/components/marketing';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
 import styles from './pricing.module.css';
@@ -15,6 +16,22 @@ export const metadata: Metadata = {
   // than merely to the page.
   description: `No subscription and no setup fee. A platform fee of ${FEE_TIERS[FEE_TIERS.length - 1].rate}–${FEE_TIERS[0].rate} applies only when a homeowner pays you, and drops as you grow. Try the fee calculator.`,
   alternates: { canonical: 'https://letsgetquoted.com/pricing' },
+  /* SHARED, THIS PAGE READ THE HOMEPAGE'S. A link to /pricing in a text or a
+     Facebook group unfurled as the site's generic card — the brand tagline and
+     the homepage image — so the one thing the link was sent to answer did not
+     appear in the preview. The title carries the brand because the layout's
+     title template does not reach openGraph. */
+  openGraph: {
+    title: 'Pricing · Let’s Get Quoted',
+    description: `No monthly subscription and no setup fee. A platform fee from ${FEE_TIERS[0].rate} down to ${FEE_TIERS[FEE_TIERS.length - 1].rate}, charged only when a homeowner actually pays you.`,
+    url: 'https://letsgetquoted.com/pricing',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pricing · Let’s Get Quoted',
+    description: `No monthly subscription. A platform fee from ${FEE_TIERS[0].rate} down to ${FEE_TIERS[FEE_TIERS.length - 1].rate}, only when you get paid.`,
+  },
 };
 
 // Presentation heights for the tier bars — tallest tier is the highest rate.
@@ -173,6 +190,37 @@ const pricingFaqs = [
     q: 'How does the rate drop?',
     a: `The platform fee is marginal across your trailing-12-month volume — as you collect more, each new bracket is charged at a lower rate, all the way down to ${LAST_TIER_RATE}. It happens automatically, with no call to sales.`,
   },
+  /* SIX QUESTIONS THAT WERE NOT HERE.
+     Every answer below is sourced from something in the codebase rather than
+     from a policy invented for the page: the refund answer describes what
+     reversedPlatformFee() actually computes, the volume answer describes what
+     the trailing window actually sums, and where the honest answer is "that
+     part is Stripe's", it says so instead of quoting a number this page has no
+     source for. */
+  {
+    q: 'What counts toward my trailing-12-month volume?',
+    a: 'Payments a homeowner actually made to you through the platform in the last 12 months — card and bank. Quotes you sent, jobs you scheduled, and invoices nobody has paid yet do not count toward it, because nothing has been collected.',
+  },
+  {
+    q: 'What happens at a bracket boundary — and can my rate go back up?',
+    a: `The brackets work like tax brackets, not like a plan you get moved onto: crossing into a new one only changes the rate on the volume above the line, never on what you already collected. And yes, the rate can move back up — it is figured on a rolling 12 months, so if a quiet year drops your trailing volume back into a lower bracket, the rate on your next dollar returns to that bracket's rate. It never exceeds ${FIRST_TIER_RATE}, the starting rate.`,
+  },
+  {
+    q: 'If I refund a customer, do I get the platform fee back?',
+    a: 'Yes, in proportion to the refund. Refund half a payment and half the platform fee on it is returned; refund it in full and the whole fee comes back, so a fully refunded payment costs you nothing in platform fee. Stripe’s own processing fee on the original charge is Stripe’s to return or keep, and follows their policy rather than ours.',
+  },
+  {
+    q: 'What about chargebacks?',
+    a: 'A chargeback is the homeowner’s bank pulling the money back, and it is handled through Stripe’s dispute process — you will see the payment change state in the job so it is not a surprise on a statement. We do not add a fee of our own on top of a dispute; any dispute fee is Stripe’s and is set by them.',
+  },
+  {
+    q: 'Does a bank payment cost the same as a card?',
+    a: `The platform fee is the same either way — it is a percentage of what you collect, not of how it arrived. What differs is Stripe’s processing, which is cheaper on bank debit than on card for large amounts, which is why bank payment is offered automatically on bigger one-off payments with a fallback to card. Card processing runs ${STRIPE_PROCESSING_NOTE}; bank rates are set by Stripe.`,
+  },
+  {
+    q: 'What do I need for payouts, and is there anything to cancel?',
+    a: 'Payouts run through your own Stripe account, which you connect once — Stripe verifies your business and pays out to your bank on their schedule, which you can see in your Stripe dashboard. There is no contract, no minimum and no subscription to cancel: because you are only charged when you collect, nothing is running in the background. You can export your data and delete the account whenever you want.',
+  },
 ];
 
 const pricingJsonLd = {
@@ -208,7 +256,7 @@ export default function PricingPage() {
           </p>
         </div>
         <div className="actions">
-          <Link href="/login" className="btn primary">Create free account</Link>
+          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
       </section>
@@ -388,7 +436,15 @@ export default function PricingPage() {
             slow month as a busy one &mdash; here is that model next to this one.
           </p>
         </div>
-        <div className="compare-scroll">
+        {/* The table has a 720px floor, so on a phone it is a horizontal
+            scroller inside a vertical page — which works, and gives no sign
+            that it works. The cue is hidden above the width where the table
+            fits, so it never claims a gesture that does nothing. */}
+        <p className="compare-swipe" aria-hidden="true">
+          <span>Swipe to compare</span>
+          <span className="compare-swipe-arrow">&rarr;</span>
+        </p>
+        <div className="compare-scroll" tabIndex={0} role="region" aria-label="Comparison of the two pricing models">
           <table className={`compare-table ${styles.modelTable}`}>
             <caption className="sr-only">
               How the no-subscription model compares with conventional per-seat monthly contractor software, by what
@@ -460,9 +516,20 @@ export default function PricingPage() {
           <h2>Start free &mdash; the first quote costs you nothing.</h2>
           <p>No subscription. No setup fee. You only pay our platform fee when a homeowner actually pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>
           </div>
+          {/* THE ONE CHECKABLE THING ON THE BAND.
+              A closing CTA on a pricing page is the moment somebody decides
+              whether to hand over their business, and this one closed on our
+              own assurances. These are facts a reader can go and confirm
+              somewhere other than here: who holds the card data, and a page
+              that sets out the rest in detail. */}
+          <p className="cta-trust">
+            <span aria-hidden="true">◉</span> Card payments are handled entirely by{' '}
+            <strong>Stripe Checkout</strong>, so card numbers never reach our servers, and payouts go to your own
+            Stripe account. <Link href="/security">How we handle your data &rarr;</Link>
+          </p>
         </div>
       </section>
 
