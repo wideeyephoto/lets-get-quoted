@@ -2649,6 +2649,72 @@
 .root :global(.stack-card.patchwork > p) { color: #5f635e; }
 .root :global(.stack-card.patchwork .stack-label small) { color: #5f635e; }
 
+/* ---- the hero dashboard mock, at a readable size ---------------------------
+
+   The panel is 669px wide and its labels were set at 8px, its captions at 9px
+   and its rows at 11px — roughly 0.7x the size the same layout would use if it
+   were the real dashboard. A screenshot can get away with that; this is live
+   text at 1x, and "NEEDS YOUR ATTENTION" at 8px is texture, not a word.
+
+   The mock is the page's main evidence that the product exists, so it should
+   be readable rather than merely suggestive.
+
+   The card had NO vertical slack — 498px of content in a 498px box, with
+   overflow hidden — so every size here is paired with room to put it in. The
+   height below is measured, not guessed: see the check that the card's
+   scrollHeight still fits its clientHeight. */
+.root :global(.hero-product) { height: 726px; }
+.root :global(.dashboard-card) { height: 566px; }
+
+.root :global(.dash-top) { height: 58px; font-size: 13px; }
+.root :global(.dash-top i) { width: 30px; height: 30px; font-size: 11px; }
+.root :global(.dash-body) { height: calc(100% - 58px); }
+
+.root :global(.dash-greeting small),
+.root :global(.attention-card > small),
+.root :global(.dash-grid small) { font-size: 11px; letter-spacing: 1.1px; }
+.root :global(.dash-greeting h2) { font-size: 25px; }
+.root :global(.dash-greeting button) { font-size: 12px; padding: 10px 16px; }
+
+.root :global(.attention-row) { font-size: 12.5px; }
+.root :global(.attention-row b) { font-size: 18px; }
+
+.root :global(.dash-grid p) { font-size: 11px; }
+.root :global(.dash-grid strong) { font-size: 22px; }
+.root :global(.dash-grid > div) { min-height: 118px; }
+
+/* The two floating badges sit against the card, so they move with it. */
+.root :global(.floating-alert small),
+.root :global(.floating-paid small) { font-size: 10px; }
+.root :global(.floating-alert b),
+.root :global(.floating-paid b) { font-size: 13px; }
+
+/* The hero's example marker, same trap as the tour's.
+   .hero-product's other three children — the card and both floating badges —
+   are all absolutely positioned, so the marker was the only thing in normal
+   flow and rendered at the TOP of the box, across the AI-alert badge. Pinned
+   below the card instead, on the right so it clears the payment badge in the
+   bottom-left corner. */
+.root :global(.hero-product .example-mark) {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  /* One line. It is an inline-flex pill of three items, so a max-width made
+     the three wrap independently and right-aligning them produced a ragged
+     block with "See the live demo" broken across two of the lines. */
+  white-space: nowrap;
+}
+/* On a phone one line is wider than the screen, so it rejoins the flow under
+   the panel and is allowed to wrap — the same place the floating badges go. */
+@media (max-width: 760px) {
+  .root :global(.hero-product .example-mark) {
+    position: static;
+    white-space: normal;
+    margin: 14px auto 0;
+  }
+}
+
 /* ---- the homepage FAQ ------------------------------------------------------
 
    New to this page, and not a port: the source tour had no FAQ. It is here
