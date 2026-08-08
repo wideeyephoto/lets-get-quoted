@@ -59,53 +59,134 @@ const STATUS_READING: Record<Stage['status'], string> = {
   '': 'Upcoming stage.',
 };
 
-const FLAGSHIPS: [string, string, string, string, string][] = [
-  [
-    '01',
-    'One-click website',
-    'Launch a complete, editable contractor site with Smart Intake connected from day one.',
-    '/features/website-builder',
-    'BUILD THE FRONT DOOR',
-  ],
-  [
-    '02',
-    'AI Smart Intake',
-    'Ask better questions, build a useful project summary and surface the leads that deserve attention first.',
-    '/features/ai-intake',
-    'QUALIFY THE OPPORTUNITY',
-  ],
-  [
-    '03',
-    'Quick Stops',
-    'Turn an opening in today’s route into an optional, prepaid nearby job at a price you choose.',
-    '/features/quick-stops',
-    'EARN BETWEEN JOBS',
-  ],
-  [
-    '04',
-    'Texts + client portal',
-    'Keep every conversation, approval, update and payment connected to the right job.',
-    '/features/client-portal',
-    'KEEP CUSTOMERS INFORMED',
-  ],
-  [
-    '05',
-    'Connected back office',
-    'Move from quote to schedule, crew, payment, review and recurring work without rebuilding the record.',
-    '/features/back-office',
-    'RUN THE WORK',
-  ],
+/**
+ * THE `id` IS PART OF THE CONTRACT, NOT DECORATION.
+ *
+ * The homepage's four-cell strip under the hero links straight at these cards
+ * — /features#website-builder and so on — so a visitor who reads "Website
+ * included · One-click AI builder" lands on the card that expands it, with the
+ * other four in view. The ids match the deep-page slugs where there is one; the
+ * two that differ (smart-intake, whose page is /features/ai-intake) do so
+ * because the homepage names the feature "Smart Intake".
+ *
+ * Renaming an id here breaks a homepage link silently. There is a test that
+ * asserts every homepage anchor resolves to an id on this page.
+ */
+type Flagship = {
+  number: string;
+  id: string;
+  title: string;
+  body: string;
+  href: string;
+  kicker: string;
+};
+
+const FLAGSHIPS: Flagship[] = [
+  {
+    number: '01',
+    id: 'website-builder',
+    title: 'One-click website',
+    body: 'Launch a complete, editable contractor site with Smart Intake connected from day one.',
+    href: '/features/website-builder',
+    kicker: 'BUILD THE FRONT DOOR',
+  },
+  {
+    number: '02',
+    id: 'smart-intake',
+    title: 'AI Smart Intake',
+    body: 'Ask better questions, build a useful project summary and surface the leads that deserve attention first.',
+    href: '/features/ai-intake',
+    kicker: 'QUALIFY THE OPPORTUNITY',
+  },
+  {
+    number: '03',
+    id: 'quick-stops',
+    title: 'Quick Stops',
+    body: 'Turn an opening in today’s route into an optional, prepaid nearby job at a price you choose.',
+    href: '/features/quick-stops',
+    kicker: 'EARN BETWEEN JOBS',
+  },
+  {
+    number: '04',
+    id: 'client-portal',
+    title: 'Texts + client portal',
+    body: 'Keep every conversation, approval, update and payment connected to the right job.',
+    href: '/features/client-portal',
+    kicker: 'KEEP CUSTOMERS INFORMED',
+  },
+  {
+    number: '05',
+    id: 'back-office',
+    title: 'Connected back office',
+    body: 'Move from quote to schedule, crew, payment, review and recurring work without rebuilding the record.',
+    href: '/features/back-office',
+    kicker: 'RUN THE WORK',
+  },
 ];
 
-const INCLUDED: [string, string][] = [
-  ['Quotes + e-sign', 'Itemized proposals, optional upgrades and clear approvals.'],
-  ['Scheduling', 'Arrival windows, capacity and the details needed to keep the promise.'],
-  ['Crew + labor', 'Assignments, time clock, hours and estimated pay.'],
-  ['Payments', 'Deposits, balances and payment plans through Stripe.'],
-  ['Recurring work', 'Automatic visits, saved cards and predictable revenue.'],
-  ['Cash flow', 'See customer money, payroll and bills before they move.'],
-  ['Customer communication', 'Two-way texts and a job-specific client portal.'],
-  ['Reviews + growth', 'Follow-ups, review requests and AI-assisted marketing.'],
+/**
+ * The operational tools, in four named groups.
+ *
+ * This was one flat grid of eight cards. The eight are unchanged in substance —
+ * same tools, same descriptions — but a flat grid had no landing point inside
+ * it, and the homepage hero's four badges (Plan & Schedule, Automate & Follow
+ * Up, Get Paid Faster, Grow Your Business) needed somewhere to arrive that
+ * answers the badge by name. Grouping is what those four badges already imply:
+ * each one names a job the software does, and each job is two or three tools.
+ *
+ * As with FLAGSHIPS above, the ids are linked from the homepage and covered by
+ * a test.
+ */
+type Capability = {
+  id: string;
+  number: string;
+  title: string;
+  lead: string;
+  tools: [string, string][];
+};
+
+const CAPABILITIES: Capability[] = [
+  {
+    id: 'planning-and-scheduling',
+    number: '01',
+    title: 'Plan & Schedule',
+    lead: 'Put the work on the calendar with everything the crew needs to arrive ready.',
+    tools: [
+      ['Scheduling', 'Arrival windows, capacity and the details needed to keep the promise.'],
+      ['Crew + labor', 'Assignments, time clock, hours and estimated pay.'],
+    ],
+  },
+  {
+    id: 'automations',
+    number: '02',
+    title: 'Automate & Follow Up',
+    lead: 'The messages, reminders and repeat visits that would otherwise depend on remembering.',
+    tools: [
+      ['Customer communication', 'Two-way texts and a job-specific client portal.'],
+      ['Recurring work', 'Automatic visits, saved cards and predictable revenue.'],
+    ],
+  },
+  {
+    id: 'payments',
+    number: '03',
+    title: 'Get Paid Faster',
+    lead: 'From the quote a customer approves to the money landing in your account.',
+    tools: [
+      ['Quotes + e-sign', 'Itemized proposals, optional upgrades and clear approvals.'],
+      ['Payments', 'Deposits, balances and payment plans through Stripe.'],
+      ['Cash flow', 'See customer money, payroll and bills before they move.'],
+    ],
+  },
+  {
+    id: 'website-and-growth',
+    number: '04',
+    title: 'Grow Your Business',
+    lead: 'Turn finished work into reviews, repeat customers and the next job.',
+    tools: [
+      ['Reviews + growth', 'Follow-ups, review requests and AI-assisted marketing.'],
+      ['Campaigns + blog', 'Email and text campaigns, a blog that publishes to your site, and what each one did.'],
+    ],
+  },
 ];
 
 export default function FeaturesPage() {
@@ -212,8 +293,11 @@ export default function FeaturesPage() {
           </h2>
         </div>
         <div className="feature-link-grid">
-          {FLAGSHIPS.map(([number, title, body, href, kicker]) => (
-            <Link href={href} key={title}>
+          {FLAGSHIPS.map(({ number, id, title, body, href, kicker }) => (
+            /* The id is on the link itself, so a visitor arriving from the
+               homepage lands on the card rather than near it. scroll-margin-top
+               keeps it clear of the sticky header — see §96. */
+            <Link href={href} key={id} id={id}>
               <span>{number}</span>
               <small>{kicker}</small>
               <h3>{title}</h3>
@@ -239,15 +323,23 @@ export default function FeaturesPage() {
             No separate starter tier. No choosing which essential workflow you can afford this month.
           </p>
         </div>
-        <div className="everything-grid">
-          {INCLUDED.map(([title, body], index) => (
-            <article key={title}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
-          ))}
-        </div>
+        {CAPABILITIES.map(({ id, number, title, lead, tools }) => (
+          <section className="capability-band" id={id} key={id} aria-labelledby={`${id}-title`}>
+            <div className="capability-head">
+              <span>{number}</span>
+              <h3 id={`${id}-title`}>{title}</h3>
+              <p>{lead}</p>
+            </div>
+            <div className="everything-grid capability-tools">
+              {tools.map(([name, body]) => (
+                <article key={name}>
+                  <h4>{name}</h4>
+                  <p>{body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
       </section>
 
       <PageCTA

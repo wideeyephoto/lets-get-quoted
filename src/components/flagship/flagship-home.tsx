@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from 'next/image';
+import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import CommandCenterDeck from '@/components/command-center-deck';
@@ -41,11 +42,18 @@ const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProp
 /**
  * The four pillars under the hero copy, from the mockup.
  *
- * Labelled icons rather than links, which is what the mockup shows and also
- * what the routes support: there is no /features/scheduling, /features/payments
- * or /features/reviews to point at, and sending three of the four to the same
- * back-office page would be worse than not linking at all. The named sections
- * further down the page are where a visitor goes next.
+ * THESE ARE LINKS NOW, AND THE DESTINATIONS HAD TO BE BUILT FOR THEM.
+ *
+ * They used to be labelled icons, because nothing on the site answered any of
+ * the four: /features listed eight tools in one flat grid with no landing point
+ * inside it, and three of the four would have had to share the back-office page.
+ * Four named groups now exist on /features — see CAPABILITIES there — and each
+ * href below is the id of one of them. The names match on both ends on purpose:
+ * a visitor who presses "Get Paid Faster" arrives at a heading that says "Get
+ * Paid Faster", not at a grid they have to search.
+ *
+ * If a slug here changes, change it there. The features page has a test that
+ * asserts these four ids exist for exactly this reason.
  *
  * The tone is a category colour, not a status.
  */
@@ -53,29 +61,48 @@ const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeL
 
 const PILLARS = [
   {
-    label: 'Plan & Schedule', tone: 'violet',
+    label: 'Plan & Schedule', tone: 'violet', href: '/features#planning-and-scheduling',
     icon: (
       <svg viewBox="0 0 24 24" {...stroke}><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M8 15h4" /></svg>
     ),
   },
   {
-    label: 'Automate & Follow Up', tone: 'orange',
+    label: 'Automate & Follow Up', tone: 'orange', href: '/features#automations',
     icon: (
       <svg viewBox="0 0 24 24" {...stroke}><path d="M21 12a8 8 0 1 1-3.2-6.4" /><path d="M21 4v5h-5" /><path d="M9 12h6M9 15h4" /></svg>
     ),
   },
   {
-    label: 'Get Paid Faster', tone: 'green',
+    label: 'Get Paid Faster', tone: 'green', href: '/features#payments',
     icon: (
       <svg viewBox="0 0 24 24" {...stroke}><circle cx="12" cy="12" r="9" /><path d="M12 7v10M14.5 9.5A2.5 2.5 0 0 0 12 8h-.3a2.2 2.2 0 0 0-.3 4.4h1.2a2.2 2.2 0 0 1-.3 4.4H12a2.5 2.5 0 0 1-2.5-1.5" /></svg>
     ),
   },
   {
-    label: 'Grow Your Business', tone: 'blue',
+    label: 'Grow Your Business', tone: 'blue', href: '/features#website-and-growth',
     icon: (
       <svg viewBox="0 0 24 24" {...stroke}><path d="M5 20V11M12 20V5M19 20v-6" /><path d="M3 20h18" /></svg>
     ),
   },
+];
+
+/**
+ * The four-cell strip directly under the hero.
+ *
+ * These point at the five-card index on /features, not at the deep feature
+ * pages: the card is a one-line summary, so the visitor lands on the matching
+ * summary with its four siblings visible and chooses whether to go deeper. The
+ * ids are on the cards themselves — see FLAGSHIPS in src/app/features/page.tsx.
+ *
+ * The label was orange on cream at 2.5:1, which is under the 4.5:1 a 13px
+ * uppercase label needs and was the visible complaint; §95 in the generator
+ * darkens it and raises both sizes.
+ */
+const PROMISES = [
+  { label: 'WEBSITE INCLUDED', blurb: 'One-click AI builder', href: '/features#website-builder' },
+  { label: 'SMART INTAKE INCLUDED', blurb: 'Qualify every request', href: '/features#smart-intake' },
+  { label: 'BACK OFFICE INCLUDED', blurb: 'Quote, schedule and collect', href: '/features#back-office' },
+  { label: 'QUICK STOPS INCLUDED', blurb: 'Nearby prepaid work', href: '/features#quick-stops' },
 ];
 
 /**
@@ -433,10 +460,12 @@ export default function FlagshipHome() {
           <p className="hero-note"><i>✓</i> Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Pay only when you get paid</p>
 
           <ul className="hero-pillars">
-            {PILLARS.map(({ label, tone, icon }) => (
+            {PILLARS.map(({ label, tone, href, icon }) => (
               <li key={label} data-tone={tone}>
-                <span className="pillar-icon" aria-hidden="true">{icon}</span>
-                <b>{label}</b>
+                <Link href={href}>
+                  <span className="pillar-icon" aria-hidden="true">{icon}</span>
+                  <b>{label}</b>
+                </Link>
               </li>
             ))}
           </ul>
@@ -447,11 +476,21 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      <section className="trust-strip" aria-label="Product promises">
-        <span><b>WEBSITE INCLUDED</b> One-click AI builder</span>
-        <span><b>SMART INTAKE INCLUDED</b> Qualify every request</span>
-        <span><b>BACK OFFICE INCLUDED</b> Quote, schedule and collect</span>
-        <span><b>QUICK STOPS INCLUDED</b> Nearby prepaid work</span>
+      {/* THE ANCHOR IS INSIDE THE CELL, NOT INSTEAD OF IT.
+          Every rule that draws this strip — the four-column grid, the hairline
+          borders, the corner number, the left rule that fills on hover, and
+          four separate padding values across three breakpoints — is written
+          against `.trust-strip span`, and most of it comes from the generated
+          source rather than from TWEAKS, so it cannot be re-aimed at an `a`.
+          The span stays the cell; the link fills it. Its padding moves onto the
+          anchor so the whole cell is the target and not just the two lines of
+          text (see §95 in the generator). */}
+      <section className="trust-strip" aria-label="What's included">
+        {PROMISES.map(({ label, blurb, href }) => (
+          <span key={label}>
+            <Link href={href}><b>{label}</b> {blurb}</Link>
+          </span>
+        ))}
       </section>
 
       <section className="flagships" id="flagships" data-track>
@@ -504,12 +543,11 @@ export default function FlagshipHome() {
               <div className="wheel-core"><b>{features[active].number}</b><small>OF 03</small></div>
             </div>
             <ProductVisual active={active} />
-            {/* Same reason as the hero's: these three panels quote an estimate
-                range, a fee and a drive time, and a visitor has no way to tell
-                a worked example from a screenshot. */}
-            <p className="example-mark">
-              <b>Example</b> — an invented business, not a real customer.
-            </p>
+            {/* An "Example — an invented business" pill sat here, between the
+                product panels and the progress rail. Removed on request. The
+                three panels still quote an estimate range, a fee and a drive
+                time, so nothing on this section now marks those figures as
+                invented; the copy around them is written as illustration. */}
             {/* How far through the three you are, without having to count the
                 steps. The wheel says which one; this says how much is left. */}
             <div className="tour-rail" aria-hidden="true"><s /></div>

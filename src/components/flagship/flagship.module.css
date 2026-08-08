@@ -4684,3 +4684,195 @@
   .root :global(.showcase-tabs) { padding-bottom: 2px; }
   .root :global(.showcase-tabs button) { width: 44px; height: 40px; }
 }
+
+/* ===========================================================================
+   §94 — THE HERO PILLARS ARE LINKS
+   ===========================================================================
+   Four labelled icons that answered nothing. They now point at four named
+   groups on /features.
+
+   THE ANCHOR TAKES OVER THE GRID rather than sitting inside it. The li was the
+   grid container (icon over label, both left-aligned); if the link were just
+   another child, the target would be the two words and nothing else — a 13px
+   strip in a 90px tile. Handing the grid to the anchor makes the whole tile,
+   icon included, one target, with no padding tricks that would make the four
+   hit areas overlap across a 14px gap. */
+.root :global(.hero-pillars li) { display: block; }
+
+.root :global(.hero-pillars a) {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 11px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 14px;
+  transition: transform .18s ease;
+}
+
+/* The tone vars live on the li, so everything below still reads the right
+   colour without repeating the four-way table. */
+.root :global(.hero-pillars a:hover) { transform: translateY(-2px); }
+.root :global(.hero-pillars a:hover .pillar-icon),
+.root :global(.hero-pillars a:focus-visible .pillar-icon) {
+  border-color: var(--tone);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .3);
+}
+.root :global(.hero-pillars a:hover b) {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.root :global(.hero-pillars a:focus-visible) {
+  outline: 2px solid var(--orange);
+  outline-offset: 6px;
+}
+
+@media (hover: none) {
+  .root :global(.hero-pillars a:hover) { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.hero-pillars a) { transition: none; }
+  .root :global(.hero-pillars a:hover) { transform: none; }
+}
+
+/* ===========================================================================
+   §95 — THE TRUST STRIP: LINKED, AND READABLE
+   ===========================================================================
+   TWO CHANGES, ONE OF WHICH IS A CONTRAST FIX AND NOT A PREFERENCE.
+
+   The label was var(--orange) on --cream: #ff6a24 on #f5f0e7 is 2.50:1, and
+   the cell's own gradient washes it lighter still. WCAG AA wants 4.5:1 for
+   text that size. #b8430f on the same ground measures 4.85:1 and is the same
+   hue family, so the strip still reads as brand orange rather than as brown.
+   The body line moves 12.5px -> 14px and #3f4b52 -> #1f2c34 (12.3:1).
+
+   THE LINK IS INSIDE THE CELL, NOT THE CELL. Everything that draws this strip
+   — grid, hairlines, corner number, the left rule that fills on hover, and
+   four padding values across three breakpoints — is written against
+   .trust-strip span, mostly in the generated source above where it cannot be
+   re-aimed. So the span stays the cell and the anchor fills it; the padding
+   moves onto the anchor so the target is the whole cell and not two lines of
+   text. "flex: 1" is what fills it — the span is a column flex container, so
+   stretch only governs width and the anchor would otherwise be content-height. */
+.root :global(.trust-strip span) {
+  padding: 0;
+  font-size: 14px;
+  color: #1f2c34;
+}
+
+.root :global(.trust-strip span > a) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16px 25px 16px 30px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.root :global(.trust-strip b) {
+  font-size: 12.5px;
+  letter-spacing: 1.3px;
+  color: #b8430f;
+  margin-bottom: 7px;
+}
+
+/* Same fix for the corner number, which was 1.9:1. */
+.root :global(.trust-strip span)::after { color: rgba(184, 67, 15, .8); }
+
+/* The lift and the left rule were hover-only, so a keyboard never saw either.
+   :focus-within is on the span because that is what carries both effects. */
+.root :global(.trust-strip span:focus-within) {
+  background: var(--paper);
+  transform: translateY(-3px);
+}
+.root :global(.trust-strip span:focus-within)::before { opacity: 1; }
+.root :global(.trust-strip span > a:focus-visible) {
+  outline: 2px solid var(--orange);
+  outline-offset: -5px;
+}
+.root :global(.trust-strip a:hover b) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .root :global(.trust-strip span) { font-size: 13.5px; }
+  .root :global(.trust-strip span > a) { padding: 15px 14px 15px 22px; }
+}
+
+/* ===========================================================================
+   §96 — WHERE THE HOMEPAGE LINKS LAND
+   ===========================================================================
+   Nine ids are linked from the homepage: five feature cards from the strip
+   under the hero, four capability groups from the four badges. The header is
+   fixed at 82px (68px on a phone), so without scroll-margin every one of them
+   arrives underneath it. */
+.root :global(.feature-link-grid > a[id]),
+.root :global(.capability-band) { scroll-margin-top: 104px; }
+
+@media (max-width: 760px) {
+  .root :global(.feature-link-grid > a[id]),
+  .root :global(.capability-band) { scroll-margin-top: 88px; }
+}
+
+/* The eight tools used to be one flat 4x2 grid numbered 01..08. Same eight,
+   now under the four names the homepage badges use, because a badge that says
+   "Get Paid Faster" should arrive at a heading that says "Get Paid Faster"
+   rather than at a grid the visitor has to read through. */
+.root :global(.capability-band + .capability-band) { margin-top: 52px; }
+
+.root :global(.capability-head) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 14px;
+  margin-bottom: 18px;
+}
+.root :global(.capability-head > span) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: #b8430f;
+}
+.root :global(.capability-head h3) {
+  margin: 0;
+  font-size: clamp(21px, 2.4vw, 27px);
+  color: var(--ink);
+}
+.root :global(.capability-head p) {
+  grid-column: 2;
+  margin: 7px 0 0;
+  max-width: 62ch;
+  color: #5d615c;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* auto-fit, not the inherited repeat(4,1fr): the groups hold two or three
+   tools, and a fixed four-column track would leave a bordered empty cell at
+   the end of every row. min() keeps a single card from being forced wider
+   than the viewport on a phone. */
+.root :global(.capability-tools) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+}
+.root :global(.capability-tools article) {
+  min-height: 0;
+  padding: 22px 24px 24px;
+}
+.root :global(.capability-tools h4) {
+  margin: 0 0 9px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+/* The flat grid set these at 10px. Same reason as the strip above: this is a
+   description someone is meant to read, not a caption. */
+.root :global(.capability-tools p) {
+  margin: 0;
+  color: #5d615c;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
