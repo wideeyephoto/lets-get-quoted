@@ -135,8 +135,17 @@ export default function HeroShowcase() {
         ))}
       </div>
 
-      {/* A tablist rather than dots-with-no-name: each screen has a name, and
-          the name is the useful part — it says what else is in here. */}
+      {/* DOTS OVER THE FRAME, NOT NAMED BUTTONS UNDER IT.
+          The names were doing real work — they said what else is in the product
+          — but as a second row of controls beneath the screenshot they competed
+          with the screenshot, which is the thing meant to be looked at. Each
+          name survives as the button's accessible name and as its tooltip, so a
+          screen reader still hears "Insights, tab, 1 of 3" and a mouse still
+          gets the label; what is painted is a position indicator.
+
+          Still a tablist, still keyboard-navigable, and each dot still sits in
+          a 44px target — the dot is drawn inside the button, it is not the
+          button. */}
       <div
         className="showcase-tabs"
         role="tablist"
@@ -149,12 +158,13 @@ export default function HeroShowcase() {
             type="button"
             role="tab"
             aria-selected={i === index}
+            aria-label={shot.label}
+            title={shot.label}
             tabIndex={i === index ? 0 : -1}
             onClick={() => { go(i); setPaused(true); }}
             data-on={i === index ? 'true' : 'false'}
           >
             <i aria-hidden="true"><s style={{ animationDuration: `${DWELL}ms` }} /></i>
-            {shot.label}
           </button>
         ))}
       </div>

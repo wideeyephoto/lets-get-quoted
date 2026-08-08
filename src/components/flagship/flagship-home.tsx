@@ -12,7 +12,10 @@ import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 
 /** One place, so a rename cannot leave a button pointing at the old host. */
-const SIGNUP_URL = 'https://app.letsgetquoted.com/';
+/* The app root lands on the SIGN-IN screen, so every "Create free account" on
+   this page was sending a first-time visitor to a form headed "Sign in" with
+   the actual signup a further click away. Same route, with the intent. */
+const SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
 
 /**
  * THREE DECLARED PLANES.
@@ -441,15 +444,6 @@ export default function FlagshipHome() {
 
         <div className="hero-product">
           <HeroShowcase />
-          {/* Accurate about what these are. They are screenshots of the real
-              product, taken from a seeded account — so the SCREENS are the
-              product and the FIGURES are sample data. The old hero's marker
-              said "invented figures" because the whole panel was drawn; that
-              would understate these, and "real results" would overstate them. */}
-          <p className="example-mark">
-            <b>Real screens</b> — the actual product, with sample data.{' '}
-            <a href="/demo">Try the live demo</a>
-          </p>
         </div>
       </section>
 
@@ -462,9 +456,14 @@ export default function FlagshipHome() {
 
       <section className="flagships" id="flagships" data-track>
         <div className="section-intro" data-rise>
-          <p className="eyebrow"><span>✦</span> THREE FEATURES YOU WON’T FIND TOGETHER ANYWHERE ELSE</p>
-          <h2>Three advantages your ordinary<br /><em>website can’t give you.</em></h2>
-          <p>A better first impression, better-qualified leads and new revenue hiding inside the route you already drive.</p>
+          <p className="eyebrow"><span>✦</span> A SMARTER WAY TO WORK</p>
+          {/* Its own line rather than a second clause on the eyebrow: the
+              eyebrow is a category, this is the promise, and running them
+              together made one long strip of uppercase nobody reads to the end
+              of. */}
+          <p className="section-kicker">BUILT TO DO MORE</p>
+          <h2>Your website should work<br /><em>as hard as you do.</em></h2>
+          <p>Let it capture job details, prioritize leads, and help fill gaps in your schedule.</p>
         </div>
 
         <div className="scrolly-layout">
@@ -669,53 +668,6 @@ export default function FlagshipHome() {
           yet to believe it. */}
       <section className="command-band" aria-label="What each part looks like">
         <CommandCenterDeck />
-      </section>
-
-      <section className="difference" id="difference">
-        <div className="difference-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> BUILT IN. NOT BOLTED ON.</p>
-          <h2>Every handoff stays connected.</h2>
-          <p>One login and one customer record—from the first website question through the final payment.</p>
-          <div className="difference-proof">
-            <span><b>One customer record</b><small>From first question to final payment</small></span>
-            <span><b>One place to work</b><small>For the owner, office and crew</small></span>
-            <span><b>One aligned price</b><small>No monthly fee before you earn</small></span>
-          </div>
-        </div>
-        {/* THE SCROLL WIPE.
-            Two neutral columns with "VS" between them described a choice. A lit
-            edge travelling left to right, replacing the patchwork with the
-            connected suite, performs one — the comparison gains a direction and
-            an outcome.
-
-            Both cards keep their full markup and stay in the same DOM order, so
-            a screen reader still reads "the patchwork" and then "Let's Get
-            Quoted". The wipe is a paint, not a reordering — and it is gated on
-            data-motion, because with the edge parked at 0 the section would
-            show nothing but the column arguing against us. */}
-        <div className="stack-compare stack-wipe" aria-label="Software stack comparison" data-track>
-          <div className="stack-card patchwork">
-            <div className="stack-label"><span>THE PATCHWORK</span><small>Separate tools</small></div>
-            <ul>
-              <li><span>Website builder</span><b>Separate</b></li>
-              <li><span>Lead form + inbox</span><b>Separate</b></li>
-              <li><span>CRM + scheduling</span><b>Separate</b></li>
-              <li><span>Payments + reviews</span><b>Separate</b></li>
-            </ul>
-            <p>More logins. More copying. More places for a lead to stall.</p>
-          </div>
-          <div className="versus" aria-hidden="true"><b>VS</b></div>
-          <div className="stack-card connected">
-            <div className="stack-label"><span>LET’S GET QUOTED</span><small>One connected suite</small></div>
-            <ul>
-              <li><span>Website + smart intake</span><b>Connected</b></li>
-              <li><span>Lead + quote</span><b>Connected</b></li>
-              <li><span>Schedule + crew</span><b>Connected</b></li>
-              <li><span>Payment + growth</span><b>Connected</b></li>
-            </ul>
-            <p>One job record moving forward from first click to paid.</p>
-          </div>
-        </div>
       </section>
 
       {/* THEIR OWN NUMBERS.

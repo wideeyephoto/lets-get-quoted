@@ -4445,3 +4445,242 @@
 @media (max-width: 760px) {
   .root :global(.hiw-hero) ~ :global(.final-cta) { min-height: 0; padding-block: 64px 76px; }
 }
+
+/* ===========================================================================
+   §90 — THE LOGO STOPS BEING CROPPED BY HAND
+   ===========================================================================
+   The source sheet fits the logo into a fixed 56px-tall box with
+   `overflow: hidden`, then sizes the image by WIDTH (105%, height auto) and
+   translates it up to hide the transparent padding baked into the asset.
+
+   Two dimensions, one of them fixed and one of them following the viewport, and
+   a crop tuned for whatever width it was tuned at. On a wide screen the box is
+   220px across, so the image rendered ~80px tall inside 56px of box: 6.6px lost
+   off the top and 17.7px off the bottom, which is the clipped border.
+
+   The asset is now trimmed to exactly the artwork (see
+   scripts/generate-logo-assets.mjs), so nothing needs cropping. The box takes
+   its width FROM the image rather than imposing one, and the image is sized by
+   the one dimension that is actually fixed — its height. Nothing can clip at
+   any viewport width because nothing overflows. */
+.root :global(.brand-logo) {
+  width: auto;
+  height: 56px;
+  display: block;
+  overflow: visible;
+}
+.root :global(.brand-logo img) {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  transform: none;
+}
+.root :global(.footer-logo) { width: auto; height: 64px; }
+
+@media (max-width: 760px) {
+  .root :global(.site-header .brand-logo) { width: auto; height: 40px; }
+}
+
+/* ===========================================================================
+   §91 — SIGN IN
+   ===========================================================================
+   Quiet beside the primary action: it is the door back in for somebody who
+   already has an account, not what this page is selling. Sized to the same 44px
+   touch floor as everything else in the header. */
+.root :global(.header-signin) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: #cfdbe2;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color .18s ease, background .18s ease;
+}
+.root :global(.header-signin:hover) { color: #fff; background: rgba(255,255,255,.06); }
+
+/* The header CTA used to be the element pushed right; now Sign in is, and the
+   CTA follows it. Without this the two separate and the CTA drifts to the far
+   edge on a wide screen. */
+.root :global(.site-header .header-cta) { margin-left: 0; }
+
+/* AND THE HEADER NEEDS A REAL GAP NOW.
+   It is justify-content: space-between, which was doing two jobs: separating
+   the groups AND supplying the space between the logo and the first nav link.
+   Pushing Sign in right with margin-left:auto takes the second job away — the
+   free space all collects in one place, so brand and nav end up touching. They
+   did not before only because the logo asset had transparent padding baked into
+   its right edge; trimming it (see §90) removed the accidental spacer. */
+.root :global(.site-header) { gap: clamp(16px, 2.4vw, 40px); }
+
+.root :global(.site-menu-signin) {
+  display: block;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(174,199,211,.14);
+  color: #9db0bd;
+  font-size: 14px;
+  text-decoration: none;
+}
+.root :global(.site-menu-signin b) { color: var(--orange); font-weight: 750; }
+
+@media (max-width: 900px) {
+  /* Below this the hamburger appears and the row runs out of room; Sign in
+     lives in the drawer, where it is already repeated. */
+  .root :global(.header-signin) { display: none; }
+}
+
+/* ===========================================================================
+   §91b — THE SECOND KICKER LINE
+   ===========================================================================
+   Sits between the eyebrow and the headline: bigger than the eyebrow, quieter
+   than the h2, so the three lines read as a descending order rather than as two
+   competing labels. */
+.root :global(.section-kicker) {
+  margin: 10px 0 14px;
+  color: #e6eef2;
+  font-size: clamp(19px, 2.1vw, 27px);
+  font-weight: 850;
+  letter-spacing: .01em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+/* ===========================================================================
+   §92 — THE $0 IS A CIRCLE
+   ===========================================================================
+   It was drawn as `height: 460px; border-radius: 50%` with NO WIDTH — so its
+   width came from the grid column it happens to sit in (.72fr of a two-column
+   band). Measured at 1440 that is ~407px against a 460px height: a 50% radius
+   on a non-square box is an ellipse, which is the dim oval.
+
+   Square first, then lit. The glow was two very low-alpha layers (.14 fill,
+   .1 shadow); it now reads as a light source rather than a smudge. */
+.root :global(.price-zero) {
+  /* One dimension, and the other follows it. min() keeps it inside its column
+     on a laptop instead of forcing the band wider. */
+  width: min(460px, 100%);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  border-color: rgba(255,138,61,.34);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,106,36,.30), rgba(255,106,36,.10) 46%, transparent 68%);
+  box-shadow:
+    0 0 90px rgba(255,106,36,.34),
+    0 0 200px rgba(255,106,36,.16),
+    0 0 0 1px rgba(255,138,61,.16),
+    0 40px 85px rgba(0,0,0,.32);
+}
+.root :global(.price-zero)::before {
+  inset: 7.8%;
+  border-color: rgba(255,138,61,.20);
+  box-shadow: 0 0 60px rgba(255,106,36,.20) inset;
+}
+.root :global(.price-zero)::after {
+  inset: 17%;
+  border-color: rgba(255,138,61,.13);
+}
+
+/* THE $0 IS CENTRED IN IT.
+   The glyph was pushed off-centre by two hand-tuned offsets that assumed the
+   old oval: the "$" carried margin-top:-80px and the "0" a -18px letter-spacing,
+   which on a single character is pure right-hand trim. Laid out as a row on the
+   shared baseline instead, so the pair sits in the middle of the circle. */
+.root :global(.price-zero span) {
+  align-self: auto;
+  margin-top: 0;
+  font-size: clamp(30px, 7cqw, 48px);
+  line-height: 1;
+  translate: 0 -.42em;
+}
+.root :global(.price-zero strong) {
+  font-size: clamp(140px, 34cqw, 230px);
+  letter-spacing: 0;
+  line-height: .8;
+}
+.root :global(.price-zero small) {
+  bottom: 18%;
+  white-space: nowrap;
+}
+/* cqw above needs a container to measure. */
+.root :global(.price-zero) { container-type: inline-size; }
+
+/* ===========================================================================
+   §93 — THE HERO SLIDER'S DOTS
+   ===========================================================================
+   Three named buttons under the frame became three dots ON it. The names were
+   doing real work — they said what else was in the product — but they also read
+   as a second row of controls under the screenshot, and the screenshot is the
+   thing being looked at. The names survive as accessible labels and as the
+   tooltip; what is on screen is a position indicator.
+
+   Still buttons, still a tablist, still 44px of touch target: the dot is drawn
+   inside a transparent box rather than being the target itself. */
+.root :global(.showcase-tabs) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0;
+  margin: 0;
+  padding: 0 0 6px;
+  /* A wash so the dots hold against a light screenshot without drawing a bar
+     across the image. */
+  background: linear-gradient(to top, rgba(6,11,17,.55), transparent);
+  border-radius: 0 0 18px 18px;
+  pointer-events: none;
+}
+.root :global(.showcase-tabs button) {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  /* The label is the accessible name; it must not be painted. */
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+}
+.root :global(.showcase-tabs button:hover) { background: none; border: 0; }
+.root :global(.showcase-tabs button[data-on="true"]) { background: none; border: 0; }
+
+.root :global(.showcase-tabs i) {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.42);
+  box-shadow: 0 1px 3px rgba(0,0,0,.5);
+  transition: background .2s ease, transform .2s ease;
+}
+.root :global(.showcase-tabs button:hover i) { background: rgba(255,255,255,.7); }
+.root :global(.showcase-tabs button[data-on="true"] i) {
+  background: rgba(255,255,255,.28);
+  transform: scale(1.15);
+}
+/* The dwell timer still fills the active dot — the rotation stays legible
+   rather than being something that just happens to you. */
+.root :global(.showcase-tabs button[data-on="true"] i s) { background: var(--orange); }
+
+.root :global(.showcase-tabs button:focus-visible) {
+  outline: 2px solid var(--orange);
+  outline-offset: -6px;
+}
+
+@media (max-width: 760px) {
+  .root :global(.showcase-tabs) { padding-bottom: 2px; }
+  .root :global(.showcase-tabs button) { width: 44px; height: 40px; }
+}

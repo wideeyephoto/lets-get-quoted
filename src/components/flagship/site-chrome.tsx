@@ -7,7 +7,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const SIGNUP_URL = 'https://app.letsgetquoted.com/';
+/**
+ * THE APP HOST IS PART OF THE URL ON PURPOSE. A session cookie belongs to
+ * exactly one host, and middleware bounces anything session-bearing to the
+ * canonical one — so linking to a bare path from the marketing site would send
+ * people through a redirect on every attempt.
+ *
+ * AND THE PATH MATTERS. Both of these used to point at the app ROOT, which
+ * lands on the sign-in screen: "Create free account" took a brand-new visitor
+ * to a form headed "Sign in", with the actual signup one more click away behind
+ * "New here?". The signup screen is the same route with an intent.
+ */
+const SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
+const LOGIN_URL = 'https://app.letsgetquoted.com/login';
 
 /**
  * Is somebody already signed in?
@@ -103,7 +115,7 @@ export function SiteHeader() {
 
   const cta = signedIn
     ? { href: '/dashboard', label: 'Dashboard' }
-    : { href: SIGNUP_URL, label: 'Build my free site' };
+    : { href: SIGNUP_URL, label: 'Create free account' };
 
   return (
     <header className="site-header" data-menu={open ? 'open' : 'closed'}>
@@ -113,6 +125,13 @@ export function SiteHeader() {
       <nav aria-label="Main navigation">
         {NAV.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
       </nav>
+      {/* SIGN IN, FOR PEOPLE WHO ALREADY PAID US THE COMPLIMENT.
+          There was no way back into the account from anywhere on the marketing
+          site — every button on every page pointed at signup, so an existing
+          customer landing on the homepage had to know to type the app subdomain.
+          Quiet next to the primary action, because it is not what this page is
+          selling; it is just the door that was missing. */}
+      {!signedIn ? <a className="header-signin" href={LOGIN_URL}>Sign in</a> : null}
       <a className="header-cta" href={cta.href}>{cta.label} <span>→</span></a>
       <button
         type="button"
@@ -134,6 +153,11 @@ export function SiteHeader() {
           ))}
         </nav>
         <a className="site-menu-cta" href={cta.href}>{cta.label} <span>→</span></a>
+        {!signedIn ? (
+          <a className="site-menu-signin" href={LOGIN_URL} onClick={() => setOpen(false)}>
+            Already have an account? <b>Sign in</b>
+          </a>
+        ) : null}
       </div>
     </header>
   );
@@ -205,7 +229,7 @@ export function SiteFooter() {
       {signedIn ? (
         <a className="mobile-cta" ref={barRef} data-redundant="true" href="/dashboard">Go to my dashboard <span>→</span></a>
       ) : (
-        <a className="mobile-cta" ref={barRef} data-redundant="true" href={SIGNUP_URL}>Build my free site <span>→</span></a>
+        <a className="mobile-cta" ref={barRef} data-redundant="true" href={SIGNUP_URL}>Create free account <span>→</span></a>
       )}
       <footer>
         <a className="brand brand-logo footer-logo" href="/" aria-label="Let’s Get Quoted home">
@@ -213,6 +237,9 @@ export function SiteFooter() {
         </a>
         <p className="footer-links">
           {NAV.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
+          {/* The footer is where people look for a way in once the top of the
+              page has scrolled away. */}
+          {!signedIn ? <a href={LOGIN_URL}>Sign in</a> : null}
         </p>
         <span>© 2026 Let’s Get Quoted</span>
       </footer>
