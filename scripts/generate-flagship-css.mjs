@@ -503,6 +503,143 @@ const TWEAKS = `
    routes never set it, so their bar is untouched. */
 .root[data-hero-cta='visible'] :global(.mobile-cta) { display: none; }
 
+/* ---- the feature tour's sticky visual, which was not sticking ---------------
+
+   MEASURED: through the whole .flagships section the product panel moved 1:1
+   with the page — top: 709px, then 164, then -381, then -926 and gone. So for
+   the last two of the three features the right-hand half of the viewport was
+   simply empty, which is most of a 2,700px section and about a quarter of the
+   homepage.
+
+   The cause is one word in the section above it. \`.flagships\` sets
+   \`overflow: hidden\` (for the grid overlay in ::before and the two radial
+   glows), and an ancestor with overflow other than visible becomes the
+   scrolling box that a sticky descendant sticks WITHIN. .flagships never
+   scrolls, so nothing ever stuck.
+
+   \`clip\` clips exactly the same way and does NOT establish a scroll container,
+   which is the whole reason it exists. One word, and the tour works.
+
+   The offset is the second half of it. \`top: 0\` pinned the panel under the
+   82px fixed header rather than below it, which is also why the step headings
+   were sliced in half as they came up — so the pin, the panel height and the
+   scroll target all move down by the header. */
+.root :global(.flagships) { overflow: clip; }
+.root :global(.sticky-product) {
+  top: 82px;
+  height: calc(100vh - 82px);
+}
+/* goToStep() scrolls a step to centre; without this the browser can still park
+   one under the fixed header when the step is taller than the viewport. */
+.root :global(.feature-step) { scroll-margin-top: 100px; }
+
+/* ---- the example marker inside that sticky column --------------------------
+
+   .sticky-product is \`display: flex\`, and its other two children — the step
+   wheel and the scroll prompt — are both absolutely positioned. The marker was
+   not, so it became the one in-flow flex ITEM beside .visual-stage: it sat to
+   the RIGHT of the product panel like a stray caption, and the width it took
+   squeezed the stage enough to push the wheel onto the phone mock.
+
+   Out of flow, bottom-left, opposite the scroll prompt. */
+.root :global(.sticky-product .example-mark) {
+  position: absolute;
+  left: 0;
+  bottom: 4vh;
+  margin: 0;
+  max-width: 40ch;
+}
+
+/* ---- the step wheel, off the mock ------------------------------------------
+
+   At left:-57px a 124px wheel puts 67px of itself ON the product panel, and
+   what is 67px in from that panel's left edge is the phone mock — so the badge
+   landed squarely on "Is wastewater actively entering the room?" and the Yes
+   button under it, which is the one exchange that whole panel exists to show.
+
+   -92px hangs it in the column gutter instead, still overlapping the panel's
+   edge enough to read as layered rather than parked beside it, and clearing
+   the phone. Bounded at 1101px to sit exactly above the existing
+   \`@media (max-width: 1100px)\` rule that moves the wheel to the top-right
+   corner — one pixel of overlap and this TWEAK, being appended last, would win
+   inside that query and undo the narrow layout. */
+@media (min-width: 1101px) {
+  .root :global(.wheel-wrap) { left: -92px; }
+}
+/* 761–1100px cannot use a gutter offset at all. The gap narrows to 36px while
+   the panel keeps shrinking, so the phone mock inside it moves left faster
+   than any fixed offset can retreat — measured at 1100, 1000, 900 and 800, a
+   badge in that gutter sits on the phone at every one of them.
+   So it goes where it already goes below 761px: the top-right corner of the
+   stage, clear of both columns. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .root :global(.wheel-wrap) {
+    left: auto;
+    right: 6px;
+    top: 0;
+    transform: none;
+    width: 96px;
+    height: 96px;
+  }
+  .root :global(.wheel-core) { inset: 27px; }
+}
+
+/* ---- the dimmed steps in that tour -----------------------------------------
+
+   opacity .25 against #07131d leaves body copy under 2:1 — not "de-emphasised"
+   but unreadable, and the FIRST thing anyone sees of that section is a step in
+   exactly that state. The dimming is the mechanism and it stays; it just stops
+   short of illegible.
+
+   Also a floor for reduced-motion users, who never get the transition that
+   would have brought a step up to full strength. */
+.root :global(.feature-step) { opacity: .46; }
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.feature-step) { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---- text on the orange closing band ---------------------------------------
+
+   MEASURED from painted pixels: the supporting line under the closing headline
+   ran at 1.16:1 and the reassurance under the button at 3.35:1. The last thing
+   the page says before its one white button was, in practice, invisible.
+
+   White cannot fix it. #ff6a24 has a relative luminance of about 0.317, so
+   pure white against it is roughly 2.9:1 — under AA for normal text and under
+   even the 3:1 large-text floor. On a saturated brand colour the readable
+   direction is down, not up, which is what the eyebrow already does at
+   #582006. These take the same route and go a little further, because #582006
+   itself only just clears 4.5.
+
+   The headline stays white: at 52–104px it is large text, and 2.9:1 against a
+   3:1 requirement on a display size that dominates the band is the one place
+   the brand look is worth the trade. */
+.root :global(.final-cta > p:not(.eyebrow)),
+.root :global(.final-cta > small),
+.root :global(.final-cta .eyebrow) {
+  color: #4a1704;
+}
+/* The mark inside the eyebrow stays white — it is a glyph, not a word. */
+.root :global(.final-cta .eyebrow span) { color: #ffffff; }
+
+/* ---- muted text that met a light background --------------------------------
+
+   \`--muted\` is a dark-theme value, and three places apply it on cream: the
+   intro paragraph beside "One system from quote to review" (1.92:1) and both
+   columns of the stack comparison (1.92–2.03:1).
+
+   The patchwork column is MEANT to read as the weaker option, and it still
+   does — but a comparison only works if both sides can be read, and "CRM +
+   scheduling" at 1.92:1 is not weak, it is gone. */
+.root :global(.included-head > p:last-child) { color: #5f635e; }
+.root :global(.stack-card.patchwork) { color: #4b4f4a; }
+.root :global(.stack-card.patchwork li) { color: #4b4f4a; }
+/* 8px uppercase: at that size the hierarchy nuance is worth less than
+   being legible, so it takes the same value as the body text around it. */
+.root :global(.stack-card.patchwork li b) { color: #5f635e; }
+.root :global(.stack-card.patchwork > p) { color: #5f635e; }
+.root :global(.stack-card.patchwork .stack-label small) { color: #5f635e; }
+
 /* ---- the homepage FAQ ------------------------------------------------------
 
    New to this page, and not a port: the source tour had no FAQ. It is here
