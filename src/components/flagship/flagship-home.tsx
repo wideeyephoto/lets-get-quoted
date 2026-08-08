@@ -7,6 +7,7 @@ import { SiteFooter, SiteHeader } from './site-chrome';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import CommandCenterDeck from '@/components/command-center-deck';
 import { HOME_FAQS } from '@/lib/home-faqs';
+import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 
 /** One place, so a rename cannot leave a button pointing at the old host. */
@@ -701,11 +702,36 @@ export default function FlagshipHome() {
           <p>Use the full suite without a monthly subscription. A small platform fee applies only when a homeowner pays you.</p>
           <div className="pricing-points"><span>✓ No setup fee</span><span>✓ No contract</span><span>✓ No per-seat fee</span><span>✓ Rate drops as you grow</span></div>
           <HomeFeeCalculator />
+
+          {/* THE RATE, WRITTEN DOWN.
+              "A small platform fee" and a slider were the whole explanation.
+              A visitor could work out what they would pay this year without
+              ever learning what the rate IS, or that it falls in brackets, or
+              who takes the card processing on top.
+
+              Built from FEE_TIERS, the same array /pricing and the calculator
+              above read, so these four numbers cannot drift from the ones we
+              charge. */}
+          <ul className="fee-tiers" aria-label="Platform fee by yearly volume collected">
+            {FEE_TIERS.map((tier) => (
+              <li key={tier.tier}><b>{tier.rate}</b><small>{tier.rangeLabel}</small></li>
+            ))}
+          </ul>
+          <p className="fee-note">
+            Marginal, like tax brackets — the first $100k of volume is charged at 1.25%, the next
+            slice at 1.00%, and so on. It applies only when a homeowner actually pays you.
+            {' '}<a href="/pricing">See the full breakdown</a>
+          </p>
+
           {/* The price is where the decision actually gets made, and this band
               had nothing to press — you read "$0 / month", agreed with it, and
               then scrolled on looking for somewhere to act. */}
           <a className="button primary" href={SIGNUP_URL}>Start free <span>→</span></a>
-          <small className="pricing-fineprint">Payment processing and platform fees apply to completed transactions.</small>
+          <small className="pricing-fineprint">
+            Card payments run through <b>Stripe Checkout</b>, so card details are entered on
+            Stripe&apos;s own page and never reach our servers. Stripe&apos;s processing fee
+            ({STRIPE_PROCESSING_NOTE}) is separate from the platform fee above.
+          </small>
         </div>
       </section>
 

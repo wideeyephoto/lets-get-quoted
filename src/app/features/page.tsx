@@ -201,10 +201,14 @@ export default function FeaturesPage() {
           <p className="eyebrow">
             <span aria-hidden="true">✦</span> FIVE CONNECTED ADVANTAGES
           </p>
+          {/* Was "Each feature is useful alone. Together, they change the
+              business." — true, and about the software rather than about the
+              reader. This says what the five features are FOR, in the order a
+              job actually moves. */}
           <h2>
-            Each feature is useful alone.
+            Win better leads, quote faster,
             <br />
-            <em>Together, they change the business.</em>
+            <em>keep the crew moving, and get paid.</em>
           </h2>
         </div>
         <div className="feature-link-grid">

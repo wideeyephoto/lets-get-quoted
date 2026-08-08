@@ -1579,6 +1579,256 @@ const TWEAKS = `
 @media (max-width: 760px) {
   .root :global(.command-band) { padding-left: 20px; padding-right: 20px; }
 }
+
+/* ===========================================================================
+   TEXT ON ORANGE
+
+   White on the brand orange measures 2.94:1. That is the loudest button on
+   every page, and it fails AA for normal text by a wide margin — there is no
+   size at which 2.94 is acceptable.
+
+   Two ways out: darken the orange until white works, or put dark ink on the
+   orange. White needs roughly #a13d00 to reach 4.5:1, which is brown and is no
+   longer the brand. So the orange is kept exactly and the text goes dark.
+
+   ONE ink for every text-on-orange surface, warm rather than navy so it reads
+   as part of the orange rather than dropped on top of it. #3d1200 on #ff6a24
+   is 5.71:1 — and the closing band already used a warm dark for its body copy
+   and eyebrow, so this makes that band consistent instead of half-converted.
+   =========================================================================== */
+
+.root {
+  --ink-on-orange: #3d1200;
+}
+
+.root :global(.button.primary) { color: var(--ink-on-orange); }
+.root :global(.button.primary span) { color: inherit; }
+
+/* .button.primary.light is white-on-ink, not ink-on-orange — it is the closing
+   band's CTA and already measures 18.28:1. Left alone. */
+.root :global(.button.primary.light) { color: #07131d; }
+
+/* The fixed bar is the only control on the page for most of a phone scroll. */
+@media (max-width: 760px) {
+  .root :global(.mobile-cta) { color: var(--ink-on-orange); }
+}
+
+/* The closing headline was the last white thing on the orange: 2.60:1 at 98px.
+   Large text only needs 3:1 and it did not reach that either. Its own section's
+   eyebrow, body and fineprint were already dark; only the headline had been
+   missed, which is why the band looked fine in a screenshot of the small copy
+   and failed on the one line everybody actually reads. */
+.root :global(.final-cta h2) { color: var(--ink-on-orange); }
+
+/* ===========================================================================
+   THE MOBILE MENU
+
+   .site-header nav is display:none below 760px and nothing replaced it. Every
+   destination on the site — Features, How it works, For your trade, Pricing,
+   Founder — existed on a phone only in the footer, 18,000px down the homepage.
+   A visitor who wanted the price had to scroll the entire page to find out
+   where to look.
+   =========================================================================== */
+
+.root :global(.nav-toggle) {
+  display: none;
+  width: 44px; height: 44px;            /* a real touch target, not a 24px icon */
+  margin-left: 4px;
+  align-items: center; justify-content: center;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .03);
+  color: #eef5f6;
+}
+.root :global(.nav-toggle:hover) { border-color: rgba(255, 106, 36, .5); }
+.root :global(.nav-toggle-bars) { display: grid; gap: 4px; width: 18px; }
+.root :global(.nav-toggle-bars i) {
+  display: block; height: 2px; border-radius: 2px; background: currentColor;
+  transition: transform .22s ease, opacity .18s ease;
+}
+/* The bars become an X, so the control says what it will do next. */
+.root :global([data-menu="open"] .nav-toggle-bars i:nth-child(1)) { transform: translateY(6px) rotate(45deg); }
+.root :global([data-menu="open"] .nav-toggle-bars i:nth-child(2)) { opacity: 0; }
+.root :global([data-menu="open"] .nav-toggle-bars i:nth-child(3)) { transform: translateY(-6px) rotate(-45deg); }
+
+.root :global(.site-menu) {
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  padding: 10px 20px 22px;
+  background: linear-gradient(180deg, #0d222e, #091923);
+  border-bottom: 1px solid rgba(174, 199, 211, .16);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, .45);
+}
+.root :global(.site-menu nav) { display: grid; }
+.root :global(.site-menu nav a) {
+  display: block;
+  padding: 15px 2px;
+  font-size: 16px;                       /* the audit's floor for real copy */
+  font-weight: 600;
+  color: #eef5f6;
+  border-bottom: 1px solid rgba(174, 199, 211, .13);
+}
+.root :global(.site-menu nav a:hover) { color: var(--orange); }
+.root :global(.site-menu-cta) {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  margin-top: 18px; min-height: 50px;
+  border-radius: 11px;
+  background: var(--orange);
+  color: var(--ink-on-orange);
+  font-size: 15px; font-weight: 800;
+}
+
+/* The header has to be the containing block for the panel, and has to sit over
+   the page. It is already sticky; this only names the relationship. */
+@media (max-width: 760px) {
+  .root :global(.site-header) { position: sticky; top: 0; z-index: 40; }
+  .root :global(.nav-toggle) { display: flex; }
+}
+
+/* Above the breakpoint the real nav is back, so the drawer and its button have
+   no job. \`hidden\` already removes the panel from the tree at every width when
+   it is closed; this stops an open panel surviving a resize. */
+@media (min-width: 761px) {
+  .root :global(.site-menu) { display: none; }
+}
+
+/* ===========================================================================
+   TYPE SIZES
+
+   Forty-two rules of real page copy rendered below 12px, down to 6px. Not
+   captions — the bento's feature descriptions, the AI rail's explanation of
+   what the AI actually does, the comparison's labels, the pricing fine print,
+   and the "this is an invented example" disclosure, which is the one line on
+   the page it is least acceptable to make hard to read.
+
+   THE LINE THIS DRAWS. A further seventy-five rules sit INSIDE the product
+   mockups — the dashboard console, the phone screens, the deck's six card
+   screens. Those are pictures of software. A screenshot's 7px timestamp is not
+   copy a visitor is asked to read; enlarging it would break both the illusion
+   and the layout, and they are already aria-hidden. Left exactly as they are.
+
+   The policy applied below:
+     descriptions and body copy   ->  14px
+     values and secondary copy    ->  12-13px
+     uppercase structural labels  ->  11px
+   =========================================================================== */
+
+/* -- descriptions and body copy -------------------------------------------- */
+.root :global(.ai-split-story .ai-rail p) { font-size: 14px; line-height: 1.6; }
+.root :global(.suite-grid p) { font-size: 14px; line-height: 1.6; }
+.root :global(.stack-card p) { font-size: 14px; line-height: 1.55; }
+.root :global(.client-benefits small) { font-size: 14px; line-height: 1.5; }
+
+/* The disclosure. It says the figures above it are invented, and it was set at
+   8.5px — smaller than everything it disqualifies. */
+.root :global(.example-mark),
+.root :global(.sticky-product .example-mark),
+.root :global(.hero-stage .hero-product .example-mark) { font-size: 12px; letter-spacing: .04em; }
+
+/* -- values and secondary copy --------------------------------------------- */
+.root :global(.difference-proof small) { font-size: 13px; }
+.root :global(.pricing-fineprint) { font-size: 13px; }
+/* .stack-card li b and .sticky-product .example-mark are both (0,3,x) rules
+   further up this file, so a plain .stack-card b / .example-mark loses. Matched
+   at their own depth rather than nudged with !important. */
+.root :global(.stack-card li span) { font-size: 13px; }
+.root :global(.stack-card li b) { font-size: 12px; }
+.root :global(.trust-strip b) { font-size: 12px; }
+.root :global(.price-zero small) { font-size: 12px; }
+.root :global(.footer-links a) { font-size: 13px; }
+
+/* -- uppercase structural labels ------------------------------------------- */
+.root :global(.feature-kicker),
+.root :global(.step-number),
+.root :global(.feature-handoff small),
+.root :global(.ai-list-head small),
+.root :global(.ai-list-head span),
+.root :global(.ai-context-note),
+.root :global(.ai-context-note span),
+.root :global(.ai-split-story .ai-rail small),
+.root :global(.ai-split-story .ai-rail article > span),
+.root :global(.stack-label span),
+.root :global(.suite-grid article > span),
+.root :global(.hero-scale small),
+.root :global(.cc-sample-pill) { font-size: 11px; }
+
+/* The trace is a mono log line under each handoff — a label, not prose, but it
+   was a point below the labels around it. */
+.root :global(.ai-trace) { font-size: 11px; }
+
+/* The step wheel's numerals live in 24px nodes, so this is the ceiling before
+   the digits stop fitting their circles rather than a free choice. The same
+   step number is also printed at 11px beside the panel, so nothing here is the
+   only copy of anything. */
+.root :global(.wheel-node) { font-size: 10px; }
+.root :global(.wheel-core small) { font-size: 9px; }
+
+@media (max-width: 760px) {
+  /* The header CTA is a control, not a caption. */
+  .root :global(.header-cta) { font-size: 12px; }
+}
+
+/* ===========================================================================
+   THE FIXED MOBILE BAR
+
+   data-redundant is set by SiteFooter whenever another copy of the same offer
+   is already on screen — the hero's CTA at the top, the closing band or the
+   footer at the bottom. It starts "true", so the bar is absent on first paint
+   rather than flashing in and being observed away.
+   =========================================================================== */
+.root :global(.mobile-cta[data-redundant="true"]) { display: none; }
+
+/* ===========================================================================
+   THE FEE, WRITTEN DOWN
+
+   Four brackets on a dark band. Tabular figures so the percentages line up as
+   a column — they are meant to be compared to each other, which is the whole
+   point of showing that the rate falls.
+   =========================================================================== */
+
+.root :global(.fee-tiers) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 26px 0 0;
+  border: 1px solid rgba(174, 199, 211, .18);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(174, 199, 211, .18);   /* shows through the gap as hairlines */
+}
+.root :global(.fee-tiers li) {
+  padding: 14px 10px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015));
+  text-align: center;
+}
+.root :global(.fee-tiers b) {
+  display: block;
+  font-size: 19px; font-weight: 750; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  color: #f3f7f8;
+}
+.root :global(.fee-tiers small) {
+  display: block; margin-top: 4px;
+  font-size: 11px; letter-spacing: .06em;
+  font-family: var(--font-geist-mono), monospace;
+  /* #9db0bd measured 4.85:1 at 1440 but 4.44 at 390 — the band's gradient is
+     lighter under this block once it reflows to two columns, and 11px letter-
+     spaced mono never reaches its specified colour anyway. Lightened until it
+     clears at the width where it was worst, not the width where it looked ok. */
+  color: #b8c8d3;
+}
+.root :global(.fee-note) {
+  margin: 14px 0 0;
+  max-width: 62ch;
+  font-size: 14px; line-height: 1.6;
+  color: #a9bac4;
+}
+.root :global(.fee-note a) { color: var(--orange); text-decoration: underline; text-underline-offset: 3px; }
+.root :global(.pricing-fineprint b) { color: #cfdbe2; font-weight: 700; }
+
+@media (max-width: 600px) {
+  .root :global(.fee-tiers) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.
