@@ -174,6 +174,26 @@ const suite: Array<[title: string, body: string, href: string]> = [
   ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing.", "/features#website-and-growth"],
 ];
 
+/**
+ * A slow band of light crossing a section's background.
+ *
+ * WHY AN ELEMENT AND NOT A PSEUDO. Of the seven bands that carry one, four
+ * already spend both ::before and ::after on the hairline grid overlay, the
+ * ambient orbs and the CTA's rings. A real node also lets one observer pause
+ * every glare that is off screen, which matters when the alternative is seven
+ * blurred layers compositing forever on a page that already animates five
+ * other things.
+ *
+ * It is absolutely positioned, so the three sections that are CSS grids do not
+ * gain an eighth column — out-of-flow children are not grid items.
+ *
+ * `tone` picks the light: white reads as a sheen on the dark bands and as
+ * nothing at all on cream, where the same gesture has to be a shadow instead.
+ */
+function Glare({ tone = 'dark' }: { tone?: 'dark' | 'cream' | 'orange' }) {
+  return <i className="glare" data-tone={tone} aria-hidden="true" />;
+}
+
 function SiteBuilderVisual() {
   return (
     <div className="product-frame builder-frame" aria-label="AI website builder product demonstration">
@@ -511,6 +531,34 @@ export default function FlagshipHome() {
     return () => observers.forEach((observer) => observer.disconnect());
   }, []);
 
+  /**
+   * Run each section's glare only while its section is on screen.
+   *
+   * Seven blurred, transformed layers animating forever is a real cost on a
+   * page that already runs the hero orbs, the dashboard float, the two alert
+   * cards and the CTA's rings — and six of the seven are off screen at any
+   * moment. A compositor with nothing to composite still wakes up for the
+   * frame; `animation-play-state: paused` is how it goes back to sleep.
+   *
+   * One observer for all of them, and a generous margin so a band is already
+   * moving by the time it is looked at rather than starting as you arrive.
+   */
+  useEffect(() => {
+    if (!('IntersectionObserver' in window)) return;
+    const glares = rootRef.current?.querySelectorAll('.glare');
+    if (!glares?.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          (entry.target as HTMLElement).dataset.on = entry.isIntersecting ? 'true' : 'false';
+        }
+      },
+      { rootMargin: '240px 0px' },
+    );
+    glares.forEach((glare) => io.observe(glare));
+    return () => io.disconnect();
+  }, []);
+
   const goToStep = (index: number) => {
     stepRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
@@ -536,6 +584,7 @@ export default function FlagshipHome() {
           would now be sitting on top of real UI rather than beside a drawing
           of it. */}
       <section className="hero hero-split" id="main-content">
+        <Glare />
         <div className="hero-copy" data-rise>
           <h1>Run your contracting business.<br /><em>All in one place.</em></h1>
           <p className="hero-sub">
@@ -576,6 +625,7 @@ export default function FlagshipHome() {
       </section>
 
       <section className="flagships" id="flagships" data-track>
+        <Glare />
         <div className="section-intro" data-rise>
           <p className="eyebrow"><span>✦</span> A SMARTER WAY TO WORK</p>
           {/* Its own line rather than a second clause on the eyebrow: the
@@ -654,6 +704,7 @@ export default function FlagshipHome() {
       </section>
 
       <section className="client-experience" aria-labelledby="client-experience-title">
+        <Glare />
         <div className="client-copy" data-rise>
           <p className="eyebrow"><span>✦</span> TEXT MESSAGING + A CLIENT PORTAL FOR EVERY JOB</p>
           <h2 id="client-experience-title">Every job gets its own client portal.<br /><em>Every message stays attached.</em></h2>
@@ -731,6 +782,7 @@ export default function FlagshipHome() {
         onFocus={() => setSuitePaused(true)}
         onBlur={() => setSuitePaused(false)}
       >
+        <Glare tone="cream" />
         <div className="included-head" data-rise>
           <p className="eyebrow"><span>✦</span> THE REST OF THE JOB IS INCLUDED</p>
           <h2>One system from quote to review.</h2>
@@ -803,6 +855,7 @@ export default function FlagshipHome() {
           deliberately written to show the honest figure and the structural
           difference rather than a fabricated "you save $X". */}
       <section className="pricing-band" id="pricing">
+        <Glare />
         <div className="price-zero" data-plane="back"><span>$</span><strong>0</strong><small>/ MONTH</small></div>
         <div className="pricing-copy" data-rise>
           <p className="eyebrow"><span>✦</span> FULL SUITE. NO MONTHLY SUBSCRIPTION.</p>
@@ -854,6 +907,7 @@ export default function FlagshipHome() {
           length is a wall directly before the closing CTA, and the questions
           alone are what most people scan for. */}
       <section className="home-faq home-faq-dark" id="faq" aria-labelledby="faq-title">
+        <Glare />
         <div className="home-faq-head" data-rise>
           <p className="eyebrow"><span>✦</span> BEFORE YOU START</p>
           <h2 id="faq-title">The questions contractors actually ask.</h2>
@@ -872,6 +926,7 @@ export default function FlagshipHome() {
         {/* No data-plane here on purpose: .cta-rays already runs rayPulse, and
             an animation's transform beats a stylesheet one at computed-value
             time — the plane offset would have been silently ignored. */}
+        <Glare tone="orange" />
         <div className="cta-rays" />
         <p className="eyebrow"><span>✦</span> BUILT FOR THE ONE-TRUCK OPERATOR—AND THE CREW DOING $2M</p>
         <h2>One truck or ten crews.<br />Your next stage starts here.</h2>

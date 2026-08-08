@@ -5315,3 +5315,146 @@
   .root :global(.feature-produces li) { padding: 4px 9px; }
   .root :global(.feature-link-grid a > b) { padding-top: 14px; }
 }
+
+/* ===========================================================================
+   §99 — A BAND OF LIGHT CROSSING EACH SECTION
+   ===========================================================================
+   The homepage's seven bands each hold still. Every gradient on them is baked
+   in place, so the only things that ever moved were four small objects inside
+   the hero. This puts a slow specular sweep behind the content of each one —
+   the sheen you get dragging a light across brushed metal, not a highlight
+   racing past.
+
+   HOW IT SITS. z-index: -1 with isolation: isolate on the section. That pair
+   paints the sweep above the section's own background and below every line of
+   its content, in one declaration, without touching a single content element
+   to raise it — which is the alternative and would mean editing seven layouts.
+   The sections that already isolate (.hero, .client-experience) are unchanged
+   by it; the rest gain a stacking context that also stops the sweep escaping.
+
+   HOW IT MOVES. transform on a blurred layer, so the blur is rasterised once
+   and the compositor only moves the result. Nothing repaints per frame. Each
+   band gets its own duration and a NEGATIVE delay, which starts it part-way
+   through: without that, seven sections would begin in lockstep on load and
+   the effect would read as a page-wide wipe instead of seven unrelated rooms
+   with light in them.
+
+   The travel is 380% of the sweep's own width. The sweep is 42% of its track
+   and starts 68% to the left of it, so it has to cross 168% of the track —
+   68 + 42 + 58 of clear run-out — before its trailing edge leaves. */
+.root :global(.glare) {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Not decoration a screen reader can reach, and not a click target. */
+  user-select: none;
+}
+.root :global(.glare)::before,
+.root :global(.glare)::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -68%;
+  width: 42%;
+  will-change: transform;
+  animation: lgqGlare 21s linear infinite;
+  /* Paused until the observer says the section is on screen — six of the seven
+     are not, at any given moment. */
+  animation-play-state: paused;
+}
+.root :global(.glare[data-on="true"])::before,
+.root :global(.glare[data-on="true"])::after { animation-play-state: running; }
+
+/* The main sweep. */
+.root :global(.glare)::before {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, .022) 26%,
+    rgba(255, 255, 255, .072) 50%,
+    rgba(255, 255, 255, .022) 74%,
+    transparent 100%
+  );
+  filter: blur(26px);
+}
+/* A second, narrower, warmer one at a different speed. Two bands at different
+   rates read as depth; one reads as a wipe. */
+.root :global(.glare)::after {
+  width: 24%;
+  left: -52%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 178, 122, .05) 50%,
+    transparent 100%
+  );
+  filter: blur(34px);
+  animation-duration: 34s;
+  animation-delay: -11s;
+}
+
+@keyframes lgqGlare {
+  0%   { transform: translate3d(0, 0, 0) rotate(9deg); opacity: 0; }
+  9%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translate3d(380%, 0, 0) rotate(9deg); opacity: 0; }
+}
+
+/* On cream, white is invisible and the same gesture has to be a shadow. */
+.root :global(.glare[data-tone="cream"])::before {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(90, 66, 44, .028) 26%,
+    rgba(90, 66, 44, .075) 50%,
+    rgba(90, 66, 44, .028) 74%,
+    transparent 100%
+  );
+}
+.root :global(.glare[data-tone="cream"])::after {
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 106, 36, .06) 50%, transparent 100%);
+}
+/* On the orange band the sweep can be brighter — it is competing with a
+   saturated ground, not with a dark one. */
+.root :global(.glare[data-tone="orange"])::before {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, .05) 26%,
+    rgba(255, 255, 255, .14) 50%,
+    rgba(255, 255, 255, .05) 74%,
+    transparent 100%
+  );
+}
+.root :global(.glare[data-tone="orange"])::after {
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 226, 190, .1) 50%, transparent 100%);
+}
+
+/* Out of phase, section by section. */
+.root :global(.hero) :global(.glare)::before { animation-duration: 27s; animation-delay: -4s; }
+.root :global(.flagships) :global(.glare)::before { animation-duration: 19s; animation-delay: -13s; }
+.root :global(.client-experience) :global(.glare)::before { animation-duration: 23s; animation-delay: -7s; }
+.root :global(.included) :global(.glare)::before { animation-duration: 25s; animation-delay: -18s; }
+.root :global(.pricing-band) :global(.glare)::before { animation-duration: 18s; animation-delay: -2s; }
+.root :global(.home-faq-dark) :global(.glare)::before { animation-duration: 29s; animation-delay: -21s; }
+.root :global(.final-cta) :global(.glare)::before { animation-duration: 20s; animation-delay: -9s; }
+
+/* Four of the seven paint their background straight onto the section with no
+   stacking context of their own, so a z-index:-1 child would slide underneath
+   it and disappear. .hero and .client-experience already isolate. */
+.root :global(.flagships),
+.root :global(.included),
+.root :global(.pricing-band),
+.root :global(.home-faq-dark),
+.root :global(.final-cta) { isolation: isolate; }
+/* .home-faq has no position of its own; the rest are already relative. */
+.root :global(.home-faq-dark) { position: relative; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not "slower" — a light sweeping across the page is exactly the kind of
+     ambient motion this preference is asking us not to run. */
+  .root :global(.glare) { display: none; }
+}
