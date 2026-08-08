@@ -3838,3 +3838,639 @@
 @media (max-width: 600px) {
   .root :global(.fee-tiers) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ###########################################################################
+   /how-it-works
+
+   The page was 20 definition cards in a brown shell with its own header, its
+   own logo treatment and its own navigation — a documentation page linking to
+   a product site. It is now the same system as everything it links to, and the
+   five stages are a journey rather than a table with five rows.
+
+   THE COLOUR RULE, used identically on every graphic here:
+
+     orange   you or your crew did it
+     blue     the homeowner did it
+     green    nobody did it — it happened on its own
+     yellow   waiting on a person
+
+   Green never means "good" and yellow never means "accent". That is what makes
+   the swimlane readable at a glance: the middle lane is nearly empty and the
+   green lane is not.
+   ########################################################################### */
+
+.root :global(.hiw-hand-you) { color: #ff8a4c; }
+
+/* ---- hero ---------------------------------------------------------------- */
+
+.root :global(.hiw-hero) {
+  padding: clamp(52px, 7vw, 104px) clamp(20px, 5vw, 86px) clamp(56px, 7vw, 96px);
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 106, 36, .16), transparent 42%),
+    radial-gradient(circle at 12% 88%, rgba(42, 130, 161, .13), transparent 34%),
+    linear-gradient(180deg, #0d222e, #0a1c26);
+}
+.root :global(.hiw-hero .eyebrow) { justify-content: center; }
+.root :global(.hiw-hero h1) {
+  margin: 14px auto 0;
+  max-width: 16ch;
+  font-size: clamp(38px, 5.6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -.03em;
+  text-wrap: balance;
+}
+.root :global(.hiw-hero h1 em) { color: var(--orange); font-style: normal; }
+.root :global(.hiw-lede) {
+  margin: 20px auto 0;
+  max-width: 62ch;
+  font-size: clamp(16px, 1.5vw, 19px);
+  line-height: 1.65;
+  color: #a9bac4;
+}
+.root :global(.hiw-hero .hero-actions) { justify-content: center; margin-top: 34px; }
+
+/* ---- the job journey ----------------------------------------------------- */
+
+.root :global(.hiw-journey) {
+  margin: clamp(40px, 5vw, 66px) auto 0;
+  max-width: 1080px;
+  text-align: left;
+}
+.root :global(.hiw-track) { position: relative; padding-bottom: 6px; }
+.root :global(.hiw-rail) {
+  position: absolute;
+  left: 0; right: 0; top: 11px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(174, 199, 211, .18);
+  overflow: hidden;
+}
+.root :global(.hiw-rail i) {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--orange), #ffb066);
+  transform-origin: 0 50%;
+  transition: transform .62s cubic-bezier(.3, .8, .3, 1);
+  box-shadow: 0 0 12px rgba(255, 106, 36, .55);
+}
+.root :global(.hiw-nodes) {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.root :global(.hiw-node) { display: grid; justify-items: start; gap: 3px; }
+.root :global(.hiw-node-dot) {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(174, 199, 211, .3);
+  background: #0d222e;
+  transition: border-color .3s ease, background .3s ease, box-shadow .3s ease;
+}
+.root :global(.hiw-node[data-on="true"] .hiw-node-dot) {
+  border-color: var(--orange);
+  background: radial-gradient(circle, var(--orange) 38%, #0d222e 42%);
+  box-shadow: 0 0 0 5px rgba(255, 106, 36, .13);
+}
+.root :global(.hiw-node small) {
+  margin-top: 8px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .14em;
+  color: #7d92a1;
+}
+.root :global(.hiw-node b) { font-size: 13px; font-weight: 650; color: #cfdbe2; }
+.root :global(.hiw-node[data-on="true"] b) { color: #f3f7f8; }
+
+/* The record itself. It only ever gains rows — that is the argument. */
+.root :global(.hiw-record-card) {
+  margin-top: 30px;
+  padding: 20px 22px;
+  border: 1px solid rgba(255, 106, 36, .3);
+  border-radius: 16px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015));
+  box-shadow: 0 26px 60px rgba(0, 0, 0, .3);
+}
+.root :global(.hiw-record-head) {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(174, 199, 211, .15);
+}
+.root :global(.hiw-record-id) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px; letter-spacing: .13em; font-weight: 700;
+  color: var(--orange);
+}
+.root :global(.hiw-record-head em) { font-style: normal; font-size: 13px; color: #9db0bd; }
+.root :global(.hiw-record-chips) {
+  display: flex; flex-wrap: wrap; gap: 9px;
+  margin-top: 14px;
+}
+.root :global(.hiw-record-chips li) {
+  padding: 8px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(174, 199, 211, .22);
+  background: rgba(255, 255, 255, .04);
+  font-size: 13px; font-weight: 600;
+  color: #eef5f6;
+  opacity: 0; transform: translateY(7px) scale(.96);
+  transition: opacity .38s ease, transform .38s cubic-bezier(.2, .8, .3, 1);
+}
+.root :global(.hiw-record-chips li[data-on="true"]) { opacity: 1; transform: none; }
+.root :global(.hiw-record-chips li[data-hand="homeowner"]) { border-color: rgba(143, 199, 232, .5); }
+.root :global(.hiw-record-chips li[data-hand="you"]) { border-color: rgba(255, 138, 76, .55); }
+.root :global(.hiw-record-chips li[data-hand="auto"]) { border-color: rgba(74, 222, 128, .45); }
+.root :global(.hiw-record-foot) {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #7d92a1;
+}
+
+.root :global(.hiw-legend) {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px;
+  margin: 26px auto 0;
+  font-size: 13px;
+  color: #9db0bd;
+}
+.root :global(.hiw-legend li) { display: flex; align-items: center; gap: 8px; }
+.root :global(.hiw-legend i) { width: 10px; height: 10px; border-radius: 50%; }
+.root :global(.hiw-legend li[data-hand="homeowner"] i) { background: #8fc7e8; }
+.root :global(.hiw-legend li[data-hand="you"] i) { background: var(--orange); }
+.root :global(.hiw-legend li[data-hand="auto"] i) { background: #4ade80; }
+
+/* ---- proof strip --------------------------------------------------------- */
+
+.root :global(.hiw-proof) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  padding: 0;
+  background: rgba(174, 199, 211, .14);
+  border-block: 1px solid rgba(174, 199, 211, .14);
+}
+.root :global(.hiw-proof div) {
+  padding: 26px 18px;
+  text-align: center;
+  background: #0b1e28;
+}
+.root :global(.hiw-proof b) {
+  display: block;
+  font-size: clamp(28px, 3.4vw, 42px); font-weight: 750; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  color: #f3f7f8;
+}
+.root :global(.hiw-proof small) {
+  display: block; margin-top: 5px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .16em;
+  color: #8ea2b0;
+}
+
+/* ---- sticky stage nav ---------------------------------------------------- */
+
+.root :global(.hiw-stagenav) {
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(9, 25, 35, .93);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(174, 199, 211, .14);
+}
+.root :global(.hiw-stagenav-fill) {
+  position: absolute; left: 0; bottom: -1px;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--orange), #ffb066);
+  transform-origin: 0 50%;
+  transition: transform .4s cubic-bezier(.3, .8, .3, 1);
+}
+.root :global(.hiw-stagenav ol) {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 clamp(12px, 3vw, 40px);
+}
+.root :global(.hiw-stagenav a) {
+  display: flex; align-items: center; gap: 9px;
+  padding: 15px 6px;
+  color: #8ea2b0;
+  transition: color .2s ease;
+}
+.root :global(.hiw-stagenav a:hover) { color: #e6eef2; }
+.root :global(.hiw-stagenav small) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .1em;
+}
+.root :global(.hiw-stagenav span) { font-size: 13px; font-weight: 600; }
+.root :global(.hiw-stagenav a[aria-current="true"]) { color: var(--orange); }
+
+/* ---- the five stages ----------------------------------------------------- */
+
+.root :global(.hiw-stage) {
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+  gap: clamp(34px, 5vw, 74px);
+  align-items: center;
+  padding: clamp(56px, 7vw, 108px) clamp(20px, 5vw, 86px);
+  scroll-margin-top: 62px;                 /* clears the sticky stage nav */
+  border-bottom: 1px solid rgba(174, 199, 211, .1);
+}
+.root :global(.hiw-stage[data-flip="true"] .hiw-stage-copy) { order: 2; }
+.root :global(.hiw-stage:nth-of-type(even)) { background: rgba(255, 255, 255, .014); }
+
+.root :global(.hiw-stage-kicker) {
+  display: flex; align-items: center; gap: 11px;
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .16em;
+  color: #7d92a1;
+}
+.root :global(.hiw-stage-kicker span) {
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 106, 36, .4);
+  background: rgba(255, 106, 36, .1);
+  color: var(--orange);
+  font-size: 12px; font-weight: 700;
+}
+.root :global(.hiw-stage h2) {
+  margin: 16px 0 0;
+  font-size: clamp(28px, 3.4vw, 46px);
+  line-height: 1.06; letter-spacing: -.028em;
+  text-wrap: balance;
+}
+.root :global(.hiw-stage-summary) {
+  margin: 13px 0 0;
+  max-width: 46ch;
+  font-size: clamp(15px, 1.4vw, 17px); line-height: 1.65;
+  color: #a9bac4;
+}
+
+/* The four axes. Still four, still the same words — a row each with a coloured
+   label, rather than four boxes that made every stage look like a spec sheet. */
+.root :global(.hiw-notes) { margin: 28px 0 0; border-top: 1px solid rgba(174, 199, 211, .14); }
+.root :global(.hiw-notes > div) {
+  display: grid;
+  grid-template-columns: 138px minmax(0, 1fr);
+  gap: 18px;
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(174, 199, 211, .12);
+}
+.root :global(.hiw-notes dt) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  line-height: 1.5;
+}
+.root :global(.hiw-notes > div[data-hand="you"] dt) { color: #ff9257; }
+.root :global(.hiw-notes > div[data-hand="homeowner"] dt) { color: #8fc7e8; }
+.root :global(.hiw-notes > div[data-hand="record"] dt) { color: #b8c8d3; }
+.root :global(.hiw-notes > div[data-hand="auto"] dt) { color: #6ee7a0; }
+.root :global(.hiw-notes dd) { font-size: 14px; line-height: 1.6; color: #b9c8d1; }
+
+.root :global(.hiw-stage-visual) { display: grid; gap: 12px; }
+.root :global(.hiw-stage-visual .example-mark) { margin: 0; justify-self: start; }
+
+@media (max-width: 900px) {
+  .root :global(.hiw-stage) { grid-template-columns: minmax(0, 1fr); }
+  /* The visual leads on a phone: it is the thing that says which stage this is
+     before any of the words do. */
+  .root :global(.hiw-stage-visual) { order: -1; }
+  .root :global(.hiw-stage[data-flip="true"] .hiw-stage-copy) { order: 0; }
+  .root :global(.hiw-notes > div) { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+}
+
+/* ---- the five visuals ---------------------------------------------------- */
+
+.root :global(.hiw-vis) {
+  padding: clamp(16px, 2vw, 24px);
+  border: 1px solid rgba(174, 199, 211, .16);
+  border-radius: 18px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .012));
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .3);
+  font-size: 13px;
+  container-type: inline-size;
+}
+
+/* 01 build */
+.root :global(.hiw-browser) { border: 1px solid rgba(174, 199, 211, .18); border-radius: 12px; overflow: hidden; background: #f7f4ee; }
+.root :global(.hiw-browser-bar) {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 12px;
+  background: #e6e0d5;
+  border-bottom: 1px solid #d3ccbf;
+}
+.root :global(.hiw-browser-bar i) { width: 9px; height: 9px; border-radius: 50%; background: #bdb5a6; }
+.root :global(.hiw-url) {
+  flex: 1; margin-left: 8px;
+  padding: 4px 10px; border-radius: 999px;
+  background: #f7f4ee;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; color: #5c5346;
+}
+.root :global(.hiw-live) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px; font-style: normal; font-weight: 700; letter-spacing: .1em;
+  color: #1d7a45;
+}
+.root :global(.hiw-browser-body) { padding: 18px 16px; }
+.root :global(.hiw-site-hero) { display: grid; gap: 5px; }
+.root :global(.hiw-site-hero b) { font-size: 19px; color: #1d2b33; letter-spacing: -.02em; }
+.root :global(.hiw-site-hero small) { font-size: 12px; color: #6b6255; }
+.root :global(.hiw-site-cta) {
+  justify-self: start; margin-top: 7px;
+  padding: 8px 14px; border-radius: 8px;
+  background: var(--orange); color: #3d1200;
+  font-size: 12px; font-weight: 800;
+}
+.root :global(.hiw-site-grid) {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
+  margin-top: 15px;
+}
+.root :global(.hiw-site-grid span) {
+  padding: 9px 11px; border-radius: 8px;
+  background: #eee8dd; color: #4b4437;
+  font-size: 12px;
+}
+.root :global(.hiw-chips) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.root :global(.hiw-chip) {
+  padding: 7px 12px; border-radius: 999px;
+  border: 1px solid rgba(255, 106, 36, .38);
+  background: rgba(255, 106, 36, .09);
+  font-size: 11px; letter-spacing: .05em; color: #ffb890;
+}
+.root :global(.hiw-chip b) { color: #fff2ea; font-weight: 700; margin-left: 5px; }
+
+/* 02 qualify — off-white is the homeowner's side, ink is yours */
+.root :global(.hiw-vis-qualify) { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.root :global(.hiw-phone) {
+  padding: 14px; border-radius: 14px;
+  background: #f7f4ee; color: #1d2b33;
+  border: 1px solid #ded7cc;
+}
+.root :global(.hiw-phone-head) { font-size: 13px; font-weight: 700; margin-bottom: 11px; }
+.root :global(.hiw-field) { margin-bottom: 9px; padding: 9px 10px; border-radius: 9px; background: #eee8dd; }
+.root :global(.hiw-field small) { display: block; font-size: 10.5px; color: #6b6255; letter-spacing: .04em; }
+.root :global(.hiw-field b) { display: block; margin-top: 2px; font-size: 12.5px; color: #22303a; }
+.root :global(.hiw-photos) { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
+.root :global(.hiw-photos span) { width: 30px; height: 30px; border-radius: 7px; background: linear-gradient(140deg, #cfc6b6, #b6ab99); }
+.root :global(.hiw-photos small) { font-size: 11px; color: #6b6255; }
+.root :global(.hiw-verify) { font-size: 11.5px; color: #1d7a45; font-weight: 650; }
+.root :global(.hiw-verify i) { font-style: normal; margin-right: 5px; }
+
+.root :global(.hiw-leadcard) { padding: 14px; border-radius: 14px; border: 1px solid rgba(255, 106, 36, .3); background: rgba(255, 106, 36, .05); }
+.root :global(.hiw-lead-top) { display: flex; align-items: center; gap: 9px; }
+.root :global(.hiw-score) {
+  padding: 3px 9px; border-radius: 999px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px; font-weight: 800; letter-spacing: .12em;
+}
+.root :global(.hiw-hot) { background: var(--orange); color: #3d1200; }
+.root :global(.hiw-lead-top small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .1em; color: #8ea2b0; }
+.root :global(.hiw-lead-name) { display: block; margin: 10px 0 11px; font-size: 15px; color: #f3f7f8; }
+.root :global(.hiw-flags li) { display: flex; gap: 8px; padding: 5px 0; font-size: 12px; color: #b9c8d1; }
+.root :global(.hiw-flags i) { font-style: normal; font-weight: 800; }
+.root :global(.hiw-flags .ok i) { color: #4ade80; }
+.root :global(.hiw-flags .warn i) { color: #ffd166; }
+.root :global(.hiw-flags .warn) { color: #e4d3a4; }
+
+/* 03 win — the homeowner's screen, so off-white throughout */
+.root :global(.hiw-quote) { padding: 16px; border-radius: 14px; background: #f7f4ee; color: #1d2b33; border: 1px solid #ded7cc; }
+.root :global(.hiw-quote-head) { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #ded7cc; }
+.root :global(.hiw-quote-head b) { font-size: 15px; }
+.root :global(.hiw-quote-head small) { font-size: 11px; color: #6b6255; }
+.root :global(.hiw-lines li) {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline;
+  padding: 9px 0; border-bottom: 1px solid #e5dfd4;
+  font-size: 12.5px;
+}
+.root :global(.hiw-lines em) {
+  font-style: normal;
+  font-family: var(--font-geist-mono), monospace;
+  /* #7c7364 measured 4.23:1 on the quote's off-white. */
+  font-size: 10px; letter-spacing: .05em; color: #675e50;
+}
+.root :global(.hiw-lines .est em) { color: #8a6a12; }
+.root :global(.hiw-lines b) { font-variant-numeric: tabular-nums; font-size: 13px; }
+.root :global(.hiw-quote-total) { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; font-size: 13px; }
+.root :global(.hiw-quote-total b) { font-size: 21px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.root :global(.hiw-sign) { display: flex; align-items: baseline; gap: 11px; padding: 11px 12px; border-radius: 10px; background: #eee8dd; }
+.root :global(.hiw-sign small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #6b6255; }
+.root :global(.hiw-signature) { font-size: 19px; font-family: Georgia, "Times New Roman", serif; font-style: italic; color: #22303a; }
+.root :global(.hiw-sign span) { margin-left: auto; font-size: 11px; color: #6b6255; }
+.root :global(.hiw-paid) { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #dff2e4; color: #14532d; font-size: 12.5px; font-weight: 700; }
+.root :global(.hiw-paid i) { font-style: normal; margin-right: 6px; }
+
+/* 04 run */
+.root :global(.hiw-vis-run) { display: grid; gap: 14px; }
+.root :global(.hiw-week) { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.root :global(.hiw-day) { padding: 9px 7px; border-radius: 10px; border: 1px solid rgba(174, 199, 211, .15); background: rgba(255, 255, 255, .02); min-height: 84px; }
+.root :global(.hiw-day small) { display: block; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .1em; color: #7d92a1; }
+.root :global(.hiw-day.is-on) { border-color: rgba(255, 106, 36, .45); background: rgba(255, 106, 36, .07); }
+.root :global(.hiw-job) { display: block; margin-top: 7px; padding: 7px 8px; border-radius: 8px; background: var(--orange); color: #3d1200; font-size: 10.5px; font-weight: 700; line-height: 1.35; }
+.root :global(.hiw-job b) { display: block; font-size: 11.5px; }
+.root :global(.hiw-empty) { display: block; margin-top: 7px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .03); }
+.root :global(.hiw-run-side) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.root :global(.hiw-text), .root :global(.hiw-portal) { padding: 12px; border-radius: 12px; border: 1px solid rgba(174, 199, 211, .15); background: rgba(255, 255, 255, .025); }
+.root :global(.hiw-text small), .root :global(.hiw-portal small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #7d92a1; }
+.root :global(.hiw-text p) { margin: 8px 0 6px; font-size: 13px; color: #eef5f6; }
+.root :global(.hiw-text em) { font-style: normal; font-size: 11px; color: #4ade80; }
+.root :global(.hiw-portal ul) { margin-top: 9px; display: grid; gap: 6px; }
+.root :global(.hiw-portal li) { display: flex; gap: 8px; font-size: 12px; color: #94a7b4; }
+.root :global(.hiw-portal i) { font-style: normal; }
+.root :global(.hiw-portal .done) { color: #cfdbe2; }
+.root :global(.hiw-portal .done i) { color: #4ade80; }
+.root :global(.hiw-portal .now) { color: #f3f7f8; }
+.root :global(.hiw-portal .now i) { color: var(--orange); }
+
+/* 05 grow */
+.root :global(.hiw-vis-grow) { display: grid; gap: 0; }
+.root :global(.hiw-receipt) { padding: 15px 16px; border-radius: 12px; border: 1px solid rgba(74, 222, 128, .35); background: rgba(74, 222, 128, .07); }
+.root :global(.hiw-receipt small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #6ee7a0; }
+.root :global(.hiw-receipt b) { display: block; margin: 4px 0 2px; font-size: 26px; letter-spacing: -.02em; color: #f3f7f8; font-variant-numeric: tabular-nums; }
+.root :global(.hiw-receipt span) { font-size: 11.5px; color: #9db0bd; }
+.root :global(.hiw-flowline) { justify-self: center; width: 2px; height: 26px; background: rgba(74, 222, 128, .3); position: relative; }
+.root :global(.hiw-flowline i) { position: absolute; left: -3px; bottom: -1px; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+.root :global(.hiw-follow) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.root :global(.hiw-follow-card) { padding: 12px; border-radius: 12px; border: 1px solid rgba(174, 199, 211, .15); background: rgba(255, 255, 255, .025); }
+.root :global(.hiw-follow-card small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #7d92a1; }
+.root :global(.hiw-follow-card p) { margin: 8px 0; font-size: 13px; color: #eef5f6; }
+.root :global(.hiw-two) { display: grid; gap: 6px; margin-bottom: 8px; }
+.root :global(.hiw-two span) { padding: 7px 9px; border-radius: 8px; background: rgba(255, 255, 255, .04); font-size: 11.5px; color: #cfdbe2; }
+.root :global(.hiw-follow-card em) { font-style: normal; font-size: 11px; color: #6ee7a0; }
+
+@container (max-width: 430px) {
+  .root :global(.hiw-vis-qualify), .root :global(.hiw-run-side), .root :global(.hiw-follow) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .root :global(.hiw-week) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---- the swimlane -------------------------------------------------------- */
+
+.root :global(.hiw-lanes-band) {
+  padding: clamp(60px, 8vw, 116px) clamp(20px, 5vw, 86px);
+  background:
+    radial-gradient(circle at 82% 6%, rgba(74, 222, 128, .09), transparent 30%),
+    radial-gradient(circle at 10% 92%, rgba(255, 106, 36, .1), transparent 30%),
+    linear-gradient(170deg, #0b1e28, #0a1721);
+  border-top: 1px solid rgba(174, 199, 211, .12);
+}
+.root :global(.hiw-lanes-head) { max-width: 720px; }
+.root :global(.hiw-lanes-head h2) {
+  margin: 15px 0 0;
+  font-size: clamp(28px, 3.6vw, 50px); line-height: 1.06; letter-spacing: -.03em;
+}
+.root :global(.hiw-lanes-head h2 em) { color: var(--orange); font-style: normal; }
+.root :global(.hiw-lanes-head > p) { margin: 16px 0 0; max-width: 60ch; font-size: 16px; line-height: 1.65; color: #a9bac4; }
+
+.root :global(.hiw-lanes) {
+  display: grid;
+  grid-template-columns: 118px repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: clamp(34px, 4vw, 54px);
+}
+.root :global(.hiw-lane-spine) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  padding: 10px 0;
+  border-block: 1px solid rgba(255, 106, 36, .28);
+  background: linear-gradient(90deg, rgba(255, 106, 36, .1), rgba(255, 106, 36, .02));
+}
+.root :global(.hiw-spine-id) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .13em; font-weight: 700; color: var(--orange);
+  padding-left: 12px;
+}
+.root :global(.hiw-spine-stage) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .12em; color: #8ea2b0;
+}
+.root :global(.hiw-lane-label) {
+  grid-column: 1;
+  grid-row: calc(var(--lane) + 1);
+  margin: 0;
+  align-self: center;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+}
+.root :global(.hiw-lane-label[data-hand="homeowner"]) { color: #8fc7e8; }
+.root :global(.hiw-lane-label[data-hand="you"]) { color: #ff9257; }
+.root :global(.hiw-lane-label[data-hand="auto"]) { color: #6ee7a0; }
+
+.root :global(.hiw-lane-event) {
+  grid-row: calc(var(--lane) + 1);
+  grid-column: calc(var(--stage) + 1);
+  padding: 12px 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(174, 199, 211, .16);
+  background: rgba(255, 255, 255, .03);
+}
+.root :global(.hiw-lane-event[data-hand="homeowner"]) { border-color: rgba(143, 199, 232, .34); }
+.root :global(.hiw-lane-event[data-hand="you"]) { border-color: rgba(255, 138, 76, .38); }
+.root :global(.hiw-lane-event[data-hand="auto"]) { border-color: rgba(74, 222, 128, .32); background: rgba(74, 222, 128, .05); }
+.root :global(.hiw-lane-event b) { display: block; font-size: 13px; font-weight: 650; color: #f3f7f8; line-height: 1.35; }
+.root :global(.hiw-lane-event small) { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: #9db0bd; }
+.root :global(.hiw-lane-event i) { font-style: normal; color: #6ee7a0; }
+
+.root :global(.hiw-lanes-tally) { margin: 26px 0 0; max-width: 62ch; font-size: 15px; line-height: 1.6; color: #cfdbe2; }
+.root :global(.hiw-lanes-band .example-mark) { margin: 12px 0 0; }
+
+/* On a phone the lanes become one vertical timeline in stage order — which is
+   the DOM order, so nothing has to be reordered to get it. */
+@media (max-width: 900px) {
+  .root :global(.hiw-lanes) { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .root :global(.hiw-lane-spine) { grid-template-columns: none; display: flex; gap: 12px; flex-wrap: wrap; }
+  .root :global(.hiw-spine-id) { padding-left: 0; }
+  .root :global(.hiw-lane-label) { display: none; }
+  .root :global(.hiw-lane-event) { grid-row: auto; grid-column: 1; border-left-width: 3px; }
+  /* The lane is what the colour told you; with the labels gone it has to be
+     said. */
+  .root :global(.hiw-lane-event)::before {
+    content: attr(data-hand);
+    display: block; margin-bottom: 5px;
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .root :global(.hiw-lane-event[data-hand="homeowner"])::before { content: "HOMEOWNER"; color: #8fc7e8; }
+  .root :global(.hiw-lane-event[data-hand="you"])::before { content: "YOU"; color: #ff9257; }
+  .root :global(.hiw-lane-event[data-hand="auto"])::before { content: "AUTOMATIC"; color: #6ee7a0; }
+}
+
+/* ---- price band ---------------------------------------------------------- */
+
+.root :global(.hiw-price) {
+  padding: clamp(56px, 7vw, 100px) clamp(20px, 5vw, 86px);
+  background: linear-gradient(150deg, #0d222e, #091923);
+  border-top: 1px solid rgba(174, 199, 211, .12);
+}
+.root :global(.hiw-price h2) { margin: 15px 0 0; font-size: clamp(26px, 3.2vw, 42px); letter-spacing: -.028em; line-height: 1.08; }
+.root :global(.hiw-price > p) { margin: 15px 0 0; max-width: 66ch; font-size: 16px; line-height: 1.65; color: #a9bac4; }
+.root :global(.hiw-price .fee-tiers) { max-width: 760px; }
+
+/* ---- the phone ----------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  /* THE STAGE NAV. Five equal columns at 390px gives each link 73px, so every
+     label wrapped to three lines and the bar became a 106px-tall block of
+     broken words. It scrolls sideways instead — the current stage is scrolled
+     into view by the browser when you follow one of its own anchors, and the
+     fill bar underneath still says how far along the page you are. */
+  .root :global(.hiw-stagenav) { top: 68px; }         /* clear of the sticky header */
+  .root :global(.hiw-stagenav ol) {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-inline: 14px;
+  }
+  .root :global(.hiw-stagenav ol)::-webkit-scrollbar { display: none; }
+  .root :global(.hiw-stagenav li) { flex: 0 0 auto; }
+  .root :global(.hiw-stagenav a) { padding: 13px 14px 13px 0; white-space: nowrap; }
+
+  /* Tightened, not truncated. The stage sections are 60% of this page on a
+     phone and most of what made them tall was breathing room sized for a
+     desktop column. */
+  .root :global(.hiw-stage) { padding-block: 40px; scroll-margin-top: 124px; }
+  .root :global(.hiw-notes) { margin-top: 20px; }
+  .root :global(.hiw-notes > div) { padding: 11px 0; }
+  .root :global(.hiw-hero) { padding-block: 40px 46px; }
+  .root :global(.hiw-journey) { margin-top: 32px; }
+  .root :global(.hiw-lanes-band) { padding-block: 48px; }
+  .root :global(.hiw-price) { padding-block: 44px; }
+
+  /* THE FIXED BAR COVERS THINGS. It is 54px plus a 12px inset and it sits over
+     whatever is at the bottom of the viewport — on this page that was the
+     "invented job" marker under each stage visual. Reserving the bar's height
+     at the end of every section it can land on means the thing it covers is
+     always space rather than a sentence. */
+  .root :global(.hiw-stage-visual) { padding-bottom: 12px; }
+  .root :global(.hiw-lanes-band) { padding-bottom: 96px; }
+}
+
+/* The journey rail is horizontal at every width, but five labelled nodes do
+   not fit across a phone. Below 620 it becomes a vertical list — the same
+   sequence, read down the page like everything else on it. */
+@media (max-width: 620px) {
+  .root :global(.hiw-nodes) { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .root :global(.hiw-node) { grid-template-columns: 24px minmax(0, 1fr); align-items: center; column-gap: 12px; }
+  .root :global(.hiw-node-dot) { grid-row: 1 / span 2; }
+  .root :global(.hiw-node small) { margin-top: 0; grid-column: 2; align-self: end; }
+  .root :global(.hiw-node b) { grid-column: 2; align-self: start; }
+  /* A horizontal rail behind a vertical list is a line through the middle of
+     the labels. */
+  .root :global(.hiw-rail) { display: none; }
+  /* Stacking these made the strip taller (202px) than the three columns it
+     replaced (123px) — a strip whose whole job is to be glanced at. It stays
+     three across; the type comes down instead. */
+  .root :global(.hiw-proof div) { padding: 16px 8px; }
+  .root :global(.hiw-proof b) { font-size: 24px; }
+  .root :global(.hiw-proof small) { font-size: 9.5px; letter-spacing: .1em; }
+}
+
+/* The flagship's closing band carries min-height 620px, which is right when it
+   is the last word after a homepage. Here the page has already made the ask in
+   the hero and again beside the price, so it can be the size of its own
+   content. */
+@media (max-width: 760px) {
+  .root :global(.hiw-hero) ~ :global(.final-cta) { min-height: 0; padding-block: 64px 76px; }
+}

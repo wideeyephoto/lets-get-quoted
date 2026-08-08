@@ -1,16 +1,20 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import SiteFooter from '@/components/site-footer';
-import StickyCta from '@/components/sticky-cta';
-import ExampleFrame from '@/components/marketing/example-frame';
-import MarketingCta from '@/components/marketing/marketing-cta';
-import MarketingHeader from '@/components/marketing/marketing-header';
+
+// The flagship chrome and stylesheet — the same ones the homepage and
+// /features draw. This page rendered MarketingHeader inside the marketing
+// shell, so it carried a second logo treatment, a second navigation and a
+// browner palette than every page it links to.
+import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
+import styles from '@/components/flagship/flagship.module.css';
+
+import JobJourney, { JourneyLegend } from './job-journey';
+import StageNav from './stage-nav';
+import { STAGE_VISUALS } from './stage-visuals';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
-import { MARKETING_MAIN_ID, MARKETING_PAGE_CLASS } from '@/components/marketing/marketing-page';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import { TRADES } from '@/lib/trades';
-import styles from './how-it-works.module.css';
 
 export const metadata: Metadata = {
   title: 'How Let’s Get Quoted Works',
@@ -331,9 +335,17 @@ const RECORD_EVENTS: {
   },
 ];
 
-/* Counted, not asserted — so the sentence under the timeline cannot drift from
+
+
+/* Counted, not asserted — so the sentence under the swimlane cannot drift from
    the rows above it if one is ever added or retagged. */
 const YOUR_ROWS = RECORD_EVENTS.filter((entry) => entry.hand === 'you').length;
+
+/** Which lane a row belongs to, top to bottom. */
+const LANE_ROW: Record<RecordHand, number> = { homeowner: 1, you: 2, auto: 3 };
+
+/** '01→02' and '02' both belong under stage 02 — the column an event LANDS in. */
+const stageColumn = (stage: string) => Number(stage.slice(-2));
 
 const FIRST_TIER = FEE_TIERS[0];
 const LAST_TIER = FEE_TIERS[FEE_TIERS.length - 1];
@@ -341,228 +353,197 @@ const LAST_TIER = FEE_TIERS[FEE_TIERS.length - 1];
 export default function HowItWorksPage() {
   return (
     <>
-      {/* AppShell renders no chrome for this route, so the page draws its own
-          header — the same one every page in the cluster draws. */}
-      <MarketingHeader current="/how-it-works" />
+      <main className={styles.root} id="main-content">
+        {/* SiteHeader has to be INSIDE .root: every rule that styles it is
+            scoped to that class, so rendered as a sibling it comes out as a
+            600px logo above five run-together links. The homepage nests it the
+            same way. */}
+        <SiteHeader />
 
-      <main className={MARKETING_PAGE_CLASS} id={MARKETING_MAIN_ID}>
-        <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
-        <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
+        {/* ------------------------------------------------------------------
+            HERO — the thesis, drawn rather than described.
+            ------------------------------------------------------------------ */}
+        <section className="hiw-hero" aria-labelledby="how-title">
+          <p className="eyebrow"><span>✦</span> ONE CUSTOMER RECORD · START TO FINISH</p>
+          <h1 id="how-title">Five stages. <em>No broken handoffs.</em></h1>
+          <p className="hiw-lede">
+            A homeowner begins on your website. The same details keep moving as the opportunity
+            becomes a quote, a scheduled job and money in the bank.
+          </p>
 
-        <div className="marketing-shell">
-          <section className="hero-grid" aria-labelledby="how-title">
-            <div className="hero-copy">
-              <p className="eyebrow">One customer record · start to finish</p>
-              <h1 id="how-title" className={styles.title}>
-                Five stages. <em>No broken handoffs.</em>
-              </h1>
-              <p className={styles.lede}>
-                A homeowner begins on your website. The same details keep moving as the opportunity
-                becomes a quote, a scheduled job and money in the bank.
-              </p>
-              <div className="actions">
-                <a href={APP_SIGNUP_URL} className="btn primary">
-                  Build my free site <span aria-hidden="true">→</span>
-                </a>
-                <Link href="/demo" className="btn secondary">
-                  Explore the demo — no signup
-                </Link>
+          <JobJourney />
+          <JourneyLegend />
+
+          <div className="hero-actions">
+            <a className="button primary" href={APP_SIGNUP_URL}>
+              Build my free site <span aria-hidden="true">→</span>
+            </a>
+            <Link className="button secondary" href="/demo">Explore the demo — no signup</Link>
+          </div>
+        </section>
+
+        {/* A stat strip rather than a paragraph of reassurance. Both numbers are
+            computed: TRADES.length so it cannot go stale the way a written "49"
+            did, and STAGES.length so it agrees with the sections below it. */}
+        <section className="hiw-proof" aria-label="At a glance">
+          <div><b>{TRADES.length}</b><small>TRADES</small></div>
+          <div><b>{STAGES.length}</b><small>CONNECTED STAGES</small></div>
+          <div><b>$0</b><small>PER MONTH</small></div>
+        </section>
+
+        <StageNav stages={STAGES.map(({ number, title }) => ({ number, title }))} />
+
+        {/* ------------------------------------------------------------------
+            THE FIVE STAGES — one visual each, alternating side.
+
+            Every stage used to be four stacked definition cards, which made all
+            five look identical and none of them look like a step. The copy is
+            unchanged: the four axes are still all here, as annotations under
+            the heading rather than as four boxes.
+            ------------------------------------------------------------------ */}
+        {STAGES.map((stage, index) => {
+          const Visual = STAGE_VISUALS[index];
+          return (
+            <section
+              key={stage.number}
+              id={`stage-${stage.number}`}
+              className="hiw-stage"
+              data-flip={index % 2 === 1 ? 'true' : 'false'}
+              aria-labelledby={`stage-${stage.number}-title`}
+            >
+              <div className="hiw-stage-copy">
+                <p className="hiw-stage-kicker"><span>{stage.number}</span> STAGE {stage.number} OF {STAGES.length}</p>
+                <h2 id={`stage-${stage.number}-title`}>{stage.title}</h2>
+                <p className="hiw-stage-summary">{stage.summary}</p>
+
+                <dl className="hiw-notes">
+                  <div data-hand="you">
+                    <dt>{AXES[0].label}</dt>
+                    <dd>{stage.does.join(' · ')}</dd>
+                  </div>
+                  <div data-hand="homeowner">
+                    <dt>{AXES[1].label}</dt>
+                    <dd>{stage.sees}</dd>
+                  </div>
+                  <div data-hand="record">
+                    <dt>{AXES[2].label}</dt>
+                    <dd>{stage.record}</dd>
+                  </div>
+                  <div data-hand="auto">
+                    <dt>{AXES[3].label}</dt>
+                    <dd>{stage.next}</dd>
+                  </div>
+                </dl>
               </div>
-              <p className={styles.heroNote}>
-                Built around {TRADES.length} trades. Free to build, quote and schedule — the platform
-                fee only applies once a homeowner has actually paid you.
-              </p>
-            </div>
 
-            <ul className={styles.pipeline} aria-label="The five stages">
-              {STAGES.map((stage) => (
-                <li key={stage.number}>
-                  <a href={`#stage-${stage.number}`} className={styles.pipelineLink}>
-                    <span className={styles.pipelineNum} aria-hidden="true">
-                      {stage.number}
-                    </span>
-                    <span className={styles.pipelineTitle}>{stage.title}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="section-block" aria-labelledby="how-to-read">
-            <div className={styles.legendHead}>
-              <p className="eyebrow">How to read this</p>
-              <h2 id="how-to-read">The same four questions, five times over.</h2>
-              <p>
-                A stage that only lists what you do hides the half that matters. Each one below
-                answers all four — including the two nobody usually writes down: what the job record
-                gained, and what moved on its own afterwards.
-              </p>
-            </div>
-            <ul className={styles.legend}>
-              {AXES.map((axis) => (
-                <li key={axis.key} className={styles.legendItem}>
-                  <span className={styles.axisLabel}>{axis.label}</span>
-                  <span className={styles.legendBody}>{axis.blurb}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="section-block" aria-labelledby="stages-title">
-            <div className={styles.legendHead}>
-              <p className="eyebrow">The five stages</p>
-              <h2 id="stages-title">One job, from first click to next visit.</h2>
-            </div>
-
-            <ul className={styles.stages}>
-              {STAGES.map((stage) => (
-                <li key={stage.number}>
-                  <article
-                    id={`stage-${stage.number}`}
-                    className={styles.stage}
-                    aria-labelledby={`stage-${stage.number}-title`}
-                  >
-                    <div className={styles.stageHead}>
-                      <span className={styles.stageNum} aria-hidden="true">
-                        {stage.number}
-                      </span>
-                      <div className={styles.stageCopy}>
-                        <span className={styles.stageKicker}>Stage {stage.number}</span>
-                        <h3 id={`stage-${stage.number}-title`} className={styles.stageTitle}>
-                          {stage.title}
-                        </h3>
-                        <p className={styles.stageSummary}>{stage.summary}</p>
-                      </div>
-                    </div>
-
-                    {/* Four term/definition pairs, in the same order in every
-                        stage, so a reader can run down a column as easily as
-                        across a row. The <div> grouping each dt with its dd is
-                        valid inside a <dl> and is what makes a pair one card. */}
-                    <dl className={styles.axes}>
-                      <div className={styles.cell}>
-                        <dt className={styles.axisLabel}>You do</dt>
-                        <dd className={styles.cellList}>
-                          <ul className={styles.doList}>
-                            {stage.does.map((item) => (
-                              <li key={item} className={styles.doItem}>
-                                <span className={styles.doTick} aria-hidden="true">
-                                  ✓
-                                </span>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </dd>
-                      </div>
-
-                      <div className={styles.cell}>
-                        <dt className={styles.axisLabel}>The homeowner sees</dt>
-                        <dd className={styles.cellBody}>{stage.sees}</dd>
-                      </div>
-
-                      <div className={styles.cell}>
-                        <dt className={styles.axisLabel}>The record gains</dt>
-                        <dd className={styles.cellBody}>{stage.record}</dd>
-                      </div>
-
-                      <div className={styles.cell}>
-                        <dt className={`${styles.axisLabel} ${styles.axisLabelAuto}`}>
-                          Then, automatically
-                        </dt>
-                        <dd className={styles.cellBody}>{stage.next}</dd>
-                      </div>
-                    </dl>
-                  </article>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="section-block" aria-labelledby="continuity-title">
-            <div className={styles.continuityGrid}>
-              <div className={styles.continuityCopy}>
-                <p className="eyebrow">The difference is continuity</p>
-                <h2 id="continuity-title">
-                  The homeowner never repeats the story.
-                  <br />
-                  Your team never rebuilds the record.
-                </h2>
-                <p>
-                  Website answers, photos, texts, quote decisions, schedule details, crew context and
-                  payments stay attached to the same job.
+              <div className="hiw-stage-visual">
+                <Visual />
+                <p className="example-mark">
+                  <b>Example</b> — an invented job, not a real customer.
                 </p>
               </div>
+            </section>
+          );
+        })}
 
-              <ExampleFrame
-                label="One job record, filling itself in across the five stages."
-                note="Invented job and invented homeowner. The event types and the wording of each are the product’s own."
+        {/* ------------------------------------------------------------------
+            CONTINUITY — the same events, arranged by whose hand put them there.
+
+            The rows are the ones the page already carried, tags and all. What
+            changed is the axis: as a single list, the homeowner's typing and
+            the thing nobody typed sat in one column and the page's own argument
+            went flat. Three lanes across five stages makes it the shape of the
+            picture: the middle lane is nearly empty, and that is the point.
+            ------------------------------------------------------------------ */}
+        <section className="hiw-lanes-band" aria-labelledby="continuity-title">
+          <div className="hiw-lanes-head">
+            <p className="eyebrow"><span>✦</span> THE DIFFERENCE IS CONTINUITY</p>
+            <h2 id="continuity-title">
+              The homeowner never repeats the story.<br />
+              <em>Your team never rebuilds the record.</em>
+            </h2>
+            <p>
+              Website answers, photos, texts, quote decisions, schedule details, crew context and
+              payments stay attached to the same job.
+            </p>
+          </div>
+
+          <div className="hiw-lanes" role="group" aria-label="One job record across five stages">
+            <div className="hiw-lane-spine" aria-hidden="true">
+              <span className="hiw-spine-id">JOB #1048</span>
+              {STAGES.map((stage) => (
+                <span key={stage.number} className="hiw-spine-stage">{stage.number}</span>
+              ))}
+            </div>
+
+            {HANDS.map((hand) => (
+              <p key={hand} className="hiw-lane-label" data-hand={hand} style={{ ['--lane' as string]: LANE_ROW[hand] }}>
+                {HAND_LABEL[hand]}
+              </p>
+            ))}
+
+            {RECORD_EVENTS.map((entry) => (
+              <article
+                key={`${entry.stage}-${entry.event}`}
+                className="hiw-lane-event"
+                data-hand={entry.hand}
+                style={{
+                  ['--lane' as string]: LANE_ROW[entry.hand],
+                  ['--stage' as string]: stageColumn(entry.stage),
+                }}
               >
-                {/* The key. Three words, so the tags on the rows below are read
-                    as a taxonomy rather than as decoration — and so the one
-                    that matters, "Automatic", is named before it appears. */}
-                <div className={styles.recordKey}>
-                  <span className={styles.recordKeyLabel}>Who put it there</span>
-                  <ul className={styles.recordKeyList}>
-                    {HANDS.map((hand) => (
-                      <li key={hand}>
-                        <span className={styles.recordHand} data-hand={hand}>
-                          {HAND_LABEL[hand]}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <b>{entry.event}</b>
+                <small>
+                  {entry.auto ? <i>→ Then, automatically: </i> : null}
+                  {entry.detail}
+                </small>
+              </article>
+            ))}
+          </div>
 
-                <ul className={styles.record}>
-                  {RECORD_EVENTS.map((entry) => (
-                    <li key={`${entry.stage}-${entry.event}`}>
-                      <div className={styles.recordRow}>
-                        <span className={styles.recordStage} aria-hidden="true">
-                          {entry.stage}
-                        </span>
-                        <span className={styles.recordEvent}>
-                          <span className={styles.recordHand} data-hand={entry.hand}>
-                            {HAND_LABEL[entry.hand]}
-                          </span>
-                          {entry.event}
-                          <span className={styles.recordDetail}>
-                            {entry.auto ? (
-                              <span className={styles.recordAuto}>
-                                <span aria-hidden="true">→ </span>Then, automatically:{' '}
-                              </span>
-                            ) : null}
-                            {entry.detail}
-                          </span>
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+          <p className="hiw-lanes-tally">
+            {YOUR_ROWS} of the {RECORD_EVENTS.length} lines on this record were put there by you.
+            The rest arrived with the homeowner, or the record wrote them itself.
+          </p>
+          <p className="example-mark">
+            <b>Example</b> — an invented job and homeowner. The event types and the wording of each
+            are the product’s own.
+          </p>
+        </section>
 
-                <p className={styles.recordTally}>
-                  {YOUR_ROWS} of the {RECORD_EVENTS.length} lines on this record were put there by
-                  you. The rest arrived with the homeowner, or the record wrote them itself.
-                </p>
-              </ExampleFrame>
-            </div>
-          </section>
+        {/* ------------------------------------------------------------------
+            THE PRICE, before the ask.
+            ------------------------------------------------------------------ */}
+        <section className="hiw-price" aria-labelledby="hiw-price-title">
+          <p className="eyebrow"><span>✦</span> WHAT IT COSTS TO RUN THIS</p>
+          <h2 id="hiw-price-title">Free to build, quote and schedule.</h2>
+          <p>
+            The platform fee applies only when a homeowner has actually paid you — {FIRST_TIER.rate},
+            dropping to {LAST_TIER.rate} as your yearly volume grows, plus standard Stripe processing
+            ({STRIPE_PROCESSING_NOTE}).
+          </p>
+          <ul className="fee-tiers" aria-label="Platform fee by yearly volume collected">
+            {FEE_TIERS.map((tier) => (
+              <li key={tier.tier}><b>{tier.rate}</b><small>{tier.rangeLabel}</small></li>
+            ))}
+          </ul>
+          <p className="fee-note">
+            <Link href="/pricing">See the full breakdown</Link>
+          </p>
+        </section>
 
-          <MarketingCta
-            title="Put your next job on one connected path."
-            note={
-              <>
-                Free to build, quote and schedule. The platform fee applies only when a homeowner
-                pays you — {FIRST_TIER.rate}, dropping to {LAST_TIER.rate} as your yearly volume
-                grows, plus standard Stripe processing ({STRIPE_PROCESSING_NOTE}).
-              </>
-            }
-          />
+        <section className="final-cta" id="final-cta">
+          <div className="cta-rays" />
+          <p className="eyebrow"><span>✦</span> ONE CONNECTED PATH, FROM THE FIRST CLICK</p>
+          <h2>Put your next job<br />on one connected path.</h2>
+          <p>Build the site, qualify the lead and run the work from the same record.</p>
+          <a className="button primary light" href={APP_SIGNUP_URL}>
+            Build my free site <span aria-hidden="true">→</span>
+          </a>
+          <small>No card required · No monthly subscription · Cancel anytime</small>
+        </section>
 
-          <SiteFooter />
-        </div>
-
-        <StickyCta href={APP_SIGNUP_URL} label="Build my free site" />
+        <SiteFooter />
       </main>
     </>
   );

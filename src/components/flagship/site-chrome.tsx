@@ -163,14 +163,17 @@ function useMobileBarVisibility() {
     const bar = barRef.current;
     if (!bar || !('IntersectionObserver' in window)) return;
 
-    // .hero-actions is what every hero on the site uses for its button pair —
-    // matching that rather than a section class means /features (.index-hero)
-    // and the homepage (.hero-stage) are both covered without naming either.
+    // The whole hero, not just its button. On /how-it-works the hero CTA sits
+    // under a 400px graphic, so on a phone it is below the fold — the bar
+    // decided it was needed and covered the graphic instead. Every hero on this
+    // site carries its own CTA, so while any part of one is on screen the bar
+    // has nothing to add. Matched positionally rather than by class so a new
+    // page does not have to remember to opt in.
     const zones = [
-      ...document.querySelectorAll('.hero-actions .button.primary'),
+      document.querySelector('main > section'),
       ...document.querySelectorAll('.final-cta, .page-cta'),
       ...document.querySelectorAll('footer'),
-    ].filter((el) => el !== bar);
+    ].filter((el): el is Element => !!el && el !== bar);
     if (!zones.length) return;
 
     const showing = new Set<Element>();
