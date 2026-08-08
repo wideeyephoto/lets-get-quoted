@@ -8,14 +8,18 @@
  *
  * WHY NORMALISE AT ALL. The three supplied shots are 1355x899, 1588x905 and
  * 1897x912 — aspect ratios from 1.51 to 2.08. The slider cross-fades between
- * them inside one fixed frame, so a frame sized for any single one crops the
- * others: at 1.4 the website builder loses its live preview off the right edge,
- * which is the half of that screen worth showing.
+ * them inside one fixed frame, so they have to agree on a shape first.
  *
- * So each is drawn CONTAINED onto a common 1600x1000 canvas, and the letterbox
- * is filled with the colour sampled from that image's own top-left pixel. Every
- * one of these screens is a near-black app chrome, so the padding is invisible
- * rather than a grey bar. Nothing is cropped and nothing is stretched.
+ * Each is scaled to COVER a common 1600x1000 canvas and cropped to fit, so
+ * every shot fills the frame edge to edge. An earlier pass letterboxed them
+ * instead, which was safe — nothing cut — but left 47px bars beside Insights
+ * and 116px above and below the website builder, and a slider whose panel
+ * changes size as it rotates reads as broken rather than considered.
+ *
+ * WHERE EACH ONE IS CROPPED is a per-image decision, in FOCUS below, because
+ * the middle is not always the right answer: Insights loses 62px vertically
+ * and its "SUMMARY — LAST 90 DAYS" header sits ~30px from the top, so a
+ * centred crop would shave it.
  *
  * Encoding goes through headless Chromium: neither sharp nor jimp is a
  * dependency here, and three images is not a reason to add a native module.
@@ -32,6 +36,30 @@ const OUT = 'public/product';
 const W = 1600;
 const H = 1000;
 
+/**
+ * Where to crop from, per file, as 0..1 on each axis (0 = left/top edge held).
+ *
+ * ANCHORED LEFT, not centred. Centring looked reasonable on paper and was
+ * wrong in practice: taking half the surplus off the left edge sliced the
+ * sidebar down its middle, so every nav label came out as "hedule", "ick
+ * $tops", "ew & Labor". A sidebar cut mid-word reads as a broken screenshot.
+ * Held at the left edge, the sidebar stays whole and the surplus comes off the
+ * right, which on all three of these is margin or photograph.
+ *
+ *   insights  loses 62px of HEIGHT and nothing horizontally. Held at the top:
+ *             the summary band and "You kept $12,816" are the first 300px and
+ *             are the point of the screen; the bottom of the metric row goes.
+ *   jobs      loses 155px from the right — the detail panel's outer margin.
+ *   website   loses 480px from the right. The live preview keeps its header,
+ *             its headline and most of the photo; what goes is the far edge of
+ *             the image and the Site Preview button.
+ */
+const FOCUS = {
+  insights: { x: 0, y: 0 },
+  jobs: { x: 0, y: 0.5 },
+  website: { x: 0, y: 0.5 },
+};
+
 mkdirSync(OUT, { recursive: true });
 
 const files = readdirSync(SRC).filter((f) => /\.png$/i.test(f));
@@ -44,7 +72,7 @@ for (const file of files) {
   const src = readFileSync(`${SRC}/${file}`);
 
   const out = await page.evaluate(
-    async ({ b64, w, h }) => {
+    async ({ b64, w, h, focus }) => {
       const img = new Image();
       img.src = `data:image/png;base64,${b64}`;
       await img.decode();
@@ -86,32 +114,43 @@ for (const file of files) {
       const cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
       const ctx = cv.getContext('2d');
+      // The ground still gets painted. Cover leaves nothing showing, but a
+      // rounding error on one edge against pure white would be visible; against
+      // the app's own black it is not.
       ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(0, 0, w, h);
 
-      const scale = Math.min(w / img.width, h / img.height);
-      const dw = Math.round(img.width * scale);
-      const dh = Math.round(img.height * scale);
+      // COVER: scale by whichever axis needs the most, then crop the surplus on
+      // the other. max() rather than min() is the whole difference from the
+      // letterboxed version.
+      const scale = Math.max(w / img.width, h / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      const dx = Math.round(-(dw - w) * focus.x);
+      const dy = Math.round(-(dh - h) * focus.y);
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, Math.round((w - dw) / 2), Math.round((h - dh) / 2), dw, dh);
+      ctx.drawImage(img, dx, dy, Math.round(dw), Math.round(dh));
 
       return {
         webp: cv.toDataURL('image/webp', 0.86).split(',')[1],
         source: `${img.width}x${img.height}`,
-        placed: `${dw}x${dh}`,
-        pad: `${Math.round((w - dw) / 2)}x${Math.round((h - dh) / 2)}`,
+        scaled: `${Math.round(dw)}x${Math.round(dh)}`,
+        cropX: Math.round(dw - w),
+        cropY: Math.round(dh - h),
+        offset: `${dx},${dy}`,
         ground: `rgb(${r},${g},${b})`,
       };
     },
-    { b64: src.toString('base64'), w: W, h: H },
+    { b64: src.toString('base64'), w: W, h: H, focus: FOCUS[file.replace(/\.png$/i, '')] ?? { x: 0.5, y: 0.5 } },
   );
 
   const buf = Buffer.from(out.webp, 'base64');
   const name = file.replace(/\.png$/i, '.webp');
   writeFileSync(`${OUT}/${name}`, buf);
   console.log(
-    `${name.padEnd(16)} ${out.source.padStart(9)} -> ${out.placed.padStart(9)} in ${W}x${H}` +
-    `  pad ${out.pad.padStart(7)}  ${out.ground.padEnd(18)} ${(buf.length / 1024).toFixed(0)}KB`,
+    `${name.padEnd(16)} ${out.source.padStart(9)} -> ${out.scaled.padStart(10)} filling ${W}x${H}` +
+    `  cropped ${String(out.cropX).padStart(4)}w ${String(out.cropY).padStart(3)}h` +
+    `  offset ${out.offset.padStart(9)}  ${(buf.length / 1024).toFixed(0)}KB`,
   );
 }
 
