@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from 'next/image';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import { HOME_FAQS } from '@/lib/home-faqs';
@@ -30,6 +31,25 @@ const PLANE_TRAVEL = 118;
 
 /** Type-safe inline custom properties, which React's CSSProperties omits. */
 const cssVars = (vars: Record<string, string | number>) => vars as React.CSSProperties;
+
+/**
+ * Quick Stops has its own wordmark, and the mocks were spelling the name in
+ * body type instead — a product with a logo, drawn without it. Same asset the
+ * dashboard rail and the demo sidebar use, so there is one file to change.
+ */
+function QuickStopsMark({ width }: { width: number }) {
+  return (
+    <Image
+      className="qs-mark"
+      src="/brand/quick-stops-wordmark.png"
+      alt="Quick Stops"
+      width={287}
+      height={50}
+      style={{ width, height: 'auto' }}
+      unoptimized
+    />
+  );
+}
 
 type Feature = {
   number: string;
@@ -170,7 +190,11 @@ function QuickStopVisual() {
         </div>
         <div className="quick-card">
           <p className="mini-label">NEAR TODAY’S ROUTE</p>
-          <div className="quick-title"><span>QS</span><div><h3>Leaking shutoff valve</h3><p>Royal Oak · same-day request</p></div></div>
+          {/* The wordmark replaces a "QS" square that was standing in for it.
+              It is 5.7:1, so it cannot sit in the square's place inside the
+              title row — it goes above, and the row keeps its two lines. */}
+          <QuickStopsMark width={116} />
+          <div className="quick-title"><div><h3>Leaking shutoff valve</h3><p>Royal Oak · same-day request</p></div></div>
           <div className="quick-metrics"><span><small>ADDED DRIVE</small><b>6 min</b></span><span><small>OPEN WINDOW</small><b>2:15–4:15</b></span></div>
           <div className="offer-row"><div><small>YOUR QUICK STOP FEE</small><strong>$149</strong></div><button>Send offer</button></div>
           <p className="paid-note"><i>✓</i> Nothing books until the customer pays.</p>
@@ -369,7 +393,7 @@ export default function FlagshipHome() {
               <div className="dash-main">
                 <div className="dash-greeting"><div><small>FRIDAY, AUGUST 7</small><h2>Good morning.</h2></div><button>+ New</button></div>
                 <div className="attention-card"><small>NEEDS YOUR ATTENTION</small><div className="attention-row"><b>3</b><span>New leads need a response</span><em>Review leads →</em></div><div className="attention-row"><b>2</b><span>Quotes awaiting approval</span><em>Follow up →</em></div></div>
-                <div className="dash-grid"><div><small>NEXT 7 DAYS</small><strong>6 jobs</strong><p>3 crews assigned</p></div><div><small>ESTIMATED REVENUE</small><strong>$18.4k</strong><p className="up">↑ 14% this month</p></div><div className="quick-mini"><small>QUICK STOP</small><strong>Nearby request</strong><p>0.7 mi off route · $149</p></div></div>
+                <div className="dash-grid"><div><small>NEXT 7 DAYS</small><strong>6 jobs</strong><p>3 crews assigned</p></div><div><small>ESTIMATED REVENUE</small><strong>$18.4k</strong><p className="up">↑ 14% this month</p></div><div className="quick-mini"><QuickStopsMark width={104} /><strong>Nearby request</strong><p>0.7 mi off route · $149</p></div></div>
               </div>
             </div>
           </div>

@@ -2953,20 +2953,120 @@
 .root :global(.hero-stage .dash-grid p) { font-size: 11.5px; }
 .root :global(.hero-stage .dash-grid > div) { min-height: 132px; }
 
-/* Off the console's corners rather than the old column's sides. alertFloat is
-   dropped for the same reason dashboardFloat was — it owns the transform, and
-   the front plane needs it. */
+/* THE TWO NOTIFICATIONS.
+
+   These are the moments the product exists to create — a lead worth calling,
+   and money arriving — and on a 1254px console they were 310px and 265px cards
+   in the same grey as the panel behind them, with 7px labels. Bigger, brighter,
+   and each carrying its own accent so which one arrived reads at a glance:
+   orange for the lead, mint for the money.
+
+   alertFloat is dropped for the same reason dashboardFloat was — an animation
+   owns the transform, and the front plane needs it.
+
+   PLACEMENT. The alert was at top:-24px, which put it straight over the title
+   bar: measured at every width from 390 to 1440 it covered "EXAMPLE BUSINESS ·
+   LIVE" and the avatar. That label is the marker that stops a visitor
+   believing the invented figures, so covering it is not a cosmetic problem.
+
+   translateY(-100%) against top:9px lands the badge's BOTTOM 9px inside the
+   card whatever height it grows to — over the top border and the rounded
+   corner, clear of the 58px title bar's text. The plane offset has to be
+   restated in the same transform or it is lost.
+
+   And it is CLAMPED: min(0px, --plane-y). A front-plane element drifts both
+   ways, and the downward half is what put the badge back on the title bar —
+   measured +21px of drift at a 950px viewport, +49px at 700px, because the
+   journey fraction grows as the viewport shrinks. There is no single offset
+   that clears it at every height. Clamped, the badge can only ever travel AWAY
+   from the card, which is the interesting direction anyway: it sweeps off as
+   you scroll and it can never sweep onto the label underneath. */
+.root :global(.hero-stage .floating-alert),
+.root :global(.hero-stage .floating-paid) {
+  animation: none;
+  border-width: 1.5px;
+  border-radius: 14px;
+  padding: 15px 17px;
+  background: linear-gradient(150deg, rgba(19,44,58,.985), rgba(9,23,33,.985));
+}
 .root :global(.hero-stage .floating-alert) {
-  top: -24px; right: -12px; animation: none;
+  top: 0; right: 4px; bottom: auto;
+  width: 372px;
+  transform: translateY(-100%) translate3d(0, min(0px, var(--plane-y, 0px)), 0);
+  border-color: rgba(255,106,36,.66);
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.07) inset,
+    0 28px 64px rgba(0,0,0,.52),
+    0 0 50px rgba(255,106,36,.3);
 }
 .root :global(.hero-stage .floating-paid) {
-  bottom: 84px; left: -14px; animation: none;
+  /* The console's content ends about 140px above its lower edge, and that band
+     is where this sits. Its drift is bounded UPWARD rather than clamped to
+     zero: as the page scrolls, plane offsets go negative, so a min(0px,...)
+     clamp like the alert's would pin this one still and it would have no
+     parallax at all. 18px of travel, which measured leaves 17px between the
+     badge and the stats row above it. */
+  bottom: 34px; left: 8px;
+  width: 330px;
+  transform: translate3d(0, clamp(-18px, var(--plane-y, 0px), 0px), 0);
+  border-color: rgba(80,227,189,.58);
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.06) inset,
+    0 28px 64px rgba(0,0,0,.5),
+    0 0 46px rgba(80,227,189,.24);
 }
 
+/* The eyebrow takes the accent. Measured on this ground: orange 5.2:1, mint
+   9.4:1 — both clear AA at 9.5px/800. */
+.root :global(.hero-stage .floating-alert small),
+.root :global(.hero-stage .floating-paid small) {
+  font-size: 9.5px; letter-spacing: 1.5px; font-weight: 800;
+}
+.root :global(.hero-stage .floating-alert small) { color: var(--orange); }
+.root :global(.hero-stage .floating-paid small) { color: var(--mint); }
+.root :global(.hero-stage .floating-alert b),
+.root :global(.hero-stage .floating-paid b) {
+  font-size: 15px; margin-top: 5px; letter-spacing: -.012em; color: #f3f8f9;
+}
+.root :global(.hero-stage .floating-alert .alert-icon) {
+  width: 42px; height: 42px; border-radius: 10px; margin-right: 13px;
+  font-size: 15px;
+  background: rgba(255,106,36,.2);
+  border: 1px solid rgba(255,106,36,.48);
+}
+.root :global(.hero-stage .floating-paid > i) {
+  width: 40px; height: 40px; margin-right: 13px; font-size: 15px;
+  background: rgba(80,227,189,.18);
+  border: 1px solid rgba(80,227,189,.45);
+}
+/* NOW is the whole reason the alert matters, and it was 8px mint text. */
+.root :global(.hero-stage .floating-alert em) {
+  margin-left: 12px; padding: 3px 7px; border-radius: 4px;
+  background: var(--orange); color: #2a0c00;
+  font-size: 8.5px; font-weight: 800; letter-spacing: .1em;
+}
+
+/* Room for the alert to overhang without reaching the hero note above it. */
+.root :global(.hero-stage .hero-product) { margin-top: 72px; }
+
+/* ---- the Quick Stops wordmark ---------------------------------------------
+
+   Sized against the label it replaces so the tiles keep their rhythm: the
+   dash-grid's own <small> is 11px with a 4px gap, about 15px of band. */
+.root :global(.quick-mini .qs-mark) { margin-bottom: 6px; }
+.root :global(.quick-card .qs-mark) { margin: 10px 0 0; }
+
+/* Centred under the console. text-align on the marker itself does nothing —
+   it is display:inline-flex, so its own box is placed by the PARENT's
+   text-align, and the parent is deliberately left-aligned so the dashboard
+   labels inside it read as software. flex + max-content makes auto margins
+   work on it directly. */
 .root :global(.hero-stage .hero-product .example-mark) {
   position: static;
+  display: flex;
+  width: max-content;
+  max-width: 100%;
   margin: 18px auto 0;
-  text-align: center;
   white-space: normal;
 }
 
@@ -2981,7 +3081,10 @@
 
 @media (max-width: 1100px) {
   .root :global(.hero-stage) { padding-top: 128px; }
-  .root :global(.hero-stage .dashboard-card) { width: 100%; left: 0; height: 520px; }
+  /* 578, not 520: the panel's content needs 473px and the payment notification
+     needs the band under it. At 520 the band was 55px and a 72px badge sat on
+     the "6 jobs / 3 crews assigned" tile — measured at 1100 and at 900. */
+  .root :global(.hero-stage .dashboard-card) { width: 100%; left: 0; height: 578px; }
   .root :global(.hero-stage .dash-grid > div) { min-height: 118px; }
 }
 /* The card clips silently — overflow:hidden and a definite height — so these
