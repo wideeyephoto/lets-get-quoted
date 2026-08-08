@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { TRADES, getTrade } from '@/lib/trades';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import SiteFooter from '@/components/site-footer';
 
 export function generateStaticParams() {
@@ -47,7 +48,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
         <h1>{trade.headline}</h1>
         <p className="hero-text">{trade.subhead}</p>
         <div className="actions">
-          <Link href="/login?intent=signup" className="btn primary">Create free account</Link>
+          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
         <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a homeowner pays you.</p>
@@ -94,7 +95,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           ))}
         </div>
         <div className="mid-cta">
-          <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
+          <Link href="/features" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
         </div>
       </section>
 
@@ -125,7 +126,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           <h2>Start free &mdash; you only pay when a homeowner pays you.</h2>
           <p>No subscription. No setup fee. Everything a {trade.work} business needs, from your first quote.</p>
           <div className="actions">
-            <Link href="/login?intent=signup" className="btn primary">Create free account</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>
           </div>
         </div>

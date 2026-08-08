@@ -370,7 +370,7 @@ export default function PricingPage() {
           ))}
         </ul>
         <div className="mid-cta">
-          <Link href="/#wheel" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
+          <Link href="/features" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
         </div>
       </section>
 

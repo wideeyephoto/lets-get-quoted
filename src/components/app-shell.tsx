@@ -11,6 +11,7 @@ import ActionIcon from './action-icon';
 import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
+import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
 import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, AUTOMATIONS_BOLT_PATH, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
@@ -210,8 +211,30 @@ const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 // The list and the matcher live in lib/marketing-chrome.ts so the '/' special
 // case can be tested — see the note there.
 
+/**
+ * The public marketing site, for the rail that stands in for its header.
+ *
+ * Deliberately the same five destinations, in the same order, as the flagship
+ * header's NAV (site-chrome.tsx) — the two chromes wrap different halves of the
+ * same site and a visitor crossing between them should not find the map
+ * redrawn.
+ */
+const PUBLIC_NAV = [
+  ['/features', 'Features'],
+  ['/how-it-works', 'How it works'],
+  ['/for', 'For your trade'],
+  ['/pricing', 'Pricing'],
+  ['/founder', 'Founder'],
+] as const;
+
+/**
+ * The app root lands on a form headed "Sign in", so this used to send a
+ * first-time visitor to the wrong half of the login screen — same bug the
+ * flagship header had, on the chrome that wraps the other marketing pages.
+ * The label matches those pages now too: one promise across the whole site.
+ */
 function getPrimaryAction() {
-  return { href: '/login', label: 'Create free account' };
+  return { href: APP_SIGNUP_URL, label: 'Build my free site' };
 }
 
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
@@ -973,20 +996,33 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         );
       }
       return (
-        <Link href="/login" key={href} className={`${cls} preview`} title="Included — create a free account to use it">
+        /* Eighteen of these, and every one used to be a next/link to a bare
+           `/login` on the marketing host — a route that exists only to
+           redirect, so the router prefetched eighteen redirects on page load
+           and logged an error for each before falling back. They point at the
+           signup the title already promises, on the host that serves it. */
+        <a href={APP_SIGNUP_URL} key={href} className={`${cls} preview`} title="Included — create a free account to use it">
           <NavIcon href={href} />
           <span>{item.label}</span>
           <svg className="sidenav-lock" viewBox="0 0 24 24" aria-hidden="true">
             <rect x="4.8" y="10.5" width="14.4" height="9" rx="2" />
             <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
           </svg>
-        </Link>
+        </a>
       );
     };
     const brand = <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>;
 
     return (
       <div className="chrome-shell chrome-shell-sidenav">
+        {/* THE FIRST TAB STOP, AND IT HAS TO LIVE HERE.
+            The page can't supply this one: the rail is rendered by the shell
+            and comes before {children} in the DOM, so a skip link written into
+            a page sits AFTER the eighteen rows it exists to skip. Measured on
+            /for before this: the first tab stop was the rail's wordmark and the
+            page's own link was somewhere past row nineteen. */}
+        <a className="skip-link shell-skip-link" href="#app-main">Skip to content</a>
+
         <header className="sidenav-mobilebar">
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
           <button
@@ -1004,6 +1040,42 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}${!isLoggedIn ? ' marketing-locked' : ''}`} aria-label="Primary">
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
+          {/* Escape and a tap outside both closed the drawer already, and
+              neither is visible. This is. Rendered only while the drawer is
+              open, so it never appears on the docked desktop rail. */}
+          {isNavOpen ? (
+            <button type="button" className="sidenav-close" onClick={closeNav}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+              </svg>
+              <span className="sr-only">Close menu</span>
+            </button>
+          ) : null}
+
+          {/* THE PUBLIC SITE, FIRST.
+              This rail replaces the marketing header on every page it wraps —
+              /for, /pricing, /faq, /security, /resources — and it used to open
+              with a locked preview of the app. So Features, Pricing and How it
+              works existed on those pages only in the footer, which on /for is
+              7,200px down on a phone. A visitor on the pricing page had no way
+              to reach the features it was pricing.
+
+              Above the app preview, because these are the pages a logged-out
+              visitor is actually entitled to open. */}
+          {!isLoggedIn ? (
+            <nav className="sidenav-public" aria-label="Site">
+              <p className="sidenav-glabel">The site</p>
+              {PUBLIC_NAV.map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`sidenav-public-link${isActiveNav(pathname, href) ? ' active' : ''}`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
 
           {/* Openly accessible — try before you sign up. */}
           <div className="sidenav-try">
@@ -1052,12 +1124,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 <p className="sidenav-locknote"><span aria-hidden="true">🔒</span> Free to unlock — no card required.</p>
                 {!pathname.startsWith('/login') ? (
                   <>
-                    <Link href={primaryAction.href} className="btn primary sidenav-marketing-cta">
+                    {/* A plain anchor: the destination is another host, so
+                        next/link has nothing to prefetch or client-navigate,
+                        and the router should not touch the click. */}
+                    <a href={primaryAction.href} className="btn primary sidenav-marketing-cta">
                       {primaryAction.label}
-                    </Link>
-                    <Link href="/login" className="sidenav-marketing-login">
+                    </a>
+                    <a href={APP_LOGIN_URL} className="sidenav-marketing-login">
                       Already have an account? <strong>Log in</strong>
-                    </Link>
+                    </a>
                   </>
                 ) : null}
               </>
@@ -1065,7 +1140,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
         </aside>
 
-        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
+        {/* tabIndex -1 so the skip link can actually put focus here; without
+            it the browser scrolls to the target and leaves focus behind, which
+            means the next Tab lands back at the top of the rail. */}
+        <div id="app-main" tabIndex={-1} className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
       </div>
     );
   }
@@ -1163,9 +1241,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             </nav>
 
             {!isDashboard && !pathname.startsWith('/login') && !isLoggedIn ? (
-              <Link href={primaryAction.href} className="btn primary topbar-cta">
+              <a href={primaryAction.href} className="btn primary topbar-cta">
                 {primaryAction.label}
-              </Link>
+              </a>
             ) : null}
           </div>
         </div>

@@ -17,6 +17,16 @@ import type { ReactNode } from 'react';
  * of the site catching up to it. */
 
 export const APP_SIGNUP_URL = 'https://app.letsgetquoted.com/login?intent=signup';
+
+/**
+ * The way back in for somebody who already has an account.
+ *
+ * Absolute for the same reason as above — a session cookie belongs to exactly
+ * one host, so a bare `/login` from the marketing host is a redirect at best.
+ * It is also where next/link's prefetch of `/login` was coming from: a route
+ * that only ever redirects is one the router should not be warming up.
+ */
+export const APP_LOGIN_URL = 'https://app.letsgetquoted.com/login';
 export const DEMO_URL = '/demo';
 export const FEATURES_URL = '/features';
 
