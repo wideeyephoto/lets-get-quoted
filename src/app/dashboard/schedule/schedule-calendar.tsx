@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
@@ -13,6 +14,7 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
 import { useScheduleDrag } from './ScheduleDragProvider';
+import { useModal } from './use-modal';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -221,7 +223,6 @@ export default function ScheduleCalendar({
   hoursByDate = {},
   capacityHours = 8,
   blockedDays = {},
-  unscheduledCount = 0,
   initialDayKey,
   readOnly = false,
   basePath = '/dashboard',
@@ -260,7 +261,6 @@ export default function ScheduleCalendar({
   capacityHours?: number;
   /** Date key -> why the day is unavailable. Same map the drag guard uses. */
   blockedDays?: Record<string, string>;
-  unscheduledCount?: number;
   /** Which day the agenda opens on — today, unless you navigated elsewhere. */
   initialDayKey?: string;
 }) {
@@ -296,11 +296,35 @@ export default function ScheduleCalendar({
   // click. Local state still drives the UI instantly; the cookie write is
   // fire-and-forget and decides what the NEXT load starts with.
   const [calendarView, setCalendarViewState] = useState<CalendarView>(initialView);
+  // Whether the person has picked a view since the page loaded. The narrow-width
+  // fallback below is a DEFAULT, not a restriction: Month stays in the menu and
+  // choosing it deliberately is respected.
+  const [viewWasChosen, setViewWasChosen] = useState(false);
   const setCalendarView = (next: CalendarView) => {
+    setViewWasChosen(true);
     setCalendarViewState(next);
     if (readOnly) return;
     startTransition(async () => { await setCalendarViewAction(next); });
   };
+
+  // AGENDA IS THE FALLBACK WHEN MONTH GOES TOO DENSE.
+  //
+  // Below 1280 the calendar shares its row with the unscheduled rail, which
+  // leaves seven columns about 80px each — narrow enough that a client's name
+  // is back to being an ellipsis. Agenda says the same things in full sentences
+  // and is the better default at that width. The cookie is deliberately NOT
+  // written: this is a response to the window, not a change of preference, and
+  // persisting it would silently rewrite what the same person sees on a desktop.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1279.98px)');
+    const sync = () => setNarrow(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+  const effectiveView: CalendarView =
+    !viewWasChosen && narrow && calendarView === 'month' ? 'agenda' : calendarView;
   // Drag-to-schedule is coordinated by the shared provider so the (server-
   // rendered) unscheduled list and this calendar share one drag session.
   const { beginDrag, overDateKey, draggingJobId, armedJob, placeArmed } = useScheduleDrag();
@@ -322,6 +346,7 @@ export default function ScheduleCalendar({
   }, [jobs]);
 
   const openJob = openOccurrenceKey ? jobs.find((job) => job.occurrence_key === openOccurrenceKey) ?? null : null;
+  const dialogRef = useRef<HTMLDivElement>(null);
   const openJobAssignedMembers = openJob
     ? (assignments[openJob.id] ?? [])
       .map((id) => crew.find((member) => member.id === id))
@@ -335,7 +360,7 @@ export default function ScheduleCalendar({
       ?? [];
   }, [jobsByDate, todayKey, weeks]);
 
-  const visibleWeeks = useMemo(() => calendarView === 'week' ? [weekAtAGlance] : weeks, [calendarView, weekAtAGlance, weeks]);
+  const visibleWeeks = useMemo(() => effectiveView === 'week' ? [weekAtAGlance] : weeks, [effectiveView, weekAtAGlance, weeks]);
 
   // Every real day in the month, in order. Padding cells are null, so filtering
   // them out leaves exactly the month — which is what both new views count in.
@@ -457,10 +482,35 @@ export default function ScheduleCalendar({
     setOpenOccurrenceKey(occurrenceKey);
   }
 
-  function closeJobActions() {
+  // Stable identity: useModal holds it in a dependency array, and a new function
+  // every render would tear the trap down and rebuild it on each keystroke.
+  const closeJobActions = useCallback(() => {
     setIsConfirmingRemove(false);
     setOpenOccurrenceKey(null);
-  }
+  }, []);
+
+  // Focus in, focus trapped, Escape closes, focus returned to the chip that
+  // opened it, page behind locked. None of that was here: the panel was a plain
+  // div, so a keyboard user landed nowhere and tabbed straight through it into
+  // the calendar underneath.
+  useModal(Boolean(openJob), dialogRef, closeJobActions, 'job');
+
+  // THE DIALOG HAS TO LEAVE THIS SUBTREE TO BE A DIALOG.
+  //
+  // It is rendered inside .panel, and .panel carries `backdrop-filter: blur()`.
+  // A filtered element becomes the containing block for `position: fixed`
+  // descendants, so `inset: 0` resolved against the calendar card rather than
+  // the window: measured at 1366x768 the backdrop came out 633x1228 starting at
+  // y=48, which put 262px of the dialog below the fold with no way to scroll to
+  // it. Centring, 100dvh and z-index were all being applied correctly to a box
+  // that was never the viewport.
+  //
+  // Portalling to <body> is the fix rather than removing the blur, which is a
+  // deliberate part of how every panel in this app looks. Gated on mount so the
+  // server render (where document does not exist) simply omits it — the dialog
+  // only ever exists in response to a click, so there is nothing to hydrate.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   function navigateToMonth(monthKey: string) {
     setCalendarView('month');
@@ -555,12 +605,11 @@ export default function ScheduleCalendar({
         hoursByDate={hoursByDate}
         capacityHours={capacityHours}
         blockedDays={blockedDays}
-        unscheduledCount={unscheduledCount}
         onOpenJob={openJobActions}
       />
 
       <div className="calendar-desktop-views">
-      {calendarView === 'agenda' ? (
+      {effectiveView === 'agenda' ? (
         agendaDays.length === 0 ? (
           <p className="calendar-view-empty">Nothing scheduled this month.</p>
         ) : (
@@ -631,7 +680,7 @@ export default function ScheduleCalendar({
             ))}
           </ol>
         )
-      ) : calendarView === 'timeline' ? (
+      ) : effectiveView === 'timeline' ? (
         timelineRows.length === 0 ? (
           <p className="calendar-view-empty">Nothing scheduled this month.</p>
         ) : (
@@ -709,7 +758,7 @@ export default function ScheduleCalendar({
             </div>
           </div>
         )
-      ) : calendarView === 'year' ? (
+      ) : effectiveView === 'year' ? (
         <div className="calendar-year-grid">
           {twelveMonthSummary.map((month) => (
             <article className="calendar-year-card" key={month.monthKey}>
@@ -806,35 +855,32 @@ export default function ScheduleCalendar({
                                 carries the status, and the full label is in the
                                 tooltip, so that space now holds what the job is
                                 worth, how long it takes, and who's on it. */}
+                            {/* THREE THINGS, NOT SIX. The chip was carrying the
+                                name, the time, the money and the city on three
+                                lines inside a cell that is ~117px at 1440 and
+                                ~95px at 1366 — every one of them ellipsised, so
+                                four half-facts competed for the space one whole
+                                one needed. It is now the start time, who it is
+                                for, and a single operational signal. Address,
+                                amount, duration and crew moved to the job
+                                dialog, which opens on click and has the width to
+                                print them with labels. */}
                             <span className="calendar-job-chip-lines">
-                              {/* Name first. Leading with the time meant the
-                                  time filled the line on its own and the client
-                                  was ellipsised away entirely — the chip told
-                                  you when something was happening but never to
-                                  whom. The time drops to the detail line, where
-                                  it sits with the money. */}
+                              <span className="calendar-job-chip-when">
+                                {compactTime(job.scheduled_time) ?? 'TBD'}
+                              </span>
                               <span className="calendar-job-chip-main">
                                 {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client" aria-label="Confirmed by client">✓</span> : null}
                                 {job.short_name}
                               </span>
-                              {(job.scheduled_time || job.value_label) && (
-                                <span className="calendar-job-chip-meta">
-                                  {/* Time and money only. A 117px month cell
-                                      fits about fourteen characters here;
-                                      hours and crew initials were being
-                                      squeezed into unreadable fragments like
-                                      "1!". Both are in the tooltip, and the
-                                      crew button beside the chip already shows
-                                      whether anyone's assigned. */}
-                                  {compactTime(job.scheduled_time) ? <b>{compactTime(job.scheduled_time)}</b> : null}
-                                  {job.value_label ? <em>{job.value_label}</em> : null}
-                                </span>
-                              )}
-                              {/* Where it is. Its own line because time and
-                                  money already fill the one above, and a city
-                                  squeezed in beside them would be the sort of
-                                  fragment this whole pass is removing. */}
-                              {job.city_label ? <span className="calendar-job-chip-city">{job.city_label}</span> : null}
+                              {/* ONE SIGNAL, AS A WORD. The chip's colour has
+                                  always carried status, which is no use to
+                                  anyone who cannot separate the two greens; this
+                                  is the same fact in text. Deliberately the only
+                                  badge on the chip. */}
+                              <span className={`calendar-job-chip-sig status-${job.badge_tone}`} title={job.badge_title ?? undefined}>
+                                {job.badge_label}
+                              </span>
                             </span>
                           </div>
                           <button
@@ -886,7 +932,7 @@ export default function ScheduleCalendar({
           )}
         </div>
       )}
-      {calendarView !== 'year' && (
+      {effectiveView !== 'year' && (
         <div className="calendar-days-row">
           {/* Said once, plainly, rather than left for the owner to work out from
               a dashed border why some entries can't be dragged or assigned. */}
@@ -903,12 +949,20 @@ export default function ScheduleCalendar({
       )}
       </div>
 
-      {openJob ? (
-        <div className="crew-assign-backdrop" onClick={closeJobActions}>
-          <div className="crew-assign-panel schedule-job-actions-panel" onClick={(event) => event.stopPropagation()}>
+      {openJob && mounted ? createPortal((
+        <div className="crew-assign-backdrop schedule-job-backdrop" onClick={closeJobActions}>
+          <div
+            className="crew-assign-panel schedule-job-actions-panel"
+            onClick={(event) => event.stopPropagation()}
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="schedule-job-dialog-title"
+          >
             <div className="crew-assign-header">
               <div>
-                <p className="crew-assign-title">{openJob.client_name}</p>
+                <p className="crew-assign-title" id="schedule-job-dialog-title">{openJob.client_name}</p>
                 <p className="crew-assign-sub">
                   <span className={`status-badge status-${openJob.badge_tone}`} title={openJob.badge_title ?? undefined}>{openJob.badge_label}</span>
                   <span>{formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}</span>
@@ -919,6 +973,41 @@ export default function ScheduleCalendar({
                 ×
               </button>
             </div>
+
+            {/* WHAT THE MONTH CELL NO LONGER HAS ROOM TO SAY.
+                A 117px cell was carrying the customer, the time, the money, the
+                city and a crew badge, each ellipsised into a fragment — "WORK
+                S…", "1!". The chip is now time, name and one signal; everything
+                else is here, at a width where it can be read, spelled out and
+                labelled rather than inferred from a colour. */}
+            <dl className="schedule-job-facts">
+              <div>
+                <dt>Where</dt>
+                <dd>{openJob.city_label ?? 'No address on file'}</dd>
+              </div>
+              <div>
+                <dt>Value</dt>
+                <dd>{openJob.value_label ?? 'Not quoted'}</dd>
+              </div>
+              <div>
+                <dt>Est. time</dt>
+                <dd>{openJob.hours_label ?? 'Not set'}</dd>
+              </div>
+              <div>
+                <dt>Crew</dt>
+                <dd>
+                  {openJobAssignedMembers.length > 0
+                    ? openJobAssignedMembers.map((member) => member.name).join(', ')
+                    : 'Nobody assigned'}
+                </dd>
+              </div>
+              {openJob.scope_label ? (
+                <div className="schedule-job-facts-wide">
+                  <dt>Work</dt>
+                  <dd>{openJob.scope_label}</dd>
+                </div>
+              ) : null}
+            </dl>
 
             <div className="schedule-job-actions">
               <div className="schedule-job-quick-actions">
@@ -1019,7 +1108,7 @@ export default function ScheduleCalendar({
             </div>
           </div>
         </div>
-      ) : null}
+      ), document.body) : null}
     </>
   );
 }

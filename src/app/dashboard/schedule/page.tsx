@@ -19,7 +19,8 @@ import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
-import ScheduleDock from './ScheduleDock';
+import UnscheduledQueue from './UnscheduledQueue';
+import { ScheduleJobButton, UnscheduledBanner } from './QueueTriggers';
 import ScheduleMap from './ScheduleMap';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
@@ -211,6 +212,18 @@ export default async function SchedulePage({
   const unscheduledJobs = activeJobs
     .filter((job) => !job.scheduled_for)
     .sort((a, b) => readinessRank(a.status) - readinessRank(b.status));
+
+  // TWO POPULATIONS, AND THEY ARE NOT THE SAME NUMBER.
+  //
+  // The nav rail's Schedule badge counts approved work with no date
+  // (status === 'in_progress' && !scheduled_for — see api/account/status).
+  // This page's counter used to count EVERY unscheduled active job, quotes
+  // nobody has accepted included. So the rail said 3, the page said 4, and
+  // nothing on either of them said why. The counter below now counts exactly
+  // what the rail counts, and the banner names the remainder out loud instead
+  // of folding it in.
+  const approvedUnscheduled = unscheduledJobs.filter((job) => job.status === 'in_progress').length;
+  const unapprovedUnscheduled = unscheduledJobs.length - approvedUnscheduled;
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
   const assignmentsByJob = await listCrewAssignmentsForJobs(
@@ -493,7 +506,12 @@ export default async function SchedulePage({
       : 'on';
 
   return (
-    <main className="wide-shell workspace-shell">
+    /* NOT .wide-shell. That caps every page it is on at 1100px and centres it,
+       which on this one meant a seven-column calendar squeezed into 1100px with
+       ~400px of dead gutter either side at 1920 — the grid got narrower than the
+       rail beside it. This shell is fluid: it takes whatever the app rail leaves
+       and spends all of it on the calendar. */
+    <main className="schedule-shell">
       <ScheduleDragProvider unavailable={unavailableDays}>
       {/* CALENDAR AND THE JOBS THAT NEED A DATE, SIDE BY SIDE.
           Dragging is resolved by hit-testing whatever is under the pointer
@@ -517,7 +535,28 @@ export default async function SchedulePage({
         <header className="schedule-bar">
           {/* No "SCHEDULE" eyebrow: the nav already marks where you are and the
               heading says it again. It cost a line on every screen size. */}
-          <h1 className="workspace-title schedule-bar-id">Job calendar</h1>
+          <div className="schedule-bar-id">
+            <h1 className="workspace-title">Job calendar</h1>
+            {/* THE PHONE'S VERSION OF THE FOUR STAT CARDS. Those cards are 4
+                tiles of an icon, a figure and a caption; at 390px they either
+                went two-up at ~168px each — where "Costs logged" truncated — or
+                four-up at 84px, which fits nothing. One sentence carries the
+                same three numbers and wraps instead of clipping. It is
+                aria-hidden because the cards below say all of it again to a
+                screen reader, with links attached. */}
+            <p className="sched-sum" aria-hidden="true">
+              <span><strong>{scheduledNext30Days}</strong> jobs</span>
+              <span><strong>{formatMoney(estimatedRevenue)}</strong> revenue</span>
+              {unscheduledJobs.length > 0 ? (
+                <span className="sched-sum-warn"><strong>{unscheduledJobs.length}</strong> need dates</span>
+              ) : null}
+            </p>
+          </div>
+
+          {/* The reason you came to this page, as a button, at every width. */}
+          <div className="schedule-bar-actions">
+            <ScheduleJobButton pending={unscheduledJobs.length} />
+          </div>
 
           <div className="schedule-stats">
             <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${scheduledNext30Days} jobs booked in the next 30 days`}>
@@ -550,18 +589,32 @@ export default async function SchedulePage({
                 <small>Costs logged</small>
               </Link>
             )}
+            {/* Counts approved work only, which is what the nav rail's Schedule
+                badge counts. "Ready to book" says so; the banner below carries
+                the quotes that are not approved yet. */}
             <a
-              className={`sched-stat${unscheduledJobs.length > 0 ? ' needs' : ''}`}
+              className={`sched-stat${approvedUnscheduled > 0 ? ' needs' : ''}`}
               href="#unscheduled-jobs"
-              aria-label={`${unscheduledJobs.length} active ${unscheduledJobs.length === 1 ? 'job needs' : 'jobs need'} a scheduled date`}
+              aria-label={
+                `${approvedUnscheduled} approved ${approvedUnscheduled === 1 ? 'job is' : 'jobs are'} ready to book` +
+                (unapprovedUnscheduled > 0
+                  ? `, and ${unapprovedUnscheduled} more ${unapprovedUnscheduled === 1 ? 'quote is' : 'quotes are'} still waiting on approval`
+                  : '')
+              }
             >
               <StatIcon shape="calendar" />
-              <strong>{unscheduledJobs.length}</strong>
-              <small>Needs date</small>
+              <strong>{approvedUnscheduled}</strong>
+              <small>Ready to book</small>
             </a>
           </div>
 
         </header>
+
+        {/* WHAT NEEDS ATTENTION, IN THE READING ORDER. Only below 1280px: above
+            that the rail is on screen permanently and this would be a second
+            control saying the same thing. It replaces the fixed bottom dock,
+            which said it at every width by sitting on top of the calendar. */}
+        <UnscheduledBanner approved={approvedUnscheduled} unapproved={unapprovedUnscheduled} />
 
         <ScheduleCalendar
           monthNav={
@@ -576,14 +629,12 @@ export default async function SchedulePage({
           }
           weekendDays={weekendDays}
           initialView={calendarView}
-          /* Beside the view switcher rather than under the stats: both decide
-             what you do with the month you are looking at. */
-          toolbarActions={
-            <Link href="/dashboard/schedule/plan" className="action-btn action-btn--plan schedule-bar-cta">
-              <ActionIcon name="plan" />
-              Plan my day
-            </Link>
-          }
+          /* NO "Plan my day" HERE ANY MORE. It sat in this toolbar at every
+             width, in the accent colour, permanently — the loudest control on a
+             page whose job is booking work, pointed at a route optimiser for
+             work that is already booked. It is now secondary (the panel foot,
+             below) and contextual (the mobile agenda offers it on a day that
+             actually has a route to plan — see ScheduleMobileAgenda). */
           weeks={weeks}
           todayKey={todayKey}
           planned={plannedVisits}
@@ -598,15 +649,18 @@ export default async function SchedulePage({
           hoursByDate={Object.fromEntries(hoursByDateForCalendar)}
           capacityHours={scheduleDayHours}
           blockedDays={unavailableDays}
-          unscheduledCount={unscheduledJobs.length}
           initialDayKey={initialDayKey}
         />
 
         <div className="schedule-panel-foot">
-          <p>Click a job to reschedule it, remove it from the schedule, or manage crew.</p>
+          <p>Select a job to reschedule it, remove it from the schedule, or manage crew.</p>
           <div className="schedule-panel-foot-links">
-            <a href="#booking-availability">Set booking availability &darr;</a>
-            <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
+            {/* Secondary, and phrased as what it does rather than as a slogan. */}
+            <Link href="/dashboard/schedule/plan" className="schedule-foot-plan">
+              <ActionIcon name="plan" />
+              Plan today&apos;s route
+            </Link>
+            <a href="#schedule-settings">Schedule settings &darr;</a>
           </div>
         </div>
       </section>
@@ -617,12 +671,19 @@ export default async function SchedulePage({
           Plan my day. */}
       <aside className="schedule-rail">
       {unscheduledJobs.length > 0 ? (
-        <ScheduleDock count={unscheduledJobs.length}>
+        <UnscheduledQueue count={unscheduledJobs.length}>
         <section className="panel workspace-section-card" id="unscheduled-jobs">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Needs a date</p>
             <h2>Unscheduled jobs</h2>
-            <p className="schedule-drag-hint">Drag a job onto a calendar date above to schedule it — you&apos;ll pick a start time when you drop it. Or use the buttons.</p>
+            {/* TAP FIRST, DRAG SECOND. Dragging was the headline instruction on
+                every device, including the ones with no pointer to drag with and
+                no keyboard to do it another way. "Choose date & time" is on every
+                card and always was; it just read as the fallback. */}
+            <p className="schedule-drag-hint">
+              Use <strong>Choose date &amp; time</strong> on any job below. On a mouse you can also drag a
+              job straight onto a calendar date.
+            </p>
           </div>
           <div className="sign-in-methods-list">
             {unscheduledJobs.map((job) => {
@@ -744,7 +805,11 @@ export default async function SchedulePage({
                   </div>
                   <div className="schedule-action-buttons">
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Add start date</summary>
+                      {/* The primary action on the card, named for what it does.
+                          "Add start date" undersold it — it takes a date AND a
+                          time, and it is the tap-based path that replaces the
+                          drag. */}
+                      <summary className="btn primary schedule-choose-when">Choose date &amp; time</summary>
                       <div className="schedule-popover-panel schedule-start-panel">
                         <form action={boundSchedule} className="schedule-inline-form schedule-start-form">
                           <div className="schedule-inline-field schedule-inline-date">
@@ -767,7 +832,7 @@ export default async function SchedulePage({
                       </div>
                     </details>
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Send booking options</summary>
+                      <summary className="btn secondary">Offer customer times</summary>
                       <div className="schedule-popover-panel">
                         <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
                           <div className="schedule-client-options-intro">
@@ -793,21 +858,26 @@ export default async function SchedulePage({
             })}
           </div>
         </section>
-        </ScheduleDock>
+        </UnscheduledQueue>
       ) : null}
-
-      <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
       </aside>
       </div>
+      </ScheduleDragProvider>
 
-      {/* Everything below is configured once and then rarely touched. Folded by
-          default and mutually exclusive, so the page ends with a short list of
-          settings rather than three screens of forms you scroll past to get
-          back to the calendar. */}
-      {/* Booking, availability and time off now live on their own screen —
-          they had grown into three forms and a preview, which is a page, not a
-          footer. This is the way in, and it reads as a status line so you can
-          tell at a glance whether the public page is working. */}
+      {/* ONE SETTINGS GROUP, BELOW ALL THE OPERATIONAL CONTENT.
+          These were four unrelated surfaces stacked down the page with nothing
+          saying they belonged together — a booking link, a working-hours panel,
+          a weather panel, and a map that had been sitting up in the rail
+          competing with the queue for the space beside the calendar. What is
+          scheduled comes first; what configures scheduling comes last. */}
+      <section className="sched-settings" id="schedule-settings" aria-labelledby="schedule-settings-h">
+        <h2 className="sched-settings-h" id="schedule-settings-h">Map &amp; schedule settings</h2>
+
+        {/* The map is context for the month, not a work surface — the real map
+            work is Plan today's route. Below the queue on desktop, after the
+            calendar on a tablet, inside this collapsed group on a phone. */}
+        <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
+
       <Link className="schedule-setup-link" href="/dashboard/schedule/booking" id="booking-availability">
         <span className="schedule-setup-link-copy">
           <span className="eyebrow">Setup</span>
@@ -824,23 +894,28 @@ export default async function SchedulePage({
         <span className="schedule-setup-go" aria-hidden="true">→</span>
       </Link>
 
-      </ScheduleDragProvider>
-      {/* The settings that decide when a day is full, under the calendar that
-          shows it. Condensed — the summary states them; opening is only for
-          changing them. */}
-      <WorkingHoursPanel
-        scheduleDayHours={scheduleDayHours}
-        jobBufferMinutes={jobBufferMinutes}
-        workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
-        workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
-      />
+        {/* The settings that decide when a day is full, under the calendar that
+            shows it. Condensed — the summary states them; opening is only for
+            changing them. */}
+        <WorkingHoursPanel
+          scheduleDayHours={scheduleDayHours}
+          jobBufferMinutes={jobBufferMinutes}
+          workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
+          workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
+        />
 
-      {/* Down here with the other set-once settings, not above the calendar.
-          Switched on it is a short list of days in trouble; switched OFF it is a
-          pitch with a form attached, and that was the first thing between the
-          booking requests and the month — a page about what is scheduled opening
-          with an ad for a feature you have not turned on. */}
-      <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
+        {/* Switched on it is a short list of days in trouble; switched OFF it is
+            a pitch with a form attached, and that was the first thing between
+            the booking requests and the month — a page about what is scheduled
+            opening with an ad for a feature you have not turned on. */}
+        <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
+
+        {/* Was a link in the calendar's footer, where it read as a caption to
+            the month. It is a setting, so it lives with the settings. */}
+        <div className="sched-settings-row">
+          <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
+        </div>
+      </section>
     </main>
   );
 }

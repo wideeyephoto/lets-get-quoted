@@ -17,7 +17,6 @@ import {
   shortDateLabel,
   weekdayShort,
 } from '@/lib/schedule-agenda';
-import { OPEN_SCHEDULE_DOCK_EVENT } from './dock-events';
 import type { CalendarCell, CalendarJob, CrewOption, PlannedVisit } from './schedule-calendar';
 
 /**
@@ -54,7 +53,6 @@ type Props = {
   hoursByDate: Record<string, number>;
   capacityHours: number;
   blockedDays: Record<string, string>;
-  unscheduledCount: number;
   onOpenJob: (occurrenceKey: string) => void;
 };
 
@@ -75,7 +73,6 @@ export default function ScheduleMobileAgenda({
   hoursByDate,
   capacityHours,
   blockedDays,
-  unscheduledCount,
   onOpenJob,
 }: Props) {
   const router = useRouter();
@@ -244,28 +241,22 @@ export default function ScheduleMobileAgenda({
 
           {blockedReason ? <p className="sched-blocked">{blockedReason}</p> : null}
 
-          <div className="sched-cta">
-            {unscheduledCount > 0 ? (
-              <button
-                type="button"
-                className="sched-cta-primary"
-                onClick={() => window.dispatchEvent(new CustomEvent(OPEN_SCHEDULE_DOCK_EVENT))}
-              >
-                Schedule a job
-              </button>
-            ) : (
-              <Link className="sched-cta-primary" href="/dashboard/jobs">Schedule a job</Link>
-            )}
-            {unscheduledCount > 0 ? (
-              <button
-                type="button"
-                className="sched-cta-secondary"
-                onClick={() => window.dispatchEvent(new CustomEvent(OPEN_SCHEDULE_DOCK_EVENT))}
-              >
-                {unscheduledCount} job{unscheduledCount === 1 ? '' : 's'} need{unscheduledCount === 1 ? 's' : ''} a date
-              </button>
-            ) : null}
-          </div>
+          {/* PLAN THE ROUTE ONLY WHEN THERE IS A ROUTE. It used to be the
+              loudest button on the page at every width, on every day, including
+              days with nothing on them — a route optimiser offered for an empty
+              afternoon. Two stops is the point at which the order starts to
+              matter, so that is when it appears.
+
+              The page-level "Schedule a job" button and the "jobs need dates"
+              banner both sit above this in the header, so neither is repeated
+              here — that duplication is what made the old mobile screen carry
+              three controls that all opened the same list. */}
+          {dayJobs.length > 1 ? (
+            <Link className="sched-cta-secondary" href="/dashboard/schedule/plan">
+              Plan this day&apos;s route
+              <small>{dayJobs.length} stops</small>
+            </Link>
+          ) : null}
 
           {dayCount === 0 ? (
             <p className="sched-empty">Nothing scheduled on this day.</p>
@@ -297,9 +288,9 @@ export default function ScheduleMobileAgenda({
                       type="button"
                       className="sched-card-options"
                       onClick={() => onOpenJob(job.occurrence_key)}
-                      aria-label={`Options for ${job.client_name} — reschedule, crew, or remove from the schedule`}
+                      aria-label={`Details and options for ${job.client_name} — reschedule, crew, or remove from the schedule`}
                     >
-                      Options
+                      Details &amp; options
                     </button>
                   </li>
                 );
