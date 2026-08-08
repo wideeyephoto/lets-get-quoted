@@ -1050,15 +1050,23 @@ const TWEAKS = `
   .root :global(.showcase-tabs) { gap: 6px; }
   .root :global(.showcase-tabs button) { padding: 8px 11px 8px 9px; font-size: 11.5px; }
 
-  /* A 1400px desktop screen shown 350px wide is a 4x reduction — a picture of
+  /* A 1600px desktop screen shown 350px wide is a 4.6x reduction — a picture of
      a dashboard with nothing on it you can read, which is the thing worth
      avoiding rather than the thing worth doing. The frame goes portrait and
-     crops INTO the screen instead: the same asset, about 2.3x rather than 4x,
-     showing the left of the content column where the headline figures are.
-     object-position starts past the sidebar, which is the least informative
-     strip of any of the four screens. */
+     crops INTO the screen instead: the same asset at about 2x, showing an
+     800px-wide window of it.
+
+     WHICH 800px is per screen, and comes from the component — hero-showcase.tsx
+     sets object-position inline off each shot's own "focus". One shared value
+     cannot work: the app sidebar is ~270px wide but the website builder's
+     control panel is ~600px, so the offset that clears one lands in the middle
+     of the other and cuts every label mid-word. The rule below is only the
+     fallback for a shot that arrives without a focus.
+
+     It has no effect above this breakpoint: the frame is 1600/1000 there, the
+     images are 1600x1000, so cover crops nothing. */
   .root :global(.showcase-frame) { aspect-ratio: 4 / 5; }
-  .root :global(.showcase-shot) { object-position: 26% 0; }
+  .root :global(.showcase-shot) { object-position: 40% 0; }
 }
 
 
