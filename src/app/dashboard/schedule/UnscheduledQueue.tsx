@@ -67,9 +67,35 @@ export default function UnscheduledQueue({
     if (armedJob) setOpen(false);
   }, [armedJob]);
 
-  // The banner and the mobile agenda both ask for this by name.
+  /**
+   * The banner and the mobile agenda both ask for this by name.
+   *
+   * AND ON A DESKTOP IT HAS TO DO SOMETHING TOO. `setOpen(true)` is the whole
+   * answer only while this is an overlay. Above 1280 the queue is already
+   * docked and visible, so pressing "Schedule a job" set a boolean nothing was
+   * reading and the page did not move — reported, correctly, as a button that
+   * does nothing. Here it takes you to the top of the list and puts focus on
+   * the first job waiting, which is the thing you pressed it to reach.
+   */
   useEffect(() => {
-    const onOpen = () => setOpen(true);
+    const onOpen = () => {
+      setOpen(true);
+      // After paint: on a tablet the panel has only just been un-inerted, and
+      // focus cannot land inside an inert subtree.
+      requestAnimationFrame(() => {
+        const panel = panelRef.current;
+        if (!panel) return;
+        panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        const first = panel.querySelector<HTMLElement>('[data-queue-job]');
+        if (first) {
+          first.focus({ preventScroll: true });
+          // A pulse, because focus alone on a card in a list of nine is easy to
+          // miss when you were looking at the calendar.
+          first.dataset.justFocused = 'true';
+          window.setTimeout(() => delete first.dataset.justFocused, 1400);
+        }
+      });
+    };
     window.addEventListener(OPEN_SCHEDULE_QUEUE_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_SCHEDULE_QUEUE_EVENT, onOpen);
   }, []);

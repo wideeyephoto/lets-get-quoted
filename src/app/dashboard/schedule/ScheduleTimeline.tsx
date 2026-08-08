@@ -6,8 +6,10 @@ import { weekdayShort, dayOfMonth } from '@/lib/schedule-agenda';
 import {
   blockPosition,
   buildTimeAxis,
+  capLanes,
   formatAxisHour,
   formatClockMinutes,
+  overflowPosition,
   packOverlaps,
   parseClockMinutes,
   type TimelineEntry,
@@ -44,6 +46,21 @@ import { useScheduleDrag } from './ScheduleDragProvider';
 const HOUR_PX = 62;
 
 /**
+ * How narrow a block is allowed to get before a lane is taken away.
+ *
+ * The audit's floor is "about 56px", and lane arithmetic alone cannot always
+ * reach it: a 99px day column — which is what a seven-day week is on a 1440
+ * laptop with the unscheduled rail up — has 53px to give even at ONE lane
+ * beside a marker. So this is not a guarantee, it is a preference: prefer two
+ * lanes, drop to one the moment two would be worse than one, and past that the
+ * only remedy is a wider calendar (collapse the rail) or fewer days (the
+ * three-day or Day view). Better to say that than to draw four 26px slivers.
+ */
+const MIN_LANE_PX = 56;
+/** Must match --tl-overflow-w in globals.css. */
+const OVERFLOW_PX = 46;
+
+/**
  * How much of a block has to exist before its detail lines are worth printing.
  *
  * In MINUTES, not pixels, so the thresholds survive the hour height changing
@@ -60,11 +77,21 @@ function initials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
 }
 
-/** Same six-way hash the month chips used, so a job keeps its colour. */
-function bandColor(jobId: string): string {
-  let hash = 0;
-  for (const character of jobId) hash = (hash + character.charCodeAt(0)) % 6;
-  return `calendar-band-color-${hash}`;
+/**
+ * The colour a block is, and what it means.
+ *
+ * IT USED TO MEAN NOTHING. Blocks took their colour from a six-way hash of the
+ * job's id, inherited from the month chips: a day showed blue, yellow, purple
+ * and green and none of it encoded anything a dispatcher could act on. Asked
+ * for a legend, the honest answer was that there was nothing to put in one.
+ *
+ * Status is the thing the calendar already knows and the thing that changes
+ * what you do next, so it is what the colour carries now. CalendarLegend names
+ * all four. The hash's one real job — telling two abutting blocks apart — is
+ * done by the hairline box-shadow on .sched-tl-job.
+ */
+function statusColor(status: string): string {
+  return `calendar-job-status-${status}`;
 }
 
 export type TimelineDayMeta = {
@@ -88,6 +115,7 @@ export default function ScheduleTimeline({
   fullDates,
   blockedDays,
   onOpenJob,
+  onOpenDay,
   readOnly = false,
 }: {
   /** One key for Day, three for a tablet, seven (or five) for a week. */
@@ -103,10 +131,33 @@ export default function ScheduleTimeline({
   fullDates: Set<string>;
   blockedDays: Record<string, string>;
   onOpenJob: (occurrenceKey: string) => void;
+  /** Press a day head, or an overflow marker, to open that day on its own. */
+  onOpenDay?: (dateKey: string) => void;
   readOnly?: boolean;
 }) {
   const { beginDrag, overDateKey, draggingJobId, armedJob, placeArmed } = useScheduleDrag();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * How wide one day actually is, measured rather than assumed.
+   *
+   * The lane count is a layout decision and layout is the only thing that knows
+   * it: the same seven-day week is 190px a column with the rail collapsed and
+   * 99px with it up, and 99px cannot hold two readable lanes beside a marker.
+   * Starts null so the server and the first client render agree on two lanes —
+   * the width is not knowable until there is a box to measure.
+   */
+  const [colWidth, setColWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const node = bodyRef.current?.querySelector('.sched-tl-col');
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => setColWidth(entry.contentRect.width));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [dayKeys.length]);
+
+  const maxLanes = colWidth != null && colWidth < MIN_LANE_PX * 2 + OVERFLOW_PX ? 1 : 2;
 
   /** Every timed job across every visible column, so one axis fits them all. */
   const axis = useMemo(() => {
@@ -131,7 +182,13 @@ export default function ScheduleTimeline({
       startMinutes: parseClockMinutes(job.scheduled_time),
       durationMinutes: metaByOccurrence.get(job.occurrence_key)?.minutes ?? 60,
     }));
-    const packed = new Map(packOverlaps(entries).map((entry) => [entry.key, entry]));
+    /* TWO LANES, AND A COUNT FOR THE REST. packOverlaps gives a cluster as many
+       columns as it needs, which is honest and, past two, unreadable: a
+       four-way overlap in a 190px column is 47px a block, and four slivers say
+       less than "two jobs, and two more". capLanes keeps the two widest and
+       folds everything else into a marker over the hidden jobs' own minutes.
+       Nothing is ever hidden without being counted. */
+    const { entries: laid, overflows } = capLanes(packOverlaps(entries), maxLanes);
     const jobByKey = new Map(dayJobs.map((job) => [job.occurrence_key, job]));
 
     return {
@@ -140,16 +197,25 @@ export default function ScheduleTimeline({
          would be inventing a commitment. They get a strip above the axis
          instead — the same place an all-day event goes in every calendar. */
       untimed: dayJobs.filter((job) => parseClockMinutes(job.scheduled_time) == null),
-      blocks: [...packed.values()]
+      blocks: laid
         .map((entry) => {
           const job = jobByKey.get(entry.key);
           if (!job) return null;
           return { job, entry, box: blockPosition(entry, axis) };
         })
         .filter((block): block is NonNullable<typeof block> => block !== null),
+      overflows: overflows.map((overflow) => ({
+        ...overflow,
+        box: overflowPosition(overflow, axis),
+        // Read out on the marker, so "+2 overlapping" is not the whole story a
+        // screen reader gets.
+        names: overflow.keys
+          .map((key) => jobByKey.get(key)?.short_name)
+          .filter((name): name is string => Boolean(name)),
+      })),
       planned: plannedByDate.get(dateKey) ?? [],
     };
-  }), [axis, dayKeys, jobsByDate, metaByOccurrence, plannedByDate]);
+  }), [axis, dayKeys, jobsByDate, maxLanes, metaByOccurrence, plannedByDate]);
 
   /**
    * The now line, and the timezone label above the gutter.
@@ -206,21 +272,52 @@ export default function ScheduleTimeline({
         <div className="sched-tl-zone" aria-hidden="true">{now?.zone ?? ''}</div>
         {dayKeys.map((dateKey) => {
           const dayJobs = jobsByDate.get(dateKey) ?? [];
+          const closed = blockedDays[dateKey];
+          /* "OFF" said nothing about what it was off — the crew, the day, the
+             column? "Closed" is the working-hours setting in the word the
+             setting uses. And a closed day WITH work on it is the one state
+             that needs saying out loud: the jobs are real and they are outside
+             configured hours. Nothing is moved or hidden either way. */
+          const closedWithWork = Boolean(closed) && dayJobs.length > 0;
+          const label = `${weekdayShort(dateKey)} ${dayOfMonth(dateKey)}`;
           return (
-            <div
+            <button
               key={dateKey}
+              type="button"
+              /* The head was a div, so the obvious thing to do with "Fri 7" —
+                 press it to see Friday — did nothing. */
               className={`sched-tl-day-head${dateKey === todayKey ? ' today' : ''}`}
+              onClick={() => onOpenDay?.(dateKey)}
+              title={`Open ${label}${dayJobs.length ? ` — ${dayJobs.length} ${dayJobs.length === 1 ? 'job' : 'jobs'}` : ''}`}
             >
               <small>{weekdayShort(dateKey).toUpperCase()}</small>
               <strong>{dayOfMonth(dateKey)}</strong>
-              {blockedDays[dateKey] ? (
-                <span className="sched-tl-head-flag blocked" title={blockedDays[dateKey]}>Off</span>
+              {closed ? (
+                <span
+                  className="sched-tl-head-flag blocked"
+                  data-with-work={closedWithWork || undefined}
+                  title={
+                    closedWithWork
+                      ? `${closed} — ${dayJobs.length} ${dayJobs.length === 1 ? 'job is' : 'jobs are'} scheduled outside configured working hours. Nothing has been moved.`
+                      : closed
+                  }
+                >
+                  Closed{closedWithWork ? ` · ${dayJobs.length}` : ''}
+                </span>
               ) : fullDates.has(dateKey) ? (
                 <span className="sched-tl-head-flag full" title="Daily capacity reached">Full</span>
               ) : dayJobs.length > 0 ? (
                 <span className="sched-tl-head-count">{dayJobs.length}</span>
               ) : null}
-            </div>
+              <span className="sr-only">
+                {closedWithWork
+                  ? ` — closed, and ${dayJobs.length} ${dayJobs.length === 1 ? 'job is' : 'jobs are'} scheduled outside configured working hours`
+                  : closed
+                    ? ' — closed'
+                    : ''}
+                . Open this day.
+              </span>
+            </button>
           );
         })}
       </div>
@@ -236,7 +333,7 @@ export default function ScheduleTimeline({
                 <button
                   type="button"
                   key={job.occurrence_key}
-                  className={`sched-tl-chip status-${job.status} ${bandColor(job.id)}`}
+                  className={`sched-tl-chip status-${job.status} ${statusColor(job.status)}`}
                   onPointerDown={(event) => beginDrag(
                     { jobId: job.id, jobName: job.client_name, time: '', sourceDateKey: job.scheduled_for },
                     event,
@@ -270,7 +367,7 @@ export default function ScheduleTimeline({
       ) : null}
 
       <div className="sched-tl-scroll" ref={scrollRef}>
-        <div className="sched-tl-body">
+        <div className="sched-tl-body" ref={bodyRef}>
           <div className="sched-tl-gutter" aria-hidden="true">
             {axis.hours.slice(0, -1).map((minute) => (
               <span className="sched-tl-hour" key={minute}>{formatAxisHour(minute)}</span>
@@ -316,7 +413,7 @@ export default function ScheduleTimeline({
                       className={[
                         'sched-tl-job',
                         `status-${job.status}`,
-                        bandColor(job.id),
+                        statusColor(job.status),
                         draggingJobId === job.id ? 'dragging' : '',
                         entry.columns > 1 ? 'shared' : '',
                       ].filter(Boolean).join(' ')}
@@ -329,12 +426,26 @@ export default function ScheduleTimeline({
                          Past two columns the block keeps the time and the name
                          and gives up the rest to the tooltip. */
                       data-narrow={entry.columns >= 3 ? 'true' : undefined}
-                      style={{
-                        top: `${box.top}%`,
-                        height: `${box.height}%`,
-                        left: `${box.left}%`,
-                        width: `${box.width}%`,
-                      }}
+                      /* Percentages while the column is uncrowded. Once a
+                         marker is drawn beside them the lanes have to give up
+                         its fixed width, which no percentage can express — so
+                         the two cases are two different calcs rather than one
+                         approximation. */
+                      style={
+                        column.overflows.length
+                          ? {
+                              top: `${box.top}%`,
+                              height: `${box.height}%`,
+                              left: `calc((100% - var(--tl-overflow-w)) / ${entry.columns} * ${entry.column})`,
+                              width: `calc((100% - var(--tl-overflow-w)) / ${entry.columns})`,
+                            }
+                          : {
+                              top: `${box.top}%`,
+                              height: `${box.height}%`,
+                              left: `${box.left}%`,
+                              width: `${box.width}%`,
+                            }
+                      }
                       title={[
                         job.client_name,
                         `${formatClockMinutes(entry.startMinutes)} – ${formatClockMinutes(entry.endMinutes)}`,
@@ -384,6 +495,29 @@ export default function ScheduleTimeline({
                     </div>
                   );
                 })}
+
+                {/* WHAT THE TWO LANES COULD NOT HOLD.
+                    Positioned over the hidden jobs' own minutes rather than at
+                    the top of the day, so it points at when they are. Pressing
+                    it opens that day on its own, where every one of them fits
+                    at full width — which is the "accessible popover or day
+                    agenda" without a second overlay to trap focus in. */}
+                {column.overflows.map((overflow) => (
+                  <button
+                    key={`${column.dateKey}-of-${overflow.startMinutes}`}
+                    type="button"
+                    className="sched-tl-overflow"
+                    style={{ top: `${overflow.box.top}%`, height: `${overflow.box.height}%` }}
+                    title={`Also on this day at the same time: ${overflow.names.join(', ')}. Open the day to see them.`}
+                    onClick={() => onOpenDay?.(column.dateKey)}
+                  >
+                    <span aria-hidden="true">+{overflow.keys.length}</span>
+                    <span className="sr-only">
+                      {overflow.keys.length} more overlapping {overflow.keys.length === 1 ? 'job' : 'jobs'}
+                      {overflow.names.length ? ` — ${overflow.names.join(', ')}` : ''}. Open this day to see them.
+                    </span>
+                  </button>
+                ))}
 
                 {blocked && column.blocks.length === 0 && column.untimed.length === 0 ? (
                   <p className="sched-tl-blocked-note">{blocked}</p>

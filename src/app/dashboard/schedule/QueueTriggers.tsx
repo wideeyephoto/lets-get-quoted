@@ -15,6 +15,17 @@ import { OPEN_SCHEDULE_QUEUE_EVENT } from './dock-events';
  */
 
 function openQueue() {
+  /* A collapsed desktop rail is the one case where the event alone still lands
+     on nothing visible: RailToggle has hidden the queue's docked home behind a
+     body attribute, so opening it would open something display:none. Clear the
+     attribute AND the stored preference first — the button is an explicit ask
+     to see that list, which outranks a preference set earlier. */
+  try {
+    delete document.body.dataset.schedRail;
+    window.localStorage.removeItem('lgq.schedule.railCollapsed');
+  } catch {
+    // Storage disabled. The attribute is already gone, which is what matters.
+  }
   window.dispatchEvent(new CustomEvent(OPEN_SCHEDULE_QUEUE_EVENT));
 }
 
@@ -34,9 +45,15 @@ export function ScheduleJobButton({ pending }: { pending: number }) {
       </Link>
     );
   }
+  /* THE LABEL CARRIES THE COUNT. "Schedule a job" is a promise of a picker;
+     what this actually does is take you to the list of jobs waiting for a
+     date. On a desktop, where that list is already on screen, the old label
+     made the button look broken — it did the right thing and named the wrong
+     one. */
   return (
     <button type="button" className="sched-primary" onClick={openQueue}>
-      <span aria-hidden="true">＋</span> Schedule a job
+      <span aria-hidden="true">＋</span> Schedule {pending === 1 ? '1 job' : `${pending} jobs`}
+      <span className="sched-primary-go" aria-hidden="true">→</span>
     </button>
   );
 }

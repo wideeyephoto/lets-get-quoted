@@ -289,3 +289,94 @@ export function blockPosition(
     width,
   };
 }
+
+/**
+ * At most two lanes of jobs per day, and a count for whatever that hides.
+ *
+ * WHY A CAP AT ALL. packOverlaps is honest — it gives a cluster exactly as many
+ * columns as it needs — and on a seven-day week that honesty is what breaks the
+ * view. A four-way overlap in a 190px column is 47px a block: the customer's
+ * name ellipsises to two characters, the status chip disappears, and four
+ * unreadable slivers say less than "two jobs, and two more".
+ *
+ * The rule, from the audit that asked for it:
+ *   - Two visible lanes, never fewer than the two widest the column can give.
+ *   - Everything past them collapses into ONE marker carrying the count.
+ *   - The marker spans the hidden jobs' own minutes, so it sits where they are
+ *     rather than at the top of the day.
+ *   - Nothing is ever hidden without being counted. That is the whole contract:
+ *     a job you cannot see is acceptable, a job nobody told you about is not.
+ *
+ * Clusters of one or two are untouched, which is nearly every day.
+ */
+export type LaneOverflow = {
+  /** Every entry folded into this marker, in start order. */
+  keys: string[];
+  startMinutes: number;
+  endMinutes: number;
+};
+
+export function capLanes(
+  packed: PackedEntry[],
+  maxLanes = 2,
+): { entries: PackedEntry[]; overflows: LaneOverflow[] } {
+  if (maxLanes < 1) throw new Error('capLanes needs at least one lane');
+
+  // Cluster identity is (columns, overlapping run). packOverlaps already
+  // stamped every member of a cluster with the same `columns`, but that is not
+  // unique on its own — two separate 3-wide clusters in one day both say 3. Re-
+  // derive the runs the same way packOverlaps did, by walking in start order.
+  const sorted = [...packed].sort(
+    (a, b) => a.startMinutes - b.startMinutes || b.endMinutes - a.endMinutes || a.key.localeCompare(b.key),
+  );
+
+  const entries: PackedEntry[] = [];
+  const overflows: LaneOverflow[] = [];
+  let run: PackedEntry[] = [];
+  let runEnd = -Infinity;
+
+  const flush = () => {
+    if (run.length === 0) return;
+    const needed = Math.max(...run.map((entry) => entry.column)) + 1;
+    if (needed <= maxLanes) {
+      // Re-stamp `columns` to what this run actually needs. packOverlaps sets
+      // it per cluster already; this keeps the two in step when a run turns out
+      // to be narrower than its cluster's widest point.
+      for (const entry of run) entries.push({ ...entry, columns: needed });
+    } else {
+      const kept = run.filter((entry) => entry.column < maxLanes);
+      const hidden = run.filter((entry) => entry.column >= maxLanes);
+      for (const entry of kept) entries.push({ ...entry, columns: maxLanes });
+      overflows.push({
+        keys: hidden.map((entry) => entry.key),
+        startMinutes: Math.min(...hidden.map((entry) => entry.startMinutes)),
+        endMinutes: Math.max(...hidden.map((entry) => entry.endMinutes)),
+      });
+    }
+    run = [];
+    runEnd = -Infinity;
+  };
+
+  for (const entry of sorted) {
+    // Same `>=` as packOverlaps: back-to-back is not overlapping.
+    if (entry.startMinutes >= runEnd) flush();
+    run.push(entry);
+    runEnd = Math.max(runEnd, entry.endMinutes);
+  }
+  flush();
+
+  return { entries, overflows };
+}
+
+/** Where an overflow marker sits vertically. Width and side are the CSS's. */
+export function overflowPosition(
+  overflow: LaneOverflow,
+  axis: TimeAxis,
+): { top: number; height: number } {
+  const top = ((overflow.startMinutes - axis.startMinutes) / axis.totalMinutes) * 100;
+  const height = ((overflow.endMinutes - overflow.startMinutes) / axis.totalMinutes) * 100;
+  return {
+    top: Math.max(0, Math.min(100, top)),
+    height: Math.max(0, Math.min(100 - Math.max(0, top), height)),
+  };
+}

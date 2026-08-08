@@ -11,6 +11,7 @@ import ScheduleMobileAgenda from './ScheduleMobileAgenda';
 import ScheduleTimeline, { type TimelineDayMeta } from './ScheduleTimeline';
 import ScheduleCrewLanes from './ScheduleCrewLanes';
 import ScheduleMonthCapacity from './ScheduleMonthCapacity';
+import CalendarLegend from './CalendarLegend';
 import { occurrenceMinutes } from '@/lib/schedule-timeline';
 import { longDateLabel, monthKeyOf, shiftDateKey } from '@/lib/schedule-agenda';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
@@ -763,14 +764,34 @@ export default function ScheduleCalendar({
             >
               →
             </button>
-            {!timelineDayKeys.includes(todayKey) ? (
-              <button type="button" className="month-nav-today" onClick={goToToday}>Today</button>
-            ) : null}
+            {/* Always on the row, and disabled while you are already looking at
+                today. It used to render only when today was OUT of range —
+                so the one week you never saw the control was the week you were
+                standing in, and it never became a thing you knew was there. */}
+            <button
+              type="button"
+              className="month-nav-today"
+              onClick={goToToday}
+              disabled={timelineDayKeys.includes(todayKey)}
+              title={timelineDayKeys.includes(todayKey) ? 'Today is already in view' : 'Jump to today'}
+            >
+              Today
+            </button>
           </div>
         ) : (
           monthNav
         )}
         <div className="calendar-toolbar-actions">
+          {/* UP HERE, NOT UNDER THE MONTH.
+              "Show Saturday / show Sunday" widens the weekdays, which is a
+              thing you want while looking at a cramped week — and it lived
+              below the entire calendar, so you had to scroll past the problem
+              to reach the control for it. Same component, same counts; only
+              the address changed. Still hidden under Day and Crew, where there
+              is one column and it is the one you chose. */}
+          {effectiveView === 'day' || effectiveView === 'crew' ? null : (
+            <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
+          )}
           {toolbarActions}
           <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
         </div>
@@ -794,7 +815,12 @@ export default function ScheduleCalendar({
         onOpenJob={openJobActions}
       />
 
+      {/* Under the toolbar and above the grid: a caption belongs beside the
+          thing it explains, and it is not a control, so it does not belong in
+          a row of them. Month capacity cells and crew lanes carry the same
+          status colours, so it is right for every desktop view. */}
       <div className="calendar-desktop-views">
+        <CalendarLegend />
       {effectiveView === 'day' || effectiveView === 'week' ? (
         <ScheduleTimeline
           dayKeys={timelineDayKeys}
@@ -809,6 +835,7 @@ export default function ScheduleCalendar({
           fullDates={fullSet}
           blockedDays={blockedDays}
           onOpenJob={openJobActions}
+          onOpenDay={openDay}
           readOnly={readOnly}
         />
       ) : effectiveView === 'crew' ? (
@@ -1026,13 +1053,7 @@ export default function ScheduleCalendar({
               <Link href="/dashboard/recurring">Manage plans</Link>
             </p>
           ) : null}
-          {/* "Show Saturday / show Sunday" is a statement about which COLUMNS a
-              multi-day grid draws. Under Day and Crew — one column, and you
-              chose which day it is — the toggles were offering to hide the
-              thing you are looking at. */}
-          {effectiveView === 'day' || effectiveView === 'crew' ? null : (
-            <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
-          )}
+
         </div>
       )}
       </div>

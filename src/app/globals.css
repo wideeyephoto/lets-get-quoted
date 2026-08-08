@@ -27054,3 +27054,135 @@ body[data-schedule-overlay="job"] .sched-queue {
 }
 .cta-trust strong { color: var(--text); font-weight: 700; }
 .cta-trust a { color: var(--gold-ink); font-weight: 650; }
+
+/* ===========================================================================
+   THE SCHEDULE, AFTER THE WEEK-VIEW AUDIT
+   =========================================================================== */
+
+/* -- colour that means something ------------------------------------------- */
+/* Every block used to take its colour from a six-way hash of the job's id, so
+   a day showed blue, yellow, purple and green encoding nothing. Status is what
+   the calendar already knows and what changes what you do next. The tokens are
+   the same three the id-hash classes set, so nothing downstream changes. */
+.calendar-job-status-new_lead   { --job-line: var(--rail-crew-3); --job-fill: rgba(255,209,102,.2);  --job-ink: var(--ink-amber-5); }
+.calendar-job-status-in_progress{ --job-line: var(--rail-crew-1); --job-fill: rgba(61,184,255,.2);   --job-ink: var(--ink-sky-3); }
+.calendar-job-status-complete   { --job-line: var(--rail-crew-2); --job-fill: rgba(120,220,150,.2);  --job-ink: var(--ink-green-4); }
+.calendar-job-status-archived   { --job-line: rgba(var(--tint), 0.35); --job-fill: rgba(var(--tint), 0.07); --job-ink: var(--mute-i62); }
+:root[data-theme='light'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
+:root[data-theme='light'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
+:root[data-theme='light'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.74rem;
+  color: var(--mute-i62);
+}
+.calendar-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.calendar-legend-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  border: 1px solid var(--job-line, var(--line));
+  border-left-width: 3px;
+  background: var(--job-fill, transparent);
+}
+.calendar-legend-dot-planned {
+  border: 1px dashed rgba(var(--tint), 0.5);
+  background: transparent;
+}
+
+/* -- "+N overlapping" ------------------------------------------------------ */
+/* The fixed rail the two lanes give up their width to. Wide enough for "+12"
+   and for a thumb; the lanes take `calc((100% - var(--tl-overflow-w)) / 2)`
+   each, which is why this is a length and not a percentage. */
+.sched-tl-col { --tl-overflow-w: 0px; }
+.sched-tl-col:has(.sched-tl-overflow) { --tl-overflow-w: 46px; }
+.sched-tl-overflow {
+  position: absolute;
+  right: 0;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px dashed rgba(var(--tint), 0.42);
+  border-radius: 7px;
+  background: rgba(var(--tint), 0.07);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  z-index: 3;
+}
+.sched-tl-overflow:hover { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
+.sched-tl-overflow:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* -- the card decides its own detail from its own width --------------------- */
+/* data-size answers "is this block tall enough", which is only half the
+   question — a three-way overlap in a week column is 47px wide and an
+   eight-hour job in it is still "md". This asks the other half of the question
+   in the only place that can answer it: the card itself. */
+.sched-tl-job { container-type: inline-size; }
+@container (max-width: 132px) {
+  .sched-tl-job .sched-tl-job-city,
+  .sched-tl-job .sched-tl-job-span { display: none; }
+}
+@container (max-width: 96px) {
+  .sched-tl-job .sched-tl-job-crew { display: none; }
+}
+@container (max-width: 68px) {
+  .sched-tl-job .sched-tl-job-foot { display: none; }
+}
+/* A long customer name in a 60px card must ellipsise, never break to one
+   character a line. */
+.sched-tl-job-time,
+.sched-tl-job-name,
+.sched-tl-job-city,
+.sched-tl-job-crew {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* -- Closed, and Closed with work on it ------------------------------------ */
+/* "Off" named no subject — off what, the crew, the day, the column? "Closed"
+   is the working-hours setting in the setting's own word. A closed day WITH
+   jobs on it is the one state worth a warning: the work is real and it is
+   outside configured hours, and nothing about showing it moves it. */
+.sched-tl-head-flag.blocked[data-with-work] {
+  border-color: var(--cedge-orange-9);
+  background: rgba(255, 122, 33, 0.16);
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- the day head is a button now ------------------------------------------ */
+.sched-tl-day-head {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sched-tl-day-head:hover { background: rgba(var(--tint), 0.06); }
+.sched-tl-day-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* -- the queue's first job, once you have asked for it ---------------------- */
+.schedule-drag-handle[data-just-focused] {
+  animation: queueJobPulse 1.3s ease-out 1;
+}
+@keyframes queueJobPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 122, 33, 0); }
+  25% { box-shadow: 0 0 0 5px rgba(255, 122, 33, 0.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-drag-handle[data-just-focused] { animation: none; outline: 2px solid var(--accent); }
+}
+.sched-primary-go { margin-left: 0.35rem; opacity: 0.8; }
+.month-nav-today:disabled { opacity: 0.45; cursor: default; }

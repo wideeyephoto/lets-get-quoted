@@ -25,6 +25,10 @@ export default function JobDragHandle({ jobId, jobName }: { jobId: string; jobNa
   return (
     <button
       type="button"
+      /* The queue's focus target. "Schedule a job" sends focus to the first of
+         these, so pressing it lands on the first job waiting for a date rather
+         than merely revealing a list. */
+      data-queue-job=""
       className={`schedule-drag-handle${armed ? ' armed' : ''}`}
       onPointerDown={onPointerDown}
       // Keyboard users never get a pointerdown, so Enter/Space has to arm it
