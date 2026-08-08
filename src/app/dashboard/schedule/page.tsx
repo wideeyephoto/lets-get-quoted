@@ -271,9 +271,19 @@ export default async function SchedulePage({
       .filter((job) => job.recurring_plan_id && job.recurring_visit_date)
       .map((job) => `${job.recurring_plan_id}:${job.recurring_visit_date}`),
   );
+  // A WEEK EITHER SIDE OF THE MONTH, NOT THE MONTH.
+  //
+  // The Week view snaps to a calendar week, so the week containing the 1st
+  // reaches back into the previous month and the week containing the last day
+  // reaches into the next. Projecting only the month meant those spill days
+  // showed their jobs but silently dropped their recurring visits — a Monday
+  // that reads empty in one view and busy in another.
   const plannedVisits = projectPlanVisits(
     await listRecurringPlans(supabase, accountId),
-    { fromKey: toDateKey(year, monthIndex, 1), toKey: toDateKey(year, monthIndex, daysInMonth) },
+    {
+      fromKey: addDaysToDateKey(toDateKey(year, monthIndex, 1), -7),
+      toKey: addDaysToDateKey(toDateKey(year, monthIndex, daysInMonth), 7),
+    },
     undefined,
     materializedVisits,
   );
@@ -455,6 +465,12 @@ export default async function SchedulePage({
       // loaded — it just wasn't being passed down.
       value_label: job.quoted_amount > 0 ? formatMoney(job.quoted_amount) : null,
       hours_label: job.estimated_hours ? `${job.estimated_hours}h` : null,
+      // The same figure unformatted. The time views draw a block this many
+      // hours tall, and it is the difference between a job that looks like a
+      // half-day and one that looks like a fifteen-minute call.
+      estimated_hours: Number.isFinite(Number(job.estimated_hours)) && Number(job.estimated_hours) > 0
+        ? Number(job.estimated_hours)
+        : null,
       crew_initials: (assignmentsByJob[job.id] ?? [])
         .map((crewId) => crewInitialsById.get(crewId))
         .filter((initials): initials is string => Boolean(initials)),
@@ -650,6 +666,11 @@ export default async function SchedulePage({
           capacityHours={scheduleDayHours}
           blockedDays={unavailableDays}
           initialDayKey={initialDayKey}
+          /* The vertical extent of the Day / Week / Crew views. The axis grows
+             past these for anything booked outside them, so an early start is
+             never drawn off the top of the grid. */
+          workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
+          workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
         />
 
         <div className="schedule-panel-foot">

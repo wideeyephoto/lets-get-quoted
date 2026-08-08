@@ -41,20 +41,32 @@ export function serializeWeekendDays(days: WeekendDays): string {
   return kept || 'none';
 }
 
-// Which shape the schedule calendar is in (Month / Week / Year / Agenda /
-// Timeline).
+// Which shape the schedule calendar is in.
 //
 // This HAS to be a cookie rather than component state. Month navigation is a
 // real navigation (`?month=…`), so a view held in useState was thrown away
 // every time someone clicked the arrow — pick Week, step forward a month, and
 // you are back in Month with no way to tell why.
 export const CALENDAR_VIEW_COOKIE = 'lgq_calendar_view';
-export type CalendarView = 'month' | 'week' | 'year' | 'agenda' | 'timeline';
-export const CALENDAR_VIEWS: CalendarView[] = ['month', 'week', 'year', 'agenda', 'timeline'];
+export type CalendarView = 'day' | 'week' | 'month' | 'crew' | 'agenda' | 'timeline' | 'year';
+export const CALENDAR_VIEWS: CalendarView[] = ['day', 'week', 'month', 'crew', 'agenda', 'timeline', 'year'];
+
+/**
+ * WEEK IS THE DEFAULT NOW, NOT MONTH.
+ *
+ * Month was the default because it always had been. What it actually gave you
+ * was a grid of ~95px cells each trying to hold a customer, a time, a price, a
+ * crew, a status and a duration, and the honest description of that is six
+ * ellipsised half-facts where one whole one would do. A week laid out against a
+ * time axis answers the question the page is for — what is happening when, and
+ * does any of it collide — and Month is now a capacity overview rather than a
+ * place to read job details.
+ *
+ * Nobody who chose a view is moved: an explicit choice is a cookie, and this is
+ * only what an absent cookie means.
+ */
 export function normalizeCalendarView(value: unknown): CalendarView {
-  // Month stays the default: it is what this page has always opened on, and an
-  // explicit choice is a cookie, so nobody who picked another one is moved off.
-  return CALENDAR_VIEWS.includes(value as CalendarView) ? (value as CalendarView) : 'month';
+  return CALENDAR_VIEWS.includes(value as CalendarView) ? (value as CalendarView) : 'week';
 }
 
 // Which Jobs layout the owner last used (Smoothie / Focus / List / Board / Table).

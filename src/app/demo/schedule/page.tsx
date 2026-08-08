@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { computeHoursByDate } from '@/lib/booking';
 import { expandScheduledJobs, formatMoney, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -90,12 +91,33 @@ export default async function DemoSchedulePage({ searchParams }: { searchParams:
       badge_title: badge.title ?? null,
       value_label: job.quoted_amount > 0 ? formatMoney(job.quoted_amount) : null,
       hours_label: job.estimated_hours ? `${job.estimated_hours}h` : null,
+      // Sizes the block in the Day / Week / Crew views. Built the same way the
+      // real page builds it so the demo cannot show a shape the app never does.
+      estimated_hours: Number.isFinite(Number(job.estimated_hours)) && Number(job.estimated_hours) > 0
+        ? Number(job.estimated_hours)
+        : null,
       crew_initials: (assignmentsByJob[job.id] ?? [])
         .map((crewId) => crewInitialsById.get(crewId))
         .filter((value): value is string => Boolean(value)),
       scope_label: job.scope,
     };
   });
+
+  /* THE MONTH VIEW IS A CAPACITY OVERVIEW NOW, so a demo that passes no hours
+     would draw "3 jobs" over "0 / 8 hrs" in the same cell — a contradiction, on
+     the page we point strangers at. Same helper the real page uses. */
+  const DEMO_DAY_HOURS = 8;
+  const hoursByDate = computeHoursByDate(
+    scheduledJobs.map((job) => ({
+      scheduled_for: job.scheduled_for,
+      scheduled_until: job.scheduled_until ?? null,
+      estimated_hours: job.estimated_hours,
+    })),
+    DEMO_DAY_HOURS,
+    0,
+    [...DEMO_BOOKING.weekdays],
+  );
+  const fullDates = [...hoursByDate.entries()].filter(([, hrs]) => hrs >= DEMO_DAY_HOURS).map(([key]) => key);
 
   const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
   const previous = new Date(year, monthIndex - 1, 1);
@@ -122,6 +144,12 @@ export default async function DemoSchedulePage({ searchParams }: { searchParams:
             crew={crew.map((member) => ({ id: member.id, name: member.name, role_label: member.role_label }))}
             assignmentsByJob={assignmentsByJob}
             initialDayKey={toDateKey(now.getFullYear(), now.getMonth(), now.getDate())}
+            hoursByDate={Object.fromEntries(hoursByDate)}
+            capacityHours={DEMO_DAY_HOURS}
+            fullDates={fullDates}
+            /* The demo account's own working hours — see demo-rows. */
+            workdayStart="07:30"
+            workdayEnd="17:00"
             monthNav={
               <div className="calendar-monthnav">
                 <Link href={monthHref(previous)} className="btn ghost" aria-label="Previous month">←</Link>

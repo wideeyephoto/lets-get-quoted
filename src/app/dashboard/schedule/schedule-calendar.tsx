@@ -8,27 +8,46 @@ import SaveButton from '@/components/save-button';
 import FloatingPanel from '@/components/floating-panel';
 import CalendarWeekendToggles from './CalendarWeekendToggles';
 import ScheduleMobileAgenda from './ScheduleMobileAgenda';
+import ScheduleTimeline, { type TimelineDayMeta } from './ScheduleTimeline';
+import ScheduleCrewLanes from './ScheduleCrewLanes';
+import ScheduleMonthCapacity from './ScheduleMonthCapacity';
+import { occurrenceMinutes } from '@/lib/schedule-timeline';
+import { longDateLabel, monthKeyOf, shiftDateKey } from '@/lib/schedule-agenda';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
 import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
-import { useScheduleDrag } from './ScheduleDragProvider';
+/* Drag is no longer coordinated here. Each surface that can be a drop target
+   — the timeline columns, the capacity cells, the crew lanes — calls
+   useScheduleDrag itself, because they are the ones that own a date. */
 import { useModal } from './use-modal';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Five views is past what a segmented control can hold without shrinking every
-// label to an abbreviation, so the switcher is a menu with room to say what
-// each view is actually for.
+/**
+ * Seven views is past what a segmented control can hold without shrinking every
+ * label to an abbreviation, so the switcher is a menu with room to say what
+ * each view is actually for.
+ *
+ * ORDER IS BY ZOOM: one day, a few days, a month, then the specialist views.
+ * "Job spans" is the old view that used to be called Timeline — renamed, not
+ * changed, because Week and Day are now literally timelines and two things in
+ * one menu called the same word is a bug in the menu.
+ */
 const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon: string }> = [
-  { id: 'month', label: 'Month', hint: 'The full grid, one cell a day', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
-  { id: 'week', label: 'Week', hint: 'One week, taller cells', icon: 'M3.5 8.5h17v7h-17zM8.5 8.5v7M13 8.5v7M17 8.5v7' },
+  { id: 'day', label: 'Day', hint: 'One day against the clock', icon: 'M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5ZM4.5 9h15M8 12.5h8M8 16h5' },
+  { id: 'week', label: 'Week', hint: 'The week against the clock — sized by how long each job takes', icon: 'M3.5 5.5h17v13h-17zM3.5 9h17M8 9v9.5M12.5 9v9.5M17 9v9.5' },
+  { id: 'month', label: 'Month', hint: 'How full each day is — click a date to open it', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
+  { id: 'crew', label: 'Crew', hint: 'One lane per person, for a single day', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
   { id: 'agenda', label: 'Agenda', hint: 'Just the days with work on them', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
-  { id: 'timeline', label: 'Timeline', hint: 'One bar per job across the month', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
+  { id: 'timeline', label: 'Job spans', hint: 'One bar per job across the month', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
   { id: 'year', label: '12 months', hint: 'The year at a glance', icon: 'M4.5 5h6v6h-6zM13.5 5h6v6h-6zM4.5 13h6v6h-6zM13.5 13h6v6h-6z' },
 ];
+
+/** The views laid out against a clock, which are the ones that step by day. */
+const TIME_VIEWS = new Set<CalendarView>(['day', 'week', 'crew']);
 
 function CalendarViewMenu({ value, onChange }: { value: CalendarView; onChange: (next: CalendarView) => void }) {
   const [open, setOpen] = useState(false);
@@ -104,6 +123,10 @@ export type CalendarJob = {
   badge_title: string | null;
   value_label: string | null;
   hours_label: string | null;
+  /** The same number hours_label prints, unformatted. The time views size a
+      block from it, and parsing "3.5h" back out of the label to do that would
+      be reading a string this component already had as a number. */
+  estimated_hours: number | null;
   crew_initials: string[];
   /** What the work IS. Optional because only the mobile agenda has the width to
       print it — a 33px month cell never did. */
@@ -123,16 +146,6 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
-}
-
-function addDaysToDateKey(dateKey: string, days: number): string {
-  const date = new Date(`${dateKey}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function hasJobOnDate(jobsByDate: Map<string, CalendarJob[]>, jobId: string, dateKey: string): boolean {
-  return (jobsByDate.get(dateKey) ?? []).some((job) => job.id === jobId);
 }
 
 function getBandColorClass(jobId: string): string {
@@ -171,16 +184,6 @@ function plannedTitle(visit: PlannedVisit): string {
   return `${visit.clientName} — ${visit.planTitle} (${CADENCE_WORD[visit.frequency]})${money}${left}. The job is created automatically on the day.`;
 }
 
-function PlannedChip({ visit }: { visit: PlannedVisit }) {
-  return (
-    <Link href="/dashboard/recurring" className="calendar-planned-chip" title={plannedTitle(visit)}>
-      <span className="calendar-planned-mark" aria-hidden="true">↻</span>
-      <span className="calendar-planned-name">{visit.clientName}</span>
-      <span className="sr-only"> — recurring visit, not booked yet</span>
-    </Link>
-  );
-}
-
 function compareCalendarJobs(first: CalendarJob, second: CalendarJob): number {
   return `${first.scheduled_time ?? ''}${first.client_name}${first.id}`.localeCompare(`${second.scheduled_time ?? ''}${second.client_name}${second.id}`);
 }
@@ -191,13 +194,6 @@ function addMonths(date: Date, months: number): Date {
 
 function toMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// "8:14 AM" -> "8:14a". A month cell is ~110px wide; the meridiem costs three
-// characters that the client's name needs more.
-function compactTime(time: string | null): string | null {
-  const label = formatJobTime(time);
-  return label ? label.replace(' AM', 'a').replace(' PM', 'p') : null;
 }
 
 function formatCrewNotifiedAt(value: string): string {
@@ -219,11 +215,15 @@ export default function ScheduleCalendar({
   monthNav,
   toolbarActions,
   weekendDays = { sat: true, sun: true },
-  initialView = 'month',
+  /* Matches normalizeCalendarView's default. A caller that passes no view (the
+     demo) must not open on a different one from a real account with no cookie. */
+  initialView = 'week',
   hoursByDate = {},
   capacityHours = 8,
   blockedDays = {},
   initialDayKey,
+  workdayStart = null,
+  workdayEnd = null,
   readOnly = false,
   basePath = '/dashboard',
 }: {
@@ -263,6 +263,13 @@ export default function ScheduleCalendar({
   blockedDays?: Record<string, string>;
   /** Which day the agenda opens on — today, unless you navigated elsewhere. */
   initialDayKey?: string;
+  /**
+   * The business's own working hours ("07:30"/"17:00"), which set the vertical
+   * extent of the time views. The axis GROWS past them for a job booked outside
+   * them — see buildTimeAxis — so an early start is never drawn off the top.
+   */
+  workdayStart?: string | null;
+  workdayEnd?: string | null;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
 
@@ -307,28 +314,41 @@ export default function ScheduleCalendar({
     startTransition(async () => { await setCalendarViewAction(next); });
   };
 
-  // AGENDA IS THE FALLBACK WHEN MONTH GOES TOO DENSE.
-  //
-  // Below 1280 the calendar shares its row with the unscheduled rail, which
-  // leaves seven columns about 80px each — narrow enough that a client's name
-  // is back to being an ellipsis. Agenda says the same things in full sentences
-  // and is the better default at that width. The cookie is deliberately NOT
-  // written: this is a response to the window, not a change of preference, and
-  // persisting it would silently rewrite what the same person sees on a desktop.
-  const [narrow, setNarrow] = useState(false);
+  /**
+   * HOW MANY DAY COLUMNS THE WIDTH CAN CARRY.
+   *
+   * Not a view of its own and not a preference — the same Week view, given
+   * fewer columns. Seven columns beside the unscheduled rail at 1024 is about
+   * 80px each, which is narrower than a customer's name, so a tablet gets the
+   * selected day plus the next two. A phone never gets columns at all; it gets
+   * the agenda, which is a different component entirely.
+   *
+   * `null` until the first effect runs. Rendering a guess would mean the server
+   * markup and the first client render disagree about the column count, and
+   * React would keep the wrong one.
+   */
+  const [span, setSpan] = useState<7 | 3 | 1 | null>(null);
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1279.98px)');
-    const sync = () => setNarrow(query.matches);
+    const wide = window.matchMedia('(min-width: 1280px)');
+    const mid = window.matchMedia('(min-width: 641px)');
+    const sync = () => setSpan(wide.matches ? 7 : mid.matches ? 3 : 1);
     sync();
-    query.addEventListener('change', sync);
-    return () => query.removeEventListener('change', sync);
+    wide.addEventListener('change', sync);
+    mid.addEventListener('change', sync);
+    return () => { wide.removeEventListener('change', sync); mid.removeEventListener('change', sync); };
   }, []);
+  const narrow = span !== null && span < 7;
+
+  // MONTH FALLS BACK TO AGENDA WHEN IT GOES TOO DENSE.
+  //
+  // Month is a capacity overview now rather than a grid of job cards, so it
+  // survives a narrow window far better than it used to — but below 1280 it is
+  // sharing the row with the rail, and seven capacity cells at 80px is four
+  // abbreviations with nowhere to sit. The cookie is deliberately NOT written:
+  // this is a response to the window, not a change of preference, and
+  // persisting it would silently rewrite what the same person sees on a desktop.
   const effectiveView: CalendarView =
     !viewWasChosen && narrow && calendarView === 'month' ? 'agenda' : calendarView;
-  // Drag-to-schedule is coordinated by the shared provider so the (server-
-  // rendered) unscheduled list and this calendar share one drag session.
-  const { beginDrag, overDateKey, draggingJobId, armedJob, placeArmed } = useScheduleDrag();
-
   // Keep local optimistic state in sync once the server revalidates this
   // route's data (e.g. after a toggle round-trips, or on manual refresh).
   useEffect(() => {
@@ -359,6 +379,92 @@ export default function ScheduleCalendar({
       ?? weeks.find((week) => week.some(Boolean))
       ?? [];
   }, [jobsByDate, todayKey, weeks]);
+
+  /**
+   * WHICH DAY THE TIME VIEWS ARE POINTED AT.
+   *
+   * Month navigation is a real navigation (`?month=`) because the month grid,
+   * the recurring projection and the agenda are all built server-side for one
+   * month. Day and Week are not: `jobs` arrives holding EVERY scheduled
+   * occurrence, not a month's worth, so stepping a week is a local state change
+   * with no round trip and no spinner.
+   *
+   * It does have to follow the month when you navigate — land on September and
+   * the week you are looking at should be in September — hence the effect
+   * below rather than a plain useState initialiser.
+   */
+  const [anchorDayKey, setAnchorDayKey] = useState(initialDayKey ?? todayKey);
+  const monthOfGrid = useMemo(() => {
+    const first = weeks.flat().find(Boolean);
+    return first ? monthKeyOf(first.dateKey) : monthKeyOf(todayKey);
+  }, [weeks, todayKey]);
+  useEffect(() => {
+    setAnchorDayKey((current) => {
+      if (monthKeyOf(current) === monthOfGrid) return current;
+      // Today if the month you navigated to is the one today is in, otherwise
+      // its first day — landing on "the 1st" is right for a month you are
+      // looking ahead to and wrong for the one you are standing in.
+      return monthKeyOf(todayKey) === monthOfGrid ? todayKey : `${monthOfGrid}-01`;
+    });
+  }, [monthOfGrid, todayKey]);
+
+  /**
+   * The columns a time view shows.
+   *
+   * Week snaps to the calendar week and drops the weekend days the toggles
+   * hid — those toggles are a statement about which days this business works,
+   * and two dead columns cost a seventh of the width every week of the year.
+   * Day and Crew are a single column. A tablet gets the anchor plus the next
+   * two, which deliberately does NOT snap to a week: on three columns "the rest
+   * of this week" is more useful than "Sunday to Tuesday".
+   */
+  const timelineDayKeys = useMemo(() => {
+    if (span === null) return [anchorDayKey];
+    if (effectiveView === 'day' || effectiveView === 'crew') return [anchorDayKey];
+    if (span === 1) return [anchorDayKey];
+    if (span === 3) return [0, 1, 2].map((offset) => shiftDateKey(anchorDayKey, offset));
+
+    const weekday = new Date(`${anchorDayKey}T00:00:00`).getDay();
+    const sunday = shiftDateKey(anchorDayKey, -weekday);
+    return [0, 1, 2, 3, 4, 5, 6]
+      .filter((day) => (day !== 0 || days.sun) && (day !== 6 || days.sat))
+      .map((day) => shiftDateKey(sunday, day));
+  }, [anchorDayKey, days.sat, days.sun, effectiveView, span]);
+
+  /**
+   * How long each occurrence runs, and where it sits in a multi-day job.
+   *
+   * A multi-day job arrives already expanded to one row per day, every row
+   * carrying the same scheduled_time and the same total estimated_hours. Drawn
+   * literally that is a 20-hour block on three consecutive days — three times
+   * the work. Computed once here for every view that needs a length.
+   */
+  const metaByOccurrence = useMemo(() => {
+    const daysByJob = new Map<string, string[]>();
+    for (const job of jobs) {
+      const list = daysByJob.get(job.id) ?? [];
+      list.push(job.scheduled_for);
+      daysByJob.set(job.id, list);
+    }
+    for (const list of daysByJob.values()) list.sort();
+
+    const meta = new Map<string, TimelineDayMeta>();
+    for (const job of jobs) {
+      const list = daysByJob.get(job.id) ?? [job.scheduled_for];
+      const dayIndex = Math.max(0, list.indexOf(job.scheduled_for));
+      meta.set(job.occurrence_key, {
+        dayIndex,
+        dayCount: list.length,
+        minutes: occurrenceMinutes({
+          totalHours: job.estimated_hours,
+          dayIndex,
+          dayCount: list.length,
+          workdayHours: capacityHours,
+        }),
+      });
+    }
+    return meta;
+  }, [capacityHours, jobs]);
 
   const visibleWeeks = useMemo(() => effectiveView === 'week' ? [weekAtAGlance] : weeks, [effectiveView, weekAtAGlance, weeks]);
 
@@ -447,36 +553,6 @@ export default function ScheduleCalendar({
     return { sun, sat };
   }, [visibleWeeks, jobsByDate]);
 
-  const visibleWeekLayouts = useMemo(() => {
-    return visibleWeeks.map((week) => {
-      const laneByJobId = new Map<string, number>();
-      const lanesByDate = new Map<string, Array<CalendarJob | null>>();
-
-      for (const cell of week) {
-        if (!cell) continue;
-        const lanes: Array<CalendarJob | null> = [];
-        const usedLanes = new Set<number>();
-        const dayJobs = [...(jobsByDate.get(cell.dateKey) ?? [])].sort(compareCalendarJobs);
-
-        for (const job of dayJobs) {
-          let lane = laneByJobId.get(job.id);
-          if (lane === undefined || usedLanes.has(lane)) {
-            lane = 0;
-            while (usedLanes.has(lane)) lane++;
-            laneByJobId.set(job.id, lane);
-          }
-          lanes[lane] = job;
-          usedLanes.add(lane);
-        }
-
-        lanesByDate.set(cell.dateKey, lanes);
-      }
-
-      const laneCount = Math.max(0, ...Array.from(lanesByDate.values()).map((lanes) => lanes.length));
-      return { lanesByDate, laneCount };
-    });
-  }, [jobsByDate, visibleWeeks]);
-
   function openJobActions(occurrenceKey: string) {
     setIsConfirmingRemove(false);
     setOpenOccurrenceKey(occurrenceKey);
@@ -539,6 +615,43 @@ export default function ScheduleCalendar({
     });
   }, [jobs, todayKey, weeks]);
 
+  /**
+   * Stepping, and what the range is called.
+   *
+   * The arrow moves by whatever is on screen — a week view steps a week, a
+   * three-column tablet steps three days — so pressing it twice never skips
+   * days or shows you the same job twice. Both derive from the column list
+   * rather than from the view name, which is what keeps the tablet honest.
+   */
+  const stepDays = timelineDayKeys.length > 1 ? timelineDayKeys.length : 1;
+  const stepNoun = stepDays === 1 ? 'day' : stepDays === 7 ? 'week' : `${stepDays} days`;
+  const rangeLabel = useMemo(() => {
+    const first = timelineDayKeys[0];
+    const last = timelineDayKeys[timelineDayKeys.length - 1];
+    if (!first) return '';
+    if (first === last) return longDateLabel(first);
+    const firstDate = new Date(`${first}T00:00:00`);
+    const lastDate = new Date(`${last}T00:00:00`);
+    const sameMonth = firstDate.getMonth() === lastDate.getMonth() && firstDate.getFullYear() === lastDate.getFullYear();
+    const head = firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const tail = lastDate.toLocaleDateString('en-US', sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' });
+    return `${head} – ${tail}, ${lastDate.getFullYear()}`;
+  }, [timelineDayKeys]);
+
+  /* Today may be in a month the server has not sent, so this is a navigation
+     when it has to be and local state when it does not. */
+  const goToToday = useCallback(() => {
+    setAnchorDayKey(todayKey);
+    if (monthKeyOf(todayKey) !== monthOfGrid) router.push(`${basePath}/schedule?month=${monthKeyOf(todayKey)}&day=${todayKey}`);
+  }, [basePath, monthOfGrid, router, todayKey]);
+
+  /** Month cell -> that day, in the view with the room to show it. */
+  const openDay = useCallback((dateKey: string) => {
+    setAnchorDayKey(dateKey);
+    setCalendarView('day');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleToggle(jobId: string, crewId: string) {
     // Assigning somebody to a job sends them a text. Not something a public
     // demo gets to do, and not something to fake optimistically either — the
@@ -581,9 +694,40 @@ export default function ScheduleCalendar({
     <>
       {/* Month nav and view switcher share one row. They were two separate
           blocks stacked above each other, both about which dates you're
-          looking at. */}
+          looking at.
+
+          WHICH NAV depends on the view, because they step different things. The
+          month views are server-navigated (`?month=`) and the arrows are links,
+          rendered upstream. The time views step by day in local state, so a
+          month arrow there would jump you a month for no reason and reload the
+          page to do it. */}
       <div className="calendar-toolbar">
-        {monthNav}
+        {TIME_VIEWS.has(effectiveView) ? (
+          <div className="month-nav sched-range-nav">
+            <button
+              type="button"
+              className="month-nav-arrow"
+              aria-label={`Previous ${stepNoun}`}
+              onClick={() => setAnchorDayKey((key) => shiftDateKey(key, -stepDays))}
+            >
+              ←
+            </button>
+            <h2 className="month-nav-label">{rangeLabel}</h2>
+            <button
+              type="button"
+              className="month-nav-arrow"
+              aria-label={`Next ${stepNoun}`}
+              onClick={() => setAnchorDayKey((key) => shiftDateKey(key, stepDays))}
+            >
+              →
+            </button>
+            {!timelineDayKeys.includes(todayKey) ? (
+              <button type="button" className="month-nav-today" onClick={goToToday}>Today</button>
+            ) : null}
+          </div>
+        ) : (
+          monthNav
+        )}
         <div className="calendar-toolbar-actions">
           {toolbarActions}
           <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
@@ -609,7 +753,50 @@ export default function ScheduleCalendar({
       />
 
       <div className="calendar-desktop-views">
-      {effectiveView === 'agenda' ? (
+      {effectiveView === 'day' || effectiveView === 'week' ? (
+        <ScheduleTimeline
+          dayKeys={timelineDayKeys}
+          todayKey={todayKey}
+          jobsByDate={jobsByDate}
+          plannedByDate={plannedByDate}
+          crew={crew}
+          assignments={assignments}
+          metaByOccurrence={metaByOccurrence}
+          workdayStart={workdayStart}
+          workdayEnd={workdayEnd}
+          fullDates={fullSet}
+          blockedDays={blockedDays}
+          onOpenJob={openJobActions}
+          readOnly={readOnly}
+        />
+      ) : effectiveView === 'crew' ? (
+        <ScheduleCrewLanes
+          dayKey={anchorDayKey}
+          todayKey={todayKey}
+          jobs={[...(jobsByDate.get(anchorDayKey) ?? [])].sort(compareCalendarJobs)}
+          crew={crew}
+          assignments={assignments}
+          metaByOccurrence={metaByOccurrence}
+          workdayStart={workdayStart}
+          workdayEnd={workdayEnd}
+          onOpenJob={openJobActions}
+        />
+      ) : effectiveView === 'month' ? (
+        <ScheduleMonthCapacity
+          weeks={weeks}
+          visibleDays={visibleDays}
+          todayKey={todayKey}
+          jobsByDate={jobsByDate}
+          plannedByDate={plannedByDate}
+          assignments={assignments}
+          metaByOccurrence={metaByOccurrence}
+          hoursByDate={hoursByDate}
+          capacityHours={capacityHours}
+          fullDates={fullSet}
+          blocks={blocks}
+          onOpenDay={openDay}
+        />
+      ) : effectiveView === 'agenda' ? (
         agendaDays.length === 0 ? (
           <p className="calendar-view-empty">Nothing scheduled this month.</p>
         ) : (
@@ -784,154 +971,7 @@ export default function ScheduleCalendar({
             </article>
           ))}
         </div>
-      ) : (
-        <div className="calendar-grid" style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
-          {visibleDays.map((day) => (
-            <div className="calendar-weekday" key={day}>{WEEKDAY_LABELS[day]}</div>
-          ))}
-          {visibleWeeks.map((week, weekIndex) =>
-            visibleDays.map((cellIndex) => {
-              const cell = week[cellIndex];
-              if (!cell) {
-                return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
-              }
-              const weekLayout = visibleWeekLayouts[weekIndex];
-              const dayLanes = weekLayout?.lanesByDate.get(cell.dateKey) ?? [];
-              const laneJobs = Array.from({ length: weekLayout?.laneCount ?? 0 }, (_, laneIndex) => dayLanes[laneIndex] ?? null);
-              const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
-              const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
-              const block = blocks.find((b) => cell.dateKey >= b.start_date && cell.dateKey <= b.end_date);
-              const isFull = !block && fullSet.has(cell.dateKey);
-              return (
-                <div
-                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}${block ? ' blocked' : ''}${isFull ? ' full' : ''}${armedJob ? ' armable' : ''}`}
-                  key={cell.dateKey}
-                  data-date-key={cell.dateKey}
-                  // Only a drop target while something is armed, so an ordinary
-                  // click on a day still belongs to the jobs inside it.
-                  role={armedJob ? 'button' : undefined}
-                  tabIndex={armedJob ? 0 : undefined}
-                  aria-label={armedJob ? `Schedule ${armedJob.jobName} on ${cell.dateKey}` : undefined}
-                  onClick={armedJob ? () => placeArmed(cell.dateKey) : undefined}
-                  onKeyDown={armedJob ? (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); placeArmed(cell.dateKey); }
-                  } : undefined}
-                >
-                  <span className="calendar-day-number">{cell.day}</span>
-                  {block ? <span className="calendar-blocked-chip" title={block.reason || 'Blocked off'}>Off</span> : null}
-                  {isFull ? <span className="calendar-full-chip" title="Daily capacity reached">Full</span> : null}
-                  <div className="calendar-day-jobs">
-                    {laneJobs.map((job, laneIndex) => {
-                      if (!job) {
-                        return <div className="calendar-job-slot empty" key={`${cell.dateKey}-lane-${laneIndex}`} aria-hidden="true" />;
-                      }
-                      const continuesFromPrevious = previousDateKey ? hasJobOnDate(jobsByDate, job.id, previousDateKey) : false;
-                      const continuesToNext = nextDateKey ? hasJobOnDate(jobsByDate, job.id, nextDateKey) : false;
-                      const bandClass = continuesFromPrevious
-                        ? continuesToNext
-                          ? 'calendar-band-middle'
-                          : 'calendar-band-end'
-                        : continuesToNext
-                          ? 'calendar-band-start'
-                          : 'calendar-band-single';
-                      const bandColorClass = getBandColorClass(job.id);
-                      const assignedIds = assignments[job.id] ?? [];
-                      const assignedMembers = assignedIds
-                        .map((id) => crew.find((member) => member.id === id))
-                        .filter((member): member is CrewOption => Boolean(member));
-                      return (
-                        <div className={`calendar-job-item calendar-band ${bandClass} ${bandColorClass} status-${job.status}`} key={job.occurrence_key}>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            className={`calendar-job-chip status-${job.status}${draggingJobId === job.id ? ' dragging' : ''}`}
-                            title={[job.client_name, job.badge_label, job.value_label, job.hours_label, job.city_label, job.crew_initials.length ? `Crew: ${job.crew_initials.join(', ')}` : null, 'drag to move'].filter(Boolean).join(' · ')}
-                            onPointerDown={(event) => beginDrag({ jobId: job.id, jobName: job.client_name, time: job.scheduled_time ?? '', sourceDateKey: job.scheduled_for }, event, () => openJobActions(job.occurrence_key))}
-                            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openJobActions(job.occurrence_key); } }}
-                          >
-                            {/* Two lines. The status badge used to take nearly
-                                half the chip and still ellipsised to something
-                                like "WORK S…" — the chip's own colour already
-                                carries the status, and the full label is in the
-                                tooltip, so that space now holds what the job is
-                                worth, how long it takes, and who's on it. */}
-                            {/* THREE THINGS, NOT SIX. The chip was carrying the
-                                name, the time, the money and the city on three
-                                lines inside a cell that is ~117px at 1440 and
-                                ~95px at 1366 — every one of them ellipsised, so
-                                four half-facts competed for the space one whole
-                                one needed. It is now the start time, who it is
-                                for, and a single operational signal. Address,
-                                amount, duration and crew moved to the job
-                                dialog, which opens on click and has the width to
-                                print them with labels. */}
-                            <span className="calendar-job-chip-lines">
-                              <span className="calendar-job-chip-when">
-                                {compactTime(job.scheduled_time) ?? 'TBD'}
-                              </span>
-                              <span className="calendar-job-chip-main">
-                                {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client" aria-label="Confirmed by client">✓</span> : null}
-                                {job.short_name}
-                              </span>
-                              {/* ONE SIGNAL, AS A WORD. The chip's colour has
-                                  always carried status, which is no use to
-                                  anyone who cannot separate the two greens; this
-                                  is the same fact in text. Deliberately the only
-                                  badge on the chip. */}
-                              <span className={`calendar-job-chip-sig status-${job.badge_tone}`} title={job.badge_title ?? undefined}>
-                                {job.badge_label}
-                              </span>
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className={`calendar-crew-toggle${assignedMembers.length > 0 ? ' has-crew' : ''}`}
-                            onClick={() => openJobActions(job.occurrence_key)}
-                            title={
-                              assignedMembers.length > 0
-                                ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
-                                : 'Assign crew'
-                            }
-                            // The visible text is initials and a count, which
-                            // reads as nonsense aloud. The names are already in
-                            // the title for a mouse; this is the same thing for
-                            // a screen reader.
-                            aria-label={
-                              assignedMembers.length > 0
-                                ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
-                                : 'Assign crew'
-                            }
-                          >
-                            {/* One pair of initials, then a count — NOT two pairs.
-                                "GY DW" renders about 2.9rem wide, which is wider
-                                than the space the name line reserves for this
-                                badge, so it sat on top of the client's name in
-                                any cell narrower than full screen. A count is
-                                fixed-width whatever the crew is called, so the
-                                reservation can be exact; the tooltip still names
-                                everyone assigned. */}
-                            {assignedMembers.length === 0
-                              ? '+'
-                              : assignedMembers.length === 1
-                                ? initials(assignedMembers[0]!.name)
-                                : `${initials(assignedMembers[0]!.name)}+${assignedMembers.length - 1}`}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {/* Below the real work, deliberately: these are commitments
-                        the plan will turn into jobs, not jobs. They sit outside
-                        the lane layout because they never span days. */}
-                    {(plannedByDate.get(cell.dateKey) ?? []).map((visit) => (
-                      <PlannedChip key={`${visit.planId}-${visit.dateKey}`} visit={visit} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
+      ) : null}
       {effectiveView !== 'year' && (
         <div className="calendar-days-row">
           {/* Said once, plainly, rather than left for the owner to work out from
@@ -944,7 +984,13 @@ export default function ScheduleCalendar({
               <Link href="/dashboard/recurring">Manage plans</Link>
             </p>
           ) : null}
-          <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
+          {/* "Show Saturday / show Sunday" is a statement about which COLUMNS a
+              multi-day grid draws. Under Day and Crew — one column, and you
+              chose which day it is — the toggles were offering to hide the
+              thing you are looking at. */}
+          {effectiveView === 'day' || effectiveView === 'crew' ? null : (
+            <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
+          )}
         </div>
       )}
       </div>

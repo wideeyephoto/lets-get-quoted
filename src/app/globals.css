@@ -25951,3 +25951,642 @@ body[data-schedule-overlay="job"] .sched-queue {
   .sched-queue-body .schedule-action-buttons > * { flex: 0 0 auto; width: 100%; }
   .sched-queue-body .schedule-action-buttons .btn { width: 100%; }
 }
+
+/* ===========================================================================
+   THE SCHEDULE, AGAINST A CLOCK
+   ===========================================================================
+   Day / Week / three-day timeline, the crew lanes, and the month rebuilt as a
+   capacity overview.
+
+   WHAT THIS REPLACED. A month grid where every cell was ~95px at 1366 and was
+   being asked to hold a customer, a start time, a price, a crew, a status and a
+   duration. Six ellipses. Worse, it could not answer the question the page is
+   for: two jobs on a Tuesday look identical whether they are at 8am and 2pm or
+   both at 9am with the same person on both.
+
+   ONE SET OF COLOUR TOKENS. The six job colours were written directly onto
+   `.calendar-band.calendar-band-color-N`, which the new elements do not carry.
+   Rather than copy six declarations three more times, the tokens below sit on
+   the bare class so anything with a job colour can read them. The existing
+   .calendar-band rules are untouched and still win on their own elements. */
+
+.calendar-band-color-0 { --job-line: var(--rail-crew-0); --job-fill: rgba(255,138,61,.24);  --job-ink: var(--ink-orange-4); }
+.calendar-band-color-1 { --job-line: var(--rail-crew-1); --job-fill: rgba(61,184,255,.2);   --job-ink: var(--ink-sky-3); }
+.calendar-band-color-2 { --job-line: var(--rail-crew-2); --job-fill: rgba(120,220,150,.2);  --job-ink: var(--ink-green-4); }
+.calendar-band-color-3 { --job-line: var(--rail-crew-3); --job-fill: rgba(255,209,102,.2);  --job-ink: var(--ink-amber-5); }
+.calendar-band-color-4 { --job-line: var(--rail-crew-4); --job-fill: rgba(255,112,163,.2);  --job-ink: var(--ink-pink-1); }
+.calendar-band-color-5 { --job-line: var(--rail-crew-5); --job-fill: rgba(176,141,255,.2);  --job-ink: var(--ink-violet-3); }
+
+/* The fills are translucent over a dark panel. On the light theme the same
+   alpha reads as a grey smudge, so they are lifted — the --job-line and
+   --job-ink tokens are already theme-aware and need nothing here. */
+:root[data-theme='light'] .calendar-band-color-0 { --job-fill: rgba(255,138,61,.16); }
+:root[data-theme='light'] .calendar-band-color-1 { --job-fill: rgba(61,184,255,.14); }
+:root[data-theme='light'] .calendar-band-color-2 { --job-fill: rgba(76,190,120,.14); }
+:root[data-theme='light'] .calendar-band-color-3 { --job-fill: rgba(233,178,60,.16); }
+:root[data-theme='light'] .calendar-band-color-4 { --job-fill: rgba(255,112,163,.14); }
+:root[data-theme='light'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
+
+/* ---- the range stepper --------------------------------------------------- */
+/* Day and Week step in local state, so these are buttons where the month nav
+   is links. Styled off .month-nav so the two are the same control. */
+.sched-range-nav .month-nav-arrow,
+.sched-range-nav .month-nav-today {
+  border: 1px solid var(--line);
+  background: rgba(var(--tint), 0.03);
+  cursor: pointer;
+  font: inherit;
+}
+.sched-range-nav .month-nav-label { white-space: nowrap; }
+
+/* ---- the timeline -------------------------------------------------------- */
+
+.sched-tl {
+  --tl-gutter: 3.5rem;
+  display: grid;
+  grid-template-columns: var(--tl-gutter) repeat(var(--tl-cols, 1), minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.015);
+  overflow: hidden;
+}
+/* The column count comes from the number of days rendered, not from a
+   breakpoint: the component decides how many days fit and CSS follows it, so
+   the two cannot disagree about what is on screen. */
+.sched-tl[data-days='1'] { --tl-cols: 1; }
+.sched-tl[data-days='2'] { --tl-cols: 2; }
+.sched-tl[data-days='3'] { --tl-cols: 3; }
+.sched-tl[data-days='4'] { --tl-cols: 4; }
+.sched-tl[data-days='5'] { --tl-cols: 5; }
+.sched-tl[data-days='6'] { --tl-cols: 6; }
+.sched-tl[data-days='7'] { --tl-cols: 7; }
+
+/* ONE TEMPLATE, WRITTEN OUT, NOT subgrid.
+   The body is not a child of .sched-tl — it sits inside .sched-tl-scroll, which
+   is the actual grid item — so `grid-template-columns: subgrid` had no parent
+   grid to inherit from and resolved to `none`. Every column then became a full
+   width row: measured at 1920 the seven "columns" were 976px each and stacked,
+   with every block collapsed to a few pixels tall inside them. The template is
+   cheap to repeat and cannot come apart like that. */
+.sched-tl-head,
+.sched-tl-anytime,
+.sched-tl-body {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: var(--tl-gutter) repeat(var(--tl-cols, 1), minmax(0, 1fr));
+}
+
+/* NOT sticky, deliberately. The head is a sibling of the scroll container, not
+   inside it, so it is permanently on screen already — and .sched-tl carries
+   overflow:hidden, which means a sticky child has nothing to stick to anyway.
+   An opaque background rather than a blur for the same reason: nothing scrolls
+   underneath it, so the blur would have been a Safari prefix and a repaint
+   cost buying a effect nobody could see. */
+.sched-tl-head {
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--tint), 0.03);
+}
+.sched-tl-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.3rem;
+  border-right: 1px solid var(--line);
+  color: var(--mute-i60);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sched-tl-day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.55rem 0.6rem;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+.sched-tl-day-head:last-child { border-right: 0; }
+.sched-tl-day-head small {
+  color: var(--mute-i60);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+.sched-tl-day-head strong { font-size: 1rem; font-weight: 750; }
+.sched-tl-day-head.today small,
+.sched-tl-day-head.today strong { color: var(--accent); }
+.sched-tl-head-count {
+  margin-left: auto;
+  color: var(--mute-i60);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+.sched-tl-head-flag {
+  margin-left: auto;
+  padding: 0.05rem 0.34rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sched-tl-head-flag.full { background: rgba(255,138,61,.18); color: var(--ink-orange-4); }
+.sched-tl-head-flag.blocked { background: rgba(var(--tint), 0.08); color: var(--mute-i60); }
+
+/* ---- the "no start time" strip ------------------------------------------- */
+.sched-tl-anytime { border-bottom: 1px solid var(--line); background: rgba(var(--tint), 0.02); }
+.sched-tl-anytime-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.35rem 0.45rem;
+  border-right: 1px solid var(--line);
+  color: var(--mute-i60);
+  font-size: 0.6rem;
+  text-align: right;
+  line-height: 1.15;
+}
+.sched-tl-anytime-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.3rem 0.3rem;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+.sched-tl-anytime-col:last-child { border-right: 0; }
+.sched-tl-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.22rem 0.4rem;
+  border: 1px solid var(--job-line, var(--line));
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: var(--job-fill, rgba(var(--tint), 0.04));
+  color: var(--job-ink, var(--ink));
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  touch-action: none;
+}
+.sched-tl-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.sched-tl-chip-note {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--mute-i60);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sched-tl-chip-planned {
+  border-style: dashed;
+  border-left-width: 1px;
+  background: transparent;
+  color: var(--mute-i60);
+}
+
+/* ---- the scrolling body -------------------------------------------------- */
+/* The head stays put and the hours scroll under it. Capped so the calendar can
+   never push the rail and the settings below it off the bottom of a laptop. */
+.sched-tl-scroll {
+  grid-column: 1 / -1;
+  max-height: min(62vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sched-tl-body { min-height: calc(var(--tl-hours) * var(--tl-hour-h)); }
+
+.sched-tl-gutter {
+  display: grid;
+  grid-auto-rows: var(--tl-hour-h);
+  border-right: 1px solid var(--line);
+}
+.sched-tl-hour {
+  padding: 0.15rem 0.45rem 0 0;
+  color: var(--mute-i60);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The blocks inside are positioned as a PERCENTAGE of the column, so the column
+   has to have a height of its own. Stating it here rather than relying on the
+   row stretching to the body's min-height means a block cannot collapse if the
+   grid ever gains a second row. */
+.sched-tl-col {
+  position: relative;
+  min-height: calc(var(--tl-hours) * var(--tl-hour-h));
+  border-right: 1px solid var(--line);
+  min-width: 0;
+  /* One declaration for every hour line, and one fainter one on the half hour
+     so 8:30 is readable without counting. */
+  background-image:
+    repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--tl-hour-h)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(var(--tl-hour-h) / 2), rgba(var(--tint), 0.05) calc(var(--tl-hour-h) / 2) calc(var(--tl-hour-h) / 2 + 1px), transparent calc(var(--tl-hour-h) / 2 + 1px) var(--tl-hour-h));
+}
+.sched-tl-col:last-child { border-right: 0; }
+.sched-tl-col.today { background-color: rgba(255,138,61,.05); }
+.sched-tl-col.blocked { background-color: rgba(var(--tint), 0.05); }
+.sched-tl-col.drag-over { background-color: rgba(255,138,61,.16); box-shadow: inset 0 0 0 2px var(--accent); }
+.sched-tl-col.armable { cursor: copy; }
+.sched-tl-blocked-note {
+  position: absolute;
+  inset: 0.6rem 0.4rem auto;
+  margin: 0;
+  color: var(--mute-i60);
+  font-size: 0.68rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+/* The current time. Deliberately not a job colour — it is the only line on the
+   grid that means "now" and it has to be unmistakable at a glance. */
+.sched-tl-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid var(--bad);
+  z-index: 2;
+  pointer-events: none;
+}
+.sched-tl-now::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bad);
+}
+
+/* ---- a job on the grid --------------------------------------------------- */
+.sched-tl-job {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  overflow: hidden;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid var(--job-line, var(--line));
+  border-left: 3px solid var(--job-line, var(--accent));
+  border-radius: 7px;
+  background: var(--job-fill, rgba(var(--tint), 0.06));
+  color: var(--job-ink, var(--ink));
+  text-align: left;
+  cursor: pointer;
+  /* The pointer drag handler needs the browser to stop scrolling for it. */
+  touch-action: none;
+  /* Blocks that share a column get a hairline between them so two abutting
+     jobs never read as one. */
+  box-shadow: 0 1px 0 rgba(var(--panel-rgb), 0.5), -1px 0 0 rgba(var(--panel-rgb), 0.5);
+}
+/* Side-by-side blocks are separated by the box-shadow above, not by shrinking
+   them: the width is an inline percentage from the packer and a rule here would
+   overwrite it. What they do get is tighter padding — a shared block in a week
+   column is about 62px, and 0.4rem each side is a fifth of it. */
+.sched-tl-job.shared { padding-inline: 0.24rem; border-left-width: 2px; }
+.sched-tl-job:hover { filter: brightness(1.12); z-index: 4; }
+.sched-tl-job:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 4; }
+.sched-tl-job.dragging { opacity: 0.45; }
+
+.sched-tl-job-time {
+  color: inherit;
+  opacity: 0.85;
+  font-size: 0.63rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* THE END TIME ONLY WHERE THERE IS ROOM TO READ IT.
+   "8:30 AM–3:30 PM" needs about 92px. A week column is 131px at 1440 and half
+   that when two jobs overlap, so the range was being cut to "8:30 AM–3:3" —
+   which is worse than not printing it, because the block's own height already
+   says when the job ends. Day view has the whole width, so it gets the range. */
+.sched-tl-job-time i { display: none; font-style: normal; opacity: 0.75; }
+.sched-tl[data-days='1'] .sched-tl-job-time i { display: inline; }
+.sched-tl-job-name {
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sched-tl-job-city,
+.sched-tl-job-span {
+  color: inherit;
+  opacity: 0.78;
+  font-size: 0.66rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* NOT margin-top:auto. Pinning the footer to the bottom of the block looked
+   tidy on an hour-long job and put the crew and the status four hundred pixels
+   under the name on an eight-hour one — two halves of the same job at opposite
+   ends of the screen. It reads top-down with everything else. */
+.sched-tl-job-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.sched-tl-job-crew {
+  color: inherit;
+  opacity: 0.8;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Sits NEXT TO the crew, not pushed to the far edge. margin-left:auto is right
+   in a 131px week column and absurd in Day view, where it threw the status a
+   thousand pixels from the job it belongs to. */
+.sched-tl-job-badge {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.32rem;
+  border-radius: 999px;
+  background: rgba(var(--panel-rgb), 0.55);
+  color: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* HOW MUCH OF A JOB FITS IN THE HEIGHT IT ACTUALLY HAS.
+   The size class is computed from the job's DURATION, not from measured
+   pixels, so it survives the hour height changing per breakpoint. Everything
+   hidden here stays in the DOM: a screen reader still reads the whole job, and
+   the title attribute carries it for a mouse. */
+.sched-tl-job[data-size='xs'] {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding-block: 0.1rem;
+}
+.sched-tl-job[data-size='xs'] .sched-tl-job-city,
+.sched-tl-job[data-size='xs'] .sched-tl-job-foot,
+.sched-tl-job[data-size='xs'] .sched-tl-job-span,
+.sched-tl-job[data-size='sm'] .sched-tl-job-crew,
+.sched-tl-job[data-size='sm'] .sched-tl-job-span { display: none; }
+.sched-tl-job[data-size='sm'] .sched-tl-job-foot { margin-top: 0; }
+
+/* And the same for width. Three or more jobs sharing a column leaves each about
+   47px on a tablet, which is not enough for a city, a crew, a status badge and
+   a "Day 2/4" — they all ellipsised to a single character. Time and name only;
+   the tooltip still carries the whole job. */
+.sched-tl-job[data-narrow] .sched-tl-job-city,
+.sched-tl-job[data-narrow] .sched-tl-job-foot,
+.sched-tl-job[data-narrow] .sched-tl-job-span { display: none; }
+.sched-tl-job[data-narrow] .sched-tl-job-time { font-size: 0.58rem; }
+.sched-tl-job[data-narrow] .sched-tl-job-name { font-size: 0.7rem; }
+
+/* ---- crew lanes ---------------------------------------------------------- */
+
+.sched-crew {
+  --crew-name: 9.5rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.015);
+  overflow: hidden;
+}
+.sched-crew-head {
+  display: grid;
+  grid-template-columns: var(--crew-name) minmax(0, 1fr);
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--tint), 0.02);
+}
+.sched-crew-head-name {
+  padding: 0.5rem 0.7rem;
+  border-right: 1px solid var(--line);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.sched-crew-head-axis {
+  display: grid;
+  grid-template-columns: repeat(var(--crew-hours), minmax(0, 1fr));
+}
+.sched-crew-head-axis span {
+  padding: 0.5rem 0 0.5rem 0.3rem;
+  border-left: 1px solid var(--line);
+  color: var(--mute-i60);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sched-crew-head-axis span:first-child { border-left: 0; }
+
+.sched-crew-lanes { margin: 0; padding: 0; list-style: none; }
+.sched-crew-lane {
+  display: grid;
+  grid-template-columns: var(--crew-name) minmax(0, 1fr);
+  border-bottom: 1px solid var(--line);
+  min-height: calc(var(--lane-stack, 1) * 2.6rem);
+}
+.sched-crew-lane:last-child { border-bottom: 0; }
+.sched-crew-lane.orphan { background: rgba(255,138,61,.05); }
+.sched-crew-who {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.05rem;
+  padding: 0.4rem 0.7rem;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+.sched-crew-who strong { font-size: 0.8rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-crew-who small { color: var(--mute-i60); font-size: 0.65rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sched-crew-track {
+  position: relative;
+  min-width: 0;
+  padding: 0.25rem 0;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--line) 0 1px,
+    transparent 1px calc(100% / var(--crew-hours))
+  );
+}
+.sched-crew-free {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 0.6rem;
+  color: var(--mute-i60);
+  font-size: 0.68rem;
+}
+.sched-crew-job {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  min-width: 0;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--job-line, var(--line));
+  border-left: 3px solid var(--job-line, var(--accent));
+  border-radius: 6px;
+  background: var(--job-fill, rgba(var(--tint), 0.06));
+  color: var(--job-ink, var(--ink));
+  font-size: 0.72rem;
+  cursor: pointer;
+  touch-action: none;
+}
+.sched-crew-job strong { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-crew-job-time { flex: 0 0 auto; opacity: 0.8; font-size: 0.62rem; font-variant-numeric: tabular-nums; }
+.sched-crew-job:hover { filter: brightness(1.12); z-index: 2; }
+.sched-crew-job:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
+.sched-crew-job.dragging { opacity: 0.45; }
+.sched-crew-job.clash { border-color: var(--bad); }
+.sched-crew-clash {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--bad);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+.sched-crew-note {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-top: 1px solid var(--line);
+  color: var(--mute-i60);
+  font-size: 0.74rem;
+}
+.sched-crew-note.warn { color: var(--bad); }
+
+/* ---- month, as capacity -------------------------------------------------- */
+
+.sched-month {
+  display: grid;
+  gap: 0.4rem;
+}
+.sched-month .calendar-weekday {
+  padding: 0 0.2rem 0.15rem;
+  color: var(--mute-i60);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.sched-month-cell.empty { border: 0; background: none; }
+
+.sched-month-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-height: 5.6rem;
+  padding: 0.45rem 0.5rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.02);
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.sched-month-cell:hover { border-color: rgba(var(--tint), 0.3); background: rgba(var(--tint), 0.05); }
+.sched-month-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sched-month-cell.today { border-color: var(--accent); }
+.sched-month-cell.quiet { background: rgba(var(--tint), 0.01); }
+.sched-month-cell.blocked { background: repeating-linear-gradient(135deg, rgba(var(--tint),0.04) 0 6px, transparent 6px 12px); }
+.sched-month-cell.full { border-color: rgba(255,138,61,.45); }
+.sched-month-cell.over { border-color: var(--bad); }
+.sched-month-cell.drag-over { border-color: var(--accent); background: rgba(255,138,61,.16); }
+.sched-month-cell.armable { cursor: copy; }
+
+.sched-month-top { display: flex; align-items: center; gap: 0.35rem; }
+.sched-month-day { font-size: 0.95rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.sched-month-cell.today .sched-month-day { color: var(--accent); }
+.sched-month-flags { margin-left: auto; display: flex; align-items: center; gap: 0.25rem; }
+.sched-month-flag {
+  display: grid;
+  place-items: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+.sched-month-flag.clash { background: var(--bad); color: #fff; }
+.sched-month-flag.crewless { background: rgba(var(--tint), 0.12); color: var(--mute-i60); }
+.sched-month-state {
+  padding: 0.05rem 0.32rem;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.sched-month-state.full { background: rgba(255,138,61,.2); color: var(--ink-orange-4); }
+.sched-month-state.over { background: rgba(168,51,31,.22); color: var(--bad); }
+.sched-month-state.off { background: rgba(var(--tint), 0.1); color: var(--mute-i60); }
+
+.sched-month-count { font-size: 0.74rem; font-weight: 650; }
+.sched-month-count i { font-style: normal; color: var(--mute-i60); font-weight: 500; }
+.sched-month-hours {
+  color: var(--mute-i60);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+.sched-month-open { margin-top: auto; color: var(--mute-i60); font-size: 0.7rem; }
+.sched-month-bar {
+  margin-top: auto;
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  overflow: hidden;
+}
+.sched-month-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.sched-month-cell.over .sched-month-bar i { background: var(--bad); }
+
+/* ---- widths -------------------------------------------------------------- */
+
+/* Tablet: three columns, and the hour shrinks because the whole grid has less
+   height to give. The gutter narrows with it — "10 AM" still fits. */
+@media (max-width: 1279.98px) {
+  .sched-tl { --tl-gutter: 3rem; --tl-hour-h: 54px !important; }
+  .sched-tl-scroll { max-height: min(58vh, 620px); }
+  .sched-crew { --crew-name: 8rem; }
+  .sched-month-cell { min-height: 5rem; }
+}
+
+/* Below 640 the mobile agenda takes over entirely (see .calendar-desktop-views
+   above) — no timeline columns and no drag, which is the point. These rules
+   only cover the window between a phone and a tablet. */
+@media (max-width: 900px) {
+  .sched-tl { --tl-gutter: 2.7rem; }
+  .sched-tl-day-head { flex-wrap: wrap; gap: 0.2rem; padding: 0.45rem 0.4rem; }
+  .sched-tl-head-count, .sched-tl-head-flag { margin-left: 0; }
+  .sched-crew { --crew-name: 6.5rem; }
+  .sched-crew-head-axis span:nth-child(even) { color: transparent; }
+}
+
+/* A phone that has somehow been handed the desktop tree — a very wide zoom, or
+   a landscape 640px window — must still not scroll sideways. */
+@media (max-width: 640px) {
+  .sched-tl-job-city, .sched-tl-job-foot { display: none; }
+}
