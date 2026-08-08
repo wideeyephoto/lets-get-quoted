@@ -476,6 +476,41 @@ const TWEAKS = `
   .root :global(.trust-strip span) { padding-left: 22px; font-size: 12px; }
   .root :global(.trust-strip span)::after { display: none; }
 }
+
+/* NOTE — no tonal-break tweak here, deliberately.
+
+   A first pass added one, on a measurement that said this page had a single
+   120px light band in 8,800px. That measurement was wrong: it sampled one x
+   position near the right edge, and across .included and .difference that
+   point lands on a dark card sitting ON the cream rather than on the cream.
+   Both of those sections have been light since the source — see the
+   backgrounds around lines 496 and 516, and the richer gradients that
+   override them later.
+
+   The tweak that "added" the break therefore added nothing, and cost
+   something: a flat \`var(--cream)\` replaced a two-stop gradient, and a flat
+   white card face replaced one with an inset highlight, a shadow and an
+   accent bar. Left out. When a page already does the thing, the fix is to
+   measure better, not to restate it more loudly. */
+
+/* ---- the sticky phone bar, while the hero's own button is on screen --------
+
+   SiteFooter renders a fixed "Build my free site" bar for phones and the
+   flagship hero renders a "Build my free site" button, so the first thing a
+   contractor saw on a phone was that button twice, one directly above the
+   other. The bar earns its place further down, where there is nothing else to
+   press. /home-flagship sets data-hero-cta on its root; the other flagship
+   routes never set it, so their bar is untouched. */
+.root[data-hero-cta='visible'] :global(.mobile-cta) { display: none; }
+
+/* ---- something to press at the price ---------------------------------------
+
+   The pricing band is where the decision gets made and it had no button in it.
+   Centred with the rest of that column, and given room from the fine print. */
+.root :global(.pricing-copy .button.primary) {
+  margin-top: 22px;
+  align-self: start;
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.

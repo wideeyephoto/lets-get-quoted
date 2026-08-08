@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
 import styles from '@/components/flagship/flagship.module.css';
 
+/** One place, so a rename cannot leave a button pointing at the old host. */
+const SIGNUP_URL = 'https://app.letsgetquoted.com/';
+
 type Feature = {
   number: string;
   kicker: string;
@@ -76,11 +79,22 @@ function SiteBuilderVisual() {
         <div className="site-preview">
           <div className="preview-nav"><b>BRIGHTLINE</b><span>Services&nbsp;&nbsp; Work&nbsp;&nbsp; Reviews</span><em>Free estimate</em></div>
           <div className="preview-hero">
-            <p>LICENSED · INSURED · LOCAL</p>
+            {/* The trade and the town — the two things the panel on the left
+                has just entered, so the preview visibly answers the form beside
+                it. This read "LICENSED · INSURED · LOCAL": three regulated
+                claims, invented by us, on a page selling the tool that would
+                publish them. The builder does not know whether a contractor
+                holds any of them, and the site templates were changed this week
+                to stop asserting them by default. */}
+            <p>ELECTRICIAN · ROYAL OAK, MI</p>
             <h3>Power your home.<br />Protect what matters.</h3>
             <button>Get an instant estimate →</button>
           </div>
-          <div className="preview-stats"><span><b>4.9★</b> Local rating</span><span><b>24/7</b> AI estimate</span><span><b>12 yrs</b> Experience</span></div>
+          {/* Three things the generated site genuinely ships with, in place
+              of a "4.9★ Local rating" and "12 yrs Experience" belonging to a
+              business that does not exist. A star rating is the figure a
+              homeowner is most likely to believe, and we have no basis for it. */}
+          <div className="preview-stats"><span><b>24/7</b> Instant estimate</span><span><b>Online</b> Booking</span><span><b>Your</b> Own domain</span></div>
         </div>
       </div>
     </div>
@@ -108,7 +122,7 @@ function IntakeVisual() {
         <div className="lead-card">
           <div className="lead-card-head"><span className="avatar">AM</span><div><small>NEW WEBSITE REQUEST</small><strong>Emergency drain backup</strong></div><b>HOT</b></div>
           <div className="ai-summary"><span>✦ AI SUMMARY</span><p>Active indoor backup. In service area, wants help today, photos included.</p></div>
-          <div className="lead-grid"><span><small>ESTIMATE</small><b>$450–$780</b></span><span><small>DISTANCE</small><b>3.2 miles</b></span><span><small>URGENCY</small><b>Today</b></span><span><small>CONTACT</small><b>Text first</b></span></div>
+          <div className="lead-grid"><span><small>ESTIMATE</small><b>$450–$780</b></span><span><small>SERVICE AREA</small><b>In your area</b></span><span><small>URGENCY</small><b>Today</b></span><span><small>CONTACT</small><b>Text first</b></span></div>
           <button className="alert-button">Call this lead first →</button>
         </div>
       </div>
@@ -161,6 +175,35 @@ export default function Home() {
   const stepRefs = useRef<Array<HTMLElement | null>>([]);
   const rotations = useMemo(() => [0, -120, -240], []);
 
+  /**
+   * Hide the sticky mobile bar while the hero's own button is on screen.
+   *
+   * SiteFooter renders a fixed full-width "Build my free site" bar for phones,
+   * and the hero renders a "Build my free site" button — so the first thing a
+   * contractor saw on a phone was the same orange button twice, one directly
+   * above the other, saying the same words. The bar exists for the rest of the
+   * page, where there is nothing else to press; it has no job while the real
+   * one is visible.
+   *
+   * A data attribute on the root rather than a change to SiteFooter, because
+   * that footer is shared with /features and the five detail pages, and none of
+   * them has a hero CTA for it to collide with.
+   */
+  const heroCtaRef = useRef<HTMLAnchorElement | null>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const cta = heroCtaRef.current;
+    const root = rootRef.current;
+    if (!cta || !root) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => root.setAttribute('data-hero-cta', entry.isIntersecting ? 'visible' : 'gone'),
+      { threshold: 0 },
+    );
+    observer.observe(cta);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
     stepRefs.current.forEach((element, index) => {
@@ -180,7 +223,7 @@ export default function Home() {
   };
 
   return (
-    <main className={styles.root}>
+    <main className={styles.root} ref={rootRef} data-hero-cta="visible">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <SiteHeader />
 
@@ -189,8 +232,14 @@ export default function Home() {
           <p className="eyebrow"><span>✦</span> ONE TRUCK OR TEN CREWS. THE FULL SUITE IS YOURS.</p>
           <h1>Build the website.<br />Win better jobs.<br /><em>Run everything behind it.</em></h1>
           <p className="hero-sub">Launch a professional site in minutes. AI qualifies every request, alerts you to the best opportunities, and keeps each job moving from quote to payment.</p>
+          {/* The primary CTA goes to the app, not to an anchor.
+              It used to be href="#final-cta" — the loudest button on the page,
+              at the top of the page, scrolling you to the bottom of the page to
+              find another button. Anyone ready to start had to be asked twice.
+              The secondary keeps its in-page jump, which is what a secondary is
+              for. */}
           <div className="hero-actions">
-            <a className="button primary" href="#final-cta">Build my free site <span>→</span></a>
+            <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>Build my free site <span>→</span></a>
             <a className="button secondary" href="#included">Explore everything included</a>
           </div>
           <p className="hero-note"><i>✓</i> Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Pay only when you get paid</p>
@@ -206,14 +255,23 @@ export default function Home() {
             <div className="dash-body">
               <aside><span className="selected">⌂</span><span>◎</span><span>□</span><span>↗</span><span>✦</span></aside>
               <div className="dash-main">
-                <div className="dash-greeting"><div><small>FRIDAY, AUGUST 7</small><h2>Good morning, Brett.</h2></div><button>+ New</button></div>
+                <div className="dash-greeting"><div><small>FRIDAY, AUGUST 7</small><h2>Good morning.</h2></div><button>+ New</button></div>
                 <div className="attention-card"><small>NEEDS YOUR ATTENTION</small><div className="attention-row"><b>3</b><span>New leads need a response</span><em>Review leads →</em></div><div className="attention-row"><b>2</b><span>Quotes awaiting approval</span><em>Follow up →</em></div></div>
                 <div className="dash-grid"><div><small>NEXT 7 DAYS</small><strong>6 jobs</strong><p>3 crews assigned</p></div><div><small>ESTIMATED REVENUE</small><strong>$18.4k</strong><p className="up">↑ 14% this month</p></div><div className="quick-mini"><small>QUICK STOP</small><strong>Nearby request</strong><p>0.7 mi off route · $149</p></div></div>
               </div>
             </div>
           </div>
-          <div className="floating-alert"><span className="alert-icon">✦</span><div><small>AI LEAD ALERT</small><b>High-value job · 3.2 miles away</b></div><em>NOW</em></div>
+          <div className="floating-alert"><span className="alert-icon">✦</span><div><small>AI LEAD ALERT</small><b>Panel upgrade · in your service area</b></div><em>NOW</em></div>
           <div className="floating-paid"><i>✓</i><div><small>PAYMENT RECEIVED</small><b>$4,250 headed to your bank</b></div></div>
+          {/* The panel quotes $18.4k of revenue, six booked jobs and a $4,250
+              payment. None of it happened. "EXAMPLE BUSINESS" in the title bar
+              is the kind of label you notice only once you already believed the
+              numbers — /features carries this same marker under its mock for
+              the same reason. */}
+          <p className="example-mark">
+            <b>Example</b> — invented figures, not a real customer.{' '}
+            <a href="/demo">See the live demo</a>
+          </p>
         </div>
       </section>
 
@@ -269,6 +327,12 @@ export default function Home() {
               <div className="wheel-core"><b>{features[active].number}</b><small>OF 03</small></div>
             </div>
             <ProductVisual active={active} />
+            {/* Same reason as the hero's: these three panels quote an estimate
+                range, a fee and a drive time, and a visitor has no way to tell
+                a worked example from a screenshot. */}
+            <p className="example-mark">
+              <b>Example</b> — an invented business, not a real customer.
+            </p>
             <div className="scroll-prompt"><span>SCROLL TO EXPLORE</span><i>↓</i></div>
           </div>
         </div>
@@ -293,7 +357,7 @@ export default function Home() {
           <p className="eyebrow"><span>✦</span> FOUR PLACES AI SAVES YOU TIME</p>
           <h2 id="ai-title">It writes the site.<br />Qualifies every lead.<br /><em>Tells you who to call first.</em></h2>
           <p>Then it keeps those same details attached to the quote, schedule and follow-up—so nobody has to start over.</p>
-          <div className="ai-context-note"><span>REQUEST + PHOTOS</span><i>→</i><span>FIT + VALUE + DISTANCE</span><i>→</i><span>READY-TO-ACT LEAD</span></div>
+          <div className="ai-context-note"><span>REQUEST + PHOTOS</span><i>→</i><span>FIT + VALUE + SERVICE AREA</span><i>→</i><span>READY-TO-ACT LEAD</span></div>
         </div>
         <div className="ai-rail" aria-label="AI-supported contractor workflow">
           <div className="ai-list-head"><span>FOUR BUILT-IN HANDOFFS</span><small>ONE CONNECTED WORKFLOW</small></div>
@@ -301,7 +365,7 @@ export default function Home() {
           <i>→</i>
           <article><span>02</span><div><small>QUALIFY</small><h3>Turns a request into a real scope</h3><p>Asks trade-specific follow-ups and collects photos, timing, budget and contact details.</p></div></article>
           <i>→</i>
-          <article><span>03</span><div><small>PRIORITIZE</small><h3>Ranks what deserves attention</h3><p>Scores fit, urgency, estimated value and distance—then sends instant high-value alerts.</p></div></article>
+          <article><span>03</span><div><small>PRIORITIZE</small><h3>Ranks what deserves attention</h3><p>Scores fit, urgency, estimated value and whether it’s in your service area—then sends instant high-value alerts.</p></div></article>
           <i>→</i>
           <article><span>04</span><div><small>FOLLOW THROUGH</small><h3>Keeps the job record moving</h3><p>Carries the same details into quote, schedule, texts, the client portal and payment—without retyping.</p></div></article>
         </div>
@@ -401,6 +465,10 @@ export default function Home() {
           <h2>When business is slow,<br /><em>your software bill is $0.</em></h2>
           <p>Use the full suite without a monthly subscription. A small platform fee applies only when a homeowner pays you.</p>
           <div className="pricing-points"><span>✓ No setup fee</span><span>✓ No contract</span><span>✓ No per-seat fee</span><span>✓ Rate drops as you grow</span></div>
+          {/* The price is where the decision actually gets made, and this band
+              had nothing to press — you read "$0 / month", agreed with it, and
+              then scrolled on looking for somewhere to act. */}
+          <a className="button primary" href={SIGNUP_URL}>Start free <span>→</span></a>
           <small className="pricing-fineprint">Payment processing and platform fees apply to completed transactions.</small>
         </div>
       </section>
@@ -410,7 +478,7 @@ export default function Home() {
         <p className="eyebrow"><span>✦</span> BUILT FOR THE ONE-TRUCK OPERATOR—AND THE CREW DOING $2M</p>
         <h2>One truck or ten crews.<br />Your next stage starts here.</h2>
         <p>Launch the site, connect the work and give your growing business one place to run.</p>
-        <a className="button primary light" href="https://app.letsgetquoted.com/">Create my account <span>→</span></a>
+        <a className="button primary light" href={SIGNUP_URL}>Create my account <span>→</span></a>
         <small>No card required · No monthly subscription · Cancel anytime</small>
       </section>
 
