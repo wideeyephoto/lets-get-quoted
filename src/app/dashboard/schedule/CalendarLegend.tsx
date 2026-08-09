@@ -25,7 +25,37 @@ const STATUSES = [
   { key: 'archived', label: 'Archived' },
 ] as const;
 
-export default function CalendarLegend() {
+/**
+ * Month is a different question, so it gets a different caption.
+ *
+ * The status colours above are what a BLOCK is in Day and Week. A month cell
+ * has no blocks in it — it is one bar answering "how full is this day" — and
+ * showing the status key over a grid that uses none of it is a legend for
+ * colours that are not on screen. Rendering both at once would be two captions
+ * for one grid, so the view picks.
+ */
+const CAPACITY = [
+  { key: 'open', label: 'Open' },
+  { key: 'light', label: 'Up to half full' },
+  { key: 'busy', label: 'Half to full' },
+  { key: 'full', label: 'Full' },
+  { key: 'over', label: 'Overbooked' },
+] as const;
+
+export default function CalendarLegend({ variant = 'status' }: { variant?: 'status' | 'capacity' }) {
+  if (variant === 'capacity') {
+    return (
+      <div className="calendar-legend" role="group" aria-label="What the day colours mean">
+        {CAPACITY.map((band) => (
+          <span className="calendar-legend-item" key={band.key}>
+            <span className="calendar-legend-dot" data-load={band.key} aria-hidden="true" />
+            {band.label}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="calendar-legend" role="group" aria-label="What the calendar colours mean">
       {STATUSES.map((status) => (

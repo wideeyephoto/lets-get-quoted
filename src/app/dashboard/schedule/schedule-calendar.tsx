@@ -853,10 +853,16 @@ export default function ScheduleCalendar({
 
       {/* Under the toolbar and above the grid: a caption belongs beside the
           thing it explains, and it is not a control, so it does not belong in
-          a row of them. Month capacity cells and crew lanes carry the same
-          status colours, so it is right for every desktop view. */}
+          a row of them.
+
+          WHICH caption depends on the view, because the two grids are coloured
+          by different things. Day, Week and Crew draw blocks whose colour is
+          the job's status; Month draws no blocks at all — a cell is one bar
+          answering how full the day is, on the five-step ramp. Showing the
+          status key over Month was a legend for colours that were not on the
+          screen. */}
       <div className="calendar-desktop-views">
-        <CalendarLegend />
+        <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} />
       {effectiveView === 'day' || effectiveView === 'week' ? (
         <ScheduleTimeline
           dayKeys={timelineDayKeys}

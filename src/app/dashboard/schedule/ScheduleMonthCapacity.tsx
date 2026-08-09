@@ -1,6 +1,7 @@
 'use client';
 
 import { findCrewConflicts, parseClockMinutes } from '@/lib/schedule-timeline';
+import { CAPACITY_LABEL, capacityLevel } from '@/lib/schedule-capacity';
 import type { CalendarCell, CalendarJob, PlannedVisit } from './schedule-calendar';
 import type { TimelineDayMeta } from './ScheduleTimeline';
 import { useScheduleDrag } from './ScheduleDragProvider';
@@ -76,6 +77,16 @@ export default function ScheduleMonthCapacity({
           // Over capacity is its own state, not a bar that stops at full: a day
           // booked to 11 of 8 hours is a promise somebody is going to break.
           const over = booked > capacityHours + 0.01;
+          /* HOW FULL, IN COLOUR, ACROSS THE WHOLE MONTH AT ONCE.
+             Every cell used to draw the same orange bar whatever was in it, so
+             "where is there room in August" meant reading thirty-one cells one
+             at a time and comparing two small numbers in each. The ramp answers
+             it in one look: green is room, red is trouble. A blocked day is
+             outside the ramp entirely — it has no capacity to be a fraction
+             of, and tinting it green would offer a day that is closed. */
+          const level = block
+            ? null
+            : capacityLevel({ bookedHours: booked, capacityHours, jobCount: dayJobs.length, markedFull: isFull });
 
           const unassigned = dayJobs.filter((job) => (assignments[job.id] ?? []).length === 0).length;
           const conflicts = findCrewConflicts(dayJobs.map((job) => ({
@@ -92,7 +103,9 @@ export default function ScheduleMonthCapacity({
             `${cell.day}: ${dayJobs.length === 0 ? 'nothing booked' : `${dayJobs.length} job${dayJobs.length === 1 ? '' : 's'}`}`,
             dayJobs.length > 0 ? `${booked.toFixed(booked % 1 ? 1 : 0)} of ${capacityHours} hours booked` : null,
             block ? (block.reason ? `Blocked off — ${block.reason}` : 'Blocked off') : null,
-            over ? 'Over capacity' : isFull ? 'Full' : null,
+            // The colour band, in words, so the ramp is not the only place it
+            // is said. 'open' is already covered by "nothing booked" above.
+            level && level !== 'open' ? CAPACITY_LABEL[level] : null,
             conflicts.length > 0 ? `${conflicts.length} crew double-booked` : null,
             unassigned > 0 ? `${unassigned} with no crew` : null,
             planned.length > 0 ? `${planned.length} recurring visit${planned.length === 1 ? '' : 's'}` : null,
@@ -103,6 +116,10 @@ export default function ScheduleMonthCapacity({
               type="button"
               key={cell.dateKey}
               data-date-key={cell.dateKey}
+              /* The band drives every colour on the cell — border, bar, tint —
+                 from one attribute, so they cannot disagree with each other or
+                 with the summary above. */
+              data-load={level ?? undefined}
               className={[
                 'sched-month-cell',
                 cell.dateKey === todayKey ? 'today' : '',
