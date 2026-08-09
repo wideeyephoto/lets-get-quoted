@@ -42,8 +42,32 @@ import { useScheduleDrag } from './ScheduleDragProvider';
  *
  * Everything positional in here is a PERCENTAGE of the axis, not a pixel, so
  * shrinking this on a tablet moves every block correctly with no JS involved.
+ *
+ * 52, down from 62, and the arithmetic is the reason. The scroller was capped
+ * at 720px, which at 62px an hour is 11 hours and a half — so a calendar
+ * running 7am to 7pm could not be seen without scrolling INSIDE a page that
+ * already scrolls. At 52 the same thirteen hours are 676px: still inside the
+ * old cap, with an hour and a half more day on screen and no nested scrollbar.
+ * The block card is unharmed by it — its detail lines are dropped by DURATION
+ * (see blockSize) rather than by measured height, so an hour-long job shows
+ * exactly what it showed before.
  */
-const HOUR_PX = 62;
+const HOUR_PX = 52;
+
+/**
+ * The bottom of the calendar: 8pm, so the last labelled hour is 7 PM.
+ *
+ * The gutter labels the TOP of each row (hours.slice(0, -1)), so an axis
+ * ending at 19:00 puts "6 PM" on the last label and leaves the 6–7pm band
+ * unnamed at its foot — which reads as a calendar that stops at six. Ending at
+ * 20:00 makes 7 PM a row of its own, which is also the row an evening job
+ * needs somewhere to land.
+ *
+ * A floor, not a cap. A job at 9pm still grows the axis to hold it; the point
+ * is only that a quiet week does not shrink to the working day and leave the
+ * evening off the grid.
+ */
+const AXIS_END_MINUTES = 20 * 60;
 
 /**
  * How narrow a block is allowed to get before a lane is taken away.
@@ -171,7 +195,7 @@ export default function ScheduleTimeline({
         });
       }
     }
-    return buildTimeAxis({ entries, workdayStart, workdayEnd });
+    return buildTimeAxis({ entries, workdayStart, workdayEnd, minEndMinutes: AXIS_END_MINUTES });
   }, [dayKeys, jobsByDate, metaByOccurrence, workdayStart, workdayEnd]);
 
   /** Per column: the blocks with a position, and the ones with no time at all. */

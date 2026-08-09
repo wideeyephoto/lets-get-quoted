@@ -122,11 +122,25 @@ export function buildTimeAxis({
   entries,
   workdayStart,
   workdayEnd,
+  minEndMinutes = 0,
 }: {
   entries: TimelineEntry[];
   /** "07:30" from account settings. Falls back to 8am–6pm. */
   workdayStart?: string | null;
   workdayEnd?: string | null;
+  /**
+   * A DISPLAY floor on the bottom of the axis, in minutes from midnight.
+   *
+   * Nothing to do with the working day, which is why it is a separate argument
+   * rather than a change to the arithmetic below. The day and week calendars
+   * want a fixed evening horizon — the same last hour every day, whatever is
+   * booked — so that dropping a job at 6pm does not silently redraw every
+   * other column, and so the grid stops in the same place on Monday as on
+   * Friday. The crew-lane view has no such need and does not pass it.
+   *
+   * A floor, never a cap: a job that runs past it still grows the axis.
+   */
+  minEndMinutes?: number;
 }): TimeAxis {
   const configuredStart = parseClockMinutes(workdayStart) ?? 8 * 60;
   const configuredEnd = parseClockMinutes(workdayEnd) ?? 18 * 60;
@@ -142,6 +156,9 @@ export function buildTimeAxis({
 
   start = Math.max(0, Math.floor(start / 60) * 60);
   end = Math.min(24 * 60, Math.ceil(end / 60) * 60);
+
+  // The evening horizon, snapped to the hour like everything else here.
+  end = Math.min(24 * 60, Math.max(end, Math.ceil(Math.max(0, minEndMinutes) / 60) * 60));
 
   // A floor, applied downward first so a late-finishing day does not get pushed
   // past midnight, then upward with whatever room is left.
