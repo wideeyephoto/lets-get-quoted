@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   ORBIT_LAP_MS,
   ORBIT_RUN_OFF,
@@ -196,5 +198,36 @@ describe('a full lap', () => {
       if (box.x + box.width < 0) offPage += 1;
     }
     expect(offPage, 'no sample of the lap is fully off the left edge').toBeGreaterThan(0);
+  });
+});
+
+/**
+ * THE SIZE MULTIPLIER, read from the component rather than copied here.
+ *
+ * The objects are drawn at TRADE_ICONS' approved sizes times a scale that
+ * tapers from a phone to a 1440 desktop. Enlarging them means moving the WHOLE
+ * ramp — moving only its top makes the taper steeper rather than the art
+ * bigger, and the phone end has to come down for the same reason it always did.
+ */
+describe('the ramp scales as a whole', () => {
+  const ORBIT = readFileSync(join(process.cwd(), 'src', 'components', 'flagship', 'trade-orbit.tsx'), 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  it('applies one multiplier to both ends of the taper', () => {
+    const size = Number(/const ICON_SIZE = ([\d.]+);/.exec(ORBIT)?.[1]);
+    expect(size, 'no ICON_SIZE declared').toBeGreaterThan(0);
+    expect(ORBIT).toContain(`const MIN_SCALE = 0.46 * ICON_SIZE`);
+    expect(ORBIT).toContain(`const FULL_SCALE = 1 * ICON_SIZE`);
+    // And the ramp interpolates between the two, rather than to a bare 1.
+    expect(ORBIT).toContain('return MIN_SCALE + (FULL_SCALE - MIN_SCALE) * t;');
+  });
+
+  /* Bigger art needs more clearance, and orbitGeometry sizes the path's
+     vertical radius off the largest object times the scale — so a larger set
+     gets a shorter ellipse rather than one that runs under the header. */
+  it('shortens the path as the objects grow', () => {
+    expect(orbitGeometry(DESKTOP, 1.3).ry).toBeLessThan(orbitGeometry(DESKTOP, 1).ry);
   });
 });

@@ -43,8 +43,24 @@ import {
    MIN_SCALE on a 390px phone. A 128px paint brush on a 390px screen would be a
    third of the width of the device. */
 const MIN_WIDTH = 390;
-const MIN_SCALE = 0.46;
 const FULL_WIDTH = 1440;
+
+/**
+ * A multiplier on the WHOLE ramp, not a new number at the top of it.
+ *
+ * The objects were drawn at their approved sizes and read as small against a
+ * hero this size. 1.3 across the board keeps the taper doing its job — the
+ * phone end has to come down for the same reason it always did, and moving
+ * only the desktop end would make the ramp steeper rather than the objects
+ * bigger.
+ *
+ * It flows into orbitGeometry too, which sizes the path's vertical clearance
+ * off the largest object: bigger art gets a correspondingly shorter ellipse
+ * rather than one that runs its objects under the header.
+ */
+const ICON_SIZE = 1.3;
+const MIN_SCALE = 0.46 * ICON_SIZE;
+const FULL_SCALE = 1 * ICON_SIZE;
 
 /* Any object can be at any point on the path, so the clearances are sized for
    the biggest one on each axis — which is not the same object. */
@@ -55,7 +71,7 @@ const MAX_ICON = {
 
 function scaleFor(width: number): number {
   const t = Math.min(1, Math.max(0, (width - MIN_WIDTH) / (FULL_WIDTH - MIN_WIDTH)));
-  return MIN_SCALE + (1 - MIN_SCALE) * t;
+  return MIN_SCALE + (FULL_SCALE - MIN_SCALE) * t;
 }
 
 /**
