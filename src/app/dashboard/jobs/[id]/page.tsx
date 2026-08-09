@@ -1078,8 +1078,32 @@ export default async function JobDetailPage({
         </form>
       </details>
 
-      <section id="job-costs" className="detail-grid workspace-grid-gap">
-          <div>
+      {/* ONE COLUMN, NOT TWO.
+          These five sections used to sit in a `detail-grid` — a 2fr column
+          holding Job expenses alone, and a 1fr column holding Selections,
+          Warranty, Change orders and ROI. The column with four cards got a
+          third of the width, so its headings wrapped to three and four lines
+          and it ran 456px tall beside a 130px card, leaving a ragged 327px of
+          nothing under Job expenses (391px before the shell went fluid).
+
+          Balancing the two columns does not hold: every card here is a
+          `<details>` the owner opens and closes independently, and Change
+          orders only exists on some jobs. Any distribution that lines up while
+          they are all shut goes ragged the moment one is opened.
+
+          The ROI card carried `sticky-card` to ride along beside the expenses
+          you are logging, which is a good idea that never worked: it was the
+          LAST child of its column, so it had no track below it to slide along.
+          Measured — scrolled 900px past a tall expenses list and its offset
+          inside its own column did not move by a pixel. Nothing is lost by
+          dropping it.
+
+          So: one card per row, the full width of the shell, the same as the
+          two sections above. Bottoms cannot misalign when there is one column,
+          it does not care how many cards there are or which are open, and the
+          selections board and the expenses list get the width the fluid shell
+          now has to give them. */}
+      <section id="job-costs" className="workspace-grid">
             <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'costs'}>
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading compact-heading">
@@ -1139,9 +1163,7 @@ export default async function JobDetailPage({
                 </div>
               )}
             </details>
-          </div>
 
-          <div>
             {/* Open when the job is waiting on the customer. A stalled job is
                 the thing an owner most needs to see, and it's the whole reason
                 "waiting on homeowner" is a status rather than a feeling. */}
@@ -1200,7 +1222,7 @@ export default async function JobDetailPage({
               </details>
             ) : null}
 
-            <details className="panel workspace-section-card workspace-details job-action-details sticky-card">
+            <details className="panel workspace-section-card workspace-details job-action-details">
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading compact-heading">
                   <p className="eyebrow">Profitability</p>
@@ -1257,7 +1279,6 @@ export default async function JobDetailPage({
                 ) : null}
               </p>
             </details>
-          </div>
         </section>
 
     </main>
