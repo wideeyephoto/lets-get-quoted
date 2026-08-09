@@ -1,86 +1,83 @@
 'use client';
 
 import Link from 'next/link';
-import { useId, useMemo, useState } from 'react';
-import type { Trade } from '@/lib/trades';
-import {
-  TRADE_CATEGORIES,
-  categoryOf,
-  searchIndexFor,
-  tradesAlphabetical,
-} from '@/lib/trade-categories';
+import { useId, useState } from 'react';
+import { TRADES, type Trade } from '@/lib/trades';
+import { TRADE_CATEGORIES, searchIndexFor } from '@/lib/trade-categories';
+import styles from './for.module.css';
 
 /**
- * Finding your trade among forty-nine of them.
+ * The directory: all 49 trades, grouped, and every one of them in the HTML.
  *
- * The directory used to be one flat grid of forty-nine cards, each carrying
- * four example services — about 7,200px of page on a phone, in the order the
- * array happened to be written, with no way to jump. Scanning it was the only
- * way to use it.
+ * THE LINKS ARE THE PAGE. /for is the hub that hands crawlers the 49 trade
+ * pages, so the one thing this component must never do is make a link
+ * conditional on somebody typing. It filters by setting `hidden` on entries that
+ * do not match — the anchors stay in the document, in the same order, whatever
+ * the controls say. Unmounting them (the previous version rendered `matches`)
+ * put all 49 in the *initial* HTML and then took 40 of them out the moment a
+ * category was pressed, which is a difference no crawler sees but every
+ * "view source after clicking" audit does.
  *
- * Three changes, in the order somebody actually works:
+ * `hidden` and not `display: none` in a class, because `hidden` also takes the
+ * entry out of the accessibility tree and out of the tab order — a filtered-out
+ * link that is still tabbable is the mobile-nav bug in miniature.
  *
- *   1. TYPE. The index covers each trade's services as well as its name, so
- *      "water heater" finds Plumbers and "mulch" finds Landscapers — which is
- *      how a contractor describes their work when the category name does not
- *      come to mind.
- *   2. NARROW. Six categories, named for what the contractor does rather than
- *      for a construction taxonomy.
- *   3. SCAN. What is left is A–Z by display name and one line per trade, so
- *      the whole directory is a screen or two rather than a scroll.
- *
- * The search index is built once, not per keystroke: forty-nine joins and
- * lower-casings on every character typed is work nobody asked for.
+ * FILED ONCE, AT MODULE SCOPE. The grouping and the search index are facts about
+ * static data; building them per render (or per keystroke) is 49 joins and
+ * lower-casings nobody asked for. tradeCategoryProblems() in
+ * lib/trade-categories is what proves the mapping has no holes — a trade filed
+ * in no category would simply be missing from below, silently.
  */
 
-type Filed = { trade: Trade; index: string; categoryId: string };
+type Filed = { trade: Trade; index: string };
 
-export default function TradeFinder({ children }: { children: React.ReactNode }) {
+const BY_SLUG = new Map(TRADES.map((trade) => [trade.slug, trade] as const));
+
+const GROUPS: { id: string; label: string; entries: Filed[] }[] = TRADE_CATEGORIES.map(
+  (category) => ({
+    id: category.id,
+    label: category.label,
+    entries: category.slugs
+      .map((slug) => BY_SLUG.get(slug))
+      .filter((trade): trade is Trade => Boolean(trade))
+      .map((trade) => ({ trade, index: searchIndexFor(trade) }))
+      // A–Z inside the group: the categories are the coarse cut, and within one
+      // of them the only order a reader can predict is alphabetical.
+      .sort((a, b) => a.trade.name.localeCompare(b.trade.name, 'en')),
+  }),
+);
+
+const TOTAL = GROUPS.reduce((sum, group) => sum + group.entries.length, 0);
+
+export default function TradeFinder() {
   const searchId = useId();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<string>('all');
-
-  const filed = useMemo<Filed[]>(
-    () =>
-      tradesAlphabetical().map((trade) => ({
-        trade,
-        index: searchIndexFor(trade),
-        categoryId: categoryOf(trade.slug)?.id ?? '',
-      })),
-    [],
-  );
+  const [category, setCategory] = useState('all');
 
   const term = query.trim().toLowerCase();
-  const matches = useMemo(
-    () =>
-      filed.filter(
-        (entry) =>
-          (category === 'all' || entry.categoryId === category) &&
-          (term === '' || entry.index.includes(term)),
-      ),
-    [filed, category, term],
-  );
+  const shows = (entry: Filed, groupId: string) =>
+    (category === 'all' || groupId === category) && (term === '' || entry.index.includes(term));
 
-  /* Untouched means "show the page as written" — the shortlist above the full
-     directory. The moment either control is used, the shortlist would be a
-     second, unfiltered list of trades next to a filtered one, which is the
-     confusing thing rather than the helpful one. */
+  const shown = GROUPS.reduce(
+    (sum, group) => sum + group.entries.filter((entry) => shows(entry, group.id)).length,
+    0,
+  );
   const filtering = term !== '' || category !== 'all';
 
   return (
     <>
-      <div className="trade-finder">
-        <div className="trade-search">
-          <label htmlFor={searchId}>Search your trade</label>
-          <div className="trade-search-field">
-            <span className="trade-search-ic" aria-hidden="true">
-              {/* A magnifier, drawn rather than typed, so it cannot land as a
-                  tofu box on a device without the glyph. */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="6.5" />
-                <path d="M16 16l4.5 4.5" strokeLinecap="round" />
-              </svg>
-            </span>
+      <div className={styles.finder}>
+        <div>
+          <label className={styles.searchLabel} htmlFor={searchId}>
+            Search your trade
+          </label>
+          <div className={styles.searchField}>
+            {/* A magnifier, drawn rather than typed, so it cannot land as a tofu
+                box on a device without the glyph. */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16l4.5 4.5" strokeLinecap="round" />
+            </svg>
             <input
               id={searchId}
               type="search"
@@ -92,11 +89,13 @@ export default function TradeFinder({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <div className="trade-cats" role="group" aria-label="Filter by category">
-          {/* Buttons with aria-pressed, not links or a radio group: this filters
-              a list already on the page, and nothing about it is a navigation. */}
+        {/* Buttons with aria-pressed, not links or a radio group: this narrows a
+            list that is already on the page, and nothing about it is a
+            navigation. */}
+        <div className={styles.cats} role="group" aria-label="Filter by category">
           <button
             type="button"
+            className={styles.cat}
             aria-pressed={category === 'all'}
             onClick={() => setCategory('all')}
           >
@@ -106,6 +105,7 @@ export default function TradeFinder({ children }: { children: React.ReactNode })
             <button
               key={cat.id}
               type="button"
+              className={styles.cat}
               aria-pressed={category === cat.id}
               onClick={() => setCategory(cat.id)}
             >
@@ -115,39 +115,40 @@ export default function TradeFinder({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      {/* The shortlist, and only while nothing is being filtered. */}
-      {!filtering ? children : null}
+      <p className={styles.count}>
+        {filtering ? `${shown} of ${TOTAL} trades` : `All ${TOTAL} trades`}
+      </p>
+      {/* Politely, and only the count — a screen reader should hear that the list
+          changed without having forty-nine names read at it again. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {shown} of {TOTAL} trades shown
+      </p>
 
-      <div className="trade-directory">
-        <h3>
-          {filtering
-            ? `${matches.length} ${matches.length === 1 ? 'trade' : 'trades'} match`
-            : `All ${filed.length} trades`}
-        </h3>
-        {/* Politely, and only the count — a screen reader should hear that the
-            list changed without having forty-nine names read at it again. */}
-        <p className="sr-only" role="status" aria-live="polite">
-          {matches.length} of {filed.length} trades shown
+      {GROUPS.map((group) => {
+        const visible = group.entries.filter((entry) => shows(entry, group.id)).length;
+        return (
+          <section key={group.id} className={styles.group} hidden={visible === 0}>
+            <h3>{group.label}</h3>
+            <ul className={styles.tradeList}>
+              {group.entries.map((entry) => (
+                <li key={entry.trade.slug} hidden={!shows(entry, group.id)}>
+                  <Link href={`/for/${entry.trade.slug}`}>
+                    <b>{entry.trade.name}</b>
+                    <span>{entry.trade.services.slice(0, 3).join(' · ')}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+
+      {shown === 0 ? (
+        <p className={styles.empty}>
+          Nothing matches “{query.trim()}”. Every feature is trade-agnostic, so it still works —{' '}
+          <Link href="/demo">explore the demo &rarr;</Link>
         </p>
-
-        {matches.length ? (
-          <ul className="trade-list">
-            {matches.map(({ trade }) => (
-              <li key={trade.slug}>
-                <Link href={`/for/${trade.slug}`}>
-                  <b>{trade.name}</b>
-                  <span>{trade.services.slice(0, 3).join(' · ')}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="trade-empty">
-            Nothing matches “{query.trim()}”. Every feature is trade-agnostic, so it still works —{' '}
-            <Link href="/demo">explore the demo &rarr;</Link>
-          </p>
-        )}
-      </div>
+      ) : null}
     </>
   );
 }
