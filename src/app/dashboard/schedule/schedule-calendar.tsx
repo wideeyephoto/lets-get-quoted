@@ -164,6 +164,16 @@ export type CalendarJob = {
       block from it, and parsing "3.5h" back out of the label to do that would
       be reading a string this component already had as a number. */
   estimated_hours: number | null;
+  /**
+   * The END of an entered range, or null when the span was guessed from hours.
+   *
+   * Only its presence is read, not its value — the occurrences are already
+   * expanded one per day by the time they get here, so this answers the one
+   * question that expansion throws away: did somebody SAY this runs six days,
+   * or did we work it out? Even spreading is right for the first and wrong for
+   * the second. See occurrenceMinutes.
+   */
+  scheduled_until: string | null;
   crew_initials: string[];
   /** What the work IS. Optional because only the mobile agenda has the width to
       print it — a 33px month cell never did. */
@@ -497,6 +507,10 @@ export default function ScheduleCalendar({
           dayIndex,
           dayCount: list.length,
           workdayHours: capacityHours,
+          // An entered range means the pacing was stated, so the hours spread
+          // evenly across it — the same division the month bar and the booking
+          // engine have always done.
+          spanEntered: Boolean(job.scheduled_until),
         }),
       });
     }

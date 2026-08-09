@@ -462,14 +462,37 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
 
   if (!scheduledFor) redirect('/dashboard/schedule#unscheduled-jobs');
 
-  const scheduledJob = await updateJobSchedule(supabase, accountId, jobId, scheduledFor, optionalText(formData.get('scheduledTime')));
+  // `has` rather than a truthy check: the scheduling card always submits this
+  // field, and an EMPTY one means "one day", which has to be able to clear an
+  // end date that is already there. The schedule board's own form does not
+  // submit it at all, and gets the carry-the-span behaviour instead.
+  const scheduledUntil = formData.has('scheduledUntil') ? optionalText(formData.get('scheduledUntil')) : undefined;
+
+  const scheduledJob = await updateJobSchedule(
+    supabase,
+    accountId,
+    jobId,
+    scheduledFor,
+    optionalText(formData.get('scheduledTime')),
+    scheduledUntil,
+  );
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_scheduled',
     title: 'Job schedule updated',
-    body: `Scheduled for ${scheduledJob.scheduled_for || 'a date to be determined'}.`,
+    // The whole range, not just the first day. This line is visible to the
+    // CUSTOMER, and now that this action can set an end date it could tell
+    // somebody their six-day job was "scheduled for the 10th" — which is true
+    // of the start and wrong about the week.
+    body: scheduledJob.scheduled_for
+      ? `Scheduled for ${formatJobSchedule(scheduledJob.scheduled_for, scheduledJob.scheduled_time, scheduledJob.scheduled_until)}.`
+      : 'Scheduled for a date to be determined.',
     visibility: 'client',
-    meta: { scheduled_for: scheduledJob.scheduled_for, scheduled_time: scheduledJob.scheduled_time },
+    meta: {
+      scheduled_for: scheduledJob.scheduled_for,
+      scheduled_time: scheduledJob.scheduled_time,
+      scheduled_until: scheduledJob.scheduled_until,
+    },
   });
 
   revalidatePath('/dashboard/jobs');

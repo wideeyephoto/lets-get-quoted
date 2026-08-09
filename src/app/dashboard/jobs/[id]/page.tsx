@@ -220,11 +220,14 @@ export default async function JobDetailPage({
   const jobPhotos = await createJobPhotoLinks(accountId, job.photo_paths || []);
   const { data: accountRow } = await supabase
     .from('accounts')
-    .select('connect_onboarded, auto_review_request')
+    .select('connect_onboarded, auto_review_request, schedule_day_hours')
     .eq('id', accountId)
     .maybeSingle();
   const stripeOnboarded = accountRow?.connect_onboarded ?? false;
   const autoReviewRequest = Boolean(accountRow?.auto_review_request);
+  // The working day, for the "18 hrs across 6 days is about 3 a day" line on
+  // the scheduling card. Same fallback the schedule page uses.
+  const scheduleDayHours = Number(accountRow?.schedule_day_hours) || 8;
   const originatingLead = await getLeadByConvertedJob(supabase, accountId, job.id);
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
@@ -1034,9 +1037,18 @@ export default async function JobDetailPage({
                     { label: '40 hrs', value: '40' },
                   ]}
                 />
-                {/* Labor and margin now; it stopped deciding calendar days when
-                    the job gained a real end date. */}
-                <p className="job-meta">Used for labor cost and margin — not for how many days this blocks.</p>
+                {/* WHAT THIS NOTE USED TO SAY WAS HALF WRONG.
+                    "Used for labor cost and margin — not for how many days this
+                    blocks." The first clause is true and the second was true
+                    only of the SPAN: the end date decides which days, but the
+                    hours decide how much of each of them, because every reader
+                    of the calendar divides one by the other. An owner doing
+                    three hours a day at one site was being told the number that
+                    expresses it had nothing to do with the calendar. */}
+                <p className="job-meta">
+                  Labor cost and margin — and, across a date range, how much of each day the job takes.
+                  The last day is what decides which days.
+                </p>
               </div>
               <div className="field">
                 <label htmlFor="quotedAmount">Quoted amount ($)</label>
@@ -1159,6 +1171,9 @@ export default async function JobDetailPage({
           <JobScheduleFields
             scheduledFor={job.scheduled_for ?? ''}
             scheduledTime={job.scheduled_time?.slice(0, 5) ?? ''}
+            scheduledUntil={job.scheduled_until ?? ''}
+            estimatedHours={Number(job.estimated_hours) || null}
+            capacityHours={scheduleDayHours}
           />
         </form>
 

@@ -471,6 +471,11 @@ export default async function SchedulePage({
       estimated_hours: Number.isFinite(Number(job.estimated_hours)) && Number(job.estimated_hours) > 0
         ? Number(job.estimated_hours)
         : null,
+      // Whether the SPAN was stated or worked out. The occurrences reaching the
+      // calendar are already one per day, so this is the only thing left that
+      // can tell "runs Mon–Sat, three hours a day" from "eighteen hours, which
+      // is about three days of work" — and they draw differently.
+      scheduled_until: job.scheduled_until ?? null,
       crew_initials: (assignmentsByJob[job.id] ?? [])
         .map((crewId) => crewInitialsById.get(crewId))
         .filter((initials): initials is string => Boolean(initials)),

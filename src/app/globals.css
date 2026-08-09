@@ -10098,6 +10098,32 @@ button.inbox-thread-item {
   scroll-margin-top: 1rem;
 }
 
+/* THE ARITHMETIC, SAID OUT LOUD.
+   "6 days · about 3 hrs a day. Leaves about 5 hrs a day free to book
+   alongside." The app has always divided hours by days to decide how much of a
+   day a job takes; it just never told anybody, so the one way to check whether
+   it had understood "three hours a day at that site" was to go and look at the
+   calendar. Quiet by default — it is a confirmation, not a warning — and only
+   the impossible case (more hours than the range can hold) raises its voice. */
+.job-day-load {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--edge-t12);
+  border-left: 3px solid var(--edge-t22);
+  border-radius: 9px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.job-day-load.is-over {
+  border-color: var(--cedge-amber-19);
+  border-left-color: var(--warn);
+  background: rgba(255, 209, 102, 0.08);
+  color: var(--ink-amber-1);
+}
+:root[data-theme='light'] .job-day-load.is-over { color: var(--warn); }
+
 /* THE SECOND WAY TO BOOK A JOB, and no longer the only one.
    Texting the client three dates used to BE the scheduling card; setting a date
    yourself lived three sections away inside "edit client details". So the

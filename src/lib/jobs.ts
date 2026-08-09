@@ -913,18 +913,39 @@ export async function updateJobSchedule(
   accountId: string,
   jobId: string,
   scheduledFor: string | null,
-  scheduledTime: string | null
+  scheduledTime: string | null,
+  /**
+   * The last day, when the caller has one.
+   *
+   * THREE STATES, and they are not the same:
+   *   undefined — the caller is not talking about the range. Carry the
+   *               existing one (the drag-on-the-calendar case below).
+   *   a date    — the owner set it. Use it.
+   *   null      — the owner cleared it. This is a one-day job now.
+   *
+   * `?? undefined` would collapse the last two into the first and make the
+   * "actually it's one day after all" edit impossible to save.
+   */
+  scheduledUntil?: string | null,
 ): Promise<Job> {
-  // Moving a 3-day job has to keep it 3 days. Dragging it across the calendar
-  // is a reschedule, not a re-estimate — so read the current range and carry
-  // its length to the new start date.
-  const current = await getJob(supabase, accountId, jobId);
-  const span = daysBetweenInclusive(current?.scheduled_for, current?.scheduled_until);
-  const scheduledUntil = scheduledFor && span && span > 1 ? addDaysToDateKey(scheduledFor, span - 1) : null;
+  let nextUntil: string | null;
+  if (scheduledUntil !== undefined) {
+    // A range that runs backwards is not a range. Ignoring it beats storing it
+    // — daysBetweenInclusive returns null for one, which every reader would
+    // then treat as a single day at a start date the owner did not pick.
+    nextUntil = scheduledFor && scheduledUntil && scheduledUntil > scheduledFor ? scheduledUntil : null;
+  } else {
+    // Moving a 3-day job has to keep it 3 days. Dragging it across the calendar
+    // is a reschedule, not a re-estimate — so read the current range and carry
+    // its length to the new start date.
+    const current = await getJob(supabase, accountId, jobId);
+    const span = daysBetweenInclusive(current?.scheduled_for, current?.scheduled_until);
+    nextUntil = scheduledFor && span && span > 1 ? addDaysToDateKey(scheduledFor, span - 1) : null;
+  }
 
   return patchJob(supabase, accountId, jobId, {
     scheduled_for: scheduledFor,
-    scheduled_until: scheduledUntil,
+    scheduled_until: nextUntil,
     scheduled_time: scheduledTime,
   });
 }

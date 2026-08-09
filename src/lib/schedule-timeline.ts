@@ -70,24 +70,51 @@ export const MIN_BLOCK_MINUTES = 30;
  * of them carrying the same scheduled_time and the same total estimated_hours.
  * Rendering each of those as the full estimate would draw a 20-hour block on
  * three consecutive days — three times the work, none of it true. So the total
- * is spent across the days it runs: full working days until the last one, which
- * gets the remainder.
+ * is spent across the days it runs.
+ *
+ * HOW it is spent depends on where the span came from, and getting that wrong
+ * is what made the week view disagree with the month view about the same job.
+ *
+ *   ENTERED range (scheduled_until is set). The owner said "this runs Monday
+ *   to Saturday". Eighteen hours across those six days is three hours a day,
+ *   evenly — a contractor doing a few hours at one site each morning, which is
+ *   an ordinary way to work and one this app could already express everywhere
+ *   except here. lib/booking's computeHoursByDate has divided evenly for as
+ *   long as the end date has existed, and the month bar and the booking engine
+ *   read it; this view front-loaded instead and drew 8h, 8h, 2h and then three
+ *   half-hour slivers. Two answers to one question on adjacent tabs.
+ *
+ *   GUESSED span (no end date; the span was derived as hours ÷ capacity).
+ *   Nobody said anything about pacing, and the only thing the derivation
+ *   assumed was full days until the work runs out. Front-loading is that
+ *   assumption drawn honestly, so it stays.
  */
 export function occurrenceMinutes({
   totalHours,
   dayIndex,
   dayCount,
   workdayHours,
+  spanEntered = false,
 }: {
   totalHours: number | null | undefined;
   dayIndex: number;
   dayCount: number;
   workdayHours: number;
+  /** True when the owner entered an end date, rather than one being derived. */
+  spanEntered?: boolean;
 }): number {
   const capacity = Math.max(1, workdayHours) * 60;
   const total = Number(totalHours);
   if (!Number.isFinite(total) || total <= 0) return DEFAULT_JOB_MINUTES;
   if (dayCount <= 1) return Math.max(MIN_BLOCK_MINUTES, Math.min(total * 60, capacity));
+
+  if (spanEntered) {
+    // Capped at the working day for the same reason computeHoursByDate caps
+    // it: a range too short for the hours cannot be drawn as a 20-hour block,
+    // and the form is where that mismatch gets named (see lib/job-day-load).
+    const perDay = Math.min(capacity, (total * 60) / dayCount);
+    return Math.max(MIN_BLOCK_MINUTES, perDay);
+  }
 
   const spent = Math.min(dayIndex, dayCount - 1) * capacity;
   const remaining = total * 60 - spent;

@@ -97,6 +97,10 @@ export default async function DemoSchedulePage({ searchParams }: { searchParams:
       estimated_hours: Number.isFinite(Number(job.estimated_hours)) && Number(job.estimated_hours) > 0
         ? Number(job.estimated_hours)
         : null,
+      // Same as the real page: an entered range spreads its hours evenly, a
+      // guessed one fills day after day. The demo must not show a shape the
+      // app never draws.
+      scheduled_until: job.scheduled_until ?? null,
       crew_initials: (assignmentsByJob[job.id] ?? [])
         .map((crewId) => crewInitialsById.get(crewId))
         .filter((value): value is string => Boolean(value)),

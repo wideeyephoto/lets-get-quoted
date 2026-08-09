@@ -91,8 +91,16 @@ describe('the date picker cannot submit nothing', () => {
     expect(SCHEDULE_FIELDS).toContain("{scheduledFor ? 'Move this job' : 'Put it on the calendar'}");
   });
 
-  it('points multi-day work at the field that handles it', () => {
-    expect(SCHEDULE_FIELDS).toContain('Set an end date in Job details');
+  /**
+   * It used to POINT at the field: "Running over more than one day? Set an end
+   * date in Job details." The field is here now — see test/job-day-load — so
+   * the pointer is gone rather than left aiming at a place the work no longer
+   * happens.
+   */
+  it('handles multi-day work itself instead of pointing at another form', () => {
+    expect(SCHEDULE_FIELDS).not.toContain('Set an end date in Job details');
+    expect(SCHEDULE_FIELDS).toContain('name="scheduledUntil"');
+    expect(SCHEDULE_FIELDS).toContain('Leave blank for a one-day job');
   });
 });
 
