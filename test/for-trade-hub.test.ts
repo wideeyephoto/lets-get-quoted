@@ -329,6 +329,28 @@ describe('nothing scrolls sideways', () => {
     expect(ruleFor('.page')).not.toContain('overflow-x: hidden');
   });
 
+  /**
+   * …AND THE BACKSTOP ATE THE GLOW.
+   *
+   * The hero art sits flush against the right edge of the page box and its
+   * drop-shadows reach ~70px past the image, so `clip` — cutting at the padding
+   * box — sliced the warm rim off in a hard vertical line down the right-hand
+   * side. overflow-clip-margin extends the PAINT region and leaves the clip on
+   * layout alone, so a 400-character word still cannot widen the document.
+   */
+  it('lets the hero glow paint past the clip without letting layout through', () => {
+    const page = ruleFor('.page');
+    expect(page).toContain('overflow-clip-margin: 5rem');
+    // The margin only means anything while the overflow is `clip`.
+    expect(page).toContain('overflow-x: clip');
+    // Room for the widest shadow the image casts, with headroom.
+    const reach = Math.max(
+      ...[...ruleFor('.heroShot').matchAll(/drop-shadow\(0 \d+px (\d+)px/g)].map((m) => Number(m[1])),
+    );
+    expect(reach).toBeGreaterThan(0);
+    expect(5 * 16).toBeGreaterThanOrEqual(reach);
+  });
+
   it('steps the grids down: four, then two, then one', () => {
     expect(CSS).toContain('@media (max-width: 980px)');
     expect(CSS).toContain('@media (max-width: 760px)');

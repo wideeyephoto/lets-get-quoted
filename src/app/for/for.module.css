@@ -39,7 +39,11 @@
 
 .page {
   position: relative;
-  max-width: 1180px;
+  /* 1280, not 1180. The hero art is 58% of this row, so every pixel of measure
+     is 0.58 of a pixel of device shot — and widening the page is how the shot
+     grows without taking the width off the headline, which the brief pins at
+     40–45%. At 1440 this still leaves 80px of margin down each side. */
+  max-width: 1280px;
   margin: 0 auto;
   padding: 2.5rem 1.25rem 4rem;
   color: var(--ink);
@@ -47,6 +51,25 @@
      backstop that keeps a long unbroken word (a trade name, a URL) from
      widening the document rather than wrapping. */
   overflow-x: clip;
+  /**
+   * …AND THE BACKSTOP WAS EATING THE GLOW.
+   *
+   * The hero art sits flush against the right edge of this box, and its
+   * drop-shadows reach ~70px past the image. `clip` cuts at the padding box, so
+   * the warm rim and the ambient shadow were sliced off in a hard vertical line
+   * down the right-hand side — the clip doing exactly what it was asked to,
+   * to the wrong thing.
+   *
+   * overflow-clip-margin extends the PAINT region without touching the clip on
+   * layout: a shadow may spill 5rem, a 400-character word still cannot widen
+   * the document, and clipped content is never scrollable either way. So the
+   * backstop keeps working and the glow survives.
+   *
+   * Chrome 90+, Firefox 102+, Safari 16.4+. Anywhere older this is ignored and
+   * the glow clips as it did — a cosmetic loss on the oldest browsers, not a
+   * broken layout.
+   */
+  overflow-clip-margin: 5rem;
 }
 
 /* The navy, full-bleed. The <main> is 1180px wide and centred, so painting the
@@ -214,10 +237,12 @@
 .hero {
   position: relative;
   display: grid;
-  /* 42/58. The copy column is the narrower one on purpose: at 1180px it lands
-     at ~470px, which holds the headline in three lines without a river. */
+  /* 42/58. The copy column is the narrower one on purpose: at 1280px it lands
+     at ~510px, which holds the headline in three lines without a river. */
   grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
-  gap: 2.5rem;
+  /* Tighter than the 2.5rem it opened at — the devices read as belonging to the
+     sentence beside them rather than as a second column of the page. */
+  gap: 1.75rem;
   align-items: center;
   padding-top: 1.5rem;
 }
@@ -323,9 +348,11 @@
   z-index: 1;
   width: 100%;
   height: auto;
-  /* The master is 956px wide and the column is ~640px at 1180, so it is never
-     drawn above ~1.5x density and never upscaled past its own pixels. */
-  max-width: 660px;
+  /* Uncapped in practice — the column drives the size, and this only stops the
+     shot running away on some future wider layout. The master is 956px and the
+     column is ~703px at 1280, so it still renders at ~1.36x density and is
+     never upscaled past its own pixels. */
+  max-width: 740px;
   /**
    * DEPTH ON THE OBJECT ITSELF.
    *

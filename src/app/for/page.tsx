@@ -186,7 +186,7 @@ export default function TradeIndexPage() {
               width={956}
               height={642}
               priority
-              sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, 58vw"
+              sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, (max-width: 1360px) 56vw, 703px"
             />
           </div>
         </section>
