@@ -76,12 +76,40 @@ export default function ModalDialog({
     // Prevent the page behind the modal from scrolling.
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
+    /**
+     * ...and from being reached, which is a different thing.
+     *
+     * The dialog is `aria-modal`, but that is a promise to assistive tech about
+     * what is behind it, not an instruction to the browser — Tab still walked
+     * out of "New message" and into the inbox behind the backdrop, where every
+     * conversation link and the whole nav rail were operable through the scrim.
+     * `inert` on the body's other children is what actually holds, and doing it
+     * per sibling rather than on <body> is what leaves the portal — a child of
+     * <body> itself — alive.
+     *
+     * Captured as a list rather than re-queried on close: a Server Action can
+     * revalidate the page underneath while the dialog is open, and the set of
+     * body children is not guaranteed to be the same one we marked.
+     *
+     * Every backdrop is spared, not just this one, so a dialog opened from
+     * inside another does not silence its parent.
+     */
+    const inerted = Array.from(document.body.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && !el.classList.contains('app-modal-backdrop'),
+    );
+    inerted.forEach((el) => el.toggleAttribute('inert', true));
+
     closeRef.current?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = previousOverflow;
+      inerted.forEach((el) => el.toggleAttribute('inert', false));
     };
-  }, [open]);
+    // `mounted` too: the portal only exists after it flips, and with
+    // defaultOpen the dialog is already open by then — without it, the one
+    // modal that opens on load would be the one that never inerted anything.
+  }, [open, mounted]);
 
   return (
     <>

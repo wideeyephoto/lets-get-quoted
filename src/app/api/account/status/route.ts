@@ -8,6 +8,7 @@ import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { countUnreadMessages } from '@/lib/messages';
 import { quickStopNavState, quickStopState } from '@/lib/quick-stop-state';
+import { pickBusinessName } from '@/lib/business-name';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -149,7 +150,15 @@ export async function GET() {
     onboarded: account?.connect_onboarded ?? false,
     sitePublished,
     siteUrl,
-    businessName: site?.company_name || account?.business_name || null,
+    // The same ladder every outbound message uses, rather than a second one
+    // spelled out by hand here. The difference is the placeholder: this used to
+    // print the literal "My Business" that signup writes into
+    // accounts.business_name, so the rail showed one name, the website showed
+    // another and the texts showed a third — three identities for one business,
+    // which is what a customer sees as inconsistency and we saw as three
+    // different fields. '' as the fallback because the rail renders nothing at
+    // all rather than a stand-in name.
+    businessName: pickBusinessName(site, account, '') || null,
     newQuoteRequestCount,
     jobsNeedingAttentionCount,
     unscheduledJobCount,

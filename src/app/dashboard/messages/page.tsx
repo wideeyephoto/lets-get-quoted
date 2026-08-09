@@ -3,16 +3,17 @@ import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { fullDate } from '@/lib/recurring-display';
 import { conversationPreview, groupByDay, groupRuns, initialsFor, messageContext } from '@/lib/message-context';
+import { conversationLinkLabel, inboxEmptyState, type InboxFilter } from '@/lib/inbox-view';
+import { linkifyMessage } from '@/lib/message-linkify';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
 import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction, addPhoneAsClientAction } from './actions';
-import QuickReplies from './QuickReplies';
+import SavedReplies from './SavedReplies';
 import ComposeMessage from './ComposeMessage';
 import AddAsCustomer from './AddAsCustomer';
 import ScrollToLatest from './ScrollToLatest';
 import SaveButton from '@/components/save-button';
-import OutgoingTextCatalogue from './OutgoingTextCatalogue';
 
 function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -24,6 +25,37 @@ const FILTERS = [
   { key: 'reply', label: 'Needs reply' },
 ] as const;
 
+/**
+ * What a message body renders as.
+ *
+ * A texted link is 60-odd unbreakable characters, and the raw thing turned one
+ * bubble into a five-line brick of hex on a phone. The anchor keeps the whole
+ * URL; the bubble shows what it IS.
+ */
+function MessageBody({ body }: { body: string }) {
+  const segments = linkifyMessage(body);
+  return (
+    <p>
+      {segments.map((segment, index) =>
+        segment.kind === 'link' ? (
+          <a
+            key={index}
+            className="inbox-bubble-link"
+            href={segment.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={segment.href}
+          >
+            {segment.label}
+          </a>
+        ) : (
+          <span key={index}>{segment.text}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
 export default async function MessagesPage({
   searchParams,
 }: {
@@ -34,8 +66,11 @@ export default async function MessagesPage({
 
   // Filtering happens before the active thread is chosen, so opening the page
   // on "Unread" lands you in an unread thread rather than on an empty pane.
-  const query = (searchParams.q ?? '').trim().toLowerCase();
-  const filter = FILTERS.some((option) => option.key === searchParams.filter) ? searchParams.filter : 'all';
+  const rawQuery = (searchParams.q ?? '').trim();
+  const query = rawQuery.toLowerCase();
+  const filter: InboxFilter = FILTERS.some((option) => option.key === searchParams.filter)
+    ? (searchParams.filter as InboxFilter)
+    : 'all';
   const conversations = allConversations.filter((conversation) => {
     if (filter === 'unread' && conversation.unread === 0) return false;
     // "Needs reply" is a thread whose LAST message came from them. Anything
@@ -79,6 +114,7 @@ export default async function MessagesPage({
     .map(([phone, name]) => ({ phone, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const totalUnread = conversations.reduce((sum, conversation) => sum + conversation.unread, 0);
+  const empty = inboxEmptyState({ total: allConversations.length, filter, query: rawQuery });
 
   return (
     <main className="wide-shell workspace-shell inbox-slate">
@@ -92,20 +128,41 @@ export default async function MessagesPage({
         </div>
         <div className="inbox-header-tools">
           {/* A GET form so search and filter live in the URL: a thread stays
-              linkable, and the back button behaves. */}
-          <form className="inbox-search" method="get">
+              linkable, and the back button behaves.
+
+              THE ACTION AND THE BUTTON ARE BOTH LOAD-BEARING. This was a form
+              with neither, relying on the browser to submit a lone text field
+              on Enter — which it did not do here, so typing a name and pressing
+              Enter reloaded the unfiltered inbox and threw the term away, while
+              the same URL typed by hand filtered correctly. An explicit action
+              takes the destination off the current URL (which carries ?thread=,
+              a param a search must drop), and a real submit button means the
+              form no longer depends on implicit submission at all — it is also
+              the only way to run a search on a touch keyboard that offers
+              "Go" in some browsers and nothing in others. */}
+          <form className="inbox-search" method="get" action="/dashboard/messages" role="search">
             <svg className="inbox-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3.6-3.6" />
             </svg>
-            <input type="search" name="q" defaultValue={searchParams.q ?? ''} placeholder="Search conversations…" aria-label="Search conversations" />
+            <input type="search" name="q" defaultValue={rawQuery} placeholder="Search conversations…" aria-label="Search conversations" />
             {filter !== 'all' ? <input type="hidden" name="filter" value={filter} /> : null}
+            <button type="submit" className="inbox-search-go">Search</button>
+            {rawQuery ? (
+              <Link
+                className="inbox-search-clear"
+                href={filter === 'all' ? '/dashboard/messages' : `/dashboard/messages?filter=${filter}`}
+                aria-label="Clear search"
+              >
+                <span aria-hidden="true">×</span>
+              </Link>
+            ) : null}
           </form>
           <div className="inbox-filters" role="group" aria-label="Filter conversations">
             {FILTERS.map((option) => {
               const params = new URLSearchParams();
               if (option.key !== 'all') params.set('filter', option.key);
-              if (searchParams.q) params.set('q', searchParams.q);
+              if (rawQuery) params.set('q', rawQuery);
               const href = params.toString() ? `/dashboard/messages?${params}` : '/dashboard/messages';
               return (
                 <Link
@@ -124,159 +181,209 @@ export default async function MessagesPage({
         </div>
       </header>
 
-      {conversations.length === 0 ? (
-        <section className="panel workspace-section-card">
-          <p className="empty-state">
-            No conversations yet. When a customer texts you, their message shows up here — or start
-            one yourself with the button above.
-          </p>
-        </section>
-      ) : (
-        <section className={`inbox-layout${threadChosen ? ' show-thread' : ' show-list'}`}>
-          <aside className="panel workspace-section-card inbox-list">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">Conversations</p>
-            </div>
-            <div className="inbox-thread-list">
-              {conversations.map((conversation) => (
-                <Link
-                  key={conversation.phone}
-                  href={`/dashboard/messages?thread=${encodeURIComponent(conversation.phone)}`}
-                  className={`inbox-thread-item${conversation.phone === activePhone ? ' is-active' : ''}`}
-                  // Picking a conversation is a navigation, and the router's
-                  // default is to scroll a new page to the top — so the inbox
-                  // jumped away from the list you just clicked. Nothing above
-                  // the fold changed; only the pane beside it did.
-                  scroll={false}
-                >
-                  <div className="inbox-thread-top">
-                    <strong>{conversation.name ?? formatPhoneDashes(conversation.phone)}</strong>
-                    <span className="inbox-thread-time">{formatTime(conversation.lastAt)}</span>
-                  </div>
-                  <p className="inbox-thread-preview">
-                    {conversation.lastDirection === 'outbound' ? 'You: ' : ''}
-                    {/* A photo-only text has no body, and previewing it as blank
-                        reads as a bug rather than as a picture. */}
-                    {conversationPreview(conversation.lastBody) ||
-                      (conversation.lastHasMedia ? 'Sent a photo' : '')}
-                  </p>
-                  {conversation.unread > 0 ? (
-                    <span className="inbox-unread" aria-label={`${conversation.unread} unread`}>{conversation.unread}</span>
-                  ) : null}
-                </Link>
-              ))}
-            </div>
-          </aside>
-
-          <div className="panel workspace-section-card inbox-thread">
-            {activePhone ? (
-              <>
-                <div className="inbox-thread-head">
-                  <div className="inbox-thread-who">
-                    {/* Only reachable on a phone, where it is the way back to
-                        the list. On a laptop both panes are already on screen
-                        and a Back link there would go nowhere useful. */}
-                    <Link href="/dashboard/messages" className="inbox-back" scroll={false}>
-                      <span aria-hidden="true">←</span> All conversations
-                    </Link>
-                    <h2>{activeName ?? formatPhoneDashes(activePhone)}</h2>
-                    {/* The number is only a subtitle when the heading is a NAME.
-                        Unnamed, the heading already IS the number and repeating
-                        it reads as a rendering fault. */}
-                    {activeName || context.job ? (
-                      <p className="job-meta">
-                        {activeName ? formatPhoneDashes(activePhone) : null}
-                        {activeName && context.job ? ' · ' : null}
-                        {context.job ? context.job.title : null}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="inbox-thread-actions">
-                    {context.client ? (
-                      <Link className="btn secondary" href={`/dashboard/clients/${context.client.id}`}>View customer</Link>
-                    ) : null}
-                    {context.job ? (
-                      <Link className="btn secondary" href={`/dashboard/jobs/${context.job.id}`}>View job</Link>
-                    ) : null}
-                    <a className="btn secondary" href={`tel:${activePhone}`}>Call</a>
-                  </div>
-                </div>
-
-                <div className="inbox-messages">
-                  {messages.length === 0 ? (
-                    <p className="empty-state">No messages in this thread yet.</p>
-                  ) : (
-                    days.map((day) => (
-                      <div className="inbox-day" key={day.key}>
-                        {/* A thread with no day breaks reads as one long argument
-                            about nothing. */}
-                        <p className="inbox-day-divider"><span>{day.label}</span></p>
-                        {/* Runs, not messages. Six replies sent in the same minute
-                            are one turn in the conversation — stamping each of
-                            them with a time and a "Sent" made a thread read as a
-                            receipt printout. The time is said once, at the end of
-                            the run, and only the last bubble gets a tail. */}
-                        {groupRuns(day.items).map((run) => {
-                          const last = run.items[run.items.length - 1];
-                          return (
-                            <div className={`inbox-run inbox-run-${run.direction}`} key={run.items[0].id}>
-                              {/* No avatar beside an incoming run. The bubbles
-                                  carry the side on their own — blue right, black
-                                  left — so the disc was a second answer to a
-                                  question already answered, and the width it
-                                  cost is width the message wanted. */}
-                              <div className="inbox-run-stack">
-                                {run.items.map((message, index) => (
-                                  <div
-                                    key={message.id}
-                                    className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
-                                  >
-                                    {message.body ? <p>{message.body}</p> : null}
-                                    {(message.media_urls ?? []).length > 0 ? (
-                                      <div className="inbox-bubble-media">
-                                        {(message.media_urls ?? []).map((url) => (
-                                          // Opens full size in a new tab; the thumbnail stays
-                                          // small so a thread of photos still scans as a
-                                          // conversation rather than a gallery.
-                                          <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={url} alt="Photo from the customer" loading="lazy" />
-                                          </a>
-                                        ))}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                ))}
-                                <span className="inbox-run-time">
-                                  {formatTime(last.created_at)}
-                                  {run.direction === 'outbound' ? <> · Sent</> : null}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))
-                  )}
-                  <ScrollToLatest threadKey={activePhone ?? ''} />
-                </div>
-
-                <div className="inbox-reply-area">
-                  <QuickReplies templates={templates} targetId="reply-body" />
-                  <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
-                    <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
-                    <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Send</SaveButton>
-                  </form>
-                </div>
-              </>
-            ) : (
-              <p className="empty-state">Pick a conversation to read and reply.</p>
-            )}
+      {/* ONE SHAPE, ALWAYS. An empty result used to replace the whole workspace
+          with a single panel, so searching for a name that matched nothing
+          removed the list, the thread and the search box's own surroundings —
+          the page reorganised itself around the fact that you had mistyped. The
+          empty state now lives INSIDE the list, where the list would be. */}
+      <section className={`inbox-layout${threadChosen ? ' show-thread' : ' show-list'}`}>
+        <aside className="panel workspace-section-card inbox-list">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Conversations</p>
           </div>
+          {conversations.length === 0 ? (
+            <div className="inbox-empty">
+              <p className="inbox-empty-title">{empty.title}</p>
+              <p className="inbox-empty-body">{empty.body}</p>
+              {empty.clear ? (
+                <Link className="btn secondary" href="/dashboard/messages">Show all conversations</Link>
+              ) : null}
+            </div>
+          ) : (
+            <div className="inbox-thread-list">
+              {conversations.map((conversation) => {
+                const name = conversation.name ?? formatPhoneDashes(conversation.phone);
+                const when = formatTime(conversation.lastAt);
+                return (
+                  <Link
+                    key={conversation.phone}
+                    href={`/dashboard/messages?thread=${encodeURIComponent(conversation.phone)}`}
+                    className={`inbox-thread-item${conversation.phone === activePhone ? ' is-active' : ''}`}
+                    // The row's own text is a name, a time, a clipped preview
+                    // and sometimes a badge — read out in full, every row, when
+                    // tabbing the list. The preview is still in the DOM and
+                    // still read in browse mode; this is what the LINK says.
+                    aria-label={conversationLinkLabel({ name, unread: conversation.unread, when })}
+                    // Which conversation is open is a fact the list showed only
+                    // in colour. `page` rather than `true`: the thread is in the
+                    // URL, so this really is the current page.
+                    aria-current={conversation.phone === activePhone ? 'page' : undefined}
+                    // Picking a conversation is a navigation, and the router's
+                    // default is to scroll a new page to the top — so the inbox
+                    // jumped away from the list you just clicked. Nothing above
+                    // the fold changed; only the pane beside it did.
+                    scroll={false}
+                  >
+                    <div className="inbox-thread-top">
+                      <strong>{name}</strong>
+                      <span className="inbox-thread-time">{when}</span>
+                    </div>
+                    <p className="inbox-thread-preview">
+                      {conversation.lastDirection === 'outbound' ? 'You: ' : ''}
+                      {/* A photo-only text has no body, and previewing it as blank
+                          reads as a bug rather than as a picture. */}
+                      {conversationPreview(conversation.lastBody) ||
+                        (conversation.lastHasMedia ? 'Sent a photo' : '')}
+                    </p>
+                    {conversation.unread > 0 ? (
+                      <span className="inbox-unread" aria-hidden="true">{conversation.unread}</span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </aside>
 
-          {/* Who they are and what this is about. Nullable all the way down: a
-              text can arrive from a number nobody in the book owns, and saying
-              so beats an empty shell that reads as a stuck loading state. */}
+        <div className="panel workspace-section-card inbox-thread">
+          {activePhone ? (
+            <>
+              <div className="inbox-thread-head">
+                <div className="inbox-thread-who">
+                  {/* Only reachable on a phone, where it is the way back to
+                      the list. On a laptop both panes are already on screen
+                      and a Back link there would go nowhere useful. */}
+                  <Link href="/dashboard/messages" className="inbox-back" scroll={false}>
+                    <span aria-hidden="true">←</span> All conversations
+                  </Link>
+                  <h2>{activeName ?? formatPhoneDashes(activePhone)}</h2>
+                  {/* The number is only a subtitle when the heading is a NAME.
+                      Unnamed, the heading already IS the number and repeating
+                      it reads as a rendering fault. */}
+                  {activeName || context.job ? (
+                    <p className="job-meta">
+                      {activeName ? formatPhoneDashes(activePhone) : null}
+                      {activeName && context.job ? ' · ' : null}
+                      {context.job ? context.job.title : null}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="inbox-thread-actions">
+                  {context.client ? (
+                    <Link className="btn secondary" href={`/dashboard/clients/${context.client.id}`}>View customer</Link>
+                  ) : null}
+                  {context.job ? (
+                    <Link className="btn secondary" href={`/dashboard/jobs/${context.job.id}`}>View job</Link>
+                  ) : null}
+                  <a className="btn secondary" href={`tel:${activePhone}`}>Call</a>
+                </div>
+              </div>
+
+              <div className="inbox-messages">
+                {messages.length === 0 ? (
+                  <p className="empty-state">No messages in this thread yet.</p>
+                ) : (
+                  days.map((day) => (
+                    <div className="inbox-day" key={day.key}>
+                      {/* A thread with no day breaks reads as one long argument
+                          about nothing. */}
+                      <p className="inbox-day-divider"><span>{day.label}</span></p>
+                      {/* Runs, not messages. Six replies sent in the same minute
+                          are one turn in the conversation — stamping each of
+                          them with a time and a "Sent" made a thread read as a
+                          receipt printout. The time is said once, at the end of
+                          the run, and only the last bubble gets a tail. */}
+                      {groupRuns(day.items).map((run) => {
+                        const last = run.items[run.items.length - 1];
+                        return (
+                          <div className={`inbox-run inbox-run-${run.direction}`} key={run.items[0].id}>
+                            {/* No avatar beside an incoming run. The bubbles
+                                carry the side on their own — blue right, black
+                                left — so the disc was a second answer to a
+                                question already answered, and the width it
+                                cost is width the message wanted. */}
+                            <div className="inbox-run-stack">
+                              {run.items.map((message, index) => (
+                                <div
+                                  key={message.id}
+                                  className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
+                                >
+                                  {message.body ? <MessageBody body={message.body} /> : null}
+                                  {(message.media_urls ?? []).length > 0 ? (
+                                    <div className="inbox-bubble-media">
+                                      {(message.media_urls ?? []).map((url) => (
+                                        // Opens full size in a new tab; the thumbnail stays
+                                        // small so a thread of photos still scans as a
+                                        // conversation rather than a gallery.
+                                        <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src={url} alt="Photo from the customer" loading="lazy" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+                              <span className="inbox-run-time">
+                                {formatTime(last.created_at)}
+                                {run.direction === 'outbound' ? <> · Sent</> : null}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
+                <ScrollToLatest threadKey={activePhone ?? ''} />
+              </div>
+
+              {/* The composer and everything that feeds it, in one block at the
+                  foot of the thread. The saved-reply MANAGER used to be a panel
+                  below the whole inbox — past 900px on a laptop — so adding a
+                  canned reply meant scrolling the box you were adding it for
+                  off the screen. */}
+              <div className="inbox-reply-area">
+                <SavedReplies
+                  templates={templates}
+                  targetId="reply-body"
+                  createAction={createTemplateAction}
+                  deleteAction={deleteTemplateAction}
+                />
+                <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
+                  <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
+                  <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Send</SaveButton>
+                </form>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="empty-state">Pick a conversation to read and reply.</p>
+              {/* The manager, and only the manager — see canInsert. Moving
+                  saved replies into the composer would otherwise have made
+                  them unreachable on an account with no conversations yet,
+                  which is exactly when somebody sits down to write them. */}
+              <div className="inbox-reply-area">
+                <SavedReplies
+                  templates={templates}
+                  targetId="reply-body"
+                  createAction={createTemplateAction}
+                  deleteAction={deleteTemplateAction}
+                  canInsert={false}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Who they are and what this is about. Nullable all the way down: a
+            text can arrive from a number nobody in the book owns, and saying
+            so beats an empty shell that reads as a stuck loading state.
+
+            Only with a thread open. Without one there is nobody for it to
+            describe, and it rendered "this number isn't in your customer book
+            yet" beside a number that did not exist. */}
+        {activePhone ? (
           <aside className="panel workspace-section-card inbox-context">
             {context.client ? (
               <>
@@ -342,62 +449,25 @@ export default async function MessagesPage({
                     <path d="M5.4 19.4a6.6 6.6 0 0 1 13.2 0" />
                   </svg>
                 </span>
-                {activePhone ? <strong className="inbox-ctx-name">{formatPhoneDashes(activePhone)}</strong> : null}
+                <strong className="inbox-ctx-name">{formatPhoneDashes(activePhone)}</strong>
                 <p className="ins-empty-note">
                   This number isn&rsquo;t in your customer book yet, so there&rsquo;s no job or history to show
                   beside it. Adding them as a client links it up.
                 </p>
                 {/* The sentence above has told people to do this for months with
                     nothing to press. */}
-                {activePhone ? (
-                  <AddAsCustomer phone={activePhone} action={addPhoneAsClientAction.bind(null, activePhone)} />
-                ) : null}
+                <AddAsCustomer phone={activePhone} action={addPhoneAsClientAction.bind(null, activePhone)} />
               </div>
             )}
           </aside>
-        </section>
-      )}
-
-      <section className="panel workspace-section-card">
-        {/* Open in Slate: the mockup puts the saved replies on the page rather
-            than behind a disclosure, and a canned reply you have to go looking
-            for is one you retype instead. Still a <details> so the summary is
-            still the way to put it away.
-            Only when there ARE some — opening it on an empty account hands
-            somebody a foot of blank panel and an add form they didn't ask for. */}
-        <details className="workspace-details" open={templates.length > 0}>
-          <summary className="workspace-details-summary">
-            <span className="btn secondary">Saved replies{templates.length > 0 ? ` · ${templates.length}` : ''}</span>
-            <span className="workspace-details-copy">Reuse common responses with one tap.</span>
-          </summary>
-          <div className="template-manager">
-            {templates.length > 0 ? (
-              <div className="template-list">
-                {templates.map((template) => (
-                  <div className="template-row" key={template.id}>
-                    <div className="template-row-main">
-                      <strong>{template.title}</strong>
-                      <span>{template.body}</span>
-                    </div>
-                    <form action={deleteTemplateAction.bind(null, template.id)}>
-                      <button type="submit" className="linklike danger">Delete</button>
-                    </form>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-state">No saved replies yet. Add one below — like &ldquo;On my way&rdquo; or &ldquo;Running about 20 min late.&rdquo;</p>
-            )}
-            <form action={createTemplateAction} className="template-add-form">
-              <input name="title" placeholder="Label (e.g. On my way)" required maxLength={40} aria-label="Reply label" />
-              <textarea name="body" rows={2} placeholder="Full reply text…" required aria-label="Reply text" />
-              <SaveButton pendingLabel="Saving…" savedLabel="Saved ✓">Add saved reply</SaveButton>
-            </form>
-          </div>
-        </details>
+        ) : null}
       </section>
 
-      <OutgoingTextCatalogue />
+      {/* "Every text we send" — all 32 of them, written out — used to sit here,
+          and it is the reason this page ran past 16,000px on a phone. It is
+          reference material about what the AUTOMATIONS say, read once when you
+          are deciding whether to switch one on, and it now lives on the page
+          that holds those switches: /dashboard/automations#outgoing-texts. */}
     </main>
   );
 }

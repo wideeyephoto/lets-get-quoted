@@ -8,7 +8,7 @@ const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts),
 const SMS = read('src', 'lib', 'sms.ts');
 
 /**
- * The catalogue on the messages page claims to be EVERY text this app sends.
+ * The catalogue on the automations page claims to be EVERY text this app sends.
  * That claim is the whole value of the page — a list that is merely most of
  * them is worse than no list, because it reads as complete.
  */

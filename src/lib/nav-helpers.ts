@@ -82,6 +82,26 @@ export const AUTOMATION_ANCHORS = [
   'daily-digest',
 ] as const;
 
+/**
+ * The card on /dashboard/automations that owns a given automation switch.
+ *
+ * The two vocabularies are one apart: the switch for online booking is stored
+ * in a column called `booking`, and the card that holds it is anchored
+ * `booking-availability` — the anchor names the section, the key names the
+ * column. Every other switch happens to spell them the same, which is exactly
+ * why the one that does not needs a translation somebody can find.
+ *
+ * Returns null when a key has no card of its own (the email-confirmation
+ * switches live inside other cards) — the caller sends those to the top of the
+ * page rather than to a fragment that resolves to nothing.
+ */
+const AUTOMATION_KEY_ANCHOR: Record<string, string> = { booking: 'booking-availability' };
+
+export function automationAnchorFor(key: string): string | null {
+  const anchor = AUTOMATION_KEY_ANCHOR[key] ?? key;
+  return (AUTOMATION_ANCHORS as readonly string[]).includes(anchor) ? anchor : null;
+}
+
 /** Does this hash belong to a section that now lives on /dashboard/automations? */
 export function isAutomationsAnchor(rawHash: string | null | undefined): boolean {
   const hash = (rawHash || '').replace(/^#/, '');

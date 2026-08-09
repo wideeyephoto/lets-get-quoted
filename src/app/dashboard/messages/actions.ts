@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendInboxReplySms } from '@/lib/sms';
+import { loadBusinessName } from '@/lib/business-name';
 import { logOutboundMessage, markThreadRead } from '@/lib/messages';
 import { createMessageTemplate, deleteMessageTemplate } from '@/lib/message-templates';
 
@@ -20,8 +21,14 @@ export async function sendReplyAction(phone: string, formData: FormData) {
     throw new Error('This contact opted out of texts (replied STOP). They must text START before you can message them again.');
   }
 
-  const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
-  const businessName = account?.business_name || "Let's Get Quoted contractor";
+  // The SAME name every other text in the product signs with. This read
+  // accounts.business_name on its own, which on a live account is the signup
+  // placeholder "My Business" — the owner's real name is in sites.company_name,
+  // where the builder writes it — and fell back to OUR name when even that was
+  // blank. So a customer who booked BrokePipes got a reply from "My Business",
+  // or from "Let's Get Quoted contractor", in the one thread where they are
+  // most likely to reply. See lib/business-name for the ladder.
+  const businessName = await loadBusinessName(supabase, accountId);
 
   const providerId = await sendInboxReplySms({ phone: normalized, businessName, body });
   // The contact texted first, so consent is implied — keep the ledger current.
@@ -72,8 +79,10 @@ export async function startConversationAction(formData: FormData) {
     throw new Error('This contact opted out of texts (replied STOP). They must text START before you can message them again.');
   }
 
-  const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
-  const businessName = account?.business_name || "Let's Get Quoted contractor";
+  // Same ladder as the reply above — and it matters more here, because this is
+  // a text to somebody who has not messaged first and has only the name at the
+  // top to decide whether it is spam.
+  const businessName = await loadBusinessName(supabase, accountId);
 
   const providerId = await sendInboxReplySms({ phone: normalized, businessName, body });
   await recordSmsConsent(accountId, normalized, 'inbox_compose');

@@ -190,6 +190,25 @@ export const STRIPE_SETUP_HREF = '/dashboard/settings#payments';
 
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
+/**
+ * The width at which the rail stops being furniture and becomes a drawer.
+ *
+ * It is 1080 in globals.css — the media query that gives .sidenav its
+ * translateX(-100%) — and it was 900 here, in the body-lock effect, which meant
+ * that between 901 and 1080px the drawer opened over a page that was still
+ * scrolling under it. One constant now, named after what it means.
+ */
+const DRAWER_QUERY = '(max-width: 1080px)';
+
+/**
+ * Everything inside the drawer that a Tab can land on, in DOM order.
+ *
+ * Queried fresh on each Tab rather than cached: the Account menu opens and
+ * closes inside the rail, and a list captured on open would send Shift+Tab to
+ * a button that is no longer there.
+ */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 // Marketing pages that draw their OWN header — see the early return below. One
 // list rather than eight prefix checks so adding a page is one line and cannot
 // drift from the others.
@@ -266,6 +285,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const railNewRef = useRef<HTMLDivElement>(null);
   const barNewRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
+  // The two things the open drawer covers. Both are made `inert` while it is
+  // open — see the containment effect below.
+  const mainRef = useRef<HTMLDivElement>(null);
+  const mobileBarRef = useRef<HTMLElement>(null);
   // The rail's footer menu — Settings, Help, theme, Stripe, Sign out. One
   // boolean rather than the 'rail' | 'bar' the New menu needs, because there is
   // only ever one of these in the DOM.
@@ -394,7 +417,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   useEffect(() => {
     if (!isNavOpen) return;
     const body = document.body;
-    const drawer = window.matchMedia('(max-width: 900px)');
+    const drawer = window.matchMedia(DRAWER_QUERY);
     const saved = {
       overflow: body.style.overflow,
       position: body.style.position,
@@ -453,6 +476,74 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [isNavOpen, closeNav]);
+
+  /**
+   * THE OPEN DRAWER IS MODAL, so make it behave like one.
+   *
+   * It already looks modal — it comes with a scrim, it pins the body, Escape
+   * shuts it — and it was none of those things to a keyboard. Tab walked
+   * straight past the nav into the dashboard behind the scrim, where you could
+   * operate controls you could not see, and Shift+Tab from the first link went
+   * up into the mobile top bar. Two halves fix it: `inert` on everything the
+   * drawer covers (the page, and the bar the toggle lives in), and a wrap at
+   * each end of the rail so Tab cycles inside it.
+   *
+   * `inert` is set imperatively because React 18 has no typed prop for it and
+   * a stringly-typed one hydrates as the literal "true". Feature detection is
+   * unnecessary: on a browser without it, toggleAttribute is a no-op on an
+   * attribute nothing reads, and the visibility:hidden rule on the CLOSED rail
+   * — which is the finding that mattered — does not depend on this at all.
+   *
+   * Above the drawer width the rail is docked furniture and none of this
+   * applies; the media listener releases it if the window is widened while the
+   * drawer happens to be open.
+   */
+  useEffect(() => {
+    if (!isNavOpen) return;
+    const drawer = window.matchMedia(DRAWER_QUERY);
+    const covered = () => [mainRef.current, mobileBarRef.current].filter(Boolean) as HTMLElement[];
+    let contained = false;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !railRef.current) return;
+      const items = Array.from(railRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !railRef.current.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const contain = () => {
+      if (contained) return;
+      covered().forEach((el) => el.toggleAttribute('inert', true));
+      document.addEventListener('keydown', onKey);
+      // Into the drawer, not merely near it — otherwise the first Tab still
+      // starts from wherever the toggle was, which is now inert.
+      railRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+      contained = true;
+    };
+    const release = () => {
+      if (!contained) return;
+      covered().forEach((el) => el.toggleAttribute('inert', false));
+      document.removeEventListener('keydown', onKey);
+      contained = false;
+    };
+    const sync = () => (drawer.matches ? contain() : release());
+
+    sync();
+    drawer.addEventListener('change', sync);
+    return () => {
+      drawer.removeEventListener('change', sync);
+      release();
+    };
+  }, [isNavOpen]);
 
   // The "+ New" menu closes on outside click or Escape. On open, focus moves to
   // the first item; on Escape it returns to the trigger.
@@ -771,6 +862,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           href={href}
           key={href}
           className={`sidenav-link${brand ? ' sidenav-link-brand' : ''}${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
+          // Which row you are standing on was said in colour and in nothing
+          // else, so a screen reader had no way to know — 18 identical links.
+          aria-current={active ? 'page' : undefined}
           // Also on the row, not just the pill inside it, so the row can carry
           // the state's colour without CSS having to reach into a child with
           // :has() — which not every browser this ships to supports.
@@ -812,7 +906,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
     return (
       <div className="chrome-shell chrome-shell-sidenav">
-        <header className="sidenav-mobilebar">
+        <header className="sidenav-mobilebar" ref={mobileBarRef}>
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
             <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
           </Link>
@@ -1036,7 +1130,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
         </aside>
 
-        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>
+        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`} ref={mainRef}>
           {/* HELP, FROM ANY PAGE, WITHOUT HUNTING FOR IT.
               Help moved into the Account menu, which is right — it belongs with
               the things you look for under your own name — but a menu is one

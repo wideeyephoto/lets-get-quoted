@@ -14,6 +14,7 @@ import MissedCallSection from '../settings/MissedCallSection';
 import ReviewRequestSection from '../settings/ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import OpenAnchoredCard from './OpenAnchoredCard';
+import OutgoingTextCatalogue from './OutgoingTextCatalogue';
 import {
   enableRecommendedAutomationsAction,
   sendFollowupTestAction,
@@ -1013,6 +1014,20 @@ export default async function AutomationsPage() {
             </SaveButton>
           </form>
         </AutomationCard>
+
+        {/* WHAT THE SWITCHES ABOVE ACTUALLY SAY.
+            This lived at the foot of the text inbox, which is the wrong page
+            twice over: the inbox is a working surface you open forty times a
+            day and this is reference material you read once, and none of the
+            32 messages in it is something the inbox sends — they are the output
+            of the automations on THIS page. It cost the inbox ~10,000px of
+            height on a phone.
+
+            Kept as a `<details>`, closed. It is long by nature, and the point
+            of moving it was to stop a long thing sitting open under a short
+            one. */}
+        <p className="automation-group">In your customers&rsquo; words</p>
+        <OutgoingTextCatalogue />
 
         {settingsHistory.length > 0 ? (
           <>
