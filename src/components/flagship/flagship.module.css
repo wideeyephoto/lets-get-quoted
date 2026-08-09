@@ -5739,3 +5739,84 @@
    and it covers the last row of the panel. */
 .root :global(.site-header[data-menu="open"] .header-cta) { display: none; }
 .root :global(.site-header[data-menu="open"] ~ .mobile-cta) { display: none; }
+
+/* ===========================================================================
+   §102 — THE TRADE ORBIT
+
+   Five tool renders circling the hero copy, one lap every 68 seconds. The
+   homepage's first screen said "Run your contracting business" in words and
+   nothing else in it said whose business.
+
+   Positions come from the component (src/components/flagship/trade-orbit.tsx),
+   which writes transform and opacity per frame; the geometry and the fade rule
+   are in src/lib/trade-orbit.ts, where they are tested. Everything here is the
+   part that does not move.
+   =========================================================================== */
+
+/* z-index: -1 is the entire z-order answer, and it is why nothing in the hero
+   copy had to be touched. .hero already declares isolation: isolate (§99 gave
+   it that for the glare), so a negative-z child paints ABOVE the section's
+   gradient and BELOW every in-flow element — headline, sub, both buttons, the
+   proof line and the product frame. An object crossing the right side slides
+   under the screenshot and comes back out. */
+.root :global(.trade-orbit) {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  /* Set by the component on measure; the fallback keeps the served HTML sane
+     if the effect never runs. */
+  --orbit-scale: 1;
+  /* Nothing is seen until the first measurement lands — otherwise five objects
+     paint stacked at the origin for a frame. */
+  opacity: 0;
+  transition: opacity .6s ease;
+}
+.root :global(.trade-orbit[data-ready="true"]) { opacity: 1; }
+
+.root :global(.trade-orbit-item) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: calc(var(--w) * var(--orbit-scale) * 1px);
+  height: calc(var(--h) * var(--orbit-scale) * 1px);
+  /* Composited, and the only property the loop writes besides opacity. */
+  will-change: transform, opacity;
+  /* drop-shadow and not box-shadow: these are cut-outs, and only drop-shadow
+     follows the alpha channel rather than the element's box. */
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, .55));
+}
+.root :global(.trade-orbit-item img) { display: block; width: 100%; height: 100%; }
+
+/* The path, drawn. Sized and placed by the component. */
+.root :global(.trade-orbit-ring) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid rgba(255, 101, 29, .15);
+  border-radius: 50%;
+}
+
+/* THE HERO GOES TO ONE COLUMN AT 1100 (the .hero-split rule further up this
+   file), and one column means the copy is 691-720px wide inside a 768-1100px
+   section. There is no margin left to orbit in: an ellipse that cleared the
+   copy horizontally would need rx ~= 425 in a 768px box. So the layer is off
+   below the two-column breakpoint, and the component's own matchMedia carries
+   the same number so the loop never starts there either.
+
+   The hero still looks complete without it, which was one of the acceptance
+   criteria — nothing here is load-bearing. */
+@media (max-width: 1100px) {
+  .root :global(.trade-orbit) { display: none; }
+}
+
+/* Reduced motion keeps the objects and loses the movement. The component
+   places them once and never starts the loop; this stops the reveal fading in
+   as well, so the hero simply has five tools in it. */
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.trade-orbit) { transition: none; }
+  .root :global(.trade-orbit-item) { will-change: auto; }
+}

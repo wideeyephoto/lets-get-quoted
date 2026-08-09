@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
+import TradeOrbit from './trade-orbit';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import CommandCenterDeck, { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
@@ -585,6 +586,11 @@ export default function FlagshipHome() {
           of it. */}
       <section className="hero hero-split" id="main-content">
         <Glare />
+        {/* Five trade objects on a 68-second orbit around the copy. After the
+            glare so it sits above it — both are z-index:-1 children of a section
+            that isolates, so they stack in DOM order and both stay behind the
+            headline, the buttons and the product frame. */}
+        <TradeOrbit />
         <div className="hero-copy" data-rise>
           <h1>Run your contracting business.<br /><em>All in one place.</em></h1>
           <p className="hero-sub">
