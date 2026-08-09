@@ -129,8 +129,24 @@ export function sortQueue<T extends QueueJob>(jobs: T[], sort: QueueSort, todayK
  * What a row says about when a job runs, relative to today. The date itself is
  * already on the row — this is the word beside it that says whether it matters
  * this morning.
+ *
+ * STATUS COMES FIRST, and it did not use to. This read only the date, so a job
+ * finished this morning that had been booked for next Tuesday still said
+ * "Upcoming" — the row announced work that was already done. Finishing early is
+ * ordinary in this trade (the crew got a cancellation, the materials landed
+ * sooner), so it is worth naming rather than papering over: "Done early" tells
+ * the owner the date on the row is not a promise anybody is still waiting on.
+ *
+ * "Needs a date" goes too. A completed job that never got scheduled does not
+ * need one; it needs nothing, and a row nagging for it is a to-do that can
+ * never be discharged.
  */
 export function scheduleNote(job: QueueJob, todayKey: string): string {
+  if (job.status === 'archived') return 'Cancelled';
+  if (job.status === 'complete') {
+    if (!job.scheduledFor) return 'Done';
+    return job.scheduledFor > todayKey ? 'Done early' : 'Done';
+  }
   if (!job.scheduledFor) return 'Needs a date';
   if (job.scheduledFor === todayKey) return 'Today';
   if (job.scheduledFor > todayKey) return 'Upcoming';

@@ -108,7 +108,18 @@ export function deriveJobListBadge(
   // once there's a start time, so the two can't disagree.
   if (job.started_at) return { label: WORKFLOW_STAGE_LABEL.in_progress, tone: 'in_progress', title: formatStartedOn(job.started_at) ?? undefined };
   if (job.scheduled_for) return { label: WORKFLOW_STAGE_LABEL.scheduled, tone: 'in_progress' };
-  if (job.status === 'in_progress') return { label: WORKFLOW_STAGE_LABEL.ready_to_invoice, tone: 'in_progress' };
+  // An accepted job with no date on it is APPROVED, not ready to invoice.
+  //
+  // This branch is reached with no scheduled_for and no started_at, so nothing
+  // has been done yet — "Ready to invoice" was telling the owner to bill for
+  // work nobody has started. It was hard to hit while the only routes to
+  // in_progress went through a client who had also picked a date; recording a
+  // verbal acceptance from the lead page reaches it every time, which is what
+  // made the wrong label worth naming. 'approved' is the stage word this
+  // product already defines for exactly this moment.
+  if (job.status === 'in_progress') {
+    return { label: WORKFLOW_STAGE_LABEL.approved, tone: 'in_progress', title: 'Accepted — it still needs a date.' };
+  }
   // Three consecutive states, named for the thing that's actually missing.
   // They used to read "Send quote" and "Add quote" — three characters apart,
   // both parsing as "quote stuff to do", so nobody could tell which step a job
@@ -116,6 +127,51 @@ export function deriveJobListBadge(
   if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Send to client', tone: 'new_lead', title: 'Priced, but the customer has no link to view it yet.' };
   if (job.quoted_amount > 0) return { label: 'Awaiting approval', tone: 'new_lead', title: 'The customer can see the quote — waiting on them.' };
   return { label: 'Quote needed', tone: 'new_lead', title: 'No amount on this job yet.' };
+}
+
+export type CompletionBlockerInput = {
+  /** Client choices still waiting on the customer. */
+  openSelections?: number;
+  /** Punch-list / checklist items nobody has ticked off. */
+  openTasks?: number;
+  /** Money invoiced and not yet paid. */
+  outstandingBalance?: number;
+  /** True when no payment or invoice has been raised at all. */
+  nothingBilled?: boolean;
+};
+
+/**
+ * What is still outstanding on a job about to be closed.
+ *
+ * NOT A BLOCK, and deliberately so. Every item here is something a contractor
+ * can legitimately close a job over: the customer pays by cheque next week, the
+ * two punch-list items got done and nobody ticked them, the tile choice stopped
+ * mattering once they picked one in person. A hard refusal would trap real work
+ * behind a checkbox and teach people to leave jobs open, which is worse than the
+ * problem — an open job is invisible in every "what's left" count in the app.
+ *
+ * So this NAMES them, in the confirm the button already shows. The failure it
+ * addresses is not "the owner completed a job they shouldn't have"; it is
+ * "nobody told them $4,200 was still unpaid and the job disappeared off the
+ * list that would have reminded them".
+ *
+ * Ordered by cost of being wrong: money first, then the customer waiting on us,
+ * then our own list.
+ */
+export function completionBlockers(input: CompletionBlockerInput): string[] {
+  const blockers: string[] = [];
+  const outstanding = Number(input.outstandingBalance) || 0;
+
+  if (outstanding > 0) blockers.push(`${formatMoney(outstanding)} is still unpaid`);
+  else if (input.nothingBilled) blockers.push('nothing has been invoiced or charged yet');
+
+  const selections = Math.max(0, Math.trunc(Number(input.openSelections) || 0));
+  if (selections > 0) blockers.push(`${selections} client ${selections === 1 ? 'choice is' : 'choices are'} still waiting`);
+
+  const tasks = Math.max(0, Math.trunc(Number(input.openTasks) || 0));
+  if (tasks > 0) blockers.push(`${tasks} checklist ${tasks === 1 ? 'item is' : 'items are'} unticked`);
+
+  return blockers;
 }
 
 export type PipelineChecklistItem = {
@@ -178,7 +234,21 @@ export function buildPipelineChecklist(
       // underway" covered both a job sitting on Tuesday's calendar and a job
       // with a crew in the driveway, which is the ambiguity the start button
       // exists to remove — so when it has been pressed, say which one it is.
-      label: startedLabel ? WORKFLOW_STAGE_LABEL.in_progress : milestones.scheduled ? WORKFLOW_STAGE_LABEL.scheduled : 'Schedule the work',
+      //
+      // AND IT STOPS AT COMPLETION. Started-ness is sticky — started_at is a
+      // record of a thing that happened and is never cleared — so a finished
+      // job still had a started_at and this step still read "Work in progress",
+      // directly under a hero badge saying Complete. Completion-first ordering,
+      // the same the `paid` step and deriveJobListBadge already use.
+      // isComplete covers archived too, which is right: a cancelled job has no
+      // work underway either.
+      label: milestones.isComplete
+        ? WORKFLOW_STAGE_LABEL.complete
+        : startedLabel
+          ? WORKFLOW_STAGE_LABEL.in_progress
+          : milestones.scheduled
+            ? WORKFLOW_STAGE_LABEL.scheduled
+            : 'Schedule the work',
       detail:
         startedLabel ??
         (job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until) : 'No date set'),

@@ -41,10 +41,16 @@ function positiveAmount(value: FormDataEntryValue | null): number | null {
 /**
  * How this person is paid, from the form.
  *
- * All three amount fields are posted every time (the form shows one and hides
- * the rest), so only the one belonging to the chosen type is read. Reading them
- * all would store a salary against somebody switched back to hourly, where it
- * would be invisible and wrong.
+ * Only the amount belonging to the chosen type is read. That was already true
+ * when the form posted all three and hid two of them, and it stays true now
+ * that PayTypeFields renders only the matching one: `positiveAmount` of a field
+ * that was never on screen is null, and the branches below discard it anyway.
+ * Reading them all would store a salary against somebody switched back to
+ * hourly, where it would be invisible and wrong.
+ *
+ * hourlyRate is read unconditionally on purpose — for a salaried or day-rate
+ * person it arrives absent, lands as 0, and payColumns then DERIVES the costing
+ * rate from the salary or day rate (see lib/pay-types costingRate).
  */
 function payFromForm(formData: FormData) {
   const payType = normalizePayType(formData.get('payType'));
@@ -57,37 +63,129 @@ function payFromForm(formData: FormData) {
   };
 }
 
-export async function createCrewAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+/**
+ * What "add a crew member" reports back.
+ *
+ * This action used to return void and throw on a bad input, which is what made
+ * the add form silent: a `<form action={createCrewAction}>` has nowhere to put
+ * a result, so a successful add looked exactly like a click that did nothing,
+ * and a rejected one (no phone, a 6 MB photo) surfaced as the framework's error
+ * overlay rather than as a sentence next to the field. Every outcome is a value
+ * now, so AddCrewDrawer can name the person it just added, close itself, and
+ * keep a half-filled form on screen when the save was refused.
+ *
+ * The type and its idle constant live in lib/crew-add-state, not here, because
+ * A 'use server' FILE MAY ONLY EXPORT ASYNC FUNCTIONS. The type would have been
+ * fine — types are erased long before that check runs — but `CREATE_CREW_IDLE`
+ * is an object, and exporting it from this file failed the build with
+ * "A \"use server\" file can only export async functions, found object", in a
+ * message that named an unrelated route. It passed tsc, passed lint, and said
+ * "Compiled successfully" first.
+ *
+ * Re-exported as a type so importers of this module keep working.
+ */
+export type { CreateCrewState } from '@/lib/crew-add-state';
+// Imported as well as re-exported: `export type … from` forwards the name to
+// consumers without binding it in this module's own scope.
+import type { CreateCrewState } from '@/lib/crew-add-state';
 
+/**
+ * Add a crew member — optionally inviting them to the field app in the same press.
+ *
+ * TWO OUTCOMES, ONE FORM. "Save and invite" and "Save without inviting" post the
+ * same fields and differ only in `intent`, because emailing somebody a login is
+ * a decision about that person, not a second kind of record. The invite is sent
+ * AFTER the row exists and inside its own try/catch: a mail provider having a
+ * bad minute must not lose the crew member the owner just typed in.
+ */
+export async function createCrewAction(_previous: CreateCrewState, formData: FormData): Promise<CreateCrewState> {
   const name = (formData.get('name') ?? '').toString().trim();
   const phone = (formData.get('phone') ?? '').toString().trim();
+  const email = optionalText(formData.get('email')) ?? null;
+  const wantsInvite = formData.get('intent') === 'invite';
 
-  if (!name || !phone) {
-    throw new Error('Name and phone are required to add a crew member.');
+  if (!name) return { status: 'error', message: 'Enter their name before saving.' };
+  // A phone number is not paperwork here: assigning somebody to a job texts
+  // them (sendCrewAssignmentSms), a customer picking a time texts them
+  // (sendCrewScheduleSelectedSms), and both route through deliverCrewSms, which
+  // has nothing to send to without a number. A crew member with no phone is one
+  // who is never told about the work.
+  if (!phone) return { status: 'error', message: 'Enter a mobile number — it is how they are told about a job.' };
+  if (phone.replace(/\D/g, '').length < 10) {
+    return { status: 'error', message: 'That number is too short to text. Enter all ten digits.' };
   }
 
-  const photo = formData.get('photo');
-  if (isCrewPhotoFile(photo)) validateCrewPhotoFile(photo);
+  try {
+    const { supabase, accountId } = await requireOwnerContext();
 
-  const member = await createCrewMember(supabase, accountId, {
-    name,
-    phone,
-    email: optionalText(formData.get('email')) ?? null,
-    roleLabel: optionalText(formData.get('roleLabel')),
-    ...payFromForm(formData),
-  });
+    const photo = formData.get('photo');
+    // Checked BEFORE the insert rather than after: validateCrewPhotoFile throws,
+    // and a throw here used to leave a crew member created with no photo and an
+    // error on screen that read as though nothing had been saved at all.
+    if (isCrewPhotoFile(photo)) validateCrewPhotoFile(photo);
 
-  // Seed a baseline consent row so a future STOP from this crew number has a
-  // row to flip (the inbound handler only updates existing rows). Best-effort.
-  await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
+    const member = await createCrewMember(supabase, accountId, {
+      name,
+      phone,
+      email,
+      roleLabel: optionalText(formData.get('roleLabel')),
+      ...payFromForm(formData),
+    });
 
-  if (isCrewPhotoFile(photo)) {
-    const photoPath = await uploadCrewPhoto(accountId, member.id, photo);
-    await updateCrewPhoto(supabase, accountId, member.id, photoPath);
+    // Seed a baseline consent row so a future STOP from this crew number has a
+    // row to flip (the inbound handler only updates existing rows). Best-effort.
+    await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
+
+    if (isCrewPhotoFile(photo)) {
+      const photoPath = await uploadCrewPhoto(accountId, member.id, photo);
+      await updateCrewPhoto(supabase, accountId, member.id, photoPath);
+    }
+
+    let invite: 'sent' | 'skipped' | 'no-email' | 'failed' = 'skipped';
+    if (wantsInvite && !email) {
+      invite = 'no-email';
+    } else if (wantsInvite && email) {
+      try {
+        await sendCrewMagicLink(email, await loadBusinessName(supabase, accountId));
+        invite = 'sent';
+      } catch (inviteError) {
+        console.error(`Crew invite email failed for ${member.id}:`, inviteError);
+        invite = 'failed';
+      }
+    }
+
+    // The Active count, the roster and the stat ticker all live on this route,
+    // so one revalidate is what makes the new person appear without a reload.
+    revalidatePath('/dashboard/crew');
+    revalidatePath('/dashboard/schedule');
+
+    const inviteNote =
+      invite === 'sent'
+        ? ` An invitation to the field app is on its way to ${email}.`
+        : invite === 'no-email'
+          ? ' Add an email address to their profile to invite them to the field app.'
+          : invite === 'failed'
+            ? ' The field app invitation could not be sent — try again from their profile.'
+            : '';
+
+    return {
+      status: 'added',
+      id: member.id,
+      name: member.name,
+      message: `${member.name} was added to your crew.${inviteNote}`,
+      invite,
+    };
+  } catch (error) {
+    // Everything below requireOwnerContext can fail for a reason the owner can
+    // act on (a photo that is too big, a duplicate, a dropped connection), and
+    // the only useful place to say so is beside the form they are still looking
+    // at. Rethrowing would take the form with it.
+    console.error('createCrewAction failed:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'That crew member could not be saved. Try again.',
+    };
   }
-
-  revalidatePath('/dashboard/crew');
 }
 
 export async function updateCrewAction(crewId: string, formData: FormData) {

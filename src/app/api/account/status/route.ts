@@ -7,6 +7,7 @@ import { listJobs } from '@/lib/jobs';
 import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { countUnreadMessages } from '@/lib/messages';
+import { quickStopNavState, quickStopState } from '@/lib/quick-stop-state';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -99,7 +100,6 @@ export async function GET() {
   // with the rest of the shell state. 'paused' is support's lock, which
   // overrides `enabled` — showing green there would say the opposite of the truth.
   const quickStop = quickStopSettingsFromAccount((account ?? {}) as Parameters<typeof quickStopSettingsFromAccount>[0]);
-  const quickStopState: 'on' | 'off' | 'paused' = quickStop.locked ? 'paused' : quickStop.enabled ? 'on' : 'off';
   const bookingAvailability = bookingAvailabilityFromAccount(
     (account ?? {}) as Parameters<typeof bookingAvailabilityFromAccount>[0],
   );
@@ -118,6 +118,31 @@ export async function GET() {
         ? `https://${site.subdomain}.${rootDomain}`
         : null
     : null;
+
+  // THE RAIL AND THE PAGE NOW AGREE.
+  //
+  // This was `locked ? 'paused' : enabled ? 'on' : 'off'` — a rule that knew
+  // nothing about whether Quick Stops could actually take a request. So an owner
+  // who flipped the switch with no published site, no fee band or no Stripe saw
+  // a green ON in the rail from every page in the app, walked to Quick Stops,
+  // and was told "Not live yet". Same five inputs as the page now, through the
+  // same function; see lib/quick-stop-state.
+  const quickStopNav = quickStopNavState(
+    quickStopState({
+      enabled: quickStop.enabled,
+      locked: quickStop.locked,
+      lockedUntil: quickStop.lockedUntil ?? null,
+      // No lockReason on the settings row — the page reads it from a separate
+      // lock record. The rail only needs the STATE, and quickStopNavState
+      // collapses every non-live case to 'off' or 'paused' anyway.
+      lockReason: '',
+      feeSet: quickStop.maxFeeCents > 0,
+      daysSet: quickStop.weekdays.length > 0,
+      stripeConnected: Boolean(account?.connect_onboarded),
+      hasBookingUrl: Boolean(siteUrl),
+      maxPerDay: quickStop.maxPerDay,
+    }),
+  );
 
   return NextResponse.json({
     loggedIn: true,
@@ -138,7 +163,7 @@ export async function GET() {
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,
     newestJobCreatedAt,
-    quickStopState,
+    quickStopState: quickStopNav,
     // Online booking, judged the same way its own setup page judges it: the
     // switch being on is not the same as the page being able to take a booking.
     // Without a published site, or with no open days or no arrival windows,

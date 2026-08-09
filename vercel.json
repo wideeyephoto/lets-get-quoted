@@ -50,7 +50,7 @@
     },
     {
       "path": "/api/cron/selection-chase",
-      "schedule": "0 17 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/quickbooks-sync",

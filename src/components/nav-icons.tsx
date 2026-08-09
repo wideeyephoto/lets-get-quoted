@@ -48,6 +48,15 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // rectangle with a nick in it; the lines are what make it read as a message
   // rather than as a tooltip or a tag.
   '/dashboard/messages': '<path d="M3.6 6.6A2 2 0 0 1 5.6 4.6h12.8a2 2 0 0 1 2 2v6.6a2 2 0 0 1-2 2H9l-4.2 3.6v-3.6H5.6a2 2 0 0 1-2-2z"/><path d="M7.4 8.8h9M7.4 11.8h5.8"/>',
+  // A STROKED bolt, not the filled one.
+  //
+  // AUTOMATIONS_BOLT_PATH (lib/nav-helpers) is a solid silhouette, drawn filled
+  // by its own rule in globals.css. Dropping that same `d` in here would inherit
+  // this shell's `fill: none; stroke: currentColor` and render a 1.7px outline
+  // of a solid shape — a smudge at 18px. So the rail's bolt is redrawn as an
+  // outline that reads at that size, with the two long diagonals kept parallel
+  // so it still says "lightning" beside a speech bubble and a megaphone.
+  '/dashboard/automations': '<path d="M13.2 2.8 5.4 13.4a.6.6 0 0 0 .5 1h4.3l-.8 6.8 7.9-10.6a.6.6 0 0 0-.5-1h-4.3z"/>',
   // Keyed to /dashboard/marketing, where the composer now lives. It was on
   // /dashboard/campaigns, which meant the merged page rendered with no glyph at
   // all while every item around it had one.

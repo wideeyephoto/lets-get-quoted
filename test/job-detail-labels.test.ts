@@ -6,6 +6,7 @@ import {
   PAYMENT_STATUS_LABEL,
   completeJobConfirmMessage,
   completeJobNeedsConfirm,
+  isEarlyCompletion,
   reviewPillState,
   willAskForReview,
   getFeedDisplayBody,
@@ -254,5 +255,76 @@ describe('completeJobNeedsConfirm', () => {
     expect(completeJobNeedsConfirm({ ...base, reviewUrlConfigured: false })).toBe(false);
     expect(completeJobNeedsConfirm({ ...base, alreadyRequested: true })).toBe(false);
     expect(completeJobNeedsConfirm({ ...base, channel: null })).toBe(false);
+  });
+});
+
+/**
+ * Closing a job before the day it was booked for.
+ *
+ * The date was never consulted. A job scheduled for the 10th could be started,
+ * paid and completed on the 9th with no dialog at all — the only thing that
+ * could raise one was a pending review text, so with automatic asks off there
+ * was nothing between the button and a closed job.
+ *
+ * A confirm, not a block. Finishing early is ordinary in this trade, and the
+ * recurring-plan menu completes a future-dated visit by design; refusing would
+ * break a shipped flow to prevent something that is not wrong.
+ */
+describe('completing a job before its booked day', () => {
+  const quiet = {
+    clientName: 'Dana Whitfield',
+    autoReviewRequest: false,
+    reviewUrlConfigured: false,
+    alreadyRequested: false,
+    channel: null,
+    todayKey: '2026-08-09',
+  };
+
+  it('is worth stopping to confirm, even when no review goes out', () => {
+    expect(completeJobNeedsConfirm({ ...quiet, scheduledFor: '2026-08-10' })).toBe(true);
+  });
+
+  it('is not, on the day itself or after it', () => {
+    expect(completeJobNeedsConfirm({ ...quiet, scheduledFor: '2026-08-09' })).toBe(false);
+    expect(completeJobNeedsConfirm({ ...quiet, scheduledFor: '2026-08-01' })).toBe(false);
+  });
+
+  it('is not, on a job with no date at all', () => {
+    expect(completeJobNeedsConfirm({ ...quiet, scheduledFor: null })).toBe(false);
+  });
+
+  it('stays quiet when the caller has not supplied a clock', () => {
+    // Every existing caller predates the two fields. Absent must mean "do not
+    // check", never "assume today is the epoch and everything is early".
+    expect(completeJobNeedsConfirm({ ...quiet, todayKey: undefined, scheduledFor: '2026-08-10' })).toBe(false);
+    expect(isEarlyCompletion({ ...quiet, todayKey: undefined, scheduledFor: '2026-08-10' })).toBe(false);
+  });
+
+  it('names the day, and says the booking survives', () => {
+    const message = completeJobConfirmMessage({ ...quiet, scheduledFor: '2026-08-10' });
+    expect(message).toContain('Mon, Aug 10');
+    expect(message).toContain('closing it early');
+    // Completing does not un-book the work, and a dialog implying it did would
+    // be describing something that does not happen.
+    expect(message).toContain('The date stays on the calendar');
+  });
+
+  it('says it alongside the review warning rather than instead of it', () => {
+    // Two different irreversible-ish things; the dialog has to mention both or
+    // it is trading one surprise for another.
+    const message = completeJobConfirmMessage({
+      ...quiet,
+      autoReviewRequest: true,
+      reviewUrlConfigured: true,
+      channel: 'text',
+      scheduledFor: '2026-08-10',
+    });
+    expect(message).toContain('closing it early');
+    expect(message).toMatch(/review/i);
+  });
+
+  it("leaves an on-time completion's wording exactly as it was", () => {
+    const onTime = completeJobConfirmMessage({ ...quiet, scheduledFor: '2026-08-09' });
+    expect(onTime).not.toContain('closing it early');
   });
 });

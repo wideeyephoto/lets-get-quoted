@@ -172,6 +172,27 @@ export function waitingLabel(createdAt: string, now: Date = new Date()): Waiting
 }
 
 /**
+ * The waiting clock, but only for somebody who is actually waiting.
+ *
+ * Returns null for a won or lost lead. `waitingLabel` measures from created_at
+ * and never stops, so a lead closed months ago still read "12 minutes waiting" —
+ * beside a Won badge, in a column the queue sorts by. A terminal lead is not
+ * waiting on anything and must not appear in a list of people who are.
+ *
+ * Null rather than an empty string so every render site has to decide what to
+ * show instead, rather than silently printing a blank where a duration was.
+ * `ageLabel` is already on every view item for the sites that want to say
+ * something — "Won · 12m old" is true; "12m waiting" is not.
+ */
+export function waitingFor(
+  lead: { status: QueueStatus; createdAt: string },
+  now: Date = new Date(),
+): Waiting | null {
+  if (lead.status === 'won' || lead.status === 'lost') return null;
+  return waitingLabel(lead.createdAt, now);
+}
+
+/**
  * What the communication buttons should do, given how the homeowner asked to be
  * contacted.
  *

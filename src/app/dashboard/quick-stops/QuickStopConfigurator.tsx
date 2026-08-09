@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { updateQuickStopSettingsAction } from '../settings/actions';
 import { WEEKDAY_LABELS } from '@/lib/booking-availability';
 import { quickStopSettingsFromAccount, centsToDollars } from '@/lib/quick-stop';
+import { refundPolicyWarnings, CONTRACTOR_REFUND_SCOPE_NOTE } from '@/lib/quick-stop-policy';
 import RangeSlider, { clockToMinutes, formatClockValue, formatMoneyValue, minutesToClock } from '@/components/range-slider';
 import SaveButton from '@/components/save-button';
 
@@ -55,6 +56,48 @@ export default function QuickStopConfigurator({
   const [openSection, setOpenSection] = useState<SectionKey | null>('when');
   const isOpen = (key: SectionKey) => openSection === key;
   const refs = useRef<Partial<Record<SectionKey, HTMLElement | null>>>({});
+
+  // The five refund tiers are the one group of inputs held in state rather than
+  // left uncontrolled. Everything else on this form is a number you either mean
+  // or don't; these four percentages are a promise printed on the customer's
+  // status page, and the combinations that read as a swindle (no free-cancel
+  // window, nothing back before you have even left, a refund that climbs as the
+  // job progresses) are only visible when you look at all five together. Warning
+  // after the save would be warning after the customer has already been shown
+  // the terms, so the warnings recompute as they type.
+  //
+  // Held as STRINGS, not numbers: a controlled number input whose state is
+  // parsed on every keystroke cannot be emptied — clear it, '' parses to 0, and
+  // the field snaps back to "0" under the cursor. The raw text is what the input
+  // shows and what the form posts; parsing happens only for the warning pass
+  // below, and mergeRefundTiers does the real clamping server-side.
+  const [refunds, setRefunds] = useState({
+    withinGraceMinutes: String(t.withinGraceMinutes),
+    grace: String(t.grace),
+    beforeEnRoute: String(t.beforeEnRoute),
+    afterEnRoute: String(t.afterEnRoute),
+    afterArrived: String(t.afterArrived),
+  });
+  const setRefund = (key: keyof typeof refunds, value: string) => setRefunds((prev) => ({ ...prev, [key]: value }));
+  // A blank or half-typed field is read as 0 so a message can never render
+  // "NaN%" mid-keystroke. Blank genuinely does save as 0 anyway — pct() in
+  // mergeRefundTiers only falls back to the default for a non-finite number, and
+  // Number('') is 0.
+  // Clamped to the same bounds mergeRefundTiers will apply on save (0–100 for a
+  // percentage, 0–120 for the window), so a stray "500" is judged as the 100 it
+  // will actually become rather than warning about a number nobody will ever be
+  // refunded.
+  const refundNum = (raw: string, max: number) => {
+    const n = Math.round(Number(raw));
+    return Number.isFinite(n) ? Math.min(max, Math.max(0, n)) : 0;
+  };
+  const refundWarnings = refundPolicyWarnings({
+    withinGraceMinutes: refundNum(refunds.withinGraceMinutes, 120),
+    grace: refundNum(refunds.grace, 100),
+    beforeEnRoute: refundNum(refunds.beforeEnRoute, 100),
+    afterEnRoute: refundNum(refunds.afterEnRoute, 100),
+    afterArrived: refundNum(refunds.afterArrived, 100),
+  });
 
   // Collapsing a drawer moves everything below the heading you clicked, so pin
   // it: flushSync commits the change, then we put the heading back before the
@@ -154,7 +197,15 @@ export default function QuickStopConfigurator({
                           </label>
                         ))}
                       </div>
-                      <small className="field-hint">Clear them all to pause Quick Stop without switching it off.</small>
+                      {/* The "clear them all to pause" hint that used to be here
+                          was advice to break the feature. Clearing every weekday
+                          does not pause anything — it puts the account into
+                          setup_incomplete, which the status block at the top of
+                          the page then reports as a missing setup step and asks
+                          you to fix. It was also the third competing way to
+                          control availability, next to the master switch and a
+                          button that did the same thing. The switch is the way. */}
+                      <small className="field-hint">The days a same-day request is allowed to land at all. To stop taking them entirely, use the switch at the top of the page.</small>
                     </div>
 
                     <div className="field full">
@@ -213,11 +264,22 @@ export default function QuickStopConfigurator({
                       <small className="field-hint">0 makes photos optional. One photo is usually the difference between a real quote and a guess.</small>
                     </div>
 
+                    {/* "never become a Quick Stop" was an absolute promise about
+                        a screen that is partly a language model. The
+                        deterministic half — the fifteen hard exclusions — really
+                        is absolute and is worth saying so. The AI half is a
+                        judgement, and the owner accepting or declining is the
+                        actual gate. Promising perfection on a screen that runs
+                        before anyone has seen the job is the wrong thing to be
+                        confident about, especially on a page where the next
+                        sentence is about taking payment. */}
                     <p className="field full field-hint quick-stop-always-on">
-                      <span aria-hidden="true">🛡</span> Every Quick Stop request is screened by the AI
-                      eligibility check before it reaches you — complex, unsafe or out-of-scope jobs never
-                      become a Quick Stop. That isn&apos;t optional: you&apos;re quoting a price and taking
-                      payment before anyone has seen the job.
+                      <span aria-hidden="true">🛡</span> Every request is screened before it reaches you.
+                      A fixed list of exclusions — gas, mould, permits, multi-day work — is refused outright, and
+                      the AI reads the rest for anything complex or out of scope. It is a filter, not a guarantee:
+                      you see what it passed and you make the final decision on every one. That matters here more
+                      than anywhere else in the app, because you are quoting a price and taking payment before
+                      anybody has seen the job.
                     </p>
                   </div>
                 ) : null}
@@ -301,32 +363,106 @@ export default function QuickStopConfigurator({
 
                     <div className="field full" style={{ marginTop: '.4rem', paddingTop: '.7rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
                       <label>Cancellation refunds</label>
+                      {/* This used to end "your own cancellations and verified
+                          no-shows are always refunded in full", which never said
+                          whose no-show — and read here, beside the percentages
+                          you set to protect yourself, it invites you to believe
+                          it covers a customer who isn't home. It is the reverse:
+                          a no-show is always YOURS, only the customer can report
+                          one, and a confirmed one costs the fee and locks Quick
+                          Stop for your account. */}
                       <small className="field-hint">
                         How much of the fee a customer gets back if they cancel, by how far along you are.
-                        Your own cancellations and verified no-shows are always refunded in full.
+                        {' '}
+                        {CONTRACTOR_REFUND_SCOPE_NOTE}
                       </small>
                     </div>
                     <div className="field">
                       <label htmlFor="refundGraceMinutes">Free-cancel window (minutes)</label>
-                      <input id="refundGraceMinutes" name="refundGraceMinutes" type="number" min="0" max="120" step="1" defaultValue={t.withinGraceMinutes} />
+                      <input
+                        id="refundGraceMinutes"
+                        name="refundGraceMinutes"
+                        type="number"
+                        min="0"
+                        max="120"
+                        step="1"
+                        value={refunds.withinGraceMinutes}
+                        onChange={(e) => setRefund('withinGraceMinutes', e.target.value)}
+                      />
                       <small className="field-hint">Full refund if they cancel this soon after paying.</small>
                     </div>
                     <div className="field">
                       <label htmlFor="refundGrace">Within that window (%)</label>
-                      <input id="refundGrace" name="refundGrace" type="number" min="0" max="100" step="5" defaultValue={t.grace} />
+                      <input
+                        id="refundGrace"
+                        name="refundGrace"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={refunds.grace}
+                        onChange={(e) => setRefund('grace', e.target.value)}
+                      />
                     </div>
                     <div className="field">
                       <label htmlFor="refundBeforeEnRoute">Before you set off (%)</label>
-                      <input id="refundBeforeEnRoute" name="refundBeforeEnRoute" type="number" min="0" max="100" step="5" defaultValue={t.beforeEnRoute} />
+                      <input
+                        id="refundBeforeEnRoute"
+                        name="refundBeforeEnRoute"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={refunds.beforeEnRoute}
+                        onChange={(e) => setRefund('beforeEnRoute', e.target.value)}
+                      />
                     </div>
                     <div className="field">
                       <label htmlFor="refundAfterEnRoute">Once you’re en route (%)</label>
-                      <input id="refundAfterEnRoute" name="refundAfterEnRoute" type="number" min="0" max="100" step="5" defaultValue={t.afterEnRoute} />
+                      <input
+                        id="refundAfterEnRoute"
+                        name="refundAfterEnRoute"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={refunds.afterEnRoute}
+                        onChange={(e) => setRefund('afterEnRoute', e.target.value)}
+                      />
                     </div>
                     <div className="field">
                       <label htmlFor="refundAfterArrived">After you’ve arrived (%)</label>
-                      <input id="refundAfterArrived" name="refundAfterArrived" type="number" min="0" max="100" step="5" defaultValue={t.afterArrived} />
+                      <input
+                        id="refundAfterArrived"
+                        name="refundAfterArrived"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={refunds.afterArrived}
+                        onChange={(e) => setRefund('afterArrived', e.target.value)}
+                      />
                     </div>
+
+                    {/* Directly under the five inputs, because it is a judgement
+                        on the combination and not on any one field. role="status"
+                        so a screen reader hears a warning appear as the numbers
+                        change, rather than only on save.
+
+                        Colour is the LAST thing carrying severity here: the
+                        leading word says which it is, and the two levels keep
+                        their bar weight and their type weight apart, so the list
+                        still sorts itself in greyscale. */}
+                    {refundWarnings.length ? (
+                      <ul className="field full refund-warnings" role="status">
+                        {refundWarnings.map((warning) => (
+                          <li key={warning.key} className={warning.severity === 'severe' ? 'is-severe' : 'is-warn'}>
+                            <strong>{warning.severity === 'severe' ? 'Unfair to the customer:' : 'Check this:'}</strong>{' '}
+                            {warning.message}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ) : null}
             </div>

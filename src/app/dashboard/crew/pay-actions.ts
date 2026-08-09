@@ -5,7 +5,9 @@ import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import {
   buildPayConfirmation,
+  canApproveRow,
   formatKeyDay,
+  needsReapproval,
   formatKeyRange,
   normalizePaymentMethod,
   payBlockedReason,
@@ -124,7 +126,14 @@ export async function approveHoursAction(_prev: PayActionState, formData: FormDa
   try {
     const { supabase, accountId, userEmail, period, state, settings } = await context(formData);
     const chosen = rowsFor(state.rows, selectedIds(formData));
-    const approvable = chosen.filter((row) => row.eligible && row.hours > 0 && row.blockers.length === 0 && row.review !== 'approved');
+    // canApproveRow lets an ALREADY-APPROVED row through when its hours have
+    // moved since — see needsReapproval. This filter used to end in
+    // `row.review !== 'approved'`, which made "Hours added after approval" a
+    // warning with no exit: the only way out was an undo-approval action that
+    // does not exist, and pressing Approve answered "There are no hours here
+    // left to approve" while the screen went on flagging the row.
+    const approvable = chosen.filter((row) => canApproveRow(row) && row.blockers.length === 0);
+    const again = approvable.filter(needsReapproval);
 
     if (approvable.length === 0) {
       const blocked = chosen.filter((row) => row.blockers.length > 0);
@@ -132,6 +141,16 @@ export async function approveHoursAction(_prev: PayActionState, formData: FormDa
         return FAIL(
           `${blocked.length} ${blocked.length === 1 ? 'entry has' : 'entries have'} something to sort out first.`,
           blocked.map((row) => payBlockedReason(row) ?? row.name),
+        );
+      }
+      // Said as the state it is, not as an absence. "Nothing left to approve"
+      // over a row that is visibly flagged is what made this look broken.
+      const settled = chosen.filter((row) => row.review === 'approved');
+      if (settled.length > 0) {
+        return FAIL(
+          settled.every((row) => row.payment === 'paid')
+            ? 'These hours have already been paid. Undo the payment first if the figure was wrong.'
+            : 'These hours are already approved and nothing has changed since.',
         );
       }
       return FAIL('There are no hours here left to approve.');
@@ -149,19 +168,33 @@ export async function approveHoursAction(_prev: PayActionState, formData: FormDa
       crewId: approvable.length === 1 ? approvable[0].crewId : null,
       crewName: approvable.length === 1 ? approvable[0].name : null,
       action: 'hours_approved',
+      // A second approval says what it replaced. "Approved $480" appearing
+      // twice in a history with no mention that the first figure was $420 is a
+      // trail that hides the only interesting thing that happened.
       summary:
         approvable.length === 1
-          ? `Approved ${approvable[0].name}’s hours for ${rangeLabel(period)} — ${payMoney(approvable[0].estimatedPay)}.`
-          : `Approved hours for ${approvable.length} crew members for ${rangeLabel(period)} — ${payMoney(total)}.`,
+          ? needsReapproval(approvable[0])
+            ? `Re-approved ${approvable[0].name}’s hours for ${rangeLabel(period)} — ${payMoney(approvable[0].estimatedPay)}, was ${payMoney(approvable[0].approvedAmount ?? 0)}.`
+            : `Approved ${approvable[0].name}’s hours for ${rangeLabel(period)} — ${payMoney(approvable[0].estimatedPay)}.`
+          : `Approved hours for ${approvable.length} crew members for ${rangeLabel(period)} — ${payMoney(total)}${again.length > 0 ? ` (${again.length} re-approved after changes)` : ''}.`,
       actorEmail: userEmail,
-      meta: { crew: approvable.map((row) => row.name), amount: total },
+      meta: {
+        crew: approvable.map((row) => row.name),
+        amount: total,
+        reapproved: again.map((row) => ({ name: row.name, was: row.approvedAmount, now: row.estimatedPay })),
+      },
     });
 
     refresh();
     return OK(
       approvable.length === 1
-        ? `${approvable[0].name}’s hours are approved.`
+        ? needsReapproval(approvable[0])
+          ? `${approvable[0].name}’s hours are approved again at ${payMoney(approvable[0].estimatedPay)}.`
+          : `${approvable[0].name}’s hours are approved.`
         : `Hours approved for ${approvable.length} crew members.`,
+      again.length > 0 && approvable.length > 1
+        ? [`${again.length} of these had changed since they were approved and have been agreed again.`]
+        : undefined,
     );
   } catch (error) {
     return FAIL(messageFor(error));

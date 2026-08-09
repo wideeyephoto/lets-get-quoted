@@ -5,6 +5,7 @@ import {
   buildArrivalMessage,
   campaignText,
   cardSetupText,
+  choiceReminderText,
   cardUpdateText,
   clientJobDashboardText,
   composeOfferMessage,
@@ -24,10 +25,10 @@ import {
   rebookInviteText,
   reviewRequestText,
   schedulingOptionsText,
+  selectionRequestText,
   verificationCodeText,
   withOptOut,
 } from '@/lib/sms-templates';
-import { chaseMessage } from '@/lib/selections';
 
 /**
  * Every text message this app can send, in one list, with the real words.
@@ -219,14 +220,33 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
   {
     id: 'selection-request',
     title: 'Choices waiting',
-    trigger: 'Colours, materials or fixtures are still undecided',
+    trigger: 'You share the choice board from the job',
     audience: 'customer',
-    control: automation('selections', 'Choice reminders'),
-    body: chaseMessage({
+    // Manual, not the automation. This is the contractor pressing "Send these
+    // to them" — the scheduled chasing is the separate entry below, and listing
+    // them as one thing was how the catalogue came to describe a text nobody
+    // could turn off as though a switch controlled it.
+    control: manual('You decide when the board is ready'),
+    body: selectionRequestText({
       businessName: SAMPLE.business,
       clientName: SAMPLE.client,
       count: 3,
-      overdue: true,
+      overdue: false,
+      url: SAMPLE.link,
+    }),
+  },
+  {
+    id: 'choice-reminder',
+    title: 'Choice reminder',
+    trigger: 'The needed-by date on a choice arrives, then again two days later',
+    audience: 'customer',
+    control: automation('selections', 'Choice reminders'),
+    body: choiceReminderText({
+      businessName: SAMPLE.business,
+      clientName: SAMPLE.client,
+      jobName: 'Back garden re-turf',
+      titles: ['Patio tile', 'Kitchen faucet'],
+      daysPastNeededBy: 0,
       url: SAMPLE.link,
     }),
   },

@@ -61,10 +61,25 @@ export default function QuoteDeliveryBanner({ delivery, clientLink, clientName, 
     );
   }
 
-  if (delivery === 'no_contact') {
+  // Every way a quote can fail to go out, each with its own fix.
+  //
+  // These were one branch saying "this lead has no mobile number or email on
+  // file" — which is true for exactly one of them. An owner whose client is set
+  // to email-only, with a mobile right there on the record, was sent looking for
+  // a missing detail that was not missing. The strings are ClientChannelReason
+  // values, so the sentence follows the decision rather than guessing at it.
+  const blocked: Record<string, string> = {
+    no_contact: 'This lead has no mobile number or email on file, so we couldn’t deliver it automatically.',
+    preference_off: `Automatic messages are switched off for ${clientName}, so nothing was sent.`,
+    opted_out: `${clientName} replied STOP to a previous text and has no email on file, so nothing was sent.`,
+    no_mobile: `${clientName} is set to text only and has no mobile on file, so nothing was sent.`,
+    no_email: `${clientName} is set to email only and has no email address on file, so nothing was sent.`,
+  };
+
+  if (blocked[delivery]) {
     return (
       <div className="payment-banner warning quote-delivery-banner">
-        <p><strong>Quote created — but NOT sent.</strong> This lead has no mobile number or email on file, so we couldn&apos;t deliver it automatically. Copy the link and send it to your client.</p>
+        <p><strong>Quote created — but NOT sent.</strong> {blocked[delivery]} Copy the link and send it to your client.</p>
         {clientLink ? <CopyLinkRow clientLink={clientLink} /> : null}
       </div>
     );

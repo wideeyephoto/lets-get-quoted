@@ -6,6 +6,12 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setQuickStopEnabledAction } from '@/app/dashboard/settings/actions';
 import { jumpToHowItWorks } from './quick-stop-jump';
+import {
+  quickStopState,
+  quickStopStateDetail,
+  quickStopStateHeadline,
+  quickStopStateLabel,
+} from '@/lib/quick-stop-state';
 
 // The master switch for Quick Stop, and what it currently means.
 //
@@ -85,39 +91,29 @@ const SETTINGS_HREF = '/dashboard/quick-stops#quick-stop-setup';
 /** Where the request queue lives on this page. */
 const QUEUE_ANCHOR = '#quick-stop-requests';
 
-/** "a", "a and b", "a, b and c" — the missing-setup list, read as a sentence. */
-function joinList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-}
-
 export default function QuickStopStatus(props: QuickStopStatusProps) {
   const { enabled, locked, lockedUntil, lockReason, feeSet, daysSet, stripeConnected, bookingUrl, readOnly = false } = props;
   const router = useRouter();
   const [pending, startToggle] = useTransition();
 
-  // Live is the only state that means a customer could actually get a visit out
-  // of this today. Everything else is named for the thing that is missing.
-  const live = enabled && !locked && feeSet && daysSet && stripeConnected && Boolean(bookingUrl);
-
-  // Every unmet requirement, not just the first. The old chain stopped at
-  // whichever failed earliest, so an owner missing both their weekdays AND
-  // Stripe was told about the weekdays, fixed them, and only then learned there
-  // was a second thing — one round trip per requirement, each one a surprise.
-  const missing = [
-    bookingUrl ? '' : 'publish your website',
-    daysSet ? '' : 'choose the days you take them',
-    feeSet ? '' : 'set your fee band',
-    stripeConnected ? '' : 'connect Stripe',
-  ].filter(Boolean);
-
-  const blockedReason = !enabled
-    ? 'Nobody can ask to be added to your day. Your normal booking is unaffected.'
-    : missing.length > 0
-      ? `${joinList(missing).replace(/^./, (first) => first.toUpperCase())} before this can take a request.${
-          stripeConnected ? '' : ' A Quick Stop is only confirmed once the customer has paid.'
-        }`
-      : null;
+  // ONE OPINION. This block used to compute `live`, `missing` and
+  // `blockedReason` itself, while page.tsx computed its own `quickStopLive` from
+  // the same five booleans, the footer decided from `enabled` alone, the
+  // explainer counted three of the five requirements, and the nav-rail API
+  // ignored setup gaps entirely. Six deciders, four of them on screen at once.
+  // See lib/quick-stop-state for what each of them got wrong.
+  const state = quickStopState({
+    enabled,
+    locked,
+    lockedUntil,
+    lockReason,
+    feeSet,
+    daysSet,
+    stripeConnected,
+    hasBookingUrl: Boolean(bookingUrl),
+    maxPerDay: props.maxPerDay,
+  });
+  const live = state.kind === 'on';
 
   function setEnabled(next: boolean) {
     if (readOnly) return;
@@ -128,7 +124,6 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
     });
   }
 
-  const lockDate = lockedUntil ? new Date(lockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' }) : null;
 
 
   return (
@@ -146,46 +141,61 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           <span className="bset-switch-track" aria-hidden="true"><span /></span>
           <span className="bset-master-copy">
             <strong>
-              Quick Stops is <em className={enabled && !locked ? 'on' : 'off'}>{locked ? 'PAUSED' : enabled ? 'ON' : 'OFF'}</em>
+              Quick Stops is <em className={live ? 'on' : 'off'}>{quickStopStateLabel(state)}</em>
             </strong>
-            <small>Nearby customers can request a paid same-day visit, at a fee you set.</small>
+            {/* "Only customers near your route" was the old promise here, and it
+                is not what the product does — priority areas exist precisely to
+                let a customer further out qualify. */}
+            <small>Nearby customers, and anyone in a priority area, can request a paid same-day visit at a fee you set.</small>
           </span>
         </label>
 
         <div className={`bset-master-status${live ? ' live' : ''}`}>
-          <p><span className="bset-dot" aria-hidden="true" />{locked ? 'Paused by support' : live ? 'Live' : enabled ? 'Not live yet' : 'Paused'}</p>
-          <small>
-            {locked
-              ? `${lockReason || 'Paused after a reported no-show'}${lockDate ? ` — reopens ${lockDate}` : ''}. It lifts automatically.`
-              : blockedReason ?? `Taking requests, up to ${props.maxPerDay} a day.`}
-          </small>
+          <p><span className="bset-dot" aria-hidden="true" />{quickStopStateHeadline(state)}</p>
+          <small>{quickStopStateDetail(state)}</small>
         </div>
 
+        {/* ONE WAY TO TURN IT ON, not three.
+            There were three: this switch, a "Pause Quick Stops / Turn on Quick
+            Stops" button beside it that did the identical thing, and a hint in
+            the configurator suggesting you clear every weekday to pause — which
+            does not pause anything, it puts the account into setup_incomplete,
+            a state the status block then scolds you for. The switch is the
+            control; these are the things you do around it. */}
         <div className="bset-master-actions">
-          {/* Support's lock is not the owner's to undo, so it offers an explanation
-              rather than a button that would not work. */}
+          {/* Support's lock is not the owner's to undo, so it offers an
+              explanation rather than a button that would not work. */}
           {locked ? (
             <Link href={SETTINGS_HREF} className="btn secondary bset-pause">
               Why is this paused?
             </Link>
-          ) : (
-            <button type="button" className="btn secondary bset-pause" onClick={() => setEnabled(!enabled)} disabled={pending}>
-              <Icon name={enabled ? 'pause' : 'play'} />
-              {pending ? 'Saving…' : enabled ? 'Pause Quick Stops' : 'Turn on Quick Stops'}
-            </button>
-          )}
-          {/* Between the switch and the explanation, because that is the order
-              the questions arrive in: turn it on, set it up, and — if any of
-              that raised a question — read what it actually does. */}
+          ) : null}
           <Link href={SETTINGS_HREF} className="btn primary bset-setup">
             <Icon name="cash" />
-            Set up Quick Stop
+            Review settings
           </Link>
+          {/* "View booking page" was the old label, which reads as somewhere you
+              go rather than as the customer's side of this feature — and said
+              nothing about the fact that Quick Stops is hidden on that page
+              while it is off, so an owner who followed it found no sign of the
+              thing they had just configured. */}
+          {bookingUrl ? (
+            <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="btn secondary bset-preview">
+              <Icon name="external" />
+              Preview customer experience
+            </a>
+          ) : null}
           <button type="button" className="btn ghost bset-how" onClick={jumpToHowItWorks}>
             <Icon name="help" />
             How it works
           </button>
         </div>
+        {bookingUrl && !live ? (
+          <p className="bset-preview-note">
+            Quick Stops is hidden on your booking page while it&apos;s {state.kind === 'paused' ? 'paused' : 'off'} — the preview shows
+            what customers see today, without it.
+          </p>
+        ) : null}
       </section>
 
       <div className="bset-cards">
@@ -239,13 +249,13 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           <div className="bset-card is-static">
             <span className="bset-card-icon tone-link"><Icon name="pin" /></span>
             <span className="bset-card-label">Requests</span>
-            <strong>{locked ? 'Paused' : live ? 'None waiting' : enabled ? 'Not live' : 'Off'}</strong>
+            {/* Reads from the one state, like everything else on this page. It
+                used to say "Off" for a fully-configured account that simply had
+                not been switched on, with a sub-line about finishing a setup
+                that was finished. */}
+            <strong>{live ? 'None waiting' : quickStopStateLabel(state)}</strong>
             <small>
-              {locked
-                ? 'Nothing new can come in while this is paused'
-                : live
-                  ? 'They appear here the moment one arrives'
-                  : blockedReason ?? 'Nothing can come in while this is off'}
+              {live ? 'They appear here the moment one arrives' : quickStopStateDetail(state)}
             </small>
           </div>
         )}

@@ -302,33 +302,128 @@
 
 .assignNotify { display: flex; align-items: center; gap: 0.4rem; font-size: 0.84rem; padding-bottom: 0.45rem; }
 
-/* --- add crew panel --- */
+/* --- add crew: the drawer, and what happens after it closes ---------------
+   The panel that used to live here — a collapsed toggle plus a flat form,
+   pinned below the whole roster — is gone. Its styles went with it: keeping
+   .addPanel around would leave a second "+ Add crew member" one paste away
+   from coming back. The drawer reuses .drawerBackdrop / .drawer / .drawerHead
+   below, so the add drawer and the profile drawer are visibly one thing. */
 
-.addPanel {
-  margin-top: 1.1rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--edge-g20);
-  border-radius: 14px;
-  background: rgba(var(--tint), 0.022);
-  scroll-margin-top: 1rem;
+/* Wider than the profile drawer: this one carries a two-column form grid, and
+   at 34rem the four sections turn into one very long single file.
+   Written as .drawer.addDrawer so it beats .drawer's own width whatever order
+   the two rules end up in — .drawer is declared further down this file, and a
+   single class would simply lose to it. */
+.drawer.addDrawer { width: min(44rem, 100%); display: flex; flex-direction: column; }
+
+.addForm { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.addFormBody { display: grid; gap: 0.35rem; }
+
+.addSection {
+  margin: 0.9rem 0 0;
+  padding: 0.15rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule-g18);
 }
+.addSection:first-child { border-top: 0; margin-top: 0.4rem; }
+.addSection > legend {
+  padding: 0 0.5rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(var(--grey-5), 0.95);
+}
+/* The grid inside a section starts tight against its legend rather than
+   inheriting .form-grid's 1rem lead-in, which reads as a gap in the form. */
+.addSection > :global(.form-grid) { margin-top: 0.55rem; }
 
-.addToggle {
+.addNewRole { margin-top: 0.45rem; }
+
+.addPhotoProblem { display: block; margin-top: 0.35rem; color: var(--bad); font-size: 0.78rem; }
+
+.addPhotoPreview {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--edge-g20);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.addPhotoPreview img { width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; }
+.addPhotoPreview span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: rgba(var(--grey-4), 0.9);
+}
+
+/* The two outcomes stay on screen while the form scrolls — a Save you have to
+   scroll to find is how a long form gets abandoned half-finished. */
+.addActions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
   flex-wrap: wrap;
-  width: 100%;
-  padding: 0;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  padding: 0.8rem 0 0.2rem;
+  border-top: 1px solid var(--rule-g18);
+  background: var(--ground-2);
+}
+.addActionsHint { margin: 0.35rem 0 0; font-size: 0.76rem; color: rgba(var(--grey-4), 0.8); }
+
+.addError {
+  margin: 0 0 0.8rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--cedge-red-3);
+  border-radius: 12px;
+  background: rgba(255, 101, 101, 0.1);
+  color: var(--bad);
+  font-size: 0.85rem;
+}
+
+/* Mounted empty rather than conditionally rendered — see the role="status" in
+   CrewRoster. An empty live region must take no space. */
+.addedLive:empty { display: none; }
+
+.addedBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--cedge-green-50);
+  border-radius: 12px;
+  background: rgba(72, 199, 142, 0.1);
+  color: var(--good);
+  font-size: 0.87rem;
+}
+.addedBanner button {
+  margin-left: auto;
   border: 0;
   background: none;
   color: rgba(var(--grey-4), 0.9);
   font: inherit;
-  font-size: 0.85rem;
-  text-align: left;
+  font-size: 0.8rem;
+  text-decoration: underline;
   cursor: pointer;
 }
-.addPanel[data-open] form { margin-top: 1rem; }
+
+/* "Here they are." The roster also scrolls to and focuses this card, so the
+   ring is confirmation rather than the only way to find them — which is why it
+   is allowed to fade out on its own after ten seconds. */
+.justAdded {
+  border-color: var(--cedge-orange-51) !important;
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.28);
+}
 
 /* --- empty states --- */
 
@@ -2326,8 +2421,7 @@ button.goAction.goAction:disabled {
 :global(.crew-focus) .boardCol,
 :global(.crew-focus) .focusCard,
 :global(.crew-focus) .railCard,
-:global(.crew-focus) .periodCard,
-:global(.crew-focus) .addPanel {
+:global(.crew-focus) .periodCard {
   border-radius: 16px;
   border-color: var(--edge-g20);
 }
@@ -2698,7 +2792,6 @@ button.goAction.goAction:disabled {
 :global(.crew-skin) .focusCard,
 :global(.crew-skin) .railCard,
 :global(.crew-skin) .periodCard,
-:global(.crew-skin) .addPanel,
 :global(.crew-skin) .mdList,
 :global(.crew-skin) .mdRail,
 :global(.crew-skin) .mdDetail,

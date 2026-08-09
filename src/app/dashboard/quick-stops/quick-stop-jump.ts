@@ -23,7 +23,24 @@ export function jumpToHowItWorks() {
   });
 }
 
-/** Jump to the settings block. A plain anchor — it is never inside a drawer. */
+/**
+ * Jump to the settings block, which is now on ANOTHER TAB.
+ *
+ * This used to be a plain scrollIntoView, and it worked because everything was
+ * one column. The configurator lives on the Settings tab now, so its element is
+ * inside a `hidden` panel — and scrollIntoView is a no-op on a hidden element,
+ * which would make this button do nothing at all.
+ *
+ * Writing the hash is what switches the tab: the shell listens for hashchange,
+ * selects the owning tab and scrolls once the panel is visible. Assigning
+ * location.hash rather than calling scrollIntoView directly means there is one
+ * mechanism for "go to a section", shared with every href="#…" on the page.
+ */
 export function jumpToSetup() {
-  document.getElementById('quick-stop-setup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (window.location.hash === '#quick-stop-setup') {
+    // Already there: no hashchange would fire, so ask the element directly.
+    document.getElementById('quick-stop-setup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  window.location.hash = 'quick-stop-setup';
 }

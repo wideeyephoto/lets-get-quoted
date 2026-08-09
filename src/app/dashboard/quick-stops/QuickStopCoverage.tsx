@@ -80,7 +80,13 @@ export default function QuickStopCoverage({
                           typed is not one they should have to maintain. What
                           they DO decide — how far it is worth driving — is the
                           field beside it. */}
-                      about {zone.radiusMiles} mile{zone.radiusMiles === 1 ? '' : 's'} out from the middle
+                      {/* "about 1.6 miles out from the middle" left three
+                          readings open — a radius, the area's boundary, or how
+                          far you would drive — and the field directly beside it
+                          is a DRIVING distance, which is the reading it most
+                          invited and the only wrong one. Named as a radius, in
+                          those words, with what it is measured from. */}
+                      covers a {zone.radiusMiles}-mile radius around the centre of {zone.label}
                     </small>
                   </div>
                   <div className="cash-bill-actions qs-area-actions">

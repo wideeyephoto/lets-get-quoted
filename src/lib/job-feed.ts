@@ -475,6 +475,102 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 }
 
 // Public, token-guarded: the client clicks "Approve quote" on their dashboard.
+/** Where an acceptance came from. Only the wording differs; the effect must not. */
+export type QuoteAcceptanceSource =
+  | 'client_link'
+  | 'owner_verbal'
+  | 'invoice_signed'
+  | 'schedule_selected'
+  /** "Job started" pressed on a job still sitting at the quote stage. */
+  | 'work_started'
+  /** "Mark complete" pressed on one. Rare, and real: small same-day jobs. */
+  | 'work_completed';
+
+const ACCEPTANCE_TITLE: Record<QuoteAcceptanceSource, string> = {
+  client_link: 'Client approved the quote',
+  owner_verbal: 'Quote accepted (recorded by you)',
+  invoice_signed: 'Client signed the invoice',
+  schedule_selected: 'Client picked a start date',
+  work_started: 'Quote accepted (work started)',
+  work_completed: 'Quote accepted (job completed)',
+};
+
+/**
+ * WHAT "ACCEPTED" MEANS, in one place.
+ *
+ * Three things are true the moment a quote is accepted, however it happened:
+ * the job leaves the quote stage, the lead behind it is won, and the feed says
+ * so. Before this function there were four code paths that each did some subset:
+ *
+ *   approveClientJobQuote      all three          (the client tapping their link)
+ *   signInvoice                job + lead, NO event
+ *   selectClientJobScheduleOption  job + lead, NO event
+ *   the owner's "Mark won"     LEAD ONLY
+ *
+ * Two consequences, both live. The owner pressing Mark won left the job sitting
+ * at "Awaiting approval" indefinitely — not a stale render that a refresh fixes,
+ * as it looked from the outside, but a write that never happened. And because
+ * Insights counts conversions from `quote_approved` feed rows, every quote
+ * accepted by signature or by picking a date was invisible to the contractor's
+ * own conversion rate.
+ *
+ * IDEMPOTENT BY CONSTRUCTION, not by a guard. The feed insert dedupes on
+ * (source_table, source_id, kind); the promotion is conditional on the job still
+ * being at the quote stage; the lead write is conditional on it not already
+ * being won. So this is safe to call twice, and — the part that matters — safe
+ * to call again after a run that died halfway. It replaces an early-return that
+ * checked only whether the feed row existed, which meant an acceptance
+ * interrupted after that insert could never finish: every retry saw the row,
+ * returned, and left the job at 'new_lead' forever underneath a feed entry
+ * announcing it had been approved.
+ *
+ * Deliberately NOT here: deposit-on-approval and the owner alert email. Those
+ * are once-only side effects of the client-link path, and they stay behind its
+ * own guard — accepting on somebody's behalf should not silently raise a deposit
+ * request against them.
+ */
+export async function applyQuoteAcceptance(
+  admin: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  input: { source: QuoteAcceptanceSource; quotedAmount?: number; note?: string },
+): Promise<{ recorded: boolean; promoted: boolean; leadWon: boolean }> {
+  const job = await getJob(admin, accountId, jobId);
+  if (!job) throw new Error('Job not found.');
+
+  const amount = input.quotedAmount ?? (Number(job.quoted_amount) || 0);
+
+  await createJobFeedEvent(admin, accountId, jobId, {
+    kind: 'quote_approved',
+    title: ACCEPTANCE_TITLE[input.source],
+    body: `${job.client_name} accepted the quote${amount > 0 ? ` (${formatMoney(amount)})` : ''}.${input.note ?? ''}`,
+    // Client-visible, whichever way it happened — "you approved this" is a thing
+    // the customer should be able to see on their own job page.
+    visibility: 'client',
+    amount: amount > 0 ? amount : null,
+    sourceTable: 'jobs',
+    sourceId: jobId,
+  });
+
+  // Only ever promote FROM the quote stage — never drag an in-progress,
+  // complete or archived job backwards.
+  let promoted = false;
+  if (job.status === 'new_lead') {
+    const { error } = await admin.from('jobs').update({ status: 'in_progress' }).eq('account_id', accountId).eq('id', jobId);
+    if (error) throw error;
+    promoted = true;
+  }
+
+  let leadWon = false;
+  const lead = await getLeadByConvertedJob(admin, accountId, jobId);
+  if (lead && lead.status !== 'won') {
+    await updateLeadStatus(admin, accountId, lead.id, 'won');
+    leadWon = true;
+  }
+
+  return { recorded: true, promoted, leadWon };
+}
+
 // Records approval idempotently, promotes the job out of the quote stage,
 // advances the originating lead to won, and alerts the owner (best-effort).
 export async function approveClientJobQuote(clientToken: string, selectedAddonIds: string[] = []): Promise<void> {
@@ -497,10 +593,16 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
   const job = await getJob(admin, accountId, jobId);
   if (!job) throw new Error('Job not found.');
 
-  // Idempotency guard: gate ALL side effects on there being no prior approval,
-  // so a double-submit can't re-email the owner or churn the lead. (The feed
-  // insert also dedupes on (source_table, source_id, kind), but it returns the
-  // existing row silently, so the explicit pre-check is what stops the rest.)
+  // Idempotency guard for the ONCE-ONLY side effects — the owner's alert email
+  // and deposit-on-approval — so a double-submit can't re-email or raise a
+  // second deposit.
+  //
+  // IT NO LONGER GUARDS THE ACCEPTANCE ITSELF. It used to return early here,
+  // which meant an approval interrupted after the feed insert but before the
+  // jobs update could never complete: every retry found the row, returned, and
+  // left the job at 'new_lead' forever under a feed entry announcing it had
+  // been approved. applyQuoteAcceptance below is idempotent on its own terms,
+  // so running it again is how that job finally moves.
   const { data: existingApproval } = await admin
     .from('job_feed')
     .select('id')
@@ -508,7 +610,7 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
     .eq('source_id', jobId)
     .eq('kind', 'quote_approved')
     .maybeSingle();
-  if (existingApproval) return;
+  const alreadyApproved = Boolean(existingApproval);
 
   // Lock in the client's add-on choices on an itemized quote and recompute the
   // total before recording approval, so quoted_amount reflects exactly what they
@@ -525,21 +627,15 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
   const acceptedAddons = items.filter((item) => item.kind === 'addon' && selectedAddonIds.includes(item.id));
   const addonNote = acceptedAddons.length > 0 ? ` Added: ${acceptedAddons.map((item) => item.label).join(', ')}.` : '';
 
-  await createJobFeedEvent(admin, accountId, jobId, {
-    kind: 'quote_approved',
-    title: 'Client approved the quote',
-    body: `${job.client_name} approved the quote${quotedAmount > 0 ? ` (${formatMoney(quotedAmount)})` : ''}.${addonNote}`,
-    visibility: 'client',
-    amount: quotedAmount > 0 ? quotedAmount : null,
-    sourceTable: 'jobs',
-    sourceId: jobId,
+  // The three things acceptance always means, whoever triggered it.
+  await applyQuoteAcceptance(admin, accountId, jobId, {
+    source: 'client_link',
+    quotedAmount,
+    note: addonNote,
   });
 
-  // Only ever promote from the quote stage — never downgrade an in-progress,
-  // complete, or archived job.
-  if (job.status === 'new_lead') {
-    await admin.from('jobs').update({ status: 'in_progress' }).eq('account_id', accountId).eq('id', jobId);
-  }
+  // Everything past here happens once and only once.
+  if (alreadyApproved) return;
 
   // Deposit-on-approval: turn the approval straight into a deposit ask when the
   // account opts in — a % of the just-finalized quote, created once and texted
@@ -601,10 +697,9 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
     console.error(`Deposit-on-approval failed for job ${jobId}:`, error instanceof Error ? error.message : error);
   }
 
-  const lead = await getLeadByConvertedJob(admin, accountId, jobId);
-  if (lead && lead.status !== 'won') {
-    await updateLeadStatus(admin, accountId, lead.id, 'won');
-  }
+  // The lead is won by applyQuoteAcceptance above, alongside the promotion and
+  // the feed row — the three of them are one fact and are no longer written
+  // from three different places.
 
   // Best-effort owner alert — approval must never fail because the email failed.
   try {

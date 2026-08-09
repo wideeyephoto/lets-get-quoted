@@ -273,6 +273,51 @@ export function resolvePayPeriod(
   };
 }
 
+/**
+ * The offset that puts `dateKey` ('YYYY-MM-DD') inside a period of this mode.
+ *
+ * The period picker used to be four controls: two arrows, four quick-filter
+ * shortcuts, a length switcher and a from/to form with its own Go button — four
+ * different ways to answer "which weeks am I looking at", none of which could
+ * reach a period more than a few clicks away without counting arrows. One date
+ * input can, but only if the screen can turn a date back into an offset, which
+ * is what this does.
+ *
+ * Computed the same way resolvePayPeriod cuts the period, in the same zone, so
+ * "jump to 12 March" lands on exactly the period that contains 12 March rather
+ * than one adjacent to it.
+ */
+export function offsetForDate(mode: PeriodMode, dateKey: string, options?: { now?: Date; timeZone?: string }): number {
+  const now = options?.now ?? new Date();
+  const zone = options?.timeZone;
+  const target = parseDateKey(dateKey, zone);
+  // A custom range is defined by its own two dates, so there is no offset to
+  // step it by — the caller sends from/to instead.
+  if (!target || mode === 'custom') return 0;
+
+  if (mode === 'monthly') {
+    const here = zonedParts(now, zone);
+    const there = zonedParts(target, zone);
+    return normalizeOffset((there.year - here.year) * 12 + (there.month - here.month));
+  }
+
+  // Whole weeks between the two Sundays, measured on the zoned wall-clock dates
+  // rather than on elapsed milliseconds — a clock change inside the span would
+  // otherwise leave the division an hour short and round the wrong way.
+  const weekStartUtc = (date: Date) => {
+    const parts = zonedParts(startOfWeek(date, zone), zone);
+    return Date.UTC(parts.year, parts.month - 1, parts.day);
+  };
+  const weeks = Math.round((weekStartUtc(target) - weekStartUtc(now)) / (7 * DAY_MS));
+  if (mode === 'weekly') return normalizeOffset(weeks);
+
+  // Biweekly periods are anchored to a fixed fortnight, not to today, so
+  // stepping by whole weeks would land on the wrong half of a period every
+  // other time. Count fortnights from the same epoch resolvePayPeriod uses.
+  const fortnight = (date: Date) => Math.floor((weekStartUtc(date) - BIWEEKLY_EPOCH) / (14 * DAY_MS));
+  return normalizeOffset(fortnight(target) - fortnight(now));
+}
+
 /** The quick filters, expressed as a mode + offset so they share one code path. */
 export const QUICK_PERIODS: { id: string; label: string; mode: PeriodMode; offset: number }[] = [
   { id: 'this-week', label: 'This week', mode: 'weekly', offset: 0 },
@@ -326,6 +371,25 @@ export function entryIssue(entry: Pick<LaborEntry, 'hours' | 'rate' | 'crew_id'>
 // -- Overtime ----------------------------------------------------------------
 
 export const DEFAULT_OVERTIME_THRESHOLD = 40;
+
+/**
+ * WHAT OVERTIME DOES HERE, in one sentence the screen can print.
+ *
+ * splitOvertime COUNTS hours past the weekly threshold. It does not multiply
+ * anything: estimated pay is the sum of each entry's amount, and no premium is
+ * applied anywhere in this file or in crew-pay.ts. That is deliberate — this
+ * product does not know an account's overtime rule (1.5×? 2× on Sundays? none,
+ * because everyone here is a subcontractor?) and quietly inventing 1.5× would
+ * misstate what the owner owes on a screen whose whole job is to be the number
+ * they pay from.
+ *
+ * The danger is that a column headed "OT 5h 00m" beside a pay figure READS as
+ * though the pay figure already includes a premium. It does not. Every surface
+ * that shows overtime hours prints this sentence so the two can't be confused,
+ * and there is exactly one copy of it so they can't drift apart.
+ */
+export const OVERTIME_POLICY =
+  'Overtime hours are counted, not paid at a premium. Estimated pay is each entry’s hours × its rate — apply your own overtime rule when you pay.';
 
 /**
  * Split a crew member's hours into regular and overtime.
@@ -487,7 +551,24 @@ export function summarizeCrewLabor(
     const rawHours = Number(entry.hours) || 0;
     const hours = round ? round(rawHours) : rawHours;
     const rate = Number(entry.rate) || 0;
-    const amount = round ? hours * rate : Number(entry.amount) || 0;
+    const storedAmount = Number(entry.amount) || 0;
+    // A ROUNDING RULE MUST NEVER DELETE MONEY.
+    //
+    // costs.amount is NOT NULL and costs.hours is nullable (schema.sql), so a
+    // labor row can legitimately carry $960 with no hours on it at all — a lump
+    // somebody typed against a job, or an import that had money but no time.
+    // Recomputing EVERY amount as hours × rate the moment a rounding rule was
+    // selected turned that row into 0 × 0, and the $960 disappeared from the
+    // period total: choosing "nearest 15 minutes" in Labor settings silently
+    // made the payroll smaller, with nothing on screen to say so. A display
+    // preference is not allowed to change what is owed.
+    //
+    // So rounding only recomputes when there is something to recompute FROM —
+    // hours AND a rate. Anything else keeps the stored amount, which is the
+    // figure that was actually recorded. The entry still carries its issue flag
+    // ('incomplete-time' / 'missing-rate'), so the row is still visibly wrong
+    // and still blocked from approval; it just isn't wrong AND $960 lighter.
+    const amount = round && rawHours > 0 && rate > 0 ? hours * rate : storedAmount;
     // Health is judged on what was LOGGED, not on the rounded figure — a 0.02
     // hour entry rounding to zero is still an entry someone made.
     const issue = entryIssue(entry);
@@ -644,18 +725,31 @@ export function summarizeJobLabor(
 // two places would be two answers to one question. What stays here is the
 // export gate, which really is only about the health of the entries.
 
-/** Why the export button is off, or null when it's fine to export. */
+/**
+ * Why the export button is off, or null when it's fine to export.
+ *
+ * Counted in ENTRIES, not in people. Both of these are facts about individual
+ * labor rows, and saying "Danny has hours logged at a zero rate" over one bad
+ * entry out of nine reads as though everything of Danny's is suspect — which is
+ * exactly the confusion that makes an owner distrust a period total that is, in
+ * fact, right about the other eight.
+ */
 export function exportBlockedReason(rows: CrewLaborRow[]): string | null {
   if (rows.length === 0) return 'There are no hours in this period to export.';
+  const countOf = (row: CrewLaborRow, issue: NonNullable<EntryIssue>) =>
+    row.entries.filter((entry) => entry.issue === issue).length;
+
   const missingRate = rows.filter((row) => row.issues.includes('missing-rate'));
   if (missingRate.length > 0) {
+    const entries = missingRate.reduce((sum, row) => sum + countOf(row, 'missing-rate'), 0);
     const names = missingRate.map((row) => row.name).join(', ');
-    return `${names} ${missingRate.length === 1 ? 'has' : 'have'} hours logged at a zero rate, so the pay column would be wrong. Set a rate on those entries first.`;
+    return `${entries} ${entries === 1 ? 'entry' : 'entries'} (${names}) ${entries === 1 ? 'was' : 'were'} logged at a zero rate, so the pay column would be short by what those entries are worth. Set a rate on them first — the rest of the hours are counted as normal.`;
   }
   const incomplete = rows.filter((row) => row.issues.includes('incomplete-time'));
   if (incomplete.length > 0) {
+    const entries = incomplete.reduce((sum, row) => sum + countOf(row, 'incomplete-time'), 0);
     const names = incomplete.map((row) => row.name).join(', ');
-    return `${names} ${incomplete.length === 1 ? 'has an entry' : 'have entries'} with no hours on them. Fix or remove them first.`;
+    return `${entries} ${entries === 1 ? 'entry' : 'entries'} (${names}) ${entries === 1 ? 'has' : 'have'} no hours recorded. Fix or remove ${entries === 1 ? 'it' : 'them'} first.`;
   }
   return null;
 }

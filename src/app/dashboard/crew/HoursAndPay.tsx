@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useFormState } from 'react-dom';
 import {
   ENTRY_ISSUE_HELP,
   ENTRY_ISSUE_LABEL,
+  OVERTIME_POLICY,
   PERIOD_MODES,
-  QUICK_PERIODS,
+  offsetForDate,
   type PayPeriod,
+  type PeriodMode,
 } from '@/lib/labor';
 import {
   PAYMENT_METHOD_LABEL,
@@ -16,22 +19,30 @@ import {
   PAY_EVENT_LABEL,
   PAY_STATUS_HELP,
   PAY_STATUS_LABEL,
+  PAY_WARNING_FIX,
   PAY_WARNING_HELP,
-  PAY_WARNING_LABEL,
   PAY_WARNING_SEVERITY,
   PERIOD_STATE_HELP,
   PERIOD_STATE_LABEL,
   WEEKDAY_LABELS,
   UNDO_DISCLAIMER,
+  approveActionLabel,
   buildPayCsv,
+  canApproveRow,
+  entryHoursLabel,
   groupCrewRows,
   hoursLabel,
   markPeriodBlockedReason,
+  needsReapproval,
   payMoney,
+  payWarningChip,
   periodEndKey,
+  rateBreakdownLabel,
+  rowHoursLabel,
   type CrewPayRow,
   type PayEvent,
   type PayPeriodState,
+  type PayWarning,
   type PeriodAction,
   type PeriodComparison,
   type PeriodTotals,
@@ -131,8 +142,121 @@ const GROUPS = [
   { id: 'no_hours', label: 'No hours', tone: 'muted' as const },
 ];
 
+/**
+ * Warnings whose correction is a fresh, corrected labor entry.
+ *
+ * A labor row cannot be edited in place anywhere in this product — the drawer
+ * offers Remove and the toolbar offers Add — so "set the rate on that entry" is
+ * advice about a control that does not exist. This is the honest button: add the
+ * entry again with what it should have said, and remove the wrong one.
+ */
+const ENTRY_FIX_WARNINGS: PayWarning[] = ['no-hours', 'missing-rate', 'unassigned', 'no-job'];
+
 const REVIEW_RANK: Record<string, number> = { needs_review: 0, draft: 1, approved: 2 };
 const PAYMENT_RANK: Record<string, number> = { unpaid: 0, sent: 1, paid: 2 };
+
+// -- The summary cards, as filters --------------------------------------------
+
+type StatFilter = { status: StatusFilter; payment: PaymentFilter; flagged: boolean };
+
+/** Everyone. Also what pressing an applied card again goes back to. */
+const ALL_FILTER: StatFilter = { status: 'all', payment: 'all', flagged: false };
+
+function sameFilter(a: StatFilter, b: StatFilter): boolean {
+  return a.status === b.status && a.payment === b.payment && a.flagged === b.flagged;
+}
+
+/**
+ * The six figures across the top of the period, and what each one filters to.
+ *
+ * Declared as data rather than as six hand-written buttons so that the label,
+ * the filter it applies and the selected state it shows are one thing. When
+ * they were six buttons, "Hours logged" filtered to approved rows — a card
+ * whose heading and behaviour disagreed, on the screen where a number's meaning
+ * is the whole product.
+ */
+const STAT_CARDS: Array<{
+  id: string;
+  label: string;
+  help: string;
+  tone?: (totals: PeriodTotals) => 'pay' | 'alert' | 'warn' | 'ok' | undefined;
+  /** Null for a readout — a number that isn't a control. */
+  filter: StatFilter | null;
+  figure: (totals: PeriodTotals, rows: CrewPayRow[]) => { value: string; note: ReactNode };
+}> = [
+  {
+    id: 'pay',
+    label: 'Total est. pay',
+    help: 'Hours × the rate on each entry. An estimate of what to pay — this product does not run payroll, withhold tax or move money. Press to show everyone.',
+    tone: () => 'pay',
+    filter: ALL_FILTER,
+    figure: (totals) => ({
+      value: payMoney(totals.estimatedPay),
+      // The part that has been agreed cannot move on its own; the rest still
+      // can. Leading with one number hid that difference.
+      note: (
+        <>
+          {totals.agreedPay > 0 ? `${payMoney(totals.agreedPay)} agreed` : 'none agreed yet'}
+          {totals.estimatingPay > 0 ? ` · ${payMoney(totals.estimatingPay)} still estimating` : ''}
+        </>
+      ),
+    }),
+  },
+  {
+    id: 'hours',
+    label: 'Hours logged',
+    // Hours LOGGED, said plainly. Calling this "approved hours" while it counts
+    // everything is the kind of small lie that ends with someone paying for
+    // time they never agreed.
+    help: `Every hour logged in this period, approved or not. ${OVERTIME_POLICY}`,
+    filter: null,
+    figure: (totals) => ({
+      value: hoursLabel(totals.hours),
+      note: (
+        <>
+          {totals.overtimeHours > 0 ? `${hoursLabel(totals.overtimeHours)} over the threshold` : null}
+          {totals.overtimeHours > 0 && totals.approvedHours > 0 ? ' · ' : null}
+          {totals.approvedHours > 0 ? `${hoursLabel(totals.approvedHours)} approved` : null}
+          {totals.overtimeHours === 0 && totals.approvedHours === 0 ? 'None approved yet' : null}
+        </>
+      ),
+    }),
+  },
+  {
+    id: 'crew',
+    label: 'Crew members',
+    help: 'Everyone with a pay record or hours in this period.',
+    filter: null,
+    figure: (totals, rows) => ({
+      value: String(totals.crewCount),
+      note: `${rows.filter((row) => row.hours > 0).length} with hours`,
+    }),
+  },
+  {
+    id: 'review',
+    label: 'Need review',
+    help: 'Show only the people with something to sort out before their hours can be approved.',
+    tone: (totals) => (totals.needsReview > 0 ? 'alert' : undefined),
+    filter: { status: 'needs_review', payment: 'all', flagged: false },
+    figure: (totals) => ({ value: String(totals.needsReview), note: null }),
+  },
+  {
+    id: 'unpaid',
+    label: 'Unpaid',
+    help: 'Show only the people who have not been marked paid for this period.',
+    tone: (totals) => (totals.unpaid > 0 ? 'warn' : undefined),
+    filter: { status: 'all', payment: 'unpaid', flagged: false },
+    figure: (totals) => ({ value: String(totals.unpaid), note: null }),
+  },
+  {
+    id: 'paid',
+    label: 'Paid',
+    help: 'Show only the people you have recorded a payment for in this period.',
+    tone: () => 'ok',
+    filter: { status: 'all', payment: 'paid', flagged: false },
+    figure: (totals) => ({ value: String(totals.paid), note: null }),
+  },
+];
 
 function rowKey(row: CrewPayRow): string {
   return row.crewId ?? 'unassigned';
@@ -286,6 +410,10 @@ export default function HoursAndPay({
   hoursLastPeriod: number[];
   previousPayLabel: string;
 }) {
+  // The period picker navigates rather than posting: the period lives in the
+  // URL, so a range somebody is looking at can be linked to and comes back on
+  // reload. Link handles the arrows; the selects need router.push.
+  const router = useRouter();
   const [view, setView] = useState<CrewView>(initialView);
   const [overview, setOverview] = useState(initialOverview);
   const [skin, setSkin] = useState<CrewSkin>(initialSkin);
@@ -368,7 +496,12 @@ export default function HoursAndPay({
   const [toast, setToast] = useState<PayActionState | null>(null);
   const [armed, setArmed] = useState<Armed>(null);
   const exportFormRef = useRef<HTMLFormElement | null>(null);
-  const [exportResult, setExportResult] = useState<PayrollExport | null>(null);
+  // The payroll file, described before it exists on anyone's disk. `confirmed`
+  // flips once it has actually been downloaded, so the panel stops offering a
+  // decision that has been made.
+  const [exportPlan, setExportPlan] = useState<
+    { result: PayrollExport; amount: number; names: string[]; confirmed: boolean } | null
+  >(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   /** Fire a pay action. The armed form does the submitting; this is the trigger. */
@@ -476,6 +609,9 @@ export default function HoursAndPay({
     setSelected(allSelected ? [] : selectable.map(rowKey));
   }
 
+  /** What the table is filtered to right now, so a card can show it is the one. */
+  const currentFilter: StatFilter = { status: statusFilter, payment: paymentFilter, flagged: flaggedOnly };
+
   function applyFilter(next: { status?: StatusFilter; payment?: PaymentFilter; flagged?: boolean }) {
     if (next.status !== undefined) setStatusFilter(next.status);
     if (next.payment !== undefined) setPaymentFilter(next.payment);
@@ -532,14 +668,21 @@ export default function HoursAndPay({
   }
 
   /**
-   * The file the payroll provider imports.
+   * The file the payroll provider imports — PREPARED, not sent.
    *
    * Deliberately not the same file as the review sheet below. This one only
    * carries approved, unpaid rows, drops salaried staff (their provider already
    * pays them from the salary on file), and reports both facts rather than
    * quietly shipping a shorter file than the owner expected.
+   *
+   * It used to build the file and download it in the same click, and only then
+   * say who had been left out — so the first time anyone learned that four of
+   * their seven crew weren't in it was after the file was already on their
+   * desktop, quite possibly already uploaded. Everything the owner needs to
+   * judge it — provider, who, which period, how much, and what will break the
+   * import — is now shown first, and the download is the second click.
    */
-  function downloadForPayroll() {
+  function prepareForPayroll() {
     const { rows: approved, excluded: notReady } = exportableRows(rows);
     const result = buildPayrollExport(approved, {
       provider: payrollProvider,
@@ -547,9 +690,19 @@ export default function HoursAndPay({
       periodEndKey: periodEndKey(period),
       alreadySent: rows.some((row) => row.record?.sentAt),
     });
-    setExportResult({ ...result, excluded: [...notReady, ...result.excluded] });
-    if (result.included > 0) saveFile(result.csv, result.filename);
-    if (payAvailable && result.included > 0) exportFormRef.current?.requestSubmit();
+    setExportPlan({
+      result: { ...result, excluded: [...notReady, ...result.excluded] },
+      amount: approved.reduce((sum, row) => sum + row.estimatedPay, 0),
+      names: approved.map((row) => row.name),
+      confirmed: false,
+    });
+  }
+
+  function confirmPayrollExport() {
+    if (!exportPlan || exportPlan.result.included === 0) return;
+    saveFile(exportPlan.result.csv, exportPlan.result.filename);
+    if (payAvailable) exportFormRef.current?.requestSubmit();
+    setExportPlan({ ...exportPlan, confirmed: true });
   }
 
   function download(only?: CrewPayRow[]) {
@@ -575,6 +728,42 @@ export default function HoursAndPay({
     const sameBatch = paid.filter((row) => row.record?.paymentDate === newest.record?.paymentDate);
     return { row: newest, count: sameBatch.length, total: sameBatch.reduce((sum, row) => sum + (row.paidAmount ?? 0), 0) };
   }, [rows]);
+
+  // OVERDUE MONEY OUTRANKS AN EMPTY WEEK.
+  //
+  // The screen shows one period at a time, and it opens on the current one — so
+  // on a Monday morning the whole page is about a period with nothing in it,
+  // laid out above a one-line strip mentioning the $4,000 nobody has been paid
+  // from three weeks ago. Being caught up is not something an owner should have
+  // to remember to check. When this period has no money outstanding of its own,
+  // the older debt is what leads the page; when it does, it stays where it was,
+  // below the work in front of you.
+  const owedTotal = outstanding.reduce((sum, item) => sum + item.outstandingPay, 0);
+  const owedLeadsHere = outstanding.length > 0 && (rows.length === 0 || totals.unpaidPay === 0);
+  const owedStrip =
+    outstanding.length === 0 ? null : (
+      <section className={styles.owedStrip} aria-label="Earlier periods still owed">
+        <div>
+          <strong>
+            {outstanding.length === 1
+              ? 'An earlier period still owes somebody'
+              : `${outstanding.length} earlier periods still owe somebody`}
+          </strong>
+          <small>
+            {payMoney(owedTotal)} outstanding · oldest {outstanding[0].rangeLabel}
+            {owedLeadsHere ? ' · nothing is outstanding in the period below' : ''}
+          </small>
+        </div>
+        <div className={styles.owedLinks}>
+          {outstanding.slice(0, 3).map((item) => (
+            <Link key={item.key} href={periodHref({ offset: String(item.offset), from: null, to: null })}>
+              {item.rangeLabel}
+              <em>{payMoney(item.outstandingPay)}</em>
+            </Link>
+          ))}
+        </div>
+      </section>
+    );
 
   // The period's one action, rendered once and placed differently by view: in
   // the summary card for Table/Grouped/Review, in the rail for Focus. Defined
@@ -635,10 +824,14 @@ export default function HoursAndPay({
       },
       headline: row.payProblem
         ? row.payProblem
-        : `${hoursLabel(row.hours)} across ${row.entryCount} ${row.entryCount === 1 ? 'entry' : 'entries'} · ${PAYMENT_STATE_LABEL[row.payment]}`,
+        : `${rowHoursLabel(row)} across ${row.entryCount} ${row.entryCount === 1 ? 'entry' : 'entries'} · ${PAYMENT_STATE_LABEL[row.payment]}`,
       stats: [
-        { label: 'Hours', value: hoursLabel(row.hours), title: row.overtimeHours > 0 ? `Includes ${hoursLabel(row.overtimeHours)} over the threshold.` : undefined },
-        { label: 'Est. pay', value: payMoney(row.estimatedPay), title: row.payBasis },
+        {
+          label: 'Hours',
+          value: rowHoursLabel(row),
+          title: row.overtimeHours > 0 ? `Includes ${hoursLabel(row.overtimeHours)} over the threshold. ${OVERTIME_POLICY}` : undefined,
+        },
+        { label: 'Est. pay', value: payMoney(row.estimatedPay), title: `${row.payBasis}${rateBreakdownLabel(row.entries) ? ` · ${rateBreakdownLabel(row.entries)}` : ''}` },
         {
           label: row.payment === 'paid' ? 'Paid' : row.review === 'approved' ? 'Approved' : 'Agreed',
           value: row.payment === 'paid' ? payMoney(row.paidAmount ?? 0) : row.approvedAmount === null ? '—' : payMoney(row.approvedAmount),
@@ -658,9 +851,10 @@ export default function HoursAndPay({
           // is a word, not a warning. The pane has room to say what it means.
           <>
             <span className={styles.flagChip} data-severity={PAY_WARNING_SEVERITY[worst]}>
-              {PAY_WARNING_LABEL[worst]}
+              {payWarningChip(worst, row.entries)}
             </span>
             <span className={styles.dim}>{PAY_WARNING_HELP[worst]}</span>
+            <span className={styles.dim}>{PAY_WARNING_FIX[worst]}</span>
           </>
         ) : row.paymentLabel ? (
           <span className={styles.dim}>{[row.paymentLabel, row.paymentDetail].filter(Boolean).join(' · ')}</span>
@@ -670,9 +864,9 @@ export default function HoursAndPay({
           <button type="button" className="btn primary" onClick={() => setDrawer({ mode: 'crew', crewId: id })}>
             Open timesheet
           </button>
-          {row.eligible && row.review !== 'approved' && row.hours > 0 ? (
+          {payAvailable && canApproveRow(row) ? (
             <button type="button" className={`btn secondary ${styles.goAction}`} disabled={busy('approve')} onClick={() => arm({ kind: 'approve', crewIds: [id] })}>
-              {busy('approve') ? 'Approving…' : 'Approve hours'}
+              {busy('approve') ? 'Approving…' : approveActionLabel(row)}
             </button>
           ) : null}
           {payAvailable && row.review === 'approved' && row.payment !== 'paid' ? (
@@ -712,8 +906,18 @@ export default function HoursAndPay({
         </div>
       </div>
 
-      {/* Pay-period selector: arrows step whole periods, the select changes the
-          length, and the quick filters are shortcuts to common ones. */}
+      {owedLeadsHere ? owedStrip : null}
+
+      {/* ONE period picker.
+          There were four: two arrows, a row of length pills, four quick-filter
+          shortcuts (This week / Last week / This month / Last month) and a
+          from/to form with its own Go button. Every one of them answered the
+          same question — which range am I looking at — and between them they
+          could disagree: "This month" left the pills saying Weekly, the arrows
+          then stepped a week from a month, and the quick row highlighted
+          nothing. Four controls, one question, so: step back, what you're
+          looking at, step forward, come back to now, how long a period is, and
+          jump to any date. */}
       <div className={styles.periodBar}>
         <div className={styles.periodNav}>
           <Link href={periodHref({ offset: String(period.offset - 1), from: null, to: null })} className={styles.periodArrow} aria-label="Previous pay period">
@@ -729,42 +933,88 @@ export default function HoursAndPay({
         </div>
 
         <div className={styles.periodModes}>
-          {PERIOD_MODES.filter((mode) => mode.id !== 'custom').map((mode) => (
-            <Link
-              key={mode.id}
-              href={`/dashboard/crew?tab=hours&period=${mode.id}${crewFilter ? `&crew=${crewFilter}` : ''}`}
-              className={`${styles.periodMode}${period.mode === mode.id ? ` ${styles.periodModeOn}` : ''}`}
-            >
-              {mode.label}
+          {/* Only offered when it would do something. A "Current period" button
+              that is already the current period is a button that teaches you it
+              does nothing. */}
+          {period.offset !== 0 || period.mode === 'custom' ? (
+            <Link href={periodHref({ offset: '0', period: settings.periodMode, from: null, to: null })} className={styles.periodMode}>
+              Current period
             </Link>
-          ))}
-          <form className={styles.customRange} action="/dashboard/crew" method="get">
-            <input type="hidden" name="tab" value="hours" />
-            <input type="hidden" name="period" value="custom" />
-            {crewFilter ? <input type="hidden" name="crew" value={crewFilter} /> : null}
-            <input type="date" name="from" aria-label="Range start" required />
-            <span aria-hidden="true">→</span>
-            <input type="date" name="to" aria-label="Range end" required />
-            <button type="submit" className={styles.periodMode}>Go</button>
-          </form>
-        </div>
-      </div>
+          ) : (
+            <span className={`${styles.periodMode} ${styles.periodModeOn}`}>Current period</span>
+          )}
 
-      <div className={styles.quickRow}>
-        {QUICK_PERIODS.map((quick) => (
-          <Link
-            key={quick.id}
-            href={`/dashboard/crew?tab=hours&period=${quick.mode}&offset=${quick.offset}${crewFilter ? `&crew=${crewFilter}` : ''}`}
-            className={`${styles.quick}${period.mode === quick.mode && period.offset === quick.offset ? ` ${styles.quickOn}` : ''}`}
-          >
-            {quick.label}
-          </Link>
-        ))}
-        {filteredName ? (
-          <Link href={periodHref({ crew: null })} className={styles.crewFilterChip}>
-            Showing {filteredName} only ✕
-          </Link>
-        ) : null}
+          <label className={styles.filter}>
+            <span>Length</span>
+            <select
+              value={period.mode}
+              onChange={(event) => {
+                const mode = event.target.value as PeriodMode;
+                // Changing the LENGTH keeps the date you were looking at, rather
+                // than snapping to today: switching Weekly → Monthly while
+                // reviewing March has to land on March, and offsetForDate is
+                // what makes that possible.
+                if (mode === 'custom') {
+                  router.push(periodHref({ period: 'custom', from: period.startIso.slice(0, 10), to: periodEndKey(period), offset: '0' }));
+                  return;
+                }
+                router.push(
+                  periodHref({
+                    period: mode,
+                    offset: String(offsetForDate(mode, period.startIso.slice(0, 10))),
+                    from: null,
+                    to: null,
+                  }),
+                );
+              }}
+              aria-label="Pay-period length"
+            >
+              {PERIOD_MODES.map((mode) => (
+                <option key={mode.id} value={mode.id}>{mode.label}</option>
+              ))}
+            </select>
+          </label>
+
+          {period.mode === 'custom' ? (
+            // A custom range is the one shape a single date can't express, so
+            // it keeps two inputs — but no Go button: the range applies as soon
+            // as both ends are set, the same way every other control here does.
+            <span className={styles.customRange}>
+              <input
+                type="date"
+                aria-label="Range start"
+                defaultValue={period.startIso.slice(0, 10)}
+                onChange={(event) => event.target.value && router.push(periodHref({ period: 'custom', from: event.target.value, to: periodEndKey(period) }))}
+              />
+              <span aria-hidden="true">→</span>
+              <input
+                type="date"
+                aria-label="Range end"
+                defaultValue={periodEndKey(period)}
+                onChange={(event) => event.target.value && router.push(periodHref({ period: 'custom', from: period.startIso.slice(0, 10), to: event.target.value }))}
+              />
+            </span>
+          ) : (
+            <label className={styles.filter}>
+              <span>Jump to</span>
+              <input
+                type="date"
+                aria-label="Jump to the pay period containing a date"
+                value=""
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  router.push(periodHref({ offset: String(offsetForDate(period.mode, event.target.value)), from: null, to: null }));
+                }}
+              />
+            </label>
+          )}
+
+          {filteredName ? (
+            <Link href={periodHref({ crew: null })} className={styles.crewFilterChip}>
+              Showing {filteredName} only ✕
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {toast ? (
@@ -788,32 +1038,7 @@ export default function HoursAndPay({
         </div>
       ) : null}
 
-      {/* Being caught up is otherwise something you have to REMEMBER: the screen
-          shows one period at a time, so a week left unpaid three weeks ago is
-          invisible until you click back far enough to find it. */}
-      {outstanding.length > 0 ? (
-        <section className={styles.owedStrip} aria-label="Earlier periods still owed">
-          <div>
-            <strong>
-              {outstanding.length === 1
-                ? 'An earlier period still owes somebody'
-                : `${outstanding.length} earlier periods still owe somebody`}
-            </strong>
-            <small>
-              {payMoney(outstanding.reduce((sum, period) => sum + period.outstandingPay, 0))} outstanding · oldest{' '}
-              {outstanding[0].rangeLabel}
-            </small>
-          </div>
-          <div className={styles.owedLinks}>
-            {outstanding.slice(0, 3).map((period) => (
-              <Link key={period.key} href={periodHref({ offset: String(period.offset), from: null, to: null })}>
-                {period.rangeLabel}
-                <em>{payMoney(period.outstandingPay)}</em>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {owedLeadsHere ? null : owedStrip}
 
       {/* --- the pay period, and the one thing to do with it --- */}
       <section className={styles.periodCard} data-view={layout} aria-label="Pay period summary">
@@ -853,60 +1078,51 @@ export default function HoursAndPay({
           ) : null}
         </div>
 
-        {/* Every number is a filter. A "4" you can't act on is trivia. */}
+        {/* Every number is a filter. A "4" you can't act on is trivia.
+            And a filter you can't SEE is worse than trivia: these cards changed
+            the table underneath them and then looked exactly as they had a
+            moment before, so the only evidence of a filter was a shorter list —
+            which reads as missing data. Each card now says whether it is the one
+            currently applied, in the ring and to a screen reader, and pressing
+            the applied one again clears it. */}
         <div className={styles.periodStats}>
-          <button type="button" className={styles.periodStat} data-tone="pay" onClick={() => applyFilter({ status: 'all', payment: 'all', flagged: false })}>
-            <small title="Hours × the rate on each entry. An estimate of what to pay — this product does not run payroll, withhold tax or move money.">
-              Total est. pay
-            </small>
-            <strong>{payMoney(totals.estimatedPay)}</strong>
-            {/* The part that has been agreed cannot move on its own; the rest
-                still can. Leading with one number hid that difference. */}
-            <em>
-              {totals.agreedPay > 0 ? `${payMoney(totals.agreedPay)} agreed` : 'none agreed yet'}
-              {totals.estimatingPay > 0 ? ` · ${payMoney(totals.estimatingPay)} still estimating` : ''}
-            </em>
-          </button>
-          {/* Hours LOGGED, said plainly. Calling this "approved hours" while it
-              counts everything is the kind of small lie that ends with someone
-              paying for time they never agreed. What's approved is its own line. */}
-          <button type="button" className={styles.periodStat} onClick={() => applyFilter({ status: 'approved', payment: 'all', flagged: false })}>
-            <small>Hours logged</small>
-            <strong>{hoursLabel(totals.hours)}</strong>
-            <em>
-              {totals.overtimeHours > 0 ? `OT ${hoursLabel(totals.overtimeHours)}` : null}
-              {totals.overtimeHours > 0 && totals.approvedHours > 0 ? ' · ' : null}
-              {totals.approvedHours > 0 ? `${hoursLabel(totals.approvedHours)} approved` : null}
-              {totals.overtimeHours === 0 && totals.approvedHours === 0 ? 'None approved yet' : null}
-            </em>
-          </button>
-          <button type="button" className={styles.periodStat} onClick={() => applyFilter({ status: 'all', payment: 'all', flagged: false })}>
-            <small>Crew members</small>
-            <strong>{totals.crewCount}</strong>
-            <em>{rows.filter((row) => row.hours > 0).length} with hours</em>
-          </button>
-          <button
-            type="button"
-            className={styles.periodStat}
-            data-tone={totals.needsReview > 0 ? 'alert' : undefined}
-            onClick={() => applyFilter({ status: 'needs_review', payment: 'all', flagged: false })}
-          >
-            <small>Need review</small>
-            <strong>{totals.needsReview}</strong>
-          </button>
-          <button
-            type="button"
-            className={styles.periodStat}
-            data-tone={totals.unpaid > 0 ? 'warn' : undefined}
-            onClick={() => applyFilter({ status: 'all', payment: 'unpaid', flagged: false })}
-          >
-            <small>Unpaid</small>
-            <strong>{totals.unpaid}</strong>
-          </button>
-          <button type="button" className={styles.periodStat} data-tone="ok" onClick={() => applyFilter({ status: 'all', payment: 'paid', flagged: false })}>
-            <small>Paid</small>
-            <strong>{totals.paid}</strong>
-          </button>
+          {STAT_CARDS.map((stat) => {
+            const figure = stat.figure(totals, rows);
+            // A readout is a number, not a control. Two of these cards never had
+            // a filter worth applying — "Crew members" filtered to everyone,
+            // which is what you were already looking at — and a button that does
+            // nothing is how you learn to stop pressing the ones that do.
+            if (!stat.filter) {
+              return (
+                <div key={stat.id} className={styles.periodStat} data-tone={stat.tone?.(totals)} title={stat.help}>
+                  <small>{stat.label}</small>
+                  <strong>{figure.value}</strong>
+                  {figure.note ? <em>{figure.note}</em> : null}
+                </div>
+              );
+            }
+            const on = sameFilter(stat.filter, currentFilter);
+            return (
+              <button
+                key={stat.id}
+                type="button"
+                className={styles.periodStat}
+                data-tone={stat.tone?.(totals)}
+                data-on={on || undefined}
+                aria-pressed={on}
+                // The selected ring is inline because it has to beat the
+                // per-tone background rules, which are more specific than any
+                // class this file is allowed to add.
+                style={on ? { boxShadow: 'inset 0 0 0 2px var(--accent)' } : undefined}
+                title={on ? `Showing ${stat.label.toLowerCase()} only — press again to show everyone` : stat.help}
+                onClick={() => applyFilter(on ? ALL_FILTER : stat.filter!)}
+              >
+                <small>{stat.label}</small>
+                <strong>{figure.value}</strong>
+                {figure.note ? <em>{figure.note}</em> : null}
+              </button>
+            );
+          })}
         </div>
 
         {/* One primary action. What it is depends entirely on where the period
@@ -1169,40 +1385,82 @@ export default function HoursAndPay({
                 <input type="checkbox" checked={flaggedOnly} onChange={(event) => applyFilter({ flagged: event.target.checked })} />
                 <span>Flagged only</span>
               </label>
-              <button type="button" className="btn ghost" onClick={() => download()} disabled={visible.length === 0}>
-                Export CSV
+              {/* WHAT THIS FILE CONTAINS, on the button. "Export CSV" gave no
+                  clue whether it was the whole period or the seven rows left
+                  after a filter — and it is the latter, which is a difference
+                  worth several thousand dollars in a file somebody pays from. */}
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => download()}
+                disabled={visible.length === 0}
+                title={`Downloads the ${visible.length} ${visible.length === 1 ? 'crew member' : 'crew members'} shown here, with the filters and search you have applied — not the whole period. Includes approval and payment status.`}
+              >
+                Export {visible.length} shown{visible.length === rows.length ? '' : ` of ${rows.length}`}
               </button>
-              <button type="button" className="btn secondary" onClick={downloadForPayroll} disabled={rows.length === 0}>
+              <button type="button" className="btn secondary" onClick={prepareForPayroll} disabled={rows.length === 0}>
                 Send to {PAYROLL_PROVIDER_LABEL[payrollProvider] === 'A spreadsheet (any provider, or a bookkeeper)' ? 'payroll' : PAYROLL_PROVIDER_LABEL[payrollProvider]}
               </button>
             </div>
 
             {exportBlocked ? <p className={styles.exportBlocked}>Heads up: {exportBlocked}</p> : null}
 
-            {exportResult ? (
+            {/* The payroll file, described before it is downloaded: provider,
+                who is in it, which period, what it comes to, and everything
+                that would break the import — then the button. */}
+            {exportPlan ? (
               <div className={styles.exportReport} role="status">
                 <strong>
-                  {exportResult.included > 0
-                    ? `${exportResult.filename} — ${exportResult.included} ${exportResult.included === 1 ? 'row' : 'rows'}`
-                    : 'Nothing to send'}
+                  {exportPlan.result.included === 0
+                    ? 'Nothing to send to payroll yet'
+                    : exportPlan.confirmed
+                      ? `${exportPlan.result.filename} downloaded — ${exportPlan.result.included} ${exportPlan.result.included === 1 ? 'row' : 'rows'}`
+                      : `Ready to send ${exportPlan.result.included} ${exportPlan.result.included === 1 ? 'crew member' : 'crew members'} to ${PAYROLL_PROVIDER_LABEL[exportPlan.result.provider]}`}
                 </strong>
-                {exportResult.problems.map((problem) => (
+                {exportPlan.result.included > 0 ? (
+                  <dl className={styles.railList}>
+                    <div>
+                      <dt>Pay period</dt>
+                      <dd>{period.rangeLabel}</dd>
+                    </div>
+                    <div>
+                      <dt>People</dt>
+                      <dd>{exportPlan.names.join(', ')}</dd>
+                    </div>
+                    <div>
+                      <dt>Total in the file</dt>
+                      <dd>{payMoney(exportPlan.amount)}</dd>
+                    </div>
+                    <div>
+                      <dt>File</dt>
+                      <dd>{exportPlan.result.filename}</dd>
+                    </div>
+                  </dl>
+                ) : null}
+                {exportPlan.result.problems.map((problem) => (
                   <p key={problem} className={styles.exportProblem}>{problem}</p>
                 ))}
-                {exportResult.excluded.length > 0 ? (
+                {exportPlan.result.excluded.length > 0 ? (
                   <details>
-                    <summary>{exportResult.excluded.length} not in the file</summary>
+                    <summary>{exportPlan.result.excluded.length} not in the file</summary>
                     <ul>
-                      {exportResult.excluded.map((item) => (
+                      {exportPlan.result.excluded.map((item) => (
                         <li key={`${item.name}-${item.reason}`}><b>{item.name}</b> — {item.reason}</li>
                       ))}
                     </ul>
                   </details>
                 ) : null}
-                {exportResult.notes.map((note) => (
+                {exportPlan.result.notes.map((note) => (
                   <p key={note} className={styles.exportNote}>{note}</p>
                 ))}
-                <button type="button" className="btn ghost" onClick={() => setExportResult(null)}>Dismiss</button>
+                {exportPlan.result.included > 0 && !exportPlan.confirmed ? (
+                  <button type="button" className="btn primary" onClick={confirmPayrollExport}>
+                    Download this file
+                  </button>
+                ) : null}
+                <button type="button" className="btn ghost" onClick={() => setExportPlan(null)}>
+                  {exportPlan.confirmed || exportPlan.result.included === 0 ? 'Dismiss' : 'Cancel'}
+                </button>
               </div>
             ) : null}
 
@@ -1317,6 +1575,12 @@ export default function HoursAndPay({
                     const jobs = row.crewId ? jobsByCrew[row.crewId] ?? [] : [];
                     const canSelect = row.eligible && row.hours > 0 && row.payment !== 'paid';
                     const flags = row.warnings.filter((warning) => PAY_WARNING_SEVERITY[warning] !== 'info');
+                    // Only when it says something a single "$30.00/hr" beside
+                    // their name doesn't already say.
+                    const rateNote =
+                      row.payType === 'hourly' && (row.rateVaries || row.entries.some((entry) => entry.rate <= 0))
+                        ? rateBreakdownLabel(row.entries)
+                        : null;
                     return (
                       <tr key={id} className={styles.payRow} data-selected={selected.includes(id) || undefined} data-paid={row.payment === 'paid' || undefined}>
                         <td className={styles.checkCell}>
@@ -1365,10 +1629,21 @@ export default function HoursAndPay({
                           </span>
                           {flags.length > 0 ? (
                             <span className={styles.flagChips}>
+                              {/* The chip is the way IN to the entries it is
+                                  about. It used to be a dead span: "Missing
+                                  rate" with no way to find out which entry, on
+                                  a row whose total was plainly not zero. */}
                               {flags.map((warning) => (
-                                <span key={warning} className={styles.flagChip} data-severity={PAY_WARNING_SEVERITY[warning]} title={PAY_WARNING_HELP[warning]}>
-                                  {PAY_WARNING_LABEL[warning]}
-                                </span>
+                                <button
+                                  key={warning}
+                                  type="button"
+                                  className={styles.flagChip}
+                                  data-severity={PAY_WARNING_SEVERITY[warning]}
+                                  title={`${PAY_WARNING_HELP[warning]} ${PAY_WARNING_FIX[warning]}`}
+                                  onClick={() => row.crewId && setDrawer({ mode: 'crew', crewId: row.crewId })}
+                                >
+                                  {payWarningChip(warning, row.entries)}
+                                </button>
                               ))}
                             </span>
                           ) : null}
@@ -1389,19 +1664,39 @@ export default function HoursAndPay({
                           </td>
                         ) : null}
                         <td className={styles.num} data-label="Hours this period">
-                          <strong>{hoursLabel(row.hours)}</strong>
+                          {/* An em dash, not "0h 00m", when nothing was ever
+                              recorded — see rowHoursLabel. The row that read
+                              "0h 00m … $960.00" was two different facts printed
+                              as one contradiction. */}
+                          <strong title={row.hours <= 0 && row.issues.includes('incomplete-time') ? 'No hours were ever recorded on these entries. The amount beside them was recorded directly.' : undefined}>
+                            {rowHoursLabel(row)}
+                          </strong>
                           {/* Hours past the threshold are still worth knowing
                               about for a salaried person — it's just not money.
-                              "Over 40h" says the fact without implying a rate. */}
+                              "over" says the fact without implying a rate, and
+                              the tooltip says it in full for the hourly case
+                              too, where "OT" is most likely to be read as pay. */}
                           {row.overtimeHours > 0 ? (
-                            <small className={styles.otCell}>
-                              {row.overtimePaid ? `OT ${hoursLabel(row.overtimeHours)}` : `+${hoursLabel(row.overtimeHours)} over`}
+                            <small className={styles.otCell} title={OVERTIME_POLICY}>
+                              {row.overtimePaid ? `${hoursLabel(row.overtimeHours)} OT (hours only)` : `+${hoursLabel(row.overtimeHours)} over`}
                             </small>
                           ) : null}
                         </td>
                         <td className={`${styles.num} ${styles.payCell}`} data-label="Estimated pay">
                           <strong>{payMoney(row.estimatedPay)}</strong>
                           {row.payType !== 'hourly' ? <small className={styles.dim}>{row.payBasis}</small> : null}
+                          {/* THE EFFECTIVE RATE, shown wherever it isn't a single
+                              obvious number. The rate on an entry is snapshotted
+                              when it is logged, so a profile that says $30/hour
+                              and an entry that went in at $0 are both true — and
+                              without this line the screen shows a rate warning
+                              beside a total that is clearly not zero and offers
+                              no way to reconcile them. */}
+                          {rateNote ? (
+                            <small className={styles.dim} title="The rate used on each entry is the one it was logged at, not the rate on the crew member’s profile today.">
+                              {rateNote}
+                            </small>
+                          ) : null}
                           {row.adjustment !== 0 ? (
                             <small
                               className={styles.adjust}
@@ -1450,9 +1745,13 @@ export default function HoursAndPay({
                                 <button type="button" role="menuitem" onClick={() => row.crewId && setDrawer({ mode: 'crew', crewId: row.crewId })}>
                                   View hours &amp; entries
                                 </button>
-                                {payAvailable && row.eligible && row.review !== 'approved' && row.hours > 0 ? (
+                                {/* canApproveRow lets an approved row through
+                                    when its hours have changed since — the only
+                                    route back to an agreed figure, because there
+                                    is no undo-approval action anywhere. */}
+                                {payAvailable && canApproveRow(row) ? (
                                   <button type="button" role="menuitem" onClick={() => arm({ kind: 'approve', crewIds: [id] })}>
-                                    Approve hours
+                                    {approveActionLabel(row)}
                                   </button>
                                 ) : null}
                                 {payAvailable && row.review === 'approved' && row.payment !== 'paid' ? (
@@ -1546,9 +1845,10 @@ export default function HoursAndPay({
                 before recording a payment. */}
             <p className={styles.hpNote} data-view={layout}>
               {layout === 'focus' ? <span className={styles.hpNoteMark} aria-hidden="true">i</span> : null}
-              Estimated pay is each entry&apos;s hours × the rate it was logged at. Periods are cut on when time was logged — a labor
-              entry has no separate &ldquo;worked on&rdquo; date. Marking someone paid records that you paid them: no tax is
-              calculated or withheld here and no money moves.
+              Estimated pay is each entry&apos;s hours × the rate it was logged at — the rate ON THE ENTRY, which is not always the
+              rate on that person&apos;s profile today. {OVERTIME_POLICY} Periods are cut on when time was logged — a labor entry has
+              no separate &ldquo;worked on&rdquo; date. Marking someone paid records that you paid them: no tax is calculated or
+              withheld here and no money moves.
             </p>
           </div>
 
@@ -1806,10 +2106,12 @@ export default function HoursAndPay({
                 <div className={styles.drawerStats}>
                   <div>
                     <small>Hours</small>
-                    <strong>{hoursLabel(drawerRow.hours)}</strong>
+                    <strong>{rowHoursLabel(drawerRow)}</strong>
                   </div>
                   <div>
-                    <small>Overtime</small>
+                    {/* "Overtime" on its own reads as a pay line. It is a count
+                        of hours and nothing else — see OVERTIME_POLICY. */}
+                    <small title={OVERTIME_POLICY}>Overtime hours (not paid at a premium)</small>
                     <strong>{drawerRow.overtimeHours > 0 ? hoursLabel(drawerRow.overtimeHours) : '—'}</strong>
                   </div>
                   <div>
@@ -1818,12 +2120,38 @@ export default function HoursAndPay({
                   </div>
                 </div>
 
+                {/* Each warning carries what to DO about it, and the button
+                    where a button exists. A flag with no correction beside it
+                    is a screen telling somebody off. */}
                 {drawerRow.warnings.length > 0 ? (
                   <ul className={styles.drawerWarnings}>
                     {drawerRow.warnings.map((warning) => (
                       <li key={warning} data-severity={PAY_WARNING_SEVERITY[warning]}>
-                        <strong>{PAY_WARNING_LABEL[warning]}</strong>
+                        <strong>{payWarningChip(warning, drawerRow.entries)}</strong>
                         <span>{PAY_WARNING_HELP[warning]}</span>
+                        <span>{PAY_WARNING_FIX[warning]}</span>
+                        {(warning === 'changed-after-approval' || warning === 'logged-after-approval') && needsReapproval(drawerRow) && payAvailable ? (
+                          <button
+                            type="button"
+                            className="linklike"
+                            disabled={busy('approve')}
+                            onClick={() => arm({ kind: 'approve', crewIds: [drawerRow.crewId as string] })}
+                          >
+                            {busy('approve') ? 'Approving…' : `Approve ${payMoney(drawerRow.estimatedPay)} instead`}
+                          </button>
+                        ) : null}
+                        {ENTRY_FIX_WARNINGS.includes(warning) ? (
+                          <button
+                            type="button"
+                            className="linklike"
+                            onClick={() => {
+                              setDrawer(null);
+                              setAddOpen(true);
+                            }}
+                          >
+                            Add a corrected entry
+                          </button>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -1846,14 +2174,20 @@ export default function HoursAndPay({
                 ) : null}
 
                 <div className={styles.entryList}>
+                  {/* "Rate used", not "Rate": it is the rate SNAPSHOTTED on the
+                      entry, which is not necessarily the rate on the crew
+                      member's profile today. */}
                   <div className={styles.entryHead} aria-hidden="true">
                     <span>Job</span>
                     <span>Logged</span>
                     <span className={styles.num}>Hours</span>
-                    <span className={styles.num}>Rate</span>
+                    <span className={styles.num}>Rate used</span>
                     <span className={styles.num}>Amount</span>
                     <span />
                   </div>
+                  {rateBreakdownLabel(drawerRow.entries) ? (
+                    <p className={styles.dim}>Rates used: {rateBreakdownLabel(drawerRow.entries)}</p>
+                  ) : null}
                   {drawerRow.entries.map((entry) => (
                     <div key={entry.id} className={styles.entryRow}>
                       <span>
@@ -1861,8 +2195,12 @@ export default function HoursAndPay({
                         <small>{entry.description}</small>
                       </span>
                       <span>{loggedLabel(entry.loggedAt)}</span>
-                      <span className={styles.num}>{entry.hours}</span>
-                      <span className={styles.num}>{entry.rate > 0 ? payMoney(entry.rate) : '—'}</span>
+                      <span className={styles.num} title={entry.issue === 'incomplete-time' ? 'No hours were ever recorded on this entry. Its amount was recorded directly.' : undefined}>
+                        {entryHoursLabel(entry)}
+                      </span>
+                      <span className={styles.num} title={entry.rate > 0 ? 'The rate this entry was logged at.' : 'This entry was logged with no rate on it.'}>
+                        {entry.rate > 0 ? payMoney(entry.rate) : 'No rate'}
+                      </span>
                       <span className={styles.num}>{payMoney(entry.amount)}</span>
                       <span className={styles.entryAction}>
                         {entry.issue ? (
@@ -2198,7 +2536,7 @@ function GroupedCrew({
                             </small>
                           </button>
                           <span className={styles.memberHours}>
-                            <strong>{hoursLabel(row.hours)}</strong>
+                            <strong>{rowHoursLabel(row)}</strong>
                             <small>Est. pay</small>
                             <b>{payMoney(row.estimatedPay)}</b>
                           </span>
@@ -2217,9 +2555,9 @@ function GroupedCrew({
                                 key={warning}
                                 className={styles.flagChip}
                                 data-severity={PAY_WARNING_SEVERITY[warning]}
-                                title={PAY_WARNING_HELP[warning]}
+                                title={`${PAY_WARNING_HELP[warning]} ${PAY_WARNING_FIX[warning]}`}
                               >
-                                {PAY_WARNING_LABEL[warning]}
+                                {payWarningChip(warning, row.entries)}
                               </span>
                             ))}
                         </div>

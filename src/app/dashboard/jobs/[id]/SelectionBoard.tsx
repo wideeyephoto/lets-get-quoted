@@ -35,24 +35,31 @@ export default function SelectionBoard({
   selections,
   templates,
   photos,
+  lastSentAt,
 }: {
   jobId: string;
   selections: Selection[];
   templates: SelectionTemplate[];
   /** Signed option-photo URLs by option id. Missing ones simply don't render. */
   photos: Record<string, string>;
+  /**
+   * The most recent time anything on this board went out, from the job feed.
+   * Shown because a board nobody has been told about is the failure mode this
+   * feature had for its whole life: it looked finished, and the homeowner had
+   * never heard of it.
+   *
+   * Passed in rather than derived from the choices. It used to be the newest of
+   * chase_sent_at / overdue_sent_at across the board, which stopped being an
+   * answer the moment the scheduled reminders got their own ledger and stopped
+   * stamping the choices — every board would have read as never sent. Both
+   * senders write a `selection_requested` feed event, so the feed is the one
+   * place that knows about both.
+   */
+  lastSentAt: string | null;
 }) {
   const today = todayKey();
   const totals = selectionTotals(selections);
   const status = boardStatus(selections, today);
-  // The most recent time anything on this board went out. Shown because a board
-  // nobody has been told about is the failure mode this feature had for its
-  // whole life: it looked finished, and the homeowner had never heard of it.
-  const lastSentAt = selections
-    .flatMap((selection) => [selection.chaseSentAt, selection.overdueSentAt])
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .pop() ?? null;
   const anyOpen = selections.some((selection) => selection.status === 'open');
 
   return (

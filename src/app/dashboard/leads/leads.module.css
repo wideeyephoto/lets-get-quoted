@@ -139,6 +139,10 @@
 .quotePreview { margin-top: .4rem; padding: .6rem .75rem; border-radius: 8px; background: rgba(var(--tint), .04); border: 1px solid var(--edge-t09); }
 .quotePreview > span { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--mute-t42); font-weight: 800; }
 .quotePreview p { margin: .25rem 0 0; font-size: .86rem; color: var(--ink-mod-grey-19); }
+/* The preview now follows the checkbox instead of describing the phone number
+   on file, so it has a state where nothing is being sent — and that has to look
+   different from the one where something is. See QuoteDeliveryPreview. */
+.quotePreview[data-tone="warn"] { border-color: var(--cedge-amber-19); background: rgba(255,209,102,.06); }
 .contactGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .inlineEditDetails { padding-top: .2rem; }
 .inlineEditDetails summary { width: fit-content; list-style: none; cursor: pointer; }

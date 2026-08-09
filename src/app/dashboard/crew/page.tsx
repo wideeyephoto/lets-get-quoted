@@ -4,7 +4,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { arrivalPermissionsFromCrew } from '@/lib/arrival';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
-import { formatMoney, listJobs } from '@/lib/jobs';
+import { listJobs } from '@/lib/jobs';
+import { payMoney } from '@/lib/crew-pay';
 import { formatPhoneDashes } from '@/lib/phone';
 // The pay-period rollup, the pay day, the open shifts and the previous-period
 // comparison all moved into lib/crew-pay-view, which the logged-out demo reads
@@ -68,6 +69,16 @@ export default async function CrewLaborPage({
     from?: string;
     to?: string;
     crew?: string;
+    /**
+     * "?add=1" — open the add-crew drawer.
+     *
+     * Read on the CLIENT, by AddCrewDrawer's useSearchParams, and deliberately
+     * not passed down from here. This page used to hand it over as a prop that
+     * the roster fed to useState, where it was an initializer and therefore
+     * ignored on every soft navigation after the first — which is exactly why
+     * the header button did nothing. It is listed here because it is part of
+     * this route's contract, not because anything on the server acts on it.
+     */
     add?: string;
   };
 }) {
@@ -163,7 +174,14 @@ export default async function CrewLaborPage({
       jobs: jobsByCrew[member.id] ?? [],
       periodHours: bucket?.hours ?? 0,
       periodPay: bucket?.pay ?? 0,
-      periodPayLabel: formatMoney(bucket?.pay ?? 0),
+      // payMoney, not formatMoney. formatMoney rounds to whole dollars, which is
+      // right for a margin headline and wrong for a person: this roster printed
+      // "$305" beside a name while the Hours & pay tab printed "$304.50" for the
+      // same crew member in the same period, from the same figure. Two tabs of
+      // one page disagreeing about one number reads as a product that cannot
+      // add up. payMoney is the formatter Hours & pay already uses, and it is
+      // pure, so both tabs now derive their answer from one place.
+      periodPayLabel: payMoney(bucket?.pay ?? 0),
       createdAt: member.created_at,
     };
   });
@@ -255,7 +273,13 @@ export default async function CrewLaborPage({
           </div>
           <div className={styles.pageHeadActions}>
             {tab === 'crew' ? (
-              <Link href="/dashboard/crew?tab=crew&add=1#add-crew" className="btn primary">
+              // No #add-crew fragment any more, and that is the point. The old
+              // link scrolled to a collapsed toggle at the bottom of the roster
+              // that a soft navigation never opened — the search parameter alone
+              // now opens the drawer (AddCrewDrawer reads it), and a dangling
+              // hash pointing at an element that no longer exists would only
+              // scroll the page for no reason.
+              <Link href="/dashboard/crew?tab=crew&add=1" className="btn primary">
                 + Add crew member
               </Link>
             ) : null}
@@ -284,7 +308,6 @@ export default async function CrewLaborPage({
             initialView={rosterView}
             initialSkin={crewSkin}
             initialOverview={crewTheme === 'overview'}
-            openAdd={searchParams.add === '1' || crew.length === 0}
           />
         ) : null}
 

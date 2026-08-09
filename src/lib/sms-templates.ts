@@ -259,6 +259,34 @@ export function arrivalTimeChangedText(input: {
   return `${input.clientName}, ${input.businessName} here — your new arrival window is ${input.windowLabel}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
 }
 
+/**
+ * "Your choices are ready" — the board, shared by the contractor pressing send.
+ *
+ * Deliberately not the same words as the scheduled reminder in
+ * lib/choice-reminders. This one announces a board that has just been shared and
+ * has no deadline behind it; the reminder names what is still outstanding and
+ * how late it is. One message doing both jobs is one message that is slightly
+ * untrue half the time.
+ *
+ * Lived in lib/selections as `chaseMessage`, which is where a function that
+ * sends a text should never have been: that file is the board's arithmetic, and
+ * it is imported by the customer-facing job page.
+ */
+export function selectionRequestText(input: {
+  businessName: string;
+  clientName: string;
+  count: number;
+  overdue: boolean;
+  url: string;
+}): string {
+  const first = input.clientName.trim().split(/\s+/)[0] || 'there';
+  const what = input.count === 1 ? 'a choice' : `${input.count} choices`;
+  const body = input.overdue
+    ? `we're waiting on ${what} from you before we can order`
+    : `${what} to make when you get a minute`;
+  return `${first}, ${input.businessName} here — ${body}: ${input.url}. Reply STOP to opt out.`;
+}
+
 // -- the owner's own words, in our envelope ----------------------------------
 
 /**
@@ -284,6 +312,7 @@ export function campaignText(input: { businessName: string; body: string }): str
  */
 export { appointmentReminderText } from '@/lib/appointment-reminders';
 export { buildArrivalMessage } from '@/lib/arrival';
+export { choiceReminderText } from '@/lib/choice-reminders';
 export { composeOfferMessage } from '@/lib/estimate-offers';
 export { missedCallTextBack } from '@/lib/missed-call';
 export { quoteFollowupText } from '@/lib/quote-followups';

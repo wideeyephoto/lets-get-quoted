@@ -414,54 +414,24 @@ export function describeTemplate(body: SelectionTemplateBody): string {
 }
 
 // -- Chasing a decision -------------------------------------------------------
-
-/** Which nudge, if any, a selection is owed. */
-export type ChaseKind = 'none' | 'due' | 'overdue';
-
-/**
- * Whether this selection needs the homeowner told, and which message.
- *
- * Exactly two nudges in a selection's life: one as the date approaches, one
- * once it has passed. A third is nagging, and a board that nags is a board
- * whose texts get muted — at which point the genuinely urgent one is muted too.
- *
- * Silent with no deadline. A contractor who left the date blank said this one
- * doesn't matter yet, and inventing a reason to text somebody is exactly what
- * the blank field exists to prevent. Also silent on an option-less selection,
- * which the caller checks: "you have a choice to make" with nothing to choose
- * between is a message that wastes the one bit of attention it buys.
- */
-export function chaseNeeded(
-  selection: Pick<Selection, 'status' | 'decideBy' | 'chaseSentAt' | 'overdueSentAt'>,
-  today = todayKey(),
-): ChaseKind {
-  if (selection.status !== 'open' || !selection.decideBy) return 'none';
-  const state = deadlineState({ decideBy: selection.decideBy, status: 'open' }, today);
-  if (state.overdue) return selection.overdueSentAt ? 'none' : 'overdue';
-  if (state.due) return selection.chaseSentAt ? 'none' : 'due';
-  return 'none';
-}
-
-/**
- * One message per JOB, not per selection.
- *
- * A kitchen with six choices due the same day is one text. Six would read as a
- * malfunction, and the homeowner would stop opening any of them.
- */
-export function chaseMessage(input: {
-  businessName: string;
-  clientName: string;
-  count: number;
-  overdue: boolean;
-  url: string;
-}): string {
-  const first = input.clientName.trim().split(/\s+/)[0] || 'there';
-  const what = input.count === 1 ? 'a choice' : `${input.count} choices`;
-  const body = input.overdue
-    ? `we're waiting on ${what} from you before we can order`
-    : `${what} to make when you get a minute`;
-  return `${first}, ${input.businessName} here — ${body}: ${input.url}. Reply STOP to opt out.`;
-}
+//
+// `chaseNeeded` and `chaseMessage` used to live here. Both are gone, and the two
+// reasons are worth keeping:
+//
+//   chaseNeeded decided WHEN to text off deadlineState, so the first reminder
+//   fired the moment a choice came within DECISION_CHASE_DAYS — seven days — of
+//   its date, and the needed-by date itself then passed in silence because the
+//   stamp was already set. Nobody chose seven; it is the constant three lines
+//   above, which exists to colour a label on the board and was reused as a send
+//   rule. Scheduling now lives in lib/choice-reminders, keyed on the date the
+//   contractor actually typed.
+//
+//   chaseMessage built a text message, in the file the customer-facing job page
+//   imports for its arithmetic. The words moved to lib/sms-templates with the
+//   rest of them.
+//
+// DECISION_CHASE_DAYS stays. It is still exactly what it always was: how close a
+// deadline has to be before the board colours it. It no longer sends anything.
 
 // -- Changing your mind -------------------------------------------------------
 

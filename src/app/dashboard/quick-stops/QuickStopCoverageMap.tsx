@@ -102,6 +102,21 @@ export default function QuickStopCoverageMap({
           fullscreenControl: false,
           zoomControl: true,
           clickableIcons: false,
+          // COOPERATIVE, NOT 'auto'.
+          //
+          // Left unset, Google picks between cooperative and greedy per load by
+          // sniffing whether the map sits in a scrollable container. On this
+          // page the sniff came out desktop-flavoured on touch devices, so a
+          // phone got the overlay reading "Use Ctrl + scroll to zoom the map" —
+          // an instruction naming two things a phone does not have, over a map
+          // that had by then captured the page scroll. Dragging up the page
+          // panned the map instead.
+          //
+          // 'cooperative' is the documented fix and is explicitly the correct
+          // setting for a map inside a scrolling page: one finger scrolls the
+          // PAGE, two fingers pan the map, and the overlay Google shows says so
+          // in the right words for the device it is on.
+          gestureHandling: 'cooperative',
           styles: theme === 'dark' ? MAP_DARK_STYLE : MAP_LIGHT_STYLE,
           backgroundColor: theme === 'dark' ? '#16222f' : '#eef1f5',
         });
