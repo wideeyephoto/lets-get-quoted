@@ -21899,9 +21899,134 @@ a.bset-card { color: inherit; text-decoration: none; }
   color: var(--mute-i60);
 }
 
+/**
+ * THE RISKY DATE AS AN ACTION PANEL.
+ *
+ * Naming the day and stopping left the actual work on the reader: find the
+ * four rows out of eighty that made it, then work out which of them you have
+ * any control over.
+ */
+.cash-low-panel {
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--edge-t10);
+}
+
+.cash-low-headline {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--mute-i60);
+}
+.cash-low-headline strong { color: var(--text); }
+
+.cash-low-causes {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.cash-low-causes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.06);
+}
+
+.cash-low-cause { display: grid; min-width: 0; }
+.cash-low-cause strong { font-size: 0.92rem; color: var(--text); }
+.cash-low-cause small { font-size: 0.78rem; color: var(--mute-i60); }
+
+.cash-low-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+/* These are the controls the panel exists for. A 17px link is not one. */
+.cash-low-actions .btn { min-height: 44px; }
+
+/* Advice with nowhere to go still has to look unlike a button, or it is the
+   dead pill problem again in a different place. */
+.cash-low-advice {
+  align-self: center;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--mute-i60);
+}
+
+/**
+ * DATA QUALITY — questions, never corrections.
+ *
+ * A forecast that silently fixes its inputs is worse than one that draws them
+ * wrong, because at least the wrong one can be spotted.
+ */
+.cash-flags { display: grid; gap: 0.6rem; margin-top: 0.9rem; }
+
+.cash-flag {
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.26);
+  background: rgba(255, 209, 102, 0.06);
+}
+
+.cash-flag-q { margin: 0; font-size: 0.92rem; font-weight: 600; color: var(--text); }
+.cash-flag-detail { margin: 0.3rem 0 0.35rem; font-size: 0.83rem; line-height: 1.5; color: var(--mute-i60); }
+
+.cash-confidence { display: block; }
+.cash-confidence.is-low { color: var(--ink-orange-9); }
+.cash-confidence-age { color: var(--mute-i60); }
+
+/**
+ * THE SCENARIOS, beside the horizon rather than buried below it.
+ *
+ * Each tab carries what it would do — when the warning lands, what it would
+ * take to cover — so the comparison is readable without selecting all three in
+ * turn. That readout is the reason these are wide buttons and not chips.
+ */
+.cash-scenario-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.cash-scenario {
+  display: grid;
+  gap: 0.1rem;
+  text-align: left;
+  padding: 0.45rem 0.75rem;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t10);
+  background: transparent;
+  color: var(--mute-i60);
+  cursor: pointer;
+}
+
+.cash-scenario strong { font-size: 0.86rem; font-weight: 600; color: var(--text); }
+.cash-scenario small { font-size: 0.74rem; line-height: 1.35; }
+
+.cash-scenario.is-on {
+  border-color: rgba(var(--tint), 0.5);
+  background: rgba(var(--tint), 0.1);
+}
+
+.cash-controls-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mute-i60);
+}
+.cash-controls-note strong { color: var(--text); }
+
 @media (max-width: 700px) {
   .cash-decision-facts { grid-template-columns: 1fr; gap: 0.75rem; }
   .cash-decision-facts dd { font-size: 1.1rem; }
+  /* Full width each, so the readout under the label is not clipped to two
+     words on the width where it matters most. */
+  .cash-scenario-tabs { display: grid; grid-template-columns: 1fr; }
+  .cash-low-causes li { align-items: flex-start; }
+  .cash-low-actions { width: 100%; }
 }
 
 /* "Nobody knows you offer this" — the distribution hand-off. */

@@ -145,6 +145,71 @@ describe('the decision comes before the picture of it', () => {
   });
 });
 
+describe('scenarios are a control, not a checkbox that draws a line', () => {
+  it('replaces the buried switch with tabs beside the horizon', () => {
+    expect(BOARD).toContain('cash-scenario-tabs');
+    expect(BOARD).toContain("useState<ScenarioKey>('base')");
+    // The old one: a checkbox in the settings panel that drew a dashed line and
+    // moved no number on the page.
+    expect(BOARD).not.toContain('Model customer payments arriving late');
+    expect(BOARD).not.toContain('cash-switch');
+  });
+
+  it('applies the scenario to the events, so every number is about it', () => {
+    expect(BOARD).toContain('applyScenario(events, scenarioDef)');
+    expect(BOARD).toContain('buildForecast(scenarioEvents');
+    // Shifted list AND a lateDays would move the money twice.
+    expect(BOARD).not.toMatch(/lateDays:\s*modelledLateDays/);
+  });
+
+  it('summarises all three from the raw events, whichever is selected', () => {
+    // Summarising the already-shifted list would compound the selected
+    // scenario onto the other two.
+    expect(BOARD).toContain('summariseScenarios({');
+    expect(BOARD).toMatch(/summariseScenarios\(\{\s*events,/);
+  });
+
+  it('puts the warning date and the funding on each tab', () => {
+    expect(BOARD).toContain('summary.warningLabel ? `Warning ${summary.warningLabel}`');
+    expect(BOARD).toContain('${money(summary.funding)} needed');
+  });
+
+  it('gives the tabs a real hit target', () => {
+    expect(ruleFor('.cash-scenario')).toMatch(/min-height:\s*44px/);
+  });
+});
+
+describe('a risky date comes with something to do about it', () => {
+  it('names the movements that dug the hole and offers actions per kind', () => {
+    expect(BOARD).toContain('cashLowPanel(longForecast');
+    expect(BOARD).toContain('cash-low-causes');
+    expect(BOARD).toContain('cause.actions.map');
+  });
+
+  it('does not dress advice with nowhere to go as a button', () => {
+    // A control that looks like a control and does nothing is the same defect
+    // as the old status pill.
+    expect(BOARD).toContain('cash-low-advice');
+    expect(BOARD).toMatch(/action\.href \? \(/);
+  });
+
+  it('gives those actions a real hit target too', () => {
+    expect(ruleFor('.cash-low-actions .btn')).toMatch(/min-height:\s*44px/);
+  });
+});
+
+describe('the page says how much of itself to trust', () => {
+  it('asks about contradictory entries rather than drawing them silently', () => {
+    expect(BOARD).toContain('cashFlags(events');
+    expect(BOARD).toContain('cash-flag-q');
+  });
+
+  it('reports confidence and when the balance was last updated', () => {
+    expect(BOARD).toContain('cashConfidence(forecast)');
+    expect(BOARD).toContain('Balance last updated');
+  });
+});
+
 describe('wording that does not assume a mouse', () => {
   it('offers a zero buffer as an amount rather than as "None"', () => {
     // In a row of dollar amounts "None" reads as "no preset selected".

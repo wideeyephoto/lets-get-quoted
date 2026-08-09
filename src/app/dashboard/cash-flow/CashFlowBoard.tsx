@@ -6,6 +6,15 @@ import SaveButton from '@/components/save-button';
 import ModalDialog from '@/components/modal-dialog';
 import { buildForecast, KIND_LABEL, type CashEvent } from '@/lib/cash-forecast';
 import { cashOutlook } from '@/lib/cash-outlook';
+import {
+  CASH_SCENARIOS,
+  applyScenario,
+  summariseScenarios,
+  scenarioDelta,
+  type ScenarioKey,
+} from '@/lib/cash-scenarios';
+import { cashLowPanel } from '@/lib/cash-causes';
+import { cashFlags, cashConfidence } from '@/lib/cash-quality';
 import { accuracySentence, type ForecastAccuracy } from '@/lib/cash-accuracy';
 import CashChart, { type LineKey } from './CashChart';
 import ScheduledPaymentForm from './ScheduledPaymentForm';
@@ -60,16 +69,17 @@ type Props = {
   basePath?: string;
 };
 
-const LATE_DAYS_DEFAULT = 7;
-
 // A fixed ceiling, not one derived from the account's own numbers. A track that
 // re-scales to whatever you last saved moves under the thumb as you drag it, and
 // a shop holding half a million in the bank shouldn't hit the end of the slider.
 // The dollar box beside it is there for anything the track is too coarse for.
 const BALANCE_SLIDER_MAX = 500_000;
 
+// 'worst' is not in here any more. It was a second line drawn beside the first,
+// and reading a scenario off two overlapping curves is what the scenario tabs
+// replaced — those change every number on the page rather than adding a line to
+// compare by eye.
 const OPTIONAL_LINES: { key: LineKey; label: string; hint: string }[] = [
-  { key: 'worst', label: 'Late-payment scenario', hint: 'Customer money arrives late and estimated costs run 10% over.' },
   { key: 'required', label: 'Minimum cash needed', hint: 'What you need on each day to cover everything still ahead.' },
   { key: 'incoming', label: 'Expected money in', hint: 'Running total of customer payments expected.' },
   { key: 'outgoing', label: 'Committed money out', hint: 'Running total of payroll, bills and materials.' },
@@ -170,7 +180,17 @@ export default function CashFlowBoard({
   const [balance, setBalance] = useState<number | null>(savedBalance);
   const [buffer, setBuffer] = useState<number>(savedBuffer);
   const [creditLine, setCreditLine] = useState<number>(savedCreditLine);
-  const [lateDays, setLateDays] = useState<number>(0);
+  /**
+   * Base / Payments late / Stress test, up beside the horizon tabs.
+   *
+   * This was a checkbox in the settings panel below the chart, which drew a
+   * dashed line and changed nothing else — so the question it answers, does the
+   * warning move if everybody pays me a week late, could only be answered by
+   * comparing a second curve to a card that had not budged. Selecting a
+   * scenario now moves the events themselves, so every number on the page is
+   * about the scenario you are looking at.
+   */
+  const [scenario, setScenario] = useState<ScenarioKey>('base');
   const [selected, setSelected] = useState<number | null>(null);
   const [lines, setLines] = useState<Record<LineKey, boolean>>({
     confirmed: true,
@@ -188,21 +208,23 @@ export default function CashFlowBoard({
   const startingBalance = balance ?? 0;
   const longHorizon = Math.max(horizonDays, longDays ?? horizonDays);
 
-  const modelledLateDays = lines.worst ? lateDays || LATE_DAYS_DEFAULT : 0;
+  const scenarioDef = CASH_SCENARIOS.find((option) => option.key === scenario) ?? CASH_SCENARIOS[0];
+  // The shift lands on the events, so buildForecast's own numbers — the warning
+  // date, the low, the required starting balance — are all about this scenario.
+  // lateDays stays 0 below or the delay would be applied twice.
+  const scenarioEvents = useMemo(() => applyScenario(events, scenarioDef), [events, scenarioDef]);
 
   const forecast = useMemo(
     () =>
-      buildForecast(events, {
+      buildForecast(scenarioEvents, {
         todayKey,
         days: horizonDays,
         startingBalance,
         buffer,
-        // The dashed line only means anything when it's actually modelling a
-        // delay, so turning the line on turns the delay on with it.
-        lateDays: modelledLateDays,
+        lateDays: 0,
         creditLine,
       }),
-    [events, todayKey, horizonDays, startingBalance, buffer, modelledLateDays, creditLine],
+    [scenarioEvents, todayKey, horizonDays, startingBalance, buffer, creditLine],
   );
 
   /**
@@ -219,15 +241,15 @@ export default function CashFlowBoard({
     () =>
       longHorizon === horizonDays
         ? forecast
-        : buildForecast(events, {
+        : buildForecast(scenarioEvents, {
             todayKey,
             days: longHorizon,
             startingBalance,
             buffer,
-            lateDays: modelledLateDays,
+            lateDays: 0,
             creditLine,
           }),
-    [forecast, longHorizon, events, todayKey, horizonDays, startingBalance, buffer, modelledLateDays, creditLine],
+    [forecast, longHorizon, scenarioEvents, todayKey, horizonDays, startingBalance, buffer, creditLine],
   );
 
   const outlook = useMemo(
@@ -244,19 +266,51 @@ export default function CashFlowBoard({
     [longForecast, todayKey, horizonDays, longHorizon, buffer, balanceKnown, startingBalance],
   );
 
+  const balanceAge = balanceAt && balanceKnown ? daysAgo(balanceAt) : null;
+
+  /**
+   * The three scenarios summarised side by side, always from the RAW events.
+   *
+   * Each tab has to be able to say what it would do, which means comparing all
+   * three whichever one is selected — summarising the already-shifted list
+   * would compound the selected scenario onto the other two.
+   */
+  const scenarios = useMemo(
+    () =>
+      summariseScenarios({
+        events,
+        todayKey,
+        days: longHorizon,
+        startingBalance,
+        buffer,
+        creditLine,
+      }),
+    [events, todayKey, longHorizon, startingBalance, buffer, creditLine],
+  );
+  const baseScenario = scenarios[0];
+
+  /** The day worth acting on, and the movements that made it. */
+  const lowPanel = useMemo(
+    () => (balanceKnown ? cashLowPanel(longForecast, { todayKey, base, buffer }) : null),
+    [balanceKnown, longForecast, todayKey, base, buffer],
+  );
+
+  /** Questions about the inputs, and how much of the line is pinned down. */
+  const flags = useMemo(
+    () => cashFlags(events, { base, balanceAgeDays: balanceAge }),
+    [events, base, balanceAge],
+  );
+  const confidence = useMemo(() => cashConfidence(forecast), [forecast]);
+
   /** The floor over the whole horizon — the last of the lows is the deepest. */
   const longLow = outlook.lows[outlook.lows.length - 1];
   /** Where the window ends if every estimate turns out to be nothing. */
   const confirmedEnding = forecast.days[forecast.days.length - 1]?.confirmedOnly ?? 0;
 
   const dirty = balance !== savedBalance || buffer !== savedBuffer || creditLine !== savedCreditLine;
-  const balanceAge = balanceAt ? daysAgo(balanceAt) : null;
   const stale = balanceAge !== null && balanceAge >= 7;
 
-  // The slider's ceiling is fixed on first render. Deriving it from the current
-  // balance would make the track grow under the thumb as you drag it right.
   const activeDays = forecast.days.filter((day) => day.events.length > 0);
-  const worstLine = lines.worst;
 
   const tone = STATUS_TONE[outlook.status];
 
@@ -267,7 +321,7 @@ export default function CashFlowBoard({
         buffer={buffer}
         creditLine={creditLine}
         lines={lines}
-        lateDays={lateDays || LATE_DAYS_DEFAULT}
+        lateDays={scenarioDef.lateDays}
         onBufferChange={setBuffer}
         onBalanceChange={setBalance}
         selected={selected}
@@ -276,16 +330,12 @@ export default function CashFlowBoard({
 
       <div className="cash-legend">
         <span className="cash-legend-item">
-          <i className="cash-swatch projected" /> Projected balance
+          <i className="cash-swatch projected" />{' '}
+          {scenario === 'base' ? 'Projected balance' : `Projected balance — ${scenarioDef.label.toLowerCase()}`}
         </span>
         <span className="cash-legend-item">
           <i className="cash-swatch confirmed" /> Confirmed money only
         </span>
-        {worstLine ? (
-          <span className="cash-legend-item">
-            <i className="cash-swatch worst" /> Payments {lateDays || LATE_DAYS_DEFAULT} days late
-          </span>
-        ) : null}
         <span className="cash-legend-item">
           <i className="cash-swatch buffer" /> Safety buffer
         </span>
@@ -419,7 +469,66 @@ export default function CashFlowBoard({
                 </small>
               </div>
             </dl>
+
+            {/* THE RISKY DATE AS SOMETHING TO DO, not a number to worry about.
+                Naming the day and stopping leaves the actual work — finding the
+                four rows out of eighty that made it, then working out which of
+                them you have any control over — on the reader. */}
+            {lowPanel ? (
+              <div className="cash-low-panel">
+                <p className="cash-low-headline">
+                  <strong>{lowPanel.headline}</strong>{' '}
+                  {money(lowPanel.drop)} leaves the account that day, taking it to {money(lowPanel.balance)}.
+                </p>
+                <ul className="cash-low-causes">
+                  {lowPanel.causes.map((cause) => (
+                    <li key={cause.event.id}>
+                      <span className="cash-low-cause">
+                        <strong>{cause.event.label}</strong>
+                        <small>
+                          {KIND_LABEL[cause.event.kind]} · {money(Math.abs(cause.event.amount))}
+                          {cause.share > 0 ? ` · ${Math.round(cause.share * 100)}% of the day` : ''}
+                        </small>
+                      </span>
+                      <span className="cash-low-actions">
+                        {cause.actions.map((action) =>
+                          action.href ? (
+                            <Link key={action.kind} href={action.href} className="btn ghost" title={action.why}>
+                              {action.label}
+                            </Link>
+                          ) : (
+                            <span key={action.kind} className="cash-low-advice" title={action.why}>
+                              {action.label}
+                            </span>
+                          ),
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
+
+          {/* WHAT WE ARE UNSURE OF, and what looks wrong.
+              Nothing here corrects anything — a forecast that silently fixes
+              its inputs is worse than one that draws them wrong, because at
+              least the wrong one can be spotted. */}
+          {flags.length > 0 ? (
+            <div className="cash-flags">
+              {flags.map((flag) => (
+                <div key={flag.kind + flag.question} className="cash-flag">
+                  <p className="cash-flag-q">{flag.question}</p>
+                  <p className="cash-flag-detail">{flag.detail}</p>
+                  {flag.href ? (
+                    <Link href={flag.href} className="linklike">
+                      Check the entries →
+                    </Link>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           <div className="cash-hero-chart">
             <div className="cash-hero-chart-head">
@@ -427,8 +536,14 @@ export default function CashFlowBoard({
                 {balanceKnown ? 'Projected account balance' : 'Cash movement preview'}
               </span>
               <span className="cash-hero-chart-sub">
-                After {horizonDays} days: {balanceKnown ? money(forecast.ending) : money(forecast.ending) + ' net'}, with{' '}
-                {money(forecast.totals.incoming)} in and {money(forecast.totals.outgoing)} out.
+                <span className={`cash-confidence is-${confidence.level}`}>{confidence.sentence}</span>
+                {balanceAge === null ? null : (
+                  <span className="cash-confidence-age">
+                    {' '}
+                    Balance last updated{' '}
+                    {balanceAge === 0 ? 'today' : balanceAge === 1 ? 'yesterday' : `${balanceAge} days ago`}.
+                  </span>
+                )}
               </span>
             </div>
             {chart}
@@ -473,6 +588,37 @@ export default function CashFlowBoard({
                 </Link>
               ))}
             </div>
+
+            {/* THE SCENARIOS, beside the horizon rather than buried below it.
+                Each tab carries what it would do — when the warning lands and
+                what it would take to cover — so the comparison is readable
+                without selecting all three in turn. */}
+            <div className="cash-scenario-tabs" role="group" aria-label="Scenario">
+              {scenarios.map((summary) => {
+                const delta = scenarioDelta(baseScenario, summary, todayKey);
+                const isOn = summary.key === scenario;
+                return (
+                  <button
+                    key={summary.key}
+                    type="button"
+                    className={`cash-scenario${isOn ? ' is-on' : ''}`}
+                    aria-pressed={isOn}
+                    title={summary.hint}
+                    onClick={() => setScenario(summary.key)}
+                  >
+                    <strong>{summary.label}</strong>
+                    <small>
+                      {summary.warningLabel ? `Warning ${summary.warningLabel}` : `No warning in ${longHorizon} days`}
+                      {summary.funding > 0 ? ` · ${money(summary.funding)} needed` : ''}
+                      {summary.key !== 'base' && delta.daysEarlier && delta.daysEarlier > 0
+                        ? ` · ${delta.daysEarlier} days sooner`
+                        : ''}
+                    </small>
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Up here because this is where somebody is looking at the line
                 dipping and thinking "that's the insurance I haven't put in yet".
                 The same form is still in the bills panel below; this is the same
@@ -607,41 +753,13 @@ export default function CashFlowBoard({
         </div>
 
         <div className="cash-controls-foot">
-          <label className="cash-switch">
-            <input
-              type="checkbox"
-              checked={worstLine}
-              onChange={(event) => {
-                setLines((current) => ({ ...current, worst: event.target.checked }));
-                if (event.target.checked && lateDays === 0) setLateDays(LATE_DAYS_DEFAULT);
-              }}
-            />
-            <span>
-              <strong>Model customer payments arriving late</strong>
-              <small>
-                {worstLine ? (
-                  <>
-                    Shifts every customer payment{' '}
-                    <select
-                      className="cash-inline-select"
-                      value={lateDays || LATE_DAYS_DEFAULT}
-                      onChange={(event) => setLateDays(Number(event.target.value))}
-                      aria-label="How many days late"
-                    >
-                      {[3, 7, 14, 21].map((option) => (
-                        <option key={option} value={option}>
-                          {option} days
-                        </option>
-                      ))}
-                    </select>{' '}
-                    later and runs estimated costs 10% over.
-                  </>
-                ) : (
-                  'Adds a dashed stress-test line — the same month if everyone pays you late.'
-                )}
-              </small>
-            </span>
-          </label>
+          {/* "Model customer payments arriving late" was a checkbox here. It is
+              the Payments late tab now, up beside the horizon, where selecting
+              it moves every number rather than adding a line to compare by
+              eye. */}
+          <p className="cash-controls-note">
+            Currently showing <strong>{scenarioDef.label}</strong> — {scenarioDef.hint.toLowerCase()}
+          </p>
 
           {settingsAvailable ? (
             <div className="cash-save">
