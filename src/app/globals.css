@@ -27648,6 +27648,21 @@ body[data-schedule-overlay="job"] .sched-queue {
   flex-direction: column;
   gap: 0.1rem;
   overflow: hidden;
+  /**
+   * THE FLOOR UNDER A SHORT JOB.
+   *
+   * Heights are a percentage of the axis, so at a 22px hour a half-hour job is
+   * 11px — less than one line of type plus its border, which means an
+   * unreadable sliver with `overflow: hidden` quietly eating the customer's
+   * name. 21px is one xs row exactly: 2px of border, 3.2px of padding-block,
+   * and a 15.7px line.
+   *
+   * The cost is honest and worth naming: a very short block now overstates its
+   * duration by a few pixels at the BOTTOM. The top edge is still exact, and
+   * the top edge is what the eye reads a calendar by — a block whose height is
+   * approximate beats a block nobody can read.
+   */
+  min-height: 21px;
   padding: 0.28rem 0.4rem;
   border: 1px solid var(--job-line, var(--line));
   border-left: 3px solid var(--job-line, var(--accent));
@@ -28041,16 +28056,15 @@ body[data-schedule-overlay="job"] .sched-queue {
 /* Tablet: three columns, and the hour shrinks because the whole grid has less
    height to give. The gutter narrows with it — "10 AM" still fits. */
 @media (max-width: 1279.98px) {
-  /* 42 rather than 54, for the same reason the desktop hour came down to 44:
-     the axis runs to 8pm now and thirteen hours have to fit without a nested
-     scrollbar. 13 x 42 is 546px, inside the 620 this used to cap at. Two
-     pixels under the desktop hour rather than the eight it used to be —
-     blockSize's thresholds are shared across breakpoints, so a tablet hour far
-     below the desktop one would put the SM band under the 60px its three lines
-     need. The max-height comes off entirely: the rule above already sizes the
-     box to its own hours, and a viewport-relative cap here would put the
+  /* 21, half of the 42 this was, tracking the desktop hour down from 44 to 22.
+     Thirteen hours is 273px, well inside the 620 this used to cap at. Still
+     exactly one pixel under the desktop hour: blockSize's thresholds are
+     shared across breakpoints and are set against THIS number, because a
+     threshold that clears its lines at 22px and not at 21 clips on every
+     tablet. The max-height comes off entirely: the rule above already sizes
+     the box to its own hours, and a viewport-relative cap here would put the
      scrollbar straight back on a short window. */
-  .sched-tl { --tl-gutter: 3rem; --tl-hour-h: 42px !important; }
+  .sched-tl { --tl-gutter: 3rem; --tl-hour-h: 21px !important; }
   .sched-crew { --crew-name: 8rem; }
   .sched-month-cell { min-height: 5rem; }
 }

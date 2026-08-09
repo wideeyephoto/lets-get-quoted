@@ -43,24 +43,30 @@ import { useScheduleDrag } from './ScheduleDragProvider';
  * Everything positional in here is a PERCENTAGE of the axis, not a pixel, so
  * shrinking this on a tablet moves every block correctly with no JS involved.
  *
- * 44, down from 62 by way of 52. Thirteen hours — 7am to 8pm — is 572px, so
- * the whole working day and its evening fit on a laptop with no scrollbar
- * inside the page's own scrollbar, and with room left under the calendar for
- * the unscheduled rail. That was the point of shortening it.
+ * 22, half of 44, which was itself down from 62 by way of 52. Thirteen hours —
+ * 7am to 8pm — is 286px, so the whole working day and its evening take about a
+ * quarter of a laptop screen and the week is readable without scrolling the
+ * grid at all. That is the point of a short hour: the DAY fits, not the job.
  *
- * IT IS NOT A FREE NUMBER, and blockSize below is where the bill lands. A
- * block's height is its duration times this, so every pixel taken off the hour
- * is taken off every card on the grid. At 62 an hour-long job had 62px and
- * could carry four lines; at 44 it has 44 and can carry two. The thresholds
- * moved with it, so the card still prints only what it has room for — the
- * alternative is the same four lines clipped mid-word, which is how a calendar
- * starts lying about what it knows.
+ * IT IS NOT A FREE NUMBER, and there are two places the bill lands.
  *
- * Anything shorter than this and the SM band stops working: three lines need
- * about 60px, so the shortest job that can carry a city — an hour and a half —
- * would fall under it. That is the floor, not a preference.
+ * blockSize below is the first. A block's height is its duration times this,
+ * so every pixel off the hour comes off every card. At 62 an hour-long job had
+ * 62px and four lines; at 44, two; at 22 it has 22px and one. The thresholds
+ * move with the hour every time, so a card prints only what it has room for —
+ * the alternative is the same lines clipped mid-word, which is how a calendar
+ * starts lying about what it knows. A city now needs a three-hour job to earn
+ * its line, where at 44 it needed ninety minutes.
+ *
+ * The second is short jobs, and it is the reason .sched-tl-job carries a
+ * min-height. Half an hour is 11px here, and 11px cannot hold a line of type at
+ * any size worth reading — so the shortest blocks are floored at one row. Their
+ * TOP edge is still exactly right, which is what the eye reads a calendar by;
+ * their bottom edge overstates a very short job by a few pixels. That is the
+ * trade this height buys, taken deliberately: a block whose height is
+ * approximate beats a block nobody can read.
  */
-const HOUR_PX = 44;
+const HOUR_PX = 22;
 
 /**
  * The bottom of the calendar: 8pm, so the last labelled hour is 7 PM.
@@ -105,19 +111,22 @@ const OVERFLOW_PX = 46;
  *   md   all of it — crew, status, "Day 2 of 4"          ~80px
  *
  * The thresholds are set from the SHORTEST job in each band, because that is
- * the one that has to fit: at 44px an hour, 90 minutes is 66px (sm needs 60)
- * and 120 minutes is 88px (md needs 80). Both clear, neither by much.
+ * the one that has to fit — and against the TABLET hour, 21px, because it is
+ * the smaller of the two and a threshold that only works on the desktop one
+ * clips on every tablet. At 21px an hour, 180 minutes is 63px (sm needs 60)
+ * and 240 is 84px (md needs 80). Both clear, neither by much.
  *
- * They moved up when the hour came down from 62px, and an hour-long job lost
- * its city line to it. That is the trade the shorter grid buys, taken
- * deliberately: the line is still in the DOM for a screen reader, still in the
- * hover title, and still on the card in Day view, where an hour is 44px of a
- * much wider column. A clipped line would have been the alternative, and a
- * calendar that prints half a city name is worse than one that prints none.
+ * They have moved up twice now, once when the hour came down from 62px and
+ * again when it halved from 44. An hour-long job lost its city line the first
+ * time; a ninety-minute one lost it this time. That is the trade a shorter
+ * grid buys, taken deliberately each time: the line is still in the DOM for a
+ * screen reader, still in the hover title, and still on the card for any job
+ * long enough to hold it. A clipped line would have been the alternative, and
+ * a calendar that prints half a city name is worse than one that prints none.
  */
 function blockSize(minutes: number): 'xs' | 'sm' | 'md' {
-  if (minutes < 90) return 'xs';
-  if (minutes < 120) return 'sm';
+  if (minutes < 180) return 'xs';
+  if (minutes < 240) return 'sm';
   return 'md';
 }
 

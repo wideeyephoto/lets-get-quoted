@@ -198,10 +198,31 @@ describe('every band still fits the shortest job in it', () => {
       // The shortest job in each band is the one that has to fit.
       expect(px(xsMax), 'shortest sm').toBeGreaterThanOrEqual(NEEDS_PX.sm);
       expect(px(smMax), 'shortest md').toBeGreaterThanOrEqual(NEEDS_PX.md);
-      // And an xs strip is never so short it cannot hold its one row.
-      expect(px(30), 'a half-hour strip').toBeGreaterThanOrEqual(NEEDS_PX.xs);
     });
   }
+
+  /**
+   * …AND THE SHORTEST STRIP IS FLOORED, NOT COMPUTED.
+   *
+   * This used to be arithmetic — a half-hour block at a 44px hour was 22px,
+   * over the one row it needs. At 22px an hour it is 11px, which is less than
+   * a line of type plus a border, so `overflow: hidden` would quietly eat the
+   * customer's name. The guarantee moved into CSS: the block carries a
+   * min-height of one xs row.
+   *
+   * The cost, named: a very short block overstates its duration at the BOTTOM.
+   * Its top edge is still exact, and the top edge is what the eye reads a
+   * calendar by.
+   */
+  it('floors a short block at one readable row rather than drawing a sliver', () => {
+    const jobAt = CSS.indexOf('.sched-tl-job {');
+    const rule = CSS.slice(jobAt, CSS.indexOf('}', jobAt));
+    const floor = Number(/min-height:\s*(\d+)px/.exec(rule)?.[1]);
+    expect(floor, 'the block declares no floor').toBeGreaterThan(0);
+    expect(floor).toBeGreaterThanOrEqual(NEEDS_PX.xs);
+    // And it only has to exist because the hour is now shorter than one row.
+    expect(Math.min(HOUR_PX, TABLET_HOUR_PX) / 2).toBeLessThan(NEEDS_PX.xs);
+  });
 
   /**
    * SM is three lines. The foot used to survive there with only the crew
