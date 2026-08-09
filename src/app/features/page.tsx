@@ -9,6 +9,12 @@ import {
   SIGNUP_URL,
 } from '@/components/flagship/site-chrome';
 import { FEE_TIERS } from '@/lib/pricing';
+import {
+  HERO_THREAD,
+  HERO_THREAD_CLIENT,
+  HERO_THREAD_FIRST,
+  HERO_THREAD_JOB,
+} from './hero-thread';
 import styles from '@/components/flagship/flagship.module.css';
 
 /**
@@ -22,11 +28,17 @@ import styles from '@/components/flagship/flagship.module.css';
  * source tilts them in space. Both are structural, so the page adopts the
  * source language rather than borrowing two tricks from it.
  *
- * What did NOT come across from the source's own Product page: its pipeline is
- * a flat strip and its mocks carry no "this is invented" marker. The pipeline
- * here sits in a tilted stage (see .system-stage in the generator's TWEAKS) and
- * every made-up figure is labelled. Those were improvements over the source and
- * they are kept.
+ * THE HERO IS NO LONGER THE SOURCE'S. It carried a five-card strip of stage
+ * names under the copy, tilted, with two notification cards floating over it.
+ * Measured at 1440 the alert covered stages 04 AND 05 — a five-step story
+ * hiding the two steps it was building to — and the paid card covered the job
+ * record, so "Kitchen lighting upgrade" rendered as "...ograde". Underneath
+ * that, five equal boxes made five equal claims and none of them was large
+ * enough to read as software.
+ *
+ * It is a thread beside the copy now: one job, running past the reader, with
+ * the real outgoing texts in it. See hero-thread.ts for where the words come
+ * from and §104 of the generator for the layout.
  */
 
 export const metadata: Metadata = {
@@ -40,30 +52,6 @@ export const metadata: Metadata = {
 // read the same array, so this page cannot drift from them.
 const HIGHEST_FEE = FEE_TIERS[0].rate;
 const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate;
-
-type Stage = {
-  num: string;
-  label: string;
-  value: string;
-  state: string;
-  /** '' is the upcoming state — the source styles it by the absence of a class. */
-  status: 'complete' | 'active' | '';
-};
-
-const STAGES: Stage[] = [
-  { num: '01', label: 'WEBSITE', value: 'Request received', state: '✓ CAPTURED', status: 'complete' },
-  { num: '02', label: 'INTAKE', value: 'High-value fit', state: '✓ QUALIFIED', status: 'complete' },
-  { num: '03', label: 'QUOTE', value: '$4,250 approved', state: '✓ WON', status: 'complete' },
-  { num: '04', label: 'SCHEDULE', value: 'Tuesday · 9–11', state: 'IN PROGRESS', status: 'active' },
-  { num: '05', label: 'PAYMENT', value: 'Ready after work', state: 'NEXT', status: '' },
-];
-
-// Read out with each stage, so the three states are not carried by colour alone.
-const STATUS_READING: Record<Stage['status'], string> = {
-  complete: 'Completed stage.',
-  active: 'Current stage.',
-  '': 'Upcoming stage.',
-};
 
 /**
  * THE `id` IS PART OF THE CONTRACT, NOT DECORATION.
@@ -218,7 +206,12 @@ export default function FeaturesPage() {
       </a>
       <SiteHeader />
 
-      <section className="index-hero" id="main-content">
+      {/* Two columns, not one. The copy keeps the left and the thread takes the
+          right; every child is placed explicitly in the grid rather than
+          wrapped in a column div, because .index-hero > h1 and
+          .index-hero > p:not(.eyebrow) are load-bearing selectors in the
+          generated sheet and a wrapper would silently drop both. */}
+      <section className="index-hero index-hero-beside" id="main-content">
         <p className="eyebrow">
           <span aria-hidden="true">✦</span> THE FULL CONTRACTOR SUITE
         </p>
@@ -240,63 +233,62 @@ export default function FeaturesPage() {
           </a>
         </div>
 
-        {/* The stage supplies the perspective; the pipeline inside it is what
-            tilts. Not .dashboard-card — that is absolutely positioned at a
-            fixed height tuned to the homepage hero's box. */}
-        <div className="system-stage">
-          <div className="system-pipeline" aria-label="One job moving through five connected stages">
-            <div className="system-pipeline-head">
-              <span>
-                <i aria-hidden="true" /> LIVE JOB WORKFLOW
-              </span>
-              <small>ONE CUSTOMER RECORD · START TO FINISH</small>
-            </div>
-            <div className="system-pipeline-track">
-              <div className="system-flow-line" aria-hidden="true">
-                <i />
-              </div>
-              {STAGES.map((stage) => (
-                <article key={stage.num} className={stage.status}>
-                  <span>{stage.num}</span>
-                  <small>{stage.label}</small>
-                  <b>{stage.value}</b>
-                  {/* The three states are a colour and a chip; "IN PROGRESS"
-                      alone does not say which of the five this job sits on. */}
-                  <span className="sr-only">{STATUS_READING[stage.status]}</span>
-                  <em>{stage.state}</em>
-                </article>
-              ))}
-            </div>
-            <div className="system-job-record">
-              <span>JOB #1048</span>
-              <b>Kitchen lighting upgrade</b>
-              <small>Alex Morgan · Royal Oak</small>
-            </div>
-          </div>
-
-          <div className="floating-alert">
-            <span className="alert-icon" aria-hidden="true">
-              ✦
+        {/* One job, running past the reader. The bubbles marked `out` are built
+            by the same functions that send the real texts — see hero-thread.ts
+            for why that is not optional. */}
+        <div className="hero-thread">
+          <div className="hero-thread-head">
+            <span>
+              <i aria-hidden="true" /> Job {HERO_THREAD_JOB}
             </span>
-            <div>
-              <small>AI LEAD ALERT</small>
-              <b>Kitchen remodel · in your service area</b>
-            </div>
-            <em>NOW</em>
+            <small>{HERO_THREAD_CLIENT} · Royal Oak</small>
           </div>
 
-          <div className="floating-paid">
-            <i aria-hidden="true">✓</i>
-            <div>
-              <small>DEPOSIT PAID</small>
-              <b>$2,125 headed to your bank</b>
-            </div>
-          </div>
+          <ol className="hero-thread-rows">
+            {HERO_THREAD.map((row) => {
+              if (row.kind === 'event') {
+                return (
+                  <li className={`ht-event ht-${row.tone}`} key={row.id}>
+                    <time>{row.time}</time>
+                    <span>{row.text}</span>
+                  </li>
+                );
+              }
 
-          <p className="example-mark">
-            <b>Example</b> — an invented job, not a real customer.{' '}
-            <Link href="/demo">See the live demo</Link>
-          </p>
+              if (row.kind === 'intake') {
+                return (
+                  <li className="ht-intake" key={row.id}>
+                    <span className="ht-kicker">Smart Intake read it</span>
+                    <p>{row.summary}</p>
+                    <div className="ht-signals">
+                      {row.signals.map(([label, value]) => (
+                        <span key={label}>
+                          <small>{label}</small>
+                          <b>{value}</b>
+                        </span>
+                      ))}
+                    </div>
+                  </li>
+                );
+              }
+
+              return (
+                <li className={`ht-msg ht-${row.kind}`} key={row.id}>
+                  {/* Which way a message is travelling is carried by which side
+                      of the thread it sits on, and a side is not readable. */}
+                  <span className="sr-only">
+                    {row.kind === 'out' ? `Sent to ${HERO_THREAD_FIRST}` : `From ${HERO_THREAD_FIRST}`}
+                  </span>
+                  <p>{row.body}</p>
+                  <time>{row.time}</time>
+                </li>
+              );
+            })}
+          </ol>
+
+          <Link className="hero-thread-demo" href="/demo">
+            Open the live demo <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </section>
 

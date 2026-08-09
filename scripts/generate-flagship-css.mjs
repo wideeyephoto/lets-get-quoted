@@ -3924,6 +3924,302 @@ const TWEAKS = `
   .root :global(.pricing-actions) { display: grid; }
   .root :global(.pricing-actions .button) { justify-content: center; }
 }
+
+/* ===========================================================================
+   §104 — /FEATURES: THE THREAD BESIDE THE COPY
+
+   The hero carried a five-card strip — WEBSITE, INTAKE, QUOTE, SCHEDULE,
+   PAYMENT — under the copy, tilted, with two notification cards floating over
+   it. Three things were wrong with it and only one was taste:
+
+     1. The cards COLLIDED. .floating-alert sat at a fixed \`top: 8px;
+        right: -18px\` and covered stage 05, so a five-step story hid its fifth
+        step; .floating-paid at \`bottom: 42px; left: -20px\` covered the job
+        record, and "Kitchen lighting upgrade" rendered as "...ograde".
+     2. Five equal boxes make five equal claims and none of them is large
+        enough to read as software. It was a process diagram.
+     3. It sat UNDER the copy, so the hero had to be tall enough for both.
+
+   Beside the copy instead, the band gets its height from whichever column is
+   taller rather than from their sum, and the thread has room to run at a size
+   where the actual words of a text are legible.
+
+   NO WRAPPER DIV. .index-hero > h1 and .index-hero > p:not(.eyebrow) are
+   load-bearing child selectors in the ported sheet (and again in the tweak that
+   tightened this hero), so wrapping the copy in a column div would silently
+   drop the headline scale and the supporting line's measure. Everything is
+   placed explicitly in the grid instead.
+
+   The 1fr rows top and bottom are what centre the copy against the thread: the
+   four content rows size to their content and the slack splits evenly, which a
+   plain \`align-items: center\` cannot do when one item spans every row.
+
+   Scoped to .index-hero-beside, because /features-flagship renders the ported
+   .index-hero unchanged and is the reference this page is measured against. */
+/* THE GUTTER IS THE PAGE'S, NOT THE BAND'S. .index-hero pads 24px where every
+   section under it pads clamp(24px, 6vw, 104px), which a centred hero hid.
+   Left-aligned it stops hiding: fixed 580/505 tracks measured 222..1378 at
+   1600 against the feature grid's 96..1504, and at 1101 the tracks outgrew the
+   gutter and ran to 24px while the grid below started at 66. Fractional tracks
+   inside the page's own gutter line the headline up with the section beneath
+   it at every width. */
+.root :global(.index-hero-beside) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto auto auto 1fr;
+  column-gap: clamp(30px, 4.4vw, 74px);
+  padding: clamp(92px, 7.4vw, 120px) clamp(24px, 6vw, 104px) 68px;
+  text-align: left;
+}
+.root :global(.index-hero-beside > .eyebrow) { grid-column: 1; grid-row: 2; }
+.root :global(.index-hero-beside > h1) {
+  grid-column: 1;
+  grid-row: 3;
+  /* Was clamp(38px, 4.4vw, 76px) across the full band. In a 580px column that
+     ran seven lines at 1440 and pushed the copy past the thread. */
+  font-size: clamp(33px, 3.15vw, 50px);
+  letter-spacing: -.032em;
+  line-height: 1.04;
+}
+.root :global(.index-hero-beside > p:not(.eyebrow)) {
+  grid-column: 1;
+  grid-row: 4;
+  margin: 18px 0 0;
+  font-size: 16px;
+  line-height: 1.62;
+}
+.root :global(.index-hero-beside > .hero-actions) { grid-column: 1; grid-row: 5; margin-top: 26px; }
+.root :global(.index-hero-beside > .hero-thread) { grid-column: 2; grid-row: 1 / -1; align-self: center; }
+
+/* ---- the thread itself ---- */
+
+.root :global(.hero-thread) {
+  width: 100%;
+  padding: 15px 17px 17px;
+  border: 1px solid #24404e;
+  border-radius: 17px;
+  background: linear-gradient(180deg, rgba(17, 38, 50, .96), rgba(10, 26, 36, .96));
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, .04) inset,
+    0 26px 58px rgba(0, 0, 0, .42);
+}
+.root :global(.hero-thread-head) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #1e3743;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dbe6ea;
+}
+.root :global(.hero-thread-head) i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--mint);
+}
+.root :global(.hero-thread-head) small {
+  font-family: var(--font-geist-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #7d95a2;
+}
+
+.root :global(.hero-thread-rows) {
+  list-style: none;
+  margin: 0;
+  padding: 15px 0 0;
+  display: grid;
+  gap: 13px;
+}
+
+/* An event is the software acting. No bubble, because nobody typed it. */
+.root :global(.ht-event) {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: #9db0bd;
+}
+/* nowrap and a track wide enough for the longest of them: at 390 a 46px track
+   broke "10:02 AM" over two lines and pushed its row 12px taller than the one
+   above it, which is visible when the two events bracket the thread. */
+.root :global(.ht-event) time {
+  font-family: var(--font-geist-mono);
+  font-size: 9.5px;
+  letter-spacing: .04em;
+  color: #6d8593;
+  white-space: nowrap;
+}
+.root :global(.ht-event) span {
+  position: relative;
+  padding-left: 15px;
+}
+.root :global(.ht-event) span::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #3d5b69;
+}
+.root :global(.ht-paid) span { color: #cfe7de; }
+.root :global(.ht-paid) span::before {
+  background: var(--mint);
+  box-shadow: 0 0 0 3px rgba(80, 227, 189, .14);
+}
+
+/* The lead record, not a message — so it is a card, not a bubble. */
+.root :global(.ht-intake) {
+  border: 1px solid rgba(255, 215, 107, .22);
+  border-radius: 13px;
+  background: rgba(255, 215, 107, .05);
+  padding: 12px 13px 13px;
+}
+.root :global(.ht-kicker) {
+  font-family: var(--font-geist-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--yellow);
+}
+.root :global(.ht-intake) p {
+  margin: 9px 0 0;
+  /* A measure, not a width. Stacked, the panel is 720px and this ran 88
+     characters a line — the app caps its own message text at 74ch for the
+     same reason. */
+  max-width: 33rem;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #d5e1e6;
+}
+.root :global(.ht-signals) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+.root :global(.ht-signals) > span {
+  border: 1px solid #2b4553;
+  border-radius: 9px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, .02);
+}
+.root :global(.ht-signals) small {
+  display: block;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #7d95a2;
+}
+.root :global(.ht-signals) b { display: block; margin-top: 4px; font-size: 11.5px; }
+
+/* The messages. Same two shapes as the app's own inbox — inbound left with the
+   near corner squared off, outbound right on the deeper orange, which is a
+   gradient rather than the brand hue because #ff6a24 carries white at 2.4:1
+   and this runs 4.9:1. A hero is exactly where that gets read outdoors. */
+.root :global(.ht-msg) { display: grid; gap: 5px; }
+.root :global(.ht-msg) p {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 15px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.root :global(.ht-msg) time {
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  color: #6d8593;
+}
+.root :global(.ht-out) { justify-items: end; }
+.root :global(.ht-out) p {
+  /* Two caps: a percentage so the bubble never fills its side of the thread,
+     and a length so it stops growing when the panel goes full-width stacked. A
+     message that runs 85 characters a line has stopped looking like one. */
+  max-width: min(94%, 30rem);
+  background: linear-gradient(135deg, #c9430a, #a8330b);
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-bottom-right-radius: 6px;
+  color: #fff;
+}
+.root :global(.ht-in) { justify-items: start; }
+.root :global(.ht-in) p {
+  max-width: min(88%, 30rem);
+  background: #17313d;
+  border: 1px solid #26424f;
+  border-bottom-left-radius: 6px;
+  color: #e2edf1;
+}
+
+/* A rule above it, mirroring the one under the head — without it the link sat
+   directly under the last event and read as a seventh row of the thread. */
+.root :global(.hero-thread-demo) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #1e3743;
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: .01em;
+  color: #9db0bd;
+  transition: color .18s ease;
+}
+.root :global(.hero-thread-demo):hover { color: var(--orange); }
+
+/* Below the two-column band the thread rejoins the flow under the copy.
+
+   EVERY PLACEMENT IS UNDONE BY THE SELECTOR THAT SET IT, not by a shorter one.
+   A tidy \`.index-hero-beside > *\` is (0,2,0) and loses to \`> .hero-thread\`
+   at (0,3,0) and \`> h1\` at (0,2,1), so the thread stayed in column 2 and the
+   headline in row 3 while the container had one column — measured at 1040 as a
+   394px copy column beside a 551px implicit one, with the h1 90px wide at 390.
+   Matching the specificity is what makes the reset actually reset. */
+@media (max-width: 1040px) {
+  .root :global(.index-hero-beside) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    row-gap: 0;
+  }
+  .root :global(.index-hero-beside > .eyebrow),
+  .root :global(.index-hero-beside > h1),
+  .root :global(.index-hero-beside > p:not(.eyebrow)),
+  .root :global(.index-hero-beside > .hero-actions),
+  .root :global(.index-hero-beside > .hero-thread) { grid-column: 1; grid-row: auto; }
+  .root :global(.index-hero-beside > h1) { font-size: clamp(34px, 5.4vw, 48px); }
+  /* Left-aligned in a full-width column rather than centred in a fixed one, so
+     its left edge stays on the headline's. */
+  .root :global(.index-hero-beside > .hero-thread) {
+    margin-top: 30px;
+    align-self: stretch;
+    max-width: 720px;
+  }
+}
+
+@media (max-width: 760px) {
+  /* The sections below this one drop to a flat 20px here. */
+  .root :global(.index-hero-beside) { padding-left: 20px; padding-right: 20px; }
+}
+
+@media (max-width: 560px) {
+  .root :global(.hero-thread) { padding: 13px 13px 15px; }
+  .root :global(.ht-event) { font-size: 11px; }
+  .root :global(.ht-out) p, .root :global(.ht-in) p { max-width: 100%; }
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.
