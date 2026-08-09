@@ -322,33 +322,37 @@ describe('nothing scrolls sideways', () => {
     for (const track of tracks) expect(track, track).toContain('minmax(0');
   });
 
-  it('clips the page as a backstop, without making it a scroll container', () => {
+  it('clips the document as a backstop, without making it a scroll container', () => {
     // `clip`, not `hidden`: hidden on one axis turns the other into a scroll
-    // container, which is the bug this is meant to prevent.
-    expect(ruleFor('.page')).toContain('overflow-x: clip');
-    expect(ruleFor('.page')).not.toContain('overflow-x: hidden');
+    // container, which is the bug this is meant to prevent. x only, because
+    // clipping y would kill page scrolling.
+    expect(ruleFor('.frame')).toMatch(/overflow-x:\s*clip;/);
+    expect(ruleFor('.frame')).not.toContain('hidden');
+    expect(ruleFor('.frame')).not.toMatch(/overflow-y:/);
   });
 
   /**
    * …AND THE BACKSTOP ATE THE GLOW.
    *
-   * The hero art sits flush against the right edge of the page box and its
-   * drop-shadows reach ~70px past the image, so `clip` — cutting at the padding
-   * box — sliced the warm rim off in a hard vertical line down the right-hand
-   * side. overflow-clip-margin extends the PAINT region and leaves the clip on
-   * layout alone, so a 400-character word still cannot widen the document.
+   * The guard used to sit on .page, which is 1280px and centred, so it cut at
+   * the edge of the TEXT COLUMN — and the hero art is flush against that edge
+   * with drop-shadows reaching ~105px past the image. The warm rim came off in
+   * a hard vertical line down the right-hand side.
+   *
+   * The repair is where the clip happens, not how big a margin it is given.
+   * (overflow-clip-margin was the first attempt and does not survive contact:
+   * it is only applied when the box clips in both directions, content inside
+   * the margin counts towards the document width again, and Safari does not
+   * implement it.) On a full-bleed box the cut lands at the viewport edge,
+   * where there was nothing to see.
+   *
+   * So: .page must not clip at all, and the box that does must not be the
+   * width-limited one.
    */
-  it('lets the hero glow paint past the clip without letting layout through', () => {
-    const page = ruleFor('.page');
-    expect(page).toContain('overflow-clip-margin: 5rem');
-    // The margin only means anything while the overflow is `clip`.
-    expect(page).toContain('overflow-x: clip');
-    // Room for the widest shadow the image casts, with headroom.
-    const reach = Math.max(
-      ...[...ruleFor('.heroShot').matchAll(/drop-shadow\(0 \d+px (\d+)px/g)].map((m) => Number(m[1])),
-    );
-    expect(reach).toBeGreaterThan(0);
-    expect(5 * 16).toBeGreaterThanOrEqual(reach);
+  it('lets the hero glow out of the column the copy is measured by', () => {
+    expect(ruleFor('.page')).not.toMatch(/overflow/);
+    expect(ruleFor('.frame')).not.toMatch(/max-width|margin|padding/);
+    expect(PAGE).toMatch(/<div className=\{styles\.frame\}>\s*<main className=\{styles\.page\}/);
   });
 
   it('steps the grids down: four, then two, then one', () => {

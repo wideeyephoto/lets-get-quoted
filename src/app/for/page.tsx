@@ -147,183 +147,187 @@ export default function TradeIndexPage() {
           than a child of it, so nothing on the page can clip it. */}
       <div className={styles.ground} aria-hidden="true" />
 
-      <main className={styles.page} id="main-content">
-        {/* ---- 2. Split hero -------------------------------------------- */}
-        <section className={styles.hero}>
-          <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Built for your trade</p>
-            <h1>Websites and quoting software built for your trade.</h1>
-            <p className={styles.heroLede}>
-              Everything you need to win the lead, quote the job, and get paid.
+      {/* The absolute stop on horizontal overflow, one level out from the page
+          so the hero's glow has somewhere to spill. See .frame / .page. */}
+      <div className={styles.frame}>
+        <main className={styles.page} id="main-content">
+          {/* ---- 2. Split hero -------------------------------------------- */}
+          <section className={styles.hero}>
+            <div className={styles.heroCopy}>
+              <p className={styles.eyebrow}>Built for your trade</p>
+              <h1>Websites and quoting software built for your trade.</h1>
+              <p className={styles.heroLede}>
+                Everything you need to win the lead, quote the job, and get paid.
+              </p>
+              <div className={styles.heroCtas}>
+                <a href={APP_SIGNUP_URL} className={`${styles.btn} ${styles.btnPrimary}`}>
+                  Build my free site
+                </a>
+                <Link href="/demo" className={`${styles.btn} ${styles.btnGhost}`}>
+                  Explore the demo
+                </Link>
+              </div>
+              {/* THE NUMBER, WHERE THE DECISION IS. "You only pay when a homeowner
+                  pays you" is the good half of the sentence; a contractor reading
+                  it still has to go and find out what "pay" means, and the page
+                  that answers it was not linked from here. */}
+              <p className={styles.heroFine}>
+                You only pay when a homeowner pays you &mdash; a platform fee from {HIGHEST_FEE} down
+                to {LOWEST_FEE} as your volume grows. <Link href="/pricing">See the full breakdown</Link>
+              </p>
+            </div>
+
+            <div className={styles.heroArt}>
+              {/* Eager and high-priority: this is the LCP element at every width.
+                  The intrinsic size is the trimmed master's, printed by
+                  scripts/build-for-hero.mjs — if it stops matching, Next reserves
+                  the wrong box and the hero shifts as the image lands. */}
+              <Image
+                className={styles.heroShot}
+                src="/for/hero-quote-devices.webp"
+                alt="Let’s Get Quoted quote builder displayed on a laptop and phone."
+                width={956}
+                height={642}
+                priority
+                sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, (max-width: 1360px) 56vw, 703px"
+              />
+            </div>
+          </section>
+
+          {/* ---- 3. Trust strip ------------------------------------------- */}
+          <ul className={styles.trust}>
+            {TRUST.map((item) => (
+              <li key={item}>
+                <Check />
+                {item}
+              </li>
+            ))}
+          </ul>
+
+          {/* ---- 4. Four core benefits ------------------------------------ */}
+          <section className={styles.section}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>What &ldquo;tuned to your trade&rdquo; means</p>
+              <h2>Four things change the moment you pick one.</h2>
+            </div>
+            <div className={styles.benefits}>
+              {BENEFITS.map((item) => (
+                <article key={item.title} className={styles.benefit}>
+                  <span className={styles.benefitMark}>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      aria-hidden="true"
+                    >
+                      {item.icon}
+                    </svg>
+                  </span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {/* ---- 5. Featured trades --------------------------------------- */}
+          <section className={styles.section}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Start here</p>
+              <h2>Find your trade.</h2>
+              <p>
+                Eight of the {TRADES.length} we build for. The full directory is below &mdash; every
+                one of them has its own page.
+              </p>
+            </div>
+            <div className={styles.featured}>
+              {common.map((trade) => (
+                <Link key={trade.slug} href={`/for/${trade.slug}`} className={styles.featuredCard}>
+                  <h3>{trade.name}</h3>
+                  <span>{trade.services.slice(0, 4).join(' · ')}</span>
+                  <em aria-hidden="true">See the page &rarr;</em>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* ---- 6. Product proof ----------------------------------------- */}
+          <section className={styles.section}>
+            <div className={styles.proof}>
+              <div className={styles.proofHead}>
+                <p className={styles.eyebrow}>See it working</p>
+                <h2>Try the entire customer experience.</h2>
+                <p>
+                  Open a real demo website, request an estimate, review a quote, and see how
+                  scheduling and payment work &mdash; from your customer&rsquo;s point of view.
+                </p>
+                <div className={styles.proofCta}>
+                  <Link href="/demo" className={`${styles.btn} ${styles.btnPrimary}`}>
+                    Explore the demo &mdash; no signup
+                  </Link>
+                </div>
+              </div>
+
+              {/* An ordered list because the order IS the content — nobody
+                  approves a quote they were never sent. `role="list"` because
+                  Safari drops list semantics from a list with no markers, and the
+                  sequence is the point here. The chevrons between the steps are
+                  drawn in CSS and are not in the document at all. */}
+              <ol className={styles.steps} role="list">
+                {STEPS.map((step) => (
+                  <li key={step.title} className={styles.step}>
+                    <b>{step.title}</b>
+                    <span>{step.body}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
+
+          {/* ---- 7. The directory ----------------------------------------- */}
+          <section className={styles.section} id="trades">
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>{TRADES.length} trades and counting</p>
+              <h2>Every trade we build for.</h2>
+              <p>
+                Search by the work rather than the job title &mdash; &ldquo;water heater&rdquo; finds
+                plumbers, &ldquo;mulch&rdquo; finds landscapers.
+              </p>
+            </div>
+
+            <TradeFinder />
+
+            <p className={styles.note}>
+              Don&rsquo;t see yours? It still works &mdash; every feature is trade-agnostic.{' '}
+              <Link href="/demo">Explore the demo &rarr;</Link>
             </p>
-            <div className={styles.heroCtas}>
+          </section>
+
+          {/* ---- 8. Closing CTA -------------------------------------------
+              `page-cta` carries no styling anywhere — it is the marker the
+              header's mobile CTA bar watches for (site-chrome.tsx), so the bar
+              stands aside rather than floating on top of the ask it duplicates. */}
+          <section className={`${styles.closing} page-cta`}>
+            <p className={styles.eyebrow}>Ready when you are</p>
+            <h2>Start free &mdash; you only pay when a homeowner pays you.</h2>
+            <p>
+              No subscription. No setup fee. Everything you need to win the lead, quote the job, and
+              get paid.
+            </p>
+            <div className={styles.closingCtas}>
               <a href={APP_SIGNUP_URL} className={`${styles.btn} ${styles.btnPrimary}`}>
                 Build my free site
               </a>
-              <Link href="/demo" className={`${styles.btn} ${styles.btnGhost}`}>
-                Explore the demo
+              <Link href="/faq" className={`${styles.btn} ${styles.btnGhost}`}>
+                Read the FAQ
               </Link>
             </div>
-            {/* THE NUMBER, WHERE THE DECISION IS. "You only pay when a homeowner
-                pays you" is the good half of the sentence; a contractor reading
-                it still has to go and find out what "pay" means, and the page
-                that answers it was not linked from here. */}
-            <p className={styles.heroFine}>
-              You only pay when a homeowner pays you &mdash; a platform fee from {HIGHEST_FEE} down
-              to {LOWEST_FEE} as your volume grows. <Link href="/pricing">See the full breakdown</Link>
-            </p>
-          </div>
+          </section>
 
-          <div className={styles.heroArt}>
-            {/* Eager and high-priority: this is the LCP element at every width.
-                The intrinsic size is the trimmed master's, printed by
-                scripts/build-for-hero.mjs — if it stops matching, Next reserves
-                the wrong box and the hero shifts as the image lands. */}
-            <Image
-              className={styles.heroShot}
-              src="/for/hero-quote-devices.webp"
-              alt="Let’s Get Quoted quote builder displayed on a laptop and phone."
-              width={956}
-              height={642}
-              priority
-              sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, (max-width: 1360px) 56vw, 703px"
-            />
-          </div>
-        </section>
-
-        {/* ---- 3. Trust strip ------------------------------------------- */}
-        <ul className={styles.trust}>
-          {TRUST.map((item) => (
-            <li key={item}>
-              <Check />
-              {item}
-            </li>
-          ))}
-        </ul>
-
-        {/* ---- 4. Four core benefits ------------------------------------ */}
-        <section className={styles.section}>
-          <div className={styles.sectionHead}>
-            <p className={styles.eyebrow}>What &ldquo;tuned to your trade&rdquo; means</p>
-            <h2>Four things change the moment you pick one.</h2>
-          </div>
-          <div className={styles.benefits}>
-            {BENEFITS.map((item) => (
-              <article key={item.title} className={styles.benefit}>
-                <span className={styles.benefitMark}>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    aria-hidden="true"
-                  >
-                    {item.icon}
-                  </svg>
-                </span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ---- 5. Featured trades --------------------------------------- */}
-        <section className={styles.section}>
-          <div className={styles.sectionHead}>
-            <p className={styles.eyebrow}>Start here</p>
-            <h2>Find your trade.</h2>
-            <p>
-              Eight of the {TRADES.length} we build for. The full directory is below &mdash; every
-              one of them has its own page.
-            </p>
-          </div>
-          <div className={styles.featured}>
-            {common.map((trade) => (
-              <Link key={trade.slug} href={`/for/${trade.slug}`} className={styles.featuredCard}>
-                <h3>{trade.name}</h3>
-                <span>{trade.services.slice(0, 4).join(' · ')}</span>
-                <em aria-hidden="true">See the page &rarr;</em>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* ---- 6. Product proof ----------------------------------------- */}
-        <section className={styles.section}>
-          <div className={styles.proof}>
-            <div className={styles.proofHead}>
-              <p className={styles.eyebrow}>See it working</p>
-              <h2>Try the entire customer experience.</h2>
-              <p>
-                Open a real demo website, request an estimate, review a quote, and see how
-                scheduling and payment work &mdash; from your customer&rsquo;s point of view.
-              </p>
-              <div className={styles.proofCta}>
-                <Link href="/demo" className={`${styles.btn} ${styles.btnPrimary}`}>
-                  Explore the demo &mdash; no signup
-                </Link>
-              </div>
-            </div>
-
-            {/* An ordered list because the order IS the content — nobody
-                approves a quote they were never sent. `role="list"` because
-                Safari drops list semantics from a list with no markers, and the
-                sequence is the point here. The chevrons between the steps are
-                drawn in CSS and are not in the document at all. */}
-            <ol className={styles.steps} role="list">
-              {STEPS.map((step) => (
-                <li key={step.title} className={styles.step}>
-                  <b>{step.title}</b>
-                  <span>{step.body}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* ---- 7. The directory ----------------------------------------- */}
-        <section className={styles.section} id="trades">
-          <div className={styles.sectionHead}>
-            <p className={styles.eyebrow}>{TRADES.length} trades and counting</p>
-            <h2>Every trade we build for.</h2>
-            <p>
-              Search by the work rather than the job title &mdash; &ldquo;water heater&rdquo; finds
-              plumbers, &ldquo;mulch&rdquo; finds landscapers.
-            </p>
-          </div>
-
-          <TradeFinder />
-
-          <p className={styles.note}>
-            Don&rsquo;t see yours? It still works &mdash; every feature is trade-agnostic.{' '}
-            <Link href="/demo">Explore the demo &rarr;</Link>
-          </p>
-        </section>
-
-        {/* ---- 8. Closing CTA -------------------------------------------
-            `page-cta` carries no styling anywhere — it is the marker the
-            header's mobile CTA bar watches for (site-chrome.tsx), so the bar
-            stands aside rather than floating on top of the ask it duplicates. */}
-        <section className={`${styles.closing} page-cta`}>
-          <p className={styles.eyebrow}>Ready when you are</p>
-          <h2>Start free &mdash; you only pay when a homeowner pays you.</h2>
-          <p>
-            No subscription. No setup fee. Everything you need to win the lead, quote the job, and
-            get paid.
-          </p>
-          <div className={styles.closingCtas}>
-            <a href={APP_SIGNUP_URL} className={`${styles.btn} ${styles.btnPrimary}`}>
-              Build my free site
-            </a>
-            <Link href="/faq" className={`${styles.btn} ${styles.btnGhost}`}>
-              Read the FAQ
-            </Link>
-          </div>
-        </section>
-
-        <SiteFooter />
-      </main>
+          <SiteFooter />
+        </main>
+      </div>
     </>
   );
 }
