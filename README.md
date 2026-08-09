@@ -19,6 +19,8 @@ Next.js App Router workspace for the contractor quote-to-paid product.
 
 Address autocomplete on quote request and job forms uses the Google Maps JavaScript API with Places API (New). In Google Cloud, the browser key must allow both APIs and include every app origin in its HTTP referrer restrictions, such as `http://localhost:3010/*`, any alternate local preview port, and the deployed domains.
 
+Dashboard maps use Advanced Markers and the JavaScript vector map ID in `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`. The production ID is the code fallback; set the variable when a preview or another Cloud project needs a different map ID.
+
 ## SMS setup
 
 SMS login and homeowner payment updates use separate integration paths:

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadGoogleMaps, MAP_DARK_STYLE, MAP_LIGHT_STYLE } from '@/lib/maps-loader';
+import { circleMarkerContent, createAdvancedMarker } from '@/lib/advanced-markers';
+import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 import type { RouteStop } from '@/lib/quick-stop-route';
 import type { PriorityZone } from '@/lib/quick-stop-zones';
 
@@ -91,18 +92,22 @@ export default function QuickStopCoverageMap({
     }
 
     let cancelled = false;
+    const mapMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
+    const drawings: Array<google.maps.Circle | google.maps.Polyline> = [];
     loadGoogleMaps(key)
-      .then(() => {
+      .then(async () => {
         if (cancelled || !containerRef.current || !window.google) return;
         const g = window.google.maps;
+        const markerLibrary = await g.importLibrary('marker') as google.maps.MarkerLibrary;
+        if (cancelled || !containerRef.current) return;
 
         const map = new g.Map(containerRef.current, {
+          ...googleMapAppearance(theme),
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
           zoomControl: true,
           clickableIcons: false,
-          styles: theme === 'dark' ? MAP_DARK_STYLE : MAP_LIGHT_STYLE,
           backgroundColor: theme === 'dark' ? '#16222f' : '#eef1f5',
         });
 
@@ -128,6 +133,7 @@ export default function QuickStopCoverageMap({
             fillOpacity: 0.1,
             clickable: false,
           });
+          drawings.push(circle);
           const circleBounds = circle.getBounds();
           if (circleBounds) bounds.union(circleBounds);
         }
@@ -145,37 +151,37 @@ export default function QuickStopCoverageMap({
             fillOpacity: 0.12,
             clickable: false,
           });
+          drawings.push(circle);
           const zoneBounds = circle.getBounds();
           if (zoneBounds) bounds.union(zoneBounds);
         }
 
         if (stops.length > 1) {
-          new g.Polyline({
+          drawings.push(new g.Polyline({
             map,
             path: stops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
             strokeColor: ROUTE_COLOR,
             strokeOpacity: 0.9,
             strokeWeight: 3,
-          });
+          }));
         }
 
         stops.forEach((stop, index) => {
           const position = { lat: stop.lat, lng: stop.lng };
           bounds.extend(position);
-          new g.Marker({
+          const marker = createAdvancedMarker(markerLibrary, {
             map,
             position,
             title: stop.timeLabel ? `Stop ${index + 1} · ${stop.timeLabel}` : `Stop ${index + 1}`,
-            label: { text: String(index + 1), color: '#0b1220', fontSize: '12px', fontWeight: '700' },
-            icon: {
-              path: g.SymbolPath.CIRCLE,
-              fillColor: ROUTE_COLOR,
-              fillOpacity: 1,
-              strokeColor: '#0b1220',
-              strokeWeight: 1.5,
-              scale: 11,
-            },
-          });
+            anchorLeft: '-50%',
+            anchorTop: '-50%',
+          }, circleMarkerContent({
+            diameter: 22,
+            fill: ROUTE_COLOR,
+            borderWidth: 1.5,
+            label: String(index + 1),
+          }));
+          mapMarkers.push(marker);
         });
 
         if (!bounds.isEmpty()) {
@@ -204,10 +210,11 @@ export default function QuickStopCoverageMap({
 
     return () => {
       cancelled = true;
+      for (const marker of mapMarkers) marker.map = null;
+      for (const drawing of drawings) drawing.setMap(null);
     };
-    // Rebuilt on a theme change: Google applies `styles` at construction, and
-    // swapping them on a live map leaves the previous palette on tiles that are
-    // already painted.
+    // Rebuilt on a theme change because Google only accepts `colorScheme` when
+    // the map is constructed.
     //
     // `zones` is a dependency, which is what makes a newly added area appear:
     // the action revalidates the page, the new zone arrives as a prop, and the
@@ -247,7 +254,7 @@ export default function QuickStopCoverageMap({
           <p className="qs-coverage-empty">{emptyReason}</p>
         ) : (
           <>
-            <div ref={containerRef} className="qs-coverage-canvas" role="img" aria-label={`Today's route with your ${radiusMiles}-mile detour limit drawn around each stop`} />
+            <div ref={containerRef} className="qs-coverage-canvas" role="region" aria-label={`Today's route with your ${radiusMiles}-mile detour limit drawn around each stop`} />
             {status === 'loading' ? <p className="qs-coverage-empty">Loading the map…</p> : null}
             {status === 'error' ? (
               <p className="qs-coverage-empty">

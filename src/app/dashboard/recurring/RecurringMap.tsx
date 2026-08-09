@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { loadGoogleMaps, MAP_DARK_STYLE, MAP_LIGHT_STYLE } from '@/lib/maps-loader';
+import { circleMarkerContent, createAdvancedMarker } from '@/lib/advanced-markers';
+import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 
 // Where the recurring book actually is.
 //
@@ -112,38 +113,41 @@ export default function RecurringMap({
     }
 
     let cancelled = false;
+    const mapMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
     setStatus('loading');
     loadGoogleMaps(key)
-      .then(() => {
+      .then(async () => {
         if (cancelled || !containerRef.current || !window.google) return;
         const g = window.google.maps;
+        const markerLibrary = await g.importLibrary('marker') as google.maps.MarkerLibrary;
+        if (cancelled || !containerRef.current) return;
         const map = new g.Map(containerRef.current, {
+          ...googleMapAppearance(theme),
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
           zoomControl: true,
           clickableIcons: false,
-          styles: theme === 'dark' ? MAP_DARK_STYLE : MAP_LIGHT_STYLE,
           backgroundColor: theme === 'dark' ? '#16222f' : '#eef1f5',
         });
 
         const bounds = new g.LatLngBounds();
         for (const pin of pins) {
-          const marker = new g.Marker({
+          const marker = createAdvancedMarker(markerLibrary, {
             map,
             position: { lat: pin.lat, lng: pin.lng },
             title: `${pin.title} · ${pin.clientName}`,
             zIndex: pin.needsAttention ? 999 : pin.active ? 10 : 1,
-            icon: {
-              path: g.SymbolPath.CIRCLE,
-              scale: pin.needsAttention ? 9 : 7,
-              fillColor: pin.needsAttention ? ATTENTION_COLOR : pin.active ? ACTIVE_COLOR : PAUSED_COLOR,
-              fillOpacity: pin.active ? 1 : 0.6,
-              strokeColor: '#0b1220',
-              strokeWeight: 2,
-            },
-          });
-          marker.addListener('click', () => (onJump ? onJump(pin.planId) : jumpToPlan(pin.planId)));
+            gmpClickable: true,
+            anchorLeft: '-50%',
+            anchorTop: '-50%',
+          }, circleMarkerContent({
+            diameter: pin.needsAttention ? 18 : 14,
+            fill: pin.needsAttention ? ATTENTION_COLOR : pin.active ? ACTIVE_COLOR : PAUSED_COLOR,
+            opacity: pin.active ? 1 : 0.6,
+          }));
+          marker.addEventListener('gmp-click', () => (onJump ? onJump(pin.planId) : jumpToPlan(pin.planId)));
+          mapMarkers.push(marker);
           bounds.extend({ lat: pin.lat, lng: pin.lng });
         }
 
@@ -163,9 +167,10 @@ export default function RecurringMap({
 
     return () => {
       cancelled = true;
+      for (const marker of mapMarkers) marker.map = null;
     };
-    // Rebuilt on a theme change: Google applies `styles` at construction, and
-    // swapping them on a live map leaves the old palette on painted tiles.
+    // Rebuilt on a theme change because Google only accepts `colorScheme` when
+    // the map is constructed.
   }, [pins, theme, shown, placed, prefsRead, onJump]);
 
   function chooseTheme(next: MapTheme) {
@@ -237,7 +242,7 @@ export default function RecurringMap({
         <div
           ref={containerRef}
           className="recurring-map-canvas"
-          role="img"
+          role="region"
           aria-label={`${placed} recurring plan${placed === 1 ? '' : 's'} on a map`}
         />
         {status !== 'ready' ? (

@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createAdvancedMarker, imageMarkerContent } from '@/lib/advanced-markers';
 import { loadMapsLibrary } from '@/lib/google-maps-loader';
+import { googleMapAppearance } from '@/lib/maps-loader';
 import { legColor } from '@/lib/day-plan-view';
 import { supplyBrand, type SupplyBrand } from '@/lib/supply-brands';
 import type { LatLng } from '@/lib/distance';
@@ -23,20 +25,6 @@ const DIRECTIONS_MAX_WAYPOINTS = 23; // 25 minus origin and destination.
 // so a contractor dragging stops around doesn't fire — and log — one doomed
 // request per drag. Straight lines are the answer for this key, permanently.
 let directionsUnavailable = false;
-
-const DARK_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#0d1b2a' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d1b2a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8fa3b8' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#1e3a52' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#122b26' }, { visibility: 'on' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1b2b3d' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7f94' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2a3f57' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#08131f' }] },
-];
 
 function markerSvg(text: string, color: string): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">
@@ -160,14 +148,15 @@ export default function RouteMap({
 }) {
   const holderRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const markerLibraryRef = useRef<google.maps.MarkerLibrary | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const linesRef = useRef<google.maps.Polyline[]>([]);
   const boundsRef = useRef<google.maps.LatLngBounds | null>(null);
   // Bumped on every order change so a slow Directions reply can tell whether it's
   // still the current route before it paints itself over a newer one.
   const drawIdRef = useRef(0);
 
-  const supplyMarkersRef = useRef<google.maps.Marker[]>([]);
+  const supplyMarkersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [roadRoute, setRoadRoute] = useState(false);
@@ -196,14 +185,19 @@ export default function RouteMap({
 
     void (async () => {
       try {
-        const maps = await loadMapsLibrary<google.maps.MapsLibrary>(apiKey, 'maps');
+        const [maps, markerLibrary] = await Promise.all([
+          loadMapsLibrary<google.maps.MapsLibrary>(apiKey, 'maps'),
+          loadMapsLibrary<google.maps.MarkerLibrary>(apiKey, 'marker'),
+        ]);
         if (cancelled || !holderRef.current) return;
+        markerLibraryRef.current = markerLibrary;
         mapRef.current = new maps.Map(holderRef.current, {
+          ...googleMapAppearance('dark'),
           center: homeBase ?? { lat: stops[0]?.lat ?? 0, lng: stops[0]?.lng ?? 0 },
           zoom: 11,
           disableDefaultUI: true,
           zoomControl: true,
-          styles: DARK_STYLE,
+          clickableIcons: false,
           backgroundColor: '#0d1b2a',
         });
         setStatus('ready');
@@ -222,23 +216,25 @@ export default function RouteMap({
   // Redraw markers and the route whenever the order changes.
   useEffect(() => {
     const map = mapRef.current;
-    if (status !== 'ready' || !map || !window.google) return;
+    const markerLibrary = markerLibraryRef.current;
+    if (status !== 'ready' || !map || !markerLibrary || !window.google) return;
 
     const drawId = ++drawIdRef.current;
-    for (const marker of markersRef.current) marker.setMap(null);
+    for (const marker of markersRef.current) marker.map = null;
     markersRef.current = [];
 
     const bounds = new window.google.maps.LatLngBounds();
     if (homeBase) {
       bounds.extend(homeBase);
       markersRef.current.push(
-        new window.google.maps.Marker({
+        createAdvancedMarker(markerLibrary, {
           map,
           position: homeBase,
-          icon: { url: HOME_SVG, scaledSize: new window.google.maps.Size(34, 44), anchor: new window.google.maps.Point(17, 43) },
           title: 'Your shop — the day starts and ends here',
           zIndex: 1,
-        }),
+          anchorLeft: '-17px',
+          anchorTop: '-43px',
+        }, imageMarkerContent(HOME_SVG, 34, 44)),
       );
     }
 
@@ -246,19 +242,18 @@ export default function RouteMap({
       const position = { lat: stop.lat, lng: stop.lng };
       bounds.extend(position);
       markersRef.current.push(
-        new window.google.maps.Marker({
+        createAdvancedMarker(markerLibrary, {
           map,
           position,
-          // The number IS the row number in the list beside it; that pairing is the
-          // only thing making the map readable.
-          icon: {
-            url: markerSvg(String(index + 1), stop.locked ? '#ffd166' : '#ff8a3d'),
-            scaledSize: new window.google.maps.Size(34, 44),
-            anchor: new window.google.maps.Point(17, 43),
-          },
           title: `${index + 1}. ${stop.label}`,
           zIndex: 10 + index,
-        }),
+          anchorLeft: '-17px',
+          anchorTop: '-43px',
+        }, imageMarkerContent(
+          markerSvg(String(index + 1), stop.locked ? '#ffd166' : '#ff8a3d'),
+          34,
+          44,
+        )),
       );
     });
 
@@ -321,11 +316,12 @@ export default function RouteMap({
   // Supply stores near the route. Searched once when switched on and left alone
   // after that — dragging stops around doesn't move a Home Depot.
   useEffect(() => {
-    for (const marker of supplyMarkersRef.current) marker.setMap(null);
+    for (const marker of supplyMarkersRef.current) marker.map = null;
     supplyMarkersRef.current = [];
 
     const map = mapRef.current;
-    if (!showSupply || status !== 'ready' || !map || !apiKey || stops.length === 0) {
+    const markerLibrary = markerLibraryRef.current;
+    if (!showSupply || status !== 'ready' || !map || !markerLibrary || !apiKey || stops.length === 0) {
       setSupplyState('idle');
       setSupplyCount(0);
       return;
@@ -362,20 +358,18 @@ export default function RouteMap({
 
         for (const place of found.values()) {
           const brand = supplyBrand(place.label);
-          const marker = new window.google.maps.Marker({
+          const marker = createAdvancedMarker(markerLibrary, {
             map: mapRef.current,
             position: { lat: place.lat, lng: place.lng },
-            icon: {
-              url: supplyMarkerSvg(brand),
-              scaledSize: new window.google.maps.Size(24, 24),
-              anchor: new window.google.maps.Point(12, 12),
-            },
             title: onAddPlace ? `${place.label} — click to add as a stop` : place.label,
             zIndex: 5,
-          });
+            gmpClickable: Boolean(onAddPlace),
+            anchorLeft: '-12px',
+            anchorTop: '-12px',
+          }, imageMarkerContent(supplyMarkerSvg(brand), 24, 24));
           // Finding the store is only half of it; the useful move is putting it
           // in the day, with its address and coordinates already filled in.
-          if (onAddPlace) marker.addListener('click', () => onAddPlace(place));
+          if (onAddPlace) marker.addEventListener('gmp-click', () => onAddPlace(place));
           supplyMarkersRef.current.push(marker);
         }
         setSupplyCount(found.size);
@@ -395,12 +389,15 @@ export default function RouteMap({
   }, [showSupply, status, apiKey]);
 
   useEffect(() => {
-    const markers = markersRef.current;
-    const supply = supplyMarkersRef.current;
-    const lines = linesRef.current;
     return () => {
-      for (const marker of [...markers, ...supply]) marker.setMap(null);
-      clearLines(lines);
+      drawIdRef.current += 1;
+      for (const marker of [...markersRef.current, ...supplyMarkersRef.current]) marker.map = null;
+      clearLines(linesRef.current);
+      markersRef.current = [];
+      supplyMarkersRef.current = [];
+      linesRef.current = [];
+      markerLibraryRef.current = null;
+      mapRef.current = null;
     };
   }, []);
 
@@ -418,7 +415,7 @@ export default function RouteMap({
 
   return (
     <div className="plan-map-holder">
-      <div ref={holderRef} className="plan-map-canvas" role="img" aria-label={`Route map with ${stops.length} stops`} />
+      <div ref={holderRef} className="plan-map-canvas" role="region" aria-label={`Route map with ${stops.length} stops`} />
       {status === 'loading' ? <div className="plan-map-veil">Loading map…</div> : null}
       {status === 'ready' && routing ? <span className="plan-map-busy">Recalculating route…</span> : null}
       <div className="plan-map-controls">

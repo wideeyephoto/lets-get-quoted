@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createAdvancedMarker } from '@/lib/advanced-markers';
+import { googleMapAppearance } from '@/lib/maps-loader';
 
 type LeadRadiusMapProps = {
   address: string | null | undefined;
@@ -85,6 +87,8 @@ export default function LeadRadiusMap({ address, radiusMiles = 10, size = 'defau
     }
 
     let cancelled = false;
+    let radiusCircle: google.maps.Circle | null = null;
+    let mapMarker: google.maps.marker.AdvancedMarkerElement | null = null;
     setStatus('loading');
 
     loadGoogleMapsScript(apiKey)
@@ -110,6 +114,7 @@ export default function LeadRadiusMap({ address, radiusMiles = 10, size = 'defau
         }
 
         const map = new mapsLibrary.Map(container, {
+          ...googleMapAppearance('light'),
           center: location,
           zoom: size === 'mini' ? 9 : 10,
           disableDefaultUI: true,
@@ -117,7 +122,7 @@ export default function LeadRadiusMap({ address, radiusMiles = 10, size = 'defau
           gestureHandling: size === 'mini' ? 'none' : 'cooperative',
         });
 
-        new mapsLibrary.Circle({
+        radiusCircle = new mapsLibrary.Circle({
           map,
           center: location,
           radius: radiusMiles * METERS_PER_MILE,
@@ -128,7 +133,7 @@ export default function LeadRadiusMap({ address, radiusMiles = 10, size = 'defau
           fillOpacity: 0.12,
         });
 
-        new markerLibrary.Marker({ map, position: location });
+        mapMarker = createAdvancedMarker(markerLibrary, { map, position: location });
 
         if (!cancelled) setStatus('ready');
       })
@@ -138,8 +143,10 @@ export default function LeadRadiusMap({ address, radiusMiles = 10, size = 'defau
 
     return () => {
       cancelled = true;
+      radiusCircle?.setMap(null);
+      if (mapMarker) mapMarker.map = null;
     };
-  }, [address, radiusMiles]);
+  }, [address, radiusMiles, size]);
 
   if (!address?.trim()) return null;
 

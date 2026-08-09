@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { loadGoogleMaps, MAP_DARK_STYLE, MAP_LIGHT_STYLE } from '@/lib/maps-loader';
+import { circleMarkerContent, createAdvancedMarker } from '@/lib/advanced-markers';
+import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 import type { ClientRow } from './ClientsWorkspace';
 
 // The customer book as a map.
@@ -37,7 +38,10 @@ export default function ClientsMap({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
+  const markersRef = useRef<Map<string, {
+    marker: google.maps.marker.AdvancedMarkerElement;
+    position: google.maps.LatLngLiteral;
+  }>>(new Map());
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [theme, setTheme] = useState<MapTheme>('dark');
 
@@ -45,6 +49,8 @@ export default function ClientsMap({
   // every parent render — a handler captured in that closure would go stale.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   // Read the saved choice after mount, never during render: reading
   // localStorage while rendering gives the server and the client different
@@ -83,42 +89,59 @@ export default function ClientsMap({
     }
 
     let cancelled = false;
+    let effectMap: google.maps.Map | null = null;
+    let idleListener: google.maps.MapsEventListener | null = null;
+    const markerListenerCleanups: Array<() => void> = [];
     loadGoogleMaps(key)
-      .then(() => {
+      .then(async () => {
+        if (cancelled || !containerRef.current) return;
+        const markerLibrary = await google.maps.importLibrary('marker') as google.maps.MarkerLibrary;
         if (cancelled || !containerRef.current) return;
         const map = new google.maps.Map(containerRef.current, {
+          ...googleMapAppearance(theme),
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
           zoomControl: true,
-          styles: theme === 'dark' ? MAP_DARK_STYLE : MAP_LIGHT_STYLE,
+          clickableIcons: false,
         });
+        effectMap = map;
         mapRef.current = map;
 
-        markersRef.current.forEach((marker) => marker.setMap(null));
+        markersRef.current.forEach(({ marker }) => { marker.map = null; });
         markersRef.current = new Map();
 
         const bounds = new google.maps.LatLngBounds();
         for (const pin of visible) {
-          const marker = new google.maps.Marker({
+          const position = { lat: pin.lat, lng: pin.lng };
+          const selected = pin.clientId === selectedIdRef.current;
+          const marker = createAdvancedMarker(markerLibrary, {
             map,
-            position: { lat: pin.lat, lng: pin.lng },
+            position,
             title: pin.client.name,
-            icon: dot(false),
-          });
-          marker.addListener('click', () => onSelectRef.current(pin.clientId));
-          markersRef.current.set(pin.clientId, marker);
-          bounds.extend({ lat: pin.lat, lng: pin.lng });
+            zIndex: selected ? 999 : 1,
+            gmpClickable: true,
+            anchorLeft: '-50%',
+            anchorTop: '-50%',
+          }, dot(selected));
+          const handleMarkerClick = () => onSelectRef.current(pin.clientId);
+          marker.addEventListener('gmp-click', handleMarkerClick);
+          markerListenerCleanups.push(() => marker.removeEventListener('gmp-click', handleMarkerClick));
+          markersRef.current.set(pin.clientId, { marker, position });
+          bounds.extend(position);
         }
 
         map.fitBounds(bounds, 48);
-        // One customer fits to a point, and fitBounds on a zero-area box zooms
-        // to the building. A street is the useful scale.
-        if (visible.length === 1) {
-          google.maps.event.addListenerOnce(map, 'idle', () => {
+        idleListener = google.maps.event.addListenerOnce(map, 'idle', () => {
+          // One customer fits to a point, and fitBounds on a zero-area box zooms
+          // to the building. A street is the useful scale.
+          if (visible.length === 1) {
             if ((map.getZoom() ?? 0) > 14) map.setZoom(14);
-          });
-        }
+          }
+          const currentSelection = selectedIdRef.current;
+          const chosen = currentSelection ? markersRef.current.get(currentSelection) : null;
+          if (chosen) map.panTo(chosen.position);
+        });
         setStatus('ready');
       })
       .catch(() => {
@@ -127,6 +150,11 @@ export default function ClientsMap({
 
     return () => {
       cancelled = true;
+      idleListener?.remove();
+      for (const removeListener of markerListenerCleanups) removeListener();
+      markersRef.current.forEach(({ marker }) => { marker.map = null; });
+      markersRef.current = new Map();
+      if (mapRef.current === effectMap) mapRef.current = null;
     };
   }, [visible, theme]);
 
@@ -134,13 +162,12 @@ export default function ClientsMap({
   // above would refit the bounds and yank the map back every time you clicked
   // a customer.
   useEffect(() => {
-    markersRef.current.forEach((marker, id) => {
-      marker.setIcon(dot(id === selectedId));
-      marker.setZIndex(id === selectedId ? 999 : 1);
+    markersRef.current.forEach(({ marker }, id) => {
+      marker.replaceChildren(dot(id === selectedId));
+      marker.zIndex = id === selectedId ? 999 : 1;
     });
     const chosen = selectedId ? markersRef.current.get(selectedId) : null;
-    const position = chosen?.getPosition();
-    if (chosen && position && mapRef.current) mapRef.current.panTo(position);
+    if (chosen && mapRef.current) mapRef.current.panTo(chosen.position);
   }, [selectedId, status]);
 
   function pickTheme(next: MapTheme) {
@@ -214,13 +241,11 @@ export default function ClientsMap({
 
 // Drawn rather than a pin image: a customer is a place, not a destination, and
 // the selected one has to be findable in a cluster of forty.
-function dot(on: boolean): google.maps.Symbol {
-  return {
-    path: google.maps.SymbolPath.CIRCLE,
-    scale: on ? 10 : 6.5,
-    fillColor: on ? '#ff7a21' : '#38bdf8',
-    fillOpacity: on ? 1 : 0.85,
-    strokeColor: '#0b1220',
-    strokeWeight: on ? 3 : 2,
-  };
+function dot(on: boolean): HTMLDivElement {
+  return circleMarkerContent({
+    diameter: on ? 20 : 13,
+    fill: on ? '#ff7a21' : '#38bdf8',
+    opacity: on ? 1 : 0.85,
+    borderWidth: on ? 3 : 2,
+  });
 }

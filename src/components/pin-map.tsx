@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 // One shared loader for the whole app — see lib/maps-loader for why a second
 // copy of the module-scoped promise would inject a second <script>.
-import { loadGoogleMaps, MAP_DARK_STYLE } from '@/lib/maps-loader';
+import { createAdvancedMarker } from '@/lib/advanced-markers';
+import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 import { WORKFLOW_STAGE_LABEL } from '@/lib/workflow-stages';
 
 // A pin on the dashboard map. `kind` drives the marker colour + legend.
@@ -37,18 +38,27 @@ const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];
 
 // A Material-style teardrop pin (24×27, tip at 12,27) — far more visible on a
 // light map than a small circle, with a dark ring so even the gold pins pop.
+// Keeping the original SVG geometry avoids a visual size jump during the move
+// from legacy Symbols to DOM-backed Advanced Markers.
 const PIN_PATH = 'M12 0C7.03 0 3 4.03 3 9c0 6.75 9 18 9 18s9-11.25 9-18c0-4.97-4.03-9-9-9z';
 
-function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = false): google.maps.Symbol {
-  return {
-    path: PIN_PATH,
-    fillColor: color,
-    fillOpacity: 1,
-    strokeColor: active ? '#f7f5ef' : '#0b1220',
-    strokeWeight: active ? 2.4 : 1.5,
-    scale: (active ? 1.85 : 1.35) * (mini ? 0.72 : 1),
-    anchor: new g.Point(12, 27),
-  };
+function pinGraphic(color: string, active: boolean, mini = false): SVGSVGElement {
+  const scale = (active ? 1.85 : 1.35) * (mini ? 0.72 : 1);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 27');
+  svg.setAttribute('width', String(24 * scale));
+  svg.setAttribute('height', String(27 * scale));
+  svg.setAttribute('aria-hidden', 'true');
+  svg.style.display = 'block';
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', PIN_PATH);
+  path.setAttribute('fill', color);
+  path.setAttribute('stroke', active ? '#f7f5ef' : '#0b1220');
+  path.setAttribute('stroke-width', active ? '2.4' : '1.5');
+  path.setAttribute('vector-effect', 'non-scaling-stroke');
+  svg.append(path);
+  return svg;
 }
 
 /**
@@ -147,13 +157,16 @@ export default function PinMap({
   const pins = useMemo(() => (spreadOverlap ? spreadCoLocated(rawPins) : rawPins), [rawPins, spreadOverlap]);
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<{ id: string; kind: MapPinKind; marker: google.maps.Marker }[]>([]);
+  const markersRef = useRef<{
+    id: string;
+    kind: MapPinKind;
+    marker: google.maps.marker.AdvancedMarkerElement;
+  }[]>([]);
   const mapRef = useRef<google.maps.Map | null>(null);
   // Held in a ref because the map is built once per pin-set (the effect keys on
   // `sig`), so a handler captured in that closure would go stale.
   const onPinClickRef = useRef(onPinClick);
   onPinClickRef.current = onPinClick;
-  const gRef = useRef<typeof google.maps | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [selected, setSelected] = useState<MapPin | null>(null);
   // Which pin kinds are switched off, by clicking their legend entry. Held per
@@ -163,6 +176,8 @@ export default function PinMap({
   // render, so syncing it in an effect would re-hide a layer the moment
   // somebody switched it on.
   const [hidden, setHidden] = useState<Set<MapPinKind>>(() => new Set(initialHidden ?? []));
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
 
   // How many of each kind, so a legend entry says what turning it off costs —
   // and so a kind with nothing on the map can't be toggled at all.
@@ -193,6 +208,10 @@ export default function PinMap({
     }
 
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let mapClickListener: google.maps.MapsEventListener | null = null;
+    const idleListeners: google.maps.MapsEventListener[] = [];
+    const markerListenerCleanups: Array<() => void> = [];
     setStatus('loading');
     setSelected(null);
 
@@ -205,42 +224,42 @@ export default function PinMap({
           g.importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
         ]);
         if (cancelled) return;
-        gRef.current = g;
-
-        const styles = theme === 'dark' ? MAP_DARK_STYLE : undefined;
         const map = new mapsLibrary.Map(
           container,
           mini
-            ? { styles, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false, zoomControl: false }
-            : { styles, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false },
+            ? { ...googleMapAppearance(theme), disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false, zoomControl: false }
+            : { ...googleMapAppearance(theme), mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false },
         );
 
         mapRef.current = map;
 
         const bounds = new g.LatLngBounds();
+        for (const { marker } of markersRef.current) marker.map = null;
         markersRef.current = [];
         for (const pin of pins) {
           const position = { lat: pin.lat, lng: pin.lng };
           bounds.extend(position);
-          const marker = new markerLibrary.Marker({
-            map,
+          const marker = createAdvancedMarker(markerLibrary, {
+            map: hiddenRef.current.has(pin.kind) ? null : map,
             position,
             title: pin.label,
-            icon: makeIcon(g, PIN_COLORS[pin.kind], false, mini),
-          });
+            gmpClickable: true,
+          }, pinGraphic(PIN_COLORS[pin.kind], false, mini));
           // Mini map: a click jumps straight to the record (no room for a card).
-          marker.addListener('click', () => {
+          const handleMarkerClick = () => {
             if (mini) { window.location.href = pin.href; return; }
             setSelected(pin);
             // The page decides what "go to this one" means — scroll its row
             // into view, open it in the Focus pane — rather than the map
             // assuming a navigation.
             onPinClickRef.current?.(pin);
-          });
+          };
+          marker.addEventListener('gmp-click', handleMarkerClick);
+          markerListenerCleanups.push(() => marker.removeEventListener('gmp-click', handleMarkerClick));
           markersRef.current.push({ id: pin.id, kind: pin.kind, marker });
         }
         // Large map only: clicking empty map closes the detail card.
-        if (!mini) map.addListener('click', () => setSelected(null));
+        if (!mini) mapClickListener = map.addListener('click', () => setSelected(null));
 
         // Fit to the pins, but never zoom past a neighborhood — a single pin or a
         // tight cluster would otherwise slam to street level.
@@ -252,16 +271,16 @@ export default function PinMap({
             return;
           }
           map.fitBounds(bounds, 56);
-          g.event.addListenerOnce(map, 'idle', () => {
+          idleListeners.push(g.event.addListenerOnce(map, 'idle', () => {
             const z = map.getZoom();
             if (typeof z === 'number' && z > MAX_ZOOM) map.setZoom(MAX_ZOOM);
-          });
+          }));
         };
         fit();
-        const ro = new ResizeObserver(() => {
+        resizeObserver = new ResizeObserver(() => {
           if (container.clientWidth > 0) fit();
         });
-        ro.observe(container);
+        resizeObserver.observe(container);
         if (!cancelled) setStatus('ready');
       })
       .catch(() => {
@@ -270,6 +289,12 @@ export default function PinMap({
 
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
+      mapClickListener?.remove();
+      for (const listener of idleListeners) listener.remove();
+      for (const removeListener of markerListenerCleanups) removeListener();
+      for (const { marker } of markersRef.current) marker.map = null;
+      markersRef.current = [];
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,7 +325,7 @@ export default function PinMap({
     const map = mapRef.current;
     if (!map) return;
     for (const { kind, marker } of markersRef.current) {
-      marker.setMap(hidden.has(kind) ? null : map);
+      marker.map = hidden.has(kind) ? null : map;
     }
     // A card left open over a pin that's no longer drawn is a card about
     // nothing.
@@ -309,12 +334,9 @@ export default function PinMap({
 
   useEffect(() => {
     if (mini) return;
-    const g = gRef.current;
-    if (g) {
-      for (const { id, marker } of markersRef.current) {
-        const pin = pins.find((p) => p.id === id);
-        if (pin) marker.setIcon(makeIcon(g, PIN_COLORS[pin.kind], id === selected?.id));
-      }
+    for (const { id, marker } of markersRef.current) {
+      const source = pins.find((candidate) => candidate.id === id);
+      if (source) marker.replaceChildren(pinGraphic(PIN_COLORS[source.kind], id === selected?.id, mini));
     }
     if (!selected) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); };

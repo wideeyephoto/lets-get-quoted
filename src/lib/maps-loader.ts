@@ -19,6 +19,20 @@ declare global {
 
 let mapsScriptPromise: Promise<void> | null = null;
 
+// Map IDs are public identifiers, not credentials. This production ID enables
+// vector rendering and AdvancedMarkerElement across every dashboard map. Keep
+// an environment override for previews or a future Cloud project migration.
+export const GOOGLE_MAPS_MAP_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() || 'dcb10bb04a8ee6d4b12bca2a';
+
+export function googleMapAppearance(theme: 'dark' | 'light' = 'light'):
+  Pick<google.maps.MapOptions, 'mapId' | 'colorScheme'> {
+  return {
+    mapId: GOOGLE_MAPS_MAP_ID,
+    colorScheme: theme === 'dark' ? 'DARK' : 'LIGHT',
+  };
+}
+
 function mapsReady(): boolean {
   return Boolean(window.google?.maps && 'importLibrary' in window.google.maps);
 }
@@ -52,38 +66,3 @@ export function loadGoogleMaps(apiKey: string): Promise<void> {
   });
   return mapsScriptPromise;
 }
-
-// Dark map styling that matches the dashboard's palette; POI/transit hidden to
-// keep whatever is drawn on top the focus.
-export const MAP_DARK_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#16222f' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ba0b4' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a1420' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a3a4a' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#26374a' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1b2836' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9fb2c6' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#33475d' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1a27' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a6076' }] },
-];
-
-// The light counterpart. NOT Google's default: the same POI and transit clutter
-// is hidden, and the roads are muted, so a translucent coverage overlay drawn on
-// top still reads as the brightest thing on the map.
-export const MAP_LIGHT_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#f3f5f8' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#5b6b7d' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#d7dee7' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#e2e8f0' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7b8d' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#eef2f7' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#dbe6f0' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#8aa0b4' }] },
-];
