@@ -134,8 +134,9 @@ export default function QuickStopExplainer({
             Earn more from customers willing to <span className="es-accent">pay for speed</span>
           </h2>
           <p className="es-lead">
-            Quick Stops lets nearby customers request a paid same-day visit. You review the
-            request, choose the arrival window, set the fee, and accept only when it suits you.
+            Quick Stops lets nearby customers pay to be fitted in sooner than your normal
+            schedule. You review the request, choose the arrival window, set the fee, and accept
+            only when it suits you.
           </p>
 
           <ul className="es-promises">
@@ -220,7 +221,7 @@ export default function QuickStopExplainer({
               <span className="es-phone-avatar" aria-hidden="true">{businessName.slice(0, 1)}</span>
               {businessName}
             </p>
-            <p className="es-phone-bubble">We&apos;re in your area today. Want a same-day visit?</p>
+            <p className="es-phone-bubble">We&apos;re in your area today. Want us out sooner?</p>
             <p className="es-phone-sub">Choose faster service for a Quick Stop fee, or carry on as a normal enquiry.</p>
             <p className="es-phone-choice primary">
               Pay for faster service <span aria-hidden="true">→</span>
@@ -255,7 +256,7 @@ export default function QuickStopExplainer({
       <section className="es-block">
         <h3 className="es-block-title">Why contractors turn it on</h3>
         <ul className="es-benefits">
-          <Benefit icon="cash" tone="money" title="More from the same day">
+          <Benefit icon="cash" tone="money" title="More from the day you’re already working">
             Paid extra by customers who value speed, on work already near your route.
           </Benefit>
           <Benefit icon="clock" tone="time" title="Only when it suits you">

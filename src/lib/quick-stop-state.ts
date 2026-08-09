@@ -152,7 +152,10 @@ export function quickStopStateDetail(state: QuickStopState): string {
       // Said plainly, because the honest answer to "what is missing?" is
       // nothing. The old copy sent this owner looking for a setup step that did
       // not exist.
-      return 'Everything is configured. Turn it on whenever you want to start taking same-day requests.';
+      // "same-day requests" was a claim about the account's own settings that
+      // this function has no way to check and that the picker can contradict —
+      // see lib/quick-stop-window.
+      return 'Everything is configured. Turn it on whenever you want to start taking priority requests.';
     case 'on':
       return `Taking requests, up to ${state.maxPerDay} a day.`;
   }

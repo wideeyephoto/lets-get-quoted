@@ -12,6 +12,7 @@ import {
   quickStopStateHeadline,
   quickStopStateLabel,
 } from '@/lib/quick-stop-state';
+import { quickStopWindowPhrase } from '@/lib/quick-stop-window';
 
 // The master switch for Quick Stop, and what it currently means.
 //
@@ -49,6 +50,8 @@ export type QuickStopStatusProps = {
   hoursLabel: string;
   feeLabel: string;
   maxPerDay: number;
+  /** Days beyond today a customer may ask for. Decides how soon "sooner" is. */
+  daysAhead: number;
   todayCount: number;
   openCount: number;
 };
@@ -132,6 +135,10 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
      detail line beside it names all of them; a button can only do one, and the
      list is already in the order things have to be true in. */
   const firstGap = state.kind === 'setup_incomplete' ? state.gaps[0] ?? null : null;
+  /* "same-day" was written into this sentence while the setting behind it
+     offers up to a week — so the page contradicted the account's own
+     configuration. It reads the setting now. */
+  const windowPhrase = quickStopWindowPhrase(props.daysAhead);
 
   function setEnabled(next: boolean) {
     if (readOnly) return;
@@ -175,7 +182,10 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
             {/* "Only customers near your route" was the old promise here, and it
                 is not what the product does — priority areas exist precisely to
                 let a customer further out qualify. */}
-            <small id={describedId}>Nearby customers, and anyone in a priority area, can request a paid same-day visit at a fee you set.</small>
+            <small id={describedId}>
+              Nearby customers, and anyone in a priority area, can request a paid priority visit{' '}
+              {windowPhrase} at a fee you set.
+            </small>
           </span>
         </label>
 
@@ -283,7 +293,7 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           <span className="bset-card-icon tone-off"><Icon name="cash" /></span>
           <span className="bset-card-label">Your fee</span>
           <strong>{props.feeLabel}</strong>
-          <small>What a same-day visit costs the customer</small>
+          <small>What a priority visit costs the customer</small>
           <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
         </Link>
 
@@ -356,8 +366,9 @@ export function QuickStopHead() {
           />
         </h1>
         <p>
-          Quick Stops lets nearby customers request a paid same-day visit. You review every request, choose the
-          arrival window and fee, and accept only when it fits your route. Nothing is booked until the customer pays.
+          Quick Stops lets nearby customers pay to be fitted in sooner than your normal schedule. You review every
+          request, choose the arrival window and fee, and accept only when it fits your route. Nothing is booked until
+          the customer pays.
         </p>
       </div>
     </header>

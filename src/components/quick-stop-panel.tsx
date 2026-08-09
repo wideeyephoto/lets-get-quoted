@@ -4,7 +4,7 @@ import { setQuickStopEnabledAction } from '@/app/dashboard/settings/actions';
 
 // Quick Stop, on the page where you'd actually decide about it.
 //
-// Quick Stop puts same-day work into today's route, so the day plan is exactly
+// Quick Stop puts expedited work into today's route, so the day plan is exactly
 // where an owner realises they do — or very much do not — want another job
 // squeezed in. Until now the only switch was three clicks away in Settings →
 // Automations, which is nowhere near a screen showing a day already running
@@ -61,7 +61,7 @@ export default function QuickStopPanel({
             {state === 'locked'
               ? `Paused by support${lockLabel ? ` until ${lockLabel}` : ''}. Nothing new can be added to a day while it is.`
               : state === 'on'
-                ? 'Nearby customers can request a paid same-day visit. Anything that fits your rules is offered at your fee.'
+                ? 'Nearby customers can pay to be fitted in sooner. Anything that fits your rules is offered at your fee.'
                 : 'Nobody can ask to be added to today. Your normal booking is unaffected.'}
             {todayCount > 0 ? ` ${todayCount} already on this day.` : ''}
           </small>

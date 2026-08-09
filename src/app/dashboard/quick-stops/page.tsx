@@ -288,6 +288,9 @@ export default async function QuickStopsPage() {
             : 'Not set'
         }
         maxPerDay={settings.maxPerDay}
+        // How soon "sooner" is, for this account. Every sentence that used to
+        // say "same-day" reads it — see lib/quick-stop-window.
+        daysAhead={settings.daysAhead}
         todayCount={acceptedToday}
         openCount={active.length}
       />

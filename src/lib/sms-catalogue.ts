@@ -347,7 +347,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
   {
     id: 'quick-stop-offer',
     title: 'Quick Stop offer',
-    trigger: 'You offer a same-day slot and set the fee',
+    trigger: 'You offer an arrival window and set the fee',
     audience: 'customer',
     control: automation('extra-stop', 'Quick Stop'),
     body: quickStopOfferText({

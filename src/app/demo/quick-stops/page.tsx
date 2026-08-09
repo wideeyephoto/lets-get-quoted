@@ -64,8 +64,9 @@ export default async function DemoQuickStopsPage() {
             />
           </h1>
           <p>
-            Quick Stops lets nearby customers request a paid same-day visit. You review every request, choose the
-            arrival window and fee, and accept only when it fits your route. Nothing is booked until the customer pays.
+            Quick Stops lets nearby customers pay to be fitted in sooner than your normal schedule. You review every
+            request, choose the arrival window and fee, and accept only when it fits your route. Nothing is booked until
+            the customer pays.
           </p>
         </div>
         <span className="btn secondary bset-head-cta" aria-disabled="true">
@@ -103,6 +104,9 @@ export default async function DemoQuickStopsPage() {
         hoursLabel={`8 AM – ${clockLabel(DEMO_QUICK_STOPS.cutoffTime)}`}
         feeLabel={money(DEMO_QUICK_STOPS.feeCents)}
         maxPerDay={DEMO_QUICK_STOPS.maxPerDay}
+        // Today or tomorrow — the demo account's window, and what every
+        // sentence about how soon reads from.
+        daysAhead={1}
         todayCount={DEMO_QUICK_STOPS.todayTaken}
         openCount={waiting.length}
       />
@@ -110,7 +114,7 @@ export default async function DemoQuickStopsPage() {
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Today{waiting.length > 0 ? ` · ${waiting.length} waiting on you` : ''}</p>
-          <h2>Same-day requests</h2>
+          <h2>Priority requests</h2>
         </div>
         {/* The REAL request card, read-only. It replaces a stripped-down row
             that showed a name, an address and two disabled buttons — while the

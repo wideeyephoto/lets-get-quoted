@@ -12,6 +12,8 @@
 // The fee is stated. Burying it would get more clicks and fewer bookings, and
 // the first thing the booking page does is quote one anyway.
 
+import { quickStopWindowPhrase, quickStopWindowShort } from './quick-stop-window';
+
 export type PitchInput = {
   businessName: string;
   bookingUrl: string;
@@ -27,21 +29,21 @@ function money(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString('en-US')}`;
 }
 
-/** "today" / "today or tomorrow" / "within a couple of days" */
-function windowPhrase(daysAhead: number): string {
-  if (daysAhead <= 0) return 'the same day';
-  if (daysAhead === 1) return 'the same day or the next';
-  return 'within a couple of days';
-}
-
 export function buildQuickStopPitch(input: PitchInput): QuickStopPitch {
-  const when = windowPhrase(input.daysAhead);
+  /* Was its own three-line ladder that capped at "within a couple of days" —
+     so an owner set to "up to a week out" mailed their whole list a promise
+     two days long. It reads from the one window helper now. */
+  const when = quickStopWindowPhrase(input.daysAhead);
   // Only promise a price when there is one to promise. "From $0" is worse than
   // saying nothing, and a band nobody set is not a band.
   const price = input.minFeeCents > 0 ? ` It starts at ${money(input.minFeeCents)}` : ' There’s a call-out fee';
 
   return {
-    subject: `Need something fixed ${when}? We can usually fit you in`,
+    /* The short form here, not the precise one: "Need something fixed within 3
+       days?" is not a question anybody asks themselves. Past tomorrow, the
+       thing they are actually thinking is "sooner". The body still states the
+       real window twice. */
+    subject: `Need something fixed ${quickStopWindowShort(input.daysAhead)}? We can usually fit you in`,
     body: [
       `Hi there,`,
       ``,

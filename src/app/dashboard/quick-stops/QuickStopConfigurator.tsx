@@ -25,7 +25,7 @@ export type RefundTierValues = {
 type SectionKey = 'when' | 'what' | 'far' | 'charge' | 'terms';
 
 const SECTIONS: Array<{ key: SectionKey; num: number; title: string; blurb: string }> = [
-  { key: 'when', num: 1, title: 'When you’ll take them', blurb: 'The days, and the earliest and latest an arrival window can run.' },
+  { key: 'when', num: 1, title: 'When you’ll take them', blurb: 'The days, how far ahead a customer can ask, and the earliest and latest an arrival window can run.' },
   { key: 'what', num: 2, title: 'What kind of work', blurb: 'The jobs you’ll fit into today’s route — and what the AI screens out.' },
   { key: 'far', num: 3, title: 'How far you’ll go', blurb: 'How much of a detour off your route is worth it.' },
   { key: 'charge', num: 4, title: 'What you’ll charge', blurb: 'Your fee range, and how many you’ll take in a day.' },
@@ -205,7 +205,7 @@ export default function QuickStopConfigurator({
                           you to fix. It was also the third competing way to
                           control availability, next to the master switch and a
                           button that did the same thing. The switch is the way. */}
-                      <small className="field-hint">The days a same-day request is allowed to land at all. To stop taking them entirely, use the switch at the top of the page.</small>
+                      <small className="field-hint">The days a Quick Stop is allowed to land at all. To stop taking them entirely, use the switch at the top of the page.</small>
                     </div>
 
                     <div className="field full">
@@ -224,6 +224,27 @@ export default function QuickStopConfigurator({
                         maxLabel="Latest an arrival window may end"
                         hint="No Quick Stop will be offered a window outside these hours."
                       />
+                    </div>
+                    {/* WHEN, NOT WHAT IT COSTS. This lived under "What you'll
+                        charge", between the fee slider and the daily cap — a
+                        scheduling control filed with the money. It is the
+                        setting that decides how soon "sooner" is, so it belongs
+                        beside the days and the hours, and every sentence in the
+                        app that states the window now reads it. */}
+                    <div className="field full">
+                      <label htmlFor="quickStopDaysAhead">How far ahead they can ask</label>
+                      <select id="quickStopDaysAhead" name="quickStopDaysAhead" defaultValue={String(s.daysAhead)}>
+                        <option value="0">Today only</option>
+                        <option value="1">Today or tomorrow</option>
+                        <option value="2">Up to 2 days out</option>
+                        <option value="3">Up to 3 days out</option>
+                        <option value="7">Up to a week out</option>
+                      </select>
+                      <small className="field-hint">
+                        By mid-afternoon there is often no room left today, and a customer with a dripping tap is usually
+                        fine with tomorrow. Wider reach means more of these fit — and today drops off the list on its own
+                        once your last arrival time has passed.
+                      </small>
                     </div>
                   </div>
                 ) : null}
@@ -254,7 +275,7 @@ export default function QuickStopConfigurator({
                     </div>
 
                     <div className="field">
-                      <label htmlFor="quickStopMaxVisitMinutes">Longest same-day visit you’ll take (minutes)</label>
+                      <label htmlFor="quickStopMaxVisitMinutes">Longest Quick Stop visit you’ll take (minutes)</label>
                       <input id="quickStopMaxVisitMinutes" name="quickStopMaxVisitMinutes" type="number" min="5" max="600" step="5" inputMode="numeric" defaultValue={s.maxVisitMinutes} />
                       <small className="field-hint">Jobs the AI estimates will run longer than this are turned away.</small>
                     </div>
@@ -316,22 +337,6 @@ export default function QuickStopConfigurator({
                         maxLabel="Highest fee you’ll charge"
                         hint="You still set the exact fee on every request — this is the band you can set it within."
                       />
-                    </div>
-
-                    <div className="field">
-                      <label htmlFor="quickStopDaysAhead">How far ahead they can ask</label>
-                      <select id="quickStopDaysAhead" name="quickStopDaysAhead" defaultValue={String(s.daysAhead)}>
-                        <option value="0">Today only</option>
-                        <option value="1">Today or tomorrow</option>
-                        <option value="2">Up to 2 days out</option>
-                        <option value="3">Up to 3 days out</option>
-                        <option value="7">Up to a week out</option>
-                      </select>
-                      <small className="field-hint">
-                        By mid-afternoon there is often no room left today, and a customer with a dripping tap is usually
-                        fine with tomorrow. Wider reach means more of these fit — and today drops off the list on its own
-                        once your last arrival time has passed.
-                      </small>
                     </div>
 
                     <div className="field">

@@ -80,7 +80,7 @@ const LIFECYCLE = [
     status: QUICK_STOP_STATUS_LABEL.requested,
     who: 'Homeowner',
     gate: false,
-    body: 'A nearby homeowner asks for a same-day visit through your booking page.',
+    body: 'A nearby homeowner asks to be fitted in sooner, through your booking page.',
   },
   {
     status: QUICK_STOP_STATUS_LABEL.awaiting_contractor,
@@ -146,7 +146,7 @@ export default function QuickStopsPage() {
           Turn gaps in the day into <em>prepaid work nearby.</em>
         </>
       }
-      lede="Quick Stops helps you spot a nearby request, choose the arrival window and price, and send a same-day offer. The stop becomes real only after the homeowner pays."
+      lede="Quick Stops helps you spot a nearby request, choose the arrival window and price, and offer it. The stop becomes real only after the homeowner pays."
       heroNote="Quick Stops never books anything on your behalf. Every request waits for you to approve it, and nothing reaches your calendar until the homeowner has paid."
       demo={
         <ExampleFrame
@@ -194,7 +194,7 @@ export default function QuickStopsPage() {
         },
         {
           title: 'Create a better local experience',
-          body: 'Nearby homeowners get a clear same-day option without an open-ended arrival promise.',
+          body: 'Nearby homeowners get a clear way to be seen sooner, without an open-ended arrival promise.',
         },
       ]}
       stepsTitle="You approve the job, the price and the detour. The homeowner confirms with payment."
@@ -205,7 +205,7 @@ export default function QuickStopsPage() {
         },
         {
           title: 'A nearby request is screened in',
-          body: 'A same-day request close to your route is checked against your rules and against a fixed list of unsafe and out-of-scope work. Only what passes both is put in front of you.',
+          body: 'A request close to your route is checked against your rules and against a fixed list of unsafe and out-of-scope work. Only what passes both is put in front of you.',
         },
         {
           title: 'Review nearby demand',
@@ -238,7 +238,7 @@ export default function QuickStopsPage() {
           <p className="eyebrow">Say the quiet part out loud</p>
           <h2 id="quick-stops-never-title">Quick Stops is not automatic booking.</h2>
           <p>
-            It is worth being blunt about this, because &ldquo;same-day work, nearby&rdquo; sounds
+            It is worth being blunt about this, because &ldquo;paid work, nearby, sooner&rdquo; sounds
             like the sort of thing that fills your calendar while you are under a sink. It does not.
             Every Quick Stop passes through two people before it exists, and you are the first of
             them.

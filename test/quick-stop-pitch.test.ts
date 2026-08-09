@@ -37,10 +37,25 @@ describe('buildQuickStopPitch', () => {
     expect(body).toContain('call-out fee');
   });
 
+  /**
+   * The window used to cap at "within a couple of days" — so an owner set to
+   * "up to a week out" mailed their whole list a promise two days long. It
+   * reads from lib/quick-stop-window now, which the page, the booking form and
+   * the marketing copy all read too.
+   *
+   * The SUBJECT drops to "sooner" past tomorrow, because "Need something fixed
+   * within 3 days?" is not a question anybody asks themselves. The body still
+   * carries the real window.
+   */
   it('describes the window the owner actually offers', () => {
-    expect(pitch({ daysAhead: 0 }).subject).toContain('the same day');
-    expect(pitch({ daysAhead: 1 }).subject).toContain('the same day or the next');
-    expect(pitch({ daysAhead: 3 }).subject).toContain('within a couple of days');
+    expect(pitch({ daysAhead: 0 }).subject).toContain('fixed today?');
+    expect(pitch({ daysAhead: 1 }).subject).toContain('fixed today or tomorrow?');
+    expect(pitch({ daysAhead: 3 }).subject).toContain('fixed sooner?');
+    expect(pitch({ daysAhead: 7 }).subject).toContain('fixed sooner?');
+
+    expect(pitch({ daysAhead: 3 }).body).toContain('within 3 days');
+    expect(pitch({ daysAhead: 7 }).body).toContain('within a week');
+    expect(pitch({ daysAhead: 7 }).body).not.toContain('couple of days');
   });
 
   it('says what it is NOT for, so the wrong requests do not arrive', () => {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { submitQuickStopRequestAction } from './actions';
 import type { QuickStopDayOption } from '@/lib/quick-stop';
+import { quickStopOfferedPhrase } from '@/lib/quick-stop-window';
 
 type Qualification = {
   enabled?: boolean;
@@ -184,8 +185,13 @@ export default function QuickStopFlow({
         <h2>Tell us about the job</h2>
       </div>
       <p className="workspace-details-copy" style={{ marginTop: '.5rem', marginBottom: '1rem' }}>
-        Answer a few quick questions so {businessName} can decide if they can fit you in
-        {days.length > 1 ? ' today or in the next day or two' : ' today'}. All fields help — the clearer the job, the
+        {/* The window the page is ACTUALLY offering, not a guess from how many
+            days are in the list. `days.length > 1 ? 'today or in the next day
+            or two' : 'today'` was wrong in both directions: a Friday-evening
+            visitor to a Mon–Fri contractor is offered Monday alone and was told
+            "today", and an owner set to a week out was capped at two days. */}
+        Answer a few quick questions so {businessName} can decide if they can fit you in{' '}
+        {quickStopOfferedPhrase(days)}. All fields help — the clearer the job, the
         faster they can respond.
       </p>
 

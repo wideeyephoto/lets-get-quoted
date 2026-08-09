@@ -139,7 +139,7 @@ export default function QuickStopCandidates({
               {' '}
               At your {money(minFeeCents)} floor, {count} × {money(minFeeCents)} is <strong>{money(floorCents)}</strong> —
               the most these visits could have carried in Quick Stop fees if every one had been asked for and taken. It is
-              a size, not money you lost: nothing here says any of these customers wanted a same-day visit or would have
+              a size, not money you lost: nothing here says any of these customers wanted to be fitted in sooner or would have
               paid for one.
             </>
           ) : null}

@@ -46,7 +46,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
-  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers request a same-day stop.' },
+  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers pay to be fitted in sooner.' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/cash-flow', label: 'Cash flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
@@ -150,7 +150,7 @@ type AccountStatus = {
   newestQuoteRequestHighValue: boolean;
   /** When the newest live job arrived — drives the rail's "New" badge. */
   newestJobCreatedAt: string | null;
-  /** Whether Quick Stop is accepting same-day work right now. */
+  /** Whether Quick Stop is accepting expedited work right now. */
   quickStopState: NavState;
   /** Whether the public booking page is actually live. */
   bookingState: NavState;
@@ -166,7 +166,7 @@ export type NavState = 'on' | 'off' | 'paused' | 'unknown';
 // colour only agrees with it, so it still reads without colour vision.
 const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { label: string; title: string }>> = {
   '/dashboard/quick-stops': {
-    on: { label: 'ON', title: 'Quick Stops is ON — nearby customers can request a paid same-day visit' },
+    on: { label: 'ON', title: 'Quick Stops is ON — nearby customers can pay to be fitted in sooner' },
     off: { label: 'OFF', title: 'Quick Stops is OFF — nobody can ask to be added to today' },
     paused: { label: 'PAUSED', title: 'Quick Stops is paused by support — nothing new can be added to a day' },
   },
