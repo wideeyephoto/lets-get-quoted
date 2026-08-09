@@ -1,4 +1,4 @@
-import { round2, toDateKey, type CrewLaborRow, type PayPeriod } from './labor';
+import { OVERTIME_POLICY, round2, toDateKey, type CrewLaborRow, type LaborEntryView, type PayPeriod } from './labor';
 import { PAY_TYPE_LABEL } from './pay-types';
 
 // Crew pay — the approval-and-payment lifecycle on top of the hours rollup.
@@ -207,9 +207,22 @@ export type PayWarning =
   | 'logged-after-approval'
   | 'changed-after-paid';
 
+// THESE LABELS SAY WHAT THE WARNING IS ABOUT — one entry, or the person.
+//
+// 'missing-rate' read "Missing rate" and sat on the person's row, next to their
+// name, in a chip severe enough to stop them being approved. But it is a fact
+// about ONE ENTRY's snapshotted rate (labor.ts entryIssue), de-duplicated onto
+// the person here. An owner whose crew profile plainly says $30/hour, looking at
+// a period that plainly totals $450, was being told "Missing rate" about the
+// person — so either the profile was lying or the $450 was, and neither was
+// true: one entry out of several went in at zero and the other entries are the
+// $450. Named as an entry, alongside its correctly-scoped sibling "Entry with no
+// hours", the same flag stops contradicting the two numbers either side of it.
+// payWarningChip() adds the count, because "which of my nine entries" is the
+// next question and the chip can answer it.
 export const PAY_WARNING_LABEL: Record<PayWarning, string> = {
   'no-hours': 'Entry with no hours',
-  'missing-rate': 'Missing rate',
+  'missing-rate': 'Entry with no rate',
   unassigned: 'No crew member',
   'no-job': 'Hours without a job',
   'open-shift': 'Shift still running',
@@ -222,15 +235,39 @@ export const PAY_WARNING_LABEL: Record<PayWarning, string> = {
 
 export const PAY_WARNING_HELP: Record<PayWarning, string> = {
   'no-hours': 'An entry here has no hours on it, so it adds nothing to the total and probably isn’t finished.',
-  'missing-rate': 'Hours were logged at a zero rate, so the pay figure is short by whatever those hours are worth.',
+  'missing-rate':
+    'One or more entries here were logged at a zero rate, so the total is short by what those entries are worth. Every other entry is counted at the rate it was logged at — this is not a claim that the person has no rate.',
   unassigned: 'This labor was logged against a job without naming who did it. There is nobody to pay until it is assigned.',
   'no-job': 'Hours here aren’t attached to a job, so they won’t show up in that job’s costs or margin.',
   'open-shift': 'This person is still clocked in for this period. The hours will grow until the shift is closed.',
   'long-shift': 'A single entry is over 16 hours, which is usually a missed clock-out rather than a real shift.',
-  overtime: 'Some of these hours are past your weekly overtime threshold. No premium is added — apply your own rule when you pay.',
+  overtime: `Some of these hours are past your weekly overtime threshold. ${OVERTIME_POLICY}`,
   'changed-after-approval': 'The hours have changed since you approved them, so the approved figure and the current one no longer agree.',
   'logged-after-approval': 'Hours were logged for this person after you approved the period.',
   'changed-after-paid': 'The hours have changed since this was paid. The payment record is unchanged — the difference is shown as an adjustment.',
+};
+
+/**
+ * What to DO about each warning, in the words of the controls that exist.
+ *
+ * Written against this product's actual affordances, which is the whole point:
+ * "undo the approval first" was printed for months next to a button nobody ever
+ * built. A labor entry cannot be edited in place anywhere here — it can be
+ * removed and added again — so that is what these say, rather than describing an
+ * editor an owner will go looking for and not find.
+ */
+export const PAY_WARNING_FIX: Record<PayWarning, string> = {
+  'no-hours': 'Add the entry again with its hours on it and remove this one — a labor entry can’t be edited in place.',
+  'missing-rate':
+    'Add those entries again with the rate they should have been logged at, and remove the zero-rate ones. Everything else in this period is already counted correctly.',
+  unassigned: 'Add it again with the crew member named, and remove this one. Labor with nobody on it can’t be approved or paid.',
+  'no-job': 'Add it again against the job it belongs to if that job’s costs need it.',
+  'open-shift': 'Close the shift from the banner at the top of this tab, then the hours stop moving.',
+  'long-shift': 'Check it isn’t a missed clock-out before you approve it.',
+  overtime: 'Nothing to fix. The hours are counted as logged and no premium is applied.',
+  'changed-after-approval': 'Approve the hours again to agree the new figure, or leave it — the difference stays visible as an adjustment.',
+  'logged-after-approval': 'Approve the hours again to take the new entries in, or leave it and pay the agreed figure.',
+  'changed-after-paid': 'Undo the payment if the figure was wrong. The payment record itself is never rewritten.',
 };
 
 /**
@@ -255,6 +292,37 @@ export const PAY_WARNING_SEVERITY: Record<PayWarning, 'block' | 'warn' | 'info'>
 
 /** A single entry longer than this is almost always a missed clock-out. */
 export const LONG_SHIFT_HOURS = 16;
+
+/**
+ * How many of this person's entries a warning is actually about, or null when
+ * the warning is about the person rather than about entries.
+ *
+ * The count is the difference between "something about Danny is wrong" and "one
+ * of Danny's nine entries is wrong". The first makes an owner distrust the
+ * whole row; the second tells them what to click.
+ */
+export function payWarningEntryCount(warning: PayWarning, entries: LaborEntryView[]): number | null {
+  switch (warning) {
+    case 'no-hours':
+      return entries.filter((entry) => entry.issue === 'incomplete-time').length;
+    case 'missing-rate':
+      return entries.filter((entry) => entry.issue === 'missing-rate').length;
+    case 'no-job':
+      return entries.filter((entry) => !entry.jobId).length;
+    case 'long-shift':
+      return entries.filter((entry) => entry.hours > LONG_SHIFT_HOURS).length;
+    default:
+      // unassigned, overtime, and the three drift warnings are facts about the
+      // person or the period. A count on those would be a made-up number.
+      return null;
+  }
+}
+
+/** The chip text: the label, plus how many entries it covers when that applies. */
+export function payWarningChip(warning: PayWarning, entries: LaborEntryView[]): string {
+  const count = payWarningEntryCount(warning, entries);
+  return count && count > 0 ? `${PAY_WARNING_LABEL[warning]} (${count})` : PAY_WARNING_LABEL[warning];
+}
 
 // -- The row the table renders -----------------------------------------------
 
@@ -539,6 +607,53 @@ export function periodPrimaryAction(state: PayPeriodState, totals: PeriodTotals)
 
 // -- Guards ------------------------------------------------------------------
 
+/**
+ * Whether these hours have moved since they were approved, so the approval can
+ * be given again.
+ *
+ * NOT AUTO-REVOKING AN APPROVAL IS DELIBERATE (see buildPayRows: a stored record
+ * always wins, because an owner who approved hours with a warning on them meant
+ * it) and stays that way. The defect this fixes is the other half: there was no
+ * way to approve them a SECOND time either. approveHoursAction filtered out
+ * every already-approved row, so "Hours added after approval" was a warning that
+ * could never be cleared — clicking Approve answered "There are no hours here
+ * left to approve", and the only remedy the app suggested, "Undo the approval
+ * first", is a button that has never existed anywhere in this product
+ * ('approval_undone' is a history label with nothing that writes it).
+ *
+ * So the drift itself is the permission: a row whose amount no longer matches
+ * what was agreed, or that had hours logged after the fact, can be agreed again.
+ * crew-pay-data's writeEntryLines was already built for exactly this — it clears
+ * the frozen lines and rewrites them — so the second approval leaves the same
+ * kind of evidence as the first.
+ *
+ * Paid rows are excluded. Money has already gone out against that figure, and
+ * re-approving would quietly rewrite the number the payment was measured
+ * against; the difference is shown as an adjustment and undoing the payment is
+ * an explicit, reasoned action.
+ */
+export function needsReapproval(row: CrewPayRow): boolean {
+  if (row.review !== 'approved' || row.payment === 'paid') return false;
+  return row.adjustment !== 0 || row.warnings.includes('logged-after-approval');
+}
+
+/**
+ * Whether the Approve button belongs on this row at all.
+ *
+ * Blockers are deliberately NOT checked here: the button stays visible on a
+ * blocked row and the action explains what is in the way. A button that
+ * disappears teaches nothing.
+ */
+export function canApproveRow(row: CrewPayRow): boolean {
+  if (!row.eligible || row.hours <= 0) return false;
+  return row.review !== 'approved' || needsReapproval(row);
+}
+
+/** "Approve hours" the first time, and honest about it the second. */
+export function approveActionLabel(row: CrewPayRow): string {
+  return row.review === 'approved' ? 'Re-approve changed hours' : 'Approve hours';
+}
+
 /** Why this row can't be marked paid, or null when it can. */
 export function payBlockedReason(row: CrewPayRow): string | null {
   if (!row.eligible) return row.ineligibleReason;
@@ -620,6 +735,52 @@ export function hoursLabel(hours: number): string {
   const minutes = Math.round((hours - whole) * 60);
   // 7.999 hours rounds to 8h 00m, not 7h 60m.
   return minutes === 60 ? `${whole + 1}h 00m` : `${whole}h ${String(minutes).padStart(2, '0')}m`;
+}
+
+/**
+ * Hours for a row, as an em dash when none were ever RECORDED.
+ *
+ * "0h 00m" is a measurement. It says somebody looked and the answer was zero.
+ * A labor row with hours null was never measured at all — costs.hours is
+ * nullable while costs.amount is not — and printing the two identically is what
+ * produced the flat contradiction "0h 00m … $960.00" on the unassigned-labor
+ * row. The money is real (see the rounding comment in labor.ts); the hours were
+ * simply never entered, and a dash is how a table says that.
+ */
+export function rowHoursLabel(row: Pick<CrewLaborRow, 'hours' | 'issues'>): string {
+  return row.hours <= 0 && row.issues.includes('incomplete-time') ? '—' : hoursLabel(row.hours);
+}
+
+/** The same distinction for one entry, in the raw-number columns. */
+export function entryHoursLabel(entry: Pick<LaborEntryView, 'hours' | 'issue'>): string {
+  return entry.issue === 'incomplete-time' ? '—' : String(entry.hours);
+}
+
+/**
+ * The rates these hours were ACTUALLY costed at, and how many entries each one
+ * covers: "$30.00/hr on 3 entries · no rate on 1 entry".
+ *
+ * This is the root of the "profile says $30/hour but it says Missing rate"
+ * contradiction. The rate on an entry is a snapshot taken when it was logged —
+ * it is not read back from the crew member's profile, so a profile edited
+ * afterwards, or an entry logged before a rate existed, leaves the two saying
+ * different things forever. Printing the effective rate beside the hours it was
+ * applied to is what turns that from a contradiction into a fact.
+ */
+export function rateBreakdown(entries: LaborEntryView[]): { rate: number; count: number }[] {
+  const byRate = new Map<number, number>();
+  for (const entry of entries) byRate.set(entry.rate, (byRate.get(entry.rate) ?? 0) + 1);
+  return [...byRate.entries()]
+    .map(([rate, count]) => ({ rate, count }))
+    .sort((a, b) => b.count - a.count || b.rate - a.rate);
+}
+
+export function rateBreakdownLabel(entries: LaborEntryView[]): string | null {
+  const parts = rateBreakdown(entries);
+  if (parts.length === 0) return null;
+  return parts
+    .map(({ rate, count }) => `${rate > 0 ? `${payMoney(rate)}/hr` : 'no rate'} on ${count} ${count === 1 ? 'entry' : 'entries'}`)
+    .join(' · ');
 }
 
 /** "3 days left in this pay period (5 of 7 days)" — the progress line. */

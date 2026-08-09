@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
@@ -13,11 +13,11 @@ import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
 import type { PayType } from '@/lib/pay-types';
 import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
 import OverviewBoard, { overviewOption, type OverviewItem } from './OverviewBoard';
+import AddCrewDrawer from './AddCrewDrawer';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import PayTypeFields from './PayTypeFields';
 import {
   assignCrewToJobAction,
-  createCrewAction,
   deleteArchivedCrewAction,
   inviteCrewAction,
   setCrewActiveAction,
@@ -108,9 +108,23 @@ const ROSTER_VIEW_OPTIONS: ViewOption<RosterPick>[] = [
 const RosterMode = createContext<{ readOnly: boolean; basePath: string }>({ readOnly: false, basePath: '/dashboard' });
 const useRosterMode = () => useContext(RosterMode);
 
+/**
+ * Whole dollars — for HEADLINES ONLY.
+ *
+ * Deliberately not used for one person's pay. The roster used to round a crew
+ * member's period pay to "$305" here while the Hours & pay tab printed the same
+ * figure as "$304.50" through payMoney, and two tabs of one page disagreeing
+ * about one number makes the product look like it cannot add up. Per-person
+ * amounts come from lib/crew-pay's payMoney (see page.tsx). A crew-wide total in
+ * a rail card is a different claim — nobody reconciles it against a payslip —
+ * and cents there are noise, so this stays.
+ */
 function money(amount: number): string {
   return `$${Math.round(amount).toLocaleString('en-US')}`;
 }
+
+/** Where every "add a crew member" control points. See AddCrewDrawer. */
+export const ADD_CREW_HREF = '/dashboard/crew?tab=crew&add=1';
 
 const FIELD_APP_LABEL: Record<CrewRow['fieldApp'], string> = {
   linked: 'Field app',
@@ -132,7 +146,6 @@ export default function CrewRoster({
   initialView,
   initialSkin,
   initialOverview,
-  openAdd,
   readOnly = false,
   basePath = '/dashboard',
 }: {
@@ -147,7 +160,15 @@ export default function CrewRoster({
   initialSkin: CrewSkin;
   /** Whether the whole page is in Overview. Outranks initialView while it's on. */
   initialOverview: boolean;
-  openAdd: boolean;
+  /**
+   * ACCEPTED AND IGNORED. This used to be the add form's open state, read as
+   * `useState(openAdd)` — an initializer, so the header link's soft navigation
+   * never reopened anything and "+ Add crew member" did nothing at all. Adding
+   * is a drawer now and reads ?add=1 from the URL itself (AddCrewDrawer), which
+   * cannot go stale because there is no second copy of the answer. The prop
+   * stays in the type only because app/demo/crew/page.tsx still passes it.
+   */
+  openAdd?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'active' | 'archived'>(initialStatus);
@@ -156,7 +177,9 @@ export default function CrewRoster({
   const [appFilter, setAppFilter] = useState('all');
   const [sort, setSort] = useState<SortId>('name');
   const [openId, setOpenId] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(openAdd);
+  // The crew member just added, until it has been read and acted on: it names
+  // the person in the confirmation and tells the roster whose card to focus.
+  const [added, setAdded] = useState<{ id: string; name: string; message: string } | null>(null);
   const [view, setView] = useState<RosterView>(initialView);
   const [overview, setOverview] = useState(initialOverview);
   const [skin, setSkin] = useState<CrewSkin>(initialSkin);
@@ -220,6 +243,47 @@ export default function CrewRoster({
     () => [...new Set(rows.map((row) => row.roleLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [rows],
   );
+
+  // -- what happens after somebody is added -----------------------------------
+
+  const focusedFor = useRef<string | null>(null);
+
+  const handleAdded = useCallback((member: { id: string; name: string; message: string }) => {
+    // Every control on that toolbar is a way to NOT see the person who was just
+    // created: a search for someone else, the Archived tab, a role filter, "only
+    // people on a job". Adding somebody and landing on a roster that does not
+    // contain them reads as the save having failed, so the filters are cleared
+    // to the one state where a brand-new, active, unassigned member is visible.
+    setQuery('');
+    setStatus('active');
+    setRole('all');
+    setJobFilter('all');
+    setAppFilter('all');
+    setAdded(member);
+  }, []);
+
+  // Take the owner to the card they just created. `rows` is a dependency because
+  // the new member only exists here once the server action's revalidatePath has
+  // flowed back through this page — until then the node is not in the document
+  // and this simply waits for the render that has it.
+  useEffect(() => {
+    if (!added || focusedFor.current === added.id) return;
+    const node = document.querySelector<HTMLElement>(`[data-crew-row="${added.id}"]`);
+    if (!node) return;
+    focusedFor.current = added.id;
+    node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // preventScroll because scrollIntoView is already doing it, smoothly, and
+    // focus() would otherwise jump the list to the same place instantly first.
+    node.focus({ preventScroll: true });
+  }, [added, rows]);
+
+  // The highlight is a "here they are", not a state — it goes away on its own
+  // rather than needing to be dismissed before the roster looks normal again.
+  useEffect(() => {
+    if (!added) return;
+    const timer = setTimeout(() => setAdded(null), 10000);
+    return () => clearTimeout(timer);
+  }, [added]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -428,11 +492,26 @@ export default function CrewRoster({
         </div>
       </div>
 
+      {/* The confirmation lives here, above the roster, and the live region is
+          mounted whether or not there is anything in it: a role="status" element
+          that appears at the same moment as its text is announced by roughly no
+          screen reader, because there was no region to observe. */}
+      <div className={styles.addedLive} role="status" aria-live="polite">
+        {added ? (
+          <p className={styles.addedBanner}>
+            <span>{added.message}</span>
+            <button type="button" onClick={() => setAdded(null)}>Dismiss</button>
+          </p>
+        ) : null}
+      </div>
+
       {rows.length === 0 ? (
         <div className={styles.empty}>
           <h3>No crew members yet</h3>
           <p>Add the people who work with you — then assign them jobs and their hours roll up here.</p>
-          <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>+ Add crew member</button>
+          {readOnly ? null : (
+            <Link href={ADD_CREW_HREF} className="btn primary">+ Add crew member</Link>
+          )}
         </div>
       ) : overview ? (
         <OverviewBoard
@@ -457,6 +536,7 @@ export default function CrewRoster({
               row={row}
               assignableJobs={assignableJobs}
               periodLabel={periodLabel}
+              justAdded={row.id === added?.id}
               onOpen={() => setOpenId(row.id)}
             />
           ))}
@@ -482,6 +562,7 @@ export default function CrewRoster({
                       row={row}
                       assignableJobs={assignableJobs}
                       periodLabel={periodLabel}
+                      justAdded={row.id === added?.id}
                       onOpen={() => setOpenId(row.id)}
                     />
                   ))}
@@ -513,6 +594,7 @@ export default function CrewRoster({
                       row={row}
                       assignableJobs={assignableJobs}
                       periodLabel={periodLabel}
+                      justAdded={row.id === added?.id}
                       onOpen={() => setOpenId(row.id)}
                     />
                   ))}
@@ -559,8 +641,8 @@ export default function CrewRoster({
                 <button type="button" className="btn secondary" onClick={() => { setJobFilter('available'); setStatus('active'); }}>
                   Show who&apos;s free
                 </button>
-              ) : nextStep.id === 'empty' ? (
-                <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>+ Add crew member</button>
+              ) : nextStep.id === 'empty' && !readOnly ? (
+                <Link href={ADD_CREW_HREF} className="btn primary">+ Add crew member</Link>
               ) : null}
             </section>
 
@@ -599,7 +681,7 @@ export default function CrewRoster({
             <section className={styles.focusCard}>
               <small>Quick actions</small>
               <ul className={styles.focusActions}>
-                <li><button type="button" onClick={() => setAddOpen(true)}>Add crew member</button></li>
+                <li>{readOnly ? null : <Link href={ADD_CREW_HREF}>Add crew member</Link>}</li>
                 <li><Link href="/dashboard/crew?tab=hours">Review hours &amp; pay</Link></li>
                 <li><Link href="/dashboard/crew?tab=labor">Labor by job</Link></li>
                 <li><Link href="/dashboard/schedule/plan">Plan today&apos;s route</Link></li>
@@ -630,6 +712,7 @@ export default function CrewRoster({
                   row={row}
                   assignableJobs={assignableJobs}
                   periodLabel={periodLabel}
+                  justAdded={row.id === added?.id}
                   onOpen={() => setOpenId(row.id)}
                 />
               ))}
@@ -652,6 +735,7 @@ export default function CrewRoster({
                 row={row}
                 assignableJobs={assignableJobs}
                 periodLabel={periodLabel}
+                justAdded={row.id === added?.id}
                 onOpen={() => setOpenId(row.id)}
               />
             ))}
@@ -661,41 +745,20 @@ export default function CrewRoster({
 
       {selected ? <CrewDrawer row={selected} onClose={() => setOpenId(null)} periodLabel={periodLabel} /> : null}
 
+      {/* The add form used to sit HERE, as the last child of the roster and some
+          three thousand pixels below the button that opened it. It is a drawer
+          now, and the only thing left at the bottom of this component is
+          nothing — one "+ Add crew member" in the page header, not a second CTA
+          that scrolls off the end of the list.
+
+          Suspense because AddCrewDrawer reads the URL with useSearchParams:
+          this page is force-dynamic so the hook is fine, but the roster is also
+          rendered by the read-only demo, and a boundary costs nothing next to a
+          build that fails on a route nobody thought about. */}
       {readOnly ? null : (
-      <section id="add-crew" className={styles.addPanel} data-open={addOpen || undefined}>
-        <button type="button" className={styles.addToggle} aria-expanded={addOpen} onClick={() => setAddOpen((v) => !v)}>
-          <span className="btn primary">+ Add crew member</span>
-          <span>They&apos;ll get a text when you assign them to a job.</span>
-        </button>
-        {addOpen ? (
-          <form action={createCrewAction} className="form-grid">
-            <div className="field">
-              <label htmlFor="name">Name</label>
-              <input id="name" name="name" required placeholder="Mike Torres" />
-            </div>
-            <div className="field">
-              <label htmlFor="phone">Phone</label>
-              <input id="phone" name="phone" type="tel" required placeholder="(248) 555-0117" />
-            </div>
-            <div className="field">
-              <label htmlFor="email">Email (for the field app)</label>
-              <input id="email" name="email" type="email" placeholder="mike@example.com" />
-            </div>
-            <div className="field">
-              <label htmlFor="roleLabel">Role</label>
-              <input id="roleLabel" name="roleLabel" placeholder="Laborer" />
-            </div>
-            <PayTypeFields idPrefix="new" />
-            <div className="field full">
-              <label htmlFor="photo">Crew photo</label>
-              <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" />
-            </div>
-            <div className="field full">
-              <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">Add crew member</SaveButton>
-            </div>
-          </form>
-        ) : null}
-      </section>
+        <Suspense fallback={null}>
+          <AddCrewDrawer roles={roles} onAdded={handleAdded} />
+        </Suspense>
       )}
     </RosterMode.Provider>
   );
@@ -857,20 +920,33 @@ function CrewRowItem({
   row,
   assignableJobs,
   periodLabel,
+  justAdded = false,
   onOpen,
 }: {
   row: CrewRow;
   assignableJobs: JobOption[];
   periodLabel: string;
+  /** Just created from the add drawer — the one the roster scrolled to. */
+  justAdded?: boolean;
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
 
   return (
-    <li className={`${styles.row}${row.active ? '' : ` ${styles.rowArchived}`}`}>
+    <li className={`${styles.row}${row.active ? '' : ` ${styles.rowArchived}`}${justAdded ? ` ${styles.justAdded}` : ''}`}>
       {/* The row itself opens the profile. The actions below carry their own
-          handlers and stop the click, so nothing here swallows them. */}
-      <button type="button" className={styles.rowOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
+          handlers and stop the click, so nothing here swallows them.
+
+          data-crew-row is how the roster finds this person after the add drawer
+          creates them — see handleAdded. Every layout carries it, so "we took
+          you to their card" is true in Rows, Cards, Board and Table alike. */}
+      <button
+        type="button"
+        className={styles.rowOpen}
+        data-crew-row={row.id}
+        onClick={onOpen}
+        aria-label={`Open ${row.name}'s profile`}
+      >
         <span className={styles.rowIdentity}>
           <span className={styles.avatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
             {row.photoUrl ? (
@@ -918,18 +994,27 @@ function CrewCardItem({
   row,
   assignableJobs,
   periodLabel,
+  justAdded = false,
   onOpen,
 }: {
   row: CrewRow;
   assignableJobs: JobOption[];
   periodLabel: string;
+  /** Just created from the add drawer — the one the roster scrolled to. */
+  justAdded?: boolean;
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
 
   return (
-    <li className={`${styles.card}${row.active ? '' : ` ${styles.rowArchived}`}`}>
-      <button type="button" className={styles.cardOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
+    <li className={`${styles.card}${row.active ? '' : ` ${styles.rowArchived}`}${justAdded ? ` ${styles.justAdded}` : ''}`}>
+      <button
+        type="button"
+        className={styles.cardOpen}
+        data-crew-row={row.id}
+        onClick={onOpen}
+        aria-label={`Open ${row.name}'s profile`}
+      >
         <span className={styles.cardAvatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
           {row.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -979,18 +1064,27 @@ function CrewBoardItem({
   row,
   assignableJobs,
   periodLabel,
+  justAdded = false,
   onOpen,
 }: {
   row: CrewRow;
   assignableJobs: JobOption[];
   periodLabel: string;
+  /** Just created from the add drawer — the one the roster scrolled to. */
+  justAdded?: boolean;
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
 
   return (
-    <li className={styles.boardCard}>
-      <button type="button" className={styles.boardOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
+    <li className={`${styles.boardCard}${justAdded ? ` ${styles.justAdded}` : ''}`}>
+      <button
+        type="button"
+        className={styles.boardOpen}
+        data-crew-row={row.id}
+        onClick={onOpen}
+        aria-label={`Open ${row.name}'s profile`}
+      >
         <span className={styles.avatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
           {row.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1022,20 +1116,23 @@ function CrewTableRow({
   row,
   assignableJobs,
   periodLabel,
+  justAdded = false,
   onOpen,
 }: {
   row: CrewRow;
   assignableJobs: JobOption[];
   periodLabel: string;
+  /** Just created from the add drawer — the one the roster scrolled to. */
+  justAdded?: boolean;
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
 
   return (
     <>
-      <tr className={row.active ? undefined : styles.rowArchived}>
+      <tr className={`${row.active ? '' : styles.rowArchived}${justAdded ? ` ${styles.justAdded}` : ''}`.trim() || undefined}>
         <th scope="row">
-          <button type="button" className={styles.tableName} onClick={onOpen}>
+          <button type="button" className={styles.tableName} data-crew-row={row.id} onClick={onOpen}>
             <span className={styles.avatarSm} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
               {row.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

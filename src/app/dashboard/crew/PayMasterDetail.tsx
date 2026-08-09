@@ -6,14 +6,23 @@ import {
   PAYMENT_STATE_LABEL,
   PAY_EVENT_LABEL,
   PAY_STATUS_LABEL,
-  PAY_WARNING_LABEL,
+  PAY_WARNING_FIX,
+  PAY_WARNING_HELP,
   PAY_WARNING_SEVERITY,
+  approveActionLabel,
+  canApproveRow,
+  entryHoursLabel,
   hoursLabel,
+  needsReapproval,
   payMoney,
+  payWarningChip,
+  rateBreakdownLabel,
+  rowHoursLabel,
   type CrewGroups,
   type CrewPayRow,
   type PayEvent,
 } from '@/lib/crew-pay';
+import { OVERTIME_POLICY } from '@/lib/labor';
 import type { PayEntryLine } from '@/lib/crew-pay-data';
 import { PAY_TYPE_LABEL } from '@/lib/pay-types';
 import { avatarTone } from '@/lib/avatar-tone';
@@ -139,7 +148,11 @@ export default function PayMasterDetail({
   const liveIds = new Set(selected.entries.map((entry) => entry.id));
   const gone = lines.filter((line) => line.costId && !liveIds.has(line.costId));
 
-  const canApprove = payAvailable && Boolean(selected.crewId) && selected.review !== 'approved' && selected.blockers.length === 0;
+  // canApproveRow lets an already-approved person through when their hours have
+  // moved since it was agreed — there is no undo-approval action in this
+  // product, so without that this pane could show "Hours added after approval"
+  // forever with nothing to press.
+  const canApprove = payAvailable && canApproveRow(selected) && selected.blockers.length === 0;
   const canPay = payAvailable && selected.eligible && selected.review === 'approved' && selected.payment !== 'paid';
 
   return (
@@ -172,7 +185,7 @@ export default function PayMasterDetail({
                           <small>{[row.roleLabel, row.rate != null ? `${payMoney(row.rate)}/hr` : row.rateVaries ? 'Mixed rates' : 'No rate'].filter(Boolean).join(' · ')}</small>
                         </span>
                         <span className={styles.mdPersonFigures}>
-                          <b>{hoursLabel(row.hours)}</b>
+                          <b>{rowHoursLabel(row)}</b>
                           <i>{payMoney(row.estimatedPay)}</i>
                         </span>
                       </button>
@@ -207,7 +220,13 @@ export default function PayMasterDetail({
         {selected.warnings.length > 0 ? (
           <ul className={styles.mdFlags}>
             {selected.warnings.map((flag) => (
-              <li key={flag} data-severity={PAY_WARNING_SEVERITY[flag]}>{PAY_WARNING_LABEL[flag]}</li>
+              // The chip carries the count and, in its tooltip, what to do —
+              // "Missing rate" beside a four-figure total, with no way to learn
+              // which of eight entries it meant, is what made this screen read
+              // as though it were arguing with itself.
+              <li key={flag} data-severity={PAY_WARNING_SEVERITY[flag]} title={`${PAY_WARNING_HELP[flag]} ${PAY_WARNING_FIX[flag]}`}>
+                {payWarningChip(flag, selected.entries)}
+              </li>
             ))}
           </ul>
         ) : null}
@@ -235,10 +254,10 @@ export default function PayMasterDetail({
           <div>
             <dt>Hours</dt>
             <dd>
-              {hoursLabel(selected.hours)}
+              {rowHoursLabel(selected)}
               {selected.overtimeHours > 0 ? (
-                <span className={styles.dim}>
-                  {selected.overtimePaid ? ` · OT ${hoursLabel(selected.overtimeHours)}` : ` · ${hoursLabel(selected.overtimeHours)} over`}
+                <span className={styles.dim} title={OVERTIME_POLICY}>
+                  {` · ${hoursLabel(selected.overtimeHours)} over the threshold`}
                 </span>
               ) : null}
             </dd>
@@ -248,6 +267,12 @@ export default function PayMasterDetail({
             <dd>
               {payMoney(selected.estimatedPay)}
               {selected.payType !== 'hourly' ? <span className={styles.dim}> · {selected.payBasis}</span> : null}
+              {/* The rates these hours were actually costed at. Where the
+                  contradiction lives: a profile saying $30/hour and an entry
+                  logged at nothing are both true at once. */}
+              {selected.payType === 'hourly' && rateBreakdownLabel(selected.entries) ? (
+                <span className={styles.dim}> · {rateBreakdownLabel(selected.entries)}</span>
+              ) : null}
             </dd>
           </div>
         </dl>
@@ -265,7 +290,9 @@ export default function PayMasterDetail({
                     <th scope="col">Job</th>
                     <th scope="col">What</th>
                     <th scope="col" className={styles.num}>Hours</th>
-                    <th scope="col" className={styles.num}>Rate</th>
+                    {/* "Rate used" — the rate frozen onto the entry when it was
+                        logged, which is the only rate that decided its amount. */}
+                    <th scope="col" className={styles.num}>Rate used</th>
                     <th scope="col" className={styles.num}>Pay</th>
                   </tr>
                 </thead>
@@ -291,8 +318,15 @@ export default function PayMasterDetail({
                               </small>
                             ) : null}
                           </td>
-                          <td className={styles.num}>{entry.hours}</td>
-                          <td className={styles.num}>{entry.rate > 0 ? payMoney(entry.rate) : <span className={styles.dim}>—</span>}</td>
+                          <td
+                            className={styles.num}
+                            title={entry.issue === 'incomplete-time' ? 'No hours were ever recorded on this entry. The amount beside it was recorded directly.' : undefined}
+                          >
+                            {entryHoursLabel(entry)}
+                          </td>
+                          <td className={styles.num}>
+                            {entry.rate > 0 ? payMoney(entry.rate) : <span className={styles.dim} title="This entry was logged with no rate on it, so it adds nothing to the total. The other entries are unaffected.">No rate</span>}
+                          </td>
                           <td className={styles.num}>{payMoney(entry.amount)}</td>
                         </tr>
                       );
@@ -330,10 +364,19 @@ export default function PayMasterDetail({
                       ? 'Blocked until the flags above are cleared'
                       : 'Not approved yet'}
                 </small>
+                {/* The approval is no longer current. Said here, next to the
+                    button that fixes it, rather than only as a chip at the top
+                    of the pane that nothing could ever clear. */}
+                {needsReapproval(selected) ? (
+                  <small>
+                    Agreed at {payMoney(selected.approvedAmount ?? 0)}, now {payMoney(selected.estimatedPay)} — approve again to agree
+                    the new figure, or pay the agreed one and leave the difference as an adjustment.
+                  </small>
+                ) : null}
               </div>
               {canApprove ? (
                 <button type="button" className="btn secondary" disabled={approving} onClick={() => onApprove([selected.crewId!])}>
-                  {approving ? 'Approving…' : 'Approve'}
+                  {approving ? 'Approving…' : approveActionLabel(selected)}
                 </button>
               ) : null}
             </li>
@@ -377,10 +420,11 @@ export default function PayMasterDetail({
               <dd>{hoursLabel(selected.regularHours)}</dd>
             </div>
             <div>
-              {/* "Overtime" is a claim about money. For salary and day rate the
-                  hours are real and the extra pay isn't, so the label changes
-                  rather than the number being hidden. */}
-              <dt>{selected.overtimePaid ? 'Overtime hours' : `Hours over ${selected.regularHours > 0 ? 'the threshold' : 'standard'}`}</dt>
+              {/* "Overtime" is a claim about money, and here it is only ever a
+                  count of hours — no premium is applied to anybody, hourly or
+                  not (OVERTIME_POLICY). The label says so rather than leaving
+                  the number beside "Est. pay" to imply it. */}
+              <dt title={OVERTIME_POLICY}>Hours over the threshold (not paid extra)</dt>
               <dd>{selected.overtimeHours > 0 ? hoursLabel(selected.overtimeHours) : '—'}</dd>
             </div>
             <div>

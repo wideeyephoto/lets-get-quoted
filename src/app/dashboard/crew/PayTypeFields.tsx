@@ -12,11 +12,20 @@ import {
 
 // How this person is paid, on the crew form.
 //
-// One amount field is shown at a time, because "Hourly rate" and "Salary" and
-// "Day rate" being on screen together invites filling in two of them and
-// wondering which one won. The hidden ones stay MOUNTED but empty rather than
-// unmounted, so the form always posts the same fields and the action can read
-// only the one belonging to the chosen type.
+// ONE AMOUNT FIELD, AND IT IS THE ONLY ONE THAT EXISTS. All three used to be
+// rendered at once — "Hourly rate", "Salary" and "Day rate" side by side, all
+// enabled, all posted — which invited filling in two of them and wondering
+// which one won. They were then hidden with the `hidden` attribute rather than
+// unmounted, on the theory that the action wanted every field on every submit.
+// It never did: payFromForm reads only the amount belonging to the chosen type
+// and always has. `hidden` also does not stop a field being filled in — a
+// browser autofill, or a value typed before the type was switched, stayed in
+// the DOM and was still submitted.
+//
+// So the non-matching fields are UNMOUNTED now. `positiveAmount` of a missing
+// field is null, which is exactly what the action already did with a field it
+// meant to ignore, and hourlyRate falling to 0 for a salaried person is what
+// makes payColumns derive their costing rate instead (lib/pay-types).
 //
 // The derived costing rate is shown as it is typed. A salaried person's time
 // still has to land on the jobs they worked, and the number that does it is
@@ -27,6 +36,32 @@ function money(value: number): string {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/**
+ * Their number in the payroll provider.
+ *
+ * Its own component because it is not compensation — it is a bookkeeping
+ * reference, and the add form files it under "Advanced" well away from the
+ * rate, while the edit form still wants it inline. One definition so the hint
+ * explaining why ADP needs it cannot drift between the two.
+ */
+export function PayrollIdField({ idPrefix, payrollId = '' }: { idPrefix: string; payrollId?: string }) {
+  return (
+    <div className="field">
+      <label htmlFor={`payrollId-${idPrefix}`}>Payroll ID (optional)</label>
+      <input
+        id={`payrollId-${idPrefix}`}
+        name="payrollId"
+        defaultValue={payrollId}
+        placeholder="e.g. 004821"
+      />
+      {/* Providers match on their own id, never on a name — and a name match
+          breaks the first time somebody is "Michael" in one system and "Mike"
+          in the other. */}
+      <p className="hint">Their employee number in your payroll provider. ADP and Paychex won&apos;t match a row without it.</p>
+    </div>
+  );
+}
+
 export default function PayTypeFields({
   idPrefix,
   payType: initialPayType = 'hourly',
@@ -34,6 +69,7 @@ export default function PayTypeFields({
   annualSalary = '',
   dayRate = '',
   payrollId = '',
+  showPayrollId = true,
 }: {
   /** Keeps ids unique — this renders once per crew row plus once for the add form. */
   idPrefix: string;
@@ -42,6 +78,8 @@ export default function PayTypeFields({
   annualSalary?: number | string;
   dayRate?: number | string;
   payrollId?: string;
+  /** False when the caller files the payroll id somewhere else (the add drawer's Advanced section). */
+  showPayrollId?: boolean;
 }) {
   const [payType, setPayType] = useState<PayType>(initialPayType);
   const [salary, setSalary] = useState(String(annualSalary ?? ''));
@@ -75,60 +113,54 @@ export default function PayTypeFields({
         <p className="hint">{PAY_TYPE_HELP[payType]}</p>
       </div>
 
-      <div className="field" hidden={payType !== 'hourly'}>
-        <label htmlFor={`hourlyRate-${idPrefix}`}>Hourly rate ($)</label>
-        <input
-          id={`hourlyRate-${idPrefix}`}
-          name="hourlyRate"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="28"
-          defaultValue={hourlyRate}
-        />
-      </div>
+      {payType === 'hourly' ? (
+        <div className="field">
+          <label htmlFor={`hourlyRate-${idPrefix}`}>Hourly rate ($)</label>
+          <input
+            id={`hourlyRate-${idPrefix}`}
+            name="hourlyRate"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="28"
+            defaultValue={hourlyRate}
+          />
+        </div>
+      ) : null}
 
-      <div className="field" hidden={payType !== 'salary'}>
-        <label htmlFor={`annualSalary-${idPrefix}`}>Salary ($ per year)</label>
-        <input
-          id={`annualSalary-${idPrefix}`}
-          name="annualSalary"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="72000"
-          value={salary}
-          onChange={(event) => setSalary(event.target.value)}
-        />
-      </div>
+      {payType === 'salary' ? (
+        <div className="field">
+          <label htmlFor={`annualSalary-${idPrefix}`}>Salary ($ per year)</label>
+          <input
+            id={`annualSalary-${idPrefix}`}
+            name="annualSalary"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="72000"
+            value={salary}
+            onChange={(event) => setSalary(event.target.value)}
+          />
+        </div>
+      ) : null}
 
-      <div className="field" hidden={payType !== 'day_rate'}>
-        <label htmlFor={`dayRate-${idPrefix}`}>Day rate ($ per day)</label>
-        <input
-          id={`dayRate-${idPrefix}`}
-          name="dayRate"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="320"
-          value={daily}
-          onChange={(event) => setDaily(event.target.value)}
-        />
-      </div>
+      {payType === 'day_rate' ? (
+        <div className="field">
+          <label htmlFor={`dayRate-${idPrefix}`}>Day rate ($ per day)</label>
+          <input
+            id={`dayRate-${idPrefix}`}
+            name="dayRate"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="320"
+            value={daily}
+            onChange={(event) => setDaily(event.target.value)}
+          />
+        </div>
+      ) : null}
 
-      <div className="field">
-        <label htmlFor={`payrollId-${idPrefix}`}>Payroll ID (optional)</label>
-        <input
-          id={`payrollId-${idPrefix}`}
-          name="payrollId"
-          defaultValue={payrollId}
-          placeholder="e.g. 004821"
-        />
-        {/* Providers match on their own id, never on a name — and a name match
-            breaks the first time somebody is "Michael" in one system and "Mike"
-            in the other. */}
-        <p className="hint">Their employee number in your payroll provider. ADP and Paychex won&apos;t match a row without it.</p>
-      </div>
+      {showPayrollId ? <PayrollIdField idPrefix={idPrefix} payrollId={payrollId} /> : null}
 
       {derived ? (
         <p className="field full hint">
