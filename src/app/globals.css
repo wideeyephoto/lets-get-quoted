@@ -8222,17 +8222,46 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  /* The rows restack on the width THEY have, not the window's — see the
+     @container below. This builder appears in two places at two very different
+     widths (the job page's full column, and Step 2 of the lead page, which is
+     a ~380px rail on a desktop), so a viewport query would have got the lead
+     page wrong on every screen size. */
+  container-type: inline-size;
 }
 
+/* THE DESCRIPTION FIELD HAD NO WIDTH LEFT TO TAKE.
+   Three columns, and only the first of them could shrink: 8rem of price plus
+   an `auto` controls column holding a type select, two reorder arrows and a
+   remove button — about 300px of it — before the row's own padding and gaps.
+   In a 330px column that is the whole row and more, so `minmax(0, 1fr)`
+   collapsed the description to a few characters. On the subscription row it
+   collapsed to nothing at all: the field you name the plan in was zero pixels
+   wide, which is not a cramped input, it is a missing one.
+   Below the width where all three fit, the row stacks instead. */
 .quote-builder-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  grid-template-columns: var(--qb-cols, minmax(0, 1fr) 8rem auto);
   gap: 0.6rem;
   align-items: center;
   padding: 0.6rem;
   border: 1px solid var(--edge-t12);
   border-radius: 10px;
   background: rgba(var(--tint), 0.03);
+}
+
+/* One column: description, then price, then the controls, each on its own
+   line and each with the whole row to use. 520px is where the three-column
+   layout stops working — the fixed columns take ~300px of it, and a
+   description worth typing into needs the ~11rem that leaves. */
+@container (max-width: 520px) {
+  .quote-builder-row { --qb-cols: minmax(0, 1fr); }
+}
+/* The same thing keyed on the viewport, for a browser without container
+   queries. It cannot see the lead page's narrow rail, but it can see a phone,
+   which is the case that matters most — and where the two agree, they agree. */
+@media (max-width: 700px) {
+  .quote-builder-row { --qb-cols: minmax(0, 1fr); }
 }
 
 .quote-builder-row-addon {
@@ -8441,6 +8470,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .quote-builder-controls select {
@@ -8450,7 +8480,19 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   background: rgba(0, 0, 0, 0.2);
   color: inherit;
   font: inherit;
+  /* Takes the room on the stacked row and gives it back on the wide one: the
+     controls column is `auto` up there, so there is no free space to grow
+     into and this resolves to the select's natural width either way. min-width
+     0 is what lets it shrink at all — a <select> refuses to go under its
+     widest option otherwise, and "Optional add-on" is what was pushing the
+     description out of the row. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
+
+/* The arrows and the × travel together, hard right. No effect on the wide row,
+   where the controls flex is already exactly as wide as its contents. */
+.quote-builder-controls .quote-builder-move { margin-left: auto; }
 
 .quote-builder-preselect {
   display: inline-flex;
