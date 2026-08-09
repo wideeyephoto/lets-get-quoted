@@ -20911,11 +20911,14 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-readout strong { font-family: var(--font-display); color: var(--text); }
 .cash-readout b { color: var(--text); font-variant-numeric: tabular-nums; }
 
+/* 0.82rem at 45% ink is ~13px at the contrast of a watermark, and this is the
+   paragraph that explains how to work the chart — the one piece of copy on the
+   page a first-time reader most needs to be able to read. */
 .cash-chart-hint {
   margin: 0.55rem 0 0.15rem;
   padding: 0 0.7rem;
-  font-size: 0.82rem;
-  color: var(--mute-i45);
+  font-size: 0.84rem;
+  color: var(--mute-i60);
 }
 
 /* --- Legend and line toggles ----------------------------------------------- */
@@ -21047,7 +21050,10 @@ a.bset-card { color: inherit; text-decoration: none; }
   letter-spacing: 0.08em;
 }
 .cash-event-amount small.is-confirmed { color: var(--mute-i55); }
-.cash-event-amount small.is-estimated { color: var(--mute-i35); }
+/* "Estimated" is the word that tells you how much to trust the figure beside
+   it. At 35% ink and 11px it measured 3.0:1 — dimmed past the point of being
+   readable, on the one label whose whole job is to be read. */
+.cash-event-amount small.is-estimated { color: var(--mute-i60); }
 
 /* --- Bills ----------------------------------------------------------------- */
 
@@ -21099,7 +21105,7 @@ a.bset-card { color: inherit; text-decoration: none; }
   letter-spacing: 0.07em;
 }
 .cash-chip.is-confirmed { background: rgba(74, 222, 128, 0.14); color: var(--good); }
-.cash-chip.is-estimated { background: rgba(var(--tint), 0.07); color: var(--mute-i50); }
+.cash-chip.is-estimated { background: rgba(var(--tint), 0.07); color: var(--mute-i62); }
 .cash-chip.is-overdue { background: rgba(248, 113, 113, 0.18); color: var(--ink-red-1); }
 
 .cash-bill-actions { display: flex; align-items: center; gap: 0.75rem; }
@@ -21166,6 +21172,16 @@ a.bset-card { color: inherit; text-decoration: none; }
   .cash-save .btn { width: 100%; }
   .cash-bill { flex-direction: column; align-items: stretch; }
   .cash-bill-side { justify-content: space-between; }
+  /**
+   * 256px OF NOTHING, and this is where it came from.
+   *
+   * .cash-bill-main carries `flex: 1 1 16rem`, written for the desktop ROW
+   * where a basis is a width. The line above flips the container to a column,
+   * and in a column the basis is a HEIGHT — so every bill card became 16rem of
+   * name-and-date followed by a bottom-pinned amount, 311px tall on a phone for
+   * two lines of text. The basis was never meant to survive the flip.
+   */
+  .cash-bill-main { flex: 0 0 auto; }
 }
 
 
@@ -22019,6 +22035,82 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .cash-controls-note strong { color: var(--text); }
 
+.cash-show-all { margin-top: 0.9rem; }
+
+/**
+ * THE SECTIONS THAT ARE READ ONCE.
+ *
+ * Standing bills change about twice a year; the methodology is read while
+ * somebody decides whether to believe the line and then never again. Both were
+ * full-height panels sitting between the reader and the week they came for —
+ * together most of a 10,000px phone page.
+ *
+ * The summary carries its own subtitle so the closed state still says what is
+ * inside it. A collapsed section that only says "Bills" makes you open it to
+ * find out whether you needed to.
+ */
+.cash-collapse { padding: 0; }
+
+.cash-collapse > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.15rem 1rem;
+  padding: 1.15rem 1.75rem;
+  min-height: 44px;
+  cursor: pointer;
+  border-radius: inherit;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* `display` on a summary drops the UA's disclosure triangle, and without it
+   this reads as a heading — the opposite of the dead-pill problem and just as
+   bad: a control nobody can tell is one. */
+.cash-collapse > summary::-webkit-details-marker { display: none; }
+.cash-collapse > summary::after {
+  content: '';
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--mute-i60);
+  border-bottom: 2px solid var(--mute-i60);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.15s ease;
+}
+.cash-collapse[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cash-collapse > summary::after { transition: none; }
+}
+
+.cash-collapse > summary > span { grid-column: 1; }
+.cash-collapse > summary small { grid-column: 1; }
+
+.cash-collapse > summary small {
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--mute-i60);
+}
+
+.cash-collapse > summary:hover { background: rgba(var(--tint), 0.04); }
+.cash-collapse[open] > summary {
+  border-bottom: 1px solid var(--edge-t10);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* The panel inside brings its own padding; a nested panel would double it and
+   draw a second border a hair inside the first. */
+.cash-collapse > .panel,
+.cash-collapse > section.panel { border: 0; background: none; }
+.cash-collapse > .cash-where-list { padding: 0 1.75rem 1.5rem; }
+
 @media (max-width: 700px) {
   .cash-decision-facts { grid-template-columns: 1fr; gap: 0.75rem; }
   .cash-decision-facts dd { font-size: 1.1rem; }
@@ -22027,6 +22119,47 @@ a.bset-card { color: inherit; text-decoration: none; }
   .cash-scenario-tabs { display: grid; grid-template-columns: 1fr; }
   .cash-low-causes li { align-items: flex-start; }
   .cash-low-actions { width: 100%; }
+  .cash-show-all { width: 100%; }
+}
+
+/**
+ * EVERY CONTROL ON THIS PAGE, UNDER A THUMB.
+ *
+ * Measured at 390px before this block: forecast tabs 30px, buffer presets 30px,
+ * the day rows in the ledger 38px, "Add more lines" 18px, the amount boxes
+ * 24px, the balance slider 22px. All of them things you are meant to press,
+ * none of them a size a finger can land on.
+ *
+ * Scoped to the cash page rather than raised globally: .insight-window-tab in
+ * particular is shared with Insights, and this is not the change to make on a
+ * page nobody has looked at.
+ */
+@media (max-width: 760px) {
+  .cash-window-row .insight-window-tab,
+  .cash-preset,
+  .cash-event-daybtn,
+  .cash-toggle,
+  .cash-bill-actions .linklike,
+  .cash-line-toggles > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* The presets are a row of four; centring keeps them reading as a set rather
+     than as four left-aligned labels of different lengths. */
+  .cash-preset { justify-content: center; }
+  .cash-line-toggles > summary { gap: 0.4rem; }
+
+  .cash-amount-field input { min-height: 44px; }
+
+  /* A range input's height is its THUMB's room, not its track's — the track
+     stays the same 4px it is drawn as. */
+  .cash-range { height: 44px; }
+
+  /* The two-line day rows in the ledger already run past 44px; these are the
+     one-line links inside them. */
+  .cash-event-main a { min-height: 44px; display: flex; align-items: center; }
 }
 
 /* "Nobody knows you offer this" — the distribution hand-off. */

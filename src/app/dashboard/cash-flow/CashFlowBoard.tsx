@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import SaveButton from '@/components/save-button';
 import ModalDialog from '@/components/modal-dialog';
 import { buildForecast, KIND_LABEL, type CashEvent } from '@/lib/cash-forecast';
@@ -88,6 +88,10 @@ const OPTIONAL_LINES: { key: LineKey; label: string; hint: string }[] = [
 
 const BUFFER_PRESETS = [0, 2500, 5000, 10000];
 
+/** Days of movements shown before "Show all". A week is the horizon of the
+ *  question this list answers; the other 50-odd are one press away. */
+const DAYS_SHOWN = 7;
+
 const STATUS_TONE: Record<'unknown' | 'safe' | 'tight' | 'shortfall', 'ok' | 'warn' | 'alert'> = {
   unknown: 'warn',
   safe: 'ok',
@@ -144,9 +148,31 @@ export default function CashFlowBoard({
   // page revalidates, so the new row appears in the bills panel further down —
   // out of sight from the top of a long page. Scrolling there on success is what
   // makes the add feel like it did something rather than like it vanished.
-  const billsRef = useRef<HTMLDivElement>(null);
+  const billsRef = useRef<HTMLDetailsElement>(null);
   const revealBills = useCallback(() => {
-    billsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const panel = billsRef.current;
+    if (!panel) return;
+    // Opened as well as scrolled to. Scrolling somebody to a closed section and
+    // calling that "here is the thing you just added" is worse than not moving.
+    panel.open = true;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  /**
+   * A link to #cash-bills has to arrive somewhere readable.
+   *
+   * The actions in the low panel point here, and a fragment landing on a closed
+   * <details> scrolls to a one-line summary with the answer still hidden behind
+   * it. Opened on arrival, and on every later hash change, because clicking the
+   * same link twice is a real thing people do.
+   */
+  useEffect(() => {
+    const openOnHash = () => {
+      if (window.location.hash === '#cash-bills' && billsRef.current) billsRef.current.open = true;
+    };
+    openOnHash();
+    window.addEventListener('hashchange', openOnHash);
+    return () => window.removeEventListener('hashchange', openOnHash);
   }, []);
 
   /**
@@ -191,6 +217,7 @@ export default function CashFlowBoard({
    * about the scenario you are looking at.
    */
   const [scenario, setScenario] = useState<ScenarioKey>('base');
+  const [showAllDays, setShowAllDays] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [lines, setLines] = useState<Record<LineKey, boolean>>({
     confirmed: true,
@@ -311,6 +338,20 @@ export default function CashFlowBoard({
   const stale = balanceAge !== null && balanceAge >= 7;
 
   const activeDays = forecast.days.filter((day) => day.events.length > 0);
+  /**
+   * The next seven days of movements, then the rest on request.
+   *
+   * A 90-day window is 60-odd days with something in them, and rendering all of
+   * them made the page 10,000px on a phone. Seven is the horizon of the
+   * question this list actually answers — what is coming — and a day the reader
+   * has selected on the chart is always shown whether or not it is inside it,
+   * because otherwise selecting a marker scrolls to nothing.
+   */
+  const shownDays =
+    showAllDays || activeDays.length <= DAYS_SHOWN
+      ? activeDays
+      : activeDays.filter((day, index) => index < DAYS_SHOWN || day.index === selected);
+  const hiddenDays = activeDays.length - shownDays.length;
 
   const tone = STATUS_TONE[outlook.status];
 
@@ -845,8 +886,6 @@ export default function CashFlowBoard({
         </article>
       </div>
 
-      <div ref={billsRef} id="cash-bills">{billsPanel}</div>
-
       <section className="panel workspace-section-card cash-events-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">The next {horizonDays} days</p>
@@ -877,7 +916,7 @@ export default function CashFlowBoard({
           </p>
         ) : (
           <ol className="cash-event-list">
-            {activeDays.map((day) => (
+            {shownDays.map((day) => (
               <li
                 key={day.dateKey}
                 className={`cash-event-day${selected === day.index ? ' is-selected' : ''}${day.projected < 0 ? ' is-unfunded' : ''}`}
@@ -911,7 +950,32 @@ export default function CashFlowBoard({
             ))}
           </ol>
         )}
+
+        {/* A quarter of movements is 60-odd rows, and on a phone that is most
+            of a 10,000px page nobody scrolls to the end of. The next week is
+            what "what moves money" means on the day you ask it; the rest is
+            still here, one press away. */}
+        {hiddenDays > 0 ? (
+          <button type="button" className="btn secondary cash-show-all" onClick={() => setShowAllDays(true)}>
+            Show all {activeDays.length} days ({hiddenDays} more)
+          </button>
+        ) : null}
       </section>
+
+      {/* BELOW THE MOVEMENTS, AND CLOSED.
+          The order used to be the other way round on the reasoning that you add
+          what leaves the account and then read what it does to each day. That
+          holds the first time and never again — and the add-expense button
+          moved up beside the chart, so the reason it was up here went with it.
+          What is left is a list of standing costs that changes about twice a
+          year, sitting between somebody and the week they came to look at. */}
+      <details ref={billsRef} id="cash-bills" className="panel cash-collapse">
+        <summary>
+          <span>Bills &amp; scheduled payments</span>
+          <small>Insurance, the truck payment, rent, quarterly tax — what leaves on its own.</small>
+        </summary>
+        {billsPanel}
+      </details>
     </>
   );
 }

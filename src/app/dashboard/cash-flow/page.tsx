@@ -82,11 +82,15 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
         }
       />
 
-      <section className="panel workspace-section-card cash-where-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Where these numbers come from</p>
-          <h2>So you can tell what to trust</h2>
-        </div>
+      {/* Closed, and last. Four paragraphs of methodology is the right thing to
+          have and the wrong thing to put between somebody and their week — it
+          is read once, when they are deciding whether to believe the line, and
+          then never again. */}
+      <details className="panel cash-collapse cash-where-card">
+        <summary>
+          <span>Where these numbers come from</span>
+          <small>So you can tell what to trust.</small>
+        </summary>
         <ul className="cash-where-list">
           <li>
             <strong>Payroll</strong> — pay periods run {PERIOD_WORD[sources.payrollMode] ?? 'weekly'}, paid{' '}
@@ -108,7 +112,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
             put it on, and a forecast that guesses cheerfully is worse than one that admits the gap.
           </li>
         </ul>
-      </section>
+      </details>
     </main>
   );
 }

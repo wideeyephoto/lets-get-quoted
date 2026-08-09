@@ -128,11 +128,14 @@ export default function DemoCashFlowPage({ searchParams }: { searchParams: { win
         billsPanel={<DemoBillsPanel todayKey={todayKey} />}
       />
 
-      <section className="panel workspace-section-card cash-where-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Where these numbers come from</p>
-          <h2>So you can tell what to trust</h2>
-        </div>
+      {/* Closed, and last — same as the real page. Four paragraphs of
+          methodology is read once, when somebody is deciding whether to believe
+          the line, and then never again. */}
+      <details className="panel cash-collapse cash-where-card">
+        <summary>
+          <span>Where these numbers come from</span>
+          <small>So you can tell what to trust.</small>
+        </summary>
         <ul className="cash-where-list">
           <li>
             <strong>Payroll</strong> — pay periods run every two weeks, paid the Friday after the period closes. Approved
@@ -152,7 +155,7 @@ export default function DemoCashFlowPage({ searchParams }: { searchParams: { win
             than one that admits the gap.
           </li>
         </ul>
-      </section>
+      </details>
     </main>
   );
 }

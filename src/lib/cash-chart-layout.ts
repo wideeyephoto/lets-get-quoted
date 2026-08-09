@@ -16,12 +16,28 @@
 export const MOBILE_MAX = 560;
 
 /**
- * WCAG 2.5.8 asks for 24×24; Apple and Google both say 44. 32 is the compromise
- * the rest of this app already uses for markers sitting on a dense scale, and it
- * is the number the grouping below is built around: two markers closer together
- * than this cannot both be hit, so they become one.
+ * WCAG 2.5.8 asks for 24×24; Apple and Google both say 44. This is the number
+ * the grouping below is built around: two markers closer together than this
+ * cannot both be hit, so they become one.
+ *
+ * 32 on a mouse, where the pointer is a pixel and the extra room only costs
+ * detail.
  */
 export const MIN_TOUCH = 32;
+
+/**
+ * …AND 44 UNDER A THUMB.
+ *
+ * A single constant meant the phone inherited the mouse's number, so markers on
+ * the width where fingers are the only input were 32px — under both platform
+ * guidelines and the size the rest of this page is being held to. Raising it
+ * costs granularity rather than reach: the grouping uses the same figure, so
+ * two markers that can no longer both be hit become one marker that says "3"
+ * and a panel that lists all three.
+ */
+export function touchSize(width: number): number {
+  return width < MOBILE_MAX ? 44 : MIN_TOUCH;
+}
 
 export type ChartPadding = { top: number; right: number; bottom: number; left: number };
 
@@ -66,7 +82,7 @@ export function resolveChartWidth(containerWidth: number | null | undefined): nu
  * backwards, because the first and last days are the two people look for.
  */
 export function chartInset(width: number): number {
-  return width < MOBILE_MAX ? MIN_TOUCH / 2 : 18;
+  return width < MOBILE_MAX ? touchSize(width) / 2 : 18;
 }
 
 export function chartHeight(width: number): number {

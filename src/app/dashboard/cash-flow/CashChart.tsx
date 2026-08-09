@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markerShape, type Forecast } from '@/lib/cash-forecast';
 import {
   axisMoney, chartHeight, chartInset, chartPadding, flipInside, fullMoney,
-  groupForIndex, groupMarkers, MIN_TOUCH, MOBILE_MAX, resolveChartWidth, xAxisTicks,
+  groupForIndex, groupMarkers, touchSize, MOBILE_MAX, resolveChartWidth, xAxisTicks,
 } from '@/lib/cash-chart-layout';
 
 // The projected bank balance, drawn.
@@ -232,7 +232,10 @@ export default function CashChart({
    * Presentational only. Every day keeps its own projection and its own events;
    * the group just carries the list so the panel below can show all of them.
    */
-  const groups = useMemo(() => groupMarkers(days, xFor), [days, xFor]);
+  // The grouping gap and the hit target are the same number on purpose: two
+  // markers closer together than a thumb cannot both be hit, so they become one.
+  const touch = touchSize(width);
+  const groups = useMemo(() => groupMarkers(days, xFor, touch), [days, xFor, touch]);
   // Two different things, and conflating them was a bug. `activeGroup` follows
   // hover-or-selection and drives the panel; `selectedGroup` follows selection
   // ALONE and drives the ring. Because focusing a marker sets hover, a ring keyed
@@ -242,8 +245,8 @@ export default function CashChart({
   const selectedGroup = groupForIndex(groups, selected);
 
   // A real target now, not a scaled-down one — the grouping above is what makes
-  // that affordable.
-  const hitRadius = MIN_TOUCH / 2;
+  // that affordable. 44 under a thumb, 32 under a pointer.
+  const hitRadius = touch / 2;
 
   // -- Markers from the keyboard ----------------------------------------------
   //
@@ -417,7 +420,10 @@ export default function CashChart({
           onPointerCancel={endDrag}
         >
           <line className="cash-line-buffer" x1={PAD.left} x2={PAD.left + innerW} y1={bufferY} y2={bufferY} />
-          <rect className="cash-handle-hit" x={PAD.left} y={bufferY - 9} width={innerW} height={18} />
+          {/* Sized off the same touch figure as the markers: the buffer line is
+              a 1px dash, and its grab area is the only thing making it a
+              control. */}
+          <rect className="cash-handle-hit" x={PAD.left} y={bufferY - touch / 2} width={innerW} height={touch} />
           {/* The one floating label left inside the plot, and it now checks the
               boundary rather than assuming there is room. Pinned to the right
               edge it hung over the axis on a narrow chart — 58px of pill inside
@@ -456,14 +462,21 @@ export default function CashChart({
         >
           <line className="cash-start-tick" x1={PAD.left - 8} x2={xFor(0)} y1={startY} y2={startY} />
           <circle className="cash-start-dot" cx={PAD.left - 8} cy={startY} r={7} />
-          <rect className="cash-handle-hit" x={PAD.left - 20} y={startY - 13} width={26} height={26} />
+          <rect
+            className="cash-handle-hit"
+            x={PAD.left - 8 - touch / 2}
+            y={startY - touch / 2}
+            width={touch}
+            height={touch}
+          />
         </g>
 
         {/* Event markers.
             NOT clipped: a touch target is half a target wide either side of its
             point, and the first and last markers sit one inset from the plot
             edge, so a clip would cut their targets in half. The inset is sized
-            off MIN_TOUCH precisely so nothing has to be clipped to stay tidy. */}
+            off the same touch figure precisely so nothing has to be clipped to
+            stay tidy. */}
         <g
           className="cash-markers"
           role="group"
@@ -635,10 +648,14 @@ export default function CashChart({
 
       {/* Below the panel, and always present — it explains the controls, which
           are still there whether or not anything is selected. */}
+      {/* "Drag" and "Tap" each name one input device, and this chart is worked
+          by all three — the handles take arrow keys, the markers are a roving
+          tabindex. Naming the action instead of the gesture is true whichever
+          one somebody is using. */}
       <p className="cash-chart-hint">
         {activeDay
-          ? 'Tap any marker to see that day’s transaction details. Grouped markers keep the graph readable on small screens.'
-          : 'Drag the dot on the left to change today’s balance, or the dashed line to move your safety buffer. Tap a marker to see what happens that day.'}
+          ? 'Select any marker to see that day’s transaction details. Grouped markers keep the graph readable on small screens.'
+          : 'Adjust the dot on the left to change today’s balance, or the dashed line to move your safety buffer. Select a marker to see what happens that day.'}
       </p>
     </div>
   );

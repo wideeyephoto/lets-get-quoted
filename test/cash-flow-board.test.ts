@@ -38,6 +38,15 @@ const ruleFor = (selector: string) => {
   return CSS.slice(at, CSS.indexOf('}', at));
 };
 
+/** The @media condition a declaration sits under, in a 29,000-line stylesheet
+ *  where indexOf('@media (max-width: 720px)') finds somebody else's block. */
+const mediaAround = (needle: string) => {
+  const at = CSS.indexOf(needle);
+  expect(at, `not found: ${needle}`).toBeGreaterThan(-1);
+  const opens = [...CSS.slice(0, at).matchAll(/@media ([^{]+)\{/g)];
+  return opens.length ? opens[opens.length - 1][1].trim() : null;
+};
+
 describe('an unentered balance is unknown, not zero', () => {
   it('keeps the balance nullable instead of defaulting it to 0', () => {
     // `useState<number>(savedBalance ?? 0)` is the whole bug in one line: it
@@ -210,6 +219,75 @@ describe('the page says how much of itself to trust', () => {
   });
 });
 
+describe('the page is a week, not a quarter of rows', () => {
+  it('shows seven days of movements and keeps the rest one press away', () => {
+    expect(BOARD).toContain('const DAYS_SHOWN = 7');
+    expect(BOARD).toContain('shownDays.map');
+    expect(BOARD).toContain('cash-show-all');
+    // Selecting a marker past day seven has to still land somewhere.
+    expect(BOARD).toContain('day.index === selected');
+  });
+
+  it('puts the movements above the standing bills', () => {
+    // The old order put a list that changes twice a year between somebody and
+    // the week they came to look at.
+    expect(BOARD.indexOf('cash-events-card')).toBeLessThan(BOARD.indexOf('id="cash-bills"'));
+  });
+
+  it('collapses the sections that are read once', () => {
+    expect(BOARD).toContain('<details ref={billsRef} id="cash-bills" className="panel cash-collapse">');
+    expect(PAGE).toContain('cash-collapse cash-where-card');
+  });
+
+  it('opens the bills panel when something is sent to it', () => {
+    // Scrolling somebody to a closed section and calling that "here is the
+    // thing you just added" is worse than not moving.
+    expect(BOARD).toContain('panel.open = true');
+    expect(BOARD).toContain("window.location.hash === '#cash-bills'");
+  });
+
+  it('keeps a disclosure marker on the summary', () => {
+    // `display` on a summary drops the UA triangle, and without it a control
+    // reads as a heading.
+    expect(CSS).toContain('.cash-collapse > summary::after');
+    expect(CSS).toContain('.cash-collapse[open] > summary::after');
+  });
+});
+
+describe('every control is reachable with a thumb', () => {
+  it('raises the marker target on phone widths without coarsening the desktop chart', () => {
+    const LAYOUT = read('src', 'lib', 'cash-chart-layout.ts');
+    expect(LAYOUT).toContain('export function touchSize(width: number)');
+    expect(LAYOUT).toMatch(/width < MOBILE_MAX \? 44 : MIN_TOUCH/);
+    // The grouping gap and the hit target must be the same figure, or two
+    // markers a thumb apart both claim the same pixels.
+    const CHART = stripJs(read('src', 'app', 'dashboard', 'cash-flow', 'CashChart.tsx'));
+    expect(CHART).toContain('groupMarkers(days, xFor, touch)');
+    expect(CHART).toContain('const hitRadius = touch / 2');
+  });
+
+  it('sizes the page controls at 44px on a phone', () => {
+    const block = CSS.indexOf('.cash-window-row .insight-window-tab,');
+    expect(block).toBeGreaterThan(-1);
+    const phone = CSS.slice(block, CSS.indexOf('\n}', block));
+    for (const selector of ['.cash-preset', '.cash-event-daybtn', '.cash-toggle']) {
+      expect(phone, selector).toContain(selector);
+    }
+    expect(mediaAround('.cash-window-row .insight-window-tab,')).toBe('(max-width: 760px)');
+    expect(mediaAround('.cash-range { height: 44px; }')).toBe('(max-width: 760px)');
+    // Scoped, not global: .insight-window-tab is shared with Insights, and that
+    // is not a page this audit looked at.
+    expect(CSS).not.toMatch(/\n\.insight-window-tab \{[^}]*min-height:\s*44px/);
+  });
+
+  it('stops the bill cards being 16rem of nothing on a phone', () => {
+    // `flex: 1 1 16rem` is a width in the desktop row and a HEIGHT once the
+    // mobile rule flips the container to a column.
+    expect(CSS).toContain('.cash-bill-main { flex: 0 0 auto; }');
+    expect(mediaAround('.cash-bill-main { flex: 0 0 auto; }')).toBe('(max-width: 720px)');
+  });
+});
+
 describe('wording that does not assume a mouse', () => {
   it('offers a zero buffer as an amount rather than as "None"', () => {
     // In a row of dollar amounts "None" reads as "no preset selected".
@@ -220,5 +298,14 @@ describe('wording that does not assume a mouse', () => {
   it('does not tell a touch or keyboard user to drag', () => {
     expect(BOARD).toContain('Adjust the dashed line');
     expect(BOARD).not.toContain('Drag the dashed line');
+  });
+
+  it('names the action rather than the gesture on the chart itself', () => {
+    // The handles take arrow keys and the markers are a roving tabindex, so
+    // "Drag" and "Tap" are each wrong for two of the three ways in.
+    const CHART = stripJs(read('src', 'app', 'dashboard', 'cash-flow', 'CashChart.tsx'));
+    expect(CHART).not.toMatch(/\bDrag the dot\b/);
+    expect(CHART).not.toMatch(/\bTap a marker\b/);
+    expect(CHART).toContain('Select a marker');
   });
 });
