@@ -153,6 +153,16 @@ export async function sendSelectionsAction(jobId: string): Promise<{ ok: boolean
   if (outcome.reason === 'no_contact') {
     return { ok: false, message: 'No mobile with texting consent and no email on this job, so there is nowhere to send it.' };
   }
+  // The two reasons that are NOT "try again", and must not be reported as one.
+  // Pressing a button repeatedly against a customer who replied STOP, or against
+  // a job that was closed, will never work — and a message saying "try again"
+  // is an instruction to keep doing it.
+  if (outcome.reason === 'opted_out') {
+    return { ok: false, message: 'This customer replied STOP, so we can’t text them. Add an email address to the job to reach them instead.' };
+  }
+  if (outcome.reason === 'job_closed') {
+    return { ok: false, message: 'This job is completed or cancelled, so nothing is sent about it. Reopen it first if these choices still matter.' };
+  }
   return { ok: false, message: 'Could not send that just now. Please try again.' };
 }
 

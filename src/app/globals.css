@@ -2533,7 +2533,187 @@ h3 {
   border-top: 1px solid var(--rule-t06);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  /* Two children now — the Account trigger and the Stripe pill — where there
+     were three (two cards plus a theme/Stripe row). The gap was tuned for the
+     denser stack; at 0.45rem two items read as one control with a seam in it. */
+  gap: 0.5rem;
+}
+
+/* ===== The Account menu ======================================================
+   Settings, Help, theme and Sign out behind one trigger at the foot of the rail.
+   Modelled on .sidenav-new-menu above, with three deliberate differences:
+
+   1. It opens UPWARD. This is the last thing in the rail, and on a short window
+      the rail itself scrolls (see the max-height rule further down) — a menu
+      dropping downward from here would open into the fold with no way to reach
+      it.
+   2. Theme tokens, not the literal #0e1c2e and #fff the New menu hardcodes.
+      Those were written when the app was dark-only; this menu is the one that
+      CONTAINS the light/dark switch, so a panel that stayed navy while the
+      product went light would be the worst possible place to get it wrong.
+   3. It carries a submit button as well as links, because signing out is a POST.
+      Buttons do not inherit the anchor reset, so the item rule below sets the
+      font, the width and the alignment itself. */
+.sidenav-account-wrap { position: relative; }
+
+.sidenav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  /* 44px: this is a phone target as well as a desktop one. */
+  min-height: 44px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--edge-t08);
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.03);
+  color: rgba(var(--ink-rgb), 0.82);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.sidenav-account:hover,
+.sidenav-account:focus-visible,
+.sidenav-account.open {
+  background: rgba(var(--tint), 0.06);
+  border-color: var(--edge-t14);
+  color: var(--text);
+  outline: none;
+}
+.sidenav-account:focus-visible { box-shadow: 0 0 0 2px var(--cedge-orange-51); }
+.sidenav-account .sidenav-ic { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; }
+/* The business name can be long. It takes the room that is there and truncates
+   rather than pushing the caret off the end of the rail. */
+.sidenav-account-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidenav-account-caret { flex: 0 0 auto; font-size: 0.62rem; transition: transform 0.15s ease; }
+.sidenav-account-caret.open { transform: rotate(180deg); }
+
+.sidenav-account-menu {
+  position: absolute;
+  /* Upward — see note 1. */
+  bottom: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.3rem;
+  border-radius: 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--edge-t12);
+  box-shadow: 0 -18px 46px -18px rgba(var(--shade), 0.72);
+}
+
+.sidenav-account-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(var(--ink-rgb), 0.82);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidenav-account-item:hover,
+.sidenav-account-item:focus-visible {
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--text);
+  outline: none;
+}
+.sidenav-account-item:focus-visible { box-shadow: inset 0 0 0 2px var(--cedge-orange-51); }
+.sidenav-account-item .sidenav-ic { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; color: var(--mute-g470); }
+
+/* The two glyphs that are not NavIcons: a "$" tile for Stripe and the sign-out
+   arrow. Sized to the same 1.05rem box so the menu keeps one column of marks. */
+.sidenav-account-dollar,
+.sidenav-account-out {
+  display: inline-grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  color: var(--mute-g470);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.sidenav-account-out svg { width: 100%; height: 100%; }
+
+.sidenav-account-signout { display: contents; }
+
+/* The theme switch is a control, not a destination, so it gets a row of its own
+   rather than pretending to be a menu item you can activate. */
+.sidenav-account-theme {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.6rem 0.45rem;
+  margin-top: 0.15rem;
+  border-top: 1px solid var(--rule-t06);
+}
+
+/* The ? every dashboard page carries, drawn by the shell because there is no
+   shared page header to put it in (see the note at its call site).
+
+   TOP-RIGHT, NOT BOTTOM-RIGHT. The bottom-right corner on a phone is where the
+   thumb rests and where this product's own action bars sit; a floating button
+   there covers the control you were about to press. Up here it sits in the dead
+   space beside a page title, which every one of these pages has whether or not
+   it wears a .workspace-hero.
+
+   Deliberately quiet: it is a way out when something has gone wrong, not a
+   call to action, and it must never out-shout the page's own primary button. */
+.page-help-fab {
+  position: fixed;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 30;
+  display: inline-grid;
+  place-items: center;
+  /* 40px, and 44 on touch below. */
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--edge-t10);
+  border-radius: 999px;
+  background: rgba(var(--panel-rgb), 0.82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--mute-t62);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.page-help-fab:hover,
+.page-help-fab:focus-visible {
+  color: var(--text);
+  border-color: var(--cedge-orange-51);
+  background: rgba(255, 122, 33, 0.12);
+  outline: none;
+}
+.page-help-fab:focus-visible { box-shadow: 0 0 0 2px var(--cedge-orange-51); }
+
+@media (max-width: 900px) {
+  /* Clear of the mobile top bar, which is fixed and owns the top of the screen.
+     Sitting under it would put the ? behind the Menu button. */
+  .page-help-fab {
+    top: auto;
+    bottom: 0.9rem;
+    right: 0.9rem;
+    width: 44px;
+    height: 44px;
+  }
 }
 .stripe-status-pill.sidenav-stripe {
   order: 0;
@@ -3776,6 +3956,241 @@ h3 {
    read it — evaluating whether to turn something ON is exactly when you most
    want to see what it would send. 0.45 was too dark to judge by. */
 .followup-card.is-paused .followup-preview { opacity: 0.72; }
+
+/* ── Choice reminders ────────────────────────────────────────────────────────
+   The fifth card in this shape, and the first with a Save button in it.
+
+   THE ORANGE EDGE IS DOING A JOB. Every other automation panel sits inside the
+   card in a neutral hairline, which is right when the panel is read-only facts.
+   This one holds a schedule and the words of a text that goes out under the
+   contractor's name, and unlike its neighbours it does NOT autosave — so the
+   panel has to read as a bounded thing with a commit at the end of it. The
+   accent edge is what says "this is a form", at 0.26 alpha so it frames rather
+   than shouts. Nothing else on the tab uses it.
+
+   ON IS GREEN, and only the state line is. --good is the app's "this is
+   running" ink; painting the whole panel with it would make an automation that
+   is merely switched on look like a success message. Off is muted, never red:
+   an automation you have not enabled is a choice, not a fault, and colouring it
+   as a fault trains people to stop reading the colour (see .followup-state). */
+.choice-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid var(--cedge-orange-12);
+  background: rgba(var(--tint), 0.03);
+}
+.choice-card .choice-state {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--good);
+}
+.choice-card.is-paused .choice-state { color: var(--mute-t60); }
+.choice-card.is-paused .choice-preview { opacity: 0.72; }
+
+.choice-card .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+.choice-card .choice-lede { margin: 0.2rem 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
+
+.choice-card .choice-facts { display: grid; gap: 0.6rem; }
+.choice-card .choice-fact {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.04);
+}
+.choice-card .choice-fact strong { font-size: 0.88rem; color: var(--text); }
+.choice-card .choice-fact > span { font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+/* `span.` rather than a bare class: `.choice-card .choice-fact > span` above is
+   (0,2,1) and a plain `.choice-card .choice-fact-note` is (0,2,0), so the
+   generic rule would win both declarations this one is trying to set and the
+   quiet secondary notes would render at full size and full colour. */
+.choice-card .choice-fact > span.choice-fact-note { font-size: 0.75rem; color: var(--mute-t40); }
+
+/* The one editable setting on the left, folded away until wanted. */
+.choice-card .choice-edit { margin-top: 0.5rem; }
+.choice-card .choice-edit > summary {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  list-style: none;
+}
+.choice-card .choice-edit > summary::-webkit-details-marker { display: none; }
+.choice-card .choice-edit > summary::before { content: '▸'; font-size: 0.62rem; transition: transform 0.15s ease; }
+.choice-card .choice-edit[open] > summary::before { transform: rotate(90deg); }
+.choice-card .choice-edit > summary:hover { text-decoration: underline; }
+.choice-card .choice-edit[open] > summary { margin-bottom: 0.6rem; }
+
+.choice-card .choice-edit-form { display: grid; gap: 0.6rem; }
+.choice-card .choice-slots { display: grid; gap: 0.5rem; border: 0; padding: 0; margin: 0; }
+.choice-card .choice-slots legend {
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute-t50);
+}
+.choice-card .choice-slot { display: grid; gap: 0.25rem; }
+.choice-card .choice-slot > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute-t50);
+}
+.choice-card .choice-note { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--mute-t50); }
+.choice-card .choice-note a { color: var(--accent-ink); }
+.choice-card .choice-note code {
+  padding: 0.05rem 0.25rem;
+  border-radius: 4px;
+  background: rgba(var(--tint), 0.08);
+  font-size: 0.72rem;
+}
+
+.choice-card .choice-phone {
+  border-radius: 16px;
+  border: 1px solid var(--edge-t16);
+  background: rgba(var(--tint), 0.06);
+  overflow: hidden;
+}
+.choice-card .choice-phone-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--rule-t10);
+  font-size: 0.85rem;
+}
+.choice-card .choice-phone-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: rgba(var(--tint), 0.12);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.choice-card .choice-phone-body { padding: 0.85rem 0.8rem; }
+.choice-card .choice-bubble {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem 0.9rem 0.9rem 0.25rem;
+  background: rgba(var(--tint), 0.08);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  /* The bullet list is real newlines, and the job link is one long unbreakable
+     token. Both have to survive into the preview or it is not the message. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.choice-card .choice-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.7rem; flex-wrap: wrap; }
+.choice-card .choice-actions small { font-size: 0.74rem; color: var(--mute-t50); }
+.choice-card .choice-edit-message {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.choice-card .choice-edit-message:hover { color: var(--accent); }
+
+.choice-card .choice-editor { display: grid; gap: 0.45rem; margin-top: 0.8rem; }
+/* The rule above sets `display` on the very element carrying the `hidden`
+   attribute, and an author rule beats the UA stylesheet's `[hidden]{display:none}`
+   in every browser. Without this line the editor is permanently open, its
+   textarea stays in the tab order, and aria-expanded lies about it. */
+.choice-card .choice-editor[hidden] { display: none; }
+.choice-card .choice-editor > label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute-t50);
+}
+.choice-card .choice-editor textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.choice-card .choice-editor textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* aria-invalid is the single source of the error look, so the ring cannot get
+   out of step with what a screen reader is told. */
+.choice-card .choice-editor textarea[aria-invalid='true'] { border-color: var(--cedge-red-3); }
+.choice-card .choice-invalid:empty { display: none; }
+.choice-card .choice-invalid { margin: 0; font-size: 0.75rem; color: var(--bad); }
+.choice-card .choice-reset {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--mute-t50);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.choice-card .choice-reset:disabled { opacity: 0.45; cursor: default; text-decoration: none; }
+.choice-card .choice-test-note { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--mute-t60); }
+
+.choice-card .choice-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--rule-t08);
+}
+.choice-card .choice-foot-note { flex: 1 1 16ch; font-size: 0.76rem; line-height: 1.45; color: var(--mute-t50); }
+.choice-card .choice-save { font-size: 0.78rem; font-weight: 700; color: var(--mute-t50); }
+.choice-card .choice-save-saved { color: var(--good); }
+.choice-card .choice-save-error { color: var(--bad); }
+/* Disabled, not hidden. The button has to stay where it is so that "there is
+   nothing to save" and "the save button has gone somewhere" are not the same
+   picture — and so its position does not shift under the pointer the instant a
+   field is touched.
+   Cursor only: `.btn:disabled` already carries the fade, and the light theme
+   deliberately raises it to 0.72 because 0.45 is unreadable on paper. Setting
+   opacity here at (0,5,0) would beat that rule and undo it. */
+.choice-card .choice-foot .btn.primary:disabled { cursor: not-allowed; }
+
+/* Focus is visible on everything in here, including the two link-shaped buttons
+   and the fold. A settings form that can be filled in from the keyboard but not
+   navigated by eye while doing it is not keyboard-accessible. */
+/* Outline only. An earlier version also set border-radius: 4px here, which at
+   (0,2,1) beat `.btn { border-radius: 999px }` and the textarea's own 10px — so
+   tabbing through the card squared off the pill buttons as it went. The outline
+   follows each element's own corners without being told. */
+.choice-card :is(button, select, summary, textarea, a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Stacks at the same breakpoint as its four neighbours, so the whole tab
+   reflows as one thing rather than card by card. */
+@media (max-width: 900px) {
+  .choice-card .choice-grid { grid-template-columns: 1fr; gap: 1.1rem; }
+  .choice-card .choice-foot { align-items: flex-start; }
+}
 
 .automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(var(--tint), 0.05); border: 1px solid var(--edge-t10); font-size: 0.85rem; line-height: 1.45; color: rgba(var(--ink-rgb), 0.9); max-width: 42ch; }
 .automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid var(--cedge-amber-5); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
@@ -9582,6 +9997,61 @@ button.inbox-thread-item {
   scroll-margin-top: 1rem;
 }
 
+/* THE SECOND WAY TO BOOK A JOB, and no longer the only one.
+   Texting the client three dates used to BE the scheduling card; setting a date
+   yourself lived three sections away inside "edit client details". So the
+   picker leads now and this holds the text route — still one press away, but
+   folded, because it is the route that stops working the moment a customer
+   does not text. Deliberately quiet: a nested details inside an open card that
+   shouts would read as a second card. */
+.job-schedule-alt {
+  margin: 0.9rem 1rem 1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--edge-t09);
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.025);
+}
+
+.job-schedule-alt > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 30px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+
+.job-schedule-alt > summary::-webkit-details-marker { display: none; }
+
+.job-schedule-alt > summary::before {
+  content: '＋';
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid var(--edge-t12);
+  border-radius: 6px;
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.job-schedule-alt[open] > summary::before { content: '−'; }
+
+.job-schedule-alt > summary:hover,
+.job-schedule-alt > summary:focus-visible {
+  color: var(--text);
+  outline: none;
+}
+
+.job-schedule-alt > summary:focus-visible::before { border-color: var(--cedge-orange-51); }
+
+.job-schedule-alt[open] > summary { margin-bottom: 0.6rem; }
+
 .job-action-summary {
   justify-content: space-between;
   padding: 0.8rem 1rem;
@@ -10465,6 +10935,19 @@ button.inbox-thread-item {
   transition: background .15s ease, border-color .15s ease;
 }
 .hero-email-link:hover, .hero-email-link:focus-visible { background: rgba(255,209,102,.22); border-color: var(--cedge-amber-13); }
+/* How automatic messages reach this customer — shown beside the phone and email
+   ONLY when the answer is not the obvious one. Quieter than either of them: it
+   is a caveat about the two chips next to it, not a third contact detail. */
+.job-channel-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem; width: fit-content; max-width: 100%;
+  padding: 0.3rem 0.6rem; border-radius: 999px;
+  border: 1px solid var(--edge-t12); background: rgba(var(--tint), .04);
+  color: var(--mute-t62) !important; font-size: 0.76rem !important; font-weight: 700 !important;
+  text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.job-channel-chip.tone-warn { border-color: var(--cedge-amber-19); background: rgba(255,209,102,.08); color: var(--gold-ink) !important; }
+.job-channel-chip:hover, .job-channel-chip:focus-visible { border-color: var(--cedge-orange-51); color: var(--text) !important; }
 .job-ref { font-family: var(--font-mono), 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--mute-t55); }
 .job-client { font-weight: 700; font-size: 1.05rem; margin-top: 0.35rem; }
 .job-meta { color: var(--mute-t60); font-size: 0.9rem; margin-top: 0.15rem; }
@@ -12697,7 +13180,10 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .task-done-by { font-size: 0.74rem; color: var(--mute-t45); }
 .task-delete { flex-shrink: 0; background: none; border: none; color: var(--mute-t40); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 0.3rem; }
 .task-delete:hover { color: var(--ink-orange-1); }
-.task-add-form { display: flex; gap: 0.5rem; }
+/* Wraps, because the row now carries a third child: the reason an add was
+   refused. It used to have none — the only feedback was a Save button that said
+   "Added ✓" whether the task landed or the action threw. */
+.task-add-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .task-add-form input {
   flex: 1;
   padding: 0.6rem 0.85rem;
@@ -12707,6 +13193,10 @@ a.ropsrow-fact:hover { text-decoration: underline; }
   color: var(--ink-neutral-1);
   font: inherit;
 }
+/* Full width under the row, and gone entirely when there is nothing to say —
+   an empty live region must not leave a gap that reads as a missing control. */
+.task-add-problem { flex: 1 0 100%; margin: 0; font-size: 0.78rem; color: var(--bad); }
+.task-add-problem:empty { display: none; }
 
 /* -- Client-facing read-only checklist -- */
 .client-task-list { list-style: none; margin: 0.9rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -27642,4 +28132,287 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   .sms-cat-head { display: none; }
   .sms-cat-row { grid-template-columns: minmax(0, 1fr); gap: 0.7rem; }
   .sms-cat-control { grid-auto-flow: column; justify-content: start; align-items: center; gap: 0.5rem; }
+}
+
+/* ============================================================================
+   DASHBOARD HOME — the 2026-08 restructure
+   ----------------------------------------------------------------------------
+   The page answers three questions in order now: what needs me, what is
+   happening next, how is the business doing. Four styles support that:
+
+     .dash-waiting       the customer's move, quieter than Act now
+     .dash-quicklinks    where "Visit your site" went, out of the money section
+     .dash-automations   a whole section compressed to one summary line
+
+   Appended as its own block rather than edited into the existing home rules
+   around 6429-6509 and 24358-24446, which are interleaved with the rail's
+   mobile bar with no section banner between them.
+   ========================================================================== */
+
+/* WAITING sits below ACT NOW and must not compete with it. Same card, no
+   numbered index, and a muted left edge instead of the accent one — the
+   difference in weight IS the information. */
+.dash-waiting { border-color: var(--edge-t10); }
+.dash-waiting .priority-item { border-left-color: var(--edge-t12); }
+.dash-waiting .priority-cta { color: var(--mute-t62); }
+.dash-waiting .priority-cta:hover { color: var(--text); }
+
+/* Shortcuts, not metrics. Compact and unemphatic; the buttons carry themselves. */
+.dash-quicklinks .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+/* The automations section, folded to a line.
+   It is a <details> so the whole panel is the disclosure — no separate toggle
+   to keep in sync with the panel's own state. Open by default only when every
+   automation is off, which is the one case that is genuinely a problem. */
+.dash-automations { padding: 0; }
+.dash-automations-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  list-style: none;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.dash-automations-summary::-webkit-details-marker { display: none; }
+.dash-automations-summary:hover { background: rgba(var(--tint), 0.03); }
+.dash-automations-summary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--cedge-orange-51);
+}
+/* The caret is drawn by the summary rather than the flex line, so it stays
+   pinned right whatever the line wraps to. */
+.dash-automations-summary::after {
+  content: '▾';
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--mute-t50);
+  font-size: 0.7rem;
+  transition: transform 0.15s ease;
+}
+.dash-automations[open] > .dash-automations-summary::after { transform: rotate(180deg); }
+.dash-automations-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.7rem;
+  min-width: 0;
+}
+.dash-automations-line strong { color: var(--text); font-size: 0.95rem; font-weight: 700; }
+/* Health reads as a state, so it gets the good colour and a dot — and the WORD
+   carries the meaning, so it still reads without colour vision. */
+.dash-automations-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--good);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.dash-automations-health::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dash-automations-health.is-off { color: var(--mute-t55); }
+.dash-automations > *:not(.dash-automations-summary) { margin-left: 1rem; margin-right: 1rem; }
+.dash-automations > *:last-child { margin-bottom: 1rem; }
+
+@media (max-width: 640px) {
+  /* 44px, and the caret gets its own room so a wrapped line cannot push it
+     under the text. */
+  .dash-automations-summary { min-height: 44px; padding: 0.75rem 0.85rem; }
+  .dash-automations > *:not(.dash-automations-summary) { margin-left: 0.85rem; margin-right: 0.85rem; }
+}
+
+/* ============================================================================
+   REFUND POLICY — the customer's copy of it, and the contractor's warnings
+   ----------------------------------------------------------------------------
+   Appended as a self-contained block. Two places, one subject:
+
+   .quick-stop-policy  the cancellation terms on the public /quick-stop/[id]
+                       status page, now rendered from the account's real tiers
+                       instead of a hardcoded paragraph quoting the defaults.
+   .refund-warnings    what the contractor is told about the numbers they just
+                       typed, under the five inputs in QuickStopConfigurator.
+
+   The warnings have two severities, and the rule they obey is that the WORD in
+   front of each one carries the meaning. Colour only agrees with it: printed in
+   greyscale, or read by anyone who can't separate red from amber, the two
+   levels still differ by bar weight, bar style and type weight.
+   ========================================================================== */
+
+.quick-stop-policy { margin-top: 1rem; }
+.quick-stop-policy .quick-stop-policy-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute-t62);
+}
+/* The terms are the small print, but they are terms — 0.75 opacity on the old
+   paragraph put a payment condition below comfortable reading contrast, so this
+   sets a real colour instead of fading the text out. */
+.quick-stop-policy ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+  color: var(--mute-t62);
+}
+.quick-stop-policy ul li {
+  position: relative;
+  padding-left: 0.85rem;
+  line-height: 1.45;
+}
+.quick-stop-policy ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cedge-orange-51);
+}
+
+.refund-warnings {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+.refund-warnings li {
+  padding: 0.55rem 0.7rem;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--ground-2);
+}
+.refund-warnings li strong {
+  font-weight: 700;
+  color: var(--text);
+}
+/* Severe: a solid, heavy bar and a bolder label. This is a term a customer
+   would call a swindle, not a tidiness note. */
+.refund-warnings li.is-severe {
+  border-left: 4px solid var(--bad);
+  background: color-mix(in srgb, var(--bad) 9%, var(--ground-2));
+}
+.refund-warnings li.is-severe strong {
+  color: var(--bad);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+/* Mild: a thinner, dashed bar — different in outline as well as in colour, so
+   the two levels never depend on hue alone to be told apart. */
+.refund-warnings li.is-warn {
+  border-left: 3px dashed var(--cedge-amber-19);
+}
+
+@media (max-width: 640px) {
+  .refund-warnings li { padding: 0.5rem 0.6rem; font-size: 0.82rem; }
+}
+
+/* ============================================================================
+   QUICK STOPS — the potential-earnings card, demoted
+   ----------------------------------------------------------------------------
+   The figure was mathematically disclosed as an illustration and visually drawn
+   as a forecast: the largest number on the page, in a glowing card, with "not a
+   forecast" underneath in small grey text. Typography beats footnotes. It is
+   arithmetic now — a sentence at caption size, in the same voice as the copy
+   around it, with no glow and no hero number to argue with the disclaimer.
+   ========================================================================== */
+.es-earnings.is-illustration {
+  background: rgba(var(--tint), 0.03);
+  border: 1px solid var(--edge-t09);
+  box-shadow: none;
+  padding: 0.9rem 1rem;
+}
+.es-earnings.is-illustration .es-earnings-label {
+  color: var(--mute-t55);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.es-earnings.is-illustration .es-earnings-line {
+  margin: 0.3rem 0 0;
+  color: var(--text);
+  /* Body size, not display size. The old total ran at ~2.5rem. */
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.es-earnings.is-illustration .es-earnings-line strong { font-weight: 800; }
+.es-earnings.is-illustration .es-earnings-note {
+  margin: 0.4rem 0 0;
+  color: var(--mute-t62);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* ============================================================================
+   QUICK STOPS — the three-tab shell
+   ----------------------------------------------------------------------------
+   Today / Settings / Insights. Modelled on .settings-tabnav, with a hint line
+   under each label because these three are not obvious from one word: an owner
+   looking for the refund tiers has to be able to tell that "Settings" is where
+   prices live and "Insights" is not.
+   ========================================================================== */
+.qs-tabnav {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+  padding: 0.3rem;
+  overflow-x: auto;
+  border: 1px solid var(--edge-t09);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.025);
+  /* Thin scrollbar on the horizontal overflow rather than a chunky one eating
+     the row's height on a phone. */
+  scrollbar-width: thin;
+}
+.qs-tab {
+  display: grid;
+  gap: 0.1rem;
+  flex: 1 1 0;
+  /* Never narrower than a readable label; the row scrolls instead. */
+  min-width: 8.5rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--mute-t62);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.qs-tab span { font-size: 0.94rem; font-weight: 700; }
+.qs-tab small { font-size: 0.72rem; font-weight: 500; opacity: 0.85; }
+.qs-tab:hover { color: var(--text); background: rgba(var(--tint), 0.04); }
+.qs-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--cedge-orange-51); }
+.qs-tab.active {
+  color: var(--text);
+  border-color: var(--cedge-orange-51);
+  background: rgba(255, 122, 33, 0.1);
+}
+/* The panel takes no styling of its own — the sections inside it are already
+   .panel cards and a wrapper with padding would double every gap. */
+.qs-tabpanel:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--cedge-orange-51); border-radius: 14px; }
+
+@media (max-width: 640px) {
+  .qs-tab { min-width: 7.5rem; padding: 0.5rem 0.6rem; }
+  .qs-tab small { display: none; }
 }

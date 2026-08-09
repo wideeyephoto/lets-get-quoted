@@ -40,9 +40,23 @@ import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 import { normalizeReminderHour, normalizeReminderLeadDays } from '@/lib/appointment-reminders';
 import { normalizeFollowupChannel, normalizeFollowupDays, normalizeFollowupHour } from '@/lib/quote-followups';
+import {
+  CHOICE_TEMPLATE_MAX,
+  DEFAULT_CHOICE_REMINDER_TEMPLATE,
+  choiceReminderPreview,
+  choiceScheduleLabel,
+  normalizeChoiceOffsets,
+  normalizeChoiceReminderHour,
+  validateChoiceTemplate,
+} from '@/lib/choice-reminders';
 import { pickBusinessName } from '@/lib/business-name';
 import { APP_ORIGIN } from '@/lib/app-origin';
-import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendQuoteFollowupEmail } from '@/lib/email';
+import {
+  getAccountOwnerEmail,
+  sendAppointmentReminderEmail,
+  sendChoiceReminderTestEmail,
+  sendQuoteFollowupEmail,
+} from '@/lib/email';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -753,6 +767,117 @@ export async function updateFollowupSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
   // The jobs page carries the on/off pill for this automation.
   revalidatePath('/dashboard/jobs');
+}
+
+/**
+ * WHEN choice reminders go out and WHAT they say — not WHETHER.
+ *
+ * The switch in the card header owns whether, the same split appointment
+ * reminders and quote follow-ups use. There is deliberately no second
+ * enablement control anywhere in this form: two controls for one boolean means
+ * one of them is always about to be wrong, and the Review requests card carried
+ * exactly that pair until it was found rendering from a stale value and turning
+ * the automation back on when you pressed Save.
+ *
+ * Returns a result rather than throwing on a bad template, because "you left out
+ * {link}" is something the contractor can fix in the box in front of them and a
+ * thrown server action gives them nowhere to read it.
+ */
+export async function updateChoiceReminderSettingsAction(
+  formData: FormData,
+): Promise<{ ok: boolean; message?: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const offsets = ['choiceOffset1', 'choiceOffset2', 'choiceOffset3']
+    .map((field) => formData.get(field))
+    .filter((value) => value !== null && String(value).trim() !== '' && String(value) !== 'off');
+
+  // An empty box means "use the default wording", not "send a blank text" — the
+  // column is nullable for exactly that distinction. Anything else has to pass
+  // validation, and the only rule that really bites is {link}: a reminder
+  // telling somebody they owe a decision, with no way to reach it, is worse than
+  // no reminder.
+  const raw = String(formData.get('choiceTemplate') ?? '').trim();
+  let template: string | null = null;
+  if (raw && raw !== DEFAULT_CHOICE_REMINDER_TEMPLATE) {
+    const check = validateChoiceTemplate(raw);
+    if (!check.ok) return { ok: false, message: check.message };
+    template = raw.slice(0, CHOICE_TEMPLATE_MAX);
+  }
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      selection_reminder_offsets: normalizeChoiceOffsets(offsets),
+      selection_reminder_hour: normalizeChoiceReminderHour(formData.get('choiceHour')),
+      selection_reminder_template: template,
+    })
+    .eq('id', accountId);
+  if (error) return { ok: false, message: 'Could not save your choice reminder settings.' };
+
+  const { data: { user } } = await supabase.auth.getUser();
+  await recordAccountEvent({
+    accountId,
+    kind: 'automation_settings_changed',
+    summary: `Choice reminders set to ${choiceScheduleLabel(normalizeChoiceOffsets(offsets)).toLowerCase()}${
+      template ? ', with custom wording' : ''
+    }`,
+    actorEmail: user?.email ?? null,
+    meta: { automation: 'selections', offsets: normalizeChoiceOffsets(offsets), custom_template: Boolean(template) },
+  });
+
+  revalidatePath('/dashboard/settings');
+  // The job page shows the board's own "next reminder" line.
+  revalidatePath('/dashboard/jobs');
+  return { ok: true };
+}
+
+/**
+ * Send the owner the choice reminder their own customers would get.
+ *
+ * Goes to the account email for the same reason the reminder and follow-up tests
+ * do: a test that needs a verified, opted-in mobile on file would fail for most
+ * people the first time they pressed it, and "it didn't arrive" is the worst
+ * possible answer from a button whose whole job is to prove delivery works.
+ *
+ * The body is built by choiceReminderText from the CURRENTLY SAVED template, so
+ * the test proves the real message. It reads the template back from the database
+ * rather than taking it from the form: a test of unsaved wording would tell a
+ * contractor their customers are getting something they are not.
+ */
+export async function sendChoiceReminderTestAction(): Promise<{ ok: boolean; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const admin = createAdminClient();
+
+  const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+  if (!ownerEmail) return { ok: false, message: 'No account email to send a test to.' };
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    supabase
+      .from('accounts')
+      .select('business_name, selection_reminder_template')
+      .eq('id', accountId)
+      .maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+  const businessName = pickBusinessName(site, account);
+
+  try {
+    await sendChoiceReminderTestEmail({
+      recipientEmail: ownerEmail,
+      businessName,
+      message: choiceReminderPreview({
+        businessName,
+        template: (account?.selection_reminder_template as string | null) ?? null,
+      }),
+      accountId,
+    });
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not send the test.' };
+  }
+
+  revalidatePath('/dashboard/settings');
+  return { ok: true, message: `Sent to ${ownerEmail}.` };
 }
 
 /**

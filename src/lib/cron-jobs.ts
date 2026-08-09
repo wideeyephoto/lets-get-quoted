@@ -95,10 +95,12 @@ export const CRON_JOBS: CronJobSpec[] = [
   },
   {
     job: 'selection-chase',
-    label: 'Selection chasing',
-    schedule: '0 17 * * *',
+    label: 'Choice reminders',
+    // Hourly because each account sends in its own timezone at its own chosen
+    // hour, so every hour has to be offered for any of them to be pickable.
+    schedule: '0 * * * *',
     importance: 'customer',
-    consequence: 'Customers are not chased for outstanding selections, which blocks the jobs waiting on them.',
+    consequence: 'Customers are not reminded about outstanding choices, which blocks the jobs waiting on them.',
   },
   {
     job: 'service-reminders',

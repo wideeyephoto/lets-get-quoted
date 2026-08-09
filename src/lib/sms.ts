@@ -726,10 +726,11 @@ export async function sendMissedCallTextBack(params: { accountId: string; phone:
 /**
  * "There are choices waiting for you."
  *
- * The message is built by the caller (lib/selections chaseMessage) so the one
- * that goes out and the one the contractor previews are the same string. Caller
- * resolves consent; mirrored to the inbox so a reply lands somewhere a human
- * will see it.
+ * The message is built by the caller — selectionRequestText in lib/sms-templates
+ * for the contractor's own send, choiceReminderText in lib/choice-reminders for
+ * the scheduled one — so the words that go out and the words the contractor
+ * previews are the same string. Caller resolves consent; mirrored to the inbox
+ * so a reply lands somewhere a human will see it.
  */
 export async function sendSelectionRequestSms(params: {
   phone: string;

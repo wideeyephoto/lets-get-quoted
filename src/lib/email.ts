@@ -665,6 +665,58 @@ export async function sendAppointmentReminderEmail(input: {
   }
 }
 
+/**
+ * "Here is what your customers will get" — the choice-reminder test send.
+ *
+ * Goes to the OWNER, never to a customer, and carries the message verbatim
+ * rather than a description of it. The whole value of a test is seeing the
+ * actual words, including whatever the owner just typed into the template, so
+ * the body is passed in already rendered by choiceReminderText and this function
+ * only addresses the envelope.
+ *
+ * Deliberately not sent as a text. A test that costs a segment and lands on the
+ * owner's personal phone is one they run once; and the words are identical
+ * either way, which is the thing being checked.
+ */
+export async function sendChoiceReminderTestEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  /** The rendered SMS body, exactly as a customer would receive it. */
+  message: string;
+  accountId?: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+  const result = await resend.emails.send({
+    from: contractorFrom(brand.businessName),
+    to: input.recipientEmail,
+    subject: `Test: your choice reminder from ${input.businessName}`,
+    html: renderBrandedEmail({
+      brand,
+      preheader: 'This is the reminder your customers will receive.',
+      eyebrow: 'Test message',
+      heading: 'This is what your customers will get',
+      paragraphs: [
+        'Nobody else received this. It is the choice reminder exactly as it goes out, with sample choices standing in for real ones.',
+        input.message,
+      ],
+    }),
+    reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'choice_reminder_test' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
+  });
+
+  if (result.error) {
+    console.error('Failed to send choice reminder test email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 // Customer-facing confirmation that a self-serve online booking was received —
 // transactional (the customer just took an action), so no marketing footer. Sent
 // best-effort from createBooking; throws on provider rejection so the caller logs it.

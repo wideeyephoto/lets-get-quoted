@@ -14,7 +14,17 @@ import { createAdminClient } from '@/lib/auth';
 // account_events migration hasn't been applied yet, the same way the settings page
 // already tolerates missing columns.
 
-export type AccountEventKind = 'automation_toggled';
+/**
+ * 'automation_toggled' is a switch flipped; 'automation_settings_changed' is the
+ * automation left on but told to behave differently — a new send schedule, or
+ * different wording going out under the contractor's name. Worth telling apart:
+ * "who turned this off" and "who changed what it says" are different questions,
+ * and the second one used to leave no trace at all.
+ *
+ * The column is free text with no check constraint, so adding a kind needs no
+ * migration. The history page renders `summary` as written.
+ */
+export type AccountEventKind = 'automation_toggled' | 'automation_settings_changed';
 
 export async function recordAccountEvent(input: {
   accountId: string;

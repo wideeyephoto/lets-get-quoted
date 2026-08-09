@@ -19,6 +19,98 @@ import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 
 type Row = Record<string, unknown>;
 
+/**
+ * When anything about this board last went to the customer.
+ *
+ * Read from the job feed rather than from a column on the choices, because
+ * there are now two senders — the contractor's own "Send these to them" and the
+ * scheduled reminder — and both already write a `selection_requested` event.
+ *
+ * It used to be the newest of job_selections.chase_sent_at / overdue_sent_at,
+ * which was wrong in both directions: the manual button stamped those columns
+ * (suppressing the first scheduled reminder for every dated choice on the job),
+ * and nothing else could ever appear there. Now the sweep owns its own ledger
+ * and stamps nothing on the choice, so reading those columns would report a
+ * board that had been reminded about twice as never sent at all.
+ *
+ * Tolerant of a read failure: "we cannot tell you when" is the honest answer,
+ * and it is not worth failing the job page over.
+ */
+export async function lastSelectionSendAt(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('job_feed')
+    .select('created_at')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('kind', 'selection_requested')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return (data?.created_at as string | null) ?? null;
+}
+
+/**
+ * A needed-by date moved, was cleared, or the choice it belonged to went away.
+ * Fix what has not gone out yet.
+ *
+ * Cancels every PENDING row in the reminder ledger for this job whose needed-by
+ * date no longer corresponds to a date some open choice actually carries. SENT
+ * rows are never touched — they are the record of a message a homeowner really
+ * received, and rewriting history to match a new deadline would make the job
+ * feed lie about what somebody was told.
+ *
+ * Lives here rather than in the sweep because this is the moment it matters:
+ * between an edit and the next hourly run is exactly the window in which a
+ * customer gets chased about a deadline that no longer exists. The sweep would
+ * eventually stop chasing on its own — its plan is derived from the live choices
+ * — but "eventually" is up to an hour of texts nobody meant to send, and a
+ * pending row abandoned by a crashed run would block its stage indefinitely.
+ *
+ * Tolerant of a pre-migration database: no table, nothing to cancel.
+ */
+export async function resyncChoiceReminders(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+): Promise<{ cancelled: number }> {
+  const { data: choices, error } = await supabase
+    .from('job_selections')
+    .select('decide_by, status')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId);
+  if (error) return { cancelled: 0 };
+
+  const live = new Set(
+    (choices ?? [])
+      .filter((choice) => choice.status === 'open' && choice.decide_by)
+      .map((choice) => String(choice.decide_by)),
+  );
+
+  const { data: pending, error: ledgerError } = await supabase
+    .from('selection_reminders')
+    .select('id, needed_by')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('status', 'pending');
+  if (ledgerError) return { cancelled: 0 };
+
+  const stale = (pending ?? []).filter((row) => !live.has(String(row.needed_by))).map((row) => row.id as string);
+  if (stale.length === 0) return { cancelled: 0 };
+
+  await supabase
+    .from('selection_reminders')
+    .update({ status: 'cancelled', failure_reason: 'needed_by_changed', updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .in('id', stale);
+
+  return { cancelled: stale.length };
+}
+
 function toOption(row: Row): SelectionOption {
   return {
     id: row.id as string,
@@ -119,7 +211,7 @@ export async function updateSelection(
 ): Promise<{ ok: boolean; message?: string }> {
   const { data: existing } = await supabase
     .from('job_selections')
-    .select('status')
+    .select('status, job_id, decide_by')
     .eq('account_id', accountId)
     .eq('id', selectionId)
     .maybeSingle();
@@ -127,6 +219,12 @@ export async function updateSelection(
   if (existing.status === 'chosen') {
     return { ok: false, message: 'They have already chosen. Cancel this and add a new choice rather than changing it under them.' };
   }
+
+  // Read BEFORE the write. Comparing against `existing` afterwards would be
+  // asking a row whether it used to be different, and the answer depends on
+  // whether the client handed back a copy or a live reference.
+  const dateChanged =
+    input.decideBy !== undefined && (input.decideBy || null) !== ((existing.decide_by as string | null) ?? null);
 
   const patch: Row = { updated_at: new Date().toISOString() };
   if (input.title !== undefined) patch.title = input.title.trim().slice(0, 160);
@@ -136,7 +234,23 @@ export async function updateSelection(
   if (input.creditUnderspend !== undefined) patch.credit_underspend = input.creditUnderspend;
 
   const { error } = await supabase.from('job_selections').update(patch).eq('account_id', accountId).eq('id', selectionId);
-  return error ? { ok: false, message: error.message } : { ok: true };
+  if (error) return { ok: false, message: error.message };
+
+  // MOVING THE DATE MOVES THE REMINDERS. A needed-by date is the entire schedule
+  // for this choice, so changing or clearing it invalidates anything not yet
+  // sent for the old one — and the window between this edit and the next hourly
+  // sweep is exactly when a homeowner would otherwise be chased about a deadline
+  // that no longer exists. Already-SENT reminders are untouched: they are a
+  // record of a message somebody really received.
+  //
+  // Best-effort. A resync that fails must not fail the edit — the sweep's own
+  // claim key includes needed_by, so a stale pending row can at worst delay one
+  // reminder, while a refused edit loses the contractor's work.
+  if (dateChanged) {
+    await resyncChoiceReminders(supabase, accountId, existing.job_id as string).catch(() => ({ cancelled: 0 }));
+  }
+
+  return { ok: true };
 }
 
 export async function setSelectionStatus(
@@ -145,6 +259,13 @@ export async function setSelectionStatus(
   selectionId: string,
   status: 'open' | 'cancelled',
 ): Promise<void> {
+  const { data: existing } = await supabase
+    .from('job_selections')
+    .select('job_id')
+    .eq('account_id', accountId)
+    .eq('id', selectionId)
+    .maybeSingle();
+
   await supabase
     .from('job_selections')
     .update({ status, updated_at: new Date().toISOString() })
@@ -153,6 +274,13 @@ export async function setSelectionStatus(
     // Never reopen a made decision through this path — that's what the snapshot
     // exists to protect.
     .neq('status', 'chosen');
+
+  // Taking a choice off the table is one of the automatic stops. If it was the
+  // last one carrying its needed-by date, the reminder queued against that date
+  // is now about nothing.
+  if (existing?.job_id) {
+    await resyncChoiceReminders(supabase, accountId, existing.job_id as string).catch(() => ({ cancelled: 0 }));
+  }
 }
 
 export async function addOption(
