@@ -343,3 +343,85 @@ describe('nothing scrolls sideways', () => {
     expect(narrow).toContain('flex-direction: column');
   });
 });
+
+/* ===========================================================================
+   7. The hero has depth, and it moves
+   ======================================================================== */
+describe('the glow and the shimmer', () => {
+  const ANIMATIONS = ['ground-drift-a', 'ground-drift-b', 'hero-bloom', 'hero-core'];
+
+  it('runs two layers behind the devices and two on the ground', () => {
+    for (const name of ANIMATIONS) {
+      expect(CSS, name).toContain(`@keyframes ${name}`);
+      expect(CSS, `${name} is declared but never used`).toContain(`animation: ${name}`);
+    }
+  });
+
+  /**
+   * Two layers rather than one, at durations with no common factor. One pulsing
+   * ellipse is a heartbeat — the eye locks onto the beat and starts watching
+   * that instead of the product — and two cycles that share a factor
+   * re-synchronise, which reads as a loop.
+   */
+  it('gives each layer its own period, and no two of them a shared factor', () => {
+    const seconds = [...CSS.matchAll(/animation: [a-z-]+ (\d+)s/g)].map((m) => Number(m[1]));
+    expect(seconds).toHaveLength(4);
+    expect(new Set(seconds).size).toBe(4);
+    for (const a of seconds) {
+      for (const b of seconds) {
+        if (a !== b) expect(Math.max(a, b) % Math.min(a, b), `${a}s and ${b}s`).not.toBe(0);
+      }
+    }
+  });
+
+  /* Transform and opacity are what a compositor can animate without repainting.
+     Moving the gradient's own position would re-blur a full-viewport surface on
+     every frame, which is the version of this that heats a phone up. */
+  it('animates only what composites', () => {
+    for (const name of ANIMATIONS) {
+      const at = CSS.indexOf(`@keyframes ${name}`);
+      const frames = CSS.slice(at, CSS.indexOf('\n}', at));
+      // Anywhere in the frame, not at line start: these keyframes are written
+      // one per line — `from { transform: …; opacity: …; }`.
+      const props = [...frames.matchAll(/\b([a-z-]+)\s*:/g)].map((m) => m[1]);
+      expect(props.length, name).toBeGreaterThan(0);
+      for (const prop of props) expect(['transform', 'opacity'], `${name} animates ${prop}`).toContain(prop);
+    }
+  });
+
+  /* Ambient motion with no trigger — nothing the reader started and nothing
+     they can stop. */
+  it('stops every one of them for anyone who asked for less motion', () => {
+    const reduced = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
+    for (const selector of ['.ground::before', '.ground::after', '.heroArt::before', '.heroArt::after']) {
+      expect(reduced, selector).toContain(selector);
+    }
+    expect(reduced).toContain('animation: none');
+  });
+
+  /**
+   * drop-shadow, never box-shadow. The hero is a cut-out on transparency, and
+   * box-shadow traces the image's RECTANGLE — a hard-edged slab behind two
+   * devices that have no rectangle. drop-shadow follows the alpha.
+   */
+  it('shadows the silhouette rather than the image box', () => {
+    const shot = ruleFor('.heroShot');
+    expect(shot).toContain('drop-shadow(');
+    expect(shot).not.toContain('box-shadow');
+    // Contact, mid, ambient, and the warm rim at no offset.
+    expect((shot.match(/drop-shadow\(/g) ?? []).length).toBe(4);
+    expect(shot).toContain('drop-shadow(0 0 34px rgba(255, 90, 18, 0.24))');
+  });
+
+  /* The drift moves ±4%; a layer that ended at the viewport edge would slide a
+     hard edge into view, and an oversized one would widen the document if the
+     ground did not clip it. */
+  it('oversizes the drifting layers and clips them', () => {
+    expect(ruleFor('.ground::before,\n.ground::after')).toContain('inset: -25%');
+    // Past the shared token block, which also ends in "\n.ground {" and is what
+    // a naive lookup finds — the same trap as the palette test above.
+    const after = CSS.slice(CSS.indexOf('}', CSS.indexOf('.page,\n.ground {')));
+    const own = after.indexOf('\n.ground {');
+    expect(after.slice(own, after.indexOf('}', own))).toContain('overflow: hidden');
+  });
+});

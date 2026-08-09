@@ -57,14 +57,62 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  /* FLAT. Nothing but the navy.
-     It carried two viewport-sized orange washes at first, and two mistakes came
-     with them: over 5,000px of page a fixed glow is a vignette that never moves,
-     and washes that large stop being a highlight and become the page colour.
-     The warmth belongs to the things that are warm — the hero art, the demo
-     panel, the closing band — and each of those carries its own, so it scrolls
-     with the content it belongs to. */
   background: var(--ground);
+  /* The sheen below is oversized so its drift never exposes an edge; clipping it
+     here is what stops that overhang becoming page width. */
+  overflow: hidden;
+}
+
+/**
+ * THE SHIMMER — the navy breathing, not a second colour.
+ *
+ * This started as two viewport-sized orange washes and had to come out: at
+ * 0.16 alpha over 5,000px they stopped being a highlight and became the page
+ * colour, and being fixed they were a vignette that never moved. Both faults
+ * were about being STATIC and STRONG.
+ *
+ * So: a third of the alpha, and always moving. Two soft lobes drifting across
+ * each other on a slow cycle, out of phase, so the light never repeats the same
+ * arrangement in the time anybody spends on the page. At 0.055 the navy is
+ * still unambiguously navy; what reads is depth rather than a tint.
+ *
+ * TRANSFORM AND OPACITY ONLY. The blur is rasterised once and the layer is then
+ * composited — animating the gradient's own position would re-blur a
+ * full-viewport surface every frame, which is the version of this that heats a
+ * phone up.
+ */
+.ground::before,
+.ground::after {
+  content: '';
+  position: absolute;
+  /* Oversized deliberately: the drift moves ±4%, and an element that ended at
+     the viewport edge would slide a hard edge into view. */
+  inset: -25%;
+  will-change: transform, opacity;
+}
+
+.ground::before {
+  background: radial-gradient(38% 34% at 26% 24%, rgba(255, 90, 18, 0.055), transparent 68%);
+  filter: blur(60px);
+  animation: ground-drift-a 46s ease-in-out infinite alternate;
+}
+
+.ground::after {
+  background: radial-gradient(34% 30% at 74% 70%, rgba(255, 90, 18, 0.04), transparent 66%);
+  filter: blur(70px);
+  /* Longer, and not a multiple of the other — two cycles that share a factor
+     re-synchronise, and a shimmer that repeats on a beat reads as a loop. */
+  animation: ground-drift-b 61s ease-in-out infinite alternate;
+}
+
+@keyframes ground-drift-a {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); opacity: 0.75; }
+  to { transform: translate3d(3%, 2.5%, 0) scale(1.12); opacity: 1; }
+}
+
+@keyframes ground-drift-b {
+  from { transform: translate3d(2.5%, 2%, 0) scale(1.08); opacity: 1; }
+  to { transform: translate3d(-2%, -2.5%, 0) scale(1); opacity: 0.7; }
 }
 
 /* ---------------------------------------------------------------- */
@@ -223,18 +271,51 @@
   justify-content: flex-end;
 }
 
-/* The bloom sits BEHIND the cut-out and is smaller than it, so what reads is a
-   warm light on the navy rather than a halo tracing the devices. It scrolls
-   away with the hero, which is the difference between a highlight and a tint on
-   the whole page. */
-.heroArt::before {
+/**
+ * THE BLOOM BEHIND THE DEVICES — atmosphere, not a halo.
+ *
+ * Both layers sit BEHIND the cut-out and are smaller than it, so what reads is
+ * a warm light falling on the navy rather than an outline tracing the laptop.
+ * They scroll away with the hero, which is the difference between a highlight
+ * and a tint on the whole page.
+ *
+ * Two of them, breathing out of phase and at different speeds, because one
+ * pulsing ellipse is a heartbeat — the eye locks onto the beat and it becomes
+ * the thing you are looking at instead of the product.
+ */
+.heroArt::before,
+.heroArt::after {
   content: '';
   position: absolute;
-  inset: 10% 4% 16% 8%;
   border-radius: 999px;
+  z-index: 0;
+  will-change: transform, opacity;
+}
+
+.heroArt::before {
+  inset: 10% 4% 16% 8%;
   background: radial-gradient(circle, rgba(255, 90, 18, 0.26), transparent 66%);
   filter: blur(52px);
-  z-index: 0;
+  animation: hero-bloom 11s ease-in-out infinite alternate;
+}
+
+/* The core: tighter, warmer, and offset up-left onto the laptop screen rather
+   than centred on the pair — light has a source. */
+.heroArt::after {
+  inset: 22% 26% 34% 16%;
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.22), transparent 70%);
+  filter: blur(44px);
+  animation: hero-core 17s ease-in-out infinite alternate;
+}
+
+@keyframes hero-bloom {
+  from { transform: scale(0.94); opacity: 0.72; }
+  to { transform: scale(1.07); opacity: 1; }
+}
+
+@keyframes hero-core {
+  from { transform: translate3d(-2%, 1.5%, 0) scale(1.04); opacity: 1; }
+  to { transform: translate3d(2%, -1.5%, 0) scale(0.92); opacity: 0.6; }
 }
 
 .heroShot {
@@ -245,6 +326,32 @@
   /* The master is 956px wide and the column is ~640px at 1180, so it is never
      drawn above ~1.5x density and never upscaled past its own pixels. */
   max-width: 660px;
+  /**
+   * DEPTH ON THE OBJECT ITSELF.
+   *
+   * drop-shadow, never box-shadow: this is a cut-out on transparency, and
+   * box-shadow would trace the image's RECTANGLE — a hard-edged slab floating
+   * behind two devices that have no rectangle. drop-shadow follows the alpha,
+   * so the shadow is the shape of the laptop and the phone.
+   *
+   * Four passes, near to far, which is how a real one falls off:
+   *   1  contact   tight and dark, directly under. What stops the pair
+   *                hovering — the single most load-bearing of the four.
+   *   2  mid       the body of the shadow.
+   *   3  ambient   wide and weak, so the falloff has somewhere to end.
+   *   4  rim       the warm one, at no offset. This is the page's own light
+   *                catching the edges, and it is what ties the cut-out to the
+   *                bloom behind it instead of leaving it pasted on.
+   *
+   * Each filter runs on the output of the last, so the order is the depth
+   * order and the cost is four passes over one static image — paid once, never
+   * per frame, because nothing here animates.
+   */
+  filter:
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 18px 32px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 42px 70px rgba(0, 0, 0, 0.3))
+    drop-shadow(0 0 34px rgba(255, 90, 18, 0.24));
 }
 
 /* ---------------------------------------------------------------- */
@@ -391,8 +498,28 @@
   color: var(--flare);
 }
 
+/**
+ * MOTION IS OPTIONAL, AND ALL OF IT.
+ *
+ * Four ambient animations run on this page with nothing to trigger them — two
+ * on the background, two behind the hero art — so for somebody who has asked
+ * their system for less motion there is no way to stop them and nothing they
+ * did to start them. That is the exact case this media query exists for.
+ *
+ * Held at a resting frame rather than removed: `animation: none` snaps each
+ * layer back to its authored inset and full opacity, so the glow and the
+ * shimmer are still there and simply do not move. The drop-shadows on the
+ * image are untouched — depth is not motion.
+ */
 @media (prefers-reduced-motion: reduce) {
   .featuredCard:hover { transform: none; }
+
+  .ground::before,
+  .ground::after,
+  .heroArt::before,
+  .heroArt::after {
+    animation: none;
+  }
 }
 
 /* ---------------------------------------------------------------- */
