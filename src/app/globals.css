@@ -27292,9 +27292,13 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-tl-job[data-size='xs'] .sched-tl-job-city,
 .sched-tl-job[data-size='xs'] .sched-tl-job-foot,
 .sched-tl-job[data-size='xs'] .sched-tl-job-span,
-.sched-tl-job[data-size='sm'] .sched-tl-job-crew,
+/* SM IS THREE LINES NOW, NOT FOUR. The foot used to survive here with the crew
+   hidden inside it, which left the status badge on its own row — a fourth line
+   on a card that has room for three since the hour came down to 44px. The
+   status is not lost by dropping it: it is what the block's COLOUR encodes,
+   and the legend above the grid names all four. */
+.sched-tl-job[data-size='sm'] .sched-tl-job-foot,
 .sched-tl-job[data-size='sm'] .sched-tl-job-span { display: none; }
-.sched-tl-job[data-size='sm'] .sched-tl-job-foot { margin-top: 0; }
 
 /* And the same for width. Three or more jobs sharing a column leaves each about
    47px on a tablet, which is not enough for a city, a crew, a status badge and
@@ -27569,13 +27573,16 @@ body[data-schedule-overlay="job"] .sched-queue {
 /* Tablet: three columns, and the hour shrinks because the whole grid has less
    height to give. The gutter narrows with it — "10 AM" still fits. */
 @media (max-width: 1279.98px) {
-  /* 46 rather than 54, for the same reason the desktop hour came down to 52:
+  /* 42 rather than 54, for the same reason the desktop hour came down to 44:
      the axis runs to 8pm now and thirteen hours have to fit without a nested
-     scrollbar. 13 x 46 is 598px, inside the 620 this used to cap at. The
-     max-height comes off entirely — the rule above already sizes the box to
-     its own hours, and a viewport-relative cap here would put the scrollbar
-     straight back on a short window. */
-  .sched-tl { --tl-gutter: 3rem; --tl-hour-h: 46px !important; }
+     scrollbar. 13 x 42 is 546px, inside the 620 this used to cap at. Two
+     pixels under the desktop hour rather than the eight it used to be —
+     blockSize's thresholds are shared across breakpoints, so a tablet hour far
+     below the desktop one would put the SM band under the 60px its three lines
+     need. The max-height comes off entirely: the rule above already sizes the
+     box to its own hours, and a viewport-relative cap here would put the
+     scrollbar straight back on a short window. */
+  .sched-tl { --tl-gutter: 3rem; --tl-hour-h: 42px !important; }
   .sched-crew { --crew-name: 8rem; }
   .sched-month-cell { min-height: 5rem; }
 }

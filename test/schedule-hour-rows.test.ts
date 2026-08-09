@@ -18,6 +18,14 @@ const at = (key: string, startMinutes: number | null, durationMinutes: number): 
 });
 
 /**
+ * The two hour heights, read from where they are actually declared rather than
+ * copied here — the whole point of the fit checks below is that they follow
+ * whatever the numbers become.
+ */
+const HOUR_PX = Number(/const HOUR_PX = (\d+);/.exec(TIMELINE)?.[1]);
+const TABLET_HOUR_PX = Number(/--tl-hour-h: (\d+)px !important/.exec(CSS)?.[1]);
+
+/**
  * The day and week calendars, after the audit that said they were shorter than
  * the day they were drawing.
  *
@@ -152,23 +160,64 @@ describe('the calendar is exactly as tall as the hours it holds', () => {
    * calendar has lost the room this was supposed to be protecting.
    */
   it('thirteen hours still fit in the height the old cap allowed', () => {
-    const hourPx = Number(/const HOUR_PX = (\d+);/.exec(TIMELINE)?.[1]);
-    expect(hourPx).toBeGreaterThan(0);
-    expect(hourPx * 13).toBeLessThanOrEqual(720);
+    expect(HOUR_PX * 13).toBeLessThanOrEqual(720);
+    expect(TABLET_HOUR_PX * 13).toBeLessThanOrEqual(620);
+  });
+});
 
-    const tabletPx = Number(/--tl-hour-h: (\d+)px !important/.exec(CSS)?.[1]);
-    expect(tabletPx).toBeGreaterThan(0);
-    expect(tabletPx * 13).toBeLessThanOrEqual(620);
+/* ===========================================================================
+   4. The bill for a shorter hour
+   ---------------------------------------------------------------------------
+   A block's height is its duration times the hour, so every pixel off the hour
+   comes off every card on the grid. The detail thresholds have to move with it
+   or the same four lines get clipped mid-word — which is how a calendar starts
+   lying about what it knows.
+   ======================================================================== */
+describe('every band still fits the shortest job in it', () => {
+  /** What each band draws, at 12px type with the card's padding and border. */
+  const NEEDS_PX = { xs: 20, sm: 60, md: 80 } as const;
+
+  const thresholds = () => {
+    const body = TIMELINE.slice(TIMELINE.indexOf('function blockSize('));
+    const [, xsMax] = /minutes < (\d+)\) return 'xs'/.exec(body) ?? [];
+    const [, smMax] = /minutes < (\d+)\) return 'sm'/.exec(body) ?? [];
+    return { xsMax: Number(xsMax), smMax: Number(smMax) };
+  };
+
+  it('reads its sizes from duration, not from measured pixels', () => {
+    // Which is what lets the hour differ per breakpoint at all.
+    expect(TIMELINE).toContain('function blockSize(minutes: number)');
+    expect(TIMELINE).toContain('blockSize(entry.endMinutes - entry.startMinutes)');
+    expect(TIMELINE).toContain('data-size={size}');
   });
 
+  for (const [name, hourPx] of [['desktop', () => HOUR_PX], ['tablet', () => TABLET_HOUR_PX]] as const) {
+    it(`the shortest sm and md block clears its lines on ${name}`, () => {
+      const { xsMax, smMax } = thresholds();
+      const px = (minutes: number) => (minutes / 60) * hourPx();
+      // The shortest job in each band is the one that has to fit.
+      expect(px(xsMax), 'shortest sm').toBeGreaterThanOrEqual(NEEDS_PX.sm);
+      expect(px(smMax), 'shortest md').toBeGreaterThanOrEqual(NEEDS_PX.md);
+      // And an xs strip is never so short it cannot hold its one row.
+      expect(px(30), 'a half-hour strip').toBeGreaterThanOrEqual(NEEDS_PX.xs);
+    });
+  }
+
   /**
-   * Block detail lines are dropped by DURATION, not by measured pixels, which
-   * is what makes the hour height safe to change at all — an hour-long job
-   * shows the same lines at 52px as it did at 62px.
+   * SM is three lines. The foot used to survive there with only the crew
+   * hidden inside it, which left the status badge on a fourth row.
    */
-  it('shortening the hour cannot silently strip a block’s detail lines', () => {
-    expect(TIMELINE).toContain('function blockSize(minutes: number)');
-    expect(TIMELINE).toContain('data-size={size}');
-    expect(TIMELINE).toContain('blockSize(entry.endMinutes - entry.startMinutes)');
+  it('sm draws three lines, not four', () => {
+    expect(CSS).toContain(".sched-tl-job[data-size='sm'] .sched-tl-job-foot,\n.sched-tl-job[data-size='sm'] .sched-tl-job-span { display: none; }");
+    // The status is not lost with the badge: it is what the block's colour
+    // encodes, and CalendarLegend names all four.
+    expect(CSS).toContain('.calendar-legend-dot');
+  });
+
+  it('and everything dropped is still in the DOM for a screen reader', () => {
+    expect(TIMELINE).toContain('className="sched-tl-job-city"');
+    expect(TIMELINE).toContain('className="sched-tl-job-foot"');
+    // Plus the hover title, which carries the whole job whatever the size.
+    expect(TIMELINE).toContain('job.city_label,');
   });
 });

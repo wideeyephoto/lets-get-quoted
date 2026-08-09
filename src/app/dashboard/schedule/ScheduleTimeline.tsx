@@ -43,16 +43,24 @@ import { useScheduleDrag } from './ScheduleDragProvider';
  * Everything positional in here is a PERCENTAGE of the axis, not a pixel, so
  * shrinking this on a tablet moves every block correctly with no JS involved.
  *
- * 52, down from 62, and the arithmetic is the reason. The scroller was capped
- * at 720px, which at 62px an hour is 11 hours and a half — so a calendar
- * running 7am to 7pm could not be seen without scrolling INSIDE a page that
- * already scrolls. At 52 the same thirteen hours are 676px: still inside the
- * old cap, with an hour and a half more day on screen and no nested scrollbar.
- * The block card is unharmed by it — its detail lines are dropped by DURATION
- * (see blockSize) rather than by measured height, so an hour-long job shows
- * exactly what it showed before.
+ * 44, down from 62 by way of 52. Thirteen hours — 7am to 8pm — is 572px, so
+ * the whole working day and its evening fit on a laptop with no scrollbar
+ * inside the page's own scrollbar, and with room left under the calendar for
+ * the unscheduled rail. That was the point of shortening it.
+ *
+ * IT IS NOT A FREE NUMBER, and blockSize below is where the bill lands. A
+ * block's height is its duration times this, so every pixel taken off the hour
+ * is taken off every card on the grid. At 62 an hour-long job had 62px and
+ * could carry four lines; at 44 it has 44 and can carry two. The thresholds
+ * moved with it, so the card still prints only what it has room for — the
+ * alternative is the same four lines clipped mid-word, which is how a calendar
+ * starts lying about what it knows.
+ *
+ * Anything shorter than this and the SM band stops working: three lines need
+ * about 60px, so the shortest job that can carry a city — an hour and a half —
+ * would fall under it. That is the floor, not a preference.
  */
-const HOUR_PX = 52;
+const HOUR_PX = 44;
 
 /**
  * The bottom of the calendar: 8pm, so the last labelled hour is 7 PM.
@@ -88,12 +96,28 @@ const OVERFLOW_PX = 46;
  * How much of a block has to exist before its detail lines are worth printing.
  *
  * In MINUTES, not pixels, so the thresholds survive the hour height changing
- * per breakpoint. A 30-minute job is a strip: time and name, nothing else. An
- * hour has room for the city. Anything longer gets the crew and the status too.
+ * per breakpoint — which is the whole reason this is a duration and not a
+ * measurement. What each band draws, and what that costs at 12px type with the
+ * card's own padding and border:
+ *
+ *   xs   time and name, side by side on one row          ~20px
+ *   sm   time, name, city, stacked                       ~60px
+ *   md   all of it — crew, status, "Day 2 of 4"          ~80px
+ *
+ * The thresholds are set from the SHORTEST job in each band, because that is
+ * the one that has to fit: at 44px an hour, 90 minutes is 66px (sm needs 60)
+ * and 120 minutes is 88px (md needs 80). Both clear, neither by much.
+ *
+ * They moved up when the hour came down from 62px, and an hour-long job lost
+ * its city line to it. That is the trade the shorter grid buys, taken
+ * deliberately: the line is still in the DOM for a screen reader, still in the
+ * hover title, and still on the card in Day view, where an hour is 44px of a
+ * much wider column. A clipped line would have been the alternative, and a
+ * calendar that prints half a city name is worse than one that prints none.
  */
 function blockSize(minutes: number): 'xs' | 'sm' | 'md' {
-  if (minutes < 45) return 'xs';
-  if (minutes < 90) return 'sm';
+  if (minutes < 90) return 'xs';
+  if (minutes < 120) return 'sm';
   return 'md';
 }
 
