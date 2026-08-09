@@ -2534,9 +2534,18 @@
    were sliced in half as they came up — so the pin, the panel height and the
    scroll target all move down by the header. */
 .root :global(.flagships) { overflow: clip; }
-.root :global(.sticky-product) {
-  top: 82px;
-  height: calc(100vh - 82px);
+/* SCOPED, because TWEAKS is appended last and an unconditional rule here beats
+   a media query earlier in the file. Below 1100px the source sheet sets
+   position:static and height:auto to un-stick this panel — and this rule,
+   setting only top and height, left it static with a hard height of
+   100vh minus 82px. On an iPhone that is also the classic 100vh trap: the value
+   is the LARGE viewport, so the panel was taller than the screen it was sized
+   for. Neither was visible on a desktop, which is where it was checked. */
+@media (min-width: 1101px) {
+  .root :global(.sticky-product) {
+    top: 82px;
+    height: calc(100vh - 82px);
+  }
 }
 /* goToStep() scrolls a step to centre; without this the browser can still park
    one under the fixed header when the step is taller than the viewport. */
@@ -5777,21 +5786,35 @@
    could not: which steps you have already passed.
    =========================================================================== */
 
+/* Zero-tall and sticky, as the first child of .steps-column — which spans the
+   whole tour in BOTH layouts, which is the entire point. Inside .sticky-product
+   it worked on a desktop by accident: that panel is sticky above 1100px and
+   static below, so on a phone the rail sat in a block positioned after all
+   three steps and scrolled past the reader once.
+
+   height:0 keeps it out of the column's flow, so it cannot push a card down,
+   and the list hangs off it. top:50vh puts the pinned line at the middle of the
+   screen, which is where the wheel's centre used to sit. */
 .root :global(.step-rail) {
-  position: absolute;
-  left: -74px;
-  top: 50%;
-  transform: translateY(-50%);
+  position: sticky;
+  top: 50vh;
+  height: 0;
   z-index: 3;
 }
 .root :global(.step-rail ol) {
+  position: absolute;
+  /* Just outside the copy column, in .scrolly-layout's gutter. */
+  left: 100%;
+  margin-left: 16px;
+  top: 0;
+  transform: translateY(-50%);
   display: grid;
   gap: 34px;                       /* the connector lives in this gap */
-  margin: 0;
+  margin-block: 0;
   padding: 0;
   list-style: none;
 }
-.root :global(.step-rail li) { position: relative; }
+.root :global(.step-rail li) { position: relative; margin: 0; }
 
 /* The connector, drawn in the gap above each node but the first. A pseudo
    element on the LI rather than a border on the button: the button is a circle
@@ -5867,14 +5890,22 @@
 /* The gutter closes below the two-column tour. Same answer the wheel used:
    the top-right of the stage, clear of both columns — but vertical, and
    smaller, so three nodes still fit above the fold of the panel. */
+/* One column below here, so there is no gutter to sit in — the rail goes to the
+   right edge of the column instead, which on a phone is the edge of the screen
+   and clear of the card's own padding. Still sticky: the whole reason this
+   moved. */
 @media (max-width: 1100px) {
-  .root :global(.step-rail) {
+  .root :global(.step-rail ol) {
     left: auto;
-    right: 6px;
-    top: 0;
-    transform: none;
+    right: 0;
+    margin-left: 0;
+    margin-right: -6px;
+    gap: 22px;
   }
-  .root :global(.step-rail ol) { gap: 22px; }
+  /* The rail floats over the right edge of these cards now, so the copy stops
+     short of it. Measured at 390 before this: the node sat on "clear project
+     summary" in step 02's paragraph. */
+  .root :global(.feature-step) { padding-right: 54px; }
   .root :global(.step-rail li + li)::before { top: -22px; height: 22px; }
   .root :global(.step-rail button) { width: 34px; height: 34px; font-size: 10.5px; }
   .root :global(.step-rail li[data-state="current"] button) { box-shadow: 0 0 0 4px rgba(255, 106, 36, .12); }

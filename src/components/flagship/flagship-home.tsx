@@ -648,6 +648,39 @@ export default function FlagshipHome() {
 
         <div className="scrolly-layout">
           <div className="steps-column">
+            {/* THE RAIL LIVES IN THE STEPS COLUMN, not in the product panel.
+                It was inside .sticky-product, which is sticky above 1100px and
+                STATIC below it — so on a phone the rail was absolutely
+                positioned inside a block that sits after all three steps, and
+                it scrolled past once instead of following you down the tour.
+                Measured on an iPhone 13: on screen at one of seven scroll
+                positions through the section.
+
+                .steps-column spans the whole tour in both layouts, so a sticky
+                rail in here follows the reading at every width. It is zero-tall
+                and its list hangs off it absolutely, so it takes no space in the
+                column's flow and cannot push a card. */}
+            <nav className="step-rail" aria-label={`Feature ${active + 1} of ${features.length}`}>
+              <ol>
+                {features.map((feature, index) => (
+                  <li
+                    key={feature.number}
+                    data-state={index < active ? 'done' : index === active ? 'current' : 'todo'}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => goToStep(index)}
+                      aria-label={`View ${feature.kicker}`}
+                      aria-current={active === index ? 'step' : undefined}
+                    >
+                      <span className="step-rail-num">{feature.number}</span>
+                      <span className="step-rail-name">{feature.kicker}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+
             {features.map((feature, index) => (
               <article
                 className={`feature-step ${active === index ? "is-active" : ""}`}
@@ -678,41 +711,6 @@ export default function FlagshipHome() {
           </div>
 
           <div className="sticky-product">
-            {/* THE THREE STEPS, AS A STEPPER RATHER THAN A WHEEL.
-                It was a 104px ring that counter-rotated so the current number
-                came to the top, with the count in the middle. A wheel is a good
-                shape for something cyclical and these are not cyclical — they
-                are one, then two, then three, in order, and the section is read
-                by scrolling down them. A vertical rail says the same thing in
-                the same direction as the reading.
-
-                It also says more: the wheel showed which step you were on, and
-                this shows which ones you have already passed. Each node carries
-                its own state, so "done" and "still to come" are different
-                things to look at rather than the same dim grey.
-
-                <ol> and not a row of divs: three ordered items, and each button
-                marks itself aria-current="step" the way the wheel's did. */}
-            <nav className="step-rail" aria-label={`Feature ${active + 1} of ${features.length}`}>
-              <ol>
-                {features.map((feature, index) => (
-                  <li
-                    key={feature.number}
-                    data-state={index < active ? 'done' : index === active ? 'current' : 'todo'}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => goToStep(index)}
-                      aria-label={`View ${feature.kicker}`}
-                      aria-current={active === index ? 'step' : undefined}
-                    >
-                      <span className="step-rail-num">{feature.number}</span>
-                      <span className="step-rail-name">{feature.kicker}</span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            </nav>
             <ProductVisual active={active} />
             {/* An "Example — an invented business" pill sat here, between the
                 product panels and the progress rail. Removed on request. The
