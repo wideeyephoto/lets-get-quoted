@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function ResourcesPage() {
   return (
-    <main className="marketing-shell">
+    <main className="marketing-shell" id="main-content">
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <section className="section-block features-hero">

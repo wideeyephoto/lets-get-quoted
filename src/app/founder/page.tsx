@@ -9,7 +9,6 @@ import {
   MARKETING_MAIN_ID,
   MARKETING_PAGE_CLASS,
   MarketingCta,
-  MarketingHeader,
   PriceZeroDial,
 } from '@/components/marketing';
 import { FEATURE_CATEGORIES, FEATURE_COUNT } from '@/lib/features';
@@ -171,10 +170,15 @@ const TRAVEL_STAYS = {
 export default function FounderPage() {
   return (
     <>
-      {/* AppShell renders no chrome for this route (OWN_CHROME_MARKETING_ROUTES),
-          so the page draws the shared marketing header itself. */}
-      <MarketingHeader />
+      {/* The header comes from src/app/founder/layout.tsx now, which is the
+          same one the homepage and /features draw.
 
+          It used to be <MarketingHeader />, and that was the most visibly wrong
+          of the three headers this site had: a floating rounded card rather
+          than a full-bleed bar, a circle-check logo rather than the wordmark,
+          and a nav that offered Features / How it works / Pricing / FAQ /
+          Contact — omitting "For your trade" and, on the founder page, the link
+          to the founder page. */}
       <main className={MARKETING_PAGE_CLASS} id={MARKETING_MAIN_ID}>
         <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
         <div className="ambient-glow ambient-glow-b" aria-hidden="true" />

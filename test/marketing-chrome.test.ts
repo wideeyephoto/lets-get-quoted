@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { isOwnChromeRoute, OWN_CHROME_MARKETING_ROUTES } from '@/lib/marketing-chrome';
 
 /**
@@ -25,8 +27,6 @@ describe('isOwnChromeRoute', () => {
       '/login',
       '/welcome',
       '/demo',
-      '/pricing',
-      '/for/plumbing',
       '/client/jobs/token',
       '/site/acme',
       '/admin/accounts',
@@ -49,6 +49,61 @@ describe('isOwnChromeRoute', () => {
     // A route that merely starts with a listed one is not part of it.
     expect(isOwnChromeRoute('/foundering')).toBe(false);
     expect(isOwnChromeRoute('/how-it-works-really')).toBe(false);
+  });
+
+  /**
+   * The whole public site draws one header now, so every page a visitor can
+   * reach from the nav or the footer is on the list. These used to be the
+   * shell's job and the shell drew a different bar — see the note beside them
+   * in the module.
+   */
+  it('claims the rest of the public marketing site', () => {
+    for (const path of [
+      '/for',
+      '/for/plumbing',
+      '/pricing',
+      '/faq',
+      '/security',
+      '/resources',
+      '/resources/how-to-price-a-job',
+      '/contact',
+      '/privacy',
+      '/terms',
+      '/sms-terms',
+    ]) {
+      expect(isOwnChromeRoute(path), `${path} must draw its own header`).toBe(true);
+    }
+  });
+
+  /**
+   * The pairing this whole thing turns on.
+   *
+   * A route that mounts PublicHeaderLayout draws the site header itself. If it
+   * is NOT also on the own-chrome list, AppShell draws its bar too and the page
+   * gets two headers; the reverse — on the list, no layout — leaves the page
+   * with none. Neither is visible from either file on its own, so read the
+   * layouts off disk and check them against the list.
+   */
+  it('every route that mounts PublicHeaderLayout is on the list', () => {
+    const appDir = join(process.cwd(), 'src', 'app');
+    const mounted = readdirSync(appDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .filter((entry) => {
+        try {
+          return readFileSync(join(appDir, entry.name, 'layout.tsx'), 'utf8').includes(
+            'public-header-layout',
+          );
+        } catch {
+          return false;
+        }
+      })
+      .map((entry) => `/${entry.name}`);
+
+    // If this is 0 the check has quietly stopped checking anything.
+    expect(mounted.length).toBeGreaterThan(5);
+    for (const route of mounted) {
+      expect(isOwnChromeRoute(route), `${route} mounts the header but is not own-chrome`).toBe(true);
+    }
   });
 
   it('leaves the homepage candidates that still want the shell alone', () => {

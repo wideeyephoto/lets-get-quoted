@@ -40,7 +40,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
     .filter((template): template is NonNullable<typeof template> => Boolean(template));
 
   return (
-    <main className="marketing-shell">
+    <main className="marketing-shell" id="main-content">
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <section className="hero-copy trade-hero">

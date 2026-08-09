@@ -235,7 +235,7 @@ const pricingJsonLd = {
 
 export default function PricingPage() {
   return (
-    <main className="marketing-shell">
+    <main className="marketing-shell" id="main-content">
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className={styles.legalShell}>
+    <main className={styles.legalShell} id="main-content">
       <header className={styles.legalHeader}>
         <p className="eyebrow">Legal</p>
         <h1>Privacy Policy</h1>

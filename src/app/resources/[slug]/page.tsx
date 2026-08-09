@@ -45,7 +45,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
   };
 
   return (
-    <main className="marketing-shell">
+    <main className="marketing-shell" id="main-content">
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 

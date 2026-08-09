@@ -119,7 +119,7 @@ const faqJsonLd = {
 
 export default function FaqPage() {
   return (
-    <main className="marketing-shell">
+    <main className="marketing-shell" id="main-content">
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 

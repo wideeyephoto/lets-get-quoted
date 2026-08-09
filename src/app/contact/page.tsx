@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <main className={styles.legalShell}>
+    <main className={styles.legalShell} id="main-content">
       <header className={styles.legalHeader}>
         <p className="eyebrow">Contact</p>
         <h1>Get in touch</h1>

@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import styles from './flagship.module.css';
 
 /**
  * THE APP HOST IS PART OF THE URL ON PURPOSE. A session cookie belongs to
@@ -178,6 +179,35 @@ export function SiteHeader() {
         ) : null}
       </div>
     </header>
+  );
+}
+
+/**
+ * THE SAME HEADER, ON A PAGE THAT IS NOT WRITTEN IN THIS LANGUAGE.
+ *
+ * A flagship page renders <SiteHeader /> inside its own `.root` wrapper,
+ * because every rule that styles the header is scoped to that class — dropped
+ * in as a bare sibling it comes out as a 600px logo above five run-together
+ * links. But `.root` is also a full reset (margins off headings and
+ * paragraphs, list styling off ul/ol, decoration off links), so /for, /pricing,
+ * /founder and the rest of the public site cannot simply adopt it: their
+ * layout comes from globals.css and the reset would take it apart.
+ *
+ * This wraps the header and nothing else. The reset reaches the eight elements
+ * in the bar, the custom properties inherit into it, and the page underneath is
+ * untouched. See §100 in the generator for what the wrapper has to reserve and
+ * why it takes over the stickiness below 760px.
+ *
+ * `skipTo` is the page's own main landmark. It has to be rendered here rather
+ * than by the page, because the header comes first in the DOM and a skip link
+ * written after it is not a skip link.
+ */
+export function SiteHeaderSlot({ skipTo = '#main-content' }: { skipTo?: string }) {
+  return (
+    <div className={styles.root} data-chrome="slot">
+      <a className="skip-link" href={skipTo}>Skip to content</a>
+      <SiteHeader />
+    </div>
   );
 }
 

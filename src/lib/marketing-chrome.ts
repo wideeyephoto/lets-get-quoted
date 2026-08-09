@@ -25,6 +25,34 @@ export const OWN_CHROME_MARKETING_ROUTES = [
   // /features. It ships that site's header and footer, so the shell stands
   // aside here exactly as it does for the homepage.
   '/features-flagship',
+
+  /* THE REST OF THE PUBLIC SITE.
+     ------------------------------------------------------------------------
+     These used to render inside the shell's own public top bar, which meant
+     the marketing site had two headers and clicking between them redrew the
+     map: 82px fixed on /features, 70px sticky with an extra button on
+     /pricing. Every one of them now draws <SiteHeaderSlot /> — the same
+     header the homepage has — so the shell has to stand aside here too.
+
+     Losing the shell also loses the "See everything included" drawer, which
+     was the locked app preview. That drawer existed because the rail could
+     not be deleted; /features is the page that answers the same question, and
+     it is now two links away from every one of these pages instead of being
+     in the footer.
+
+     The four legal routes are here for the same reason: they are linked from
+     the footer of every marketing page, and a visitor clicking Privacy from
+     the homepage should not arrive somewhere that looks like a different
+     site. */
+  '/for',
+  '/pricing',
+  '/faq',
+  '/security',
+  '/resources',
+  '/contact',
+  '/privacy',
+  '/terms',
+  '/sms-terms',
 ];
 
 /**

@@ -3449,6 +3449,69 @@ const TWEAKS = `
      ambient motion this preference is asking us not to run. */
   .root :global(.glare) { display: none; }
 }
+
+/* ===========================================================================
+   §100 — ONE HEADER ACROSS THE PUBLIC SITE
+
+   The marketing site was wearing three different headers. Clicking the same
+   five nav links in order took a visitor through all of them:
+
+     /  /features  /how-it-works   .site-header      82px, fixed, full bleed
+     /for  /pricing                .public-topbar    70px, sticky, plus a
+                                                     "See everything included"
+                                                     button and a solid CTA
+     /founder                      MarketingHeader   100px, static, a floating
+                                                     rounded card, a DIFFERENT
+                                                     logo, and a nav missing
+                                                     both "For your trade" and
+                                                     "Founder" while carrying
+                                                     FAQ and Contact instead
+
+   The fix is to draw the real one everywhere, which runs into the thing that
+   made this hard in the first place: every rule that styles .site-header is
+   scoped to .root, and .root is a full CSS reset — it strips margins off
+   headings and paragraphs, list styling off ul/ol, and decoration off links.
+   Wrapping /for or /founder in it would restyle the whole page.
+
+   So .root wraps the HEADER ALONE. The reset reaches the eight elements
+   inside the bar and stops, the custom properties (--orange, --ink, --muted)
+   inherit into it as they do on a flagship page, and the page below keeps
+   globals.css exactly as it had it. Nothing on .root establishes a stacking
+   context, so the fixed header still positions against the viewport.
+
+   Two things the wrapper has to fix up, both because .site-header changes
+   position at 760px:
+
+     - Above 760 it is position:fixed, which takes no space in flow. On a
+       flagship page the hero's own top padding covers the 82px; these pages
+       have no such padding, so the wrapper reserves the height itself.
+     - At and below 760 it is sticky (it needs to be the containing block
+       for the open drawer). Sticky travels only within its parent, and this
+       parent is exactly one header tall — so the header would scroll away.
+       The wrapper takes the stickiness instead, and the child's own sticky
+       becomes a no-op inside it.
+
+   Transparent because the wrapper is otherwise a bare 82px strip of .root's
+   dark gradient sitting on pages with a warmer background. The fixed header
+   covers it at rest, but it is uncovered for the length of a scroll.
+   =========================================================================== */
+
+/* Attribute rather than a second class: CSS modules rewrite class names, and
+   an attribute selector passes through untouched, so this needs no :global. */
+.root[data-chrome='slot'] {
+  display: block;
+  height: 82px;
+  background: transparent;
+}
+
+@media (max-width: 760px) {
+  .root[data-chrome='slot'] {
+    height: auto;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.

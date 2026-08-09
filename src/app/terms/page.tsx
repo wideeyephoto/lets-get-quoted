@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function TermsOfServicePage() {
   return (
-    <main className={styles.legalShell}>
+    <main className={styles.legalShell} id="main-content">
       <header className={styles.legalHeader}>
         <p className="eyebrow">Legal</p>
         <h1>Terms of Service</h1>

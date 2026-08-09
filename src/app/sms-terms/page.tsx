@@ -29,7 +29,7 @@ export const metadata: Metadata = {
  */
 export default function SmsTermsPage() {
   return (
-    <main className={styles.legalShell}>
+    <main className={styles.legalShell} id="main-content">
       <header className={styles.legalHeader}>
         <p className="eyebrow">Legal</p>
         <h1>SMS Terms &amp; Conditions</h1>
