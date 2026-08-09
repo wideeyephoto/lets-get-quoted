@@ -100,6 +100,41 @@ export function leadBreakdown(summary: LeadSummary): string {
   return parts.join(' · ');
 }
 
+/**
+ * Why those leads need you — all of them, not just the ones from the website.
+ *
+ * The priority card said "5 leads need your attention" and explained two of
+ * them: "2 website leads are waiting for a reply." The other three were real,
+ * countable, and unmentioned, which reads as a number that does not add up. A
+ * headline whose own sub-line accounts for less than half of it teaches people
+ * to stop trusting the headline.
+ *
+ * Website leads still lead the sentence — a stranger who has had no reply at all
+ * is the most urgent kind — but every lead in the total is now named.
+ */
+export function leadNeedsYouBreakdown(summary: LeadSummary): string {
+  if (summary.needsYou === 0) return 'Nothing waiting on you.';
+
+  const parts: string[] = [];
+  if (summary.fromWebsite > 0) {
+    parts.push(`${summary.fromWebsite} website lead${summary.fromWebsite === 1 ? '' : 's'}`);
+  }
+  // The rest of `new` — phoned in, walked up, referred, typed in by hand.
+  const otherNew = summary.new - summary.fromWebsite;
+  if (otherNew > 0) {
+    parts.push(`${otherNew} other new lead${otherNew === 1 ? '' : 's'}`);
+  }
+  if (summary.contacted > 0) {
+    parts.push(`${summary.contacted} contacted lead${summary.contacted === 1 ? '' : 's'}`);
+  }
+
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  // The verb agrees with the whole subject, not with the last clause: "4
+  // website leads and 1 contacted lead NEED follow-up" is a compound subject and
+  // takes the plural, while a lone lead takes the singular.
+  return `${list} ${summary.needsYou === 1 ? 'needs' : 'need'} follow-up.`;
+}
+
 /** What the rail's tooltip says, so the badge and the dashboard agree. */
 export function leadRailTitle(summary: LeadSummary): string {
   if (summary.open === 0) return 'No open leads';

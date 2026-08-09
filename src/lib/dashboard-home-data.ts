@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { expandScheduledJobs, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
+import { expandScheduledJobs, formatMoney, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { listLeads } from '@/lib/leads';
@@ -8,8 +8,19 @@ import { getAutomationActivity } from '@/lib/automation-activity';
 import { countRebookCandidates } from '@/lib/rebook';
 import { countRecentPrivateFeedback } from '@/lib/reviews';
 import { getSiteContent } from '@/lib/site-content';
-import { leadSummary } from '@/lib/lead-summary';
+import { leadNeedsYouBreakdown, leadSummary } from '@/lib/lead-summary';
 import { recommendBlogTopic } from '@/lib/blog-topics';
+import { collectSchedulingIssues, schedulingIssueBreakdown } from '@/lib/scheduling-issues';
+import { resolvePayPeriod } from '@/lib/labor';
+import {
+  collectedInWindow,
+  outstandingInvoices,
+  quotesAwaitingApproval,
+  scheduledWorkValue,
+  type InvoiceRow,
+  type PaymentRow,
+  type QuotedJobRow,
+} from '@/lib/dashboard-money';
 
 /**
  * Everything the dashboard home derives.
@@ -76,10 +87,28 @@ export type DashboardHome = {
   jobsNeedingCrewCount: number;
   jobsMissingTimeCount: number;
   unscheduledJobCount: number;
+  /**
+   * Distinct jobs with at least one scheduling problem — the SIZE OF A UNION of
+   * the three counts above, never their sum. See lib/scheduling-issues.
+   */
+  schedulingIssueCount: number;
   stuckScheduleCount: number;
+
+  /** What the contractor is owed, net of deposits and part-payments. */
+  outstanding: { total: number; count: number };
+  /** Priced jobs still at the quote stage, and what they add up to. */
+  openQuotes: { total: number; count: number };
+  /** Quoted value of approved work on the calendar in the next 30 days. */
+  bookedWork: { total: number; count: number };
+  /** Paid, net of refunds, inside the account's own calendar month. */
+  collectedThisMonth: { total: number; count: number };
+  /** The month that figure covers — "August 2026", in the account's zone. */
+  collectedMonthLabel: string;
 
   topPriorities: PriorityItem[];
   restPriorities: PriorityItem[];
+  /** Waiting on the customer, not on the owner. Never mixed into the priorities. */
+  waitingItems: PriorityItem[];
 };
 
 export async function buildDashboardHome(
@@ -90,7 +119,7 @@ export async function buildDashboardHome(
   const basePath = options.basePath ?? '/dashboard';
 
   const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
-    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled, auto_review_request, quote_followups_enabled, appointment_reminders_enabled, booking_weekdays').eq('id', accountId).single(),
+    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled, auto_review_request, quote_followups_enabled, appointment_reminders_enabled, booking_weekdays, timezone').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at, content').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
@@ -170,12 +199,20 @@ export async function buildDashboardHome(
     };
   });
 
-  const jobsNeedingCrewCount = next7Days.reduce(
-    (sum, day) => sum + day.jobs.filter((job) => (assignmentsByJob[job.id] ?? []).length === 0).length,
-    0,
-  );
-  const jobsMissingTimeCount = next7Days.reduce((sum, day) => sum + day.jobs.filter((job) => !job.scheduled_time).length, 0);
   const unscheduledActiveJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived' && !job.scheduled_for);
+
+  // ONE JOB, ONE ISSUE — see lib/scheduling-issues for the two over-counts this
+  // replaces. The headline is the size of a union; the three reason lists are
+  // still their own honest lengths and will add up to more than it.
+  const schedulingIssues = collectSchedulingIssues({
+    windowOccurrences: next7Days.flatMap((day) => day.jobs),
+    assignmentsByJob,
+    unscheduledJobIds: unscheduledActiveJobs.map((job) => job.id),
+  });
+  const jobsNeedingCrewCount = schedulingIssues.needsCrew.length;
+  const jobsMissingTimeCount = schedulingIssues.missingTime.length;
+  const unscheduledJobCount = schedulingIssues.unscheduled.length;
+  const schedulingIssueCount = schedulingIssues.all.length;
 
   // Count jobs whose LATEST live schedule request is "needs more options" — a
   // raw count of needs_more_options rows would over-count (the status is never
@@ -183,7 +220,32 @@ export async function buildDashboardHome(
   // the latest request per job via the same helper.
   const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledActiveJobs.map((job) => job.id));
   const stuckScheduleCount = Object.values(scheduleRequestByJob).filter((request) => request.status === 'needs_more_options').length;
-  const unscheduledJobCount = unscheduledActiveJobs.length;
+
+  // -- Money -------------------------------------------------------------------
+  //
+  // Four reads, three pure calculators, and a month boundary cut in the
+  // ACCOUNT'S zone rather than the server's — see lib/dashboard-money for why
+  // each definition is the one it is.
+  const timeZone = (account?.timezone as string) || 'America/New_York';
+  const thisMonth = resolvePayPeriod('monthly', 0, { now, timeZone });
+  const horizonKey = toDateKey(
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).getFullYear(),
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).getMonth(),
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).getDate(),
+  );
+
+  const [{ data: invoiceRows }, { data: paidRows }] = await Promise.all([
+    supabase.from('invoices').select('id, total, status, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
+    // Two windows come out of one read: the calendar month, and the invoice
+    // netting, which needs every payment ever made against an open invoice
+    // rather than only this month's. Bounded by status so it stays a small set.
+    supabase.from('payments').select('amount, refunded_amount, status, paid_at, invoice_id').eq('account_id', accountId).eq('status', 'paid'),
+  ]);
+
+  const outstanding = outstandingInvoices((invoiceRows ?? []) as InvoiceRow[], (paidRows ?? []) as PaymentRow[]);
+  const openQuotes = quotesAwaitingApproval(jobs as unknown as QuotedJobRow[]);
+  const bookedWork = scheduledWorkValue(jobs as unknown as QuotedJobRow[], todayKey, horizonKey);
+  const collectedThisMonth = collectedInWindow((paidRows ?? []) as PaymentRow[], thisMonth.startIso, thisMonth.endIso);
 
   // Setup tasks (Stripe, website) live in the onboarding checklist and the
   // topbar pills — keeping them out of the priority list stops the triple-listing
@@ -192,6 +254,15 @@ export async function buildDashboardHome(
   // rows carry `detail` and others carry `info`, TypeScript infers a union of
   // two object shapes for the literal and will not widen it to the optional-
   // property type on its own.
+  //
+  // ACT NOW vs WAITING — the split is "is this my move?"
+  //
+  // These were one list, and it put "5 leads need your attention" next to
+  // "2 quotes awaiting approval" as though they were the same kind of thing.
+  // They are not. One is work nobody can do but you; the other is a customer
+  // taking their time, and with quote follow-ups switched on the app is already
+  // chasing it on a schedule. A to-do list that includes things you cannot do is
+  // a list people stop reading.
   const priorityCandidates: (PriorityItem | null)[] = [
     leadStats.needsYou > 0
       ? {
@@ -199,33 +270,63 @@ export async function buildDashboardHome(
           // "need you", not "waiting" — the page carries a second lead figure
           // for the ones waiting on the CUSTOMER, and two rows both saying
           // "waiting" is how the counts stopped meaning anything.
-          label: `${leadStats.needsYou} lead${leadStats.needsYou === 1 ? '' : 's'} need${leadStats.needsYou === 1 ? 's' : ''} your attention`,
-          // Kept on the card, not in a bubble: where a lead came from is how you
-          // decide which to open first.
-          detail: leadStats.fromWebsite > 0
-            ? `${leadStats.fromWebsite} website lead${leadStats.fromWebsite === 1 ? ' is' : 's are'} waiting for a reply.`
-            : 'Send a quote or follow up before the lead goes cold.',
+          label: `${leadStats.needsYou} lead follow-up${leadStats.needsYou === 1 ? '' : 's'}`,
+          // Every lead in the headline is accounted for here. This used to name
+          // only the website ones, so a card reading "5 leads need your
+          // attention · 2 website leads are waiting" left three unexplained.
+          detail: leadNeedsYouBreakdown(leadStats),
           href: `${basePath}/leads`,
           cta: 'Review leads',
         }
       : null,
-    leadStats.waitingOnCustomer > 0
-      ? { key: 'quoted', label: `${leadStats.waitingOnCustomer} quote${leadStats.waitingOnCustomer === 1 ? '' : 's'} awaiting approval`, info: 'Follow up with customers who haven’t approved their quotes.', href: `${basePath}/leads`, cta: 'Review quotes' }
+    // THE SEVEN. One row, the size of the union, with the reasons underneath —
+    // never three rows the reader is invited to add up.
+    schedulingIssueCount > 0
+      ? {
+          key: 'scheduling',
+          label: `${schedulingIssueCount} scheduling issue${schedulingIssueCount === 1 ? '' : 's'}`,
+          detail: schedulingIssueBreakdown(schedulingIssues) ?? undefined,
+          href: `${basePath}/schedule#unscheduled-jobs`,
+          cta: 'Open the schedule',
+        }
       : null,
+    // A customer who passed on the dates you sent is waiting on YOU for new
+    // ones, so this is an action, not a wait — which is why it is not in the
+    // WAITING list below despite also being about a schedule request.
     stuckScheduleCount > 0
       ? { key: 'schedule-response', label: `${stuckScheduleCount} client${stuckScheduleCount === 1 ? '' : 's'} want${stuckScheduleCount === 1 ? 's' : ''} different dates`, detail: 'They passed on the times you sent — send a fresh set of dates.', href: `${basePath}/schedule#unscheduled-jobs`, cta: 'Send new dates' }
       : null,
-    jobsNeedingCrewCount > 0
-      ? { key: 'crew', label: `${jobsNeedingCrewCount} scheduled job${jobsNeedingCrewCount === 1 ? '' : 's'} need a crew`, info: 'Assign a crew before each job starts.', href: `${basePath}/schedule`, cta: 'Assign crew' }
-      : null,
-    jobsMissingTimeCount > 0
-      ? { key: 'time', label: jobsMissingTimeCount === 1 ? '1 job needs a start time' : `${jobsMissingTimeCount} jobs need start times`, info: 'Add a start time to finish scheduling this job.', href: `${basePath}/schedule`, cta: 'Set start time' }
-      : null,
-    unscheduledJobCount > 0
-      ? { key: 'unscheduled', label: `${unscheduledJobCount} approved job${unscheduledJobCount === 1 ? '' : 's'} ${unscheduledJobCount === 1 ? 'isn’t' : 'aren’t'} scheduled`, info: 'Add these jobs to your calendar.', href: `${basePath}/schedule#unscheduled-jobs`, cta: 'Schedule jobs' }
+    outstanding.count > 0
+      ? {
+          key: 'unpaid',
+          label: `${formatMoney(outstanding.total)} in unpaid invoices`,
+          detail: `${outstanding.count} invoice${outstanding.count === 1 ? '' : 's'} still owed, after deposits and part-payments.`,
+          href: `${basePath}/jobs`,
+          cta: 'Chase payment',
+        }
       : null,
   ];
   const priorityItems: PriorityItem[] = priorityCandidates.filter((item): item is PriorityItem => Boolean(item));
+
+  // Things the customer owes YOU a move on. Named for the wait, with what the
+  // app is doing about it — an owner who knows follow-ups are running does not
+  // need to do anything with this row, which is the whole point of separating it.
+  const waitingItems: PriorityItem[] = ([
+    openQuotes.count > 0
+      ? {
+          key: 'quoted',
+          label: `${openQuotes.count} quote${openQuotes.count === 1 ? '' : 's'} awaiting approval`,
+          detail: `${formatMoney(openQuotes.total)} out with customers. ${
+            // The one fact that decides whether this row is a task or a note.
+            Boolean((account as { quote_followups_enabled?: boolean } | null)?.quote_followups_enabled)
+              ? 'Automatic follow-ups are on.'
+              : 'Automatic follow-ups are off — chasing these is manual.'
+          }`,
+          href: `${basePath}/jobs`,
+          cta: 'Review quotes',
+        }
+      : null,
+  ] as (PriorityItem | null)[]).filter((item): item is PriorityItem => Boolean(item));
 
   return {
     jobs,
@@ -260,11 +361,18 @@ export async function buildDashboardHome(
     jobsNeedingCrewCount,
     jobsMissingTimeCount,
     unscheduledJobCount,
+    schedulingIssueCount,
     stuckScheduleCount,
+    outstanding,
+    openQuotes,
+    bookedWork,
+    collectedThisMonth,
+    collectedMonthLabel: thisMonth.label,
     // Three, then the rest behind a disclosure. The page is five phone screens
     // tall and opens with a list that can run to six rows before anything else
     // starts; three is what fits above the fold with the heading.
     topPriorities: priorityItems.slice(0, 3),
     restPriorities: priorityItems.slice(3),
+    waitingItems,
   };
 }
