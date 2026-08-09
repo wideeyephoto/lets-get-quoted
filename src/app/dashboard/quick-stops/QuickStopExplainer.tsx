@@ -165,20 +165,24 @@ export default function QuickStopExplainer({
           </div>
         </div>
 
-        <aside className="es-earnings" aria-label="Potential earnings">
-          <span className="es-earnings-glow" aria-hidden="true" />
-          <p className="es-earnings-label">What one a week adds up to</p>
+        {/* DEMOTED, because the disclosure was doing all the work and the
+            typography was undoing it. "$12,376/year" was set as the largest
+            number on the page, in a glowing card, with "an illustration, not a
+            forecast" underneath in small grey text. Everything about the way it
+            was drawn said forecast. It is arithmetic — one visit a week times a
+            fee — so it is now stated as arithmetic, at the size of a caption,
+            with the conditional in the sentence rather than in a footnote. */}
+        <aside className="es-earnings is-illustration" aria-label="What a Quick Stop is worth">
+          <p className="es-earnings-label">The arithmetic</p>
           <p className="es-earnings-line">
-            1 quick stop a week at <strong>${typicalFee}</strong>
-          </p>
-          <p className="es-earnings-total">
-            ${yearly.toLocaleString('en-US')}<span>/year</span>
+            <strong>${typicalFee}</strong> a visit. One a week for a year would be{' '}
+            <strong>${yearly.toLocaleString('en-US')}</strong>.
           </p>
           <p className="es-earnings-note">
+            That is a multiplication, not a projection — nothing here says anyone will ask.{' '}
             {hasRange
-              ? `The middle of the $${minFeeDollars}–$${maxFeeDollars} range you've set.`
-              : 'A round number to show the shape of it.'}{' '}
-            An illustration, not a forecast — you set the fee on every request.
+              ? `$${typicalFee} is the middle of the $${minFeeDollars}–$${maxFeeDollars} band you set, and you name the fee on every single request.`
+              : 'You name the fee on every single request.'}
           </p>
         </aside>
       </section>
@@ -186,9 +190,13 @@ export default function QuickStopExplainer({
       <section className="es-block">
         <h3 className="es-block-title">The flow, start to finish</h3>
         <ol className="es-steps">
+          {/* "Only customers already near your route" contradicted a feature on
+              the same page: priority areas exist precisely to let somebody
+              further out qualify, and an owner who set one up would have found
+              this sentence saying it could not happen. */}
           <Step n={1} icon="route" title="We find the right jobs">
-            Only customers already near your route that day are offered it, so a quick stop doesn&apos;t send you
-            across town.
+            Customers near your route that day are offered it — plus anyone inside a priority area you&apos;ve
+            drawn, which is how you say &ldquo;this neighbourhood is worth the extra drive&rdquo;.
           </Step>
           <Step n={2} icon="bell" title="You get the request">
             The job, the address, the customer&apos;s details and how far off your route they are — texted and emailed

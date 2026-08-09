@@ -108,6 +108,26 @@ export default function QuickStopCoverageMap({
           fullscreenControl: false,
           zoomControl: true,
           clickableIcons: false,
+          // COOPERATIVE, NOT 'auto'.
+          //
+          // Left unset, Google picks between cooperative and greedy per load by
+          // sniffing whether the map sits in a scrollable container. On this
+          // page the sniff came out desktop-flavoured on touch devices, so a
+          // phone got the overlay reading "Use Ctrl + scroll to zoom the map" —
+          // an instruction naming two things a phone does not have, over a map
+          // that had by then captured the page scroll. Dragging up the page
+          // panned the map instead.
+          //
+          // 'cooperative' is the documented fix and is explicitly the correct
+          // setting for a map inside a scrolling page: one finger scrolls the
+          // PAGE, two fingers pan the map, and the overlay Google shows says so
+          // in the right words for the device it is on.
+          gestureHandling: 'cooperative',
+          // The theme arrives through googleMapAppearance() above — a mapId plus
+          // colorScheme, styled in the Cloud console. The inline `styles` array
+          // that used to sit here is gone with the Advanced Markers migration:
+          // Maps refuses to apply JSON styles to a map that carries a mapId and
+          // warns about it in the console.
           backgroundColor: theme === 'dark' ? '#16222f' : '#eef1f5',
         });
 

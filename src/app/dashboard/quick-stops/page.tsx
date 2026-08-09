@@ -11,11 +11,17 @@ import QuickStopExplainer from './QuickStopExplainer';
 import QuickStopStatus, { QuickStopHead } from './QuickStopStatus';
 import QuickStopConfigurator from './QuickStopConfigurator';
 import QuickStopCandidates from './QuickStopCandidates';
-import QuickStopPageFooter from './QuickStopPageFooter';
-import { customerWords, screenQuickStopCandidates, type CandidateInput } from '@/lib/quick-stop-candidates';
+import QuickStopTabs from './QuickStopTabs';
+import {
+  CANDIDATE_QUERY_LIMIT,
+  customerWords,
+  screenQuickStopCandidates,
+  type CandidateInput,
+} from '@/lib/quick-stop-candidates';
 import { loadScreeningSummary } from '@/lib/quick-stop-screenings';
 import { loadRecipients, matchesAudience } from '@/lib/campaigns';
 import { loadRefundTiers } from '@/lib/quick-stop-refunds';
+import { quickStopState, quickStopStateDetail, quickStopStateHeadline } from '@/lib/quick-stop-state';
 
 /** How far back the demand panel looks. A quarter is enough to be a pattern. */
 const DEMAND_WINDOW_DAYS = 90;
@@ -104,20 +110,29 @@ export default async function QuickStopsPage() {
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingUrl = site?.published && site?.subdomain ? `${appOrigin}/book/${site.subdomain}` : null;
   /**
-   * Could a customer actually get a Quick Stop out of this today?
+   * What state is Quick Stops in? ONE answer, shared by every surface.
    *
-   * The switch is one of five conditions, not the whole answer. Anything on
-   * this page that reports readiness has to ask THIS, not `settings.enabled` —
-   * see the empty-requests panel below, which used to congratulate an owner
-   * who had turned the switch on and set up nothing.
+   * The switch is one of five conditions, not the whole answer, and anything
+   * that reports readiness has to ask this rather than `settings.enabled` — the
+   * empty-requests panel below used to congratulate an owner who had turned the
+   * switch on and set up nothing.
+   *
+   * This page, the status block, the footer, the explainer and the nav-rail API
+   * each had their own version of that rule, and they disagreed on screen. See
+   * lib/quick-stop-state for what each of them got wrong.
    */
-  const quickStopLive =
-    settings.enabled &&
-    !settings.locked &&
-    settings.maxFeeCents > 0 &&
-    settings.weekdays.length > 0 &&
-    stripeConnected &&
-    Boolean(bookingUrl);
+  const state = quickStopState({
+    enabled: settings.enabled,
+    locked: settings.locked,
+    lockedUntil: settings.lockedUntil,
+    lockReason,
+    feeSet: settings.maxFeeCents > 0,
+    daysSet: settings.weekdays.length > 0,
+    stripeConnected,
+    hasBookingUrl: Boolean(bookingUrl),
+    maxPerDay: settings.maxPerDay,
+  });
+  const quickStopLive = state.kind === 'on';
   const businessName =
     (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
 
@@ -125,43 +140,70 @@ export default async function QuickStopsPage() {
   // request gets. Both tables, because a lead carries the customer's own words
   // and a job carries the owner's — and the screener wants whichever exists.
   const sinceIso = new Date(Date.now() - DEMAND_WINDOW_DAYS * 86400000).toISOString();
-  const [{ data: recentLeads }, { data: recentJobs }] = await Promise.all([
+  const [{ data: recentLeads }, { data: recentJobs }, { data: quickStopJobRows }] = await Promise.all([
     supabase
       .from('leads')
-      .select('id, name, message, project_type, estimated_hours, source, created_at')
+      // converted_job is in the ORIGINAL create table (schema.sql:1130), not a
+      // later alter, so naming it here cannot fail on any live database. It is
+      // what stops a lead and the job it became being counted as two pieces of
+      // work — which online booking manufactures on every single booking, since
+      // it writes both rows for one customer action and links them.
+      .select('id, name, email, phone, message, project_type, estimated_hours, source, created_at, converted_job')
       .eq('account_id', accountId)
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
-      .limit(200),
+      .limit(CANDIDATE_QUERY_LIMIT),
     supabase
       .from('jobs')
-      .select('id, ref, client_name, scope, estimated_hours, created_at, status')
+      .select('id, ref, client_name, client_email, client_phone, scope, estimated_hours, created_at, status')
       .eq('account_id', accountId)
       .neq('status', 'archived')
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
-      .limit(200),
+      .limit(CANDIDATE_QUERY_LIMIT),
+    // The jobs that exist BECAUSE a Quick Stop was accepted (actions.ts creates
+    // them and links them back here). Each one is under the visit limit and
+    // breaks no rule by construction, so every one of them was being shown back
+    // as a Quick Stop the owner had MISSED — and priced again, on top of the fee
+    // it actually earned. Matched on the id and never on the "Quick Stop — "
+    // scope prefix, so renaming a job cannot bring the double count back.
+    // Deliberately unbounded by date: an older request can own a recent job.
+    supabase
+      .from('extra_stop_requests')
+      .select('job_id')
+      .eq('account_id', accountId)
+      .not('job_id', 'is', null)
+      .limit(1000),
   ]);
+  const quickStopJobIds = ((quickStopJobRows ?? []) as { job_id: string | null }[])
+    .map((row) => row.job_id)
+    .filter((id): id is string => Boolean(id));
 
   const candidateInputs: CandidateInput[] = [
-    ...((recentLeads ?? []) as Array<{ id: string; name: string | null; message: string | null; project_type: string | null; estimated_hours: number | null; source: string; created_at: string }>).map(
+    ...((recentLeads ?? []) as Array<{ id: string; name: string | null; email: string | null; phone: string | null; message: string | null; project_type: string | null; estimated_hours: number | null; source: string; created_at: string; converted_job: string | null }>).map(
       (lead) => ({
         id: lead.id,
         source: 'lead' as const,
         label: LEAD_SOURCE_LABEL[lead.source] ?? 'Lead',
         clientName: lead.name || 'Unnamed lead',
+        clientEmail: lead.email,
+        clientPhone: lead.phone,
+        convertedJobId: lead.converted_job,
         text: [lead.project_type, customerWords(lead.message)].filter(Boolean).join(' — '),
         createdAt: lead.created_at,
         estimatedHours: lead.estimated_hours == null ? null : Number(lead.estimated_hours),
         href: `/dashboard/leads/${lead.id}`,
       }),
     ),
-    ...((recentJobs ?? []) as Array<{ id: string; ref: string; client_name: string; scope: string | null; estimated_hours: number | null; created_at: string }>).map(
+    ...((recentJobs ?? []) as Array<{ id: string; ref: string; client_name: string; client_email: string | null; client_phone: string | null; scope: string | null; estimated_hours: number | null; created_at: string }>).map(
       (job) => ({
         id: job.id,
         source: 'job' as const,
         label: job.ref,
+        ref: job.ref,
         clientName: job.client_name,
+        clientEmail: job.client_email,
+        clientPhone: job.client_phone,
         text: job.scope ?? '',
         createdAt: job.created_at,
         estimatedHours: job.estimated_hours == null ? null : Number(job.estimated_hours),
@@ -169,7 +211,10 @@ export default async function QuickStopsPage() {
       }),
     ),
   ];
-  const demand = screenQuickStopCandidates(candidateInputs, { maxVisitMinutes: settings.maxVisitMinutes });
+  const demand = screenQuickStopCandidates(candidateInputs, {
+    maxVisitMinutes: settings.maxVisitMinutes,
+    quickStopJobIds,
+  });
   // The other half of demand: people who actually asked, including the ones the
   // screener refused. Empty (and harmless) until the migration has run.
   const screenings = await loadScreeningSummary(supabase, accountId, sinceIso);
@@ -209,24 +254,12 @@ export default async function QuickStopsPage() {
         ? 'Nothing geocoded on today’s schedule yet. Once today has scheduled work with an address, this shows exactly where a Quick Stop could land.'
         : null;
 
-  return (
-    <main className="wide-shell workspace-shell bset">
-      <QuickStopHead bookingUrl={bookingUrl} />
-
-      <QuickStopCoverage
-        stops={routeStops}
-        radiusMiles={settings.maxDetourMiles}
-        emptyReason={coverageEmpty}
-        zones={priorityZones}
-        zonesAvailable={zonesAvailable}
-        fallbackCenter={fallbackCenter}
-      />
-
-      {/* The same five conditions QuickStopStatus computes for its own "Live"
-          line. Kept here rather than passed back out of that component because
-          the empty panel further down needs the same answer, and two places
-          deciding independently what "live" means is how they came to disagree
-          in the first place. */}
+  const todayPanel = (
+    <>
+      {/* ACTIVATION FIRST. The route map and the priority-area editor used to
+          come before this, so an owner met a coverage map and a zone list
+          before learning Quick Stops was switched off — the one fact that
+          decides whether anything below it matters. */}
       <QuickStopStatus
         enabled={settings.enabled}
         locked={settings.locked}
@@ -251,6 +284,18 @@ export default async function QuickStopsPage() {
         maxPerDay={settings.maxPerDay}
         todayCount={acceptedToday}
         openCount={active.length}
+      />
+
+      {/* The map stays on Today, below the switch: where a Quick Stop could land
+          is a fact about today's route, not a setting. The priority-area editor
+          it used to be bundled with is a setting, and moved. */}
+      <QuickStopCoverage
+        stops={routeStops}
+        radiusMiles={settings.maxDetourMiles}
+        emptyReason={coverageEmpty}
+        zones={priorityZones}
+        zonesAvailable={zonesAvailable}
+        fallbackCenter={fallbackCenter}
       />
 
       {active.length > 0 ? (
@@ -278,37 +323,34 @@ export default async function QuickStopsPage() {
                 few inches above it said "Not live yet" and listed four things
                 still missing. Nothing could arrive, and the page said two
                 opposite things about why. */}
+            {/* Reads from the one state now. The old chain had its own fourth
+                opinion and its "Nothing can come in yet" fired on the switch
+                alone — so a fully-configured account that simply had not been
+                turned on was told nothing could come in, and then told to
+                "finish the setup" that was finished. */}
             <h3>
-              {settings.locked
-                ? 'No active requests while paused'
-                : quickStopLive
-                  ? "You're all set — waiting on requests"
-                  : settings.enabled
-                    ? 'Switched on, but not live yet'
-                    : 'Nothing can come in yet'}
+              {quickStopLive
+                ? "You're all set — waiting on requests"
+                : state.kind === 'paused'
+                  ? 'No new requests while this is paused'
+                  : quickStopStateHeadline(state)}
             </h3>
             <p>
-              {settings.locked
-                ? 'New Quick Stop requests are paused until the lock lifts. Anything already in progress will still appear here.'
-                : quickStopLive
-                  ? 'When a customer requests a Quick Stop from your booking page, it lands here and we text and email you right away.'
-                  : settings.enabled
-                    ? 'The switch is on, but a request still needs the rest of the setup. The status block at the top of this page lists what is outstanding.'
-                    : 'Turn Quick Stops on above and finish the setup, and requests from your booking page will land here.'}
+              {quickStopLive
+                ? 'When a customer requests a Quick Stop from your booking page, it lands here and we text and email you right away.'
+                : state.kind === 'paused'
+                  ? 'New Quick Stop requests are paused until the lock lifts. Anything already in progress will still appear here.'
+                  : `${quickStopStateDetail(state)} Requests from your booking page will land here.`}
             </p>
           </div>
         </section>
       )}
 
-      {/* STILL ON THE PAGE ONCE IT'S RUNNING, just folded away. This is the only
-          place that explains what Quick Stop is, what it earns and what it costs
-          a customer, so removing it when the switch flips would leave an owner
-          who turned it on with no way back to the explanation and nothing to
-          send a customer to — which is why it used to be permanently open. A
-          closed drawer keeps all of that and stops the pitch sitting on top of
-          the queue you actually came here to read.
-          Left OPEN while it's off: with the feature switched off, the pitch is
-          the page. */}
+      {/* THE PITCH, FOLDED, AND ONLY WHILE IT IS STILL A PITCH.
+          "How it works", the example, the customer preview and the benefit list
+          are exactly right the first time and scrolled past every day after.
+          Once the feature is set up it is a closed drawer at the foot of Today;
+          while it is off, it IS the page, so it stays open. */}
       {settings.enabled ? (
         <details className="panel workspace-section-card es-how" id="quick-stop-how">
           <summary className="es-how-summary">
@@ -341,17 +383,29 @@ export default async function QuickStopsPage() {
           businessName={businessName}
         />
       )}
+    </>
+  );
 
-      {/* The configurator lives HERE now, not in Account > Automations. It is
-          thirty controls about Quick Stops; a settings tab about everything else
-          was never the place to read them. Automations keeps the on/off switch
-          and a link back to this page. */}
-      <QuickStopConfigurator
-        quickStop={accountRow as Parameters<typeof QuickStopConfigurator>[0]['quickStop']}
-        refundTiers={refundTiers}
-        stripeConnected={stripeConnected}
-      />
+  /**
+   * SETTINGS — and the whole configurator stays inside it, entire.
+   *
+   * That is a hard constraint, not a preference. The configurator is ONE <form>
+   * spanning five drawers of plain DOM inputs, kept mounted-but-hidden because
+   * an unrendered input contributes nothing to the FormData and the action
+   * writes the resulting blanks over your settings — saving with one drawer open
+   * once zeroed the fee band. Move any part of that form onto another tab and
+   * the same bug returns as silent data loss on save.
+   */
+  const settingsPanel = (
+    <QuickStopConfigurator
+      quickStop={accountRow as Parameters<typeof QuickStopConfigurator>[0]['quickStop']}
+      refundTiers={refundTiers}
+      stripeConnected={stripeConnected}
+    />
+  );
 
+  const insightsPanel = (
+    <>
       {history.length ? (
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading">
@@ -366,14 +420,9 @@ export default async function QuickStopsPage() {
         </section>
       ) : null}
 
-      {/* Last on the page, and reached by the "See your own past jobs that fit"
-          button in the pitch above. It used to sit directly under the queue,
-          where it was the answer to the question an empty queue raises — but it
-          is a long panel of history, and reading it is a decision ("is this
-          worth switching on?") rather than a thing to do today. Moving it to the
-          foot leaves the queue, the pitch and the settings — the three things
-          you actually came here for — above it, and the button carries anyone
-          who wants the evidence straight down to it. */}
+      {/* Past work that might have qualified. It is a decision ("is this worth
+          switching on?") rather than a thing to do today, which is exactly what
+          an Insights tab is for. */}
       <QuickStopCandidates
         report={demand}
         screenings={screenings}
@@ -383,12 +432,13 @@ export default async function QuickStopsPage() {
         maxVisitMinutes={settings.maxVisitMinutes}
         enabled={settings.enabled}
       />
+    </>
+  );
 
-      {/* Every route through this page runs downhill — the header sends you to
-          the pitch, the pitch sends you to the demand panel, and the demand
-          panel is the longest thing here. Without this, reading to the end
-          leaves you at the one place with nothing to press. */}
-      <QuickStopPageFooter enabled={settings.enabled} />
+  return (
+    <main className="wide-shell workspace-shell bset">
+      <QuickStopHead bookingUrl={bookingUrl} />
+      <QuickStopTabs today={todayPanel} settings={settingsPanel} insights={insightsPanel} />
     </main>
   );
 }

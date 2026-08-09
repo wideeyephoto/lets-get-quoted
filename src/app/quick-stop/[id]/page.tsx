@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getQuickStopRequestById } from '@/lib/quick-stop-requests';
 import { QUICK_STOP_STATUS_LABEL, centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
+import { loadRefundTiers } from '@/lib/quick-stop-refunds';
+import { renderRefundPolicy } from '@/lib/quick-stop-policy';
 import {
   customerCancelQuickStopAction,
   reportNoShowQuickStopAction,
@@ -56,6 +58,17 @@ export default async function QuickStopStatusPage({
 
   const { data: site } = await admin.from('sites').select('company_name').eq('account_id', req.account_id).maybeSingle();
   const businessName = site?.company_name || 'your contractor';
+
+  // The refund policy shown below used to be a hardcoded paragraph reciting the
+  // DEFAULT tiers. An account running 0/0/0/0 therefore promised this customer a
+  // three-quarters refund for cancelling before the tech set off, and then
+  // refunded nothing — computeCustomerRefundPercent reads the account's tiers,
+  // and the page did not. So read them here too, and render the sentences from
+  // the same numbers the refund will use. loadRefundTiers is its own query and
+  // swallows its own error, so a pre-migration account (no
+  // extra_stop_refund_tiers column yet) falls back to the built-in defaults
+  // rather than taking the customer's status page down.
+  const refundPolicy = renderRefundPolicy(await loadRefundTiers(admin, req.account_id));
   const status = req.status as QuickStopStatus;
   const when = req.arrival_date ? `${req.arrival_date}${req.arrival_start ? `, ${fmtTime(req.arrival_start)}–${fmtTime(req.arrival_end)}` : ''}` : null;
 
@@ -141,10 +154,14 @@ export default async function QuickStopStatusPage({
           </div>
         ) : null}
 
-        <p className="job-meta" style={{ marginTop: '1rem', opacity: 0.75 }}>
-          Cancellation refunds: full within 5 minutes of paying, 75% before the tech is en route, 25% once en route, none after arrival.
-          If the tech misses the window, report a no-show within 2 hours for a full refund.
-        </p>
+        <div className="quick-stop-policy">
+          <p className="quick-stop-policy-title">Cancellations and refunds</p>
+          <ul className="job-meta">
+            {refundPolicy.lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
       </section>
     </main>
   );
