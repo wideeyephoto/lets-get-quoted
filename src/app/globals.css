@@ -21762,6 +21762,148 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .cash-provisional-note strong { color: var(--text); }
 
+/* ---------------------------------------------------------------------------
+   CASH FLOW — step one, and the decision above the picture of it
+   ------------------------------------------------------------------------ */
+
+/**
+ * THE SETUP PANEL, shown only while there is no balance.
+ *
+ * The page used to open on a forecast and keep the one number that makes a
+ * forecast possible in a settings row below three charts. This is the first
+ * thing under the lead when it is missing, and it disappears the moment it is
+ * answered — a permanent banner is a permanent nag.
+ */
+.cash-setup {
+  margin: 1.1rem 0 0;
+  padding: 0.95rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.cash-setup-eyebrow {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-orange-9);
+}
+
+.cash-setup-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--mute-i60);
+  max-width: 62ch;
+}
+
+.cash-setup-cta { margin-top: 0.8rem; }
+
+/**
+ * THE DECISION BLOCK — status, when, how much room, what it would take.
+ *
+ * Above the chart because those four are what somebody opened the page to find
+ * out; the chart is the evidence for them, not the way to work them out.
+ */
+.cash-decision {
+  margin: 1.15rem 0 0;
+  padding: 0.95rem 1.05rem;
+  border-radius: 16px;
+  border: 1px solid var(--edge-t10);
+  background: rgba(var(--tint), 0.05);
+}
+
+/* The left edge carries the status, so the tone is readable before the words
+   are — and it is a border rather than a fill, which would fight the chart. */
+.cash-decision.tone-ok { border-left: 3px solid var(--good); }
+.cash-decision.tone-warn { border-left: 3px solid var(--ink-orange-9); }
+.cash-decision.tone-alert { border-left: 3px solid var(--ink-red-1); }
+
+.cash-decision-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.cash-decision-sentence {
+  margin: 0;
+  flex: 1 1 22ch;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/**
+ * The status pill as a real button.
+ *
+ * "Add your bank balance to start the forecast" was a <span> styled as a pill:
+ * it looked exactly like the control it needed to be and clicking it did
+ * nothing. As a button it inherits the pill's look and adds the things that
+ * make it one — a pointer, a focus ring, and a target big enough to hit.
+ */
+.cash-status-pill.is-action {
+  border: 1px solid currentColor;
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.cash-status-pill.is-action:hover { filter: brightness(1.12); }
+
+.cash-decision-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 0.9rem 0 0;
+}
+
+.cash-decision-facts > div { min-width: 0; }
+
+.cash-decision-facts dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute-i60);
+}
+
+.cash-decision-facts dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.cash-decision-facts dd.is-risk { color: var(--ink-red-1); }
+
+.cash-decision-facts small {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--mute-i60);
+}
+
+/* The window's totals, beside the label rather than in a card of their own —
+   "ending cash" is context for the line, not a decision. */
+.cash-hero-chart-sub {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--mute-i60);
+}
+
+@media (max-width: 700px) {
+  .cash-decision-facts { grid-template-columns: 1fr; gap: 0.75rem; }
+  .cash-decision-facts dd { font-size: 1.1rem; }
+}
+
 /* "Nobody knows you offer this" — the distribution hand-off. */
 .es-demand-tell {
   display: flex;

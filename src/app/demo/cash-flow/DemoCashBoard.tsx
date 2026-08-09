@@ -46,6 +46,10 @@ export default function DemoCashBoard({
       events={events}
       todayKey={todayKey}
       horizonDays={horizonDays}
+      // The demo's event list spans the full quarter whichever tab is on, so
+      // the outlook can look past the chart here the same way it does for a
+      // real account.
+      longDays={90}
       savedBalance={savedBalance}
       savedBuffer={savedBuffer}
       savedCreditLine={savedCreditLine}

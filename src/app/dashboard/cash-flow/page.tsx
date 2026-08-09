@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { todayDateKey } from '@/lib/recurring';
-import { loadCashForecastSources, loadPreviousSnapshot, DEFAULT_HORIZON_DAYS } from '@/lib/cash-forecast-data';
+import { loadCashForecastSources, loadPreviousSnapshot, MAX_HORIZON_DAYS } from '@/lib/cash-forecast-data';
 import { compareForecast } from '@/lib/cash-accuracy';
 import { payDaySentence } from '@/lib/pay-day';
 import CashFlowBoard from './CashFlowBoard';
@@ -28,9 +28,16 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
 
   const selected = WINDOWS.find((option) => option.key === searchParams.window) ?? WINDOWS[0];
   const todayKey = todayDateKey();
+  // ALWAYS the full quarter, whatever the tabs say.
+  //
+  // Loading only the selected window is why the 30-day view could report "First
+  // warning: None" while the account went negative on day 33 — the event that
+  // would have contradicted it was never fetched. The window is a drawing
+  // choice; it should not decide what the page is allowed to know. buildForecast
+  // drops anything past its own horizon, so the chart is unaffected.
   const sources = await loadCashForecastSources(supabase, accountId, {
     todayKey,
-    days: selected.days || DEFAULT_HORIZON_DAYS,
+    days: MAX_HORIZON_DAYS,
   });
 
   // Only worth showing against a balance they have actually just checked. A
@@ -59,6 +66,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
         events={sources.events}
         todayKey={todayKey}
         horizonDays={selected.days}
+        longDays={MAX_HORIZON_DAYS}
         savedBalance={sources.settings.balance}
         savedBuffer={sources.settings.buffer}
         savedCreditLine={sources.settings.creditLine}
