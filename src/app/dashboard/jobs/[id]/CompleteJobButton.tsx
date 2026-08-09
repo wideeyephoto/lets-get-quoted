@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
 import {
   completeJobConfirmMessage,
@@ -78,7 +79,17 @@ export default function CompleteJobButton({
         </button>
       </div>
 
-      <p className={`job-done-hint${sendReview ? ' is-on' : ''}`}>{hint(pill, sendReview)}</p>
+      <p className={`job-done-hint${sendReview ? ' is-on' : ''}`}>
+        {hint(pill, sendReview)}
+        {/* Only the missing-link state carries a fix, because it is the only one
+            of the three the owner can do anything about from here. */}
+        {!pill.canAsk && pill.fix ? (
+          <>
+            {' '}
+            <Link className="job-done-hint-fix" href={pill.fix.href}>{pill.fix.label}</Link>
+          </>
+        ) : null}
+      </p>
     </form>
   );
 }

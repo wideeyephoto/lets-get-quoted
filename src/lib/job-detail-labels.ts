@@ -144,8 +144,15 @@ export function willAskForReview(input: CompleteJobWarningInput): boolean {
 
 export type ReviewPillState =
   | { canAsk: true; defaultOn: boolean; channel: 'text' | 'email' }
-  /** Nothing can be sent on this job, and the pill says which of the three. */
-  | { canAsk: false; reason: string };
+  /**
+   * Nothing can be sent on this job, and the pill says which of the three.
+   *
+   * `fix` is present only when the owner can do something about it from here.
+   * "Already asked" and "no phone or email" are facts about this job; a missing
+   * review link is a five-second errand, and the reason it was worth wiring up
+   * is that the sentence used to send people to the wrong place — see below.
+   */
+  | { canAsk: false; reason: string; fix?: { href: string; label: string } };
 
 /**
  * What the review pill should offer on this job.
@@ -158,7 +165,19 @@ export type ReviewPillState =
 export function reviewPillState(input: CompleteJobWarningInput): ReviewPillState {
   const who = input.clientName?.trim() || 'the customer';
   if (!input.reviewUrlConfigured) {
-    return { canAsk: false, reason: 'No Google review link saved yet — add one in Settings and this turns on.' };
+    /**
+     * NOT SETTINGS. This said "add one in Settings" and the profile has never
+     * been there — it is linked in the website builder's Customer reviews card,
+     * which is where resolveAccountReviewUrl reads it from
+     * (site.content.testimonials.googlePlaceId) and what the send path's own
+     * error message says. An owner following this sentence arrived at a page
+     * with no such field and no way to know where to look next.
+     */
+    return {
+      canAsk: false,
+      reason: 'No Google review link saved yet — link your Google Business Profile and this turns on.',
+      fix: { href: '/dashboard/sites#google-business-profile', label: 'Link your profile →' },
+    };
   }
   if (input.alreadyRequested) {
     return { canAsk: false, reason: `${who} has already been asked for a review on this job.` };

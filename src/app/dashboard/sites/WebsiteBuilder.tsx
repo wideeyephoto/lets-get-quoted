@@ -2085,7 +2085,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                       link the post-job ask needs is set — was invisible until
                       you found a dropdown and changed it. The mode itself is now
                       derived: connected shows both, unlinked shows your own. */}
-                  <div className={styles.formField}>
+                  {/* The anchor the job page's review pill points at. Without a
+                      link, "no Google review link saved yet" left an owner to
+                      find this field on a long builder page on their own — and
+                      the sentence used to send them to Settings, where it has
+                      never been. */}
+                  <div className={styles.formField} id="google-business-profile">
                     <span>Your Google Business Profile</span>
                     <GoogleReviewImport
                       placeId={siteContent.testimonials.googlePlaceId}

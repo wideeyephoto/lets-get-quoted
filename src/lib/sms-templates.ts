@@ -1,0 +1,270 @@
+import { formatJobSchedule, formatMoney } from '@/lib/jobs';
+
+/**
+ * Declared here rather than in lib/sms, which imports this file — the words come
+ * before the sending, so the type the words are keyed on does too. lib/sms
+ * re-exports it, so every existing `import type { PaymentSmsEvent } from
+ * '@/lib/sms'` keeps working.
+ */
+export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
+
+/**
+ * The words of every text this app sends, separated from the sending of them.
+ *
+ * WHY THIS FILE EXISTS. The bodies used to be template literals inside each
+ * sender in lib/sms.ts, which meant anything that wanted to SHOW a contractor
+ * what goes out under their name had to retype it. Twice that copy drifted from
+ * the real thing and nobody noticed until somebody read both:
+ *
+ *   - the review request preview still said "If we earned it", wording removed
+ *     from the sender because it reads as a nudge that only happy customers
+ *     should bother (see review-routing.ts)
+ *   - the appointment reminder preview had lost the business-name prefix and
+ *     the address clause entirely (see appointment-reminders.ts)
+ *
+ * Four messages were rescued one at a time that way — reviewRequestText,
+ * quoteFollowupText, appointmentReminderText, missedCallTextBack — each with a
+ * comment explaining the drift it had just fixed. This is that fix applied to
+ * the rest, before the same thing happens a third time.
+ *
+ * Everything here is PURE: strings in, a string out. No network, no database,
+ * no environment. That is what lets the outgoing-text catalogue on the messages
+ * page render these with sample data and be showing the truth rather than an
+ * artist's impression.
+ *
+ * THE FOUR THAT ARE NOT HERE live where their own logic does, and are re-exported
+ * at the bottom so callers have one import: a message whose builder needs the
+ * follow-up schedule, or the reminder window, or the review routing rules,
+ * belongs beside those rules.
+ */
+
+/**
+ * The opt-out line, and the reason it is a function rather than a suffix people
+ * remember to type. Every message to a customer carries one — it is not a
+ * courtesy, it is the thing that keeps the number deliverable.
+ */
+export function withOptOut(message: string): string {
+  return `${message} Reply STOP to opt out.`;
+}
+
+// -- to the owner, on their own mobile ---------------------------------------
+
+export function ownerHighValueLeadText(input: {
+  businessName: string;
+  leadName: string;
+  estimate: { min: number; max: number } | null;
+  dashboardUrl: string;
+}): string {
+  const range = input.estimate
+    ? ` ($${input.estimate.min.toLocaleString()}-$${input.estimate.max.toLocaleString()})`
+    : '';
+  return `🔥 High-value lead for ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl} — Reply STOP to opt out.`;
+}
+
+// -- Quick Stop --------------------------------------------------------------
+
+export function quickStopOfferText(input: {
+  businessName: string;
+  whenLabel: string;
+  feeLabel: string;
+  payUrl: string;
+  minutes: number;
+}): string {
+  return `Your Quick Stop Offer from ${input.businessName}: arrive ${input.whenLabel} for ${input.feeLabel}. Complete payment within ${input.minutes} min to reserve this window: ${input.payUrl}. Reply STOP to opt out.`;
+}
+
+export function quickStopConfirmedText(input: {
+  businessName: string;
+  whenLabel: string;
+  statusUrl?: string;
+}): string {
+  const manage = input.statusUrl ? ` Manage or cancel: ${input.statusUrl}.` : '';
+  return `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. We'll text updates on the way.${manage} Reply STOP to opt out.`;
+}
+
+// -- crew --------------------------------------------------------------------
+
+export function crewAssignmentText(input: {
+  crewName: string;
+  businessName: string;
+  jobRef: string;
+  clientName: string;
+  address: string | null;
+  scheduledFor: string | null;
+  scheduledTime?: string | null;
+}): string {
+  const addressNote = input.address ? ` at ${input.address}` : '';
+  const scheduledNote = input.scheduledFor
+    ? ` Scheduled ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}.`
+    : '';
+  return `Hi ${input.crewName}, ${input.businessName} assigned you to job ${input.jobRef} — ${input.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
+}
+
+export function crewScheduleSelectedText(input: {
+  crewName: string;
+  businessName: string;
+  jobRef: string;
+  clientName: string;
+  address: string | null;
+  scheduledFor: string;
+  scheduledTime?: string | null;
+}): string {
+  const addressNote = input.address ? input.address : 'Address not set';
+  const scheduledNote = formatJobSchedule(input.scheduledFor, input.scheduledTime);
+  return `Hi ${input.crewName}, job ${input.jobRef} for ${input.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. ${input.businessName}. Reply STOP to opt out.`;
+}
+
+// -- the job -----------------------------------------------------------------
+
+export function jobUpdateText(input: {
+  businessName: string;
+  jobRef: string;
+  title: string;
+  body: string | null;
+}): string {
+  const updateBody = input.body ? ` ${input.body}` : '';
+  return `${input.businessName} posted an update for job ${input.jobRef}: ${input.title}.${updateBody} Reply STOP to opt out.`;
+}
+
+export function clientJobDashboardText(input: {
+  businessName: string;
+  jobRef: string;
+  link: string;
+  includesScheduleOptions?: boolean;
+}): string {
+  const scheduleCopy = input.includesScheduleOptions
+    ? ' Review your quote and choose a start date here:'
+    : ' View updates, invoices, and payments here:';
+  return `${input.businessName} created your client dashboard for job ${input.jobRef}.${scheduleCopy} ${input.link}. Reply STOP to opt out.`;
+}
+
+export function schedulingOptionsText(input: {
+  businessName: string;
+  jobRef: string;
+  clientName: string;
+  link: string;
+}): string {
+  return `${input.businessName} has 3 service times available for ${input.jobRef}. ${input.clientName}, choose one or request different times: ${input.link}. Reply STOP to opt out.`;
+}
+
+// -- the lead ----------------------------------------------------------------
+
+/** No opt-out line: a code the person just asked for, expiring in minutes. */
+export function verificationCodeText(input: { businessName: string; code: string }): string {
+  return `Your ${input.businessName} verification code is ${input.code}. It expires in 10 minutes.`;
+}
+
+export function leadDeclineText(input: {
+  leadName: string;
+  businessName: string;
+  reason: string;
+}): string {
+  return `Hi ${input.leadName}, thanks for reaching out to ${input.businessName}. Unfortunately ${input.reason}, so we won't be able to take this one on. We appreciate you thinking of us! Reply STOP to opt out.`;
+}
+
+export function leadQuoteVisitText(input: {
+  businessName: string;
+  leadName: string;
+  address: string | null;
+  scheduledFor: string;
+  scheduledTime: string;
+}): string {
+  const addressNote = input.address ? ` at ${input.address}` : '';
+  return `${input.businessName} scheduled your free in-person quote${addressNote} for ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}. ${input.leadName}, reply STOP to opt out.`;
+}
+
+export function leadQuoteVisitOptionsText(input: {
+  businessName: string;
+  leadName: string;
+  address: string | null;
+  options: Array<{ date: string; time: string | null }>;
+}): string {
+  const addressNote = input.address ? ` for ${input.address}` : '';
+  const optionText = input.options
+    .map((option, index) => `${index + 1}) ${formatJobSchedule(option.date, option.time)}`)
+    .join(' ');
+  return `${input.businessName} has quote visit times available${addressNote}. ${input.leadName}, reply with 1, 2, or 3: ${optionText}. Reply STOP to opt out.`;
+}
+
+// -- money -------------------------------------------------------------------
+
+/**
+ * The four payment texts. HELP as well as STOP here, unlike everywhere else —
+ * this family carries a payment link, and a carrier reviewing a money message
+ * expects both keywords.
+ */
+export function paymentText(input: {
+  contractor: string;
+  label: string | null;
+  amount: number;
+  link: string;
+  eventType: PaymentSmsEvent;
+}): string {
+  const amount = formatMoney(Number(input.amount));
+  const label = input.label || 'payment';
+  const optOut = 'Reply STOP to opt out or HELP for help.';
+  if (input.eventType === 'payment_requested') return `${input.contractor} requested a ${label} of ${amount}. Pay securely: ${input.link}. ${optOut}`;
+  if (input.eventType === 'payment_paid') return `Your ${label} of ${amount} to ${input.contractor} was received successfully. Thank you. ${optOut}`;
+  if (input.eventType === 'payment_failed') return `Your ${label} of ${amount} to ${input.contractor} was not completed. Try again: ${input.link}. ${optOut}`;
+  return `A refund of ${amount} from ${input.contractor} has been processed. ${optOut}`;
+}
+
+export function cardSetupText(input: { businessName: string; url: string }): string {
+  return `${input.businessName} set up automatic billing for your recurring service. Save your card securely — no charge now: ${input.url}. Reply STOP to opt out.`;
+}
+
+export function cardUpdateText(input: { businessName: string; url: string }): string {
+  return `Your saved card for ${input.businessName} was declined, so your recurring payment didn't go through. Update your card here to keep your service going: ${input.url}. Reply STOP to opt out.`;
+}
+
+// -- coming back -------------------------------------------------------------
+
+export function rebookInviteText(input: {
+  businessName: string;
+  clientName: string;
+  url: string;
+}): string {
+  return `Hi ${input.clientName}, it's ${input.businessName} — it's been a while! Ready to book us again? Request a time here: ${input.url}. Reply STOP to opt out.`;
+}
+
+/**
+ * A WINDOW, not a time, and that is the whole message. One slow job turns a
+ * promised "8:07 AM" into a text that was wrong the moment it was sent.
+ */
+export function arrivalTimeChangedText(input: {
+  businessName: string;
+  clientName: string;
+  windowLabel: string;
+}): string {
+  return `${input.clientName}, ${input.businessName} here — your new arrival window is ${input.windowLabel}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
+}
+
+// -- the owner's own words, in our envelope ----------------------------------
+
+/**
+ * These two carry text the contractor typed. All this app contributes is the
+ * envelope: who it is from, and the opt-out line. Worth keeping separate in the
+ * catalogue — "we wrote this" and "we addressed this" are different promises.
+ */
+export function inboxReplyText(input: { businessName: string; body: string }): string {
+  return `${input.businessName}: ${input.body}`;
+}
+
+export function campaignText(input: { businessName: string; body: string }): string {
+  return `${input.businessName}: ${input.body} Reply STOP to opt out.`;
+}
+
+// -- the ones that live with their own logic ---------------------------------
+
+/**
+ * Re-exported rather than moved. A builder that needs the follow-up schedule,
+ * the reminder window, the review routing rules or the offer envelope belongs
+ * beside those rules — but every caller should still have one import for "the
+ * words of a text message".
+ */
+export { appointmentReminderText } from '@/lib/appointment-reminders';
+export { buildArrivalMessage } from '@/lib/arrival';
+export { composeOfferMessage } from '@/lib/estimate-offers';
+export { missedCallTextBack } from '@/lib/missed-call';
+export { quoteFollowupText } from '@/lib/quote-followups';
+export { reviewRequestText } from '@/lib/review-routing';

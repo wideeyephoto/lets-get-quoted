@@ -20813,6 +20813,23 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .job-done-hint.is-on { color: var(--ink-lime-1); }
 
+/* The way out of the one blocked state an owner can actually fix from here.
+   Underlined rather than merely tinted: it sits inside a muted sentence, and a
+   colour change alone is not enough to read as a link at 0.82rem. */
+.job-done-hint-fix {
+  color: var(--accent-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.job-done-hint-fix:hover { color: var(--ink); }
+.job-done-hint-fix:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* The builder is a long page and the Google profile field is deep in it, so the
+   jump from the job page has to land clear of the sticky chrome above it. */
+#google-business-profile { scroll-margin-top: 6rem; }
+
 @media (prefers-reduced-motion: reduce) {
   .job-done-shell::after { animation: none; opacity: 0; }
   .job-done-pill-knob,
