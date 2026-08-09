@@ -61,6 +61,12 @@ function money(cents: number): string {
 
 export const dynamic = 'force-dynamic';
 
+/* The tab said "Let's Get Quoted — Contractor websites that get you paid…" —
+   the marketing site's default, inherited because this page never set one. Two
+   dashboard tabs open side by side were indistinguishable, and a bookmark of
+   this page was named after the homepage. */
+export const metadata = { title: 'Quick Stops' };
+
 export default async function QuickStopsPage() {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -437,7 +443,7 @@ export default async function QuickStopsPage() {
 
   return (
     <main className="wide-shell workspace-shell bset">
-      <QuickStopHead bookingUrl={bookingUrl} />
+      <QuickStopHead />
       <QuickStopTabs today={todayPanel} settings={settingsPanel} insights={insightsPanel} />
     </main>
   );

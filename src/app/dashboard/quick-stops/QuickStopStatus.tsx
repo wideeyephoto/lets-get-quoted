@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTransition } from 'react';
+import { useId, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setQuickStopEnabledAction } from '@/app/dashboard/settings/actions';
 import { jumpToHowItWorks } from './quick-stop-jump';
@@ -91,10 +91,24 @@ const SETTINGS_HREF = '/dashboard/quick-stops#quick-stop-setup';
 /** Where the request queue lives on this page. */
 const QUEUE_ANCHOR = '#quick-stop-requests';
 
+/** Which icon belongs to which missing thing. */
+const GAP_ICON: Record<string, string> = {
+  website: 'link',
+  weekdays: 'calendar',
+  fee: 'cash',
+  stripe: 'cash',
+};
+
+/** Gap labels are written lower-case to join into a sentence; a button is not one. */
+function asButtonLabel(label: string): string {
+  return label.replace(/^./, (first) => first.toUpperCase());
+}
+
 export default function QuickStopStatus(props: QuickStopStatusProps) {
   const { enabled, locked, lockedUntil, lockReason, feeSet, daysSet, stripeConnected, bookingUrl, readOnly = false } = props;
   const router = useRouter();
   const [pending, startToggle] = useTransition();
+  const describedId = useId();
 
   // ONE OPINION. This block used to compute `live`, `missing` and
   // `blockedReason` itself, while page.tsx computed its own `quickStopLive` from
@@ -114,6 +128,10 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
     maxPerDay: props.maxPerDay,
   });
   const live = state.kind === 'on';
+  /* The first thing still missing — what the primary action points at. The
+     detail line beside it names all of them; a button can only do one, and the
+     list is already in the order things have to be true in. */
+  const firstGap = state.kind === 'setup_incomplete' ? state.gaps[0] ?? null : null;
 
   function setEnabled(next: boolean) {
     if (readOnly) return;
@@ -132,8 +150,19 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           what you've chosen, the status says whether it's actually working. */}
       <section className="bset-master">
         <label className="bset-master-switch">
+          {/* THE SWITCH IS NAMED "QUICK STOPS", NOT PARAGRAPHED.
+              The <label> wraps the copy as well as the box, so the accessible
+              name was the whole block — "Quick Stops is OFF Nearby customers,
+              and anyone in a priority area, can request a paid same-day visit
+              at a fee you set." — read out in full on every focus, and again on
+              every toggle. aria-label gives it the name; the sentence becomes
+              the description, which assistive tech announces once and can skip.
+              The ON/OFF word is not lost: a checkbox states its own checked
+              state, and the status block beside it says it in words. */}
           <input
             type="checkbox"
+            aria-label="Quick Stops"
+            aria-describedby={describedId}
             checked={enabled && !locked}
             onChange={(event) => setEnabled(event.target.checked)}
             disabled={pending || locked}
@@ -146,7 +175,7 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
             {/* "Only customers near your route" was the old promise here, and it
                 is not what the product does — priority areas exist precisely to
                 let a customer further out qualify. */}
-            <small>Nearby customers, and anyone in a priority area, can request a paid same-day visit at a fee you set.</small>
+            <small id={describedId}>Nearby customers, and anyone in a priority area, can request a paid same-day visit at a fee you set.</small>
           </span>
         </label>
 
@@ -155,13 +184,22 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           <small>{quickStopStateDetail(state)}</small>
         </div>
 
-        {/* ONE WAY TO TURN IT ON, not three.
-            There were three: this switch, a "Pause Quick Stops / Turn on Quick
-            Stops" button beside it that did the identical thing, and a hint in
-            the configurator suggesting you clear every weekday to pause — which
-            does not pause anything, it puts the account into setup_incomplete,
-            a state the status block then scolds you for. The switch is the
-            control; these are the things you do around it. */}
+        {/* THE PRIMARY ACTION IS WHATEVER THIS STATE ACTUALLY CALLS FOR.
+            It used to be "Review settings" in all four states — so an account
+            that was configured and simply switched off had the page tell it, in
+            its largest button, to go and review settings that needed no
+            reviewing, while the one thing left to do (turn it on) was an
+            unlabelled toggle. Worse in setup_incomplete: the detail line named
+            four missing things and the button went somewhere that could fix two
+            of them.
+
+            THIS IS NOT THE THIRD TURN-ON CONTROL THAT WAS REMOVED. That one was
+            a "Pause / Turn on" button sitting beside the switch in every state,
+            doing the identical thing at all times — two controls for one fact.
+            This appears only in ready_off, where turning it on is the entire
+            remaining step, and it calls the same setter the switch does. In
+            every other state there is no primary at all, because there is
+            nothing the page should be pushing. */}
         <div className="bset-master-actions">
           {/* Support's lock is not the owner's to undo, so it offers an
               explanation rather than a button that would not work. */}
@@ -170,21 +208,43 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
               Why is this paused?
             </Link>
           ) : null}
-          <Link href={SETTINGS_HREF} className="btn primary bset-setup">
+
+          {firstGap ? (
+            <Link href={firstGap.href} className="btn primary bset-setup">
+              <Icon name={GAP_ICON[firstGap.key] ?? 'cash'} />
+              {asButtonLabel(firstGap.label)}
+            </Link>
+          ) : state.kind === 'ready_off' && !readOnly ? (
+            <button
+              type="button"
+              className="btn primary bset-setup"
+              onClick={() => setEnabled(true)}
+              disabled={pending}
+            >
+              <Icon name="play" />
+              {pending ? 'Turning on…' : 'Turn on Quick Stops'}
+            </button>
+          ) : null}
+
+          <Link href={SETTINGS_HREF} className="btn secondary bset-setup">
             <Icon name="cash" />
             Review settings
           </Link>
-          {/* "View booking page" was the old label, which reads as somewhere you
-              go rather than as the customer's side of this feature — and said
-              nothing about the fact that Quick Stops is hidden on that page
-              while it is off, so an owner who followed it found no sign of the
-              thing they had just configured. */}
+
+          {/* THE LABEL SAYS WHAT IS ON THE OTHER SIDE OF THE CLICK.
+              "Preview customer experience" was a promise the link could not
+              keep: it opens the live booking page, and Quick Stops is hidden
+              there whenever the feature is not live — so an owner pressed
+              "preview" on the thing they had just configured and found no sign
+              of it. There is no unpublished preview mode to send them to, so
+              the label stops claiming one. */}
           {bookingUrl ? (
             <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="btn secondary bset-preview">
               <Icon name="external" />
-              Preview customer experience
+              {live ? 'Preview what customers see' : 'View booking page — Quick Stops hidden'}
             </a>
           ) : null}
+
           <button type="button" className="btn ghost bset-how" onClick={jumpToHowItWorks}>
             <Icon name="help" />
             How it works
@@ -192,8 +252,8 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
         </div>
         {bookingUrl && !live ? (
           <p className="bset-preview-note">
-            Quick Stops is hidden on your booking page while it&apos;s {state.kind === 'paused' ? 'paused' : 'off'} — the preview shows
-            what customers see today, without it.
+            It shows what customers see today, without Quick Stops. They appear on that page the moment this is{' '}
+            {state.kind === 'paused' ? 'unpaused' : 'live'}.
           </p>
         ) : null}
       </section>
@@ -264,7 +324,20 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
   );
 }
 
-export function QuickStopHead({ bookingUrl }: { bookingUrl: string | null }) {
+/**
+ * TWO BUTTONS, ONE URL.
+ *
+ * The head carried "View booking page" and the master card carried "Preview
+ * customer experience", and they opened exactly the same page — the largest
+ * call to action on a page about turning a feature on was a link to somewhere
+ * that does not show it. And when the site was unpublished this one said
+ * "Publish your website", which is the same thing the master card's primary
+ * action now says in that state, in the same words.
+ *
+ * So the head has no button. It is a title and a sentence; the actions live in
+ * the master card six inches below it, where the state they depend on is.
+ */
+export function QuickStopHead() {
   return (
     <header className="bset-head">
       <div>
@@ -287,15 +360,6 @@ export function QuickStopHead({ bookingUrl }: { bookingUrl: string | null }) {
           arrival window and fee, and accept only when it fits your route. Nothing is booked until the customer pays.
         </p>
       </div>
-      {bookingUrl ? (
-        <a className="btn secondary bset-head-cta" href={bookingUrl} target="_blank" rel="noopener noreferrer">
-          View booking page <Icon name="external" />
-        </a>
-      ) : (
-        <Link className="btn secondary bset-head-cta" href="/dashboard/sites">
-          Publish your website <Icon name="external" />
-        </Link>
-      )}
     </header>
   );
 }

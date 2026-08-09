@@ -28751,6 +28751,12 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   /* Never narrower than a readable label; the row scrolls instead. */
   min-width: 8.5rem;
   padding: 0.55rem 0.8rem;
+  /* 44px, because these are the page's primary navigation and they were 37px
+     tall — under the target size on the only device where the row is hard to
+     hit in the first place. Grid, so align-content is what centres the label
+     inside the taller box. */
+  min-height: 44px;
+  align-content: center;
   border: 1px solid transparent;
   border-radius: 11px;
   background: transparent;
@@ -28773,7 +28779,26 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
    .panel cards and a wrapper with padding would double every gap. */
 .qs-tabpanel:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--cedge-orange-51); border-radius: 14px; }
 
+/* The deep links into this page all point at a section id, and the app header
+   is fixed — so `#quick-stop-setup` scrolled the section's own "SETUP" heading
+   up underneath it and landed on the first field instead. Same offset the
+   settings tabs use, for the same reason. */
+.qs-tabpanel [id] { scroll-margin-top: 5.2rem; }
+
 @media (max-width: 640px) {
-  .qs-tab { min-width: 7.5rem; padding: 0.5rem 0.6rem; }
+  /* THREE EQUAL THIRDS, NOT A ROW THAT SCROLLS.
+     `min-width: 7.5rem` on three tabs plus the gaps and the rail's padding came
+     to 381px inside a 309px content box at 390px — so the row scrolled
+     sideways and only two of the three labels were ever on screen. The hint
+     line is already hidden here, which leaves "Today", "Settings", "Insights":
+     each of them fits a third of any phone. min-width: 0 is what lets
+     `flex: 1 1 0` actually divide the row. */
+  .qs-tabnav { overflow-x: visible; }
+  .qs-tab {
+    min-width: 0;
+    padding: 0.5rem 0.4rem;
+    text-align: center;
+    justify-items: center;
+  }
   .qs-tab small { display: none; }
 }

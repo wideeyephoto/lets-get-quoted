@@ -176,18 +176,68 @@ describe('the page reads from the one state', () => {
   });
 
   /**
-   * A switch, a button doing the identical thing, and a hint suggesting you
-   * clear every weekday — which does not pause anything, it creates
-   * setup_incomplete, the state the page then scolds you for.
+   * A switch, a button doing the identical thing in every state, and a hint
+   * suggesting you clear every weekday — which does not pause anything, it
+   * creates setup_incomplete, the state the page then scolds you for.
+   *
+   * The state-aware "Turn on Quick Stops" below is not that button back: it
+   * exists only in ready_off, and it calls the same setter the switch does.
    */
-  it('offers one way to turn it on, not three', () => {
+  it('offers no second control that duplicates the switch in every state', () => {
     expect(STATUS_CODE).not.toContain('Pause Quick Stops');
     expect(STATUS_CODE).toContain('type="checkbox"');
+    expect(STATUS_CODE).toContain("state.kind === 'ready_off' && !readOnly");
   });
 
+  /**
+   * THE PRIMARY ACTION USED TO BE "Review settings" IN ALL FOUR STATES.
+   *
+   * An account that was fully configured and simply switched off had the page
+   * tell it, in its largest button, to review settings that needed no
+   * reviewing — while the only thing left to do was an unlabelled toggle.
+   */
+  it('makes the primary action the one this state actually calls for', () => {
+    // ready_off — turning it on IS the remaining step.
+    expect(STATUS_CODE).toContain('Turn on Quick Stops');
+    // setup_incomplete — points at the first thing that is missing, by name.
+    expect(STATUS_CODE).toContain('asButtonLabel(firstGap.label)');
+    expect(STATUS_CODE).toContain('href={firstGap.href}');
+    // ...and "Review settings" is no longer competing with either of them.
+    expect(STATUS_CODE).not.toContain('btn primary bset-setup">\n            <Icon name="cash" />\n            Review settings');
+  });
+
+  /**
+   * "Preview customer experience" opened the LIVE booking page, where Quick
+   * Stops is hidden whenever the feature is not live — so the button promised
+   * a preview of the thing it could not show. There is no unpublished preview
+   * mode to send them to, so the label stops claiming one.
+   */
   it('names the customer preview for what it is, and says it is hidden', () => {
-    expect(STATUS).toContain('Preview customer experience');
-    expect(STATUS).toContain('hidden on your booking page');
+    expect(STATUS_CODE).toContain('View booking page — Quick Stops hidden');
+    expect(STATUS_CODE).toContain("live ? 'Preview what customers see'");
+  });
+
+  /**
+   * The head's "View booking page" and the master card's preview opened the
+   * same URL, and in the unpublished case the head said "Publish your website"
+   * — which is word for word what the master card's primary action now says in
+   * that state.
+   */
+  it('does not put a second button on the same URL up in the header', () => {
+    const head = STATUS_CODE.slice(STATUS_CODE.indexOf('export function QuickStopHead'));
+    expect(head).not.toContain('bset-head-cta');
+    expect(head).not.toContain('bookingUrl');
+  });
+
+  /**
+   * The <label> wraps the copy as well as the box, so the accessible name was
+   * the whole block — status line and all — read out on focus and again on
+   * every toggle.
+   */
+  it('names the switch "Quick Stops" and describes it separately', () => {
+    expect(STATUS_CODE).toContain('aria-label="Quick Stops"');
+    expect(STATUS_CODE).toContain('aria-describedby={describedId}');
+    expect(STATUS_CODE).toContain('<small id={describedId}>');
   });
 
   /**
@@ -266,6 +316,37 @@ describe('the three tabs', () => {
   it('puts activation before the map', () => {
     const todayPanel = PAGE.slice(PAGE.indexOf('const todayPanel'), PAGE.indexOf('const settingsPanel'));
     expect(todayPanel.indexOf('<QuickStopStatus')).toBeLessThan(todayPanel.indexOf('<QuickStopCoverage'));
+  });
+
+  /* Without one the tab inherits the marketing site's default title, so two
+     dashboard tabs open side by side are indistinguishable and a bookmark of
+     this page is named after the homepage. */
+  it('names the browser tab after the page', () => {
+    expect(PAGE).toContain("export const metadata = { title: 'Quick Stops' }");
+  });
+
+  /**
+   * THREE EQUAL THIRDS ON A PHONE, NOT A ROW THAT SCROLLS.
+   *
+   * `min-width: 7.5rem` on three tabs, plus the gaps and the rail's own
+   * padding, came to 381px inside a 309px content box at 390px — so the page's
+   * primary navigation scrolled sideways and only two of the three labels were
+   * ever on screen at once.
+   */
+  it('fits all three tabs on a phone, at a full-size target', () => {
+    const css = read('src', 'app', 'globals.css').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '');
+    const base = css.slice(css.indexOf('\n.qs-tab {'), css.indexOf('}', css.indexOf('\n.qs-tab {')));
+    expect(base).toContain('min-height: 44px');
+    expect(base).toContain('flex: 1 1 0');
+
+    const phone = css.slice(css.indexOf('@media (max-width: 640px)', css.indexOf('.qs-tabpanel')));
+    // min-width: 0 is what lets `flex: 1 1 0` actually divide the row.
+    expect(phone).toContain('min-width: 0');
+    expect(phone).toContain('.qs-tab small { display: none; }');
+
+    /* The app header is fixed, so a deep link put the section's own heading
+       underneath it and landed on the first field. */
+    expect(css).toContain('.qs-tabpanel [id] { scroll-margin-top:');
   });
 
   it('moved the pitch and the past-work panel off Today', () => {
