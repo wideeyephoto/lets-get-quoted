@@ -5521,3 +5521,221 @@
     z-index: 40;
   }
 }
+
+/* ===========================================================================
+   §101 — /HOW-IT-WORKS EXPLAINS THOROUGHLY AND CONVERTS SLOWLY
+
+   Measured at 1280x720 and 390x844 before any of this:
+
+     page height          7,403px desktop        10,537px mobile
+     hero height            924px                 1,150px
+     first CTA at y=          782                   1,056  (and the demo
+                                                            link at 1,120)
+     fixed chrome            137px                   173px — header 68,
+                                                     stage nav 51, bottom
+                                                     signup bar 54: 20.5%
+                                                     of an 844px screen
+     tapping a stage         —                     lands on the mockup, with
+                                                     the heading that names it
+                                                     559px further down
+     copy under 12px         63 elements across 11 selectors
+
+   Five separate fixes below, plus the one in the markup (the four axes became
+   three and a <details>) and the one in site-chrome.tsx (the bottom bar stands
+   down while the stage nav is on screen).
+   =========================================================================== */
+
+/* ---- 1. the stage is three blocks, and on a phone they interleave ---------
+
+   It was a copy column and a visual column, and at 900px the visual took
+   `order: -1` so it led. Which meant the anchor target — the section — began
+   with a product screenshot, and the number and heading that say WHICH stage
+   you just tapped were most of a screen below it. Named areas instead: the
+   head can lead on a phone while the visual still sits beside the whole copy
+   column on a desktop. */
+.root :global(.hiw-stage) {
+  grid-template-areas: "head visual" "notes visual" "more visual";
+  column-gap: clamp(34px, 5vw, 74px);
+  row-gap: 0;
+  align-items: start;
+  align-content: center;
+  /* 82px header + 55px stage nav, plus room to breathe. The old value was 62,
+     which cleared the stage nav and left the heading under the header. */
+  scroll-margin-top: 152px;
+}
+.root :global(.hiw-stage[data-flip="true"]) {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  grid-template-areas: "visual head" "visual notes" "visual more";
+}
+.root :global(.hiw-stage-head) { grid-area: head; }
+.root :global(.hiw-stage-visual) { grid-area: visual; align-self: center; }
+.root :global(.hiw-stage .hiw-notes) { grid-area: notes; }
+.root :global(.hiw-record) { grid-area: more; }
+
+@media (max-width: 900px) {
+  /* Head, then the mockup it describes, then the detail. The old
+     `.hiw-stage-visual { order: -1 }` and its data-flip partner are gone —
+     nothing is ordered by hand any more. */
+  .root :global(.hiw-stage),
+  .root :global(.hiw-stage[data-flip="true"]) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "visual" "notes" "more";
+  }
+  .root :global(.hiw-stage-visual) { margin-top: 26px; }
+  /* Header 68 + stage nav 51 at this width. */
+  .root :global(.hiw-stage) { scroll-margin-top: 134px; }
+}
+
+/* ---- 2. "the record gains" folds away ------------------------------------
+
+   Four dense axes per stage, five stages over. This is the one a reader can
+   take on trust, and the only one restated in the swimlane below. */
+.root :global(.hiw-record) {
+  margin: 0;
+  border-bottom: 1px solid rgba(174, 199, 211, .12);
+}
+.root :global(.hiw-record summary) {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 15px 0;
+  cursor: pointer;
+  list-style: none;
+  color: #b8c8d3;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  transition: color .18s ease;
+}
+/* Safari draws its own triangle through ::-webkit-details-marker. */
+.root :global(.hiw-record summary::-webkit-details-marker) { display: none; }
+.root :global(.hiw-record summary:hover) { color: #e6eef2; }
+/* The chevron. Two borders on a rotated square — no glyph, so it cannot fall
+   back to a font that does not have one. */
+.root :global(.hiw-record summary i) {
+  flex: none;
+  width: 8px; height: 8px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .2s ease;
+}
+.root :global(.hiw-record[open] summary i) { transform: translateY(1px) rotate(225deg); }
+.root :global(.hiw-record > p) {
+  margin: 0;
+  padding: 0 0 18px;
+  font-size: 14px; line-height: 1.6; color: #b9c8d1;
+}
+.root :global(.hiw-record > p b) { color: #dfe8ed; font-weight: 650; }
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.hiw-record summary i) { transition: none; }
+}
+
+/* ---- 3. the $0 carries its own condition ---------------------------------
+
+   The strip said "$0 / PER MONTH" beside two facts that are flatly true, and
+   the rest of that sentence — the platform fee — was 9,000px down the page on
+   a phone. */
+.root :global(.hiw-proof-fee) {
+  display: block;
+  padding: 26px 18px;
+  text-align: center;
+  background: #0b1e28;
+  transition: background .18s ease;
+}
+.root :global(.hiw-proof-fee:hover) { background: #0e2532; }
+.root :global(.hiw-proof-fee b) {
+  display: block;
+  font-size: clamp(28px, 3.4vw, 42px); font-weight: 750; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  color: #f3f7f8;
+}
+.root :global(.hiw-proof-fee small) {
+  display: block; margin-top: 5px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px; letter-spacing: .09em; line-height: 1.5;
+  color: #8ea2b0;
+}
+.root :global(.hiw-proof-fee em) {
+  display: block; margin-top: 9px;
+  font-style: normal; font-size: 12px; font-weight: 650;
+  color: var(--orange);
+}
+
+@media (max-width: 620px) {
+  /* Three cells at 390px is 129px each, and this one has a sentence in it. */
+  .root :global(.hiw-proof) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .root :global(.hiw-proof-fee) { grid-column: 1 / -1; }
+}
+
+/* ---- 4. one disclaimer, placed -------------------------------------------
+
+   A band, not a rule on the mark itself: .example-mark is an inline-flex pill
+   with its own padding, so styling the <p> directly turns the pill into a
+   full-bleed bar. It is inline-level, which is why the centering is text-align
+   on the parent and not a margin on the child. */
+.root :global(.hiw-example-band) {
+  padding: 22px clamp(20px, 5vw, 86px) 0;
+  text-align: center;
+}
+.root :global(.hiw-example-band .example-mark) { margin: 0; }
+
+/* ---- 5. the 12px floor, on the page's own words --------------------------
+
+   63 elements of real copy rendered between 9.5px and 11.5px on a phone. The
+   45 inside the mockups are deliberately small — they are a drawing of a
+   screen, and blowing them up would break the drawing — but none of them
+   carries a claim this page needs read. These do. */
+.root :global(.hiw-hero .eyebrow),
+.root :global(.hiw-lanes-band .eyebrow),
+.root :global(.hiw-price .eyebrow),
+.root :global(.hiw-proof small),
+.root :global(.hiw-stage-kicker),
+.root :global(.hiw-stagenav small),
+.root :global(.hiw-notes dt),
+.root :global(.hiw-lane-label),
+.root :global(.hiw-spine-id),
+.root :global(.hiw-spine-stage),
+.root :global(.hiw-lane-event small),
+.root :global(.hiw-legend li),
+.root :global(.final-cta .eyebrow),
+.root :global(.hiw-price .fee-tiers small),
+/* Site-wide, and the last 11px string on the page: the footer copyright. It
+   is one line in its own row, so there is nothing for a pixel to disturb. */
+.root :global(footer > span) { font-size: 12px; }
+
+/* Tracking that reads at 11px is too loose at 12 in the same box — the stage
+   kicker and the nav numerals both sit in fixed-width furniture. */
+.root :global(.hiw-stage-kicker),
+.root :global(.hiw-proof small) { letter-spacing: .12em; }
+.root :global(.hiw-stagenav small) { letter-spacing: .06em; }
+
+/* ---- 7. the stage nav stops sitting on the site header -------------------
+
+   Below 760 the stage nav already carries `top: 68px` to clear the sticky
+   header. Above it, nobody ever set one — so the moment you scrolled past the
+   hero on a desktop, a 55px bar with z-index 30 parked itself on top of an
+   82px header with z-index 20 and the brand, the whole site nav, Sign in and
+   the header CTA were gone for the rest of the page. Measured at 1280 before
+   this: elementFromPoint at the header's own vertical centre returned a stage
+   link, on both the logo and the button.
+
+   The header is position:fixed here, so this is the one number that keeps the
+   two apart. Matched to the header's height, and to the 68px already written
+   below the breakpoint. */
+@media (min-width: 761px) {
+  .root :global(.hiw-stagenav) { top: 82px; }
+}
+
+/* ---- 6. one signup button at a time --------------------------------------
+
+   Opening the menu on a phone put two orange "Build my free site" buttons on
+   screen at once — the header's, still sitting in the bar, and the drawer's,
+   which is the whole reason the drawer has one. Below the nav breakpoint the
+   drawer is where the offer lives, so the bar's copy of it stands down while
+   the panel is open.
+
+   Site-wide rather than page-scoped: [data-menu="open"] is only ever set below
+   1080px, which is exactly where the drawer exists. And the bottom bar goes
+   with it — a fixed bar over an open panel is a third copy of the same button
+   and it covers the last row of the panel. */
+.root :global(.site-header[data-menu="open"] .header-cta) { display: none; }
+.root :global(.site-header[data-menu="open"] ~ .mobile-cta) { display: none; }

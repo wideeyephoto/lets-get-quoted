@@ -245,6 +245,14 @@ function useMobileBarVisibility() {
       document.querySelector('main > section'),
       ...document.querySelectorAll('.final-cta, .page-cta'),
       ...document.querySelectorAll('footer'),
+      // A PAGE'S OWN STICKY NAVIGATION COUNTS TOO.
+      // /how-it-works carries a sticky five-stage bar. With the header above it
+      // and this bar below, a 390x844 phone was spending 173px — better than a
+      // fifth of the screen — on fixed furniture, and the bar was covering the
+      // stage headings it was floating over. The stage nav is that page's own
+      // wayfinding and the header still carries a signup button the whole way
+      // down, so while the stage bar is on screen this one has nothing to add.
+      ...document.querySelectorAll('.hiw-stagenav'),
     ].filter((el): el is Element => !!el && el !== bar);
     if (!zones.length) return;
 

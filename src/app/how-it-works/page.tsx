@@ -87,7 +87,15 @@ const STAGES: Stage[] = [
     title: 'Build the site',
     summary:
       'Start with a polished, editable contractor website built around your trade and service area.',
-    does: ['Add your business basics', 'Generate services and local pages', 'Connect Smart Intake'],
+    /* "Connect Smart Intake" named a product without saying what it is. Smart
+       Intake is the real name of the setting (dashboard → settings → intake), so
+       it stays — with the four words that make it mean something to somebody who
+       has never seen the app. */
+    does: [
+      'Add your business basics',
+      'Generate services and local pages',
+      'Turn on Smart Intake — the quote form that asks about the actual project',
+    ],
     sees: (
       <>
         A published site for your trade: the services you sell, the towns you cover, your hours, and
@@ -145,7 +153,7 @@ const STAGES: Stage[] = [
     does: ['Create itemized options', 'Send for e-sign approval', 'Collect the deposit'],
     sees: (
       <>
-        A quote they can open on a phone: itemised, totalled, with a name to type — and, if you asked
+        A quote they can open on a phone: itemized, totaled, with a name to type — and, if you asked
         for one, a deposit to pay on the same screen.
       </>
     ),
@@ -211,7 +219,7 @@ const STAGES: Stage[] = [
     next: (
       <>
         Once a customer passes the interval you set — 90 days unless you change it — they surface as
-        due to rebook, and the invite will not go out twice inside a fortnight.
+        due to rebook, and the invite will not go out twice within 14 days.
       </>
     ),
   },
@@ -353,7 +361,12 @@ const LAST_TIER = FEE_TIERS[FEE_TIERS.length - 1];
 export default function HowItWorksPage() {
   return (
     <>
-      <main className={styles.root} id="main-content">
+      <main className={styles.root}>
+        {/* The page had no skip link, so the first tab stop was the wordmark and
+            the second was five nav links — measured before this: first=A.brand.
+            /features and the homepage both open with one. */}
+        <a className="skip-link" href="#main-content">Skip to content</a>
+
         {/* SiteHeader has to be INSIDE .root: every rule that styles it is
             scoped to that class, so rendered as a sibling it comes out as a
             600px logo above five run-together links. The homepage nests it the
@@ -363,7 +376,7 @@ export default function HowItWorksPage() {
         {/* ------------------------------------------------------------------
             HERO — the thesis, drawn rather than described.
             ------------------------------------------------------------------ */}
-        <section className="hiw-hero" aria-labelledby="how-title">
+        <section className="hiw-hero" id="main-content" aria-labelledby="how-title">
           <p className="eyebrow"><span>✦</span> ONE CUSTOMER RECORD · START TO FINISH</p>
           <h1 id="how-title">Five stages. <em>No broken handoffs.</em></h1>
           <p className="hiw-lede">
@@ -371,15 +384,23 @@ export default function HowItWorksPage() {
             becomes a quote, a scheduled job and money in the bank.
           </p>
 
-          <JobJourney />
-          <JourneyLegend />
-
+          {/* THE ACTIONS COME BEFORE THE DRAWING NOW.
+              The hero ran 1,150px on a 390px phone and the buttons sat 1,056px
+              down it — a screen and a quarter of reading before the page made
+              any offer at all, and the lower-commitment one ("no signup") was
+              lower still at 1,120. The journey graphic is the best thing on the
+              page and it is also 240px tall on a phone; it argues the case for
+              anyone who keeps reading, which is exactly why it does not need to
+              come first. */}
           <div className="hero-actions">
             <a className="button primary" href={APP_SIGNUP_URL}>
               Build my free site <span aria-hidden="true">→</span>
             </a>
             <Link className="button secondary" href="/demo">Explore the demo — no signup</Link>
           </div>
+
+          <JobJourney />
+          <JourneyLegend />
         </section>
 
         {/* A stat strip rather than a paragraph of reassurance. Both numbers are
@@ -388,7 +409,16 @@ export default function HowItWorksPage() {
         <section className="hiw-proof" aria-label="At a glance">
           <div><b>{TRADES.length}</b><small>TRADES</small></div>
           <div><b>{STAGES.length}</b><small>CONNECTED STAGES</small></div>
-          <div><b>$0</b><small>PER MONTH</small></div>
+          {/* "$0 / PER MONTH", on its own, next to two facts that are simply
+              true, read as the whole price. The rest of the sentence was 9,000px
+              further down this page on a phone. A number that large has to carry
+              its own condition, and the cell is a link because the reader who
+              stops here is the one who most needs the full answer. */}
+          <Link className="hiw-proof-fee" href="/pricing">
+            <b>$0</b>
+            <small>PER MONTH · {FIRST_TIER.rate} ONLY WHEN YOU&rsquo;RE PAID</small>
+            <em>See the pricing <span aria-hidden="true">→</span></em>
+          </Link>
         </section>
 
         <StageNav stages={STAGES.map(({ number, title }) => ({ number, title }))} />
@@ -401,6 +431,21 @@ export default function HowItWorksPage() {
             unchanged: the four axes are still all here, as annotations under
             the heading rather than as four boxes.
             ------------------------------------------------------------------ */}
+        {/* ONE DISCLAIMER, NOT SIX.
+            Every stage carried its own "an invented job, not a real customer",
+            and so did the swimlane — six repetitions of the same sentence down
+            one page. Repeating it that often stops reading as candour and starts
+            reading as the page insisting on the one thing it cannot show, which
+            is a real customer. Said once, here, before the first mockup, and
+            once more beside the swimlane 5,000px below, because a reader who
+            arrives there by anchor never passed this line. */}
+        <div className="hiw-example-band">
+          <p className="example-mark">
+            <b>Example</b> — every screen below is the same invented job, a kitchen ceiling in Royal
+            Oak. Not a real customer.
+          </p>
+        </div>
+
         {STAGES.map((stage, index) => {
           const Visual = STAGE_VISUALS[index];
           return (
@@ -411,37 +456,58 @@ export default function HowItWorksPage() {
               data-flip={index % 2 === 1 ? 'true' : 'false'}
               aria-labelledby={`stage-${stage.number}-title`}
             >
-              <div className="hiw-stage-copy">
+              {/* HEAD, VISUAL, NOTES — three grid children rather than a copy
+                  column and a visual, because on a phone they have to interleave.
+                  The mockup used to be `order: -1` at 900px, so tapping a stage in
+                  the sticky nav landed on a product screenshot with the heading
+                  that names it 559px further down (measured at 390x844). You
+                  could not tell the navigation had worked. */}
+              <div className="hiw-stage-head">
                 <p className="hiw-stage-kicker"><span>{stage.number}</span> STAGE {stage.number} OF {STAGES.length}</p>
                 <h2 id={`stage-${stage.number}-title`}>{stage.title}</h2>
                 <p className="hiw-stage-summary">{stage.summary}</p>
-
-                <dl className="hiw-notes">
-                  <div data-hand="you">
-                    <dt>{AXES[0].label}</dt>
-                    <dd>{stage.does.join(' · ')}</dd>
-                  </div>
-                  <div data-hand="homeowner">
-                    <dt>{AXES[1].label}</dt>
-                    <dd>{stage.sees}</dd>
-                  </div>
-                  <div data-hand="record">
-                    <dt>{AXES[2].label}</dt>
-                    <dd>{stage.record}</dd>
-                  </div>
-                  <div data-hand="auto">
-                    <dt>{AXES[3].label}</dt>
-                    <dd>{stage.next}</dd>
-                  </div>
-                </dl>
               </div>
 
               <div className="hiw-stage-visual">
                 <Visual />
-                <p className="example-mark">
-                  <b>Example</b> — an invented job, not a real customer.
-                </p>
               </div>
+
+              <dl className="hiw-notes">
+                <div data-hand="you">
+                  <dt>{AXES[0].label}</dt>
+                  <dd>{stage.does.join(' · ')}</dd>
+                </div>
+                <div data-hand="homeowner">
+                  <dt>{AXES[1].label}</dt>
+                  <dd>{stage.sees}</dd>
+                </div>
+                <div data-hand="auto">
+                  <dt>{AXES[3].label}</dt>
+                  <dd>{stage.next}</dd>
+                </div>
+              </dl>
+
+              {/* THE FOURTH AXIS, FOLDED.
+                  Four dense explanations per stage, five times over, is what made
+                  this page 10,537px on a phone. Of the four, "The record gains"
+                  is the one a first-time reader can take on trust and a serious
+                  one will want in full — and it is the only one whose argument is
+                  restated in the swimlane below. So it opens rather than
+                  scrolls. <details> and not a script: it works before hydration,
+                  it is in the tab order for free, and a browser's own find-in-page
+                  opens it.
+
+                  The label names the content ("what gets saved"), not the widget
+                  ("more"), which is what makes it worth tapping. */}
+              <details className="hiw-record" data-hand="record">
+                <summary>
+                  <span>See what gets saved</span>
+                  <i aria-hidden="true" />
+                </summary>
+                <p>
+                  <b>{AXES[2].label}:</b> {stage.record}
+                </p>
+              </details>
             </section>
           );
         })}

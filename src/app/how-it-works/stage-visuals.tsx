@@ -90,7 +90,7 @@ export function WinVisual() {
         <ul className="hiw-lines">
           <li><span>Ceiling repair &amp; seal</span><em>price book</em><b>$1,240</b></li>
           <li><span>Recessed lighting ×6</span><em>price book</em><b>$1,860</b></li>
-          <li><span>Paint &amp; make good</span><em>price book</em><b>$640</b></li>
+          <li><span>Paint &amp; patch</span><em>price book</em><b>$640</b></li>
           <li className="est"><span>Access hatch</span><em>estimate — check</em><b>$510</b></li>
         </ul>
         <div className="hiw-quote-total"><span>Total</span><b>$4,250</b></div>
@@ -161,7 +161,7 @@ export function GrowVisual() {
         <div className="hiw-follow-card">
           <small>DUE TO REBOOK</small>
           <p>D. Whitfield · in 90 days</p>
-          <em>Won&rsquo;t re-invite inside a fortnight</em>
+          <em>Won&rsquo;t re-invite within 14 days</em>
         </div>
       </div>
     </div>
