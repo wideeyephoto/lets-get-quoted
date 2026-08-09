@@ -28802,3 +28802,210 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   }
   .qs-tab small { display: none; }
 }
+
+/* ================================================================
+   QUICK STOPS — settings drawers that report themselves, and a save
+   bar that says whether there is anything to save
+   ================================================================
+   The five drawers carried a fixed blurb apiece describing what each
+   was ABOUT, never what it held. An account could therefore be
+   reported ready to go while drawer 2 accepted five-hour visits and
+   drawer 5 held refund terms the app's own warnings call unfair — both
+   visible only to somebody who opened the drawer and read. The value
+   now replaces the blurb, and anything worth a second look wears a
+   badge on the closed head. See lib/quick-stop-sections. */
+
+.bset-section-state {
+  flex: none;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Two levels, and the WORD carries which — "Not set" against "Check
+   this". Colour only agrees with it, so the badge still sorts itself in
+   greyscale and for anyone who cannot separate amber from orange. */
+.bset-section-state[data-state='todo'] {
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--ink-orange-8);
+}
+.bset-section-state[data-state='warn'] {
+  border-color: var(--cedge-amber-11);
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--gold-ink);
+}
+
+.bset-section-issues {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem 0.75rem 2rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t09);
+  background: rgba(var(--tint), 0.02);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.bset-section-issues li + li { margin-top: 0.4rem; }
+
+/* The save bar. It was a plain button under five collapsed drawers,
+   always enabled — so the only way to know a save had landed was to
+   scroll back to a button you had already pressed. Sticky, and present
+   only once SaveButton's onlyWhenChanged says the form is dirty, which
+   makes its presence the answer to "have I changed anything". */
+.qs-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem -0.35rem -0.35rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  /* Prefixed for iOS Safari, as everywhere else in this file — --bg-elevated is
+     translucent, so without the blur the settings scroll past legibly underneath
+     the bar rather than behind it. */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.22);
+}
+
+/* EMPTY WHEN CLEAN. Otherwise a sticky bar sits at the foot of the page
+   saying "Unsaved changes" over a form nobody has touched.
+
+   `button:not([hidden])`, and the [hidden] half is load-bearing:
+   SaveButton stays MOUNTED and sets the hidden attribute (its effects
+   reach the form through the button's own .form property, so a button
+   that unmounts takes its listeners with it and never comes back). A
+   bare :has(button) would therefore match forever.
+
+   Nor can this test computed display: .btn sets display:inline-flex,
+   and an author rule beats the UA stylesheet's [hidden]{display:none} —
+   the same trap .bset-section-body[hidden] and .settings-tabpanel[hidden]
+   are each written to dodge. The attribute is the honest signal.
+
+   .form-actions a few hundred lines down does the same job with
+   :not(:has(> *:not([hidden]))); that shape does not work here because
+   this bar also holds a note, which is never hidden. */
+.qs-savebar:not(:has(button:not([hidden]))) { display: none; }
+
+.qs-savebar-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.qs-savebar-note strong { color: var(--text); font-weight: 700; }
+
+@media (max-width: 560px) {
+  .qs-savebar { flex-direction: column; align-items: stretch; }
+  .qs-savebar .btn { width: 100%; }
+  .bset-section-state { display: none; }
+}
+
+/* ================================================================
+   QUICK STOPS — the demand funnel
+   ================================================================
+   "0 of 3" plus four separate sentences about what had been dropped,
+   which between them answered "why is this empty?" only if you read
+   all of them and did the subtraction. Same numbers, in the order they
+   happened. See lib/quick-stop-funnel. */
+
+.qs-funnel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.4rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.qs-funnel-step {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--edge-t09);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.02);
+}
+
+.qs-funnel-step > span { display: block; }
+
+/* Where the eye should go: the single biggest fall, and only when there
+   is a real one — see quickStopFunnel, which refuses to highlight the
+   biggest of five zeroes. */
+.qs-funnel-step[data-drop] {
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.06);
+}
+
+.qs-funnel-count {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.qs-funnel-label {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute-t62);
+}
+
+.qs-funnel-detail {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.qs-funnel-action {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-orange-8);
+}
+
+/* The arrow between steps. Absolute would need a positioned parent and
+   a gap to sit in; a border on the grid gap does the same job with no
+   extra element and disappears on its own when the grid stops being a
+   row. */
+@media (min-width: 861px) {
+  .qs-funnel-step + .qs-funnel-step { position: relative; }
+  .qs-funnel-step + .qs-funnel-step::before {
+    content: '';
+    position: absolute;
+    left: -0.56rem;
+    top: 1.5rem;
+    width: 6px;
+    height: 6px;
+    border-top: 2px solid var(--edge-t18);
+    border-right: 2px solid var(--edge-t18);
+    transform: rotate(45deg);
+  }
+}
+
+@media (max-width: 860px) {
+  .qs-funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .qs-funnel { grid-template-columns: minmax(0, 1fr); }
+}

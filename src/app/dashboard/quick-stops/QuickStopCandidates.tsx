@@ -6,6 +6,7 @@ import {
   type CandidateReport,
 } from '@/lib/quick-stop-candidates';
 import type { ScreeningSummary } from '@/lib/quick-stop-screenings';
+import { quickStopFunnel, quickStopFunnelSentence } from '@/lib/quick-stop-funnel';
 
 // "Possibly eligible work" — the demand panel.
 //
@@ -58,6 +59,7 @@ export default function QuickStopCandidates({
   reachable: number;
 }) {
   const rules = quickStopRuleReference();
+  const funnel = quickStopFunnel(report);
   const count = report.eligible.length;
   const unknown = report.unknownLength.length;
   // Only the strict bucket is priced. Rows with no recorded length are real
@@ -119,6 +121,36 @@ export default function QuickStopCandidates({
         <p className="eyebrow">Demand</p>
         <h2>Possibly eligible work</h2>
       </div>
+
+      {/* THE FUNNEL FIRST, THE ARGUMENT AFTER.
+          This panel had every number it needed and made the reader assemble
+          them: a headline of "0 of 3", a parenthetical about the window and its
+          row cap, a sentence about 48 records that looked like test data,
+          another about one row with no duration, and two cards whose whole
+          description was a phone number. All true; between them they answer
+          "why is this empty?", but only if you read all five and subtract.
+
+          The numbers below are the same ones — nothing new is counted here, it
+          is the order they happened in. */}
+      <ol className="qs-funnel" aria-label={quickStopFunnelSentence(funnel)}>
+        {funnel.map((step) => (
+          <li key={step.key} className="qs-funnel-step" data-drop={step.isBiggestDrop || undefined}>
+            {/* The whole row is announced once, off the list's own label —
+                read individually these are "54 6 3 0", which is not the same
+                information. */}
+            <span aria-hidden="true">
+              <b className="qs-funnel-count">{step.count}</b>
+              <span className="qs-funnel-label">{step.label}</span>
+              {step.detail ? <span className="qs-funnel-detail">{step.detail}</span> : null}
+              {step.action ? (
+                <a className="qs-funnel-action" href={step.action.href}>
+                  {step.action.label} &rarr;
+                </a>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ol>
 
       <div className="es-demand-lede">
         <p className="es-demand-headline">
@@ -241,7 +273,7 @@ export default function QuickStopCandidates({
             "we don't know" is not a yes — but it is listed, and listed HERE
             rather than in a footnote, because these are the owner's real jobs and
             the fix for them is one field away. */}
-        <div className="es-demand-col">
+        <div className="es-demand-col" id="quick-stop-unknown">
           <h3 className="es-demand-col-head is-no">
             <span aria-hidden="true">?</span> No length recorded
           </h3>

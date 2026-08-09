@@ -9,6 +9,12 @@ import { quickStopSettingsFromAccount, centsToDollars } from '@/lib/quick-stop';
 import { refundPolicyWarnings, CONTRACTOR_REFUND_SCOPE_NOTE } from '@/lib/quick-stop-policy';
 import RangeSlider, { clockToMinutes, formatClockValue, formatMoneyValue, minutesToClock } from '@/components/range-slider';
 import SaveButton from '@/components/save-button';
+import {
+  quickStopSectionsFlagged,
+  quickStopSectionsState,
+  reviewQuickStopSections,
+  type SectionReview,
+} from '@/lib/quick-stop-sections';
 
 export type QuickStopSettingsRow = Parameters<typeof quickStopSettingsFromAccount>[0];
 export type RefundTierValues = {
@@ -91,6 +97,19 @@ export default function QuickStopConfigurator({
     const n = Math.round(Number(raw));
     return Number.isFinite(n) ? Math.min(max, Math.max(0, n)) : 0;
   };
+  /**
+   * WHAT EACH CLOSED DRAWER IS SET TO.
+   *
+   * The five blurbs describe what a drawer is ABOUT and never what it holds, so
+   * an account could be reported ready while drawer 2 accepted five-hour visits
+   * and drawer 5 held refund terms this app's own warnings call unfair. Both
+   * were visible only to somebody who opened the drawer and read.
+   *
+   * The refund tiers are read from STATE rather than from the saved row, so the
+   * badge moves as the numbers are typed — the same reason the warnings inside
+   * the drawer are live. Everything else on this form is uncontrolled, and a
+   * badge that lied until the next page load would be worse than none.
+   */
   const refundWarnings = refundPolicyWarnings({
     withinGraceMinutes: refundNum(refunds.withinGraceMinutes, 120),
     grace: refundNum(refunds.grace, 100),
@@ -98,6 +117,30 @@ export default function QuickStopConfigurator({
     afterEnRoute: refundNum(refunds.afterEnRoute, 100),
     afterArrived: refundNum(refunds.afterArrived, 100),
   });
+
+  const reviews = reviewQuickStopSections({
+    weekdayCount: s.weekdays.length,
+    daysAhead: s.daysAhead,
+    earliestTime: s.earliestTime,
+    latestEnd: s.latestEnd,
+    maxVisitMinutes: s.maxVisitMinutes,
+    categoryCount: s.categories.length,
+    maxDetourMiles: s.maxDetourMiles,
+    maxDetourMinutes: s.maxDetourMinutes,
+    minFeeCents: s.minFeeCents,
+    maxFeeCents: s.maxFeeCents,
+    maxPerDay: s.maxPerDay,
+    refunds: {
+      withinGraceMinutes: refundNum(refunds.withinGraceMinutes, 120),
+      grace: refundNum(refunds.grace, 100),
+      beforeEnRoute: refundNum(refunds.beforeEnRoute, 100),
+      afterEnRoute: refundNum(refunds.afterEnRoute, 100),
+      afterArrived: refundNum(refunds.afterArrived, 100),
+    },
+  });
+  const reviewFor = (key: SectionKey): SectionReview | undefined => reviews.find((review) => review.key === key);
+  const flagged = quickStopSectionsFlagged(reviews);
+  const overall = quickStopSectionsState(reviews);
 
   // Collapsing a drawer moves everything below the heading you clicked, so pin
   // it: flushSync commits the change, then we put the heading back before the
@@ -170,8 +213,17 @@ export default function QuickStopConfigurator({
               <span className="bset-num">{section.num}</span>
               <span className="bset-section-copy">
                 <strong>{section.title}</strong>
-                <small>{section.blurb}</small>
+                {/* The VALUE where the description was. The description is still
+                    the answer to "what is this drawer for", but it is the same
+                    on every visit, and after the first one the question is
+                    always "what is it set to". */}
+                <small>{reviewFor(section.key)?.summary ?? section.blurb}</small>
               </span>
+              {reviewFor(section.key) && reviewFor(section.key)!.state !== 'ok' ? (
+                <span className="bset-section-state" data-state={reviewFor(section.key)!.state}>
+                  {reviewFor(section.key)!.state === 'todo' ? 'Not set' : 'Check this'}
+                </span>
+              ) : null}
               <span className="bset-expand">
                 {isOpen(section.key) ? 'Collapse' : 'Expand'}
                 <span className={`bset-chev${isOpen(section.key) ? ' open' : ''}`} aria-hidden="true">⌄</span>
@@ -185,6 +237,21 @@ export default function QuickStopConfigurator({
                 band. (BookingSetup gets away with unmounting because it builds
                 its FormData from React state instead.) */}
             <div className="bset-section-body" hidden={!isOpen(section.key)}>
+                {/* Why the badge is on. Inside the drawer rather than beside the
+                    badge, because the badge is a two-word summary and this is
+                    the argument — and the drawer is where the control that
+                    answers it lives.
+
+                    `terms` is skipped: it renders the very same warnings under
+                    its own inputs, live as they are typed, and printing them
+                    twice in one drawer reads as two different problems. */}
+                {section.key !== 'terms' && (reviewFor(section.key)?.issues.length ?? 0) > 0 ? (
+                  <ul className="bset-section-issues" data-state={reviewFor(section.key)!.state}>
+                    {reviewFor(section.key)!.issues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 {section.key === 'when' ? (
                   <div className="form-grid compact-form">
                     <div className="field full">
@@ -474,8 +541,25 @@ export default function QuickStopConfigurator({
           </section>
         ))}
 
-        <div className="form-actions">
-          <SaveButton>Save Quick Stop settings</SaveButton>
+        {/* THE SAVE BAR, STUCK TO THE BOTTOM.
+            It was a button below five collapsed drawers, always enabled and
+            saying nothing about whether there was anything to save — so the
+            only way to find out a save had landed was to scroll back down to a
+            button you had already pressed. `onlyWhenChanged` is a SaveButton
+            feature that already existed and this form never asked for; with it,
+            the bar's presence is itself the answer to "have I changed
+            anything". */}
+        <div className="qs-savebar" data-state={overall}>
+          <p className="qs-savebar-note">
+            <strong>Unsaved changes</strong>
+            {flagged > 0 ? (
+              <span>
+                {' · '}
+                {flagged} {flagged === 1 ? 'section' : 'sections'} to look at
+              </span>
+            ) : null}
+          </p>
+          <SaveButton onlyWhenChanged>Save Quick Stop settings</SaveButton>
         </div>
       </form>
     </section>

@@ -146,6 +146,14 @@ export const DEFAULT_QUICK_STOP_REQUIRED_PHOTOS = 1;
 // Days BEYOND today a request may reach. 0 is same-day-only — the original
 // behaviour, and a real choice rather than a disabled state.
 export const DEFAULT_QUICK_STOP_DAYS_AHEAD = 1;
+/**
+ * The furthest the picker goes, and the ceiling both the clamp and the day
+ * generator apply. It was the bare number 7 in each of them and in the option
+ * list in the configurator — three copies of one product decision, and the one
+ * that turns "same-day" into a week. Named so lib/quick-stop-window can be
+ * tested across the whole range it has to describe.
+ */
+export const QUICK_STOP_DAYS_AHEAD_MAX = 7;
 
 export type QuickStopSettings = {
   enabled: boolean;
@@ -275,7 +283,7 @@ export function quickStopSettingsFromAccount(row: AccountQuickStopRow): QuickSto
     paymentDeadlineMins: clampInt(row?.extra_stop_payment_deadline_mins, 1, 720, DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS),
     categories: normalizeCategories(row?.extra_stop_categories),
     requiredPhotos: clampInt(row?.extra_stop_required_photos, 0, 6, DEFAULT_QUICK_STOP_REQUIRED_PHOTOS),
-    daysAhead: clampInt(row?.extra_stop_days_ahead, 0, 7, DEFAULT_QUICK_STOP_DAYS_AHEAD),
+    daysAhead: clampInt(row?.extra_stop_days_ahead, 0, QUICK_STOP_DAYS_AHEAD_MAX, DEFAULT_QUICK_STOP_DAYS_AHEAD),
     requireAiApproval: row?.extra_stop_require_ai_approval !== false,
   };
 }
@@ -338,7 +346,7 @@ export function quickStopDayOptions(
 ): QuickStopDayOption[] {
   const now = opts.now ?? new Date();
   const { dateKey: todayKey, time } = zonedNowParts(now, opts.timeZone);
-  const horizon = Math.max(0, Math.min(7, Math.round(settings.daysAhead)));
+  const horizon = Math.max(0, Math.min(QUICK_STOP_DAYS_AHEAD_MAX, Math.round(settings.daysAhead)));
 
   const out: QuickStopDayOption[] = [];
   for (let offset = 0; offset <= horizon; offset++) {

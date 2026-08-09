@@ -3,7 +3,8 @@ import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
 import { computeQuickStopRoute, lastKnownWorkPoint, loadRouteStops } from '@/lib/quick-stop-route';
-import QuickStopCoverage from './QuickStopCoverage';
+import QuickStopCoverageMap from './QuickStopCoverageMap';
+import QuickStopAreas from './QuickStopAreas';
 import { loadPriorityZones, priorityZonesAvailable } from '@/lib/quick-stop-zones-data';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import QuickStopRequestCard, { type CardRequest } from './QuickStopRequestCard';
@@ -139,6 +140,14 @@ export default async function QuickStopsPage() {
     maxPerDay: settings.maxPerDay,
   });
   const quickStopLive = state.kind === 'on';
+  /**
+   * The pitch opens by itself on a genuinely untouched account, and nowhere
+   * else: setup not started, the switch never flipped, and nothing has ever
+   * come in. That version of the page is short anyway — no requests, an empty
+   * map — so the height complaint this fold answers is not about it. Every
+   * other state gets a closed drawer.
+   */
+  const openPitch = state.kind === 'setup_incomplete' && !state.switchOn && requests.length === 0;
   const businessName =
     (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
 
@@ -296,14 +305,15 @@ export default async function QuickStopsPage() {
       />
 
       {/* The map stays on Today, below the switch: where a Quick Stop could land
-          is a fact about today's route, not a setting. The priority-area editor
-          it used to be bundled with is a setting, and moved. */}
-      <QuickStopCoverage
+          is a fact about today's route. The priority-area editor it was bundled
+          with is a standing preference and three server actions — that is a
+          setting, and it has moved to one. The comment here used to claim that
+          had already happened; QuickStopCoverage rendered both. */}
+      <QuickStopCoverageMap
         stops={routeStops}
         radiusMiles={settings.maxDetourMiles}
         emptyReason={coverageEmpty}
         zones={priorityZones}
-        zonesAvailable={zonesAvailable}
         fallbackCenter={fallbackCenter}
       />
 
@@ -355,43 +365,37 @@ export default async function QuickStopsPage() {
         </section>
       )}
 
-      {/* THE PITCH, FOLDED, AND ONLY WHILE IT IS STILL A PITCH.
-          "How it works", the example, the customer preview and the benefit list
-          are exactly right the first time and scrolled past every day after.
-          Once the feature is set up it is a closed drawer at the foot of Today;
-          while it is off, it IS the page, so it stays open. */}
-      {settings.enabled ? (
-        <details className="panel workspace-section-card es-how" id="quick-stop-how">
-          <summary className="es-how-summary">
-            <span className="es-how-copy">
-              <strong>How &ldquo;Quick Stops&rdquo; works</strong>
-              <small>The flow start to finish, what the customer sees, and what it adds up to</small>
-            </span>
-            <span className="es-how-chev" aria-hidden="true">⌄</span>
-          </summary>
-          <div className="es-how-body">
-            <QuickStopExplainer
-              weekdayCount={settings.weekdays.length}
-              maxPerDay={settings.maxPerDay}
-              maxFeeDollars={defaults.maxFeeDollars}
-              minFeeDollars={defaults.minFeeDollars}
-              stripeConnected={stripeConnected}
-              bookingUrl={bookingUrl}
-              businessName={businessName}
-            />
-          </div>
-        </details>
-      ) : (
-        <QuickStopExplainer
-          weekdayCount={settings.weekdays.length}
-          maxPerDay={settings.maxPerDay}
-          maxFeeDollars={defaults.maxFeeDollars}
-          minFeeDollars={defaults.minFeeDollars}
-          stripeConnected={stripeConnected}
-          bookingUrl={bookingUrl}
-          businessName={businessName}
-        />
-      )}
+      {/* THE PITCH, FOLDED, IN EVERY STATE.
+          "How it works", the worked example, the customer preview, the benefit
+          list and the setup checklist are exactly right the first time and
+          scrolled past every day after. This used to fold only once the switch
+          was on — so the state it opened fully in was the state a brand-new
+          owner is in, and Today opened on a sales page rather than on their day.
+
+          What a new owner needs is above this and always was: the status block
+          names every missing step and its primary action goes to the first one.
+          The drawer's summary changes to say the pitch is in here; the pitch
+          itself does not have to be the page to be one press away. */}
+      <details className="panel workspace-section-card es-how" id="quick-stop-how" open={openPitch}>
+        <summary className="es-how-summary">
+          <span className="es-how-copy">
+            <strong>{quickStopLive ? 'How “Quick Stops” works' : 'New to Quick Stops? Here’s how it works'}</strong>
+            <small>The flow start to finish, what the customer sees, and what it adds up to</small>
+          </span>
+          <span className="es-how-chev" aria-hidden="true">⌄</span>
+        </summary>
+        <div className="es-how-body">
+          <QuickStopExplainer
+            weekdayCount={settings.weekdays.length}
+            maxPerDay={settings.maxPerDay}
+            maxFeeDollars={defaults.maxFeeDollars}
+            minFeeDollars={defaults.minFeeDollars}
+            stripeConnected={stripeConnected}
+            bookingUrl={bookingUrl}
+            businessName={businessName}
+          />
+        </div>
+      </details>
     </>
   );
 
@@ -406,11 +410,20 @@ export default async function QuickStopsPage() {
    * the same bug returns as silent data loss on save.
    */
   const settingsPanel = (
-    <QuickStopConfigurator
-      quickStop={accountRow as Parameters<typeof QuickStopConfigurator>[0]['quickStop']}
-      refundTiers={refundTiers}
-      stripeConnected={stripeConnected}
-    />
+    <>
+      <QuickStopConfigurator
+        quickStop={accountRow as Parameters<typeof QuickStopConfigurator>[0]['quickStop']}
+        refundTiers={refundTiers}
+        stripeConnected={stripeConnected}
+      />
+      {/* Where you would drive further than usual — a standing preference, so
+          it belongs with the rest of them rather than in the middle of Today. */}
+      <QuickStopAreas
+        radiusMiles={settings.maxDetourMiles}
+        zones={priorityZones}
+        zonesAvailable={zonesAvailable}
+      />
+    </>
   );
 
   const insightsPanel = (
