@@ -12,6 +12,7 @@ import ComposeMessage from './ComposeMessage';
 import AddAsCustomer from './AddAsCustomer';
 import ScrollToLatest from './ScrollToLatest';
 import SaveButton from '@/components/save-button';
+import OutgoingTextCatalogue from './OutgoingTextCatalogue';
 
 function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -395,6 +396,8 @@ export default async function MessagesPage({
           </div>
         </details>
       </section>
+
+      <OutgoingTextCatalogue />
     </main>
   );
 }

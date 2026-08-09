@@ -104,7 +104,7 @@ describe('the review pill points at the right page', () => {
   const blocked = { clientName: 'Karen', autoReviewRequest: true, reviewUrlConfigured: false, alreadyRequested: false, channel: 'text' } as const;
 
   it('offers a way to fix the missing review link', () => {
-    const state = reviewPillState({ ...blocked, sendReview: null });
+    const state = reviewPillState({ ...blocked, sendReview: undefined });
     expect(state.canAsk).toBe(false);
     if (state.canAsk) return;
     expect(state.fix?.href).toBe('/dashboard/sites#google-business-profile');
@@ -125,7 +125,7 @@ describe('the review pill points at the right page', () => {
       { ...blocked, reviewUrlConfigured: true, alreadyRequested: true },
       { ...blocked, reviewUrlConfigured: true, channel: null },
     ] as const) {
-      const state = reviewPillState({ ...input, sendReview: null });
+      const state = reviewPillState({ ...input, sendReview: undefined });
       expect(state.canAsk).toBe(false);
       if (state.canAsk) continue;
       expect(state.fix).toBeUndefined();

@@ -27519,3 +27519,127 @@ body[data-schedule-overlay="job"] .sched-queue {
    length, which is what a hero headline wants. */
 .marketing-shell .hero-copy h1,
 .marketing-shell .section-heading h1 { max-width: 22ch; }
+
+/* ===== Every text we send — the outgoing message catalogue ==================
+   A contractor's number sends thirty-odd different messages under their name,
+   and until this section there was nowhere to read them: the only way to find
+   out what an automation said was to switch it on and wait for it to reach a
+   customer.
+
+   THREE COLUMNS, AND WHY THEY ARE THESE THREE. What decides whether an owner is
+   happy for a message to go out is when it fires, what it says, and whether
+   they can stop it. Two of those are facts about the wiring and one is the
+   message, so the message takes the room: 1fr / 1.6fr / 0.8fr.
+
+   A GRID RATHER THAN A <table>. The row has to become a card on a phone, and a
+   table that scrolls sideways would put the message — the thing you came to
+   read — off the right edge. The roles are on the markup so it is still
+   announced as a table to a screen reader. */
+.sms-cat-table { display: grid; gap: 0.65rem; margin-top: 1.1rem; }
+
+.sms-cat-head,
+.sms-cat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 0.8fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.sms-cat-head {
+  padding: 0 0.9rem 0.15rem;
+  color: var(--mute-t45);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.sms-cat-row {
+  padding: 0.95rem 0.9rem;
+  border: 1px solid var(--edge-t08);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.02);
+}
+.sms-cat-row:hover { border-color: var(--edge-t14); background: rgba(var(--tint), 0.035); }
+
+.sms-cat-when { display: grid; gap: 0.25rem; min-width: 0; }
+.sms-cat-when strong { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; }
+.sms-cat-when > span { color: var(--mute-t55); font-size: 0.82rem; line-height: 1.45; }
+
+/* Who the phone belongs to. Colour carries the same fact as the word, never
+   instead of it — "To: Crew" reads without the tint. */
+.sms-cat-who {
+  justify-self: start;
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.06);
+  font-size: 0.68rem !important;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.sms-cat-who.is-customer { background: rgba(58, 160, 255, 0.13); color: var(--ink-sky-1, #7cc4ff); }
+.sms-cat-who.is-lead { background: rgba(255, 122, 33, 0.13); color: var(--accent-ink); }
+.sms-cat-who.is-owner { background: rgba(150, 110, 255, 0.14); color: var(--ink-violet-1); }
+.sms-cat-who.is-crew { background: rgba(52, 199, 123, 0.13); color: var(--ink-green-7); }
+
+.sms-cat-msg { display: grid; gap: 0.4rem; min-width: 0; }
+
+/* The outbound bubble from the inbox, on purpose: this IS what the customer
+   gets, so it should look like the messages beside it on the same page. */
+.sms-cat-bubble {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px 18px 18px 6px;
+  background: linear-gradient(135deg, #c9430a, #a8330b);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  color: #ffffff;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.sms-cat-authored { color: var(--mute-t45); font-size: 0.74rem; line-height: 1.4; }
+
+.sms-cat-control { display: grid; gap: 0.25rem; min-width: 0; }
+.sms-cat-control small { color: var(--mute-t45); font-size: 0.72rem; line-height: 1.4; }
+
+.sms-cat-switch {
+  justify-self: start;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid var(--cedge-orange-27);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.1);
+  color: var(--accent-ink);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+a.sms-cat-switch:hover { background: rgba(255, 122, 33, 0.18); }
+a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Manual and always-on are not switches, so they are not dressed as one. */
+.sms-cat-switch.is-manual,
+.sms-cat-switch.is-always {
+  border-color: var(--edge-t12);
+  background: rgba(var(--tint), 0.04);
+  color: var(--mute-i60);
+}
+
+.sms-cat-foot {
+  margin: 1.1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule-t08);
+  color: var(--mute-t55);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  max-width: var(--read-note);
+}
+
+/* One column below the tablet breakpoint: three columns of this at 900px gives
+   the message about 380px, which is narrower than the phone it is imitating. */
+@media (max-width: 1080px) {
+  .sms-cat-head { display: none; }
+  .sms-cat-row { grid-template-columns: minmax(0, 1fr); gap: 0.7rem; }
+  .sms-cat-control { grid-auto-flow: column; justify-content: start; align-items: center; gap: 0.5rem; }
+}
