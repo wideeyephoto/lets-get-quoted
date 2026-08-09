@@ -7,6 +7,7 @@ import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
+import RecordPhotos from '../RecordPhotos';
 import {
   QUEUE_SORTS,
   QUEUE_STAGES,
@@ -445,12 +446,33 @@ export default function LeadSmoothieView({
             <>
               {/* 1 — who and what */}
               <header className={styles.detailHead}>
-                <p className={focusStyles.heroTag}>Selected lead</p>
-                <h2 className={styles.detailName}>
-                  {selected.name}
-                  {selected.city ? <span className={styles.detailCity}> ({selected.city})</span> : null}
-                </h2>
-                <p className={styles.detailProject}>{selected.detail}</p>
+                <div className={styles.recordHeadLayout}>
+                  {/* THE COVER, WHICH THIS PANE ALONE WAS MISSING.
+                      Jobs' smoothie, Clients' smoothie and Leads' own Focus view
+                      all lead with it, and LeadViewItem has carried
+                      `projectType` and `photoCount` the whole time for exactly
+                      this — enough to draw the trade glyph before any detail
+                      request lands, so the pane never opens on a grey box. */}
+                  <RecordPhotos
+                    kind="lead"
+                    recordId={selected.id}
+                    subject={selected.projectType || selected.detail}
+                    photoUrl={fresh?.photos[0]?.url ?? null}
+                    photoCount={selected.photoCount}
+                    photoTotal={fresh?.photoCount}
+                    title={`Photos · ${selected.name || 'Lead'}`}
+                    emptyLabel="No photos yet. Add photos of the project so you can quote it faster."
+                    canOpen={base === '/dashboard'}
+                  />
+                  <div className={styles.recordHeadCopy}>
+                    <p className={focusStyles.heroTag}>Selected lead</p>
+                    <h2 className={styles.detailName}>
+                      {selected.name}
+                      {selected.city ? <span className={styles.detailCity}> ({selected.city})</span> : null}
+                    </h2>
+                    <p className={styles.detailProject}>{selected.detail}</p>
+                  </div>
+                </div>
 
                 {/* 2 — heat, stage, contact preference */}
                 <div className={styles.detailChips}>

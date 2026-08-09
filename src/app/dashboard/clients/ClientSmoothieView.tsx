@@ -331,7 +331,7 @@ export default function ClientSmoothieView({
             <>
               {/* 1 — who */}
               <header className={styles.detailHead}>
-                <div className={styles.jobHeadLayout}>
+                <div className={styles.recordHeadLayout}>
                   {/* A customer has no photos, so the monogram IS the cover —
                       same hue function as a job's, so the two panes sit
                       together without looking like different apps. */}
@@ -345,7 +345,7 @@ export default function ClientSmoothieView({
                     </span>
                   </figure>
 
-                  <div className={styles.jobHeadCopy}>
+                  <div className={styles.recordHeadCopy}>
                     <p className={focusStyles.heroTag}>Selected customer</p>
                     <h2 className={styles.detailName}>{selected.name}</h2>
                     <p className={styles.detailProject}>{selected.address || 'No address given'}</p>

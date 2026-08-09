@@ -380,7 +380,7 @@ export default function JobSmoothieView({
             <>
               {/* 1 — who and what */}
               <header className={styles.detailHead}>
-                <div className={styles.jobHeadLayout}>
+                <div className={styles.recordHeadLayout}>
                   <RecordPhotos
                     kind="job"
                     recordId={selected.id}
@@ -392,7 +392,7 @@ export default function JobSmoothieView({
                     emptyLabel="No photos yet. Add progress shots or before/after photos."
                     canOpen={base === '/dashboard'}
                   />
-                  <div className={styles.jobHeadCopy}>
+                  <div className={styles.recordHeadCopy}>
                     <p className={focusStyles.heroTag}>Selected job</p>
                     <h2 className={styles.detailName}>{selected.clientName || 'Untitled job'}</h2>
                     <p className={styles.detailProject}>{selected.scope || 'No description yet'}</p>

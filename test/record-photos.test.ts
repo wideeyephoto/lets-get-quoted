@@ -10,11 +10,25 @@ const FOCUS_CSS = read('src', 'app', 'dashboard', 'focus.module.css');
 const JOB_ROUTE = read('src', 'app', 'api', 'job-photos', 'route.ts');
 const LEAD_ROUTE = read('src', 'app', 'api', 'lead-photos', 'route.ts');
 
+/**
+ * EVERY OVERVIEW THAT OPENS ON ONE RECORD IS ON THIS LIST.
+ *
+ * Leads' Smoothie pane was missing from it, and so was the cover — the only one
+ * of the four panes that opened on a bare heading while Jobs' Smoothie, Clients'
+ * Smoothie and Leads' own Focus all led with a picture. LeadViewItem had been
+ * carrying `projectType` and `photoCount` for exactly this the whole time.
+ *
+ * Adding a pane here without adding the cover fails three tests below, which is
+ * the point of the list.
+ */
 const VIEWS = {
   'jobs/FocusView': read('src', 'app', 'dashboard', 'jobs', 'FocusView.tsx'),
   'jobs/JobSmoothieView': read('src', 'app', 'dashboard', 'jobs', 'JobSmoothieView.tsx'),
   'leads/LeadFocusView': read('src', 'app', 'dashboard', 'leads', 'LeadFocusView.tsx'),
+  'leads/LeadSmoothieView': read('src', 'app', 'dashboard', 'leads', 'LeadSmoothieView.tsx'),
 };
+
+const SMOOTHIE_CSS = read('src', 'app', 'dashboard', 'smoothie.module.css');
 
 /**
  * The cover on the leads and jobs overviews opens every photo on the record,
@@ -95,5 +109,20 @@ describe('the record photo dialog', () => {
   // Touch has no hover, so the invitation cannot depend on one.
   it('shows the way in on touch, where there is no hover', () => {
     expect(FOCUS_CSS).toMatch(/@media \(hover: none\) \{\s*\.coverOpen \{[^}]*opacity: 1/);
+  });
+
+  /**
+   * The cover and the heading sit side by side in a flex row that all three
+   * smoothie panes share. It was called .jobHeadLayout, after the first pane to
+   * get one — and a shared class named for one of its four users reads like it
+   * belongs to that user, which is part of why Leads went without.
+   */
+  it('names the shared head layout for the record, not for jobs', () => {
+    expect(SMOOTHIE_CSS).toContain('.recordHeadLayout {');
+    expect(SMOOTHIE_CSS).toContain('.recordHeadCopy {');
+    expect(SMOOTHIE_CSS).not.toContain('.jobHeadLayout');
+    for (const pane of ['jobs/JobSmoothieView', 'leads/LeadSmoothieView'] as const) {
+      expect(VIEWS[pane], pane).toContain('styles.recordHeadLayout');
+    }
   });
 });
