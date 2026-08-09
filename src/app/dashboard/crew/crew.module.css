@@ -727,6 +727,12 @@
 /* --- tables --- */
 
 .tableWrap { overflow-x: auto; border: 1px solid var(--edge-g20); border-radius: 14px; }
+/* The subset of .tableWrap that holds a PAY table, which is the only one that
+   stops being a table below 900px — see the note on .payWrap in that media
+   block. It carries the same declaration rather than being an empty rule: an
+   empty one is a thing a minifier is entitled to drop, and dropping it would
+   take the CSS-module mapping with it and render the class as "undefined". */
+.payWrap { overflow-x: auto; }
 
 .hoursTable { width: 100%; border-collapse: collapse; min-width: 44rem; }
 
@@ -1670,7 +1676,17 @@
   .periodCard { grid-template-columns: minmax(0, 1fr); }
   .periodActions { justify-items: stretch; }
 
-  .tableWrap { border: 0; overflow: visible; }
+  /* `.payWrap`, NOT `.tableWrap`, and that difference is a page-wide sideways
+     scrollbar. This rule exists because the pay table stops being a table
+     below 900px — the three declarations under it flatten it to cards, so the
+     scroll box around it has nothing left to scroll and its border is a stray
+     line around a stack of cards. But `.tableWrap` is the shared wrapper: it
+     also holds the roster table, both labor tables (min-width: 44rem) and the
+     entries table, none of which flatten. Taking their scroll box away did not
+     make them fit; it handed a 704px table to a 390px page, and the whole
+     document scrolled sideways instead. `.payWrap` is on the one wrapper that
+     really does hold a pay table. */
+  .payWrap { border: 0; overflow: visible; }
   .payTable, .payTable tbody, .payTable tr, .payTable td { display: block; width: auto; min-width: 0; }
   .payTable thead { display: none; }
   .payTable tr {
@@ -2922,7 +2938,19 @@ button.goAction.goAction:disabled {
      rather than pushing the thing you opened below the fold. */
   max-height: 34rem;
   overflow-y: auto;
-  padding: 0.15rem;
+  /* A HORIZONTAL SCROLLBAR THAT WAS NEVER ABOUT WIDTH.
+     `overflow-y: auto` makes the other axis a scroll container too — there is
+     no such thing as scrolling one way and overflowing visibly the other — so
+     anything that pokes out to the right of this box gets a scrollbar, not a
+     shrug. What poked out was the selection nudge: .ovRow is width:100% and
+     .ovRowOn translates it 4px right, so the open row ended 4px past its own
+     container. Overview always has a row open, which is why the bar was there
+     at every width and on every screen, under a list that had nothing wide in
+     it at all.
+     Room for the nudge and for the 2px focus ring at 2px offset, and then the
+     axis is closed for good so no future decoration can reopen it. */
+  padding: 0.3rem 0.55rem 0.3rem 0.3rem;
+  overflow-x: hidden;
 }
 
 .ovRow {

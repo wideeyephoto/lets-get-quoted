@@ -1545,7 +1545,13 @@ export default function HoursAndPay({
               <OverviewBoard items={overviewItems} listLabel="Crew members" empty="No crew members match those filters." />
             ) : null}
 
-            <div className={styles.tableWrap} hidden={layout !== 'table' && layout !== 'rail'}>
+            {/* payWrap as well as tableWrap: this is the ONE wrapper whose
+                table flattens into cards below 900px, and the rule that takes
+                the scroll box away down there is keyed on it. The roster, the
+                labor tables and the entries table never flatten, so they keep
+                theirs — without this they lost it too, and a 704px table in a
+                390px page scrolled the whole document sideways. */}
+            <div className={`${styles.tableWrap} ${styles.payWrap}`} hidden={layout !== 'table' && layout !== 'rail'}>
               <table className={styles.payTable}>
                 <thead>
                   <tr>
