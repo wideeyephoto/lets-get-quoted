@@ -223,6 +223,10 @@ export default async function CrewLaborPage({
       className={[
         'wide-shell',
         'workspace-shell',
+        // The stable hook. Unconditional on purpose: it is what tells the shell
+        // this is the crew page at all, and the cap rule reads `crew-wide` off
+        // it to decide whether this particular view keeps the standard column.
+        'crew-shell',
         crewTheme === 'focus' ? 'crew-focus' : '',
         // Two classes: one generic hook the structural rules hang off, one
         // per-skin so the tokens can differ. Standard adds neither, so the

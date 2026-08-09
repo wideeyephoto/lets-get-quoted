@@ -2575,6 +2575,82 @@ h3 {
 .app-main-sidenav .page-shell,
 .app-main-sidenav .wide-shell { min-height: calc(100vh - 1.6rem); }
 
+/* THE APP FILLS THE SCREEN. A DOCUMENT DOESN'T.
+   ---------------------------------------------------------------------------
+   .wide-shell caps content at 1100px, which is the right answer for the pages
+   that share it OUTSIDE this layout — an invoice, a booking flow, a customer's
+   job link. Those are documents: read once, on whatever the customer owns, and
+   a 1900px line of text is worse than a centred column.
+
+   Inside the app it was the wrong answer, and the wider the screen the more
+   wrong it got. The rail already takes 244px off the left, so the workspace
+   starts smaller than the window and then threw away most of what was left.
+   Measured across every dashboard screen, dead gutter each side of the content:
+
+     1920   531px   the shell got 1100 of the 1631 it had
+     1600   211px
+     1440    51px
+     1280     0px   and every width below it — tablets were always full
+
+   So this is a desktop rule by arithmetic rather than by breakpoint: below
+   1440 there is nothing to reclaim and nothing changes. Two screens had already
+   reached this conclusion on their own and opted out one at a time — the
+   schedule went fully fluid (.schedule-shell) and crew raised its cap to 1500px
+   — which is the tell that the cap, not the screens, was the problem.
+
+   Scoped to .app-main-sidenav so it means "the logged-in app", and so the
+   document pages that share the class keep their column. */
+.app-main-sidenav .wide-shell {
+  width: 100%;
+  max-width: none;
+}
+
+/* ...AND A READING MEASURE FOR THE SENTENCES INSIDE IT.
+   ---------------------------------------------------------------------------
+   Filling the screen is right for a table, a calendar, a board or a map — those
+   were the things the cap was starving. It is not right for a sentence, and the
+   rule above would have handed every explanatory paragraph in the app the whole
+   1631px as well. Measured at 1920 with the shell fluid, characters on a single
+   unbroken line:
+
+     cash-flow    "Where the money is" list       236
+     quick-stops  the demand lede                 220
+     quick-stops  the footer copy                 175
+     schedule/plan the drag hint                  167
+     insights     the card sub-line               160
+     cash-flow    the source warning              147
+     reviews      a customer's own words          108
+
+   Reading breaks down somewhere past ~90 characters: the line is long enough
+   that the eye loses which one it was on during the sweep back to the left.
+   Most of these were already over that at 1100px — 236 was about 160 before —
+   so this is an old problem the widening would have made about half again
+   worse, not one it invented.
+
+   The unit is `ch`, the width of a character in whatever size THAT block is
+   set in, so one number means the same sentence length in a 0.76rem hint and a
+   1rem lede. `.workspace-lead` reached for the same idea first at 62ch; this is
+   the looser measure for secondary notes.
+
+   The panels still fill the screen. Only the prose inside them stops. The list
+   is the twelve blocks that crossed the line, found by measuring every text
+   node in the app rather than by reading the markup — anything new that runs
+   long belongs here too. */
+:root { --read-note: 74ch; }
+
+.ins-shell .ins-sub,
+.ins-more-sub,
+.cash-chart-hint,
+.cash-source-warn,
+.cash-where-list li,
+.review-feedback-body,
+.bset-head p,
+.es-demand-lede,
+.qs-foot-copy,
+.plan-drag-hint,
+.payroll-note,
+.mkt-rec-why { max-width: var(--read-note); }
+
 /* THE RAIL BECOMES A MENU AT 1080, NOT 900.
    ---------------------------------------------------------------------------
    244px is a fair trade on a 1440 desktop and a bad one on a tablet in
@@ -8876,7 +8952,12 @@ button.inbox-thread-item {
 }
 
 .inbox-bubble {
-  max-width: 100%;
+  /* A bubble is a message, and a message that grows to whatever the window
+     gives it stops looking like one — at 2560 with the app shell fluid these
+     reached 990px and a text ran 146 characters on a single line. Capped at the
+     app's reading measure, whichever is smaller, so the thread keeps the shape
+     a thread has: short things stay short and long ones wrap. */
+  max-width: min(100%, var(--read-note));
   padding: 0.58rem 0.85rem;
   border-radius: 18px;
   font-size: 0.93rem;
@@ -18994,11 +19075,22 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .client-focus-pane, .client-modal, .client-modal-backdrop { animation: none; }
 }
 
-/* The Crew & Labor Review layout pins its action rail beside a nine-column
-   table. At the standard 1100px cap that left roughly 650px for a table that
-   needs 840, pushing Payment and Payment date off the right edge — the two
-   columns the screen exists to show. Only this one layout opts out. */
-.wide-shell.crew-wide { max-width: 1500px; }
+/* CREW OVERVIEW IS THE ONE SCREEN THAT WANTS A CAP, AND KEEPS IT.
+   `crew-wide` used to mean "raise the 1100px cap to 1500" — the Review layout
+   pins an action rail beside a nine-column table, and at 1100 that left roughly
+   650px for a table needing 840, pushing Payment and Payment date off the right
+   edge. Now that the app shell fills the screen, a 1500px cap would make this
+   class do the opposite of its name, and switching views on a 1920 monitor
+   would visibly jump between full width and 1500.
+
+   So the class keeps its meaning and the rule inverts: the views that asked for
+   room get the whole screen with everything else, and the ONE view that
+   deliberately did not — Overview — keeps the standard column. That was a
+   measured decision, not an oversight: it is a 21rem list beside one open
+   person, and giving it 1900px strands the pane's buttons a screen-width from
+   the list you picked them from. `.crew-shell` is the stable hook; `crew-wide`
+   is toggled per view, server-side from the cookie and again on the client. */
+.app-main-sidenav .wide-shell.crew-shell:not(.crew-wide) { max-width: 1100px; }
 
 /* The colour of this stop's incoming leg, matching the line on the map. Purely
    a cross-reference — the miles and minutes beside it say the same thing in

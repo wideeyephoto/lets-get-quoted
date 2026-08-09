@@ -642,7 +642,12 @@
 .scoreLegendTitle { font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--mute-t50); }
 .scoreLegendRow { display: grid; grid-template-columns: max-content 1fr; gap: .65rem; align-items: start; font-size: .82rem; color: rgba(var(--tint), .72); line-height: 1.45; }
 .scoreLegendRow .scoreChip { white-space: nowrap; }
-.scoreLegendNote { margin: .15rem 0 0; font-size: .76rem; color: var(--mute-t45); }
+/* The chip is `max-content` and the description takes the rest, which was the
+   whole row on a screen the app now fills — 123 characters on one line at 1920.
+   Same reading measure the rest of the app's notes use (--read-note, defined in
+   globals.css beside the rule that made the shell fluid). */
+.scoreLegendRow > span:last-child { max-width: var(--read-note); }
+.scoreLegendNote { margin: .15rem 0 0; font-size: .76rem; color: var(--mute-t45); max-width: var(--read-note); }
 .scoreLegendNote a { color: var(--accent-ink); font-weight: 700; }
 
 /* Why the quote didn't send, in the server's own words. Replaces the digest
