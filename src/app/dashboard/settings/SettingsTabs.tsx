@@ -1,7 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { resolveTabForHash, AUTOMATIONS_BOLT_PATH, SETTINGS_TAB_EVENT } from '@/lib/nav-helpers';
+import { isAutomationsAnchor, resolveTabForHash, SETTINGS_TAB_EVENT } from '@/lib/nav-helpers';
 
 export type SettingsTab = {
   id: string;
@@ -15,8 +16,8 @@ export type SettingsTab = {
 const TAB_ICONS: Record<string, string> = {
   account: '<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
   payments: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/><path d="M6 15h4"/>',
-  // Same bolt as the rail's Automations row — see lib/nav-helpers.
-  automations: `<path d="${AUTOMATIONS_BOLT_PATH}"/>`,
+  // No `automations` entry: that tab is a page now, /dashboard/automations.
+  // Its old anchors are forwarded there by the effect below.
   business: '<path d="M3.5 20.5h17"/><path d="M5 20.5V6.5l7-3.5 7 3.5v14"/><path d="M9.5 20.5v-4h5v4"/><path d="M9 10h1.5M13.5 10H15M9 13.2h1.5M13.5 13.2H15"/>',
 };
 
@@ -28,6 +29,7 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
   const [active, setActive] = useState(tabs[0]?.id);
   const navRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const router = useRouter();
 
   useEffect(() => {
     // Scroll to an anchored section once its panel is actually visible — the
@@ -46,7 +48,19 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
     };
     const open = (hash: string) => {
       const ownerId = resolveTabForHash(tabs, hash);
-      if (!ownerId) return;
+      if (!ownerId) {
+        // AUTOMATIONS LEFT, AND ITS LINKS DID NOT.
+        //
+        // Eleven section ids used to resolve to a tab on this page, and links to
+        // them are scattered through the product and through people's bookmarks.
+        // A next.config redirect cannot catch any of them: a URL fragment is
+        // never sent to the server, so there is nothing for a server rule to
+        // match. Forwarded here instead, from the one component that already
+        // reads the hash — with the hash intact, so the destination scrolls to
+        // and opens the same card it always did.
+        if (isAutomationsAnchor(hash)) router.replace(`/dashboard/automations#${hash}`);
+        return;
+      }
       setActive(ownerId);
       if (hash !== ownerId) scrollWhenReady(hash);
     };
@@ -67,7 +81,7 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
       window.removeEventListener('hashchange', applyHash);
       window.removeEventListener(SETTINGS_TAB_EVENT, onRequest);
     };
-  }, [tabs]);
+  }, [tabs, router]);
 
   function select(id: string) {
     setActive(id);

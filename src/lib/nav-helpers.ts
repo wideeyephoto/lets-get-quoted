@@ -47,6 +47,51 @@ export function settingsTabEvent(hash: string): CustomEvent<string> {
 export const AUTOMATIONS_BOLT_PATH = 'M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z';
 
 /**
+ * The section ids that moved with Automations when it left Settings.
+ *
+ * Automations was a Settings TAB, so every link to one of its sections is
+ * `/dashboard/settings#reviews`, `#reminders`, `#daily-digest` and so on. Those
+ * links are real and live — the Messages page links to one — and a next.config
+ * redirect cannot rescue any of them, because a URL fragment is never sent to
+ * the server. There is nothing for a server-side rule to match on.
+ *
+ * So the redirect happens in the browser, in SettingsTabs, the one component
+ * that already reads the hash. When a hash arrives that no remaining tab owns
+ * and this list claims it, it forwards to /dashboard/automations with the hash
+ * intact. Without it, eleven anchors would each land on Settings and silently do
+ * nothing — the exact dead-link failure the SETTINGS_TAB_EVENT note above was
+ * written about, reintroduced by moving the page.
+ *
+ * Kept here rather than in lib/automations.ts on purpose: that module's keys are
+ * database column names, and these are URL anchors. They only partly overlap —
+ * there is no `intake-ai`, `arrival` or `client-portal` column — and a list that
+ * is nearly the same as another list is the kind of thing that gets merged by
+ * somebody who does not know why they differ.
+ */
+export const AUTOMATION_ANCHORS = [
+  'intake-ai',
+  'booking-availability',
+  'extra-stop',
+  'missed-call',
+  'reviews',
+  'followups',
+  'reminders',
+  'arrival',
+  'selections',
+  'client-portal',
+  'daily-digest',
+] as const;
+
+/** Does this hash belong to a section that now lives on /dashboard/automations? */
+export function isAutomationsAnchor(rawHash: string | null | undefined): boolean {
+  const hash = (rawHash || '').replace(/^#/, '');
+  // 'automations' itself: the old tab id, which is what the rail's sublink and
+  // any bookmark of the tab carried.
+  if (hash === 'automations') return true;
+  return (AUTOMATION_ANCHORS as readonly string[]).includes(hash);
+}
+
+/**
  * Whether a create form (e.g. jobs `?new`, leads `?add`) should render open:
  * always when the list is empty, otherwise only when the flag is present in the
  * URL (any value, including empty string; absent means undefined).

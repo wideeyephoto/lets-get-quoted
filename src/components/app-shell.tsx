@@ -12,7 +12,7 @@ import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
-import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, AUTOMATIONS_BOLT_PATH, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
+import { isSectionNew, markNavSeen, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
@@ -35,7 +35,7 @@ const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
-  { href: '/dashboard/crew?add=1', icon: '/dashboard/crew', label: 'New crew member' },
+  { href: '/dashboard/crew?tab=crew&add=1', icon: '/dashboard/crew', label: 'New crew member' },
 ];
 
 const baseNavItems: { href: string; label: string; hint?: string }[] = [
@@ -55,6 +55,13 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // buried in the roster header — and neither could answer "who worked, on
   // what, for how much" without a page load between the halves.
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
+  // A PRODUCT, NOT AN ACCOUNT SETTING. This was a sublink hanging off Account in
+  // the footer — the strip reserved for the things that are not the day's work —
+  // pointing at a tab inside Settings. It is the machinery that answers leads,
+  // chases quotes and asks for reviews while nobody is watching, so it sits with
+  // the other things that talk to customers on your behalf, above them because
+  // it does the talking without being asked.
+  { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
   // One destination, not two. "Marketing" (the composer) and "Calendar" (the
   // seasonal topics) were the same workflow split across two pages that linked
@@ -117,7 +124,10 @@ const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   // Insights first, cash flow last — the group reads backwards in time. What
   // happened, what repeats, what things cost, then what the balance does next.
   { label: 'Money', hrefs: ['/dashboard/insights', '/dashboard/recurring', '/dashboard/services', '/dashboard/cash-flow'] },
-  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
+  // Automations leads the group: it is the only row here that reaches customers
+  // without somebody pressing something, so it is what the rest of Grow runs on
+  // top of.
+  { label: 'Grow', hrefs: ['/dashboard/automations', '/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
 ];
 
 type AccountStatus = {
@@ -256,6 +266,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const railNewRef = useRef<HTMLDivElement>(null);
   const barNewRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
+  // The rail's footer menu — Settings, Help, theme, Stripe, Sign out. One
+  // boolean rather than the 'rail' | 'bar' the New menu needs, because there is
+  // only ever one of these in the DOM.
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
@@ -333,7 +348,31 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   useEffect(() => {
     closeNav();
     setNewMenuAt(null);
+    setAccountMenuOpen(false);
   }, [pathname, closeNav]);
+
+  // Outside click and Escape close the Account menu; Escape returns focus to the
+  // trigger. Same contract as the "+ New" menu below, deliberately — two menus
+  // in one rail that dismiss differently is the kind of difference nobody can
+  // name but everybody feels.
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    accountMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    const onPointerDown = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) setAccountMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setAccountMenuOpen(false);
+      accountMenuRef.current?.querySelector<HTMLElement>('button[aria-haspopup="menu"]')?.focus();
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [accountMenuOpen]);
 
   // Freeze the page behind the open drawer.
   //
@@ -467,6 +506,22 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         ))}
       </div>
     );
+  }
+
+  // Arrow keys move focus between Account menu items (wrapping). The theme row
+  // is a menuitem with tabIndex -1 wrapping a real control, so it is skipped by
+  // this walk and reached by Tab — which is right: it is a switch, not a
+  // destination, and arrowing onto it would trap the walk on a widget.
+  function onAccountMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const items = Array.from(
+      accountMenuRef.current?.querySelectorAll<HTMLElement>('a[role="menuitem"], button[role="menuitem"]') ?? [],
+    );
+    if (!items.length) return;
+    event.preventDefault();
+    const idx = items.indexOf(document.activeElement as HTMLElement);
+    const nextIdx = event.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+    items[nextIdx].focus();
   }
 
   // Arrow keys move focus between "+ New" menu items (wrapping).
@@ -888,63 +943,125 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             {renderSideLink('/dashboard', 'sidenav-bottom')}
           </nav>
 
+          {/* ONE DOOR FOR "ME AND MY ACCOUNT", not four things stacked.
+              The footer held an Account card with an Automations sublink under
+              it, a Help card, and a row carrying the theme switch and the Stripe
+              pill — four separate surfaces for the things that are not the day's
+              work, competing for the bottom of the rail with the work itself.
+              Automations left for Grow, where it belongs, and the rest collapse
+              into one trigger.
+
+              The Stripe pill stays OUTSIDE the menu on purpose. It is not a
+              setting; it is a live warning about whether money can reach the
+              contractor, and burying a warning behind a click is how it stops
+              being one. Inside the menu it would only be seen by somebody
+              already going to Settings. */}
           <div className="sidenav-foot">
-            <div className="sidenav-fcard">
-              {renderSideLink('/dashboard/settings')}
-              <Link
-                href="/dashboard/settings#automations"
-                className="sidenav-sublink sidenav-automations"
-                // Already on Settings: switch the tab directly rather than
-                // relying on the URL changing. Next navigates with pushState,
-                // which never fires hashchange — and if the hash is already
-                // #automations (clicking the tab writes it there) there is no
-                // change to observe at all. Both cases made this link do
-                // nothing. See lib/nav-helpers.
-                onClick={(event) => {
-                  if (pathname !== '/dashboard/settings') return;
-                  event.preventDefault();
-                  history.replaceState(null, '', '/dashboard/settings#automations');
-                  window.dispatchEvent(settingsTabEvent('automations'));
-                }}
+            <div className="sidenav-account-wrap" ref={accountMenuRef}>
+              <button
+                type="button"
+                className={`sidenav-account${accountMenuOpen ? ' open' : ''}`}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                aria-controls="sidenav-account-menu"
+                onClick={() => setAccountMenuOpen((open) => !open)}
               >
-                {/* The bolt sits where every other row's icon sits, so the rail
-                    keeps one column of marks down its left edge. The connector
-                    tick stays to its right: this is still a child of Account,
-                    and the tick is the only thing saying so. */}
-                <span className="sidenav-bolt" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d={AUTOMATIONS_BOLT_PATH} /></svg>
-                </span>
-                <span className="sidenav-subtick" aria-hidden="true" />
-                Automations
-              </Link>
+                <NavIcon href="/dashboard/settings" />
+                <span className="sidenav-account-name">{businessName || 'Account'}</span>
+                <span className={`sidenav-account-caret${accountMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
+              </button>
+
+              {accountMenuOpen ? (
+                /* Opens UPWARD. It is the last thing in the rail, and on a short
+                   window the rail scrolls (see the max-height rule in
+                   globals.css) — a menu dropping down from here would open into
+                   the fold and be unreachable. */
+                <div className="sidenav-account-menu" id="sidenav-account-menu" role="menu" onKeyDown={onAccountMenuKeyDown}>
+                  <Link href="/dashboard/settings" role="menuitem" className="sidenav-account-item" onClick={() => setAccountMenuOpen(false)}>
+                    <NavIcon href="/dashboard/settings" />
+                    Account settings
+                  </Link>
+                  {/* Support is not an account setting, but it IS one of the
+                      things you go looking for under your own name when
+                      something has gone wrong — and this menu never scrolls out
+                      of view, which is what matters for the person whose page
+                      has just stopped working. */}
+                  <Link href="/dashboard/help" role="menuitem" className="sidenav-account-item" onClick={() => setAccountMenuOpen(false)}>
+                    <NavIcon href="/dashboard/help" />
+                    Help &amp; support
+                  </Link>
+                  <div className="sidenav-account-theme" role="menuitem" tabIndex={-1}>
+                    <ThemeToggle />
+                  </div>
+                  <Link
+                    href={STRIPE_SETUP_HREF}
+                    role="menuitem"
+                    className="sidenav-account-item"
+                    onClick={() => setAccountMenuOpen(false)}
+                  >
+                    <span className="sidenav-account-dollar" aria-hidden="true">$</span>
+                    {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
+                  </Link>
+                  {/* A real POST to the sign-out route, not a link. Signing out
+                      is a state change on the server, and a GET that logs you
+                      out is a thing any prefetcher or link-scanner can fire.
+                      It was reachable only from inside Settings before this. */}
+                  <form action="/auth/signout" method="post" className="sidenav-account-signout">
+                    <button type="submit" role="menuitem" className="sidenav-account-item">
+                      <span className="sidenav-account-out" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M15 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v2" />
+                          <path d="M10.5 12h9.5M17 8.5l3.5 3.5L17 15.5" />
+                        </svg>
+                      </span>
+                      Sign out
+                    </button>
+                  </form>
+                </div>
+              ) : null}
             </div>
-            {/* Its own card under Account, not a child of it. Support is not an
-                account setting, and the footer is the one part of the rail that
-                never scrolls out of view — which matters most for the person
-                whose page has just stopped working. */}
-            <div className="sidenav-fcard">{renderSideLink('/dashboard/help')}</div>
-            {/* One line, theme switch first. It used to sit inside the
-                scrolling nav list above, which is the part of the rail that
-                gets cut off on a short window — so the one control a contractor
-                reaches for in bright sun could be the one thing scrolled out of
-                view. The footer never scrolls. */}
-            <div className="sidenav-footrow">
-              <ThemeToggle />
-              <Link
-                href={STRIPE_SETUP_HREF}
-                className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
-                title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
-              >
-                <span className="stripe-status-tile" aria-hidden="true">$</span>
-                <span className="stripe-status-label">
-                  {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
-                </span>
-              </Link>
-            </div>
+
+            {/* Whether money can actually reach this contractor. Stays on the
+                rail rather than inside the menu — see the note above. */}
+            <Link
+              href={STRIPE_SETUP_HREF}
+              className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
+              title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
+            >
+              <span className="stripe-status-tile" aria-hidden="true">$</span>
+              <span className="stripe-status-label">
+                {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
+              </span>
+            </Link>
           </div>
         </aside>
 
         <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>
+          {/* HELP, FROM ANY PAGE, WITHOUT HUNTING FOR IT.
+              Help moved into the Account menu, which is right — it belongs with
+              the things you look for under your own name — but a menu is one
+              click of indirection, and the moment somebody needs support is the
+              moment they have least patience for indirection. So the shell
+              draws a small ? as well.
+
+              IT IS RENDERED HERE, BY THE SHELL, AND IT HAS TO BE. There is no
+              shared page header in this app: 20 of the ~35 dashboard pages draw
+              their own .workspace-hero, Help draws a different one from its own
+              CSS module, and the rest — Leads, Jobs, Schedule, Messages, Crew,
+              Insights, Quick Stops — have neither. "Put a ? in the page header"
+              would have meant editing twenty files and inventing a header for
+              fifteen more. This is a sibling of {children}, exactly like the
+              lead alert below it, which the shell already injects into the page
+              for the same reason.
+
+              Gated on isDashboard, NOT on showAppRail. showAppRail is true for a
+              signed-in owner on the marketing site and the homepage too, so an
+              ungated ? would float over the pricing page. */}
+          {isDashboard ? (
+            <Link href="/dashboard/help" className="page-help-fab" title="Ask us a question" aria-label="Help and support">
+              <span aria-hidden="true">?</span>
+            </Link>
+          ) : null}
           {/* INSIDE the page, above its content. Fixed to the bottom-right it
               covered what you were reading and the controls you'd tap next —
               351x98 of it on a phone — and every dashboard page had to reserve

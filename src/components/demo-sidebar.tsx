@@ -8,7 +8,6 @@ import ThemeToggle from './theme-toggle';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
-import { AUTOMATIONS_BOLT_PATH } from '@/lib/nav-helpers';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
 const DEMO_HOST = DEMO_SITE_HOST;
@@ -82,6 +81,12 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
   {
     label: 'Grow',
     items: [
+      // Leads the group here too. It was a sublink under Account in both rails;
+      // moving it in one and not the other is exactly the drift the note at the
+      // top of GROUPS exists to prevent. /demo has no automations page of its
+      // own, so it points at the demo settings screen — the same place the row
+      // pointed before, now under the right heading.
+      { icon: '/dashboard/automations', label: 'Automations', href: '/demo/settings' },
       { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
       // The demo's marketing area mirrors the real one's shape now, so the rail
       // points at its overview exactly as the live rail does. The old
@@ -219,19 +224,23 @@ export default function DemoSidebar() {
           {renderItem({ icon: '/dashboard', label: 'Dashboard', href: '/demo' }, 'sidenav-bottom')}
         </nav>
 
+        {/* Same footer as the real rail — a prospect should not be shown a
+            layout the product does not have. The live one collapses Account,
+            Help, theme and sign-out into a single menu; the demo has no session
+            to sign out of and no support queue, so it shows the trigger's
+            resting state and keeps the Stripe pill beside it, which is where
+            the real rail keeps it too. */}
         <div className="sidenav-foot">
-          <div className="sidenav-fcard">
-            {renderItem({ icon: '/dashboard/settings', label: 'Account', href: '/demo/settings' })}
-            <Link href="/demo/settings" className="sidenav-sublink sidenav-automations">
-              <span className="sidenav-bolt" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d={AUTOMATIONS_BOLT_PATH} /></svg>
-              </span>
-              <span className="sidenav-subtick" aria-hidden="true" />
-              Automations
+          <div className="sidenav-account-wrap">
+            <Link href="/demo/settings" className="sidenav-account">
+              <NavIcon href="/dashboard/settings" />
+              <span className="sidenav-account-name">Sample account</span>
             </Link>
           </div>
-          {/* Same footer row as the real rail — a prospect should not be shown
-              a layout the product does not have. */}
+          {/* The theme switch stays OUT here, where the live rail tucks it into
+              the menu. A demo visitor has no account and nothing to sign out
+              of, so there is no menu to open — and this is the one control
+              somebody reading the demo outdoors actually reaches for. */}
           <div className="sidenav-footrow">
             <ThemeToggle />
             <span className="stripe-status-pill sidenav-stripe connected" title="Payouts connected in this sample account">
