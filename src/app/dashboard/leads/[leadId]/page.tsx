@@ -17,6 +17,7 @@ import LeadQuoteFields from './LeadQuoteFields';
 import QuotePreviewButton from './QuotePreviewButton';
 import UnsavedGuard from '@/components/unsaved-guard';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
+import OpenActionOnHash from './OpenActionOnHash';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
@@ -210,6 +211,10 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   return (
     <ScrollTopOnSaveProvider>
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
+      {/* The action deck's buttons are fragment links into the two accordions
+          at the foot of the page; this is what makes them open the one they
+          point at rather than scrolling to a closed header. */}
+      <OpenActionOnHash />
       <section className={`workspace-hero panel ${styles.leadHero}`}>
         <div className={styles.leadHeroMain}>
           <p className="eyebrow">Lead details</p>
@@ -440,8 +445,24 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
       <div className={styles.detailGrid}>
         <aside className={styles.actionPanel}>
+          {/* ONE OF THESE TWO IS OPEN, NEVER BOTH.
+              Scheduling the estimate and building the quote are the two halves
+              of this page, and side by side, both fully unrolled, they were a
+              calendar and a line-item form on one screen with no way to tell
+              which one you were meant to be in.
+
+              `name` on <details> is what enforces it: two elements sharing a
+              name are an exclusive group, and the browser closes one when the
+              other opens. No state, no effect, no way for the two to disagree.
+              Where it is not supported the pair simply behaves as it did
+              before — both can be open — which is the right thing to degrade to.
+
+              Which one starts open follows the stage the lead is at, and it is
+              the same answer the action deck gives at the top of the page: no
+              estimate booked yet, so the calendar leads. */}
           {!lead.converted_job && !hasScheduledEstimate ? (
             <LeadAvailabilityScheduler
+              defaultOpen
               className={styles.primaryActionCard}
               availability={availabilityCards}
               leadPhone={lead.phone ?? ''}
@@ -459,7 +480,14 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           ) : null}
 
           {!lead.converted_job ? (
-            <section id="lead-estimate" className={`panel workspace-section-card ${styles.sendQuoteSection} ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}>
+            /* Open when the calendar half is not on the page at all — the
+               estimate is booked, so the quote is the only thing left to do. */
+            <details
+              id="lead-estimate"
+              name="lead-action"
+              open={hasScheduledEstimate}
+              className={`panel workspace-section-card workspace-details job-action-details ${styles.sendQuoteSection} ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}
+            >
               {/* A half-built quote is the most expensive thing on this page to
                   lose, and the way it goes is a click on the sidebar — which
                   fires no beforeunload at all. */}
@@ -470,8 +498,10 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 stayLabel="Keep building it"
                 leaveLabel="Leave and lose it"
               />
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
-              <p>Enter the amount and text the client their quote. Job start options can stay tucked away until you need them.</p>
+              <summary className="workspace-details-summary job-action-summary">
+                <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
+                <span className="workspace-details-copy">Enter the amount and text the client their quote.</span>
+              </summary>
               <SendQuoteForm action={sendQuote} className={styles.actionForm}>
                 {/* Before the work, not after it. */}
                 <StripeQuoteGate connected={stripeConnected} />
@@ -536,7 +566,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                   <p className={styles.stripeGateNote}>Nothing is lost while you connect — this stays as you left it.</p>
                 ) : null}
               </SendQuoteForm>
-            </section>
+            </details>
           ) : null}
         </aside>
       </div>

@@ -361,7 +361,11 @@
 .todayQuoteStartDay { border-color: var(--cedge-orange-74); background: rgba(255,138,61,.06); }
 .busyQuoteStartDay { border-color: var(--cedge-amber-12); background: rgba(255,209,102,.06); }
 .primaryActionCard { overflow: visible !important; border-color: var(--cedge-orange-66) !important; background: linear-gradient(145deg, rgba(255,122,33,.12), rgba(var(--tint), .035) 45%) !important; }
-.calendarSurfaceHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .9rem; }
+/* No margin-bottom: this is the accordion's <summary> now, and the gap below it
+   belongs to `.job-action-summary + *`, which only applies when the panel is
+   open. Left here it padded the INSIDE of the collapsed card — 140px against
+   the quote's 130px, for nothing. */
+.calendarSurfaceHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .calendarSurfaceHeader :global(.workspace-details-copy) { max-width: 420px; text-align: right; }
 .calendarUtilityRow { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: .75rem; align-items: start; margin-bottom: .9rem; }
 .scheduledVisitSummary { display: grid; gap: .2rem; padding: .75rem; border: 1px solid var(--cedge-green-32); border-radius: 8px; background: rgba(74,222,128,.08); }

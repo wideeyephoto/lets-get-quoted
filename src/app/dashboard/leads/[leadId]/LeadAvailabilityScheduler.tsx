@@ -49,6 +49,8 @@ type Props = {
   clearVisitAction: VoidAction;
   visitSummary: VisitSummary | null;
   className?: string;
+  /** Whether this half of the lead accordion starts open. See page.tsx. */
+  defaultOpen?: boolean;
 };
 
 function CalendarSendButton({ disabled }: { disabled: boolean }) {
@@ -73,6 +75,7 @@ export default function LeadAvailabilityScheduler({
   clearVisitAction,
   visitSummary,
   className,
+  defaultOpen = false,
 }: Props) {
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
 
@@ -108,14 +111,22 @@ export default function LeadAvailabilityScheduler({
   }
 
   return (
-    <section id="availability-snapshot" className={`panel workspace-section-card ${styles.calendarCard}${className ? ` ${className}` : ''}`}>
-      <div className={styles.calendarSurfaceHeader}>
+    /* Half of a two-panel accordion — see the `name` note in page.tsx. The
+       browser closes the other half when this one opens; nothing here has to
+       know the other exists. */
+    <details
+      id="availability-snapshot"
+      name="lead-action"
+      open={defaultOpen}
+      className={`panel workspace-section-card workspace-details job-action-details ${styles.calendarCard}${className ? ` ${className}` : ''}`}
+    >
+      <summary className={`workspace-details-summary job-action-summary ${styles.calendarSurfaceHeader}`}>
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Calendar</p>
           <h2>Schedule Client Estimate</h2>
         </div>
         <span className="workspace-details-copy">Book the quote now or build 3 times for the client from the same calendar.</span>
-      </div>
+      </summary>
 
       {visitSummary ? (
         <div className={styles.calendarUtilityRow}>
@@ -240,6 +251,6 @@ export default function LeadAvailabilityScheduler({
           </div>
         </div>
       </form>
-    </section>
+    </details>
   );
 }
