@@ -562,39 +562,12 @@ const TWEAKS = `
   letter-spacing: 0.09em;
 }
 
-/* ---- the step wheel, off the mock ------------------------------------------
-
-   At left:-57px a 124px wheel puts 67px of itself ON the product panel, and
-   what is 67px in from that panel's left edge is the phone mock — so the badge
-   landed squarely on "Is wastewater actively entering the room?" and the Yes
-   button under it, which is the one exchange that whole panel exists to show.
-
-   -92px hangs it in the column gutter instead, still overlapping the panel's
-   edge enough to read as layered rather than parked beside it, and clearing
-   the phone. Bounded at 1101px to sit exactly above the existing
-   \`@media (max-width: 1100px)\` rule that moves the wheel to the top-right
-   corner — one pixel of overlap and this TWEAK, being appended last, would win
-   inside that query and undo the narrow layout. */
-@media (min-width: 1101px) {
-  .root :global(.wheel-wrap) { left: -92px; }
-}
-/* 761–1100px cannot use a gutter offset at all. The gap narrows to 36px while
-   the panel keeps shrinking, so the phone mock inside it moves left faster
-   than any fixed offset can retreat — measured at 1100, 1000, 900 and 800, a
-   badge in that gutter sits on the phone at every one of them.
-   So it goes where it already goes below 761px: the top-right corner of the
-   stage, clear of both columns. */
-@media (min-width: 761px) and (max-width: 1100px) {
-  .root :global(.wheel-wrap) {
-    left: auto;
-    right: 6px;
-    top: 0;
-    transform: none;
-    width: 96px;
-    height: 96px;
-  }
-  .root :global(.wheel-core) { inset: 27px; }
-}
+/* The three §-blocks that placed the step WHEEL used to live here — a gutter
+   offset above 1101px and a top-right corner between 761 and 1100. The wheel is
+   a vertical stepper now (§103), so they could not match anything and are gone
+   rather than left to read as live rules. The base sheet's own .wheel-* rules
+   stay: they are a faithful copy of the source site, which this file is
+   generated from. */
 
 /* ---- the dimmed steps in that tour -----------------------------------------
 
@@ -1074,41 +1047,10 @@ const TWEAKS = `
    §02 — THE FEATURE TOUR, ELEVATED
    =========================================================================== */
 
-/* ---- the step wheel, finally clear of the mock ----------------------------
-
-   Measured at every width: the wheel was overlapping the product frame by
-   31-33px, and at steps 01 and 03 that is real content — it covered the left
-   edge of "Generate full site with AI" and the service-area field, and two
-   street lines of the route map. A previous pass moved it to left:-92px and
-   checked it against the PHONE inside step 02's frame, which is inset; the
-   frame itself is not. The frame's left edge sits at the panel's left edge
-   exactly (measured: -1px), so anything inside the panel is on top of it.
-
-   Position alone cannot fix this. .scrolly-layout's gap is clamp(40px, 6vw,
-   100px) — 66px at 1101px — and the wheel is 124px wide with a 9px spread
-   ring, so it does not fit the gutter at any width the tour is used at.
-
-   Both sides give a little: the wheel comes down to 104px with 24px nodes (the
-   size the sub-1100px layout already uses) and a 6px ring, and the stage takes
-   34px of left padding so the mock starts clear of it. The mock loses 34px of
-   width; the alternative was a 132px gutter, which at 1101px there is no room
-   for at all. */
-@media (min-width: 1101px) {
-  .root :global(.wheel-wrap) {
-    left: -86px;
-    width: 104px;
-    height: 104px;
-    box-shadow:
-      0 2px 0 rgba(255, 255, 255, .05) inset,
-      0 20px 44px rgba(0, 0, 0, .5),
-      0 0 0 6px rgba(7, 19, 29, .74),
-      0 0 44px rgba(255, 106, 36, .08);
-  }
-  .root :global(.wheel-node) { width: 24px; height: 24px; }
-  .root :global(.wheel-core) { inset: 26px; }
-  .root :global(.wheel-core b) { font-size: 15px; }
-  .root :global(.sticky-product .visual-stage) { padding-left: 34px; }
-}
+/* The block that shrank the step wheel to 104px and padded the stage to clear
+   it is gone with the wheel — see §103. Two rounds of measurement went into
+   fitting a 124px circle into a 66px gutter, which is the argument the stepper
+   settles: a vertical rail is 46px wide and the problem does not exist. */
 
 /* A deeper swap between the three panels: they were fading with a 1.5% scale,
    which reads as a dissolve. Further back and further down is a handover. */
@@ -1731,8 +1673,7 @@ const TWEAKS = `
    the digits stop fitting their circles rather than a free choice. The same
    step number is also printed at 11px beside the panel, so nothing here is the
    only copy of anything. */
-.root :global(.wheel-node) { font-size: 10px; }
-.root :global(.wheel-core small) { font-size: 9px; }
+
 
 @media (max-width: 760px) {
   /* The header CTA is a control, not a caption. */
@@ -3810,6 +3751,150 @@ const TWEAKS = `
 @media (prefers-reduced-motion: reduce) {
   .root :global(.trade-orbit) { transition: none; }
   .root :global(.trade-orbit-item) { will-change: auto; }
+}
+
+/* ===========================================================================
+   §103 — THE 1-2-3 WHEEL BECOMES A VERTICAL STEPPER
+
+   It was a 104px ring carrying three numbered nodes, counter-rotating so the
+   current one came to the top, with the count in the middle. Two rounds of
+   measurement went into fitting that circle into .scrolly-layout's gutter —
+   clamp(40px, 6vw, 100px), which is 66px at 1101px — and it never really fit:
+   the notes above record it overlapping the product frame by 31-33px and
+   covering the left edge of "Generate full site with AI" and two streets of the
+   route map.
+
+   A wheel is the right shape for something cyclical, and these three are not
+   cyclical. They are one, then two, then three, read by scrolling DOWN them. A
+   vertical rail runs the same direction as the reading, is 46px wide instead of
+   124px so the gutter problem stops existing, and can say something the wheel
+   could not: which steps you have already passed.
+   =========================================================================== */
+
+.root :global(.step-rail) {
+  position: absolute;
+  left: -74px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+}
+.root :global(.step-rail ol) {
+  display: grid;
+  gap: 34px;                       /* the connector lives in this gap */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.root :global(.step-rail li) { position: relative; }
+
+/* The connector, drawn in the gap above each node but the first. A pseudo
+   element on the LI rather than a border on the button: the button is a circle
+   and a border would follow its radius. */
+.root :global(.step-rail li + li)::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  width: 2px;
+  height: 34px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: rgba(174, 199, 211, .2);
+  transition: background .3s ease;
+}
+/* A segment behind you is lit; the one you are on and the ones ahead are not.
+   The state is on the LI, so the segment above a node reads the node it leads
+   INTO — which is the one that has been reached. */
+.root :global(.step-rail li[data-state="done"])::before,
+.root :global(.step-rail li[data-state="current"])::before { background: var(--orange); }
+
+.root :global(.step-rail button) {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(174, 199, 211, .26);
+  background: rgba(7, 19, 29, .82);
+  backdrop-filter: blur(8px);
+  color: #8ea2b0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: color .22s ease, border-color .22s ease, background .22s ease, transform .22s ease;
+}
+.root :global(.step-rail button:hover) {
+  color: #e6eef2;
+  border-color: rgba(255, 106, 36, .55);
+  transform: translateY(-1px);
+}
+
+/* Passed: solid enough to read as complete, quiet enough not to compete with
+   the one you are on. */
+.root :global(.step-rail li[data-state="done"] button) {
+  border-color: rgba(255, 106, 36, .45);
+  color: #ff9257;
+}
+/* Current: the only filled node on the rail. */
+.root :global(.step-rail li[data-state="current"] button) {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: var(--ink-on-orange);
+  font-weight: 700;
+  box-shadow: 0 0 0 5px rgba(255, 106, 36, .12), 0 14px 30px rgba(0, 0, 0, .42);
+}
+
+/* The name is for assistive tech and for a wider rail; at this width the
+   numbers carry it and each button already has an aria-label naming the step. */
+.root :global(.step-rail-name) {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The gutter closes below the two-column tour. Same answer the wheel used:
+   the top-right of the stage, clear of both columns — but vertical, and
+   smaller, so three nodes still fit above the fold of the panel. */
+@media (max-width: 1100px) {
+  .root :global(.step-rail) {
+    left: auto;
+    right: 6px;
+    top: 0;
+    transform: none;
+  }
+  .root :global(.step-rail ol) { gap: 22px; }
+  .root :global(.step-rail li + li)::before { top: -22px; height: 22px; }
+  .root :global(.step-rail button) { width: 34px; height: 34px; font-size: 10.5px; }
+  .root :global(.step-rail li[data-state="current"] button) { box-shadow: 0 0 0 4px rgba(255, 106, 36, .12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.step-rail button),
+  .root :global(.step-rail li + li)::before { transition: none; }
+  .root :global(.step-rail button:hover) { transform: none; }
+}
+
+/* ---- the pricing band lost its calculator ---------------------------------
+
+   A slider that worked out a year's fee sat above these buttons. With it gone
+   the band needs somewhere to send the visitor who wanted that number, so the
+   single primary button became a pair — and a pair needs a row. */
+.root :global(.pricing-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+}
+@media (max-width: 620px) {
+  .root :global(.pricing-actions) { display: grid; }
+  .root :global(.pricing-actions .button) { justify-content: center; }
 }
 `;
 

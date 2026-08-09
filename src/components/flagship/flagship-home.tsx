@@ -1,12 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
 import TradeOrbit from './trade-orbit';
-import HomeFeeCalculator from '@/components/home-fee-calculator';
 import CommandCenterDeck, { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
@@ -313,7 +312,6 @@ function ProductVisual({ active }: { active: number }) {
 export default function FlagshipHome() {
   const [active, setActive] = useState(0);
   const stepRefs = useRef<Array<HTMLElement | null>>([]);
-  const rotations = useMemo(() => [0, -120, -240], []);
 
   /* Which product screen the merged suite section is showing. Seeded from the
      deck's own list so this cannot start on a screen that does not exist. */
@@ -680,20 +678,41 @@ export default function FlagshipHome() {
           </div>
 
           <div className="sticky-product">
-            <div className="wheel-wrap" aria-label={`Feature ${active + 1} of 3`}>
-              <div className="wheel-ring" style={{ transform: `rotate(${rotations[active]}deg)` }}>
+            {/* THE THREE STEPS, AS A STEPPER RATHER THAN A WHEEL.
+                It was a 104px ring that counter-rotated so the current number
+                came to the top, with the count in the middle. A wheel is a good
+                shape for something cyclical and these are not cyclical — they
+                are one, then two, then three, in order, and the section is read
+                by scrolling down them. A vertical rail says the same thing in
+                the same direction as the reading.
+
+                It also says more: the wheel showed which step you were on, and
+                this shows which ones you have already passed. Each node carries
+                its own state, so "done" and "still to come" are different
+                things to look at rather than the same dim grey.
+
+                <ol> and not a row of divs: three ordered items, and each button
+                marks itself aria-current="step" the way the wheel's did. */}
+            <nav className="step-rail" aria-label={`Feature ${active + 1} of ${features.length}`}>
+              <ol>
                 {features.map((feature, index) => (
-                  <button
+                  <li
                     key={feature.number}
-                    className={`wheel-node node-${index + 1} ${active === index ? "is-active" : ""}`}
-                    onClick={() => goToStep(index)}
-                    aria-label={`View ${feature.kicker}`}
-                    aria-current={active === index ? "step" : undefined}
-                  >{feature.number}</button>
+                    data-state={index < active ? 'done' : index === active ? 'current' : 'todo'}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => goToStep(index)}
+                      aria-label={`View ${feature.kicker}`}
+                      aria-current={active === index ? 'step' : undefined}
+                    >
+                      <span className="step-rail-num">{feature.number}</span>
+                      <span className="step-rail-name">{feature.kicker}</span>
+                    </button>
+                  </li>
                 ))}
-              </div>
-              <div className="wheel-core"><b>{features[active].number}</b><small>OF 03</small></div>
-            </div>
+              </ol>
+            </nav>
             <ProductVisual active={active} />
             {/* An "Example — an invented business" pill sat here, between the
                 product panels and the progress rail. Removed on request. The
@@ -848,18 +867,18 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* THEIR OWN NUMBERS.
-          "$0 / month" is the strongest claim on the page and it got one glance —
-          you agreed with it and scrolled on. The calculator makes it arithmetic
-          the visitor does themselves.
+      {/* THE PRICE, WITHOUT THE CALCULATOR.
+          A HomeFeeCalculator sat here — a slider that worked out a year's
+          platform fee on the spot. It is gone from this page on request, and
+          what replaces it is a link rather than nothing: /pricing carries the
+          full calculator, the break-even against a monthly plan and the FAQ, so
+          the arithmetic still exists, one click away, in the place that can
+          answer the follow-up question.
 
-          It is the EXISTING HomeFeeCalculator, not a second one. That component
-          reads FEE_TIERS from lib/pricing.ts, which is the source of truth the
-          /pricing page and the fee calculator already share, so the rate here
-          cannot drift from the rate we charge. A hand-rolled slider on the
-          homepage would have been a published number with no owner — and it is
-          deliberately written to show the honest figure and the structural
-          difference rather than a fabricated "you save $X". */}
+          The four brackets below stay. They are the actual rates and they are
+          built from FEE_TIERS, so the homepage still states the price rather
+          than only promising one. HomeFeeCalculator itself is untouched —
+          /home-classic and /home-next both still render it. */}
       <section className="pricing-band" id="pricing">
         <Glare />
         <div className="price-zero" data-plane="back"><span>$</span><strong>0</strong><small>/ MONTH</small></div>
@@ -868,7 +887,6 @@ export default function FlagshipHome() {
           <h2>When business is slow,<br /><em>your software bill is $0.</em></h2>
           <p>Use the full suite without a monthly subscription. A small platform fee applies only when a homeowner pays you.</p>
           <div className="pricing-points"><span>✓ No setup fee</span><span>✓ No contract</span><span>✓ No per-seat fee</span><span>✓ Rate drops as you grow</span></div>
-          <HomeFeeCalculator />
 
           {/* THE RATE, WRITTEN DOWN.
               "A small platform fee" and a slider were the whole explanation.
@@ -887,13 +905,22 @@ export default function FlagshipHome() {
           <p className="fee-note">
             Marginal, like tax brackets — the first $100k of volume is charged at 1.25%, the next
             slice at 1.00%, and so on. It applies only when a homeowner actually pays you.
-            {' '}<a href="/pricing">See the full breakdown</a>
           </p>
 
           {/* The price is where the decision actually gets made, and this band
               had nothing to press — you read "$0 / month", agreed with it, and
-              then scrolled on looking for somewhere to act. */}
-          <a className="button primary" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
+              then scrolled on looking for somewhere to act.
+
+              Two buttons now, because the calculator that used to sit above
+              them is gone: the visitor who wanted to work out their own number
+              needs somewhere to go, and a sentence-ending text link is not it.
+              Secondary, so the primary action still reads as the primary one. */}
+          <div className="pricing-actions">
+            <a className="button primary" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
+            <Link className="button secondary" href="/pricing">
+              Work out your fee <span aria-hidden="true">→</span>
+            </Link>
+          </div>
           <small className="pricing-fineprint">
             Card payments run through <b>Stripe Checkout</b>, so card details are entered on
             Stripe&apos;s own page and never reach our servers. Stripe&apos;s processing fee
