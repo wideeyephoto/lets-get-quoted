@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { buildCsp, cspHeaderName, generateNonce } from '@/lib/csp';
-import { canonicalHostFor, needsCanonicalHost, resolveTenantHost } from '@/lib/tenant-host';
+import {
+  canonicalHostFor,
+  isMarketingPath,
+  marketingHostFor,
+  needsCanonicalHost,
+  resolveTenantHost,
+} from '@/lib/tenant-host';
 
 export async function middleware(request: NextRequest) {
   // One nonce per request. It goes on the REQUEST headers so Next can read it
@@ -127,6 +133,30 @@ export async function middleware(request: NextRequest) {
   // instead of relying on a client-side rail swap on a statically-served page.
   if (user && request.nextUrl.pathname === '/') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // ── One host for the public site ──────────────────────────────────────────
+  // The other half of the rule above. Every marketing page answered 200 on both
+  // letsgetquoted.com and app.letsgetquoted.com while declaring a canonical on
+  // the apex, so search engines were offered two copies of each page and told,
+  // in the sitemap, to prefer the copy the pages themselves disowned.
+  //
+  // 308 rather than the 307 used for session paths, and the difference is the
+  // point: that one is reversible policy about where a cookie lives, this one is
+  // a statement that the app host is not where the public site is. A temporary
+  // redirect tells a crawler to keep both.
+  //
+  // AFTER the session lookup, and skipped when there is one. A signed-in owner
+  // opening Pricing from inside the app would otherwise cross to a host their
+  // cookie does not reach and be shown "Build my free site" — the marketing
+  // header reads the session client-side, and a session cookie is host-only.
+  // Crawlers are never signed in, so they always get the redirect.
+  if (!user && (request.method === 'GET' || request.method === 'HEAD') && isMarketingPath(request.nextUrl.pathname)) {
+    const apex = marketingHostFor(rootDomain, request.headers.get('x-forwarded-host') || request.headers.get('host'));
+    if (apex) {
+      const target = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${apex}`);
+      return applyCsp(NextResponse.redirect(target, 308));
+    }
   }
 
   if (request.nextUrl.pathname.startsWith('/dashboard')) {

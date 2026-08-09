@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { canonicalHostFor, needsCanonicalHost, normalizeHost, resolveTenantHost } from '../src/lib/tenant-host';
+import {
+  canonicalHostFor,
+  isMarketingPath,
+  marketingHostFor,
+  marketingOrigin,
+  needsCanonicalHost,
+  normalizeHost,
+  resolveTenantHost,
+} from '../src/lib/tenant-host';
 
 const ROOT = 'letsgetquoted.com';
 
@@ -118,5 +126,104 @@ describe('canonicalHostFor', () => {
   it('has no opinion when the request carries no host at all', () => {
     expect(canonicalHostFor(APP, null)).toBeNull();
     expect(canonicalHostFor(APP, '')).toBeNull();
+  });
+});
+
+/**
+ * The public site's one address.
+ *
+ * Every marketing page declares a canonical on the apex and every one of them
+ * also answered 200 on app.letsgetquoted.com, with the sitemap listing the app
+ * copies. These three functions are what stopped that, and the way they fail is
+ * silent in both directions — too narrow and the duplicates stay, too wide and
+ * a payment link a contractor handed out gets moved off the host it was issued
+ * on.
+ */
+describe('isMarketingPath', () => {
+  it('claims the public site and its subtrees', () => {
+    for (const path of [
+      '/',
+      '/features',
+      '/features/website-builder',
+      '/how-it-works',
+      '/for',
+      '/for/plumbers',
+      '/pricing',
+      '/faq',
+      '/security',
+      '/resources',
+      '/resources/how-to-price-a-job',
+      '/contact',
+      '/founder',
+      '/privacy',
+      '/terms',
+      '/sms-terms',
+    ]) {
+      expect(isMarketingPath(path), `${path} is the public site`).toBe(true);
+    }
+  });
+
+  // The ones a contractor hands to a homeowner. They carry their own tokens,
+  // work with no session, and may legitimately be opened on any host we serve —
+  // moving one is breaking a link somebody already sent.
+  it('does NOT claim the public link surfaces or the app', () => {
+    for (const path of [
+      '/book/acme',
+      '/invoice/tok',
+      '/pay/tok',
+      '/portal/acme',
+      '/review/tok',
+      '/track/tok',
+      '/dashboard',
+      '/dashboard/leads',
+      '/login',
+      '/welcome',
+      '/demo',
+      '/api/public/leads',
+    ]) {
+      expect(isMarketingPath(path), `${path} must stay where it is`).toBe(false);
+    }
+  });
+
+  // A path that merely starts with a listed one is not part of it.
+  it('does not let an entry swallow a sibling by prefix', () => {
+    expect(isMarketingPath('/foundering')).toBe(false);
+    expect(isMarketingPath('/pricing-beta')).toBe(false);
+    expect(isMarketingPath('/terms-of-nothing')).toBe(false);
+  });
+});
+
+describe('marketingHostFor', () => {
+  it('moves our own duplicate hosts to the apex', () => {
+    expect(marketingHostFor(ROOT, `app.${ROOT}`)).toBe(ROOT);
+    expect(marketingHostFor(ROOT, `www.${ROOT}`)).toBe(ROOT);
+    expect(marketingHostFor(ROOT, `APP.${ROOT}:443`)).toBe(ROOT);
+  });
+
+  it('leaves a request already on the apex', () => {
+    expect(marketingHostFor(ROOT, ROOT)).toBeNull();
+    expect(marketingHostFor(ROOT, `${ROOT}:443`)).toBeNull();
+  });
+
+  // The guard that keeps this from hijacking anything it does not own: a
+  // contractor's subdomain, their custom domain, a preview deploy, localhost.
+  it('has no opinion about a host that is not ours', () => {
+    expect(marketingHostFor(ROOT, `acme.${ROOT}`)).toBeNull();
+    expect(marketingHostFor(ROOT, 'acmeplumbing.com')).toBeNull();
+    expect(marketingHostFor(ROOT, 'localhost')).toBeNull();
+    expect(marketingHostFor(ROOT, 'lgq-git-branch.vercel.app')).toBeNull();
+    expect(marketingHostFor(ROOT, null)).toBeNull();
+    expect(marketingHostFor('', `app.${ROOT}`)).toBeNull();
+  });
+});
+
+describe('marketingOrigin', () => {
+  it('is the apex, never the app host', () => {
+    expect(marketingOrigin(ROOT)).toBe('https://letsgetquoted.com');
+    expect(marketingOrigin(' LetsGetQuoted.com ')).toBe('https://letsgetquoted.com');
+  });
+  it('returns empty rather than a guess when nothing is configured', () => {
+    expect(marketingOrigin('')).toBe('');
+    expect(marketingOrigin(null)).toBe('');
   });
 });

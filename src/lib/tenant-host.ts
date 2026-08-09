@@ -94,6 +94,75 @@ export function needsCanonicalHost(pathname: string): boolean {
  * deploys and local development working: on localhost the configured host and
  * the request host are the same, so nothing redirects.
  */
+/**
+ * THE PUBLIC SITE, AND ITS ONE ADDRESS.
+ *
+ * The mirror image of SESSION_PATHS above, and it was wrong in the same way for
+ * the opposite reason. Both letsgetquoted.com and app.letsgetquoted.com serve
+ * this app, so every marketing page answered on both hosts with a 200 — while
+ * each page's own <link rel="canonical"> named the apex. That is duplicate
+ * content with the duplicate advertised, and the sitemap made it worse by
+ * listing 71 URLs on app.letsgetquoted.com: the file that is supposed to tell a
+ * crawler which address is real was naming the other one.
+ *
+ * Deliberately an allowlist and not "everything that is not the app". The
+ * public link surfaces — /book, /invoice, /pay, /portal, /review, /track — carry
+ * their own tokens and a contractor may hand them out on any host we serve, so
+ * they must not be moved.
+ *
+ * Every entry here is a route whose metadata already declares a canonical under
+ * the apex; '/' is included because the root layout's metadataBase does the same.
+ */
+const MARKETING_PATHS = [
+  '/features',
+  '/how-it-works',
+  '/for',
+  '/pricing',
+  '/faq',
+  '/security',
+  '/resources',
+  '/contact',
+  '/founder',
+  '/privacy',
+  '/terms',
+  '/sms-terms',
+];
+
+/** Each entry claims its own path and its subtree — /features has five children. */
+export function isMarketingPath(pathname: string): boolean {
+  if (pathname === '/') return true;
+  return MARKETING_PATHS.some((base) => pathname === base || pathname.startsWith(`${base}/`));
+}
+
+/**
+ * Where the public site canonically lives — the apex, always.
+ *
+ * NOT derived from NEXT_PUBLIC_APP_URL, which is the app host and is the whole
+ * bug. Read by the sitemap and robots.txt so the URLs they publish are the ones
+ * the pages themselves claim.
+ */
+export function marketingOrigin(rootDomain: string | null | undefined): string {
+  const root = String(rootDomain ?? '').trim().toLowerCase();
+  return root ? `https://${root}` : '';
+}
+
+/**
+ * The host a public-site request should be answered on, or null to leave it.
+ *
+ * Only ever moves a request off one of OUR OWN duplicate hosts — www and app.
+ * A preview deploy, a localhost, or a contractor's domain gets no opinion,
+ * which is what keeps this from hijacking anything it does not own.
+ */
+export function marketingHostFor(
+  rootDomain: string | null | undefined,
+  hostHeader: string | null | undefined,
+): string | null {
+  const root = String(rootDomain ?? '').trim().toLowerCase();
+  const here = normalizeHost(hostHeader);
+  if (!root || !here || here === root) return null;
+  return here === `www.${root}` || here === `app.${root}` ? root : null;
+}
+
 export function canonicalHostFor(appUrl: string | undefined | null, hostHeader: string | null | undefined): string | null {
   const configured = String(appUrl ?? '').trim();
   if (!configured) return null;
