@@ -28559,6 +28559,13 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-tl-overflow:hover { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
 .sched-tl-overflow:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* On the day view there is nowhere for it to go — its destination is the view
+   you are already in — so it is a count rather than a control, and it has to
+   stop looking like one. The pointer and the hover lift are the whole of what
+   said "press me". */
+.sched-tl-overflow.is-static { cursor: default; color: var(--mute-i60); }
+.sched-tl-overflow.is-static:hover { border-color: rgba(var(--tint), 0.42); background: rgba(var(--tint), 0.07); }
+
 /* -- the card decides its own detail from its own width --------------------- */
 /* data-size answers "is this block tall enough", which is only half the
    question — a three-way overlap in a week column is 47px wide and an

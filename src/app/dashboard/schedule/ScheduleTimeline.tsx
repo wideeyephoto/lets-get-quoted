@@ -214,7 +214,32 @@ export default function ScheduleTimeline({
     return () => observer.disconnect();
   }, [dayKeys.length]);
 
-  const maxLanes = colWidth != null && colWidth < MIN_LANE_PX * 2 + OVERFLOW_PX ? 1 : 2;
+  /**
+   * HOW MANY LANES THE COLUMN CAN ACTUALLY HOLD.
+   *
+   * This was `1 or 2` — a width constraint written as a constant, and the
+   * constant was wrong in exactly one place. Day view is ONE column across the
+   * whole calendar, about a thousand pixels, and it was still folding
+   * everything past the second lane behind a "+3" whose only action is "open
+   * this day" — which is the view you are already in. A dead control sitting on
+   * top of three jobs you then had no way to reach at all.
+   *
+   * Derived from the measured width instead, against the same MIN_LANE_PX the
+   * old rule used, so the narrow cases are unchanged: a 190px week column still
+   * gets two, a 99px one still gets one, and the day gets as many as fit.
+   * Null until the first measurement, where two is the server's guess.
+   */
+  const maxLanes =
+    colWidth == null ? 2 : Math.max(1, Math.floor((colWidth - OVERFLOW_PX) / MIN_LANE_PX));
+
+  /**
+   * …and whether the marker that remains is a control at all.
+   *
+   * It navigates to the day on its own. With one day on screen that is where
+   * you are, so there is nothing to press — it becomes a count, which is what
+   * it was always saying.
+   */
+  const overflowOpensDay = Boolean(onOpenDay) && dayKeys.length > 1;
 
   /** Every timed job across every visible column, so one axis fits them all. */
   const axis = useMemo(() => {
@@ -552,28 +577,42 @@ export default function ScheduleTimeline({
                   );
                 })}
 
-                {/* WHAT THE TWO LANES COULD NOT HOLD.
+                {/* WHAT THE LANES COULD NOT HOLD.
                     Positioned over the hidden jobs' own minutes rather than at
                     the top of the day, so it points at when they are. Pressing
                     it opens that day on its own, where every one of them fits
                     at full width — which is the "accessible popover or day
-                    agenda" without a second overlay to trap focus in. */}
-                {column.overflows.map((overflow) => (
-                  <button
-                    key={`${column.dateKey}-of-${overflow.startMinutes}`}
-                    type="button"
-                    className="sched-tl-overflow"
-                    style={{ top: `${overflow.box.top}%`, height: `${overflow.box.height}%` }}
-                    title={`Also on this day at the same time: ${overflow.names.join(', ')}. Open the day to see them.`}
-                    onClick={() => onOpenDay?.(column.dateKey)}
-                  >
-                    <span aria-hidden="true">+{overflow.keys.length}</span>
-                    <span className="sr-only">
-                      {overflow.keys.length} more overlapping {overflow.keys.length === 1 ? 'job' : 'jobs'}
-                      {overflow.names.length ? ` — ${overflow.names.join(', ')}` : ''}. Open this day to see them.
+                    agenda" without a second overlay to trap focus in.
+
+                    A BUTTON ONLY WHERE THERE IS SOMEWHERE TO GO. On the day
+                    view its destination is the view you are already in, so it
+                    was a control that looked like one and did nothing. There it
+                    is a count instead — and with the lane cap now taken from
+                    the column's real width, a day wide enough to show the jobs
+                    does that rather than counting them. */}
+                {column.overflows.map((overflow) => {
+                  const label = `${overflow.keys.length} more overlapping ${overflow.keys.length === 1 ? 'job' : 'jobs'}${overflow.names.length ? ` — ${overflow.names.join(', ')}` : ''}`;
+                  const position = { top: `${overflow.box.top}%`, height: `${overflow.box.height}%` };
+                  const key = `${column.dateKey}-of-${overflow.startMinutes}`;
+                  return overflowOpensDay ? (
+                    <button
+                      key={key}
+                      type="button"
+                      className="sched-tl-overflow"
+                      style={position}
+                      title={`Also on this day at the same time: ${overflow.names.join(', ')}. Open the day to see them.`}
+                      onClick={() => onOpenDay?.(column.dateKey)}
+                    >
+                      <span aria-hidden="true">+{overflow.keys.length}</span>
+                      <span className="sr-only">{label}. Open this day to see them.</span>
+                    </button>
+                  ) : (
+                    <span key={key} className="sched-tl-overflow is-static" style={position} title={label}>
+                      <span aria-hidden="true">+{overflow.keys.length}</span>
+                      <span className="sr-only">{label}.</span>
                     </span>
-                  </button>
-                ))}
+                  );
+                })}
 
                 {blocked && column.blocks.length === 0 && column.untimed.length === 0 ? (
                   <p className="sched-tl-blocked-note">{blocked}</p>

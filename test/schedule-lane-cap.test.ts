@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   buildTimeAxis,
   capLanes,
@@ -118,5 +120,58 @@ describe('two lanes, and a count for the rest', () => {
 
   it('refuses a lane count that could not draw anything', () => {
     expect(() => capLanes([], 0)).toThrow();
+  });
+});
+
+/**
+ * …AND A MARKER THAT DOES SOMETHING.
+ *
+ * The lane cap was the constant 2, which is right for a 190px week column and
+ * wrong for the day view — one column across the whole calendar, still folding
+ * everything past the second lane behind a "+3" whose only action is "open this
+ * day". That is the view you are already in: a control that looked like one,
+ * did nothing, and sat on top of three jobs you then had no way to reach.
+ *
+ * Read as source, because both facts are about the component rather than about
+ * the packing this file otherwise tests.
+ */
+describe('the overflow marker is a control only where it leads somewhere', () => {
+  const TIMELINE = readFileSync(
+    join(process.cwd(), 'src', 'app', 'dashboard', 'schedule', 'ScheduleTimeline.tsx'),
+    'utf8',
+  )
+    .replace(/\r\n/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  it('takes the lane cap from the column width instead of a constant 2', () => {
+    expect(TIMELINE).toContain('Math.floor((colWidth - OVERFLOW_PX) / MIN_LANE_PX)');
+    expect(TIMELINE).not.toContain('colWidth < MIN_LANE_PX * 2 + OVERFLOW_PX ? 1 : 2');
+  });
+
+  it('keeps the narrow cases exactly where they were', () => {
+    // The rule the constant encoded: 2 lanes at a 190px week column, 1 at 99px.
+    const MIN_LANE_PX = Number(/const MIN_LANE_PX = (\d+);/.exec(TIMELINE)?.[1]);
+    const OVERFLOW_PX = Number(/const OVERFLOW_PX = (\d+);/.exec(TIMELINE)?.[1]);
+    const lanes = (width: number) => Math.max(1, Math.floor((width - OVERFLOW_PX) / MIN_LANE_PX));
+    expect(lanes(190)).toBe(2);
+    expect(lanes(99)).toBe(1);
+    // And the day column, which is the one that was wrong.
+    expect(lanes(1000)).toBeGreaterThan(2);
+  });
+
+  it('renders a count rather than a button when there is only one day on screen', () => {
+    expect(TIMELINE).toContain('const overflowOpensDay = Boolean(onOpenDay) && dayKeys.length > 1;');
+    expect(TIMELINE).toContain('overflowOpensDay ? (');
+    expect(TIMELINE).toContain("className=\"sched-tl-overflow is-static\"");
+  });
+
+  it('and the count stops looking pressable', () => {
+    const CSS = readFileSync(join(process.cwd(), 'src', 'app', 'globals.css'), 'utf8')
+      .replace(/\r\n/g, '\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(CSS).toContain('.sched-tl-overflow.is-static { cursor: default;');
+    expect(CSS).toContain('.sched-tl-overflow.is-static:hover');
   });
 });
