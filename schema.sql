@@ -550,6 +550,17 @@ alter table jobs add column if not exists deposit_gate text;
 alter table jobs add column if not exists lat numeric;
 alter table jobs add column if not exists lng numeric;
 alter table jobs add column if not exists geocoded_at timestamptz;
+-- How this customer may be messaged about this job. The CONTRACTOR's half of
+-- consent; sms_consent.opted_out is the customer's half and outranks it.
+-- 'auto' (the default, and today's behaviour) = text if there's a mobile, else
+-- email. 'sms' = never email. 'email' = never text. 'off' = nothing automatic.
+-- Resolved with the phone, the email and the STOP flag by resolveClientChannel
+-- in src/lib/client-channel.ts. Carried over from the lead's
+-- triage.messageChannel at conversion.
+alter table jobs add column if not exists message_channel text not null default 'auto';
+alter table jobs drop constraint if exists jobs_message_channel_check;
+alter table jobs add constraint jobs_message_channel_check
+  check (message_channel in ('auto', 'sms', 'email', 'off'));
 
 -- ----------------------------------------------------------------------------
 -- CLIENTS  — a first-class, deduped customer record. A job's client_name/phone/
