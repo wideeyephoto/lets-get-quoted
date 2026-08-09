@@ -50,35 +50,71 @@ const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon:
 /** The views laid out against a clock, which are the ones that step by day. */
 const TIME_VIEWS = new Set<CalendarView>(['day', 'week', 'crew']);
 
+/**
+ * The three you actually switch between, promoted out of the menu.
+ *
+ * Seven views will not fit in a segmented control — that is why the menu exists
+ * and the note above still stands. But these three are the zoom level, they get
+ * used constantly, and reaching them was two clicks and a read: open the menu,
+ * find the row, click it. The other four are destinations you pick occasionally
+ * and they stay where they are.
+ */
+const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month']);
+const QUICK_VIEW_OPTIONS = VIEW_OPTIONS.filter((option) => QUICK_VIEWS.has(option.id));
+const MENU_VIEW_OPTIONS = VIEW_OPTIONS.filter((option) => !QUICK_VIEWS.has(option.id));
+
 function CalendarViewMenu({ value, onChange }: { value: CalendarView; onChange: (next: CalendarView) => void }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const current = VIEW_OPTIONS.find((option) => option.id === value) ?? VIEW_OPTIONS[0];
+  // The menu holds the other four now, so it only names a view when one of
+  // those is the one you are in; otherwise it is just the way to the rest.
+  const inMenu = !QUICK_VIEWS.has(value);
 
   return (
     <div className="calendar-view-menu">
+      {/* One press each, and the pressed one is the view you are in. Same
+          onChange the menu rows call, so there is one path through the state. */}
+      <div className="calendar-view-quick" role="group" aria-label="Calendar view">
+        {QUICK_VIEW_OPTIONS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={`calendar-view-quick-btn${option.id === value ? ' active' : ''}`}
+            aria-pressed={option.id === value}
+            title={option.hint}
+            onClick={() => onChange(option.id)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d={option.icon} />
+            </svg>
+            {option.label}
+          </button>
+        ))}
+      </div>
       <button
         ref={buttonRef}
         type="button"
-        className={`calendar-view-trigger${open ? ' open' : ''}`}
+        className={`calendar-view-trigger${open ? ' open' : ''}${inMenu ? ' is-current' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        aria-label={inMenu ? `Calendar view: ${current.label}. More views` : 'More calendar views'}
+      onClick={() => setOpen((current) => !current)}
       >
         <svg className="calendar-view-trigger-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d={current.icon} />
+          <path d={inMenu ? current.icon : MENU_VIEW_OPTIONS[0].icon} />
         </svg>
         <span className="calendar-view-trigger-text">
-          <small>View</small>
-          <strong>{current.label}</strong>
+          <small>{inMenu ? 'View' : 'More'}</small>
+          <strong>{inMenu ? current.label : 'Views'}</strong>
         </span>
         <svg className="calendar-view-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
       <FloatingPanel anchorRef={buttonRef} open={open} onClose={() => setOpen(false)} className="calendar-view-panel" width={264}>
-        <div role="menu" aria-label="Calendar view">
-          {VIEW_OPTIONS.map((option) => (
+        <div role="menu" aria-label="More calendar views">
+          {MENU_VIEW_OPTIONS.map((option) => (
             <button
               key={option.id}
               type="button"

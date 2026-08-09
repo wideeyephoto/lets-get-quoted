@@ -15,16 +15,19 @@ import { OPEN_SCHEDULE_QUEUE_EVENT } from './dock-events';
  */
 
 function openQueue() {
-  /* A collapsed desktop rail is the one case where the event alone still lands
-     on nothing visible: RailToggle has hidden the queue's docked home behind a
-     body attribute, so opening it would open something display:none. Clear the
-     attribute AND the stored preference first — the button is an explicit ask
-     to see that list, which outranks a preference set earlier. */
+  /* This used to have to undo a collapsed desktop rail first — RailToggle could
+     hide the queue's docked home behind a body attribute, so the event alone
+     would open something that was display:none. That toggle is gone (it said
+     "Show jobs (10)" one row under a stat saying "10 · Ready to book"), nothing
+     sets the attribute now, and the rail is always there to open.
+
+     The stored preference is still cleared, once, for anyone who left the rail
+     collapsed before it went. Costs a line and closes the only path by which an
+     old browser could still be carrying the flag. */
   try {
-    delete document.body.dataset.schedRail;
     window.localStorage.removeItem('lgq.schedule.railCollapsed');
   } catch {
-    // Storage disabled. The attribute is already gone, which is what matters.
+    // Storage disabled — nothing was stored to begin with.
   }
   window.dispatchEvent(new CustomEvent(OPEN_SCHEDULE_QUEUE_EVENT));
 }

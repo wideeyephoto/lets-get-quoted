@@ -20,7 +20,6 @@ import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
 import UnscheduledQueue from './UnscheduledQueue';
-import RailToggle from './RailToggle';
 import { ScheduleJobButton, UnscheduledBanner } from './QueueTriggers';
 import ScheduleMap from './ScheduleMap';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
@@ -646,9 +645,11 @@ export default async function SchedulePage({
           }
           weekendDays={weekendDays}
           initialView={calendarView}
-          /* Sits with the view menu because it is the same kind of decision:
-             what am I looking at, and how much room does it get. */
-          toolbarActions={unscheduledJobs.length > 0 ? <RailToggle count={approvedUnscheduled} /> : null}
+          /* NO RAIL TOGGLE HERE ANY MORE. It read "Show jobs (10)" one row under
+             a stat that read "10 · Ready to book" and pointed at the same rail —
+             the same number and the same destination, twice. The stat is the one
+             that stays: it is already a link to #unscheduled-jobs and it says
+             what the number means. */
           /* NO "Plan my day" HERE ANY MORE. It sat in this toolbar at every
              width, in the accent colour, permanently — the loudest control on a
              page whose job is booking work, pointed at a route optimiser for

@@ -6550,7 +6550,69 @@ li + li { margin-top: 0.45rem; }
 /* .calendar-toolbar is flex with space-between, so this sits hard right — the
    top-right corner of the calendar. margin-left:auto keeps it there even when
    the month nav wraps to its own line. */
-.calendar-view-menu { margin-left: auto; }
+/* THE THREE YOU LIVE IN, ON THE SURFACE.
+   Day, Week and Month are the zoom level and get switched constantly; they used
+   to cost two clicks and a read — open the menu, find the row, press it. They
+   are a segmented control now and the menu keeps the other four, which are
+   destinations you pick occasionally rather than a zoom.
+
+   Segmented, not three loose buttons: one shared border and hairline dividers
+   say "these three are one choice, and it is the one you are in", which three
+   separate pills do not. */
+.calendar-view-menu { display: flex; align-items: center; gap: 0.45rem; margin-left: auto; }
+
+.calendar-view-quick {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 2px;
+  border: 1px solid var(--cedge-sky-6);
+  border-radius: 12px;
+  background: rgba(58, 160, 255, 0.05);
+}
+
+.calendar-view-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.32rem 0.62rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mute-t62);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.calendar-view-quick-btn svg { width: 0.95rem; height: 0.95rem; flex: none; }
+
+/* The divider is a sibling rule rather than a border on each button, so the
+   pressed one can carry its own border without the line doubling beside it. */
+.calendar-view-quick-btn + .calendar-view-quick-btn { box-shadow: inset 1px 0 0 var(--edge-t10); }
+.calendar-view-quick-btn.active + .calendar-view-quick-btn,
+.calendar-view-quick-btn.active { box-shadow: none; }
+
+.calendar-view-quick-btn:hover { color: var(--text); background: rgba(var(--tint), 0.05); }
+
+.calendar-view-quick-btn.active {
+  border-color: var(--cedge-orange-27);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--accent-ink);
+}
+
+.calendar-view-quick-btn:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.8); outline-offset: 2px; }
+
+/* Below the tablet breakpoint the toolbar is already wrapping; the labels go
+   and the icons carry the three, which keeps them one press rather than
+   pushing them back into the menu. */
+@media (max-width: 900px) {
+  .calendar-view-quick-btn { padding: 0.32rem 0.5rem; font-size: 0; gap: 0; }
+  .calendar-view-quick-btn svg { width: 1.05rem; height: 1.05rem; }
+}
 
 .calendar-view-trigger {
   display: inline-flex;
@@ -26776,39 +26838,17 @@ body[data-schedule-overlay="job"] .sched-queue {
 }
 .sched-back-to-month:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* -- hiding the rail on a wide screen -------------------------------------- */
-.sched-rail-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 40px;
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(var(--tint), 0.03);
-  color: var(--mute-i60);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.sched-rail-toggle svg { width: 15px; height: 15px; }
-.sched-rail-toggle:hover { border-color: rgba(var(--tint), 0.3); color: var(--ink); }
-.sched-rail-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sched-rail-toggle[aria-pressed='true'] {
-  border-color: var(--cedge-orange-8);
-  background: rgba(255, 138, 61, 0.09);
-  color: var(--ink-orange-4);
-}
+/* THE RAIL TOGGLE IS GONE, AND SO ARE ITS RULES.
+   It sat in the calendar toolbar reading "Show jobs (10)" while the stat strip
+   directly above it read "10 · Ready to book" and linked to the same rail — the
+   same number and the same destination, twice, a row apart. The stat is the one
+   that stays: it is already there, it is already a link to #unscheduled-jobs,
+   and it says what the number means.
 
-/* One column instead of two, and the rail out of the layout entirely rather
-   than merely invisible: `visibility: hidden` would leave the grid track and
-   the calendar exactly as narrow as it was. */
-@media (min-width: 1280px) {
-  body[data-sched-rail='collapsed'] .schedule-shell { grid-template-columns: minmax(0, 1fr); }
-  body[data-sched-rail='collapsed'] .schedule-rail { display: none; }
-}
+   The `body[data-sched-rail]` rules go with it. Nothing sets that attribute any
+   more, so a stale "collapsed" left in someone's localStorage simply never
+   matches and the rail comes back on its own — no migration needed, and no way
+   to be stranded with a hidden queue and no button to bring it back. */
 
 /* -- the mouse-only half of the queue instruction -------------------------- */
 /* Hidden where there is no pointer to drag with. A width query would guess

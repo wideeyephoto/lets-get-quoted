@@ -1,0 +1,82 @@
+import { describe, it, expect } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+
+const CALENDAR = read('src', 'app', 'dashboard', 'schedule', 'schedule-calendar.tsx');
+const PAGE = read('src', 'app', 'dashboard', 'schedule', 'page.tsx');
+const GLOBALS = read('src', 'app', 'globals.css');
+
+/**
+ * Day, Week and Month are one press each; the other four stay in the menu.
+ *
+ * Seven views will not fit in a segmented control, which is why the menu exists
+ * at all. But these three are the zoom level and get switched constantly, and
+ * reaching them was two clicks and a read — open the menu, find the row, press.
+ */
+describe('the calendar view switcher', () => {
+  it('promotes exactly Day, Week and Month out of the menu', () => {
+    const quick = CALENDAR.match(/const QUICK_VIEWS = new Set<CalendarView>\(\[([^\]]*)\]\)/);
+    expect(quick, 'QUICK_VIEWS is gone').toBeTruthy();
+    const ids = [...quick![1].matchAll(/'([a-z]+)'/g)].map((m) => m[1]);
+    expect(ids.sort()).toEqual(['day', 'month', 'week']);
+  });
+
+  /**
+   * The split is by filter over one list, so the two halves are complementary
+   * by construction and no view can fall out of both. That only holds while the
+   * menu renders MENU_VIEW_OPTIONS rather than the full list — render
+   * VIEW_OPTIONS there again and the three appear twice.
+   */
+  it('leaves the remaining four in the menu, and only those', () => {
+    expect(CALENDAR).toMatch(/const QUICK_VIEW_OPTIONS = VIEW_OPTIONS\.filter\(\(option\) => QUICK_VIEWS\.has\(option\.id\)\)/);
+    expect(CALENDAR).toMatch(/const MENU_VIEW_OPTIONS = VIEW_OPTIONS\.filter\(\(option\) => !QUICK_VIEWS\.has\(option\.id\)\)/);
+    expect(CALENDAR).toMatch(/\{MENU_VIEW_OPTIONS\.map\(/);
+    expect(CALENDAR).not.toMatch(/\{VIEW_OPTIONS\.map\(/);
+  });
+
+  it('routes the buttons and the menu rows through the same onChange', () => {
+    expect(CALENDAR).toMatch(/\{QUICK_VIEW_OPTIONS\.map\(/);
+    expect(CALENDAR).toMatch(/onClick=\{\(\) => onChange\(option\.id\)\}/);
+  });
+
+  it('styles them as one segmented control', () => {
+    expect(GLOBALS).toContain('.calendar-view-quick {');
+    expect(GLOBALS).toContain('.calendar-view-quick-btn.active');
+  });
+});
+
+/**
+ * The rail toggle is gone. It read "Show jobs (10)" one row under a stat that
+ * read "10 · Ready to book" and linked to the same rail — the same number and
+ * the same destination, twice.
+ */
+describe('the schedule toolbar has no rail toggle', () => {
+  it('deletes the component', () => {
+    expect(existsSync(join(process.cwd(), 'src', 'app', 'dashboard', 'schedule', 'RailToggle.tsx'))).toBe(false);
+  });
+
+  it('and mounts nothing in its place', () => {
+    expect(PAGE).not.toMatch(/<RailToggle/);
+    expect(PAGE).not.toMatch(/toolbarActions=\{/);
+  });
+
+  /**
+   * The rules have to go too, and this is the one that matters: nothing sets
+   * the attribute any more, so if the CSS survived, anyone whose localStorage
+   * still said "collapsed" would... actually be fine, because the attribute is
+   * what the selector keys on. Leaving dead rules that hide the queue is a trap
+   * waiting for the next person who reintroduces a body attribute by that name.
+   */
+  it('and leaves no rule that could still hide the rail', () => {
+    expect(GLOBALS).not.toContain("body[data-sched-rail='collapsed']");
+    expect(GLOBALS).not.toContain('.sched-rail-toggle {');
+  });
+
+  // The stat that made it redundant is the one that stays, and it is a link.
+  it('keeps "Ready to book" pointing at the queue', () => {
+    expect(PAGE).toMatch(/href="#unscheduled-jobs"/);
+    expect(PAGE).toContain('Ready to book');
+  });
+});
