@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { reviewPillState } from '@/lib/job-detail-labels';
 import {
   campaignText,
+  clientJobDashboardText,
   crewAssignmentText,
   paymentText,
   quickStopConfirmedText,
@@ -85,6 +86,35 @@ describe('the extracted builders', () => {
    */
   it('leaves the verification code without an opt-out line', () => {
     expect(verificationCodeText({ businessName: 'Evergreen', code: '481920' })).not.toContain('STOP');
+  });
+
+  /**
+   * The job-page text is the one a homeowner reads first, and it used to open
+   * "{business} created your client dashboard for job {ref}" — the software's
+   * noun for the reader, reporting the software's own event, behind a reference
+   * number. Both branches are pinned here because this message is rendered at
+   * full size in the /features hero, where a regression is public.
+   */
+  it('sends the job page in the homeowner’s words, not the software’s', () => {
+    const base = { businessName: 'Evergreen', jobRef: 'J-1009', link: 'https://x.co/j' };
+    const quote = clientJobDashboardText({ ...base, includesScheduleOptions: true });
+    const track = clientJobDashboardText({ ...base });
+
+    for (const message of [quote, track]) {
+      expect(message, 'the reader is not a "client" and has no "dashboard"').not.toMatch(/client dashboard/i);
+      expect(message).toMatch(/^Evergreen here — /);
+      expect(message).toContain('https://x.co/j');
+      expect(message).toMatch(/Reply STOP to opt out\.$/);
+      // The reference belongs in the sentence, not in front of it.
+      expect(message).not.toMatch(/^\S+ \S+ for job/);
+    }
+
+    // The branch is what the reader is being asked to DO, which is the only
+    // thing that differs between a quote and a job already under way.
+    expect(quote).toContain('your quote for job J-1009 is ready');
+    expect(quote).toContain('choose a start date');
+    expect(track).toContain('track job J-1009 any time');
+    expect(track).not.toContain('start date');
   });
 
   it('adds the envelope to a message somebody else composed', () => {

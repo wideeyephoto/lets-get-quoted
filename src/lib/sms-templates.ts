@@ -126,16 +126,36 @@ export function jobUpdateText(input: {
   return `${input.businessName} posted an update for job ${input.jobRef}: ${input.title}.${updateBody} Reply STOP to opt out.`;
 }
 
+/**
+ * WRITTEN FROM THE HOMEOWNER'S SIDE, which it was not.
+ *
+ * It used to open "{business} created your client dashboard for job {ref}." —
+ * three problems in eleven words. A homeowner does not have a client dashboard;
+ * the contractor does, and "client" is what the software calls them, not what
+ * they call themselves. It reported an internal event ("we created a record")
+ * where the reader wants to know what they have been sent. And it led with a
+ * job reference, which is how the two of them will refer to the work later but
+ * means nothing in the first four words of a text from a number you may not
+ * have saved.
+ *
+ * So: who it is from, what they are getting, what to do, the link. "X here —"
+ * is the voice arrivalTimeChangedText already uses. Both branches came out
+ * shorter than the one they replaced, which is not nothing at 160 characters.
+ *
+ * It surfaced because the /features hero now renders this message at full size
+ * — a page showing a contractor what goes out under their name is also the
+ * first place anybody reads it as a customer would.
+ */
 export function clientJobDashboardText(input: {
   businessName: string;
   jobRef: string;
   link: string;
   includesScheduleOptions?: boolean;
 }): string {
-  const scheduleCopy = input.includesScheduleOptions
-    ? ' Review your quote and choose a start date here:'
-    : ' View updates, invoices, and payments here:';
-  return `${input.businessName} created your client dashboard for job ${input.jobRef}.${scheduleCopy} ${input.link}. Reply STOP to opt out.`;
+  const invitation = input.includesScheduleOptions
+    ? `your quote for job ${input.jobRef} is ready. Review it and choose a start date:`
+    : `track job ${input.jobRef} any time. Updates, invoices and payments in one place:`;
+  return `${input.businessName} here — ${invitation} ${input.link}. Reply STOP to opt out.`;
 }
 
 export function schedulingOptionsText(input: {
