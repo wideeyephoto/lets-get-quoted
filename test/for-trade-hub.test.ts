@@ -374,9 +374,9 @@ describe('nothing scrolls sideways', () => {
    7. The hero has depth, and it moves
    ======================================================================== */
 describe('the glow and the shimmer', () => {
-  const ANIMATIONS = ['ground-drift-a', 'ground-drift-b', 'hero-bloom', 'hero-core'];
+  const ANIMATIONS = ['ground-drift-a', 'ground-drift-b', 'hero-bloom', 'hero-core', 'hero-float'];
 
-  it('runs two layers behind the devices and two on the ground', () => {
+  it('runs two layers behind the devices, two on the ground, and the shot itself', () => {
     for (const name of ANIMATIONS) {
       expect(CSS, name).toContain(`@keyframes ${name}`);
       expect(CSS, `${name} is declared but never used`).toContain(`animation: ${name}`);
@@ -391,8 +391,8 @@ describe('the glow and the shimmer', () => {
    */
   it('gives each layer its own period, and no two of them a shared factor', () => {
     const seconds = [...CSS.matchAll(/animation: [a-z-]+ (\d+)s/g)].map((m) => Number(m[1]));
-    expect(seconds).toHaveLength(4);
-    expect(new Set(seconds).size).toBe(4);
+    expect(seconds).toHaveLength(ANIMATIONS.length);
+    expect(new Set(seconds).size).toBe(ANIMATIONS.length);
     for (const a of seconds) {
       for (const b of seconds) {
         if (a !== b) expect(Math.max(a, b) % Math.min(a, b), `${a}s and ${b}s`).not.toBe(0);
@@ -419,7 +419,7 @@ describe('the glow and the shimmer', () => {
      they can stop. */
   it('stops every one of them for anyone who asked for less motion', () => {
     const reduced = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
-    for (const selector of ['.ground::before', '.ground::after', '.heroArt::before', '.heroArt::after']) {
+    for (const selector of ['.ground::before', '.ground::after', '.heroArt::before', '.heroArt::after', '.heroShot']) {
       expect(reduced, selector).toContain(selector);
     }
     expect(reduced).toContain('animation: none');
@@ -434,9 +434,27 @@ describe('the glow and the shimmer', () => {
     const shot = ruleFor('.heroShot');
     expect(shot).toContain('drop-shadow(');
     expect(shot).not.toContain('box-shadow');
-    // Contact, mid, ambient, and the warm rim at no offset.
-    expect((shot.match(/drop-shadow\(/g) ?? []).length).toBe(4);
+    // Four for the stroke, then contact, mid, ambient, and the warm rim.
+    expect((shot.match(/drop-shadow\(/g) ?? []).length).toBe(8);
     expect(shot).toContain('drop-shadow(0 0 34px rgba(255, 90, 18, 0.24))');
+  });
+
+  /**
+   * THE STROKE, which is four shadows because a raster cut-out has no edge to
+   * stroke. Zero blur in every one of them, or it is a shadow again — and all
+   * four ahead of the soft ones, so the shadow is cast from the outlined
+   * silhouette rather than from inside its own outline.
+   */
+  it('outlines the cut-out with a stroke that follows its alpha', () => {
+    const shot = ruleFor('.heroShot');
+    const strokes = [...shot.matchAll(/drop-shadow\((-?\d+(?:px)?) (-?\d+(?:px)?) 0 #000\)/g)];
+    expect(strokes).toHaveLength(4);
+    // One per direction, so nothing is outlined on three sides.
+    expect(strokes.map((m) => `${m[1]} ${m[2]}`).sort()).toEqual(
+      ['-2px 0', '0 -2px', '0 2px', '2px 0'].sort(),
+    );
+    const firstSoft = shot.indexOf('drop-shadow(0 2px 6px');
+    expect(shot.lastIndexOf('0 #000)')).toBeLessThan(firstSoft);
   });
 
   /* The drift moves ±4%; a layer that ended at the viewport edge would slide a

@@ -365,31 +365,68 @@
      never upscaled past its own pixels. */
   max-width: 740px;
   /**
-   * DEPTH ON THE OBJECT ITSELF.
+   * DEPTH ON THE OBJECT ITSELF — outline first, then shadow.
    *
    * drop-shadow, never box-shadow: this is a cut-out on transparency, and
    * box-shadow would trace the image's RECTANGLE — a hard-edged slab floating
    * behind two devices that have no rectangle. drop-shadow follows the alpha,
-   * so the shadow is the shape of the laptop and the phone.
+   * so both the outline and the shadow are the shape of the laptop and phone.
    *
-   * Four passes, near to far, which is how a real one falls off:
-   *   1  contact   tight and dark, directly under. What stops the pair
+   * 1–4  THE STROKE. Four zero-blur shadows at 2px, one per direction. There is
+   *      no `stroke` for a raster cut-out, and this is the standard way to fake
+   *      one: each filter runs on the OUTPUT of the last, so the horizontal
+   *      pair widen the silhouette by 2px and the vertical pair then extend
+   *      that, which is why the corners come out round rather than mitred.
+   *      Zero blur, or it is a shadow again. These come FIRST so everything
+   *      below casts from the stroked silhouette rather than from the bare
+   *      image — a shadow cast from inside its own outline reads as a gap.
+   *
+   * 5–8  THE SHADOW, near to far, which is how a real one falls off:
+   *      contact   tight and dark, directly under. What stops the pair
    *                hovering — the single most load-bearing of the four.
-   *   2  mid       the body of the shadow.
-   *   3  ambient   wide and weak, so the falloff has somewhere to end.
-   *   4  rim       the warm one, at no offset. This is the page's own light
+   *      mid       the body of the shadow.
+   *      ambient   wide and weak, so the falloff has somewhere to end.
+   *      rim       the warm one, at no offset. This is the page's own light
    *                catching the edges, and it is what ties the cut-out to the
-   *                bloom behind it instead of leaving it pasted on.
+   *                bloom behind it instead of leaving it pasted on. Left where
+   *                it was when the black ones went up by half — it is a glow,
+   *                and deepening it would only wash out the stroke above.
    *
-   * Each filter runs on the output of the last, so the order is the depth
-   * order and the cost is four passes over one static image — paid once, never
-   * per frame, because nothing here animates.
+   * Eight passes over one static image, paid once at paint and never per
+   * frame, because nothing here animates.
    */
   filter:
-    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55))
-    drop-shadow(0 18px 32px rgba(0, 0, 0, 0.42))
-    drop-shadow(0 42px 70px rgba(0, 0, 0, 0.3))
+    drop-shadow(2px 0 0 #000)
+    drop-shadow(-2px 0 0 #000)
+    drop-shadow(0 2px 0 #000)
+    drop-shadow(0 -2px 0 #000)
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.83))
+    drop-shadow(0 18px 32px rgba(0, 0, 0, 0.63))
+    drop-shadow(0 42px 70px rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 34px rgba(255, 90, 18, 0.24));
+  /**
+   * AND IT DRIFTS.
+   *
+   * Six pixels corner to corner over thirteen seconds — slow enough that you
+   * never catch it moving, and the only reason it is here is that a perfectly
+   * still object in front of two breathing glows starts to look pasted on.
+   *
+   * TRANSFORM ONLY. The eight filter passes above are expensive and they are
+   * rasterised ONCE: promoting this to its own layer means the drift is the
+   * compositor moving a finished bitmap, not the browser re-running eight
+   * passes over a 956px image sixty times a second.
+   *
+   * 13s is prime, and coprime with the bloom's 11s and the core's 17s — three
+   * cycles that share a factor re-synchronise, and motion that repeats on a
+   * beat is motion you start watching instead of the product.
+   */
+  will-change: transform;
+  animation: hero-float 13s ease-in-out infinite alternate;
+}
+
+@keyframes hero-float {
+  from { transform: translate3d(-3px, 3px, 0); }
+  to { transform: translate3d(3px, -3px, 0); }
 }
 
 /* ---------------------------------------------------------------- */
@@ -555,9 +592,14 @@
   .ground::before,
   .ground::after,
   .heroArt::before,
-  .heroArt::after {
+  .heroArt::after,
+  .heroShot {
     animation: none;
   }
+
+  /* The drift is the only reason this was promoted; without it the layer is
+     just eight filter passes held in memory for nothing. */
+  .heroShot { will-change: auto; }
 }
 
 /* ---------------------------------------------------------------- */
