@@ -3,16 +3,12 @@
 
 import { useEffect, useRef } from 'react';
 import {
-  ORBIT_LAP_MS,
   TRADE_ICONS,
   iconBox,
   orbitAngle,
-  orbitFitScale,
   orbitGeometry,
-  orbitOpacity,
   orbitPoint,
   type OrbitGeometry,
-  type Rect,
 } from '@/lib/trade-orbit';
 
 /**
@@ -20,17 +16,18 @@ import {
  *
  * The homepage's first screen said "Run your contracting business" in words and
  * nothing else in it said whose business. These do: a tape measure, a pipe
- * elbow, a paint brush, a strip of shingles and a square of turf, drifting
- * clockwise around the copy on a slightly elliptical path.
+ * elbow, a paint brush, a strip of shingles and a square of turf, travelling
+ * clockwise on a wide ellipse that leaves the page on the left and comes back
+ * down the gutter beside the copy.
  *
  * WHAT THIS COMPONENT IS RESPONSIBLE FOR: measuring, and writing transforms.
- * Every decision about where an object goes and whether it is visible lives in
- * src/lib/trade-orbit.ts, where it is tested — including the reason the objects
- * fade rather than dodge, which is worth reading before changing the geometry.
+ * Every decision about where an object goes lives in src/lib/trade-orbit.ts,
+ * where it is tested — including the three shapes this one is not, which is
+ * worth reading before changing the geometry.
  *
  * THE RULES IT KEEPS
- *   - transform only, never left/top, so nothing here can cause a layout or a
- *     paint outside its own composited layer
+ *   - transform only, never left/top and never opacity, so nothing here can
+ *     cause a layout or a paint outside its own composited layer
  *   - the angle comes from elapsed time, so the lap is exactly 68s at any frame
  *     rate, and pausing accumulates rather than restarting
  *   - paused while the hero is off screen, and while the tab is hidden
@@ -41,16 +38,12 @@ import {
  *     is ever seen stacked at the origin
  */
 
-/* The hero is two columns above 1100px and one below it (the generator's
-   `@media (max-width: 1100px)` on .hero-split). One column means the copy is
-   691-720px wide inside a 768-1100px section, and there is no room left to
-   orbit in — see §102 in the generator, which hides the layer there. Matching
-   the number here as well means the loop never starts on those widths either. */
-const MIN_WIDTH = 1101;
-
-/* Scale at MIN_WIDTH, reaching 1 at 1440. The stage, the objects and the fade
-   band all take it, so the whole thing shrinks as one. */
-const MIN_SCALE = 0.74;
+/* The orbit runs at every width now, phones included, so the taper covers the
+   whole range rather than the desktop end of it: full size at 1440, down to
+   MIN_SCALE on a 390px phone. A 128px paint brush on a 390px screen would be a
+   third of the width of the device. */
+const MIN_WIDTH = 390;
+const MIN_SCALE = 0.46;
 const FULL_WIDTH = 1440;
 
 /* Any object can be at any point on the path, so the clearances are sized for
@@ -66,25 +59,19 @@ function scaleFor(width: number): number {
 }
 
 /**
- * The boxes an object must not be drawn on, in the hero's own coordinates.
+ * The gap between the copy column and the product screenshot.
  *
- * The four things the brief named, and the buttons individually rather than
- * their row: the row's box is the full width of the copy column while the two
- * buttons together are about three quarters of it, and the empty quarter is
- * open space an object can cross.
+ * The right arc of the orbit aims at the middle of it. Zero when the two are
+ * stacked rather than side by side — below 1100px the product sits under the
+ * copy, and a "gutter" measured between them would be the vertical gap, which
+ * is not the number this wants.
  */
-function readObstacles(section: HTMLElement): Rect[] {
-  const base = section.getBoundingClientRect();
-  const nodes = section.querySelectorAll<HTMLElement>(
-    '.hero-copy h1, .hero-copy .hero-sub, .hero-copy .hero-actions .button, .hero-copy .hero-note',
-  );
-  const out: Rect[] = [];
-  nodes.forEach((node) => {
-    const box = node.getBoundingClientRect();
-    if (!box.width || !box.height) return;
-    out.push({ x: box.left - base.left, y: box.top - base.top, width: box.width, height: box.height });
-  });
-  return out;
+function gutterWidth(section: HTMLElement): number {
+  const copy = section.querySelector('.hero-copy')?.getBoundingClientRect();
+  const product = section.querySelector('.hero-product')?.getBoundingClientRect();
+  if (!copy || !product) return 0;
+  const gap = product.left - copy.right;
+  return gap > 8 ? gap : 0;
 }
 
 export default function TradeOrbit() {
@@ -98,7 +85,6 @@ export default function TradeOrbit() {
     if (!layer || !section) return;
 
     let geo: OrbitGeometry | null = null;
-    let obstacles: Rect[] = [];
     let scale = 1;
 
     // Elapsed time that has already been counted, plus the moment the current
@@ -108,70 +94,40 @@ export default function TradeOrbit() {
     let runningSince: number | null = null;
     let frame = 0;
 
-    const wide = window.matchMedia(`(min-width: ${MIN_WIDTH}px)`);
     const still = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+    // Transform, and nothing else. The objects used to fade as they approached
+    // the headline; they do not any more — they pass behind it, which is what
+    // the z-index:-1 layer was always for, and the loop is one property lighter.
     const draw = (elapsed: number) => {
       if (!geo) return;
       for (let i = 0; i < TRADE_ICONS.length; i += 1) {
         const el = itemRefs.current[i];
         if (!el) continue;
-        const icon = TRADE_ICONS[i];
-        const centre = orbitPoint(orbitAngle(elapsed, i), geo);
-        const box = iconBox(centre, icon, scale);
+        const box = iconBox(orbitPoint(orbitAngle(elapsed, i), geo), TRADE_ICONS[i], scale);
         el.style.transform = `translate3d(${box.x.toFixed(2)}px, ${box.y.toFixed(2)}px, 0)`;
-        el.style.opacity = String(orbitOpacity(box, obstacles));
       }
-    };
-
-    /**
-     * The phase of the lap where the most of the five are in open space.
-     *
-     * At t=0 three of them start behind the copy and fade to nothing, so the
-     * first painted frame had two tools in it — and under prefers-reduced-motion
-     * that frame is the ONLY frame. Sixty samples of a 68-second lap, once per
-     * measure, and the orbit opens on its fullest moment instead of its emptiest.
-     */
-    const fullestPhase = (): number => {
-      if (!geo) return 0;
-      let best = 0;
-      let bestScore = -1;
-      for (let s = 0; s < 60; s += 1) {
-        const t = (s / 60) * ORBIT_LAP_MS;
-        let score = 0;
-        for (let i = 0; i < TRADE_ICONS.length; i += 1) {
-          const box = iconBox(orbitPoint(orbitAngle(t, i), geo), TRADE_ICONS[i], scale);
-          score += orbitOpacity(box, obstacles);
-        }
-        if (score > bestScore) {
-          bestScore = score;
-          best = t;
-        }
-      }
-      return best;
     };
 
     const measure = () => {
       const base = section.getBoundingClientRect();
-      obstacles = readObstacles(section);
-      const copyEl = section.querySelector<HTMLElement>('.hero-copy');
-      const copyBox = copyEl?.getBoundingClientRect();
+      const copyBox = section.querySelector('.hero-copy')?.getBoundingClientRect();
       // The header is fixed, so it is not in the section's box — but it covers
       // the top of it, and an object drawn up there is an object nobody sees.
       const headerHeight = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0;
-      const layout = {
-        section: { width: base.width, height: base.height },
-        copy: copyBox
-          ? { x: copyBox.left - base.left, y: copyBox.top - base.top, width: copyBox.width, height: copyBox.height }
-          : { x: 0, y: base.height * 0.25, width: base.width * 0.4, height: base.height * 0.5 },
-        headerHeight,
-        maxIcon: MAX_ICON,
-      };
-      // Two limits, and the smaller wins: the taper across the desktop range,
-      // and whatever actually fits between the header, the headline and the
-      // bottom of the section.
-      scale = Math.min(scaleFor(window.innerWidth), orbitFitScale(layout));
-      geo = orbitGeometry(layout, scale);
+      scale = scaleFor(window.innerWidth);
+      geo = orbitGeometry(
+        {
+          section: { width: base.width, height: base.height },
+          copy: copyBox
+            ? { x: copyBox.left - base.left, y: copyBox.top - base.top, width: copyBox.width, height: copyBox.height }
+            : { x: 0, y: base.height * 0.25, width: base.width * 0.4, height: base.height * 0.5 },
+          gutter: gutterWidth(section),
+          headerHeight,
+          maxIcon: MAX_ICON,
+        },
+        scale,
+      );
       layer.style.setProperty('--orbit-scale', String(scale));
       const ring = ringRef.current;
       if (ring) {
@@ -190,7 +146,7 @@ export default function TradeOrbit() {
     };
 
     const start = () => {
-      if (runningSince !== null || still.matches || !wide.matches) return;
+      if (runningSince !== null || still.matches) return;
       runningSince = performance.now();
       frame = requestAnimationFrame(tick);
     };
@@ -203,14 +159,11 @@ export default function TradeOrbit() {
     };
 
     measure();
-    // Open on the fullest frame rather than on whatever t=0 happens to be. Done
-    // after the first measure, because it needs the obstacle boxes.
-    accumulated = fullestPhase();
-    draw(accumulated);
 
     // Reduced motion still gets the objects — placed, lit, and completely
     // still. Turning them off would take the signal away from the people who
     // asked for less movement, not less content.
+    if (still.matches) draw(0);
 
     const resize = new ResizeObserver(() => measure());
     resize.observe(section);
@@ -233,17 +186,15 @@ export default function TradeOrbit() {
     };
     document.addEventListener('visibilitychange', onVisibility);
 
-    // A width change can cross the breakpoint, and a system setting can change
-    // under a running page.
+    // A system setting can change under a running page.
     const onQuery = () => {
-      if (still.matches || !wide.matches) {
+      if (still.matches) {
         stop();
         draw(accumulated);
       } else if (onScreen && !document.hidden) {
         start();
       }
     };
-    wide.addEventListener('change', onQuery);
     still.addEventListener('change', onQuery);
 
     return () => {
@@ -251,7 +202,6 @@ export default function TradeOrbit() {
       resize.disconnect();
       io.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
-      wide.removeEventListener('change', onQuery);
       still.removeEventListener('change', onQuery);
     };
   }, []);
@@ -272,7 +222,7 @@ export default function TradeOrbit() {
         >
           <source srcSet={`/trades/${icon.slug}.webp`} type="image/webp" />
           {/* Width and height are the intrinsic 2x dimensions, so the browser
-              knows the ratio before the bytes land. alt is empty and the layer
+              knows the ratio before the bytes arrive. alt is empty and the layer
               is aria-hidden: this is scenery, and naming five tools to a screen
               reader in the middle of the hero would be noise. */}
           <img

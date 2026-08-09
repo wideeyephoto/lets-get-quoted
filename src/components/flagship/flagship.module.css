@@ -5724,8 +5724,11 @@
   display: block;
   width: calc(var(--w) * var(--orbit-scale) * 1px);
   height: calc(var(--h) * var(--orbit-scale) * 1px);
-  /* Composited, and the only property the loop writes besides opacity. */
-  will-change: transform, opacity;
+  /* Constant. The objects used to fade as they crossed the headline and the
+     buttons; they hold their strength now and simply pass underneath. */
+  opacity: .92;
+  /* Composited, and the only property the loop writes. */
+  will-change: transform;
   /* drop-shadow and not box-shadow: these are cut-outs, and only drop-shadow
      follows the alpha channel rather than the element's box. */
   filter: drop-shadow(0 18px 26px rgba(0, 0, 0, .55));
@@ -5741,18 +5744,12 @@
   border-radius: 50%;
 }
 
-/* THE HERO GOES TO ONE COLUMN AT 1100 (the .hero-split rule further up this
-   file), and one column means the copy is 691-720px wide inside a 768-1100px
-   section. There is no margin left to orbit in: an ellipse that cleared the
-   copy horizontally would need rx ~= 425 in a 768px box. So the layer is off
-   below the two-column breakpoint, and the component's own matchMedia carries
-   the same number so the loop never starts there either.
-
-   The hero still looks complete without it, which was one of the acceptance
-   criteria — nothing here is load-bearing. */
-@media (max-width: 1100px) {
-  .root :global(.trade-orbit) { display: none; }
-}
+/* THE ORBIT RUNS AT EVERY WIDTH, phones included. It used to stop at 1100 —
+   where .hero-split goes to one column — because the objects had to stay clear
+   of the copy and there was no margin left to do it in. They pass behind the
+   copy now, so the constraint is gone: the component measures the stacked hero
+   and aims the right arc just past the copy's edge instead of at a gutter that
+   is not there.
 
 /* Reduced motion keeps the objects and loses the movement. The component
    places them once and never starts the loop; this stops the reveal fading in
