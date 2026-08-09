@@ -27,6 +27,7 @@ import {
   deleteJob,
   getJob,
   formatJobQuoteSummary,
+  formatJobSchedule,
   parseQuoteItems,
   saveQuoteItems,
   updateJob,
@@ -35,12 +36,16 @@ import {
   type JobStatus,
   type QuoteItem,
 } from '@/lib/jobs';
+import { zonedNowParts } from '@/lib/quick-stop';
 import {
+  applyQuoteAcceptance,
   createClientJobAccessToken,
   createJobFeedEvent,
   getActiveClientAccessCount,
   revokeClientJobAccess,
 } from '@/lib/job-feed';
+import { normalizeClientChannelPreference, resolveClientChannel } from '@/lib/client-channel';
+import { jobMessageChannel } from '@/lib/client-channel-data';
 import { acceptSubscriptionForClient } from '@/lib/subscription-signup';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
@@ -161,6 +166,22 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     quotedAmount: parseAmount(formData.get('quotedAmount')),
   });
 
+  // Kept out of updateJob's typed patch and written on its own, best-effort:
+  // this ships ahead of migrations/2026-08-10-client-message-channel.sql, and an
+  // update naming a column that does not exist yet would fail the whole save.
+  // Skipped when the form doesn't carry the field at all, so a caller posting
+  // the older shape never resets somebody's choice to 'auto'.
+  const rawChannel = formData.get('messageChannel');
+  if (rawChannel !== null) {
+    const messageChannel = normalizeClientChannelPreference(rawChannel.toString());
+    const { error: channelError } = await supabase
+      .from('jobs')
+      .update({ message_channel: messageChannel })
+      .eq('account_id', accountId)
+      .eq('id', jobId);
+    if (channelError) console.error(`Message channel not saved for job ${jobId}:`, channelError.message);
+  }
+
   const activeClientAccessCount = await getActiveClientAccessCount(supabase, accountId, jobId);
   if (!clientFeedAccessEnabled && activeClientAccessCount > 0) {
     await revokeClientJobAccess(supabase, accountId, jobId);
@@ -200,8 +221,22 @@ export async function updateJobAction(jobId: string, formData: FormData) {
  * entry is client-visible on purpose — "they've started" is the single most
  * common thing a homeowner rings up to ask.
  *
+ * STARTING AN UNAPPROVED QUOTE IS AN ACCEPTANCE, and it now says so. This wrote
+ * status: 'in_progress' straight onto a job still at the quote stage, which is
+ * the right end state reached the wrong way: nothing recorded that the customer
+ * had agreed, the lead behind it stayed unwon, and because Insights counts
+ * conversions from quote_approved feed rows, the contractor's own conversion
+ * rate never saw it. Exactly the bug "Mark won" had, in a different button.
+ *
+ * Nobody sends a crew to a job the customer has not said yes to — so pressing
+ * this IS the record of that yes, and it goes through the one function that
+ * defines what accepted means. The confirm in front of it (StartJobButton) is
+ * what stops it being a surprise.
+ *
  * Idempotent. Pressing it twice must not re-date the start or post a second
- * entry; the second press is somebody checking it worked.
+ * entry; the second press is somebody checking it worked. applyQuoteAcceptance
+ * is idempotent by construction too, so a retry after a half-failed run finishes
+ * the job rather than duplicating it.
  */
 export async function markJobStartedAction(jobId: string) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -210,13 +245,27 @@ export async function markJobStartedAction(jobId: string) {
   if (job.status === 'archived') throw new Error('This job is archived.');
 
   if (!job.started_at) {
+    // Before the start is stamped: the acceptance is the earlier fact, and this
+    // is the promotion out of 'new_lead' that the bare update used to do by
+    // hand. Best-effort — a failure here must not stop the owner recording that
+    // work began, and the next acceptance path completes it.
+    if (job.status === 'new_lead') {
+      try {
+        await applyQuoteAcceptance(createAdminClient(), accountId, jobId, { source: 'work_started' });
+      } catch (error) {
+        console.error(`Quote acceptance from Job started failed for job ${jobId}:`, error instanceof Error ? error.message : error);
+      }
+    }
+
     const startedAt = new Date().toISOString();
     const { error } = await supabase
       .from('jobs')
       // Starting work IS being in progress. A job still sitting in new_lead
       // while somebody is on site is the contradiction this button exists to
       // remove — but a completed job that gets a start time recorded after the
-      // fact must not be dragged back open.
+      // fact must not be dragged back open. Kept here as well as in
+      // applyQuoteAcceptance so a failed acceptance still leaves the status
+      // right; both are conditional, so neither can drag a job backwards.
       .update({ started_at: startedAt, ...(job.status === 'complete' ? {} : { status: 'in_progress' }) })
       .eq('account_id', accountId)
       .eq('id', jobId);
@@ -292,6 +341,18 @@ export async function markJobCompleteAction(jobId: string, formData?: FormData) 
   const sendReview = raw === null || raw === undefined ? null : String(raw) === 'on';
 
   if (job.status !== 'complete') {
+    // Same reasoning as "Job started": completing a job the customer never
+    // agreed to is not a thing that happens, so pressing this on one still at
+    // the quote stage records the acceptance it implies. Rare but real — a
+    // half-hour call-out quoted, done and closed the same morning.
+    if (job.status === 'new_lead') {
+      try {
+        await applyQuoteAcceptance(createAdminClient(), accountId, jobId, { source: 'work_completed' });
+      } catch (error) {
+        console.error(`Quote acceptance from Mark complete failed for job ${jobId}:`, error instanceof Error ? error.message : error);
+      }
+    }
+
     const { error } = await supabase
       .from('jobs')
       .update({ status: 'complete' })
@@ -299,12 +360,29 @@ export async function markJobCompleteAction(jobId: string, formData?: FormData) 
       .eq('id', jobId);
     if (error) throw error;
 
+    // Was this closed before the day it was booked for? Recorded rather than
+    // refused — finishing early is ordinary, and the recurring-plan menu
+    // completes a future-dated visit by design. But it was recorded NOWHERE,
+    // so a job started, paid and completed the day before its own booking left
+    // no trace that anything unusual had happened. The confirm dialog names it
+    // at the moment of pressing; this is the durable record.
+    const { data: accountClock } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
+    const todayKey = zonedNowParts(new Date(), (accountClock?.timezone as string) || 'America/New_York').dateKey;
+    const completedEarly = Boolean(job.scheduled_for && job.scheduled_for > todayKey);
+
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'job_completed',
       title: 'Job marked complete',
-      body: `${job.ref} was marked complete.`,
+      body: completedEarly
+        ? `${job.ref} was marked complete, ahead of its ${formatJobSchedule(job.scheduled_for, job.scheduled_time)} booking.`
+        : `${job.ref} was marked complete.`,
       visibility: 'client',
-      meta: { status: 'complete', previousStatus: job.status },
+      meta: {
+        status: 'complete',
+        previousStatus: job.status,
+        scheduled_for: job.scheduled_for ?? null,
+        completed_early: completedEarly,
+      },
     });
 
     // The review ask. Best-effort and idempotent: only fires once per job, and
@@ -998,8 +1076,22 @@ async function deliverJobReviewRequest(
     }
   }
 
+  // A review ask is the definition of an automatic message: nobody requested it,
+  // and it arrives after the work is finished and the relationship is over. So
+  // the contractor's setting for this customer governs it outright, and a STOP
+  // reply is a full stop rather than a reason to email instead.
   const normalizedPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
-  const canText = normalizedPhone ? !(await isPhoneOptedOut(accountId, normalizedPhone)) : false;
+  const route = resolveClientChannel({
+    phone: normalizedPhone,
+    email: job.client_email,
+    preference: await jobMessageChannel(supabase, accountId, job.id),
+    optedOut: normalizedPhone ? await isPhoneOptedOut(accountId, normalizedPhone) : false,
+    kind: 'automatic',
+  });
+  if (route.reason === 'preference_off') {
+    return { ok: false, message: `Automatic messages are switched off for ${job.client_name}. Turn them back on in Job details to ask for a review.` };
+  }
+  const canText = route.channel === 'sms';
 
   let channel: 'sms' | 'email';
   let sentTo: string;
@@ -1009,7 +1101,7 @@ async function deliverJobReviewRequest(
       await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId });
       channel = 'sms';
       sentTo = normalizedPhone;
-    } else if (job.client_email) {
+    } else if (route.channel === 'email' && job.client_email) {
       // A marketing email must carry a physical postal address (CAN-SPAM): if the
       // only channel left is email but no mailing address is on file, don't send.
       if (!mailingAddress) {
@@ -1023,6 +1115,8 @@ async function deliverJobReviewRequest(
       await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId, mailingAddress });
       channel = 'email';
       sentTo = job.client_email;
+    } else if (route.reason === 'opted_out') {
+      return { ok: false, message: `${job.client_name} replied STOP, so no review request can be sent to that number — and asking by email instead would be routing around it.` };
     } else {
       return { ok: false, message: 'No textable mobile or email on file for this client. Add one on the job first.' };
     }

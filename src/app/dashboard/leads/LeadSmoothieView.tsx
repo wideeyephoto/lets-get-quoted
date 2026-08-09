@@ -210,7 +210,13 @@ export default function LeadSmoothieView({
     >
       {/* --- stage filters: one set of words, one set of numbers --- */}
       <div className={styles.stageBar} role="group" aria-label="Filter by pipeline stage">
-        <StageChip id="all" label="All open" count={counts.all} active={stage === 'all'} onPick={setStage} />
+        {/* "All leads", not "All open". This chip shows counts.all, which is
+            every lead in the account — Won and Lost included — while the
+            sidebar's "open" count deliberately means new + contacted + quoted.
+            Two numbers, both correct, one of them called by the other's name:
+            the page said "All open 12" beside a nav saying 7, and the missing
+            five were four Won and a Lost. */}
+        <StageChip id="all" label="All leads" count={counts.all} active={stage === 'all'} onPick={setStage} />
         {QUEUE_STAGES.map((entry) => (
           <StageChip
             key={entry.id}
@@ -346,7 +352,11 @@ export default function LeadSmoothieView({
                         <span className={styles.rowDetail}>{lead.detail}</span>
                         <span className={styles.rowMeta}>
                           <span className={styles.rowStage} data-stage={lead.status}>{queueStageLabel(lead.status)}</span>
-                          <span className={styles.rowWait}>{lead.waitingShort}</span>
+                          {/* Nothing at all on a won or lost lead. The clock ran
+                              from created_at and never stopped, so a closed lead
+                              sat in the queue reading "12m waiting" beside its
+                              own Won badge. */}
+                          {lead.waitingShort ? <span className={styles.rowWait}>{lead.waitingShort}</span> : null}
                           {lead.textOnly ? <span className={styles.rowPref}>Text only</span> : null}
                         </span>
                       </span>
@@ -472,9 +482,14 @@ export default function LeadSmoothieView({
                     <dt>Where</dt>
                     <dd>{selected.address || selected.location || 'No address given'}</dd>
                   </div>
+                  {/* Closed leads get their age, not a waiting time — the fact
+                      worth having about a won lead is how long it took, and
+                      "waiting" is simply untrue of it. */}
                   <div>
-                    <dt>Waiting</dt>
-                    <dd className={selected.isUrgent ? styles.waiting : undefined}>{selected.waitingLong}</dd>
+                    <dt>{selected.waitingLong ? 'Waiting' : 'Age'}</dt>
+                    <dd className={selected.isUrgent ? styles.waiting : undefined}>
+                      {selected.waitingLong ?? selected.ageLabel}
+                    </dd>
                   </div>
                 </dl>
               </header>

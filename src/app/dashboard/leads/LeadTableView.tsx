@@ -368,7 +368,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
                 <p className={styles.cardProject}>{lead.detail}</p>
                 <p className={styles.cardMeta}>
                   <span className={styles.cardStage} data-stage={lead.status}>{queueStageLabel(lead.status)}</span>
-                  <span>{lead.waitingShort}</span>
+                  {lead.waitingShort ? <span>{lead.waitingShort}</span> : null}
                   {lead.estimateLabel ? <span className={styles.cardValue}>{lead.estimateLabel}</span> : null}
                 </p>
               </div>
@@ -427,9 +427,11 @@ function cellText(lead: LeadViewItem, id: TableColumnId): string {
       return lead.detail;
     case 'stage':
       return queueStageLabel(lead.status);
-    // "27d waiting", not "647h" — the figure a human can act on.
+    // "27d waiting", not "647h" — the figure a human can act on. Empty for a
+    // won or lost lead: an exported cell reading "null", or a duration for
+    // somebody nobody is waiting on, are both worse than a blank.
     case 'waiting':
-      return lead.waitingShort;
+      return lead.waitingShort ?? '';
     case 'value':
       return lead.estimateLabel ?? '';
     case 'source':

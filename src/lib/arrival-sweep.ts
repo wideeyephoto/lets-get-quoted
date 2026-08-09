@@ -3,6 +3,8 @@ import { arrivalSettingsFromAccount, firstName, formatClockTime, zonedInstant, t
 import { accountToday } from '@/lib/route-plan-day';
 import { sendPushToCrew } from '@/lib/push';
 import { sendArrivalSms } from '@/lib/sms';
+import { canTextClient } from '@/lib/client-channel';
+import { loadJobMessageChannels } from '@/lib/client-channel-data';
 
 // The two things that happen without anybody pressing a button.
 //
@@ -64,7 +66,15 @@ export async function runLateArrivalSweep(now = new Date()): Promise<LateSweepSu
     if (!row.crew_id) { skipped += 1; continue; }
 
     const { data: job } = await admin
-      .from('jobs').select('client_name').eq('id', row.job_id).maybeSingle();
+      .from('jobs').select('client_name, status').eq('id', row.job_id).maybeSingle();
+
+    // A finished or cancelled job is not running late. The tracking row is left
+    // open by every completion path — the owner's button, the crew's, the
+    // recurring menu — so guarding it HERE is the only place that cannot be
+    // bypassed by a fourth one. The stamp above has already stopped the loop;
+    // this stops the tech being told they are late for work they have done.
+    if (job?.status === 'complete' || job?.status === 'archived') { skipped += 1; continue; }
+
     const who = firstName((job?.client_name as string | undefined) ?? '') || 'your customer';
     const over = Math.round((now.getTime() - new Date(row.arrival_end as string).getTime()) / 60_000);
 
@@ -132,10 +142,24 @@ export async function runMorningConfirmationSweep(now = new Date()): Promise<Mor
     const businessName = (site?.company_name as string | undefined)
       || (account.business_name as string | undefined) || 'Your contractor';
 
+    // What the contractor has said about texting each of these customers. Read
+    // separately from the job query so a pre-migration database cannot take that
+    // query down with it — see loadJobMessageChannels.
+    const channels = await loadJobMessageChannels(admin, account.id as string, (jobs ?? []).map((job) => job.id as string));
+
     for (const job of jobs ?? []) {
       // No time on the job means no window to confirm, and "sometime today" is
       // not worth a text message.
       if (!job.scheduled_time) { skipped += 1; continue; }
+
+      // "Don't text this one" was previously honoured on the quote and forgotten
+      // by 7am the following month. This send is the one an owner would notice
+      // least and like least — a text to every customer on today's schedule —
+      // so it is exactly the one that has to respect the setting.
+      if (!canTextClient({ phone: job.client_phone as string | null, preference: channels.get(job.id as string) })) {
+        skipped += 1;
+        continue;
+      }
 
       // Already announced by a human — don't talk over them.
       const { data: live } = await admin

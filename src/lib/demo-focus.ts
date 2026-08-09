@@ -7,7 +7,7 @@
 // quietly disagree with each other is worse than one with fewer pages.
 import { computeMargin, formatJobSchedule, formatMoney, sortJobsByStatus, type Job, type JobStatus } from '@/lib/jobs';
 import { formatElapsedTime, formatLeadSource, getLeadTriage, type Lead, type LeadScore } from '@/lib/leads';
-import { waitingLabel } from '@/lib/lead-queue';
+import { waitingFor } from '@/lib/lead-queue';
 import type { LeadViewItem } from '@/app/dashboard/leads/LeadsWorkspace';
 import type { JobViewItem } from '@/app/dashboard/jobs/JobsWorkspace';
 import type { LeadDetailDto } from '@/lib/lead-detail';
@@ -105,8 +105,8 @@ export function demoLeadViews(): DemoLeadView[] {
       projectType: lead.project_type,
       photoCount: 0,
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
-      waitingLong: waitingLabel(lead.created_at).long,
-      waitingShort: waitingLabel(lead.created_at).short,
+      waitingLong: waitingFor({ status: lead.status, createdAt: lead.created_at })?.long ?? null,
+      waitingShort: waitingFor({ status: lead.status, createdAt: lead.created_at })?.short ?? null,
       lastTouchAt: (triage.contactLog ?? []).at(-1)?.at ?? null,
       snoozedUntilLabel: null,
     };

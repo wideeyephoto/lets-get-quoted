@@ -58,6 +58,15 @@ export type Job = {
   started_at?: string | null;
   estimated_hours: number | null;
   quoted_amount: number;
+  /**
+   * How automatic client messages for this job may be delivered — the
+   * CONTRACTOR's half of consent. Optional on the type, not just nullable,
+   * because it arrives undefined until
+   * migrations/2026-08-10-client-message-channel.sql has run; every reader puts
+   * that through normalizeClientChannelPreference, which lands on 'auto' —
+   * today's behaviour. See @/lib/client-channel.
+   */
+  message_channel?: string | null;
   deposit_gate: 'before_schedule' | 'before_work' | null;
   quote_items: QuoteItem[] | null;
   client_id: string | null;

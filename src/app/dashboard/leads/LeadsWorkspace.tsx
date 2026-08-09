@@ -55,9 +55,14 @@ export type LeadViewItem = {
    * client render disagrees with the markup the server sent and React throws
    * the server's away. Focus does not use these; Smoothie prints them instead
    * of the bare "94h" that read like a code.
+   *
+   * NULL ON A WON OR LOST LEAD, which is why these are nullable at all. The
+   * clock measured from created_at and never stopped, so a closed lead read
+   * "12 minutes waiting" under a Won badge. Nobody is waiting on it; the render
+   * sites show `ageLabel` or nothing instead. See waitingFor in lib/lead-queue.
    */
-  waitingLong: string;
-  waitingShort: string;
+  waitingLong: string | null;
+  waitingShort: string | null;
   /**
    * ISO timestamp of the last logged touchpoint, or null if nobody has reached
    * out yet. What "overdue follow-up" is measured from — a lead contacted an

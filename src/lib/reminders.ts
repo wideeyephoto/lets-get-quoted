@@ -9,6 +9,8 @@ import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendReminderRunSumm
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
 import { zonedNowParts } from '@/lib/quick-stop';
 import { pickBusinessName } from '@/lib/business-name';
+import { resolveClientChannel } from '@/lib/client-channel';
+import { jobMessageChannel } from '@/lib/client-channel-data';
 import {
   isReminderHourNow,
   normalizeReminderHour,
@@ -94,9 +96,13 @@ export async function sendJobAppointmentReminder(
     if (alreadyReminded) return { sent: false, reason: 'already-reminded' };
   }
 
-  // Resolve a channel: text an opted-in mobile, else email.
+  // Resolve a channel: text an opted-in mobile, else email — and only where the
+  // contractor has not said otherwise. That last part is new; an owner who set
+  // this customer to email-only, or to nothing automatic at all, used to get a
+  // reminder text sent on their behalf the night before every visit.
   const phone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
-  let canText = false;
+  let optedIn = false;
+  let optedOut = false;
   if (phone) {
     const { data: consent } = await admin
       .from('sms_consent')
@@ -104,10 +110,20 @@ export async function sendJobAppointmentReminder(
       .eq('account_id', job.account_id)
       .eq('phone_number', phone)
       .maybeSingle();
-    canText = consent?.status === 'opted_in';
+    optedIn = consent?.status === 'opted_in';
+    optedOut = consent?.status === 'opted_out';
   }
   const email = job.client_email || null;
-  if (!(canText && phone) && !email) return { sent: false, reason: 'no-channel' };
+
+  const route = resolveClientChannel({
+    phone: optedIn ? phone : null,
+    email,
+    preference: await jobMessageChannel(admin, job.account_id, job.id),
+    optedOut,
+    kind: 'automatic',
+  });
+  if (route.channel === 'none') return { sent: false, reason: 'no-channel' };
+  const canText = route.channel === 'sms';
 
   const [{ data: account }, { data: site }] = await Promise.all([
     admin.from('accounts').select('business_name').eq('id', job.account_id).maybeSingle(),

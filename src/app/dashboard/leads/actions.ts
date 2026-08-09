@@ -3,14 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { BUSINESS_NAME_FALLBACK, loadBusinessName } from '@/lib/business-name';
-import { createClientJobAccessToken, createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
+import { applyQuoteAcceptance, createClientJobAccessToken, createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { normalizeClientChannelPreference, resolveClientChannel } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -55,6 +56,20 @@ function quoteVisitOptionsFromForm(formData: FormData): ScheduleOption[] {
     .slice(0, 3);
 }
 
+/**
+ * Log a lead that came in by phone, in person, or referral.
+ *
+ * ENDS ON THE LEAD, not back on the form. This discarded the row it created and
+ * returned to a page where the only thing that changed was a count — the form
+ * still open, still holding every word the owner had typed, with no statement
+ * that anything had been saved. Re-pressing it is the obvious next move and it
+ * makes a duplicate.
+ *
+ * Landing on the new lead is the receipt. It is the record itself, which is
+ * stronger than a toast: the name, the number and the notes are on screen, and
+ * the next step ("book the estimate") is the page you arrived at. The form is
+ * reset by virtue of being gone.
+ */
 export async function createLeadAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -64,7 +79,7 @@ export async function createLeadAction(formData: FormData) {
     photoPaths.push(await uploadLeadPhoto(accountId, file));
   }
 
-  await createLead(supabase, accountId, {
+  const lead = await createLead(supabase, accountId, {
     source: 'manual',
     name: (formData.get('name') ?? '').toString().trim(),
     phone: optionalText(formData.get('phone')),
@@ -77,11 +92,46 @@ export async function createLeadAction(formData: FormData) {
   });
 
   revalidatePath('/dashboard/leads');
+  // Outside any try/catch above it — redirect() signals by throwing.
+  redirect(`/dashboard/leads/${lead.id}?added=1`);
 }
 
+/**
+ * Move a lead along the pipeline.
+ *
+ * WON IS NOT JUST A LEAD STATUS. This wrote one row — the lead — and stopped,
+ * which is why marking a lead won left its job reading "Awaiting approval". That
+ * looked like a stale render, but nothing had been written: the job was still at
+ * the quote stage and would stay there until some unrelated event moved it.
+ *
+ * "Mark won" IS the record of a verbal acceptance — somebody rang up and said
+ * yes — so it now means what every other acceptance path means, through the one
+ * function that defines it. The job leaves the quote stage, the feed records the
+ * approval, and the contractor's conversion rate counts it.
+ *
+ * Only forwards. Marking a lead won never drags an in-progress or finished job
+ * anywhere, and the other statuses do not touch the job at all: a lead moved
+ * back to 'contacted' by mistake must not un-approve work already underway.
+ */
 export async function updateLeadStatusAction(leadId: string, status: LeadStatus) {
   const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
   await updateLeadStatus(supabase, accountId, leadId, status);
+
+  const jobId = lead?.converted_job as string | null | undefined;
+  if (status === 'won' && jobId) {
+    // Best-effort: the lead move is what the owner pressed, and it must not be
+    // undone because a downstream write failed. A failure here leaves exactly
+    // the state that used to be the norm, and the next acceptance completes it.
+    try {
+      await applyQuoteAcceptance(createAdminClient(), accountId, jobId, { source: 'owner_verbal' });
+    } catch (error) {
+      console.error(`Quote acceptance from Mark won failed for job ${jobId}:`, error instanceof Error ? error.message : error);
+    }
+    revalidatePath(`/dashboard/jobs/${jobId}`);
+    revalidatePath('/dashboard/jobs');
+  }
+
   revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/leads');
 }
@@ -224,6 +274,14 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const showHoursToClient = formData.get('showHoursToClient') === 'on';
   const sendClientText = formData.get('sendClientText') === 'on';
+  // What the owner chose, as a stored preference rather than a per-request
+  // whim. The fallback keeps older forms (and anything posting this action
+  // directly) working: a ticked box has always meant "reach them however you
+  // can", an unticked one "don't".
+  const rawChannel = formData.get('messageChannel');
+  const messageChannel = rawChannel
+    ? normalizeClientChannelPreference(rawChannel.toString())
+    : (sendClientText ? 'auto' : 'off');
 
   // Payment terms: 'full' (no deposit), 'deposit' (deposit + remaining balance),
   // or 'plan' (deposit + fixed installments that split the SAME total). Legacy
@@ -254,8 +312,38 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     throw new Error('Connect Stripe before sending a quote so you can collect payment.');
   }
 
-  const clientPhone = sendClientText ? normalizeUsPhone(lead.phone ?? '') : null;
-  const clientEmail = sendClientText ? (lead.email?.trim() || null) : null;
+  // ONE DECISION, MADE ONCE, SHOWN BEFORE IT IS MADE.
+  //
+  // The lead page renders this exact resolution next to the checkbox, so the
+  // sentence the owner read is the send that happens. It used to be three
+  // booleans here and a hardcoded paragraph there, and the paragraph was wrong
+  // whenever the box was unticked.
+  //
+  // kind: 'requested' — this is the quote they asked for. A STOP reply moves it
+  // to email rather than cancelling it; see ClientMessageKind.
+  const leadPhone = normalizeUsPhone(lead.phone ?? '');
+  const leadEmail = lead.email?.trim() || null;
+  const optedOut = leadPhone ? await isPhoneOptedOut(accountId, leadPhone) : false;
+  const route = resolveClientChannel({
+    phone: leadPhone,
+    email: leadEmail,
+    preference: messageChannel,
+    optedOut,
+    kind: 'requested',
+  });
+  const clientPhone = route.channel === 'sms' ? leadPhone : null;
+  const clientEmail = route.channel === 'email' ? leadEmail : null;
+
+  // Stored on the lead before the job exists, so convertLeadToJob can hand it
+  // over — and so it survives even if everything after this throws.
+  if ((getLeadTriage(lead).messageChannel ?? 'auto') !== messageChannel) {
+    await supabase
+      .from('leads')
+      .update({ triage: { ...getLeadTriage(lead), messageChannel }, updated_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('id', leadId);
+    lead.triage = { ...getLeadTriage(lead), messageChannel };
+  }
 
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   // Persist the itemized quote (and let it recompute quoted_amount) now that the
@@ -292,7 +380,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
       frequency: planFrequency,
       firstInstallmentDate,
       clientPhone,
-      smsConsent: Boolean(sendClientText && clientPhone),
+      smsConsent: Boolean(clientPhone),
       invoiceId: invoice.id,
     });
     await createPaymentFeedEvent(supabase, depositPaymentId, 'payment_requested');
@@ -314,7 +402,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
       kind: 'deposit',
       invoiceId: invoice.id,
       homeownerPhone: clientPhone,
-      smsConsent: Boolean(sendClientText && clientPhone),
+      smsConsent: Boolean(clientPhone),
     });
     await createPaymentFeedEvent(supabase, depositPayment.id, 'payment_requested');
     // Record the gate on the job so scheduling can enforce a before-schedule deposit.
@@ -332,18 +420,25 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
   const quickBooking = scheduleOptionsFromForm(formData);
 
-  // Prefer SMS, fall back to email, and if neither can reach the client, say so
-  // plainly instead of redirecting as though it sent.
-  const willText = Boolean(sendClientText && clientPhone);
-  const willEmail = Boolean(sendClientText && !clientPhone && clientEmail);
-  const willDeliver = willText || willEmail;
+  // Already decided, above, by the same call the owner saw rendered. If nothing
+  // can reach the client we say so plainly rather than redirecting as though it
+  // sent — see QuoteDeliveryBanner.
+  const willDeliver = route.channel !== 'none';
 
   let businessName = BUSINESS_NAME_FALLBACK;
-  if (sendClientText) {
+  if (willDeliver) {
     businessName = await loadBusinessName(supabase, accountId);
   }
 
-  if (quickBooking.hasInput && willDeliver) {
+  // THE DATES GO ON THE QUOTE PAGE EITHER WAY.
+  //
+  // This was gated on willDeliver, so an owner who could not reach the client
+  // automatically — no mobile, no email, or a client they had switched off — had
+  // the three start dates they had just picked silently thrown away, on a page
+  // whose whole purpose is a link they are about to hand over by other means.
+  // Recorded regardless now; the options are waiting on the client's page for
+  // whenever the link gets there.
+  if (quickBooking.hasInput) {
     const { request } = await createScheduleRequest(supabase, accountId, job.id, { clientPhone: clientPhone ?? job.client_phone ?? null, options: quickBooking.options });
     const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
 
@@ -358,7 +453,13 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
 
   // Best-effort delivery: a provider failure here must not error-page the owner
   // after the job already exists, and we only claim "sent" when it truly sent.
-  let delivery: 'sms' | 'email' | 'no_contact' | 'failed' | null = sendClientText ? 'no_contact' : null;
+  //
+  // The resting value is the ROUTE'S OWN REASON, not a flat "no_contact". There
+  // are now five ways for a quote not to go out and the banner used to give one
+  // explanation for all of them — telling an owner whose client is set to
+  // email-only, with a mobile on file, that "this lead has no mobile number or
+  // email", which sends them looking for a missing detail that is not missing.
+  let delivery: string | null = willDeliver ? 'no_contact' : route.reason;
   if (clientPhone) {
     try {
       await recordSmsConsent(accountId, clientPhone, 'client_job_dashboard');
@@ -431,12 +532,25 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     console.error(`Quote confirmation email failed for job ${job.id}:`, err);
   }
 
-  if (quickBooking.hasInput && !sendClientText) {
-    const clientPhone = normalizeUsPhone(job.client_phone ?? '');
-    if (!clientPhone) throw new Error('Enter a valid client mobile number before sending quick booking options.');
-    if (formData.get('quoteScheduleSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
+  /**
+   * Texting the start dates on their own.
+   *
+   * Only reachable when the quote itself is not going by text — which is exactly
+   * when QuoteStartDateCalendar shows its own scheduling-consent box — so the
+   * options still reach a client whose quote is being handed over by hand.
+   *
+   * The trigger is that box being TICKED, not the quote checkbox being unticked.
+   * Those are not the same question, and reading one as the other is what made
+   * this branch fire on a client the owner had just switched off. An explicit
+   * tick is an explicit instruction and it is honoured; a STOP reply is not
+   * something the owner can tick past, and it is checked here as everywhere.
+   */
+  if (quickBooking.hasInput && route.channel !== 'sms' && formData.get('quoteScheduleSmsConsent') === 'on') {
+    const schedulePhone = normalizeUsPhone(job.client_phone ?? '');
+    if (!schedulePhone) throw new Error('Enter a valid client mobile number before sending quick booking options.');
+    if (optedOut) throw new Error(`${job.client_name} replied STOP to a previous text, so scheduling options can’t be sent to that number.`);
 
-    const request = await createAndSendScheduleRequest(supabase, accountId, job.id, { clientPhone, options: quickBooking.options });
+    const request = await createAndSendScheduleRequest(supabase, accountId, job.id, { clientPhone: schedulePhone, options: quickBooking.options });
     const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
 
     await createJobFeedEvent(supabase, accountId, job.id, {
@@ -447,6 +561,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
       meta: { schedule_request_id: request.id, options: request.options },
     });
   }
+
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/jobs');
   const deliveryParam = delivery ? `&delivery=${delivery}` : '';

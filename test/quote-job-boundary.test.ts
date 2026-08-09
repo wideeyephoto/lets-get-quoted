@@ -1,0 +1,208 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { completionBlockers } from '@/lib/job-badges';
+import {
+  completeJobConfirmMessage,
+  completeJobNeedsConfirm,
+  type CompleteJobWarningInput,
+} from '@/lib/job-detail-labels';
+
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+
+const JOB_ACTIONS = read('src', 'app', 'dashboard', 'jobs', 'actions.ts');
+const FIELD_ACTIONS = read('src', 'app', 'field', 'jobs', '[id]', 'actions.ts');
+const JOB_FEED = read('src', 'lib', 'job-feed.ts');
+const JOB_PAGE = read('src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx');
+const START_BUTTON = read('src', 'app', 'dashboard', 'jobs', '[id]', 'StartJobButton.tsx');
+
+/**
+ * Where a quote stops being a quote.
+ *
+ * "Job started" wrote status: 'in_progress' straight onto a job still at the
+ * quote stage — the right end state reached the wrong way. Nothing recorded that
+ * the customer had agreed, the lead behind it stayed unwon, and because Insights
+ * counts conversions from quote_approved feed rows, the contractor's own
+ * conversion rate never saw it. The same bug "Mark won" had, in a different
+ * button, and a third time in the crew's field app.
+ */
+
+describe('every way out of the quote stage records the acceptance', () => {
+  it('names the two new ways in the one definition of accepted', () => {
+    expect(JOB_FEED).toContain("| 'work_started'");
+    expect(JOB_FEED).toContain("| 'work_completed'");
+    expect(JOB_FEED).toContain("work_started: 'Quote accepted (work started)'");
+    expect(JOB_FEED).toContain("work_completed: 'Quote accepted (job completed)'");
+  });
+
+  it('the owner pressing Job started', () => {
+    const action = JOB_ACTIONS.slice(
+      JOB_ACTIONS.indexOf('export async function markJobStartedAction('),
+      JOB_ACTIONS.indexOf('export async function undoJobStartedAction('),
+    );
+    expect(action).toContain("if (job.status === 'new_lead') {");
+    expect(action).toContain("source: 'work_started'");
+    // Before the start is stamped: the acceptance is the earlier fact.
+    expect(action.indexOf('applyQuoteAcceptance(')).toBeLessThan(action.indexOf('started_at: startedAt'));
+  });
+
+  it('the owner pressing Mark complete', () => {
+    const action = JOB_ACTIONS.slice(
+      JOB_ACTIONS.indexOf('export async function markJobCompleteAction('),
+      JOB_ACTIONS.indexOf('export async function undoJobCompleteAction('),
+    );
+    expect(action).toContain("source: 'work_completed'");
+  });
+
+  it('and the crew pressing either one in the field', () => {
+    expect(FIELD_ACTIONS).toContain('applyQuoteAcceptance');
+    expect(FIELD_ACTIONS).toContain("current?.status === 'new_lead'");
+    expect(FIELD_ACTIONS).toMatch(/source: status === 'complete' \? 'work_completed' : 'work_started'/);
+  });
+
+  /**
+   * started_at is what every owner-facing surface reads to tell "on the
+   * calendar" from "underway" — the badge, the pipeline step, the late-arrival
+   * sweep. The field app never set it, so a job the crew had started still
+   * showed the owner a "Job started" button to press.
+   */
+  it('the field app stamps the start time the owner’s surfaces read', () => {
+    expect(FIELD_ACTIONS).toContain("...(current?.started_at ? {} : { started_at: new Date().toISOString() })");
+  });
+
+  it('never drags a job backwards, on any path', () => {
+    // Promotion is conditional on still being at the quote stage, in the one
+    // function; the callers only ever ask when they are there.
+    const apply = JOB_FEED.slice(JOB_FEED.indexOf('export async function applyQuoteAcceptance('));
+    expect(apply).toMatch(/if \(job\.status === 'new_lead'\) \{/);
+  });
+
+  it('is best-effort everywhere — a failed record never blocks the press', () => {
+    for (const source of [JOB_ACTIONS, FIELD_ACTIONS]) {
+      const at = source.indexOf('applyQuoteAcceptance(');
+      expect(source.slice(Math.max(0, at - 400), at)).toContain('try {');
+    }
+  });
+});
+
+describe('and says so before it happens', () => {
+  it('the start button asks when the quote is unapproved', () => {
+    expect(START_BUTTON).toContain('quoteUnapproved');
+    expect(START_BUTTON).toContain('window.confirm');
+    // No dialog on an approved job — nothing surprising happens there.
+    expect(START_BUTTON).toContain('if (!quoteUnapproved) return;');
+    expect(JOB_PAGE).toContain("quoteUnapproved={job.status === 'new_lead'}");
+  });
+
+  it('the confirm names what the customer will see', () => {
+    const message = completeJobConfirmMessage({
+      clientName: 'Sarah',
+      autoReviewRequest: false,
+      reviewUrlConfigured: false,
+      alreadyRequested: false,
+      channel: null,
+      quoteUnapproved: true,
+    });
+    expect(message).toContain('never approved');
+    expect(message).toContain('Sarah accepted it');
+    expect(message).toContain('conversion rate');
+  });
+
+  it('and asks at all, which it would not have before', () => {
+    const base: CompleteJobWarningInput = {
+      clientName: 'Sarah',
+      autoReviewRequest: false,
+      reviewUrlConfigured: false,
+      alreadyRequested: false,
+      channel: null,
+    };
+    expect(completeJobNeedsConfirm(base)).toBe(false);
+    expect(completeJobNeedsConfirm({ ...base, quoteUnapproved: true })).toBe(true);
+  });
+});
+
+/**
+ * What is still outstanding when a job is closed.
+ *
+ * Never a block. Every item is something a contractor can rightly close a job
+ * over — the cheque arrives next week, the punch list got done and nobody ticked
+ * it — and a hard refusal would teach people to leave jobs open, which is worse:
+ * an open job is invisible in every "what's left" count in the app. The failure
+ * being fixed is not "they completed a job they shouldn't have", it is "nobody
+ * told them $4,200 was unpaid and then the job disappeared".
+ */
+describe('what is still open on a job being closed', () => {
+  it('says nothing about a job with nothing outstanding', () => {
+    expect(completionBlockers({ outstandingBalance: 0, openSelections: 0, openTasks: 0 })).toEqual([]);
+  });
+
+  it('leads with the money', () => {
+    const blockers = completionBlockers({ outstandingBalance: 4200, openSelections: 2, openTasks: 3 });
+    expect(blockers[0]).toContain('$4,200');
+    expect(blockers[0]).toContain('still unpaid');
+  });
+
+  it('distinguishes an unpaid balance from nothing billed at all', () => {
+    expect(completionBlockers({ outstandingBalance: 500 })[0]).toContain('still unpaid');
+    expect(completionBlockers({ nothingBilled: true })[0]).toBe('nothing has been invoiced or charged yet');
+    // Not both — an outstanding balance means something WAS billed.
+    expect(completionBlockers({ outstandingBalance: 500, nothingBilled: true })).toHaveLength(1);
+  });
+
+  it('counts choices and checklist items separately, and gets the grammar right', () => {
+    expect(completionBlockers({ openSelections: 1 })).toEqual(['1 client choice is still waiting']);
+    expect(completionBlockers({ openSelections: 2 })).toEqual(['2 client choices are still waiting']);
+    expect(completionBlockers({ openTasks: 1 })).toEqual(['1 checklist item is unticked']);
+    expect(completionBlockers({ openTasks: 4 })).toEqual(['4 checklist items are unticked']);
+  });
+
+  it('ignores nonsense rather than printing it', () => {
+    expect(completionBlockers({ openSelections: -3, openTasks: Number.NaN, outstandingBalance: -100 })).toEqual([]);
+    expect(completionBlockers({})).toEqual([]);
+  });
+
+  it('reads as one sentence in the dialog', () => {
+    const message = completeJobConfirmMessage({
+      clientName: 'Sarah',
+      autoReviewRequest: false,
+      reviewUrlConfigured: false,
+      alreadyRequested: false,
+      channel: null,
+      blockers: completionBlockers({ outstandingBalance: 4200, openTasks: 2 }),
+    });
+    expect(message).toContain('Still open: $4,200 is still unpaid and 2 checklist items are unticked.');
+    // And is explicit that completing does not resolve any of it.
+    expect(message).toContain("doesn't cancel any of it");
+  });
+
+  it('joins three with commas and a final "and"', () => {
+    const message = completeJobConfirmMessage({
+      clientName: 'Sarah',
+      autoReviewRequest: false,
+      reviewUrlConfigured: false,
+      alreadyRequested: false,
+      channel: null,
+      blockers: completionBlockers({ outstandingBalance: 100, openSelections: 1, openTasks: 1 }),
+    });
+    expect(message).toContain('$100 is still unpaid, 1 client choice is still waiting and 1 checklist item is unticked');
+  });
+
+  it('turns the confirm on, and only when there is something to say', () => {
+    const base: CompleteJobWarningInput = {
+      clientName: 'Sarah',
+      autoReviewRequest: false,
+      reviewUrlConfigured: false,
+      alreadyRequested: false,
+      channel: null,
+    };
+    expect(completeJobNeedsConfirm({ ...base, blockers: [] })).toBe(false);
+    expect(completeJobNeedsConfirm({ ...base, blockers: ['$5 is still unpaid'] })).toBe(true);
+  });
+
+  it('is wired to the real numbers on the job page', () => {
+    expect(JOB_PAGE).toContain('blockers: completionBlockers({');
+    expect(JOB_PAGE).toContain('openSelections: selectionStatus.waiting');
+    expect(JOB_PAGE).toContain('openTasks: taskStats.total - taskStats.done');
+    expect(JOB_PAGE).toContain('outstandingBalance');
+  });
+});

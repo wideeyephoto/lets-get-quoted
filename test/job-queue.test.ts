@@ -151,6 +151,29 @@ describe('what a row says about when', () => {
     expect(scheduleNote(job({ scheduledFor: '2026-08-20' }), TODAY)).toBe('Upcoming');
     expect(scheduleNote(job({ scheduledFor: '2026-07-20' }), TODAY)).toBe('Past');
   });
+
+  /**
+   * A finished job never announces work still to come.
+   *
+   * This read only the date, so a job completed this morning that had been
+   * booked for next Tuesday still said "Upcoming" — the row advertising work
+   * that had already happened, right beside a Complete badge saying so.
+   */
+  it('never calls a finished job Upcoming', () => {
+    const done = { status: 'complete' as const };
+    expect(scheduleNote(job({ ...done, scheduledFor: '2026-08-20' }), TODAY)).toBe('Done early');
+    expect(scheduleNote(job({ ...done, scheduledFor: TODAY }), TODAY)).toBe('Done');
+    expect(scheduleNote(job({ ...done, scheduledFor: '2026-07-20' }), TODAY)).toBe('Done');
+  });
+
+  it('stops asking a finished job for a date it will never need', () => {
+    expect(scheduleNote(job({ status: 'complete', scheduledFor: null }), TODAY)).toBe('Done');
+  });
+
+  it('says a cancelled job is cancelled, whatever its date said', () => {
+    expect(scheduleNote(job({ status: 'archived', scheduledFor: '2026-08-20' }), TODAY)).toBe('Cancelled');
+    expect(scheduleNote(job({ status: 'archived', scheduledFor: null }), TODAY)).toBe('Cancelled');
+  });
 });
 
 describe('today is local, not UTC', () => {

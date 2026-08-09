@@ -14,6 +14,7 @@ import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitActi
 import DepositField from './DepositField';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
+import QuoteDeliveryPreview from './QuoteDeliveryPreview';
 import QuotePreviewButton from './QuotePreviewButton';
 import UnsavedGuard from '@/components/unsaved-guard';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
@@ -101,7 +102,7 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
   return `${nextJob.client_name}${time ? ` at ${time}` : ''}`;
 }
 
-export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string } }) {
+export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string; added?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
   const [lead, jobs, leads, { data: account }, { data: site }] = await Promise.all([
@@ -215,6 +216,15 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           at the foot of the page; this is what makes them open the one they
           point at rather than scrolling to a closed header. */}
       <OpenActionOnHash />
+      {/* Arrived here from "+ Add manual lead". The record on screen is the
+          receipt — this only names what just happened and points at the next
+          thing, because a form that emptied itself and stayed put is
+          indistinguishable from one that silently failed. */}
+      {searchParams.added ? (
+        <div className="payment-banner success">
+          <p><strong>{lead.name || 'The lead'} was added.</strong> Book the estimate or send a quote below — everything you typed is on this page.</p>
+        </div>
+      ) : null}
       <section className={`workspace-hero panel ${styles.leadHero}`}>
         <div className={styles.leadHeroMain}>
           <p className="eyebrow">Lead details</p>
@@ -521,23 +531,14 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                   </span>
                 </label>
                 <DepositField />
-                <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
-                  <input id="sendClientTextCheckbox" name="sendClientText" type="checkbox" defaultChecked />
-                  <span>
-                    <strong>Text quote and sign-off link</strong>
-                    <small>Send the client their quote dashboard link. Reply STOP to opt out.</small>
-                  </span>
-                </label>
-                <div className={styles.quotePreview}>
-                  <span>Your client will receive</span>
-                  {quotePreviewPhone ? (
-                    <p><strong>📱 A text</strong> to {formatPhoneDashes(quotePreviewPhone)} with a secure link to view &amp; approve their quote.</p>
-                  ) : quotePreviewEmail ? (
-                    <p><strong>📧 An email</strong> to {quotePreviewEmail} with a link to view &amp; approve their quote — no mobile on file.</p>
-                  ) : (
-                    <p><strong>⚠ No phone or email on file.</strong> You&apos;ll get a link to copy and send yourself.</p>
-                  )}
-                </div>
+                {/* One control and one sentence, from one decision — see
+                    QuoteDeliveryPreview. This was a checkbox and a hardcoded
+                    paragraph that ignored it. */}
+                <QuoteDeliveryPreview
+                  phone={quotePreviewPhone}
+                  email={quotePreviewEmail}
+                  preference={triage.messageChannel ?? 'auto'}
+                />
                 <details className={styles.optionalScheduleDetails}>
                   <summary>Suggest 3 job start times</summary>
                   <p>Optional. Text three service options with the quote so the client can book quickly.</p>

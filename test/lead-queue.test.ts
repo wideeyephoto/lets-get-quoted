@@ -6,6 +6,7 @@ import {
   queueStageLabel,
   sortQueue,
   stageCounts,
+  waitingFor,
   waitingLabel,
   type QueueLead,
 } from '@/lib/lead-queue';
@@ -158,6 +159,37 @@ describe('waiting time reads as time', () => {
 
   it('does not invent a number from a broken date', () => {
     expect(waitingLabel('not-a-date', now).long).toBe('Waiting time unknown');
+  });
+});
+
+/**
+ * A closed lead is not waiting on anything.
+ *
+ * waitingLabel measures from created_at and never stops, so a lead won months
+ * ago still read "12 minutes waiting" — printed beside its own Won badge, in a
+ * column the queue sorts by. The clock has to stop where the pipeline does.
+ */
+describe('the waiting clock stops when the lead closes', () => {
+  const at = (status: QueueLead['status']) => waitingFor({ status, createdAt: hoursAgo(94) }, now);
+
+  it('says nothing for a won lead', () => {
+    expect(at('won')).toBeNull();
+  });
+
+  it('says nothing for a lost one either', () => {
+    expect(at('lost')).toBeNull();
+  });
+
+  it('and is unchanged for everybody still in the pipeline', () => {
+    for (const status of ['new', 'contacted', 'quoted'] as const) {
+      expect(at(status)).toEqual(waitingLabel(hoursAgo(94), now));
+    }
+  });
+
+  it('returns null rather than an empty string, so no render site can print a blank by accident', () => {
+    // Every consumer has to decide what to show instead — the detail pane shows
+    // the lead's age, the rows show nothing, the CSV cell is empty.
+    expect(at('won')).not.toBe('');
   });
 });
 

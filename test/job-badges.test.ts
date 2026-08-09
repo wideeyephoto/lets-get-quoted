@@ -75,6 +75,64 @@ describe('the header badge and the pipeline checklist agree', () => {
     expect(badge(job({ quoted_amount: 11800 })).title).toBeTruthy();
     expect(badge(job({ quoted_amount: 11800 }), [], [], 1).title).toBeTruthy();
   });
+
+  /**
+   * A finished job has no step still claiming work is underway.
+   *
+   * started_at is sticky by design — it records a thing that happened and is
+   * never cleared — so the schedule step read "Work in progress" forever, sat
+   * directly under a hero badge reading Complete. Two labels about one job,
+   * contradicting each other on the same screen.
+   */
+  it('closes the schedule step when the job is finished', () => {
+    const done = job({ status: 'complete', started_at: '2026-08-04T13:00:00.000Z', scheduled_for: '2026-08-10' });
+    const schedule = checklist(done).find((step) => step.key === 'schedule');
+    expect(schedule?.label).toBe('Complete');
+    // The detail line is left alone: "Started Tue, Aug 4" is still true, and is
+    // the useful half of the row once the label has stopped hedging.
+    expect(schedule?.detail).toBeTruthy();
+  });
+
+  it('and says the same for a cancelled one', () => {
+    // Archived is how this product files a cancellation. No work is underway
+    // there either.
+    const cancelled = job({ status: 'archived', started_at: '2026-08-04T13:00:00.000Z' });
+    expect(checklist(cancelled).find((step) => step.key === 'schedule')?.label).toBe('Complete');
+  });
+
+  it('never has any step call a finished job work in progress', () => {
+    for (const status of ['complete', 'archived'] as const) {
+      const finished = job({ status, started_at: '2026-08-04T13:00:00.000Z', quoted_amount: 4200 });
+      const labels = checklist(finished, [], [], 1).map((step) => step.label);
+      expect(labels, status).not.toContain('Work in progress');
+    }
+  });
+
+  /**
+   * Recording a verbal acceptance moves a job to in_progress without a date,
+   * and that state has its own name.
+   *
+   * The branch existed before but was nearly unreachable: every route to
+   * in_progress also set a date, so the scheduled_for check above caught them
+   * first. Now the owner's "Mark won" reaches it every time — and it was
+   * reading "Ready to invoice", telling somebody to bill for work that has not
+   * been scheduled, let alone done.
+   */
+  it('calls an accepted job with no date approved, not ready to invoice', () => {
+    const accepted = job({ status: 'in_progress', quoted_amount: 4200 });
+    expect(badge(accepted, [], [], 1).label).toBe('Approved — needs scheduling');
+  });
+
+  it('and moves on to Scheduled the moment it gets a date', () => {
+    const booked = job({ status: 'in_progress', quoted_amount: 4200, scheduled_for: '2026-08-20' });
+    expect(badge(booked, [], [], 1).label).toBe('Scheduled');
+  });
+
+  it('still says work is in progress while it actually is', () => {
+    // The guard above must not have closed the step for live jobs too.
+    const live = job({ status: 'in_progress', started_at: '2026-08-04T13:00:00.000Z' });
+    expect(checklist(live).find((step) => step.key === 'schedule')?.label).toBe('Work in progress');
+  });
 });
 
 describe('no step claims something that has not happened', () => {

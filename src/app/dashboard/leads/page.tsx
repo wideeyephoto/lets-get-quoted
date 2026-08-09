@@ -4,7 +4,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
-import { waitingLabel } from '@/lib/lead-queue';
+import { waitingFor } from '@/lib/lead-queue';
 import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfterDaysAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
@@ -88,8 +88,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
       projectType: lead.project_type,
       photoCount: (lead.photo_paths || []).length,
-      waitingLong: waitingLabel(lead.created_at, now).long,
-      waitingShort: waitingLabel(lead.created_at, now).short,
+      // Null once the lead is won or lost — see waitingFor. Nobody is waiting
+      // on a closed lead, and the clock used to keep running under a Won badge.
+      waitingLong: waitingFor({ status: lead.status, createdAt: lead.created_at }, now)?.long ?? null,
+      waitingShort: waitingFor({ status: lead.status, createdAt: lead.created_at }, now)?.short ?? null,
       // The last touchpoint, not the last UPDATE. updated_at moves when a score
       // is edited or a photo lands, so measuring "gone quiet" from it would
       // clear the flag on a lead nobody has actually spoken to.

@@ -13,7 +13,7 @@ import {
 } from './milestone-actions';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { deriveJobListBadge, buildPipelineChecklist } from '@/lib/job-badges';
+import { deriveJobListBadge, buildPipelineChecklist, completionBlockers } from '@/lib/job-badges';
 import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
 import { COST_SOURCE_LABEL, costConfidence, describeDuplicate, duplicateCostIds, marginVerdict } from '@/lib/cost-truth';
@@ -23,7 +23,9 @@ import { changeOrderTotals } from '@/lib/change-orders';
 import ChangeOrderPanel from './ChangeOrderPanel';
 import WarrantyPanel from './WarrantyPanel';
 import SelectionBoard from './SelectionBoard';
-import { listSelections, listSelectionTemplates, signSelectionPhotos } from '@/lib/selections-data';
+import TaskAddForm from './TaskAddForm';
+import { zonedNowParts } from '@/lib/quick-stop';
+import { lastSelectionSendAt, listSelections, listSelectionTemplates, signSelectionPhotos } from '@/lib/selections-data';
 import { boardStatus } from '@/lib/selections';
 import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
@@ -34,6 +36,7 @@ import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJob
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { getLeadByConvertedJob } from '@/lib/leads';
 import { formatPhoneDashes } from '@/lib/phone';
+import { isPhoneOptedOut } from '@/lib/sms';
 import {
   createClientJobLinkAction,
   createCostAction,
@@ -48,6 +51,7 @@ import {
   saveQuoteItemsAction,
   draftQuoteAction,
   reviewQuoteAction,
+  scheduleJobAction,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
   undoJobStartedAction,
@@ -91,6 +95,15 @@ import {
   reviewPillState,
 } from '@/lib/job-detail-labels';
 import CompleteJobButton from './CompleteJobButton';
+import JobScheduleFields from './JobScheduleFields';
+import StartJobButton from './StartJobButton';
+import {
+  CLIENT_CHANNEL_HINT,
+  CLIENT_CHANNEL_LABEL,
+  canTextClient,
+  clientChannelChip,
+  normalizeClientChannelPreference,
+} from '@/lib/client-channel';
 
 export default async function JobDetailPage({
   params,
@@ -119,9 +132,12 @@ export default async function JobDetailPage({
   const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
   const changeOrders = await listChangeOrders(supabase, accountId, job.id);
-  const [selections, selectionTemplates] = await Promise.all([
+  const [selections, selectionTemplates, lastSelectionSent] = await Promise.all([
     listSelections(supabase, accountId, job.id),
     listSelectionTemplates(supabase, accountId),
+    // From the job feed, which is where BOTH senders record themselves — the
+    // contractor's own button and the scheduled reminder. See lastSelectionSendAt.
+    lastSelectionSendAt(supabase, accountId, job.id),
   ]);
   // The homeowner saw pictures and the contractor saw a text list. Both sides
   // of a feature about agreeing on what was picked should see the same thing.
@@ -222,7 +238,13 @@ export default async function JobDetailPage({
   const boundSaveQuoteItems = saveQuoteItemsAction.bind(null, job.id);
   const quoteItems = parseQuoteItems(job.quote_items);
   const pendingPlans = quoteItems.filter((item) => item.kind === 'subscription' && !item.signedUp);
-  const todayKey = new Date().toISOString().slice(0, 10);
+  // The ACCOUNT'S date, not the server's. This was toISOString().slice(0,10) —
+  // UTC — which for a west-coast account is tomorrow's date from 5pm onwards.
+  // Anything that compares a booked day against "today" has to use the clock
+  // the contractor is actually looking at, or it calls a normal completion
+  // early and an early one normal for several hours a day.
+  const { data: accountClock } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
+  const todayKey = zonedNowParts(new Date(), (accountClock?.timezone as string) || 'America/New_York').dateKey;
   // appointment_confirmed_at is selected via getJob's `*` but isn't on the Job
   // type yet — read it off the row without widening the shared type.
   const appointmentConfirmedAt = (job as { appointment_confirmed_at?: string | null }).appointment_confirmed_at ?? null;
@@ -233,6 +255,22 @@ export default async function JobDetailPage({
   const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
   const lastReviewRequest = feed.find((event) => event.kind === 'review_requested');
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
+  const boundScheduleJob = scheduleJobAction.bind(null, job.id);
+  // How this customer may be messaged about this job — the contractor's setting,
+  // their own STOP reply, and what's actually on file, resolved together in one
+  // place. Every card on this page that offers to text them asks this rather
+  // than checking for a phone number and hoping.
+  const clientChannelPreference = normalizeClientChannelPreference(job.message_channel);
+  const clientOptedOut = job.client_phone ? await isPhoneOptedOut(accountId, job.client_phone) : false;
+  const clientContact = {
+    phone: job.client_phone,
+    email: job.client_email,
+    preference: clientChannelPreference,
+    optedOut: clientOptedOut,
+    kind: 'automatic' as const,
+  };
+  const clientCanBeTexted = canTextClient(clientContact);
+  const clientChannelNote = clientChannelChip(clientContact);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundPostFeedUpdate = createManualJobFeedAction.bind(null, job.id);
   const boundCreateInvoice = createInvoiceAction.bind(null, job.id);
@@ -306,6 +344,19 @@ export default async function JobDetailPage({
                   <span aria-hidden="true">📧</span> {job.client_email}
                 </a>
               ) : null}
+              {/* Only when there is something to say. clientChannelChip returns
+                  null for the ordinary case — a customer we text, with a mobile,
+                  who has not replied STOP — because a badge on every job saying
+                  "nothing unusual here" trains people to stop reading badges. */}
+              {clientChannelNote ? (
+                <Link
+                  href={`/dashboard/jobs/${job.id}?edit=client#job-details`}
+                  className={`job-channel-chip tone-${clientChannelNote.tone}`}
+                  title="How automatic messages reach this customer — change it in Job details"
+                >
+                  {clientChannelNote.label}
+                </Link>
+              ) : null}
             </div>
           ) : null}
           <div className="job-command-facts" aria-label="Job facts">
@@ -351,9 +402,11 @@ export default async function JobDetailPage({
                 into a disabled button — the feed and the pipeline step carry the
                 fact from then on, and Undo lives with the feed entry it undoes. */}
             {!job.started_at && job.status !== 'complete' && job.status !== 'archived' ? (
-              <form action={boundMarkJobStarted}>
-                <SaveButton className="btn secondary" pendingLabel="Starting…" savedLabel="Started ✓">Job started</SaveButton>
-              </form>
+              <StartJobButton
+                action={boundMarkJobStarted}
+                clientName={job.client_name}
+                quoteUnapproved={job.status === 'new_lead'}
+              />
             ) : null}
             {job.status !== 'complete' && job.status !== 'archived' ? (
               /* The end of the job, and the only button on this page that
@@ -369,6 +422,22 @@ export default async function JobDetailPage({
                   reviewUrlConfigured: Boolean(reviewUrl),
                   alreadyRequested: Boolean(lastReviewRequest),
                   channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
+                  // The chronology guard. todayKey is the ACCOUNT'S date, not
+                  // the server's — a west-coast owner closing a job at 9pm is
+                  // still on yesterday, and comparing against UTC would call a
+                  // normal completion early and an early one normal.
+                  scheduledFor: job.scheduled_for,
+                  todayKey,
+                  // Everything still open on this job, phrased once in
+                  // completionBlockers so the dialog and any future surface
+                  // cannot describe the same job differently.
+                  quoteUnapproved: job.status === 'new_lead',
+                  blockers: completionBlockers({
+                    openSelections: selectionStatus.waiting,
+                    openTasks: taskStats.total - taskStats.done,
+                    outstandingBalance,
+                    nothingBilled: payments.length === 0 && invoices.length === 0,
+                  }),
                 }}
                 pill={reviewPillState({
                   clientName: job.client_name,
@@ -556,10 +625,7 @@ export default async function JobDetailPage({
         ) : (
           <p className="empty-state">No checklist items yet. Add the first below.</p>
         )}
-        <form action={addJobTaskAction.bind(null, job.id)} className="task-add-form">
-          <input name="title" placeholder="Add a task (e.g. Haul away debris)" required maxLength={120} aria-label="New task" />
-          <SaveButton className="btn secondary" pendingLabel="Adding…" savedLabel="Added ✓">Add</SaveButton>
-        </form>
+        <TaskAddForm action={addJobTaskAction.bind(null, job.id)} />
       </section>
 
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
@@ -897,6 +963,26 @@ export default async function JobDetailPage({
                 <label htmlFor="clientEmail">Client email</label>
                 <input id="clientEmail" name="clientEmail" type="email" defaultValue={job.client_email ?? ''} placeholder="client@example.com" />
               </div>
+              {/* THE CONTRACTOR'S HALF OF CONSENT, with somewhere to live at last.
+                  It was asked once, as a checkbox on the quote form, and never
+                  written down — so an owner who deliberately unticked it got the
+                  customer texted anyway by the next automation that found a phone
+                  number. Set here it governs every automatic message on this job:
+                  choice reminders, the morning-of confirmation, the review ask.
+                  The customer's own STOP reply is separate and still outranks it. */}
+              <div className="field">
+                <label htmlFor="messageChannel">Automatic messages</label>
+                <select id="messageChannel" name="messageChannel" defaultValue={clientChannelPreference}>
+                  <option value="auto">{CLIENT_CHANNEL_LABEL.auto}</option>
+                  <option value="sms">{CLIENT_CHANNEL_LABEL.sms}</option>
+                  <option value="email">{CLIENT_CHANNEL_LABEL.email}</option>
+                  <option value="off">{CLIENT_CHANNEL_LABEL.off}</option>
+                </select>
+                <p className="job-meta">
+                  {CLIENT_CHANNEL_HINT[clientChannelPreference]}
+                  {clientOptedOut ? ' This number has replied STOP, so no text can reach it whatever you pick.' : ''}
+                </p>
+              </div>
               <div className="field full">
                 <label htmlFor="address">Address</label>
                 <AddressAutocomplete id="address" name="address" defaultValue={job.address ?? ''} />
@@ -1040,42 +1126,83 @@ export default async function JobDetailPage({
             </div>
         </details>
 
+      {/* SCHEDULING IS NOT A TEXT MESSAGE.
+          This card was titled "Send 3 Start Dates" and held one form: a mobile
+          number, three options, a consent checkbox. That is a fine way to book
+          a job and it is not the only way — it is not even the common one for a
+          contractor whose customers do not text, or whose start date was agreed
+          on the phone before the quote went out. For them the entire pipeline
+          step named "Schedule the work" pointed at a form they could not use,
+          and the way to put a date on a job was buried inside "edit client
+          details", three sections down, under a heading about the customer.
+
+          So the section is named for the outcome and leads with the route that
+          always works. Texting options is still here, one press away, demoted
+          from "the scheduling card" to "or let them pick" — which is what it
+          is. The SMS half also stops pretending when there is no mobile on
+          file, instead of offering an empty phone field and a consent box for a
+          text that cannot be sent. */}
       <details id="job-scheduling" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'scheduling'}>
         <summary className="workspace-details-summary job-action-summary">
           <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Client scheduling</p>
-            <h2>Send 3 Start Dates</h2>
+            <p className="eyebrow">Scheduling</p>
+            <h2>Set the start date</h2>
           </div>
-          <span className="workspace-details-copy">Text the client three dates that work for your crew.</span>
+          <span className="workspace-details-copy">Put it on the calendar yourself, or text the client dates to choose from.</span>
         </summary>
-        <p className="workspace-card-copy">They can choose one or request different times with a note.</p>
-        <form action={boundSendScheduleOptions} className="form-grid">
-          <div className="field full">
-            <label htmlFor="scheduleClientPhone">Client mobile</label>
-            <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
-          </div>
-          {[1, 2, 3].map((optionNumber) => (
-            <div className="schedule-option-grid field full" key={optionNumber}>
-              <div>
-                <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
-                <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
-              </div>
-              <div>
-                <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
-                <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
-              </div>
-            </div>
-          ))}
-          <div className="field full">
-            <label className="sms-consent-check">
-              <input name="scheduleSmsConsent" type="checkbox" required />
-              <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
-            </label>
-          </div>
-          <div className="field full">
-            <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text 3 start dates</SaveButton>
-          </div>
+        <p className="workspace-card-copy">
+          {job.scheduled_for
+            ? `Booked for ${formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)}. Saving a new date moves it.`
+            : 'Nobody is booked in yet. Pick the day you plan to be there — the client sees it on their job feed.'}
+        </p>
+        <form action={boundScheduleJob} className="form-grid">
+          <JobScheduleFields
+            scheduledFor={job.scheduled_for ?? ''}
+            scheduledTime={job.scheduled_time?.slice(0, 5) ?? ''}
+          />
         </form>
+
+        <details className="job-schedule-alt">
+          <summary>Or let the client pick from 3 dates</summary>
+          {clientCanBeTexted ? (
+            <>
+              <p className="workspace-card-copy">They choose one or ask for different times with a note. Whichever they pick lands on the calendar automatically.</p>
+              <form action={boundSendScheduleOptions} className="form-grid">
+                <div className="field full">
+                  <label htmlFor="scheduleClientPhone">Client mobile</label>
+                  <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+                </div>
+                {[1, 2, 3].map((optionNumber) => (
+                  <div className="schedule-option-grid field full" key={optionNumber}>
+                    <div>
+                      <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
+                      <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
+                    </div>
+                    <div>
+                      <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
+                      <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
+                    </div>
+                  </div>
+                ))}
+                <div className="field full">
+                  <label className="sms-consent-check">
+                    <input name="scheduleSmsConsent" type="checkbox" required />
+                    <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
+                  </label>
+                </div>
+                <div className="field full">
+                  <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text 3 start dates</SaveButton>
+                </div>
+              </form>
+            </>
+          ) : (
+            <p className="workspace-card-copy">
+              {job.client_phone
+                ? `${job.client_name} is set to ${CLIENT_CHANNEL_LABEL[clientChannelPreference].toLowerCase()}, so scheduling texts are off for this job. Change it in Job details, or use the date picker above.`
+                : `No mobile on file for ${job.client_name}, so there's nowhere to text options. Add one in Job details, or use the date picker above.`}
+            </p>
+          )}
+        </details>
       </details>
 
       {/* ONE COLUMN, NOT TWO.
@@ -1177,7 +1304,7 @@ export default async function JobDetailPage({
                   {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
                 </span>
               </summary>
-              <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} />
+              <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} lastSentAt={lastSelectionSent} />
             </details>
 
             {/* Open by default once the work is done: that is the moment a

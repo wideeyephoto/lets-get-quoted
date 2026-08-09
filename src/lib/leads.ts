@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createJob, deleteJob, type Job } from '@/lib/jobs';
 import { findOrCreateClientId } from '@/lib/clients';
+import { normalizeClientChannelPreference } from '@/lib/client-channel';
 
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
@@ -26,7 +27,20 @@ export type LeadTriage = {
   location?: string;
   estimate?: { min: number; max: number } | null;
   // 'text_only' = the homeowner asked not to be called — text first.
+  //
+  // A VOICE preference, and only that: it is about picking up the phone, and it
+  // is the homeowner's own answer on the enquiry form. Not to be confused with
+  // messageChannel below, which is the contractor's decision about automatic
+  // messages. Someone can be "don't call me" and still be on email-only.
   contactPreference?: 'any' | 'text_only';
+  /**
+   * How automatic messages may reach this person — see @/lib/client-channel.
+   *
+   * Absent means 'auto', which is what every lead created before this existed
+   * meant: text if there's a mobile, email if not. Handed to the job at
+   * conversion (convertLeadToJob), because that is where the automations look.
+   */
+  messageChannel?: 'auto' | 'sms' | 'email' | 'off';
   snoozedUntil?: string | null;
   archived?: boolean;
   declinedReason?: string | null;
@@ -84,6 +98,7 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
     location: typeof triage.location === 'string' ? triage.location : undefined,
     estimate: triage.estimate && typeof triage.estimate === 'object' ? triage.estimate : null,
     contactPreference: triage.contactPreference === 'text_only' ? 'text_only' : 'any',
+    messageChannel: normalizeClientChannelPreference(triage.messageChannel),
     snoozedUntil: typeof triage.snoozedUntil === 'string' ? triage.snoozedUntil : null,
     archived: triage.archived === true,
     declinedReason: typeof triage.declinedReason === 'string' ? triage.declinedReason : null,
@@ -587,6 +602,31 @@ export async function convertLeadToJob(
     quotedAmount,
     estimatedHours: estimatedHours ?? lead.estimated_hours,
   });
+
+  // THE PREFERENCE TRAVELS WITH THE WORK.
+  //
+  // Every automation that texts a customer starts from a job row, so a
+  // "don't text this one" that stopped at the lead would be honoured for the
+  // quote and forgotten by the first reminder afterwards.
+  //
+  // A separate best-effort update rather than a column on createJob's insert:
+  // an insert naming a column that does not exist yet fails outright, and this
+  // code ships ahead of its migration. Skipped entirely for 'auto', which is
+  // the column default anyway — so on a pre-migration database nothing is ever
+  // written, nothing throws, and every job behaves exactly as it does today.
+  const channel = getLeadTriage(lead).messageChannel ?? 'auto';
+  if (channel !== 'auto') {
+    const { error: channelError } = await supabase
+      .from('jobs')
+      .update({ message_channel: channel })
+      .eq('account_id', accountId)
+      .eq('id', job.id);
+    if (channelError) {
+      console.error(`Message channel not carried to job ${job.id}:`, channelError.message);
+    } else {
+      job.message_channel = channel;
+    }
+  }
 
   const { error } = await supabase
     .from('leads')

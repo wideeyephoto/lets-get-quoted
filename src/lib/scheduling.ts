@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/auth';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { formatJobSchedule } from '@/lib/jobs';
 import { recordSmsConsent, sendCrewScheduleSelectedSms, sendSchedulingOptionsSms } from '@/lib/sms';
-import { createJobFeedEvent } from '@/lib/job-feed';
+import { applyQuoteAcceptance, createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { pickBusinessName } from '@/lib/business-name';
 
@@ -270,12 +270,28 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
     .eq('id', request.id);
   if (requestError) throw requestError;
 
+  // The DATE is this function's business. The STATUS is not: picking a start
+  // date is a customer accepting the work, and that is one fact with one
+  // definition. This used to flip jobs.status to 'in_progress' inline and write
+  // no quote_approved row, so a contractor whose customers book their own date
+  // never saw those conversions counted.
   const { error: jobError } = await admin
     .from('jobs')
-    .update({ scheduled_for: option.date, scheduled_time: option.time, status: 'in_progress' })
+    .update({ scheduled_for: option.date, scheduled_time: option.time })
     .eq('account_id', request.account_id)
     .eq('id', request.job_id);
   if (jobError) throw jobError;
+
+  // Best-effort: the date they chose is recorded above and must stand even if
+  // the promotion fails. Idempotent, so a later acceptance completes it.
+  try {
+    await applyQuoteAcceptance(admin, request.account_id, request.job_id, {
+      source: 'schedule_selected',
+      note: ` Start date: ${formatScheduleOption(option)}.`,
+    });
+  } catch (error) {
+    console.error(`Quote acceptance from date selection failed for job ${request.job_id}:`, error instanceof Error ? error.message : error);
+  }
 
   await createJobFeedEvent(admin, request.account_id, request.job_id, {
     kind: 'job_scheduled',

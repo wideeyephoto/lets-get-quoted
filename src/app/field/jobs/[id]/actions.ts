@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireCrewContext } from '@/lib/crew-auth';
 import { createAdminClient } from '@/lib/auth';
 import { isJobAssignedToCrew } from '@/lib/crew';
-import { createJobFeedEvent } from '@/lib/job-feed';
+import { applyQuoteAcceptance, createJobFeedEvent } from '@/lib/job-feed';
 import { createCost } from '@/lib/jobs';
 import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
 import { arrivalPermissionsFromCrew, arrivalSettingsFromAccount, MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
@@ -22,11 +22,46 @@ export async function assertAssigned(supabase: SupabaseClient, accountId: string
   }
 }
 
+/**
+ * The crew's own Start work / Mark complete.
+ *
+ * THE THIRD DOOR OUT OF THE QUOTE STAGE, and it used to be the only one that
+ * left no trace. A crew member is on site because the customer said yes, so
+ * their press means the same thing the owner's does — and it wrote a bare
+ * status, skipping the acceptance record, the lead, and the contractor's
+ * conversion rate. Same treatment as markJobStartedAction: through the one
+ * function that defines what accepted means, best-effort so a downstream
+ * failure never blocks a tech standing in a driveway.
+ *
+ * started_at is stamped here too, and was not. Every owner-facing surface reads
+ * that column to tell "on the calendar" from "underway" — the badge, the
+ * pipeline step, the late-arrival sweep — so a job the crew had started still
+ * showed the owner a "Job started" button to press.
+ */
 export async function setFieldJobStatusAction(jobId: string, status: 'in_progress' | 'complete') {
   const { supabase, accountId, crew } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
 
-  const { error } = await supabase.from('jobs').update({ status }).eq('account_id', accountId).eq('id', jobId);
+  const { data: current } = await supabase
+    .from('jobs').select('status, started_at').eq('account_id', accountId).eq('id', jobId).maybeSingle();
+
+  if (current?.status === 'new_lead') {
+    try {
+      await applyQuoteAcceptance(createAdminClient(), accountId, jobId, {
+        source: status === 'complete' ? 'work_completed' : 'work_started',
+      });
+    } catch (error) {
+      console.error(`Quote acceptance from the field app failed for job ${jobId}:`, error instanceof Error ? error.message : error);
+    }
+  }
+
+  const { error } = await supabase
+    .from('jobs')
+    // Only ever set on the way in — started_at is a record of a thing that
+    // happened, and a second press must not re-date it.
+    .update({ status, ...(current?.started_at ? {} : { started_at: new Date().toISOString() }) })
+    .eq('account_id', accountId)
+    .eq('id', jobId);
   if (error) throw error;
 
   await createJobFeedEvent(supabase, accountId, jobId, {

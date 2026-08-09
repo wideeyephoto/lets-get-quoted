@@ -475,17 +475,26 @@ export async function signInvoice(invoiceId: string, signerName: string): Promis
     throw error;
   }
 
-  await admin
-    .from('leads')
-    .update({ status: 'won', updated_at: new Date().toISOString() })
-    .eq('account_id', invoice.account_id)
-    .eq('converted_job', invoice.job_id)
-    .eq('status', 'quoted');
-
-  await admin
-    .from('jobs')
-    .update({ status: 'in_progress' })
-    .eq('account_id', invoice.account_id)
-    .eq('id', invoice.job_id)
-    .eq('status', 'new_lead');
+  // Signing the invoice IS accepting the quote, so it goes through the one
+  // function that defines what that means. This used to flip the two rows
+  // itself and write no feed event — which made the acceptance invisible to
+  // Insights, whose conversion rate counts `quote_approved` rows
+  // (src/lib/insights.ts). A contractor whose customers sign rather than tap
+  // Approve had a conversion rate reading zero.
+  //
+  // Best-effort: the signature is recorded above and must stand even if the
+  // promotion fails. applyQuoteAcceptance is idempotent, so the next acceptance
+  // event on this job finishes the job this one started.
+  try {
+    // Imported here rather than at the top: lib/job-feed imports THIS module
+    // (deposit-on-approval builds an invoice), so a static import would close a
+    // cycle. Same technique lib/jobs and lib/leads use for lib/geocode.
+    const { applyQuoteAcceptance } = await import('@/lib/job-feed');
+    await applyQuoteAcceptance(admin, invoice.account_id, invoice.job_id, {
+      source: 'invoice_signed',
+      note: signerName ? ` Signed by ${signerName}.` : '',
+    });
+  } catch (error) {
+    console.error(`Quote acceptance from invoice signature failed for job ${invoice.job_id}:`, error instanceof Error ? error.message : error);
+  }
 }

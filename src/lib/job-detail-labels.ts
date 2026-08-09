@@ -123,7 +123,49 @@ export type CompleteJobWarningInput = {
    * caller meant before the pill existed.
    */
   sendReview?: boolean;
+  /** The job's booked start date, 'YYYY-MM-DD', or null when it has none. */
+  scheduledFor?: string | null;
+  /** Today in the ACCOUNT'S timezone. Absent means "don't check the date". */
+  todayKey?: string;
+  /**
+   * Things left outstanding on the job, already phrased — from
+   * completionBlockers in @/lib/job-badges. Named in the confirm, never used to
+   * refuse; see that function for why.
+   */
+  blockers?: string[];
+  /**
+   * The job is still at the quote stage. Completing it records the acceptance
+   * that finishing the work implies — a client-visible feed entry — so the
+   * dialog says so before it happens.
+   */
+  quoteUnapproved?: boolean;
 };
+
+/**
+ * Is this job being closed before the day it was booked for?
+ *
+ * Both keys are date-only and compared as strings, which is exactly right for
+ * 'YYYY-MM-DD' and avoids inventing a timezone. `todayKey` has to come from the
+ * ACCOUNT'S clock — a west-coast owner closing a job at 9pm is still on
+ * yesterday's date, and a server-side `new Date()` would call that early
+ * completion normal and a normal one early.
+ */
+export function isEarlyCompletion(input: CompleteJobWarningInput): boolean {
+  if (!input.scheduledFor || !input.todayKey) return false;
+  return input.scheduledFor > input.todayKey;
+}
+
+/** "Fri, Aug 10" — the booked day, for saying which one it is. */
+export function formatBookedDay(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return dateKey;
+  return new Date(Date.UTC(year, month - 1, day, 12)).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
 
 /**
  * Whether pressing complete right now actually sends a review request.
@@ -191,13 +233,32 @@ export function reviewPillState(input: CompleteJobWarningInput): ReviewPillState
 /**
  * Whether completing is worth stopping to ask about.
  *
- * Only when a review request will really go out. Completion itself is undoable
- * from the feed, so with the pill off there is nothing here that cannot be
- * taken back — and a dialog that fires when nothing irreversible is about to
- * happen is how people learn to click through dialogs.
+ * Three reasons. A review request will really go out — that is a text to a
+ * customer and cannot be recalled. Or the job is being closed before the day it
+ * was booked for, which is legitimate (the crew got a cancellation, the
+ * materials landed early) but is also exactly what an accidental press on the
+ * wrong job looks like; the date was previously never consulted at all. Or
+ * something is still outstanding — unpaid money, choices the customer has not
+ * made, checklist items nobody ticked.
+ *
+ * Deliberately a CONFIRM and not a block, in all three. Finishing early is
+ * ordinary in this trade, the recurring-plan menu completes a future-dated visit
+ * by design, and every "blocker" is something a contractor can rightly close a
+ * job over — a hard refusal would break shipped flows to prevent things that are
+ * not wrong. The owner confirming IS the override; a free-text reason field
+ * would be a form to fill in on the way to a legitimate action.
  */
 export function completeJobNeedsConfirm(input: CompleteJobWarningInput): boolean {
-  return willAskForReview(input);
+  return willAskForReview(input)
+    || isEarlyCompletion(input)
+    || Boolean(input.quoteUnapproved)
+    || (input.blockers?.length ?? 0) > 0;
+}
+
+/** "$4,200 is still unpaid and 2 checklist items are unticked" */
+function joinBlockers(blockers: string[]): string {
+  if (blockers.length === 1) return blockers[0];
+  return `${blockers.slice(0, -1).join(', ')} and ${blockers[blockers.length - 1]}`;
 }
 
 /**
@@ -216,7 +277,31 @@ export function completeJobNeedsConfirm(input: CompleteJobWarningInput): boolean
  */
 export function completeJobConfirmMessage(input: CompleteJobWarningInput): string {
   const who = input.clientName?.trim() || 'the customer';
-  const head = `Mark this job complete?\n\n${who} sees it close out on their job feed. You can undo it from the feed if you press it early.`;
+  const base = `Mark this job complete?\n\n${who} sees it close out on their job feed. You can undo it from the feed if you press it early.`;
+
+  // Said first, because it is the one that answers "am I on the right job?".
+  // The date stays on the calendar: completing does not un-book the work, and a
+  // dialog that implied it did would be describing a thing that does not happen.
+  const early = isEarlyCompletion(input)
+    ? `\n\n📅 This job is booked for ${formatBookedDay(input.scheduledFor as string)}, so you're closing it early. The date stays on the calendar.`
+    : '';
+
+  // What is still open, named rather than refused. A completed job drops out of
+  // every "what's left" list in the app, so anything unfinished on it goes quiet
+  // at exactly the moment it stops being visible — this is the last place to say
+  // it out loud. Completing is still one press away; see completionBlockers.
+  const outstanding = input.blockers?.length
+    ? `\n\n⚠ Still open: ${joinBlockers(input.blockers)}. Completing doesn't cancel any of it — it just stops the job reminding you.`
+    : '';
+
+  // Finishing work nobody approved is a contradiction, so completing resolves it
+  // the only way that is true: by recording that they did approve. Said out loud
+  // because the feed entry it writes is one the customer can see.
+  const unapproved = input.quoteUnapproved
+    ? `\n\n✍ This quote was never approved, so completing it also records that ${who} accepted it — on their job feed, and on your conversion rate.`
+    : '';
+
+  const head = `${base}${early}${unapproved}${outstanding}`;
 
   // The pill, when the owner has set it. Said in its own words rather than the
   // account setting's, because "automatic review asks are off" is the wrong

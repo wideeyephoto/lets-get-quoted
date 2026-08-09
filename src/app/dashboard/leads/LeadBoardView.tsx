@@ -249,7 +249,7 @@ function BoardCard({
       <p className={styles.cardMeta}>
         <span className={`${leadStyles.heatDot} ${styles.cardDot}`} data-score={lead.score} aria-hidden="true" />
         <span className={styles.cardHeat} data-score={lead.score}>{lead.scoreLabel}</span>
-        <span className={styles.cardWait}>{lead.waitingShort}</span>
+        {lead.waitingShort ? <span className={styles.cardWait}>{lead.waitingShort}</span> : null}
         {lead.estimateLabel ? <span className={styles.cardValue}>{lead.estimateLabel}</span> : null}
       </p>
 
