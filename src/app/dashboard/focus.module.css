@@ -124,6 +124,76 @@
    flashes a grey box. */
 .coverImgOn { opacity: 1; }
 
+/* -- the cover, opened ------------------------------------------------------
+   The trigger is a transparent button stretched over the cover rather than a
+   wrapper around it: RecordCover is a <figure>, which is flow content and not
+   valid inside a <button>. This way the whole cover is the hit area, the markup
+   stays valid, and the cover component did not have to learn it is clickable.
+
+   `flex: none` because the slot stands where the cover used to in a flex row,
+   and a plain div would happily be squeezed where the figure would not. */
+.coverSlot { position: relative; flex: none; }
+
+.coverOpen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  align-content: end;
+  padding: 0.6rem;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  /* The label is the only thing a screen reader gets — the cover's own <img>
+     carries an empty alt — so it is present at all times and merely invisible
+     until the cover is hovered. */
+  opacity: 0;
+  transition: opacity 0.16s ease, background 0.16s ease;
+}
+
+.coverOpen:hover,
+.coverOpen:focus-visible {
+  opacity: 1;
+  background: linear-gradient(0deg, rgba(4, 9, 16, 0.82), rgba(4, 9, 16, 0.1) 62%, transparent);
+}
+
+.coverOpen:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+.coverOpenLabel {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+/* The badge reads "+7" and the label reads "Open all 8 photos" — the same fact,
+   in the same corner, and on a record with twelve they run into each other. The
+   sentence wins while the overlay is up; the badge is what says it the rest of
+   the time. `focus-within` as well as `hover`, so a keyboard user gets the same
+   uncluttered corner a mouse does. */
+.coverSlot .coverCount { transition: opacity 0.16s ease; }
+.coverSlot:hover .coverCount,
+.coverSlot:focus-within .coverCount { opacity: 0; }
+
+@media (hover: none) {
+  /* The overlay never stands down on touch, so neither does this. */
+  .coverSlot .coverCount { opacity: 0; }
+}
+
+/* Touch has no hover, so the invitation has to be permanent — a quiet standing
+   scrim rather than a control that only exists once you have already guessed. */
+@media (hover: none) {
+  .coverOpen { opacity: 1; background: linear-gradient(0deg, rgba(4, 9, 16, 0.72), transparent 58%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverOpen { transition: none; }
+}
+
 .cover[data-awaiting] .coverArt { animation: coverPulse 1.5s ease-in-out infinite; }
 
 @keyframes coverPulse {

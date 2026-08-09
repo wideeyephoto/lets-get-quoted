@@ -19,6 +19,13 @@ type PhotoGalleryProps = {
   helperText?: string;
   coverMode?: boolean;
   reorderEnabled?: boolean;
+  /**
+   * Told the current list whenever it changes — uploads, deletes and reorders
+   * alike. Added for the overview's photo dialog, which needs to know on the way
+   * out whether anything actually happened, so it can refresh the cover behind
+   * it only when it has to. Optional, and nothing else passes it.
+   */
+  onPhotosChange?: (photos: GalleryPhoto[]) => void;
 };
 
 export default function PhotoGallery({
@@ -32,6 +39,7 @@ export default function PhotoGallery({
   helperText,
   coverMode = false,
   reorderEnabled = false,
+  onPhotosChange,
 }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>(initialPhotos);
   const [isUploading, setIsUploading] = useState(false);
@@ -60,6 +68,17 @@ export default function PhotoGallery({
   useEffect(() => {
     setPhotos(initialPhotos);
   }, [initialPhotos]);
+
+  /* One place rather than at each of the seven setPhotos calls — uploads,
+     deletes, reorders and the initialPhotos sync all pass through here. Held in
+     a ref so a parent passing an inline arrow does not re-fire it every render. */
+  const reportRef = useRef(onPhotosChange);
+  useEffect(() => {
+    reportRef.current = onPhotosChange;
+  }, [onPhotosChange]);
+  useEffect(() => {
+    reportRef.current?.(photos);
+  }, [photos]);
 
   async function uploadOne(file: File) {
     const compressed = await compressImage(file, 2000, 0.84);

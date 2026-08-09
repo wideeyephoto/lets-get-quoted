@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
 import { addJobPhotos, getJob, removeJobPhoto, reorderJobPhotos } from '@/lib/jobs';
-import { createJobPhotoUrls, deleteJobPhotos, uploadJobPhoto } from '@/lib/job-photo-storage';
+import { createJobPhotoLinks, createJobPhotoUrls, deleteJobPhotos, uploadJobPhoto } from '@/lib/job-photo-storage';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export const runtime = 'nodejs';
@@ -17,6 +17,38 @@ async function requireOwnerMembership() {
   }
 
   return { accountId: membership.accountId };
+}
+
+/**
+ * Every photo on a job, signed.
+ *
+ * The detail payload the overview already has caps at FOCUS_PHOTO_LIMIT (8) —
+ * right for a cover, wrong for the dialog that cover opens, which is supposed
+ * to be all of them. It reports the true photoCount alongside, so a job with
+ * twelve photos would have shown "+7" and then eight pictures.
+ *
+ * Signing is the reason this is a request rather than a bigger payload: every
+ * URL is a signed link with an hour on it, and minting twelve of them on every
+ * detail fetch to show one is work nobody asked for. Here they are minted when
+ * the dialog opens, which is also when the clock should start.
+ */
+export async function GET(request: Request) {
+  const auth = await requireOwnerMembership();
+  if (auth.error) return auth.error;
+
+  const jobId = new URL(request.url).searchParams.get('jobId');
+  if (!jobId) return NextResponse.json({ error: 'Missing job.' }, { status: 400 });
+
+  const admin = createAdminClient();
+  const job = await getJob(admin, auth.accountId, jobId);
+  if (!job) return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
+
+  try {
+    const photos = await createJobPhotoLinks(auth.accountId, job.photo_paths || []);
+    return NextResponse.json({ photos });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load photos.' }, { status: 400 });
+  }
 }
 
 export async function POST(request: Request) {

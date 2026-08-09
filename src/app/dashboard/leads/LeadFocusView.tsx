@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { LeadDetailDto } from '@/lib/lead-detail';
 import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import type { LeadViewItem } from './LeadsWorkspace';
-import RecordCover from '../RecordCover';
+import RecordPhotos from '../RecordPhotos';
 import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction } from './actions';
 import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
@@ -156,12 +156,16 @@ export default function LeadFocusView({
           <>
             <header className={styles.hero}>
               <div className={styles.heroLayout}>
-                <RecordCover
+                <RecordPhotos
+                  kind="lead"
                   recordId={selected.id}
                   subject={selected.projectType || selected.detail}
                   photoUrl={fresh?.photos[0]?.url ?? null}
                   photoCount={selected.photoCount}
                   photoTotal={fresh?.photoCount}
+                  title={`Photos · ${selected.name || 'Lead'}`}
+                  emptyLabel="No photos yet. Add photos of the project so you can quote it faster."
+                  canOpen={base === '/dashboard'}
                 />
                 <div className={styles.heroCopy}>
                   <p className={styles.heroTag}>Selected lead</p>

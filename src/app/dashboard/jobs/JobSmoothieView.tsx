@@ -7,7 +7,7 @@ import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
 import ActionIcon from '@/components/action-icon';
-import RecordCover from '../RecordCover';
+import RecordPhotos from '../RecordPhotos';
 import {
   JOB_SORTS,
   JOB_STAGES,
@@ -381,12 +381,16 @@ export default function JobSmoothieView({
               {/* 1 — who and what */}
               <header className={styles.detailHead}>
                 <div className={styles.jobHeadLayout}>
-                  <RecordCover
+                  <RecordPhotos
+                    kind="job"
                     recordId={selected.id}
                     subject={selected.scope}
                     photoUrl={fresh?.photos[0]?.url ?? null}
                     photoCount={selected.photoCount}
                     photoTotal={fresh?.photoCount}
+                    title={`Photos · ${selected.clientName || selected.ref}`}
+                    emptyLabel="No photos yet. Add progress shots or before/after photos."
+                    canOpen={base === '/dashboard'}
                   />
                   <div className={styles.jobHeadCopy}>
                     <p className={focusStyles.heroTag}>Selected job</p>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
 import { addLeadPhotos, getLead, removeLeadPhoto, reorderLeadPhotos } from '@/lib/leads';
-import { createLeadPhotoUrls, deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { createLeadPhotoLinks, createLeadPhotoUrls, deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export const runtime = 'nodejs';
@@ -17,6 +17,29 @@ async function requireOwnerMembership() {
   }
 
   return { accountId: membership.accountId };
+}
+
+/**
+ * Every photo on a lead, signed. The job route's twin — see the note there for
+ * why the dialog fetches rather than reading the detail payload it already has.
+ */
+export async function GET(request: Request) {
+  const auth = await requireOwnerMembership();
+  if (auth.error) return auth.error;
+
+  const leadId = new URL(request.url).searchParams.get('leadId');
+  if (!leadId) return NextResponse.json({ error: 'Missing lead.' }, { status: 400 });
+
+  const admin = createAdminClient();
+  const lead = await getLead(admin, auth.accountId, leadId);
+  if (!lead) return NextResponse.json({ error: 'Lead not found.' }, { status: 404 });
+
+  try {
+    const photos = await createLeadPhotoLinks(auth.accountId, lead.photo_paths || []);
+    return NextResponse.json({ photos });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load photos.' }, { status: 400 });
+  }
 }
 
 export async function POST(request: Request) {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
-import RecordCover from '../RecordCover';
+import RecordPhotos from '../RecordPhotos';
 import ActionIcon from '@/components/action-icon';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
 import { useJobDetail } from './use-job-detail';
@@ -158,12 +158,16 @@ export default function FocusView({
           <>
             <header className={styles.hero}>
               <div className={styles.heroLayout}>
-              <RecordCover
+              <RecordPhotos
+                kind="job"
                 recordId={selected.id}
                 subject={selected.scope}
                 photoUrl={fresh?.photos[0]?.url ?? null}
                 photoCount={selected.photoCount}
                 photoTotal={fresh?.photoCount}
+                title={`Photos · ${selected.clientName || selected.ref}`}
+                emptyLabel="No photos yet. Add progress shots or before/after photos."
+                canOpen={base === '/dashboard'}
               />
               <div className={styles.heroCopy}>
               <p className={styles.heroTag}>Selected job</p>
