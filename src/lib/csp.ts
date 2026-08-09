@@ -137,14 +137,45 @@ const ANALYTICS_ENDPOINTS = [
 ];
 
 export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
-  // places.googleapis.com is NOT maps.googleapis.com. The Places (New) API —
-  // AutocompleteSuggestion and Place.fetchFields, which is every address field
-  // in the dashboard and the Google Business search in the website builder —
-  // talks to its own host, and only once somebody actually types. Loading the
-  // SDK and importing the places library contacts neither, so the measurement
-  // that enumerated the Maps surface never saw it and enforcement silently
-  // killed both features: the box just never suggests anything.
-  const connect = ["'self'", 'https://maps.googleapis.com', 'https://places.googleapis.com', ...ANALYTICS_ENDPOINTS];
+  /**
+   * ONE WILDCARD, AFTER THREE HAND-ENUMERATED HOSTS AND TWO OUTAGES.
+   *
+   * The Google Maps SDK does not talk to one host, and the set is not
+   * discoverable by reading anything. Enumerating it by hand has now failed
+   * twice in production:
+   *
+   *   places.googleapis.com        Places (New). Only contacted once a human
+   *                                types, so a measurement that loaded the SDK
+   *                                and imported the library never saw it, and
+   *                                enforcement silently killed every address
+   *                                field in the dashboard.
+   *   mapsresources-pa.googleapis.com
+   *                                Where a Map ID's Cloud style is fetched
+   *                                (/v1/featureMaps). Only contacted when a map
+   *                                carries a mapId — which every map in this app
+   *                                now does, because that is what enables vector
+   *                                rendering and AdvancedMarkerElement. Blocked,
+   *                                the SDK has no style to draw: measured
+   *                                side by side against the shipped policy, the
+   *                                same map came back in default Google light
+   *                                instead of the app's dark theme, and the
+   *                                console logged a vector-map failure. Every map
+   *                                in the product, at once.
+   *
+   * Both were invisible in the way this whole file keeps warning about: nothing
+   * errors, a fallback does something that looks deliberate, and the feature is
+   * simply wrong until somebody notices.
+   *
+   * So this stops being a list. What connect-src defends against is
+   * exfiltration after an XSS, and a Google API host is not a general-purpose
+   * sink — it needs credentials to accept anything. The boundary that matters
+   * is script execution, which script-src governs and this does not touch. Same
+   * reasoning the analytics block below already states.
+   *
+   * gstatic is deliberately NOT here: it serves map TILES, which are images,
+   * and the SDK never XHRs to it. img-src https: has always covered that.
+   */
+  const connect = ["'self'", 'https://*.googleapis.com', ...ANALYTICS_ENDPOINTS];
   if (supabaseOrigin) {
     connect.push(supabaseOrigin);
     // Supabase realtime/auth refresh uses a websocket on the same host.

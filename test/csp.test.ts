@@ -43,16 +43,54 @@ describe('buildCsp', () => {
     expect(connect.some((v) => v.includes('undefined') || v.includes('null'))).toBe(false);
   });
 
-  it('lets Places autocomplete reach its own host, which is not the Maps host', () => {
-    // The Places (New) API — every address field in the dashboard, and the
-    // Google Business search in the website builder — XHRs to
-    // places.googleapis.com, not maps.googleapis.com. Nothing contacts it until
-    // somebody types, so loading the SDK and importing the places library both
-    // look clean; enforcement blocked the request and the suggestion list just
-    // silently never appeared. Regression test for exactly that.
+  /**
+   * THE GOOGLE SDK HOSTS ARE NOT A LIST WE CAN KEEP.
+   *
+   * Enumerating them by hand failed twice in production, and both times the
+   * failure was silent:
+   *
+   *   places.googleapis.com  Places (New) — every address field in the
+   *                          dashboard and the Google Business search in the
+   *                          builder. Only contacted once somebody types, so
+   *                          loading the SDK and importing the library both
+   *                          looked clean; enforcement blocked the request and
+   *                          the suggestion list just never appeared.
+   *   mapsresources-pa.googleapis.com
+   *                          Where a Map ID's Cloud style comes from. Every map
+   *                          in the app carries a mapId, so blocking it took the
+   *                          dark theme off all of them at once — measured side
+   *                          by side, the same map came back in Google's default
+   *                          light with a vector-map failure in the console.
+   *
+   * A wildcard rather than a third entry, because the pattern is the finding.
+   */
+  it('lets the Google SDKs reach any of their own hosts', () => {
     const connect = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('connect-src')!;
-    expect(connect).toContain('https://places.googleapis.com');
-    expect(connect).toContain('https://maps.googleapis.com');
+    expect(connect).toContain('https://*.googleapis.com');
+
+    // The two that have actually broken, spelled out so the reason survives the
+    // wildcard. A CSP host wildcard matches any subdomain, at any depth.
+    const wildcard = /^https:\/\/\*\.googleapis\.com$/;
+    for (const host of [
+      'maps.googleapis.com',
+      'places.googleapis.com',
+      'mapsresources-pa.googleapis.com',
+    ]) {
+      const covered = connect.some(
+        (value) => value === `https://${host}` || (wildcard.test(value) && host.endsWith('.googleapis.com')),
+      );
+      expect(covered, host).toBe(true);
+    }
+  });
+
+  /**
+   * gstatic serves map TILES, which are images — the SDK never XHRs there, and
+   * img-src https: has always covered it. Listed here so a future reader does
+   * not "fix" a gap that is not one.
+   */
+  it('does not widen connect-src to hosts nothing connects to', () => {
+    const connect = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('connect-src')!;
+    expect(connect.some((value) => value.includes('gstatic'))).toBe(false);
   });
 
   it('never ships unsafe-eval in a production build', () => {
