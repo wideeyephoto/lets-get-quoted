@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { submitQuickStopRequestAction } from './actions';
 import type { QuickStopDayOption } from '@/lib/quick-stop';
 import { quickStopOfferedPhrase } from '@/lib/quick-stop-window';
+import { ISSUE_EXAMPLE, PHONE_EXAMPLE, addressExample } from '@/lib/booking-examples';
 
 type Qualification = {
   enabled?: boolean;
@@ -29,11 +30,14 @@ export default function QuickStopFlow({
   subdomain,
   siteId,
   businessName,
+  serviceArea,
   days,
 }: {
   subdomain: string;
   siteId: string;
   businessName: string;
+  /** Only so the address example names their town rather than somebody else's. */
+  serviceArea?: string | null;
   /** The days actually on offer — computed server-side from the owner's
    *  weekdays, how far ahead they accept, and whether today's window has
    *  already closed. Never assume "today": at 9pm it isn't one. */
@@ -180,9 +184,18 @@ export default function QuickStopFlow({
 
   return (
     <section className="panel workspace-section-card" style={{ marginTop: '1rem' }}>
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Quick Stop</p>
-        <h2>Tell us about the job</h2>
+      <div className="section-heading workspace-section-heading compact-heading book-qs-head">
+        <div>
+          <p className="eyebrow">Quick Stop</p>
+          <h2>Tell us about the job</h2>
+        </div>
+        {/* THE WAY BACK OUT, which did not exist. Opening this added five
+            questions and a photo upload to the bottom of an already long page,
+            and the only way to be rid of them was a full reload — which also
+            threw away whatever had been typed into the standard form above. */}
+        <button type="button" className="linklike book-qs-close" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
       </div>
       <p className="workspace-details-copy" style={{ marginTop: '.5rem', marginBottom: '1rem' }}>
         {/* The window the page is ACTUALLY offering, not a guess from how many
@@ -198,7 +211,7 @@ export default function QuickStopFlow({
       <div className="form-grid">
         <div className="field full">
           <label htmlFor="es-issue">What&apos;s the exact issue?</label>
-          <textarea id="es-issue" rows={3} value={issue} onChange={(e) => setIssue(e.target.value)} placeholder="Kitchen faucet is dripping steadily and won't shut off all the way." required />
+          <textarea id="es-issue" rows={3} value={issue} onChange={(e) => setIssue(e.target.value)} placeholder={ISSUE_EXAMPLE} required />
         </div>
         <div className={`field${wanted('startedWhen')}`}>
           <label htmlFor="es-started">When did it start?</label>
@@ -328,7 +341,7 @@ export default function QuickStopFlow({
             </div>
             <div className="field">
               <label htmlFor="es-phone">Mobile</label>
-              <input id="es-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(248) 555-0199" />
+              <input id="es-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={PHONE_EXAMPLE} />
             </div>
             <div className="field">
               <label htmlFor="es-email">Email</label>
@@ -337,7 +350,7 @@ export default function QuickStopFlow({
             <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
             <div className="field full">
               <label htmlFor="es-address">Address</label>
-              <input id="es-address" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+              <input id="es-address" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder={addressExample(serviceArea)} />
             </div>
           </div>
           <div className="field full" style={{ marginTop: '.5rem' }}>

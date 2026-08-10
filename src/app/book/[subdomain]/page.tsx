@@ -7,6 +7,7 @@ import { formatMoney } from '@/lib/jobs';
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import { siteCanonicalUrl } from '@/lib/seo/site-seo';
 import { phoneLink } from '@/lib/phone';
+import { PHONE_EXAMPLE, addressExample, jobExample } from '@/lib/booking-examples';
 import { submitBookingAction } from './actions';
 import BookingChrome from './BookingChrome';
 import BookingSteps from './BookingSteps';
@@ -31,12 +32,12 @@ export async function generateMetadata({ params }: { params: { subdomain: string
   return {
     // Absolute, or the root layout's "%s · Let's Get Quoted" template co-brands
     // a tab that is supposed to be the contractor's alone.
-    title: { absolute: `Book a time · ${businessName}` },
-    description: `Request an appointment with ${businessName}${site.service_area ? ` in ${site.service_area}` : ''}. Pick a window that works and they'll confirm.`,
+    title: { absolute: `Request a visit · ${businessName}` },
+    description: `Request an appointment with ${businessName}${site.service_area ? ` in ${site.service_area}` : ''}. Choose a preferred window and they'll confirm it with you.`,
     icons: siteIconsMetadata(site),
     robots: { index: false, follow: true },
-    openGraph: { title: `Book a time with ${businessName}`, type: 'website', images: [] },
-    twitter: { card: 'summary', title: `Book a time with ${businessName}`, images: [] },
+    openGraph: { title: `Request a visit with ${businessName}`, type: 'website', images: [] },
+    twitter: { card: 'summary', title: `Request a visit with ${businessName}`, images: [] },
   };
 }
 
@@ -192,7 +193,13 @@ export default async function BookingPage({
   });
   const quickStopEnabled = quickStopSettings.available && quickStopDays.length > 0;
   const quickStop = quickStopEnabled ? (
-    <QuickStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} days={quickStopDays} />
+    <QuickStopFlow
+      subdomain={params.subdomain}
+      siteId={site.id}
+      businessName={businessName}
+      serviceArea={site.service_area}
+      days={quickStopDays}
+    />
   ) : null;
 
   if (gate?.instant_book_enabled) {
@@ -201,9 +208,12 @@ export default async function BookingPage({
         <main className="wide-shell workspace-shell payment-shell">
           <section className="workspace-hero panel payment-hero workspace-hero-solo book-hero">
             <div className="workspace-hero-copy">
-              <p className="eyebrow">Book with {businessName}</p>
-              <h1 className="workspace-title">Book a time</h1>
-              <p className="workspace-lead">Tell us about the job for an instant estimate, then grab a time — no phone tag.</p>
+              <p className="eyebrow">{businessName}</p>
+              <h1 className="workspace-title">Request a visit</h1>
+              <p className="workspace-lead">
+                Tell us about the job for an instant estimate, then choose your preferred arrival window.{' '}
+                {businessName} will confirm it with you.
+              </p>
             </div>
           </section>
           <InstantBookFlow
@@ -242,10 +252,18 @@ export default async function BookingPage({
     <BookingChrome site={site}>
       <main className="wide-shell workspace-shell payment-shell">
         <section className="workspace-hero panel payment-hero workspace-hero-solo book-hero">
+          {/* "Book a time" promised something the page does not do. Every other
+              line on it — the button, the reassurance under the button, the
+              confirmation screen — already said this is a REQUEST the owner
+              confirms; the headline was the one place still claiming the slot
+              was yours the moment you pressed. Now the expectation is set
+              before the first field rather than in fine print after it. */}
           <div className="workspace-hero-copy">
-            <p className="eyebrow">Book with {businessName}</p>
-            <h1 className="workspace-title">Book a time</h1>
-            <p className="workspace-lead">Pick an available window and share a few details — no phone tag required.</p>
+            <p className="eyebrow">{businessName}</p>
+            <h1 className="workspace-title">Request a visit</h1>
+            <p className="workspace-lead">
+              Choose your preferred arrival window. {businessName} will confirm it with you.
+            </p>
           </div>
         </section>
 
@@ -340,34 +358,42 @@ export default async function BookingPage({
             </div>
             <div className="form-grid">
               <div className="field full">
-                <label htmlFor="name">Full name</label>
+                <label htmlFor="name">Full name <span className="book-req">Required</span></label>
                 <input id="name" name="name" required placeholder="Jane Homeowner" autoComplete="name" />
               </div>
+              {/* ABOVE the pair, not below it. A rule that only one of two
+                  fields is needed is useless once you have already filled in
+                  both, or skipped both and pressed the button — and this one
+                  sat under the boxes it governs, which is where somebody reads
+                  it for the first time while looking at a validation error. */}
+              <p className="field-hint booking-contact-hint booking-contact-rule">
+                Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to confirm.
+              </p>
               <div className="field">
                 <label htmlFor="phone">Mobile</label>
-                <input id="phone" name="phone" type="tel" placeholder="(248) 555-0199" autoComplete="tel" />
+                <input id="phone" name="phone" type="tel" placeholder={PHONE_EXAMPLE} autoComplete="tel" />
               </div>
               <div className="field">
                 <label htmlFor="email">Email</label>
                 <input id="email" name="email" type="email" placeholder="jane@email.com" autoComplete="email" />
               </div>
-              <p className="field-hint booking-contact-hint">
-                Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to confirm.
-              </p>
               <div className="field full">
-                <label htmlFor="address">Address</label>
-                <input id="address" name="address" required placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+                <label htmlFor="address">Address <span className="book-req">Required</span></label>
+                <input id="address" name="address" required placeholder={addressExample(site.service_area)} autoComplete="street-address" />
               </div>
               {/* This field was labelled "Anything else we should know?" while
                   its answer became the job's SCOPE. The question and the
                   destination disagreed, so people wrote access notes into the
                   scope of work. Two fields now, each asking for what it stores. */}
+              {/* Marked optional out loud. It is the biggest box on the page and
+                  sits between two required fields, which made it read as
+                  required — so somebody with nothing to add stalls on it. */}
               <div className="field full">
-                <label htmlFor="description">What&apos;s the job?</label>
-                <textarea id="description" name="description" rows={3} placeholder="Roof looks worn after the last storm — would like an estimate." />
+                <label htmlFor="description">What&apos;s the job? <span className="book-opt">Optional</span></label>
+                <textarea id="description" name="description" rows={3} placeholder={jobExample(services.map((service) => service.name))} />
               </div>
               <div className="field full">
-                <label htmlFor="note">Anything we should know? (optional)</label>
+                <label htmlFor="note">Anything we should know? <span className="book-opt">Optional</span></label>
                 <textarea id="note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
                 <small className="field-hint">This goes to whoever turns up, not just the office.</small>
               </div>

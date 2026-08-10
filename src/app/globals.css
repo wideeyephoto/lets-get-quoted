@@ -22303,6 +22303,92 @@ a.bset-card { color: inherit; text-decoration: none; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Pairs with z-index:-1 on .book-glare below: the sweep paints above this
+     page's background and beneath every line of its content, in one
+     declaration, without raising a single content element to do it. */
+  isolation: isolate;
+}
+
+/* ===========================================================================
+   A BAND OF LIGHT CROSSING THE PAGE
+   ---------------------------------------------------------------------------
+   The same slow specular sweep the homepage bands carry (see §99 in
+   flagship.module.css) — the sheen of a light dragged across brushed metal,
+   not a highlight racing past.
+
+   FIXED, not absolute, and that is the difference from the homepage version.
+   There the sweep belongs to a section and travels with it; here there is one
+   page doing one job, and a form that can run to two thousand pixels. Anchored
+   to the viewport it stays a light in the room rather than something that
+   scrolls off and leaves the rest of the page flat.
+
+   No IntersectionObserver either, for the same reason: the homepage pauses six
+   sweeps that are off screen at any moment. This one is never off screen, so
+   the observer would be machinery guarding nothing.
+
+   Blur on a transformed layer, so the blur is rasterised once and the
+   compositor only moves the result — nothing repaints per frame.
+   ======================================================================== */
+.book-glare {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Prefixed as well as not, and on this page that is not belt-and-braces:
+     this is the one screen in the product whose audience is the general
+     public rather than a contractor who chose their own browser, and Safari
+     still needs the prefix. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.book-glare::before,
+.book-glare::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -68%;
+  width: 42%;
+  will-change: transform;
+  /* Slower than the homepage's 21s. A marketing band is scrolled past; this
+     page is read and typed into, and motion in the corner of the eye of
+     somebody entering their address should be almost subliminal. */
+  animation: bookGlare 41s linear infinite;
+}
+.book-glare::before {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.02) 26%,
+    rgba(255, 255, 255, 0.062) 50%,
+    rgba(255, 255, 255, 0.02) 74%,
+    transparent 100%
+  );
+  filter: blur(26px);
+}
+/* A second, narrower, warmer one at a rate that shares no factor with the
+   first — 41 and 59 are both prime, so the two never re-synchronise and the
+   pair never resolves into a single repeating wipe. */
+.book-glare::after {
+  width: 24%;
+  left: -52%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 178, 122, 0.045) 50%, transparent 100%);
+  filter: blur(34px);
+  animation-duration: 59s;
+  animation-delay: -17s;
+}
+
+@keyframes bookGlare {
+  0%   { transform: translate3d(0, 0, 0) rotate(9deg); opacity: 0; }
+  9%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translate3d(380%, 0, 0) rotate(9deg); opacity: 0; }
+}
+
+/* Ambient and untriggered, so it goes entirely rather than slows down. */
+@media (prefers-reduced-motion: reduce) {
+  .book-glare { display: none; }
 }
 
 /* Every color-mix() below is paired with a flat fallback declared first. This
@@ -22649,6 +22735,58 @@ a.bset-card { color: inherit; text-decoration: none; }
   color: rgba(var(--tint), 0.55);
 }
 
+/**
+ * WHICH FIELDS ARE ACTUALLY REQUIRED, SAID BEFORE THE BUTTON IS PRESSED.
+ *
+ * Name and address carried `required` and no marking of any kind, "What's the
+ * job?" carried no `required` and looked like the most important box on the
+ * page, and the rule that you need a mobile OR an email was printed underneath
+ * the two fields it governs. The only thing that told anybody the truth was
+ * the browser's own validation bubble, after a failed submit.
+ *
+ * A word rather than an asterisk: an asterisk needs a legend, and the legend is
+ * always somewhere else on the page.
+ */
+.book-req,
+.book-opt {
+  margin-left: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: 0.06em;
+}
+.book-req { color: var(--book-accent, var(--accent)); }
+/* Quieter than required by a clear margin. Marking something optional should
+   cost less attention than marking something required, or the two markers
+   average out to noise and neither one is read. */
+.book-opt { color: rgba(var(--tint), 0.42); font-weight: 700; }
+
+/* The mobile-or-email rule, lifted above the pair it governs. Full width so it
+   spans both columns of the grid instead of sitting in one of them. */
+.booking-contact-rule {
+  grid-column: 1 / -1;
+  margin: 0.1rem 0 -0.35rem;
+}
+
+/* Quick Stop's way back out. A link rather than a button: leaving a path you
+   opened by accident should not look like a decision of the same weight as
+   the one that got you here. */
+.book-qs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.book-qs-close {
+  flex: none;
+  min-height: 44px;
+  padding: 0 0.2rem;
+  font-size: 0.82rem;
+  color: rgba(var(--tint), 0.62);
+}
+.book-qs-close:hover { color: rgba(var(--tint), 0.9); }
+
 .book-escape {
   margin: 1.15rem 0 0;
   padding-top: 1.05rem;
@@ -22899,6 +23037,54 @@ a.bset-card { color: inherit; text-decoration: none; }
   .book-step-label {
     font-size: 0.78rem;
   }
+}
+
+/* ===========================================================================
+   THE TRUST STRIP, ON A PHONE: ONE LINE THAT SCROLLS
+   ---------------------------------------------------------------------------
+   Rating, reply time, licence, service area and hours are five facts drawn as
+   "Label Value" pairs in a wrapping row. On a phone that wrapped to four or
+   five lines, and every one of those lines pushed the first thing a visitor
+   can actually DO further down a screen that already opens on the business
+   rather than on the booking.
+
+   Nothing is dropped. A licence number and a service area are exactly the
+   reassurance somebody wants before typing their address into a stranger's
+   form — they just stop being a paragraph. One non-wrapping row, scrolled
+   horizontally, with a half-visible fact at the right edge doing the work of
+   telling you there is more.
+   ======================================================================== */
+@media (max-width: 720px) {
+  .book-facts { padding: 0.85rem 1rem 0; }
+
+  .book-facts ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0 0.7rem;
+    padding-bottom: 0.2rem;
+    /* The row is short and self-evidently scrollable from its cut-off edge; a
+       scrollbar under five words is more chrome than content. The pair is not
+       redundant: scrollbar-width covers Firefox and Chrome 121+, the
+       ::-webkit- rule covers Safari and older Chrome. */
+    scrollbar-width: none;
+  }
+  .book-facts ul::-webkit-scrollbar { display: none; }
+
+  .book-fact {
+    flex: none;
+    font-size: 0.75rem;
+  }
+  /* Four facts on one line have to read as four facts rather than as one long
+     sentence, and a gap alone does not do that at this size. */
+  .book-fact + .book-fact::before {
+    content: '·';
+    margin-right: 0.35rem;
+    color: rgba(var(--tint), 0.32);
+  }
+  /* The value already truncates with an ellipsis; in a nowrap row the LABEL
+     has to stop wrapping too or a two-word label becomes two lines and puts
+     the strip's height back. */
+  .book-fact-label { white-space: nowrap; }
 }
 
 @media (max-width: 420px) {

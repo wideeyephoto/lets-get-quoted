@@ -74,6 +74,12 @@ export default function BookingChrome({ site, children }: { site: Site; children
 
   return (
     <div className="book-scope" style={scope}>
+      {/* Two slow bands of light crossing the page behind everything on it.
+          Fixed to the viewport rather than to a section, so a form that runs to
+          two thousand pixels keeps the same light all the way down. Decorative
+          and unreachable: see .book-glare. */}
+      <i className="book-glare" aria-hidden="true" />
+
       <header className="book-topbar">
         <a className="book-brand" href={homeUrl ?? '#'} aria-label={homeUrl ? `${businessName} home` : businessName}>
           {site.logo_url ? (
