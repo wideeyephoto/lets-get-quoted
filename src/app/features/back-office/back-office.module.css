@@ -216,6 +216,12 @@
 
 .capGroup {
   min-width: 0;
+  /* A column, so the links can be pushed to the bottom edge. The grid stretches
+     all four cards to the tallest, and "Quote and approve" has four items where
+     "Schedule and crew" has five — so its exit row floated in the middle of a
+     pocket of empty space instead of reading as the foot of the card. */
+  display: flex;
+  flex-direction: column;
   /* Each group is an anchor: the nine tool cards on /features link straight at
      the group that writes their tool up. The site header is fixed at 82px, so
      without this every one of them arrives underneath it. */
@@ -265,6 +271,55 @@
   margin: 0.9rem 0 0;
   padding: 0;
   list-style: none;
+}
+
+/* The way out of each group, to the page that takes it apart properly.
+   A <p> of inline links rather than a list: it is a sentence's worth of
+   navigation under a list that already exists, and a second <ul> here would
+   read as more capabilities. */
+/* SCOPED UNDER .capGroup, and that is load-bearing rather than tidy. The
+   flagship shell resets the elements themselves — `.root p, .root figure, ... {
+   margin: 0 }` — which at (0,1,1) outranks a lone module class at (0,1,0). A
+   bare .capDeeper lost its margin-top and the link row floated in the middle of
+   the card instead of sitting on its bottom edge. (0,2,0) wins honestly. */
+.capGroup .capDeeper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  /* auto, so it sits on the bottom edge whatever the card was stretched to. */
+  margin: auto 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+.capGroup .capDeeper a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* 44px of target including the padding — these sit at the bottom of a card
+     on a phone, which is exactly where a thumb lands. */
+  min-height: 44px;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--cedge-orange-2);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.07);
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.capGroup .capDeeper a:hover {
+  border-color: var(--flare, #ff7a21);
+  background: rgba(255, 122, 33, 0.14);
+}
+.capGroup .capDeeper a > span[aria-hidden] {
+  font-size: 0.9em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capGroup .capDeeper a {
+    transition: none;
+  }
 }
 
 .capList > li + li {

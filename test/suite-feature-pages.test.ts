@@ -75,6 +75,62 @@ describe('every suite page exists and is wired up', () => {
   });
 });
 
+/**
+ * /features/back-office is the hub, and its capability list is the map.
+ *
+ * Until these pages existed, that list was also the end of the road: a reader
+ * who wanted more than three lines on payment plans had nowhere to go. Each of
+ * the four stages now names the pages that take it apart — which is also the
+ * only thing keeping back-office from reading as a rival to the seven rather
+ * than the page they all belong to.
+ */
+describe('the back office links out to the pages that go deeper', () => {
+  const BACK_OFFICE = strip(read('src/app/features/back-office/page.tsx'));
+  const linked = [...BACK_OFFICE.matchAll(/href: '(\/features\/[a-z-]+)'/g)].map((m) => m[1]);
+
+  it('reaches all seven suite pages', () => {
+    for (const { slug } of SUITE) {
+      expect(linked, slug).toContain(`/features/${slug}`);
+    }
+  });
+
+  it('reaches the client portal too, which is the eighth thing that stage covers', () => {
+    expect(linked).toContain('/features/client-portal');
+  });
+
+  it('gives every one of the four stages a way out', () => {
+    // A stage with no exit is the dead end this change exists to remove.
+    const groups = BACK_OFFICE.slice(
+      BACK_OFFICE.indexOf('const CAPABILITY_GROUPS'),
+      BACK_OFFICE.indexOf('const CAPABILITY_COUNT'),
+    );
+    expect([...groups.matchAll(/id: '/g)]).toHaveLength(4);
+    expect([...groups.matchAll(/deeper: \[/g)]).toHaveLength(4);
+  });
+
+  it('keeps the seventeen long-form explanations', () => {
+    // The suite pages are built from lib/features.ts's short catalog entries;
+    // these are long-form and written for this page. Replacing them with links
+    // would have cost the page what it is best at to remove a duplication that
+    // does not exist.
+    expect([...BACK_OFFICE.matchAll(/^\s+term: '/gm)]).toHaveLength(17);
+    expect(BACK_OFFICE).toContain('<p>{item.detail}</p>');
+  });
+
+  it('tells a screen reader which stage each link belongs to', () => {
+    // Three groups offer a link called "Payments", "Cash flow" or similar. A
+    // links list read out of context would otherwise be several identical
+    // names with nothing to separate them.
+    expect(BACK_OFFICE).toContain('{group.stage.toLowerCase()}');
+    expect(BACK_OFFICE).toContain('className="sr-only"');
+  });
+
+  it('gives those links a real tap target', () => {
+    const css = read('src/app/features/back-office/back-office.module.css');
+    expect(css).toMatch(/\.capDeeper a \{[^}]*min-height: 44px/);
+  });
+});
+
 describe('the capability list is read from the product catalog', () => {
   it('the shell reads FEATURE_CATEGORIES rather than a list of its own', () => {
     expect(SHELL).toContain("from '@/lib/features'");

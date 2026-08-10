@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ExampleFrame, FeatureDetailLayout, ShotSlider, type Shot } from '@/components/marketing';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
@@ -209,10 +210,28 @@ function JobRecordExample() {
    each link at the group that writes their tool up, so a reader who taps
    "Payments" arrives at the payment capabilities rather than at the top of a
    long page. Renaming one silently breaks a link; there is a test. */
-const CAPABILITY_GROUPS: { id: string; stage: string; items: { term: string; detail: string }[] }[] = [
+/* EACH GROUP NOW POINTS AT THE PAGES THAT GO DEEPER.
+   ---------------------------------------------------------------------------
+   This list is the map of the product, and until the suite pages existed it was
+   also the end of the road: a reader who wanted more than three lines about
+   payment plans had nowhere to go from here. Now each stage names the one or
+   two pages that take its capabilities apart properly, which is what makes this
+   page the hub — one job record — rather than a competitor to them.
+
+   The seventeen explanations stay. They are not what the suite pages say: those
+   are built from lib/features.ts's short catalog entries, and these are
+   long-form, written for this page. Replacing them with links would have cost
+   the page the thing it is best at to save a duplication that does not exist. */
+const CAPABILITY_GROUPS: {
+  id: string;
+  stage: string;
+  items: { term: string; detail: string }[];
+  deeper: { label: string; href: string }[];
+}[] = [
   {
     id: 'quote-and-approve',
     stage: 'Quote and approve',
+    deeper: [{ label: 'Quotes + e-signature', href: '/features/quotes' }],
     items: [
       {
         term: 'Itemized quotes from your own price book',
@@ -239,6 +258,10 @@ const CAPABILITY_GROUPS: { id: string; stage: string; items: { term: string; det
   {
     id: 'schedule-and-crew',
     stage: 'Schedule and crew',
+    deeper: [
+      { label: 'Scheduling', href: '/features/scheduling' },
+      { label: 'Crew + labor', href: '/features/crew' },
+    ],
     items: [
       {
         term: 'Scheduling the customer helps pick',
@@ -270,6 +293,11 @@ const CAPABILITY_GROUPS: { id: string; stage: string; items: { term: string; det
   {
     id: 'money',
     stage: 'Money',
+    deeper: [
+      { label: 'Payments', href: '/features/payments' },
+      { label: 'Cash flow', href: '/features/cash-flow' },
+      { label: 'Recurring work', href: '/features/recurring' },
+    ],
     items: [
       {
         term: 'Deposits and balances through Stripe',
@@ -296,6 +324,10 @@ const CAPABILITY_GROUPS: { id: string; stage: string; items: { term: string; det
   {
     id: 'customer-during-and-after',
     stage: 'The customer, during and after',
+    deeper: [
+      { label: 'Client portal + texting', href: '/features/client-portal' },
+      { label: 'Reviews + growth', href: '/features/reviews' },
+    ],
     items: [
       {
         term: 'A client portal, not another password',
@@ -615,7 +647,8 @@ export default function BackOfficePage() {
           </h2>
           <p>
             Not modules you switch on one at a time. These are the parts of the same record, and
-            each one is there because the stage before it already collected what it needs.
+            each one is there because the stage before it already collected what it needs. Each
+            stage links to the page that takes it apart properly.
           </p>
         </div>
 
@@ -659,6 +692,23 @@ export default function BackOfficePage() {
                   </li>
                 ))}
               </ul>
+
+              {/* The way out of the list. Named links rather than one "learn
+                  more": a group can lead to two or three pages, and "Cash flow"
+                  tells a reader what they are about to get in a way that "read
+                  more about Money" cannot. The stage name is repeated into each
+                  link's accessible name, because a screen-reader user pulling
+                  up a list of links otherwise hears "Payments" three times over
+                  from three different groups with nothing to tell them apart. */}
+              <p className={styles.capDeeper}>
+                {group.deeper.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    {link.label}
+                    <span aria-hidden="true">→</span>
+                    <span className="sr-only"> — {group.stage.toLowerCase()}</span>
+                  </Link>
+                ))}
+              </p>
             </div>
           ))}
         </div>
