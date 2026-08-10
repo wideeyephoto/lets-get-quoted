@@ -37,6 +37,17 @@ const STARTING_RATE = FEE_TIERS[0].rate;
 const LEDE =
   'I kept seeing talented contractors held back by terrible websites, generic lead forms and a back office split across too many tools. Let’s Get Quoted is my attempt to fix the whole chain—not just redesign the front page.';
 
+/* The hero says what the product does FOR you in one breath; LEDE above says
+   where it came from, and now opens the story section instead. Two different
+   jobs that were being done by one paragraph in the old hero. */
+const HERO_LEDE =
+  'I built Let’s Get Quoted to turn a strong first impression into a cleaner lead, a faster quote and a business that is easier to run.';
+
+/* The line the hero is built around. It is PRINCIPLES[3] compressed to
+   something you can hold — the long version is still down the page, doing the
+   arguing. */
+const HERO_PULL_QUOTE = '“The one-truck business gets the complete product.”';
+
 const MANIFESTO_QUOTE =
   '“A contractor starting with one truck should be able to look professional, respond intelligently and run the work with the same confidence as a much larger company.”';
 
@@ -184,40 +195,62 @@ export default function FounderPage() {
         <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
         <div className="marketing-shell">
-          <section className="hero-grid" aria-labelledby="founder-title">
-            <div className="hero-copy">
-              <p className="eyebrow">A note from the founder</p>
+          {/* Portrait-led. The hero used to be copy beside a manifesto panel —
+              two blocks of text arguing for the first screen, neither of them
+              the face the eyebrow promises. The panel is still on the page,
+              directly below, where it is something you read rather than
+              something competing with the headline. */}
+          <section className={styles.portraitHero} aria-labelledby="founder-title">
+            <div className={styles.portraitCopy}>
+              <p className="eyebrow">From Brett, the founder</p>
               <h1 id="founder-title" className={styles.title}>
-                Contractors deserve software that makes the business look{' '}
-                <em>as good as the work.</em>
+                Contractors don’t need more software. <em>They need better leverage.</em>
               </h1>
-              <p className={styles.lede}>{LEDE}</p>
+              <p className={styles.lede}>{HERO_LEDE}</p>
 
               <div className="actions">
-                <CtaLink spec={{ label: 'Build my free site' }} className="btn primary" arrow />
-                <CtaLink
-                  spec={{ label: 'See what it runs', href: '/features' }}
-                  className="btn secondary"
-                />
-              </div>
-
-              <div className={styles.signature}>
-                {/* A monogram, not a portrait. There is no photograph on this page
-                    and no biography behind it — the page says what is being built
-                    and why, and nothing about the person that the copy does not
-                    already say out loud. */}
-                <span className={styles.monogram} aria-hidden="true">
-                  B
-                </span>
-                <span>
-                  <span className={styles.signatureName}>Brett</span>
-                  <span className={styles.signatureRole}>Founder · Let’s Get Quoted</span>
-                </span>
+                <CtaLink spec={{ label: 'Start free' }} className="btn primary" arrow />
+                <a className={styles.readStory} href="#the-story">
+                  Read the story <span aria-hidden="true">↓</span>
+                </a>
               </div>
             </div>
 
-            <aside className={`panel ${styles.manifesto}`} aria-label="Why I’m building this">
+            <figure className={styles.portraitFrame}>
+              {/* THE PLACEHOLDER. Swapping it in is one element: replace this
+                  <div> with an <img className={styles.portraitSlot} src=… alt="Brett, …" />
+                  and delete the note below it. Every rule that shapes the
+                  picture — crop, greyscale, the fade into the copy — is already
+                  on .portraitSlot and applies to an <img> unchanged, so the
+                  layout cannot move when the real photograph lands.
+
+                  aria-hidden because it depicts nothing; the note beside it is
+                  the only thing here with anything to say. */}
+              <div className={styles.portraitSlot} aria-hidden="true" />
+              <p className={styles.portraitSlotNote}>
+                <svg className={styles.portraitSlotGlyph} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <circle cx="12" cy="8.5" r="3.75" />
+                  <path d="M4.5 20.5c0-3.9 3.36-6.75 7.5-6.75s7.5 2.85 7.5 6.75" strokeLinecap="round" />
+                </svg>
+                Portrait to come
+              </p>
+            </figure>
+
+            {/* A sibling of the figure, not a figcaption inside it. Inside, it
+                inherited the frame's fixed aspect ratio, so on a phone — where
+                it stops being absolutely positioned — it landed on top of the
+                portrait instead of below it. Out here it is absolute against
+                the hero on desktop and simply the last row on a phone. */}
+            <blockquote className={styles.portraitQuote}>{HERO_PULL_QUOTE}</blockquote>
+          </section>
+
+          {/* Was the right half of the hero. */}
+          <section className="section-block" aria-labelledby="founder-manifesto-title">
+            <div className={styles.sectionHead}>
               <p className="eyebrow">Why I’m building this</p>
+              <h2 id="founder-manifesto-title">The standard I am holding it to.</h2>
+            </div>
+            <div className={`panel ${styles.manifesto}`}>
               <blockquote className={styles.quote}>{MANIFESTO_QUOTE}</blockquote>
               <ul className={styles.pledges}>
                 {PLEDGES.map((pledge, index) => (
@@ -229,13 +262,37 @@ export default function FounderPage() {
                   </li>
                 ))}
               </ul>
-            </aside>
+              <div className={styles.signature}>
+                {/* The monogram kept its place here, where it signs the pledges
+                    above it. In the hero it was a stand-in for a face; on a
+                    statement of principles it is a signature. */}
+                <span className={styles.monogram} aria-hidden="true">
+                  B
+                </span>
+                <span>
+                  <span className={styles.signatureName}>Brett</span>
+                  <span className={styles.signatureRole}>Founder · Let’s Get Quoted</span>
+                </span>
+              </div>
+            </div>
           </section>
 
-          <section className="section-block" aria-labelledby="founder-story-title">
+          {/* Where "Read the story ↓" lands. The id is on the SECTION rather
+              than the heading so the scroll-margin that clears the fixed
+              header has something to sit on. */}
+          <section
+            className={`section-block ${styles.storyAnchor}`}
+            id="the-story"
+            aria-labelledby="founder-story-title"
+          >
             <div className={styles.sectionHead}>
               <p className="eyebrow">The idea behind the product</p>
               <h2 id="founder-story-title">The website should start the back office.</h2>
+              {/* The old hero's opening paragraph. It answers "where did this
+                  come from", which is the question somebody who just pressed
+                  "Read the story" is asking — and never the one the hero was
+                  being asked. */}
+              <p className={styles.lede}>{LEDE}</p>
             </div>
             <ol className={styles.cards}>
               {CHAPTERS.map((chapter, index) => (

@@ -7,9 +7,22 @@
  * the words came from there, every colour and radius below is one of this
  * app's tokens.
  *
- * One thing this file deliberately does NOT contain: an image. The founder
- * mark is a CSS monogram. A portrait would be a claim about a person, and this
- * page makes no claims about the person beyond the ones the copy makes. */
+ * THE PORTRAIT, AND THE NOTE THAT USED TO BE HERE.
+ *
+ * This header used to say the file deliberately contained no image — that the
+ * founder mark was a CSS monogram, because "a portrait would be a claim about
+ * a person, and this page makes no claims about the person beyond the ones the
+ * copy makes."
+ *
+ * That was a reasonable rule for a page whose hero led with the product. It is
+ * the wrong rule for one that opens "From Brett, the founder" and then asks
+ * you to trust a stranger's judgement about your business. A face is not an
+ * extra claim there; it is the evidence for the claim the eyebrow already
+ * makes. The monogram survives further down the page, where it is a signature
+ * rather than a stand-in.
+ *
+ * The image itself is not here yet. .portraitSlot is a deliberate placeholder
+ * — see the comment on it for what replacing it takes. */
 
 /* ---- hero ---------------------------------------------------------------- */
 
@@ -29,6 +42,193 @@
 .title em {
   font-style: normal;
   color: var(--gold-ink);
+}
+
+/* ---- the portrait-led hero ----------------------------------------------
+   Copy left, a face on the right bleeding to the edge of the card, and the
+   one line worth remembering pinned across the seam between them.
+
+   The old hero put a manifesto panel in this space. That panel still exists —
+   it moved below, under its own heading, where three pledges and a pull quote
+   are something you read rather than something competing with the headline
+   for the first screen.
+   ------------------------------------------------------------------------ */
+.portraitHero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  align-items: center;
+  margin: 1.4rem 0 3rem;
+  border: 1px solid var(--edge-t08);
+  border-radius: 20px;
+  background: var(--bg-2);
+  /* clip, not hidden: it rounds the portrait's corners without making this a
+     scroll container. */
+  overflow: clip;
+  isolation: isolate;
+}
+
+.portraitCopy {
+  position: relative;
+  z-index: 1;
+  padding: clamp(1.5rem, 3.6vw, 3.2rem);
+}
+
+/* Bigger than the old .title, which was sized down to fit a panel beside it.
+   With a photograph rather than a paragraph on the right, the headline is the
+   loudest thing on the page and should look it. */
+.portraitHero .title {
+  font-size: clamp(2rem, 3.7vw, 3.4rem);
+  max-width: 15ch;
+  margin: 0.45rem 0 1rem;
+}
+
+.portraitHero .lede { max-width: 42ch; }
+
+/**
+ * The accent half of the headline, in the brand orange rather than the gold
+ * the rest of the page uses for emphasis.
+ *
+ * --gold-ink exists because it survives a theme flip; this hero is dark-only
+ * and the headline is the one place on the page that should agree with the
+ * button underneath it. Measured rather than assumed: #ff7a21 on this card's
+ * #0b1220 is 7.1:1, well past the 4.5 it would need even as body text, and
+ * this is 3.4rem display type.
+ */
+.portraitHero .title em { color: var(--accent); }
+
+.portraitFrame {
+  position: relative;
+  align-self: stretch;
+  min-height: 27rem;
+  margin: 0;
+}
+
+/**
+ * THE PLACEHOLDER, AND HOW IT STOPS BEING ONE.
+ *
+ * Replacing this is one element: drop an <img> (or next/image) with the same
+ * class in place of the <div>, and delete the .portraitSlotNote beside it.
+ * Everything that shapes the photograph — the crop, the fade into the copy,
+ * the greyscale, the corner it bleeds out of — is on this class already and
+ * applies to an <img> unchanged, so the layout cannot shift when the real
+ * picture lands.
+ *
+ * It is drawn rather than left blank on purpose. An empty box in a hero reads
+ * as a broken image and invites somebody to "fix" it.
+ */
+.portraitSlot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  /* Black and white, like the reference. A colour photograph in this corner
+     competes with the one orange line the hero is built around. */
+  filter: grayscale(1) contrast(1.04);
+  /* Melts into the copy rather than butting against it. A MASK rather than a
+     gradient overlay so there is no background colour to keep in sync — the
+     photograph fades to transparent and the card's own background shows
+     through, whatever that background becomes. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+  background:
+    radial-gradient(120% 90% at 70% 18%, rgba(var(--tint), 0.09), transparent 62%),
+    linear-gradient(160deg, var(--bg-3), var(--bg));
+}
+
+/* Sits on top of the masked slot, so it stays legible while the "photo"
+   underneath fades out. Goes when the real portrait arrives. */
+.portraitSlotNote {
+  position: absolute;
+  right: 8%;
+  bottom: 38%;
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+  justify-items: center;
+  color: rgba(var(--tint), 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.portraitSlotGlyph {
+  width: 3.2rem;
+  height: 3.2rem;
+  opacity: 0.5;
+}
+
+/**
+ * The pull quote, laid across the seam. Deliberately overlapping both columns:
+ * centred in the photo it would read as a caption about the person, and inside
+ * the copy column it would read as a fourth paragraph. On the join it belongs
+ * to neither and closes the hero.
+ */
+.portraitQuote {
+  /* Positioned against .portraitHero, not the figure — see the note in the
+     markup. Absolute here means it is out of flow, so it does not add a third
+     grid row on desktop. */
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  left: 44%;
+  z-index: 2;
+  margin: 0;
+  padding: 0.8rem 1.15rem;
+  border-left: 3px solid var(--accent);
+  /* Solid rather than a blur: this sits over a photograph nobody has chosen
+     yet, and a backdrop-filter's legibility depends entirely on what is
+     behind it. */
+  background: rgba(var(--shade), 0.72);
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* An anchor, not a button — the primary action beside it is the one that
+   should look pressable. */
+.readStory {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--edge-t16);
+}
+.readStory:hover { color: var(--gold-ink); border-bottom-color: var(--cedge-orange-2); }
+
+/* The story section is what "Read the story" jumps to, and the marketing
+   header is fixed over the top of it. */
+.storyAnchor { scroll-margin-top: 6rem; }
+
+@media (max-width: 860px) {
+  /* One column, copy first. The portrait keeps its place in the design but
+     stops being half of a phone's first screen — and the fade turns 90°,
+     because the seam it is melting into is now the edge above it, not beside
+     it. */
+  .portraitHero { grid-template-columns: minmax(0, 1fr); }
+  /* No `order` here. DOM order is already copy → portrait → quote, and an
+     order:2 on the frame alone pushed it past the quote, which has none —
+     landing the pull quote above the picture it is supposed to close. */
+  .portraitFrame {
+    min-height: 0;
+    aspect-ratio: 3 / 2;
+  }
+  .portraitSlot {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 34%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 34%);
+    object-position: center 18%;
+  }
+  .portraitSlotNote { right: 50%; bottom: 30%; transform: translateX(50%); }
+  .portraitQuote {
+    position: static;
+    margin: 0 clamp(1rem, 4vw, 1.5rem) clamp(1rem, 4vw, 1.5rem);
+  }
 }
 
 .lede {
