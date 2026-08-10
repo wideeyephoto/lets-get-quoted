@@ -5038,6 +5038,36 @@ const TWEAKS = `
   }
 }
 
+/* ---- copy on a feature page is copy, not a caption -----------------------
+
+   Measured on /features/ai-intake at 390x844: fifteen runs of real prose under
+   13px, and four of them at 10. These three are the worst and all three are in
+   the shared layout, so the same numbers are on five pages:
+
+     .detail-proof small        10px   what each proof point actually claims
+     .detail-benefits article p 11px   the benefit, under its heading
+     .process-steps p           10px   the step, under its heading
+
+   Ten pixels is a caption size, and none of these is a caption — they are the
+   sentence that makes the heading above them mean something. The desktop grid
+   is four columns of about 250px, which is where the small sizes came from; on
+   a phone those columns are the full width and there is no reason for it. */
+@media (max-width: 900px) {
+  .root :global(.detail-proof b) { font-size: 14px; }
+  .root :global(.detail-proof small) { font-size: 14px; line-height: 1.55; }
+  .root :global(.detail-benefits article p) { font-size: 15px; line-height: 1.6; }
+  .root :global(.process-steps p) { font-size: 15px; line-height: 1.6; }
+  .root :global(.process-steps h3) { font-size: 18px; }
+}
+
+/* Not only on a phone. At 1024 the same four columns are ~230px each and the
+   sentence under each heading is still 10px. */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .root :global(.detail-proof small) { font-size: 12px; }
+  .root :global(.detail-benefits article p) { font-size: 13px; }
+  .root :global(.process-steps p) { font-size: 12.5px; }
+}
+
 /* ---- an in-page link lands where you can read it -------------------------
 
    Every feature page's hero carries a second button pointing at a section

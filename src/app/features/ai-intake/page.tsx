@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
+import SampleIntake from './sample-intake';
 import ExampleFrame from '@/components/marketing/example-frame';
 import { TRADES } from '@/lib/trades';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { TIER_LABEL } from '@/lib/lead-priority';
 import styles from './ai-intake.module.css';
 
@@ -122,23 +124,68 @@ const ALERT_LADDER = [
   },
 ] as const;
 
+/* Answers checked against the product rather than against the pitch: the trade
+   count is TRADES, the scoring signals are lib/leads.ts, the phone code is
+   lib/lead-verification.ts, and the alert thresholds are the intake settings
+   the ladder below describes. Nothing here promises a capability the rest of
+   the page has not already shown. */
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'What decides a lead’s score?',
+    a: 'Fit, urgency, value and distance. The job description and the follow-up answers give the first three; the service area you set gives the fourth, when that question is switched on.',
+  },
+  {
+    q: 'Which trades does it work for?',
+    a: `All ${TRADES.length}. The follow-up questions, the services and the FAQs are built for the trade on your account rather than for contractors in general — a water heater draws different questions from a panel upgrade.`,
+  },
+  {
+    q: 'Can I change what it asks?',
+    a: 'Yes. You set the minimum job size, list the work you don’t take, choose whether an email is required alongside the phone number, and set the dollar figure that counts as high value.',
+  },
+  {
+    q: 'What happens to leads that score low?',
+    a: 'They are captured and they stay on your board. What changes is that they do not text you and do not email you by default — nothing is discarded, it just stops arriving as an interruption.',
+  },
+  {
+    q: 'Is the estimate a quote?',
+    a: 'No. It is a range, shown to set expectations before either side spends time on a call, and you see the same range the homeowner saw. The quote is yours to build afterwards.',
+  },
+  {
+    q: 'Do I need a Let’s Get Quoted website?',
+    a: 'Yes — Smart Intake is the request form on the site we build for you, which is included. There is nothing for the homeowner to install and no app to talk them through.',
+  },
+];
+
 export default function AIIntakePage() {
   return (
     <FeatureDetailLayout
-      eyebrow="AI intake that thinks like an estimator"
+      eyebrow="AI intake for contractors"
+      /* The old headline was about the ALERT ("worth the interruption"), which
+         is the third thing this does. What a contractor searching for lead
+         software wants first is the qualifying, and it is what the demo beside
+         it now shows happening. */
       title={
         <>
-          Know which leads are worth <em>the interruption.</em>
+          Qualify every lead <em>before you pick up the phone.</em>
         </>
       }
-      lede="Smart Intake asks trade-specific follow-up questions, collects the details and photos you need, then surfaces the best opportunities by fit, urgency, value and distance."
-      heroNote="Works on the site you already have with us. No extra tools for the homeowner to install, and no app to talk them through."
+      lede="Smart Intake asks trade-specific follow-up questions, collects photos, timing, location and budget signals, then scores every job by fit, urgency, value and distance."
+      heroNote={`Built into your Let’s Get Quoted website · Works across ${TRADES.length} trades · No app to install`}
+      /* THE BUTTON ASKS FOR THE SMALL THING FIRST.
+         "Build my free site" put the largest commitment on the page in front of
+         somebody who has not yet seen the feature work. The demo is right
+         there, and on a phone it is below the fold — so the first button takes
+         you to it and the signup is the second. */
+      primary={{ label: 'Try a sample intake', href: '#sample-intake' }}
+      secondary={{ label: 'Build my free site', href: APP_SIGNUP_URL }}
       demo={
         <ExampleFrame
-          label="A scored lead as it reaches the priority inbox"
-          note="Sample job and homeowner. The fields are the real ones the intake collects."
+          label="One request, from two words to a job you can quote"
+          note="A sample job and homeowner. The follow-up questions and every field in the brief are the real ones the intake uses; nothing here calls the model."
         >
-          <ArrivingLead />
+          <SampleIntake>
+            <ArrivingLead />
+          </SampleIntake>
         </ExampleFrame>
       }
       proof={[
@@ -167,37 +214,39 @@ export default function AIIntakePage() {
         title: 'Your website does the first round of discovery.',
         body: 'Instead of receiving a name, phone number and vague sentence, you receive a useful project brief. The homeowner answers the right questions before contact details unlock their estimate, helping set expectations and filter out poor-fit inquiries.',
       }}
+      /* FIVE BECAME THREE.
+         "Builds real project context", "prioritizes attention", "spends less
+         of your day on poor-fit leads", "keeps the intake usable" and "sets
+         price expectations early" are three outcomes and two mechanisms. The
+         mechanisms are shown rather than claimed — the demo above is the
+         context being built, and the alert ladder below is the prioritising —
+         so what is left is what a contractor gets out of it. */
       benefits={[
         {
-          title: 'Builds real project context',
-          body: 'Collects scope, photos, timing, budget signals and location without making your team play phone tag.',
+          title: 'Understand the job before you call',
+          body: 'Scope, photos, timing, budget signals and location arrive together, so the first conversation starts from the work rather than from “so what’s the problem?”. The same summary stays attached as the request becomes a quote, a scheduled job and a paid invoice.',
         },
         {
-          title: 'Prioritizes attention',
-          body: 'Strong-fit, urgent and high-value work rises first — and with the service-area question switched on, whether a job sits inside the patch you actually cover is one of the signals doing the ranking.',
+          title: 'Answer the best work first',
+          body: 'Fit, urgency, value and distance decide what rises. With the service-area question switched on, whether a job sits inside the patch you actually cover is one of the signals doing the ranking.',
         },
         {
-          title: 'Spends less of your day on poor-fit leads',
-          body: 'Set a minimum job size and list the work you don’t take, and enquiries below the line arrive flagged rather than mixed in. Low-scoring ones don’t interrupt you at all by default — which is time you were spending on calls that were never going to close.',
-        },
-        {
-          title: 'Keeps the intake usable',
-          body: 'The same summary stays connected as the request becomes a quote, scheduled job and paid invoice.',
-        },
-        {
-          title: 'Sets price expectations early',
-          body: 'An instant estimate gives homeowners a realistic starting point before either side spends time on a call.',
+          title: 'Stop losing days to poor-fit enquiries',
+          body: 'Set a minimum job size and list the work you don’t take, and enquiries below the line arrive flagged rather than mixed in. An instant estimate also gives the homeowner a realistic starting point before either side spends time on a call.',
         },
       ]}
       stepsTitle="From a vague inquiry to a prioritized opportunity — before you pick up the phone."
+      /* SIX BECAME FOUR.
+         "Describe the work" and "answer smart follow-ups" are the first two
+         panels of the demo in the hero, and "act on the best lead" is the
+         alert ladder at the foot of the page. Repeating them here was the page
+         explaining in words what it had already shown twice. What is left is
+         the order the homeowner actually moves through, including the one bit
+         of it that is a deliberate decision rather than a step. */
       steps={[
         {
           title: 'Describe the work',
-          body: 'The homeowner starts in plain language.',
-        },
-        {
-          title: 'Answer smart follow-ups',
-          body: 'AI asks only the questions needed for that project.',
+          body: 'The homeowner starts in plain language, and the intake asks only the follow-ups that job needs.',
         },
         {
           title: 'Add the detail that decides it',
@@ -209,11 +258,7 @@ export default function AIIntakePage() {
         },
         {
           title: 'Unlock the estimate',
-          body: 'Contact details are collected before the estimate appears — that order is deliberate.',
-        },
-        {
-          title: 'Act on the best lead',
-          body: 'Your team receives the summary and priority signals instantly.',
+          body: 'Contact details are collected before the estimate appears — that order is deliberate, and it is why a scored lead has a number on it.',
         },
       ]}
       cta={{
@@ -224,7 +269,11 @@ export default function AIIntakePage() {
       <section className="section-block" aria-labelledby="intake-alerts-title">
         <div>
           <p className="eyebrow">Not every lead deserves a text message</p>
-          <h2 id="intake-alerts-title">The quiet ones are the feature.</h2>
+          {/* "The quiet ones are the feature" is a better sentence and a
+              worse heading: the first thing it makes a contractor wonder is
+              whether we are throwing leads away. Say the reassurance in the
+              heading and keep the wit for the copy. */}
+          <h2 id="intake-alerts-title">Keep every lead. Get interrupted only by the right ones.</h2>
           <p>
             Scoring is only worth having if something acts on it. What a lead scores decides how
             loudly it arrives, so the jobs worth stopping for are the ones that reach your pocket.
@@ -246,6 +295,28 @@ export default function AIIntakePage() {
           leads stay silent. Both live in your intake settings, and both can be changed the first
           week you find you disagree with them.
         </p>
+      </section>
+
+      {/* <details> rather than a script: it works before hydration, it is in the
+          tab order for free, and the browser's own find-in-page opens it. No
+          `name`, so reading one answer never closes another. */}
+      <section className="section-block" aria-labelledby="intake-faq-title">
+        <div>
+          <p className="eyebrow">Before you turn it on</p>
+          <h2 id="intake-faq-title">The questions contractors ask us.</h2>
+        </div>
+
+        <div className={styles.faq}>
+          {FAQ.map((item, index) => (
+            <details key={item.q} open={index === 0}>
+              <summary>
+                <span>{item.q}</span>
+                <i aria-hidden="true" />
+              </summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
+        </div>
       </section>
     </FeatureDetailLayout>
   );

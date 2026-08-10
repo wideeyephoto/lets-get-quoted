@@ -288,3 +288,92 @@ describe('the shared layout gained two optional slots', () => {
     }
   });
 });
+
+/**
+ * /features/ai-intake — the product made tangible.
+ *
+ * The hero showed the finished brief, which is the half a visitor is least
+ * able to evaluate: a brief that good invites exactly one question — how would
+ * it know any of that — and a static card cannot answer it.
+ */
+describe('the ai intake page', () => {
+  const SRC = readFileSync('src/app/features/ai-intake/page.tsx', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const DEMO = readFileSync('src/app/features/ai-intake/sample-intake.tsx', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('walks the request from two words to a brief', () => {
+    expect(SRC).toContain('<SampleIntake>');
+    expect(DEMO).toContain('What they typed');
+    expect(DEMO).toContain('What it asked back');
+    expect(DEMO).toContain('What you get');
+    // The payoff is the page's own brief card, not a second copy of it.
+    expect(SRC).toContain('<ArrivingLead />');
+    expect(DEMO).toContain('{children}');
+  });
+
+  it('never autoplays and never pretends to call the model', () => {
+    expect(DEMO).not.toContain('setInterval');
+    expect(DEMO).not.toContain('setTimeout');
+    expect(DEMO).not.toMatch(/fetch\(|<form|<input/);
+    expect(SRC).toContain('nothing here calls the model');
+  });
+
+  it('tells a screen reader that the panel changed under the button', () => {
+    expect(DEMO).toContain('aria-live="polite"');
+  });
+
+  it('asks for the small thing first', () => {
+    // "Build my free site" was the largest commitment on the page, in front of
+    // somebody who had not yet seen the feature work.
+    expect(SRC).toContain("primary={{ label: 'Try a sample intake', href: '#sample-intake' }}");
+    expect(SRC).toContain("secondary={{ label: 'Build my free site', href: APP_SIGNUP_URL }}");
+  });
+
+  it('reassures in the heading and keeps the wit for the copy', () => {
+    expect(SRC).toContain('Keep every lead. Get interrupted only by the right ones.');
+    expect(SRC).not.toContain('<h2 id="intake-alerts-title">The quiet ones are the feature.</h2>');
+  });
+
+  it('compresses five benefits and six steps', () => {
+    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('stepsTitle='));
+    expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
+    const steps = SRC.slice(SRC.indexOf('steps={['), SRC.indexOf('cta={{'));
+    expect([...steps.matchAll(/title: '/g)].length).toBe(4);
+  });
+
+  it('answers the practical questions without inventing anything', () => {
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(6);
+    expect(SRC).not.toMatch(/<details[^>]*name=/);
+    expect(SRC).toContain('TRADES.length');
+  });
+});
+
+/**
+ * COPY ON A FEATURE PAGE IS COPY, NOT A CAPTION.
+ *
+ * Measured at 390x844: fifteen runs of real prose under 13px on /ai-intake and
+ * four of them at 10. All three of the worst offenders are in the shared
+ * layout, so the same numbers were on five pages.
+ */
+describe('the shared layout stops setting sentences at caption size', () => {
+  const CSS = readFileSync('src/components/flagship/flagship.module.css', 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+
+  it('raises the proof strip, the benefits and the steps on a narrow screen', () => {
+    const at = CSS.indexOf('.detail-proof small) { font-size: 14px');
+    expect(at).toBeGreaterThan(-1);
+    expect(CSS.slice(CSS.lastIndexOf('@media', at), at)).toContain('max-width: 900px');
+    expect(CSS).toMatch(/\.detail-benefits article p\) \{ font-size: 15px/);
+    expect(CSS).toMatch(/\.process-steps p\) \{ font-size: 15px/);
+  });
+
+  it('and at the widths where four columns are still narrow', () => {
+    expect(CSS).toContain('(min-width: 901px) and (max-width: 1200px)');
+  });
+});
