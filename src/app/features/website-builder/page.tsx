@@ -50,16 +50,56 @@ const SITE = {
   high: '$13,200',
 };
 
+/* The four beats a visitor moves through, which is the page's whole argument
+   about why a contractor site is not the same thing as a website. */
+const JOURNEY: { n: string; title: string; body: string }[] = [
+  { n: '01', title: 'Visit', body: 'Service and local pages built for the work you actually sell.' },
+  { n: '02', title: 'Qualify', body: 'Smart Intake asks the follow-ups your trade needs.' },
+  { n: '03', title: 'Estimate', body: 'A useful range answers the question they came with.' },
+  { n: '04', title: 'Win the job', body: 'Quote, schedule, text and get paid on the same record.' },
+];
+
+/* Answers checked against the product, not against the pitch: the trade list
+   is TRADES, the free subdomain and the custom-domain switch are
+   lib/domains.ts and contractor-brand.ts, and what lands in the inbox is the
+   panel further up this page. */
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'How much do I need to have ready?',
+    a: 'Your business name is enough to begin. Choose your trade and service area, then review the services, pages and FAQs we generate before anything is published.',
+  },
+  {
+    q: 'Can I change the generated content?',
+    a: 'Yes — every word of it, before the site goes live and any time afterwards. The services, the service areas, the FAQs and the visual details are all yours to edit.',
+  },
+  {
+    q: 'Do I need to own a domain already?',
+    a: `No. You publish immediately on the included ${SITE.host} subdomain, and connect a domain you own whenever you are ready. Publishing never waits on DNS.`,
+  },
+  {
+    q: 'What happens when somebody requests an estimate?',
+    a: 'You get the job description, the trade-specific answers, the location, any photos and the range the visitor was shown — together, on one request, ready to quote or text back.',
+  },
+  {
+    q: 'What does it cost to run?',
+    a: `Nothing monthly. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}).`,
+  },
+];
+
 export default function WebsiteBuilderPage() {
   return (
     <FeatureDetailLayout
-      eyebrow="A professional contractor site in one click"
+      eyebrow="AI website builder for contractors"
+      /* The old headline described the transition ("from no website to ready
+         for business") and left the reader to work out what the site DOES. The
+         outcome is the differentiator: other builders end at a contact form,
+         and this one hands you a job you can quote. */
       title={
         <>
-          Go from no website to <em>ready for business.</em>
+          A contractor website that turns visits into <em>ready-to-quote jobs.</em>
         </>
       }
-      lede="Enter a few business basics and generate a complete contractor site with services, local pages, FAQs and Smart Intake already connected. Edit everything before you publish."
+      lede="Tell us your business name, trade and service area. We build the complete site — then connect every visitor to an instant estimate and a request you can act on."
       // Not the fee — the closing band states it in full, with the rate range
       // and Stripe's cut. What belongs here is what a contractor about to
       // generate a site wants to know: that it is theirs. Custom domains are
@@ -121,23 +161,23 @@ export default function WebsiteBuilderPage() {
           </div>
         </ExampleFrame>
       }
-      secondary={{ label: 'See publishing and what follows', href: '#publish' }}
+      secondary={{ label: 'See how it works', href: '#how-it-works' }}
       proof={[
         {
-          title: 'One-click starting site',
-          body: 'Generate a complete first version in minutes.',
+          title: 'Minutes, not weeks',
+          body: 'A complete first draft in one sitting.',
         },
         {
           title: `Built for ${TRADES.length} trades`,
-          body: 'Trade-aware services and intake from the start.',
+          body: 'Content and intake that know your work.',
         },
         {
-          title: 'Everything is editable',
-          body: 'Change every word, service and service area.',
+          title: 'Edit absolutely everything',
+          body: 'Your words, services, colours and areas.',
         },
         {
           title: 'Your domain stays yours',
-          body: 'Build the brand around your business—not ours.',
+          body: 'Build equity in an address you own.',
         },
       ]}
       story={{
@@ -145,69 +185,53 @@ export default function WebsiteBuilderPage() {
         title: 'A beautiful site should be the beginning—not the whole product.',
         body: 'Most website builders stop after publishing. Let’s Get Quoted connects the front door to the work behind it, so a visitor can become a qualified lead, an approved quote, a scheduled job and a paid customer without falling into a disconnected tool stack.',
       }}
+      /* SIX BECAME THREE.
+         The six read as one idea told six ways — start with a structure, make
+         it yours, turn visits into requests, answer the price question, connect
+         the next step, keep your domain. Three of those are the same claim at
+         different distances from the visitor, and two more (editing, the
+         domain) are answered in full by their own section further down, where
+         a panel shows them rather than a sentence asserting them. What is left
+         is the three things that happen to a visitor, in order. */
       benefits={[
         {
-          title: 'Start with a complete structure',
-          body: 'Launch services, service areas, trust content, FAQs and intake without staring at a blank page.',
+          title: 'Look established from click one',
+          body: 'Launch with polished service pages, local pages, trust content and FAQs — without starting from a blank screen.',
         },
         {
-          title: 'Make it unmistakably yours',
-          body: 'Edit the message, visual details, offers and geographic coverage before the site goes live.',
+          title: 'Answer “how much?” while interest is high',
+          body: 'The instant estimator asks the follow-up questions your trade actually needs and gives a visitor a useful range in the same session. You can shade that range toward budget or premium in settings.',
         },
         {
-          title: 'Turn visits into useful requests',
-          body: 'Smart Intake gathers better project context than a generic contact form.',
-        },
-        {
-          title: 'Answer “what will this cost?” on the page',
-          body: 'The instant estimate is the site’s front door: a visitor describes the job, the site asks the follow-up questions your trade actually needs, and it shows a realistic range in the same visit. You can shade that range toward budget or premium in settings — and you receive the description, the answers and the range together.',
-        },
-        {
-          title: 'Connect the next step',
-          body: 'Every lead can move directly into quoting, scheduling, texting and payment.',
-        },
-        {
-          title: 'Keep the address you build equity in',
-          body: `Publish on a free ${SITE.host} subdomain today, then point your own domain at the site whenever you are ready. You register it, you own the registration, and it stays yours if you ever leave — you are building traffic to your address, not renting ours.`,
+          title: 'Receive a request you can act on',
+          body: 'The description, the answers, the location, the photos and the range arrive together — ready to quote, text or schedule.',
         },
       ]}
-      stepsEyebrow="Eight steps, start to first request"
-      stepsTitle="Your website becomes the front door to an automated back office."
+      storyId="how-it-works"
+      stepsEyebrow="Three answers. One complete site."
+      stepsTitle="Go from “we need a website” to ready for business."
+      /* EIGHT STEPS BECAME FOUR.
+         Steps one to four were "add business basics" followed by the three
+         things business basics turns out to mean, so the list opened by
+         counting the same action twice; seven and eight were publishing and
+         what happens after it, which is a section of its own further down.
+         What a contractor actually has to supply is three answers. */
       steps={[
         {
-          // The source draft's first step, kept word for word. The three that
-          // follow are not a replacement for it — they are what "business
-          // basics" turns out to mean in the actual form, spelled out.
-          title: 'Add business basics',
-          body: 'Tell us the company, trade and service area.',
+          title: 'Your business name',
+          body: 'The only thing you have to have ready. It sets the brand, the page titles and the address we suggest.',
         },
         {
-          title: 'Enter your company name',
-          body: 'The business name is the only thing you have to have ready. It sets the brand, the page titles and the address we suggest.',
+          title: 'Your trade',
+          body: `Choose from ${TRADES.length}. The services, the FAQs and the questions the intake asks are built for that trade rather than for contractors in general.`,
         },
         {
-          title: 'Pick your trade',
-          body: `Choose from ${TRADES.length} trades. The services, the FAQs and the questions the intake asks are all built for that trade rather than for contractors in general.`,
-        },
-        {
-          title: 'Set your service area',
+          title: 'Your service area',
           body: 'Name the towns you cover. They become your local pages, and they are what tells a later request whether it is in your area or outside it.',
         },
         {
-          title: 'Generate the starting site',
-          body: 'AI creates the initial pages and content.',
-        },
-        {
-          title: 'Review and personalize',
-          body: 'Edit every important detail before publishing.',
-        },
-        {
-          title: 'Publish',
-          body: 'One action takes the site from draft to live on your free subdomain. Point your own domain at it now or later — publishing does not wait on DNS, and re-publishing an edit is the same single action.',
-        },
-        {
-          title: 'Start qualifying visitors',
-          body: 'Smart Intake begins turning traffic into usable opportunities.',
+          title: 'Review, personalise and publish',
+          body: 'Every word stays editable. Go live on the free subdomain now and connect your own domain whenever you are ready — publishing never waits on DNS.',
         },
       ]}
       cta={{
@@ -215,6 +239,53 @@ export default function WebsiteBuilderPage() {
         note: `No subscription and no setup fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
       }}
     >
+      {/* ------------------------------------------------------------------
+          WHERE A VISITOR GOES.
+
+          The page's own argument, drawn: four beats from landing on a service
+          page to money, and the one comparison that says what a website
+          builder normally hands you at the end of it. Nothing here is a claim
+          about anybody else's product — "contact form submitted" is what a
+          form does, and the point is only that it is where the trail stops.
+          ------------------------------------------------------------------ */}
+      <section className="section-block" aria-labelledby="journey-title">
+        <div className={styles.sectionHead}>
+          <p className="eyebrow">One connected customer journey</p>
+          <h2 id="journey-title">
+            Other builders stop at &ldquo;submit.&rdquo; Yours keeps the job moving.
+          </h2>
+          <p>
+            A visitor should not fall into a disconnected inbox. The context they gave the
+            site &mdash; what the job is, where it is, when they want it, what it might cost
+            &mdash; travels with the request instead of being retyped by you.
+          </p>
+        </div>
+
+        <ol className={styles.journey}>
+          {JOURNEY.map((beat) => (
+            <li key={beat.title}>
+              <span className={styles.journeyNum} aria-hidden="true">{beat.n}</span>
+              <h3>{beat.title}</h3>
+              <p>{beat.body}</p>
+            </li>
+          ))}
+        </ol>
+
+        <div className={styles.compare}>
+          <div>
+            <span>A typical website builder</span>
+            <strong>Contact form submitted</strong>
+            <small>And then the retyping starts.</small>
+          </div>
+          <span className={styles.compareArrow} aria-hidden="true">&rarr;</span>
+          <div className={styles.compareGood}>
+            <span>Let&rsquo;s Get Quoted</span>
+            <strong>Quote-ready request received</strong>
+            <small>The job context arrives with it.</small>
+          </div>
+        </div>
+      </section>
+
       <section className="section-block" id="publish" aria-labelledby="publish-title">
         <div className={styles.sectionHead}>
           <p className="eyebrow">Step seven and step eight</p>
@@ -315,6 +386,40 @@ export default function WebsiteBuilderPage() {
               </div>
             </div>
           </ExampleFrame>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------
+          THE PRACTICAL QUESTIONS.
+
+          <details>, not a script: it works before hydration, it is in the tab
+          order for free, and a browser's own find-in-page opens it. The first
+          one is open because a closed accordion with nothing showing reads as
+          a list of headings rather than as answers.
+
+          Every answer is checkable against the product. Nothing here promises
+          a capability the rest of the page has not already shown.
+          ------------------------------------------------------------------ */}
+      <section className="section-block" aria-labelledby="faq-title">
+        <div className={styles.sectionHead}>
+          <p className="eyebrow">Before you build</p>
+          <h2 id="faq-title">The practical questions.</h2>
+        </div>
+
+        {/* No `name` on the details: an exclusive accordion closes the answer
+            you were reading to open the one you glanced at, and it hides every
+            other answer from the browser's own find-in-page. Five short
+            answers can all be open at once. */}
+        <div className={styles.faq}>
+          {FAQ.map((item, index) => (
+            <details key={item.q} open={index === 0}>
+              <summary>
+                <span>{item.q}</span>
+                <i aria-hidden="true" />
+              </summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
         </div>
       </section>
     </FeatureDetailLayout>

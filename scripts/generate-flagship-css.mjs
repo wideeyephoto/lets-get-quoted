@@ -5023,6 +5023,21 @@ const TWEAKS = `
   padding-inline: 14px;
 }
 
+/* THREE OUTCOMES DO NOT FIT A TWO-COLUMN GRID.
+   .detail-benefits is 1fr 1fr, which is right for the four and six that the
+   sibling pages carry and leaves a bordered empty cell when a page compresses
+   to three. :has() rather than a page-scoped override, so the grid answers to
+   how many cards it actually has rather than to which page it is on. */
+.root :global(.detail-benefits:has(> article:nth-child(3):last-child)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .root :global(.detail-benefits:has(> article:nth-child(3):last-child)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ---- an in-page link lands where you can read it -------------------------
 
    Every feature page's hero carries a second button pointing at a section
@@ -5030,10 +5045,12 @@ const TWEAKS = `
    header that is fixed at 82px, 68px on a phone. Measured on all three before
    this: the heading a reader had just asked for was the one thing on screen
    they could not see. Same two numbers as SS96, for the same reason. */
-.root :global(.section-block[id]) { scroll-margin-top: 104px; }
+.root :global(.section-block[id]),
+.root :global(.detail-story[id]) { scroll-margin-top: 104px; }
 
 @media (max-width: 760px) {
-  .root :global(.section-block[id]) { scroll-margin-top: 88px; }
+  .root :global(.section-block[id]),
+  .root :global(.detail-story[id]) { scroll-margin-top: 88px; }
 }
 
 /* And the room it needs, reserved at the end of the page. 78px is the bar's

@@ -144,7 +144,76 @@ describe('the feature hero CTAs', () => {
   });
 
   it('lands those sections clear of the fixed header at both its heights', () => {
-    expect(CSS).toMatch(/\.section-block\[id\]\)\s*\{ scroll-margin-top: 104px/);
-    expect(CSS).toMatch(/\.section-block\[id\]\)\s*\{ scroll-margin-top: 88px/);
+    // Two selectors share each rule now: .section-block[id] for the children a
+    // feature page adds, and .detail-story[id] for the one the shared layout
+    // renders — website-builder's "See how it works" points at that one.
+    expect(CSS).toMatch(/\.detail-story\[id\]\)\s*\{ scroll-margin-top: 104px/);
+    expect(CSS).toMatch(/\.detail-story\[id\]\)\s*\{ scroll-margin-top: 88px/);
+    expect(CSS).toContain('.section-block[id]),');
+  });
+});
+
+/**
+ * /features/website-builder, rebuilt against the approved reference.
+ *
+ * The page was 1,817 words of eight steps and six benefits that said one thing
+ * six ways. What is protected here is the compression — that it stayed
+ * compressed — and the claims, which all had to survive it unchanged.
+ */
+describe('the website builder page', () => {
+  const SRC = readFileSync('src/app/features/website-builder/page.tsx', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('leads on the outcome rather than on the transition', () => {
+    expect(SRC).toContain('A contractor website that turns visits into');
+    expect(SRC).toContain('ready-to-quote jobs.');
+    expect(SRC).not.toContain('Go from no website to');
+  });
+
+  it('asks for three answers, not eight steps', () => {
+    const steps = SRC.slice(SRC.indexOf('steps={['), SRC.indexOf('cta={{'));
+    expect([...steps.matchAll(/title: '/g)].length).toBe(4);
+    for (const s of ['Your business name', 'Your trade', 'Your service area']) {
+      expect(steps).toContain(s);
+    }
+  });
+
+  it('compresses six benefits into the three things that happen to a visitor', () => {
+    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('storyId='));
+    expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
+  });
+
+  it('draws the journey and the one comparison', () => {
+    for (const beat of ['Visit', 'Qualify', 'Estimate', 'Win the job']) {
+      expect(SRC).toContain(`title: '${beat}'`);
+    }
+    expect(SRC).toContain('Contact form submitted');
+    expect(SRC).toContain('Quote-ready request received');
+  });
+
+  it('answers the practical questions with disclosures that work unhydrated', () => {
+    expect(SRC).toContain('<details key={item.q} open={index === 0}>');
+    // No `name`: an exclusive accordion hides four answers from find-in-page.
+    expect(SRC).not.toMatch(/<details[^>]*name=/);
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(5);
+  });
+
+  it('keeps the claims that were already checked against the product', () => {
+    // The CNAME target is the real one (lib/domains.ts), the trade count is
+    // computed, and the fee comes from the pricing model rather than a number
+    // typed into a marketing page.
+    expect(SRC).toContain('domains.letsgetquoted.com');
+    expect(SRC).toContain('TRADES.length');
+    expect(SRC).toContain('FEE_TIERS[0].rate');
+    expect(SRC).toContain('STRIPE_PROCESSING_NOTE');
+  });
+
+  it('invents no proof', () => {
+    expect(SRC).not.toMatch(/\b\d[\d,]*\+? (contractors|customers|users|businesses) (use|trust|have)/i);
+    expect(SRC).not.toMatch(/trusted by|rated \d|testimonial/i);
+    // The one invented business is labelled as invented wherever it appears.
+    expect(SRC).toContain('Invented company, invented range');
   });
 });
