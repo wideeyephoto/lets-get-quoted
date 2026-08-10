@@ -29530,6 +29530,21 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 .dash-waiting .priority-cta { color: var(--mute-t62); }
 .dash-waiting .priority-cta:hover { color: var(--text); }
 
+/* "No numbered index" also means one fewer child. .priority-item is a three
+   column grid — 34px badge, message, action — and with the badge gone the
+   message lands in the 34px track and wraps to one word per line while the
+   action sits on top of it. Two children, two columns. */
+.dash-waiting .priority-item { grid-template-columns: minmax(0, 1fr) auto; }
+
+@media (max-width: 640px) {
+  /* The phone layout stacks by moving both children into column 2, out from
+     under the badge. There is no badge here, so they stack in column 1 —
+     without this they would pile into the action track and squeeze again. */
+  .dash-waiting .priority-item { grid-template-columns: minmax(0, 1fr); }
+  .dash-waiting .priority-copy,
+  .dash-waiting .priority-cta { grid-column: 1; }
+}
+
 /* Shortcuts, not metrics. Compact and unemphatic; the buttons carry themselves. */
 .dash-quicklinks .actions {
   display: flex;

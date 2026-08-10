@@ -337,3 +337,43 @@ describe('the page answers three questions in order', () => {
     expect(SCREEN_CODE).not.toContain('/settings#reviews');
   });
 });
+
+/**
+ * The Waiting list is the one .priority-item without a .priority-index.
+ *
+ * .priority-item is a three-column grid — 34px badge, message, action — so the
+ * badge-less row put the message in the 34px track. It rendered as one word per
+ * line with the action printed over the top of it. The count of children and
+ * the count of columns have to agree, and nothing but a rule says so.
+ */
+describe('the Waiting rows have as many columns as they have children', () => {
+  const CSS = read('src', 'app', 'globals.css')
+    .replace(/\r\n/g, '\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('renders Waiting without a numbered index, unlike Act now', () => {
+    const waiting = SCREEN_CODE.indexOf('dash-waiting');
+    expect(waiting).toBeGreaterThan(-1);
+    // Act now numbers its rows; Waiting deliberately does not.
+    expect(SCREEN_CODE.slice(0, waiting)).toContain('priority-index');
+    expect(SCREEN_CODE.slice(waiting)).not.toContain('priority-index');
+  });
+
+  it('still reserves a badge column for the rows that have a badge', () => {
+    // Guards the premise: if this ever stops being a three-column grid the
+    // override below is dead weight rather than a fix.
+    expect(CSS).toContain('.priority-item {\n  display: grid;\n  grid-template-columns: 34px minmax(0, 1fr) auto;');
+  });
+
+  it('gives Waiting two columns instead, so the message gets the 1fr track', () => {
+    expect(CSS).toContain('.dash-waiting .priority-item { grid-template-columns: minmax(0, 1fr) auto; }');
+  });
+
+  it('stacks Waiting into column 1 on a phone, not the action track', () => {
+    // The shared phone layout moves both children to column 2 to clear the
+    // badge. With no badge there is no column 2 to move to.
+    const mobile = CSS.slice(CSS.indexOf('.dash-waiting .priority-item { grid-template-columns: minmax(0, 1fr); }'));
+    expect(mobile.length).toBeGreaterThan(0);
+    expect(mobile).toMatch(/\.dash-waiting \.priority-copy,\s*\n\s*\.dash-waiting \.priority-cta \{ grid-column: 1; \}/);
+  });
+});
