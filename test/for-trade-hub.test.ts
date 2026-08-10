@@ -246,6 +246,58 @@ describe('the product-proof section shows the product', () => {
 });
 
 /* ===========================================================================
+   5b. Every card on the page goes somewhere
+
+   This is an index page. A card that names a capability and does nothing is a
+   dead end on the one kind of page whose entire job is to send people onward —
+   which is what the four benefits and the four steps were.
+   ======================================================================== */
+describe('the cards are links', () => {
+  const hrefs = [...PAGE.matchAll(/href: '(\/features[^']*)'/g)].map((m) => m[1]);
+
+  it('gives all eight cards a destination', () => {
+    expect(hrefs.length).toBe(8);
+    expect(PAGE).toContain('<Link key={item.title} href={item.href} className={styles.benefit}>');
+    expect(PAGE).toContain('<Link href={step.href}>');
+  });
+
+  it('walks the customer journey through four different parts of the product', () => {
+    // The steps are the one list here where the sequence maps cleanly onto four
+    // separate features, so none of them repeats.
+    const steps = PAGE.slice(PAGE.indexOf('const STEPS = ['), PAGE.indexOf('];', PAGE.indexOf('const STEPS = [')));
+    const stepHrefs = [...steps.matchAll(/href: '([^']+)'/g)].map((m) => m[1]);
+    expect(stepHrefs).toEqual([
+      '/features/website-builder',
+      '/features/ai-intake',
+      '/features/back-office#quote-and-approve',
+      '/features/back-office#money',
+    ]);
+  });
+
+  it('points every one of them at a route that exists', () => {
+    for (const href of new Set(hrefs)) {
+      const path = href.split('#')[0];
+      expect(existsSync(`src/app${path}/page.tsx`), href).toBe(true);
+    }
+  });
+
+  it('points every fragment at an id on the page it lands on', () => {
+    const targets: Record<string, string> = {
+      '/features/back-office': 'src/app/features/back-office/page.tsx',
+      '/features': 'src/app/features/job-record-stages.tsx',
+    };
+    const fragments = hrefs.filter((href) => href.includes('#'));
+    expect(fragments.length).toBeGreaterThan(0);
+    for (const href of fragments) {
+      const [path, id] = href.split('#');
+      const source = readFileSync(targets[path], 'utf8');
+      const found = source.includes(`id="${id}"`) || source.includes(`id: '${id}'`);
+      expect(found, `no id "${id}" on ${path}`).toBe(true);
+    }
+  });
+});
+
+/* ===========================================================================
    6. The dark sheet: contrast, targets, and no sideways scroll
    ======================================================================== */
 

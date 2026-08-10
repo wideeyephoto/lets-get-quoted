@@ -495,17 +495,22 @@
   gap: 1rem;
 }
 
+/* A link, not an article. Display:block so the anchor fills the card and the
+   hit area is the whole of it rather than the two words at the top. */
 .benefit {
+  display: block;
   padding: 1.5rem 1.35rem;
   border: 1px solid var(--edge-soft);
   border-radius: 16px;
   background: var(--card);
-  transition: border-color 0.16s ease, background-color 0.16s ease;
+  text-decoration: none;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
 }
 
 .benefit:hover {
   border-color: rgba(255, 90, 18, 0.4);
   background: var(--card-2);
+  transform: translateY(-2px);
 }
 
 .benefitMark {
@@ -539,6 +544,27 @@
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--ink-2);
+}
+
+/* The arrow sits inside the heading rather than in a corner, so the card reads
+   as a link at the point where its name is. */
+.benefit h3 i,
+.step b i {
+  font-style: normal;
+  color: var(--flare);
+  transition: transform 0.16s ease;
+}
+
+.benefit:hover h3,
+.step a:hover b {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.benefit:hover h3 i,
+.step a:hover b i {
+  display: inline-block;
+  transform: translateX(3px);
 }
 
 /* ---------------------------------------------------------------- */
@@ -679,13 +705,26 @@
 .step {
   position: relative;
   margin: 0;
-  padding: 1.2rem 1.1rem;
   border: 1px solid var(--edge-soft);
   border-radius: 14px;
   background: var(--card-2);
+  transition: border-color 0.16s ease, transform 0.16s ease;
 }
 
-.step::before {
+.step:hover {
+  border-color: rgba(255, 90, 18, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Padding lives on the anchor, not the <li>, so the whole step is the target.
+   The counter and the chevron stay on the <li>, which is what positions them. */
+.step a {
+  display: block;
+  padding: 1.2rem 1.1rem;
+  text-decoration: none;
+}
+
+.step a::before {
   counter-increment: step;
   content: counter(step);
   display: flex;

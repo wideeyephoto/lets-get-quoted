@@ -61,10 +61,16 @@ const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate;
  * menu comes from the trade's own list, the templates from templateIds, and the
  * quote, blog and campaign helpers all read the account's trade before they
  * write anything. Nothing here is aspirational.
+ *
+ * AND EACH ONE GOES SOMEWHERE. A card that names a capability and does nothing
+ * is a dead end on an index page, whose only job is to send people onward. The
+ * first two share a destination because the site and the service menu it
+ * publishes are both produced by the builder — that is one page, not two.
  */
 const BENEFITS = [
   {
     title: 'Your website',
+    href: '/features/website-builder',
     body: 'Templates picked for your trade, and page copy written to name the work you do and the town you do it in.',
     icon: (
       <>
@@ -75,6 +81,7 @@ const BENEFITS = [
   },
   {
     title: 'Your service menu',
+    href: '/features/website-builder',
     body: 'The jobs your trade actually sells are already in the list — you edit prices, not the whole catalogue.',
     icon: (
       <>
@@ -85,6 +92,7 @@ const BENEFITS = [
   },
   {
     title: 'Your quotes',
+    href: '/features/back-office#quote-and-approve',
     body: 'Quote drafts and change orders start from what your trade normally includes, so the first version is close.',
     icon: (
       <>
@@ -95,6 +103,7 @@ const BENEFITS = [
   },
   {
     title: 'Your marketing',
+    href: '/features#website-and-growth',
     body: 'Seasonal campaign timing, blog topics and review requests written for your trade rather than for “contractors”.',
     icon: (
       <>
@@ -123,12 +132,33 @@ const TRUST = [
   'Stripe-powered payments',
 ];
 
-/** The customer's side of the product, in the order it happens. */
+/**
+ * The customer's side of the product, in the order it happens — and each step
+ * is the way into the feature that does it. Four steps, four destinations, no
+ * repeats: this is the one list on the page where the sequence maps cleanly
+ * onto four separate parts of the product.
+ */
 const STEPS = [
-  { title: 'Visit the website', body: 'A real contractor site, published on its own address.' },
-  { title: 'Get an estimate', body: 'Answer a few questions and see an estimated range in seconds.' },
-  { title: 'Approve the quote', body: 'Read the line items and e-sign it from a phone.' },
-  { title: 'Pay online', body: 'Card or bank, through Stripe, straight to the contractor.' },
+  {
+    title: 'Visit the website',
+    href: '/features/website-builder',
+    body: 'A real contractor site, published on its own address.',
+  },
+  {
+    title: 'Get an estimate',
+    href: '/features/ai-intake',
+    body: 'Answer a few questions and see an estimated range in seconds.',
+  },
+  {
+    title: 'Approve the quote',
+    href: '/features/back-office#quote-and-approve',
+    body: 'Read the line items and e-sign it from a phone.',
+  },
+  {
+    title: 'Pay online',
+    href: '/features/back-office#money',
+    body: 'Card or bank, through Stripe, straight to the contractor.',
+  },
 ];
 
 function Check() {
@@ -217,8 +247,11 @@ export default function TradeIndexPage() {
               <h2>Four things change the moment you pick one.</h2>
             </div>
             <div className={styles.benefits}>
+              {/* The whole card is the link, not a "learn more" under it —
+                  four of those in a row is four identical words where the
+                  card's own heading is already the thing you would click. */}
               {BENEFITS.map((item) => (
-                <article key={item.title} className={styles.benefit}>
+                <Link key={item.title} href={item.href} className={styles.benefit}>
                   <span className={styles.benefitMark}>
                     <svg
                       viewBox="0 0 24 24"
@@ -230,9 +263,11 @@ export default function TradeIndexPage() {
                       {item.icon}
                     </svg>
                   </span>
-                  <h3>{item.title}</h3>
+                  <h3>
+                    {item.title} <i aria-hidden="true">&rarr;</i>
+                  </h3>
                   <p>{item.body}</p>
-                </article>
+                </Link>
               ))}
             </div>
           </section>
@@ -283,8 +318,12 @@ export default function TradeIndexPage() {
               <ol className={styles.steps} role="list">
                 {STEPS.map((step) => (
                   <li key={step.title} className={styles.step}>
-                    <b>{step.title}</b>
-                    <span>{step.body}</span>
+                    <Link href={step.href}>
+                      <b>
+                        {step.title} <i aria-hidden="true">&rarr;</i>
+                      </b>
+                      <span>{step.body}</span>
+                    </Link>
                   </li>
                 ))}
               </ol>
