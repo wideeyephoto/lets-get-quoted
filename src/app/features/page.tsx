@@ -16,6 +16,7 @@ import {
   HERO_THREAD_JOB,
 } from './hero-thread';
 import styles from '@/components/flagship/flagship.module.css';
+import JobRecordStages from './job-record-stages';
 
 /**
  * The Product page, in the standalone site's visual language.
@@ -133,70 +134,14 @@ const FLAGSHIPS: Flagship[] = [
   },
 ];
 
-/**
- * The operational tools, in four named groups.
+/* THE OPERATIONAL TOOLS MOVED INTO A COMPONENT.
  *
- * This was one flat grid of eight cards. The eight are unchanged in substance —
- * same tools, same descriptions — but a flat grid had no landing point inside
- * it, and the homepage hero's four badges (Plan & Schedule, Automate & Follow
- * Up, Get Paid Faster, Grow Your Business) needed somewhere to arrive that
- * answers the badge by name. Grouping is what those four badges already imply:
- * each one names a job the software does, and each job is two or three tools.
- *
- * As with FLAGSHIPS above, the ids are linked from the homepage and covered by
- * a test.
+ * They were four stacked bands here — number, heading, sentence, two or three
+ * tool cards, four times. The copy is unchanged and so are the four ids the
+ * homepage links to; what changed is that they are now four stages of one job
+ * record rather than four sections about four subjects. The data lives beside
+ * the component that draws it, in ./job-record-stages.
  */
-type Capability = {
-  id: string;
-  number: string;
-  title: string;
-  lead: string;
-  tools: [string, string][];
-};
-
-const CAPABILITIES: Capability[] = [
-  {
-    id: 'planning-and-scheduling',
-    number: '01',
-    title: 'Plan & Schedule',
-    lead: 'Put the work on the calendar with everything the crew needs to arrive ready.',
-    tools: [
-      ['Scheduling', 'Arrival windows, capacity and the details needed to keep the promise.'],
-      ['Crew + labor', 'Assignments, time clock, hours and estimated pay.'],
-    ],
-  },
-  {
-    id: 'automations',
-    number: '02',
-    title: 'Automate & Follow Up',
-    lead: 'The messages, reminders and repeat visits that would otherwise depend on remembering.',
-    tools: [
-      ['Customer communication', 'Two-way texts and a job-specific client portal.'],
-      ['Recurring work', 'Automatic visits, saved cards and predictable revenue.'],
-    ],
-  },
-  {
-    id: 'payments',
-    number: '03',
-    title: 'Get Paid Faster',
-    lead: 'From the quote a customer approves to the money landing in your account.',
-    tools: [
-      ['Quotes + e-sign', 'Itemized proposals, optional upgrades and clear approvals.'],
-      ['Payments', 'Deposits, balances and payment plans through Stripe.'],
-      ['Cash flow', 'See customer money, payroll and bills before they move.'],
-    ],
-  },
-  {
-    id: 'website-and-growth',
-    number: '04',
-    title: 'Grow Your Business',
-    lead: 'Turn finished work into reviews, repeat customers and the next job.',
-    tools: [
-      ['Reviews + growth', 'Follow-ups, review requests and AI-assisted marketing.'],
-      ['Campaigns + blog', 'Email and text campaigns, a blog that publishes to your site, and what each one did.'],
-    ],
-  },
-];
 
 export default function FeaturesPage() {
   return (
@@ -332,36 +277,34 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* The light chapter. This is the break the page was missing: the same
-          copy and the same grid read as a separate chapter on cream instead of
-          as one more dark band. */}
-      <section className="everything-index">
+      {/* The light chapter. This is the break the page was missing: it reads as
+          a separate chapter on cream instead of as one more dark band.
+
+          It used to be four stacked bands — number, heading, sentence, two or
+          three tool cards, four times. Every band was true and none of them
+          showed what the section is actually claiming, which is that these are
+          not four products but four stages of ONE record. So the record stays
+          on screen and the stages move it; see job-record-stages.tsx. */}
+      <section className="everything-index" aria-labelledby="everything-title">
         <div className="index-heading">
           <p className="eyebrow">
             <span aria-hidden="true">✦</span> EVERYTHING BEHIND THE WEBSITE
           </p>
-          <h2>The operational tools are already included.</h2>
+          <h2 id="everything-title">
+            One job record.<br />Every operational tool included.
+          </h2>
           <p>
-            No separate starter tier. No choosing which essential workflow you can afford this month.
+            Approve the quote once. The schedule, crew, customer updates, payment and follow-up move
+            with it.
+          </p>
+          {/* The claim the old lede made in two sentences, in the place a
+              reader is most likely to be doing the sums. */}
+          <p className="everything-note">
+            <span aria-hidden="true">✓</span> Included from day one · No monthly subscription
           </p>
         </div>
-        {CAPABILITIES.map(({ id, number, title, lead, tools }) => (
-          <section className="capability-band" id={id} key={id} aria-labelledby={`${id}-title`}>
-            <div className="capability-head">
-              <span>{number}</span>
-              <h3 id={`${id}-title`}>{title}</h3>
-              <p>{lead}</p>
-            </div>
-            <div className="everything-grid capability-tools">
-              {tools.map(([name, body]) => (
-                <article key={name}>
-                  <h4>{name}</h4>
-                  <p>{body}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ))}
+
+        <JobRecordStages />
       </section>
 
       <PageCTA

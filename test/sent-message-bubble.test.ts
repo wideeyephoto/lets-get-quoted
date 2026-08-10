@@ -43,8 +43,11 @@ describe('a sent text message', () => {
   });
 
   it('is no longer the brand orange, which is what buttons are', () => {
+    // The GRADIENT, not the colour. #c9430a on its own is the site's dark
+    // orange and is used for ink in half a dozen places; asserting the whole
+    // sheet is free of it fails the moment somebody writes an orange link.
     for (const css of [GLOBALS, FLAGSHIP, GENERATOR]) {
-      expect(css).not.toContain('#c9430a');
+      expect(css).not.toContain('linear-gradient(135deg, #c9430a, #a8330b)');
     }
   });
 

@@ -2114,73 +2114,19 @@ const TWEAKS = `
    under the hero, four capability groups from the four badges. The header is
    fixed at 82px (68px on a phone), so without scroll-margin every one of them
    arrives underneath it. */
+/* The four capability ids now sit on the stage tabs (§107), which are what a
+   fragment should land on: following /features#payments both scrolls TO that
+   stage and selects it. */
 .root :global(.feature-link-grid > a[id]),
-.root :global(.capability-band) { scroll-margin-top: 104px; }
+.root :global(.jrs-rail [role="tab"]) { scroll-margin-top: 104px; }
 
 @media (max-width: 760px) {
   .root :global(.feature-link-grid > a[id]),
-  .root :global(.capability-band) { scroll-margin-top: 88px; }
+  .root :global(.jrs-rail [role="tab"]) { scroll-margin-top: 88px; }
 }
 
-/* The eight tools used to be one flat 4x2 grid numbered 01..08. Same eight,
-   now under the four names the homepage badges use, because a badge that says
-   "Get Paid Faster" should arrive at a heading that says "Get Paid Faster"
-   rather than at a grid the visitor has to read through. */
-.root :global(.capability-band + .capability-band) { margin-top: 52px; }
-
-.root :global(.capability-head) {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-  column-gap: 14px;
-  margin-bottom: 18px;
-}
-.root :global(.capability-head > span) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px;
-  letter-spacing: .08em;
-  color: #b8430f;
-}
-.root :global(.capability-head h3) {
-  margin: 0;
-  font-size: clamp(21px, 2.4vw, 27px);
-  color: var(--ink);
-}
-.root :global(.capability-head p) {
-  grid-column: 2;
-  margin: 7px 0 0;
-  max-width: 62ch;
-  color: #5d615c;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* auto-fit, not the inherited repeat(4,1fr): the groups hold two or three
-   tools, and a fixed four-column track would leave a bordered empty cell at
-   the end of every row. min() keeps a single card from being forced wider
-   than the viewport on a phone. */
-.root :global(.capability-tools) {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-}
-.root :global(.capability-tools article) {
-  min-height: 0;
-  padding: 22px 24px 24px;
-}
-.root :global(.capability-tools h4) {
-  margin: 0 0 9px;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--ink);
-}
-/* The flat grid set these at 10px. Same reason as the strip above: this is a
-   description someone is meant to read, not a caption. */
-.root :global(.capability-tools p) {
-  margin: 0;
-  color: #5d615c;
-  font-size: 12.5px;
-  line-height: 1.6;
-}
+/* The four capability bands that used to live here — number, heading,
+   sentence, tool cards, four times — are §107 now. */
 
 /* ===========================================================================
    §97 — THE HOMEPAGE STOPS SAYING THINGS TWICE
@@ -4529,6 +4475,472 @@ const TWEAKS = `
   .root :global(.shot-frame) { aspect-ratio: 3 / 4; }
   .root :global(.shot-img) { padding: 8px; }
   .root :global(.shot-caption) { font-size: 11px; }
+}
+/* ===========================================================================
+   §107 — THE OPERATIONAL TOOLS ARE ONE RECORD, NOT FOUR SECTIONS
+
+   This section was four stacked bands: a number, a heading, a sentence and two
+   or three tool cards, four times down a cream page. Every band was true and
+   none of them showed what the section claims — that these are not four
+   products but four stages of ONE job record.
+
+   So the record stays on screen and the stages move it. Four slots, always in
+   the same order (when, who, what was said, what is owed), and each stage
+   advances all four: the arrival tracker steps along, the crew row goes from
+   "assigned" to hours logged, the message row carries a different automatic
+   text, the money row moves deposit to balance to rebook. The header never
+   changes: JOB J-1048, Alex Morgan, Royal Oak, with "Same job record" printed
+   across the foot in case the point is missed.
+
+   THE MATERIAL. Cream ground, one navy card, orange for exactly two things:
+   the stage you are on, and the action the job is waiting for. Green is a
+   completed state and never an accent — the same rule the rest of the site
+   uses. The rows are white so the record reads as paper on a desk rather than
+   as a dashboard, which is what the section is arguing about.
+
+   TABS, and the ARIA pattern all the way down: a vertical tablist, roving
+   tabindex, automatic activation with arrow keys, Home and End, and all four
+   panels in the markup so every tool description stays in the HTML. Nothing
+   autoplays. The transition is 200ms.
+   =========================================================================== */
+
+.root :global(.everything-index .index-heading h2) { max-width: 20ch; }
+
+/* The old lede's second claim, as the pill the mockup puts it in. Written
+   with .index-heading in the selector because that block styles its own
+   :last-child paragraph grey, and this is not body copy. */
+.root :global(.everything-index .index-heading .everything-note) {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 20px 0 0;
+  padding: 10px 16px;
+  border: 1px solid rgba(184, 67, 15, .28);
+  border-radius: 999px;
+  background: rgba(255, 106, 36, .07);
+  color: #6b4a38;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.root :global(.everything-note span) {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #c9430a;
+  border-radius: 50%;
+  color: #c9430a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.root :global(.jrs) {
+  display: grid;
+  grid-template-columns: minmax(240px, .42fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(24px, 3.4vw, 44px);
+  margin-top: clamp(30px, 4vw, 48px);
+}
+
+/* ---- the rail ------------------------------------------------------------ */
+
+.root :global(.jrs-rail) {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.root :global(.jrs-rail [role="tab"]) {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 16px;
+  padding: 16px 18px 16px 12px;
+  /* Explicit areas, not source order. With three children in a two-column
+     track the lead wrapped into the 56px numeral column and came out four
+     words wide. */
+  grid-template-areas: "num name" "num lead";
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+/* THE THREAD DOWN THE NUMBERS. One line per tab, drawn from the middle of its
+   own numeral to the middle of the next, so the four read as one sequence
+   rather than four buttons. The last has nothing to join. */
+.root :global(.jrs-rail [role="tab"]:not(:last-child))::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  bottom: -50%;
+  left: 40px;
+  width: 2px;
+  background: rgba(201, 67, 10, .32);
+}
+.root :global(.jrs-rail [role="tab"]:hover) { background: rgba(255, 106, 36, .05); }
+.root :global(.jrs-rail [role="tab"][data-on="true"]) {
+  border-color: rgba(184, 67, 15, .3);
+  background: linear-gradient(180deg, rgba(255, 106, 36, .1), rgba(255, 106, 36, .05));
+}
+
+.root :global(.jrs-num) {
+  grid-area: num;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 2px solid rgba(120, 106, 96, .32);
+  border-radius: 50%;
+  background: var(--cream);
+  color: #6e6a63;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 19px;
+  font-weight: 700;
+  transition: border-color .2s ease, color .2s ease;
+}
+.root :global([data-on="true"] .jrs-num) { border-color: #ff6a24; color: #c9430a; }
+
+.root :global(.jrs-name) {
+  grid-area: name;
+  display: block;
+  color: var(--ink);
+  font-size: clamp(17px, 1.7vw, 19px);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+/* The stage's own sentence, only under the stage you are on. Kept in the
+   markup for all four — the tab is its own accessible name and this reads as
+   part of it — and collapsed with a grid row rather than display:none, so the
+   rail does not jump by a paragraph's height when the selection moves. */
+.root :global(.jrs-lead) {
+  grid-area: lead;
+  display: block;
+  overflow: hidden;
+  max-height: 0;
+  margin-top: 0;
+  color: #5d615c;
+  font-size: 13px;
+  line-height: 1.55;
+  opacity: 0;
+  transition: max-height .2s ease, opacity .2s ease, margin-top .2s ease;
+}
+.root :global([data-on="true"] .jrs-lead) { max-height: 5em; margin-top: 6px; opacity: 1; }
+
+/* ---- the record ---------------------------------------------------------- */
+
+.root :global(.jrs-panel[hidden]) { display: none; }
+.root :global(.jrs-panel) { min-width: 0; }
+.root :global(.jrs-panel:focus-visible) { outline: 2px solid #c9430a; outline-offset: 6px; }
+
+.root :global(.jrs-record) {
+  padding: clamp(20px, 2.4vw, 30px) clamp(18px, 2.2vw, 28px) clamp(16px, 2vw, 22px);
+  border-radius: 20px;
+  background: linear-gradient(168deg, #0e2632, #071a24);
+  box-shadow: 0 30px 70px -28px rgba(6, 26, 35, .55), inset 0 1px rgba(255, 255, 255, .05);
+}
+.root :global(.jrs-record-head) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(174, 205, 216, .16);
+}
+.root :global(.jrs-record-head h4) {
+  margin: 0;
+  color: #f7f3ec;
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.root :global(.jrs-record-head p) { margin: 4px 0 0; color: #a8bdc5; font-size: 15px; }
+
+.root :global(.jrs-rows) { display: grid; gap: 10px; margin-top: 18px; }
+
+/* Each row is white paper with the glyph on a tinted stub down its left edge.
+   Three columns: the stub, the sentence, and whatever that row's evidence is —
+   which is a different shape every time, so it is placed rather than sized. */
+.root :global(.jrs-row) {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fffdf9;
+  color: #16262e;
+}
+.root :global(.jrs-row-ic) {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  padding: 14px 0;
+  background: rgba(20, 45, 58, .07);
+}
+.root :global(.jrs-glyph) {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: #2c4b59;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.root :global(.jrs-row-text) {
+  padding: 16px 18px;
+  font-size: clamp(14.5px, 1.5vw, 16px);
+  font-weight: 600;
+}
+
+/* The arrival tracker: four named states in order, current in orange. A list,
+   because that is what it is — not a progress bar with labels stuck under it. */
+.root :global(.jrs-track) {
+  display: flex;
+  gap: clamp(10px, 1.6vw, 22px);
+  margin: 0;
+  padding: 12px 18px 12px 0;
+  list-style: none;
+}
+.root :global(.jrs-track li) {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: #6f7a7e;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.root :global(.jrs-track li i) {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #c3c9c7;
+  border-radius: 50%;
+  background: #fff;
+}
+/* The rule joining the dots, drawn from each dot to the one before it so the
+   first has nothing hanging off its left. */
+.root :global(.jrs-track li + li)::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 50%;
+  left: -100%;
+  height: 2px;
+  margin-right: 8px;
+  background: #d8dcda;
+}
+.root :global(.jrs-track li[data-state="done"] i) { border-color: #2b9e61; background: #2b9e61; }
+.root :global(.jrs-track li[data-state="done"] + li)::before { background: #9ed5b8; }
+.root :global(.jrs-track li[data-state="now"] i) { border-color: #ff6a24; background: #ff6a24; box-shadow: 0 0 0 4px rgba(255, 106, 36, .16); }
+.root :global(.jrs-track li[data-state="now"] span) { color: #c9430a; font-weight: 700; }
+
+/* Initials, not faces. The crew on this record is invented, and a stock
+   photograph of a stranger presented as your crew is a claim the page has no
+   business making. */
+.root :global(.jrs-people) { display: flex; align-items: center; gap: 12px; padding-right: 16px; }
+.root :global(.jrs-chips) { display: flex; }
+.root :global(.jrs-chips b) {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: -8px;
+  border: 2px solid #fffdf9;
+  border-radius: 50%;
+  background: #dfe4e2;
+  color: #3a4b52;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.root :global(.jrs-chips b:first-child) { margin-left: 0; }
+.root :global(.jrs-pill) {
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: #eceeec;
+  color: #46534f;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.root :global(.jrs-status) { display: flex; align-items: center; gap: 12px; padding-right: 16px; }
+.root :global(.jrs-badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.root :global(.jrs-badge-ok) { border: 1px solid rgba(43, 158, 97, .35); background: rgba(43, 158, 97, .12); color: #1c7a49; }
+/* On the navy header the same green has to carry itself against a dark ground
+   rather than against paper, so it is the fill and not the ink. */
+.root :global(.jrs-badge-stage) {
+  padding: 10px 16px;
+  border: 1px solid rgba(120, 190, 150, .4);
+  background: rgba(43, 158, 97, .22);
+  color: #cdf0dd;
+  font-size: 13px;
+}
+.root :global(.jrs-tick) {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.root :global(.jrs-when) { color: #5f6b6e; font-size: 12.5px; white-space: nowrap; }
+
+/* Drawn as the control it depicts, and not one: nothing in this record is
+   operable, and a live-looking button that does nothing is worse than none. */
+.root :global(.jrs-action) {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 14px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 106, 36, .55);
+  border-radius: 9px;
+  color: #c9430a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.root :global(.jrs-action i) { font-style: normal; font-size: 15px; }
+
+.root :global(.jrs-same) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 18px 0 0;
+  color: #8fa7b1;
+  font-size: 13px;
+}
+/* Hairlines either side, so the line reads as a seal across the foot of the
+   record rather than as one more sentence in it. */
+.root :global(.jrs-same)::before,
+.root :global(.jrs-same)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(174, 205, 216, .18);
+}
+.root :global(.jrs-lock) {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+/* ---- the tools, kept ----------------------------------------------------- */
+
+/* The two or three tools each stage is made of. They were cards on the page
+   before this; they are still every word they were, under the record that
+   shows them working. */
+.root :global(.jrs-tools) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.root :global(.jrs-tools li) {
+  padding: 16px 18px;
+  border: 1px solid rgba(120, 106, 96, .2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .5);
+}
+.root :global(.jrs-tools b) { display: block; color: var(--ink); font-size: 15px; font-weight: 700; }
+.root :global(.jrs-tools span) { display: block; margin-top: 6px; color: #5d615c; font-size: 13px; line-height: 1.55; }
+
+.root :global(.jrs-more) { grid-column: 2; margin: 18px 0 0; text-align: right; }
+.root :global(.jrs-more a) {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #0e2632;
+  font-size: 15px;
+  font-weight: 700;
+}
+.root :global(.jrs-more a span) { color: #c9430a; transition: transform .2s ease; }
+.root :global(.jrs-more a:hover) { text-decoration: underline; text-underline-offset: 4px; }
+.root :global(.jrs-more a:hover span) { transform: translateX(4px); }
+
+/* ---- narrow ------------------------------------------------------------- */
+
+@media (max-width: 1000px) {
+  /* The rail becomes a row of cards above the record. Horizontally scrollable
+     rather than wrapped to two lines, so the four stay in one sequence and the
+     record keeps the top of the section. Still a tablist, still arrow-key
+     navigable; only the axis changed. */
+  .root :global(.jrs) { grid-template-columns: minmax(0, 1fr); }
+  .root :global(.jrs-rail) {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(190px, 1fr);
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .root :global(.jrs-rail)::-webkit-scrollbar { display: none; }
+  .root :global(.jrs-rail [role="tab"]) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "num" "name";
+    align-content: start;
+    row-gap: 10px;
+    padding: 16px;
+    border-color: rgba(120, 106, 96, .2);
+    background: rgba(255, 255, 255, .5);
+    scroll-snap-align: start;
+  }
+  /* A thread between cards in a scroller would be a line to somewhere off
+     screen. */
+  .root :global(.jrs-rail [role="tab"]:not(:last-child))::after { display: none; }
+  .root :global(.jrs-num) { width: 40px; height: 40px; font-size: 15px; }
+  .root :global(.jrs-lead) { display: none; }
+  .root :global(.jrs-more) { grid-column: 1; }
+}
+
+@media (max-width: 760px) {
+  /* THE ROW STACKS. Three columns across a 358px card gives the evidence about
+     90px, which turns the arrival tracker into four wrapped words. The glyph
+     stub runs the full height of the stacked rows instead, so the row still
+     reads as one object. */
+  .root :global(.jrs-row) { grid-template-columns: 48px minmax(0, 1fr); }
+  .root :global(.jrs-row-ic) { grid-row: 1 / -1; }
+  .root :global(.jrs-row-text) { padding: 14px 14px 4px; }
+  .root :global(.jrs-track),
+  .root :global(.jrs-people),
+  .root :global(.jrs-status),
+  .root :global(.jrs-action) { grid-column: 2; }
+  .root :global(.jrs-track) { padding: 4px 14px 14px 0; overflow-x: auto; scrollbar-width: none; }
+  .root :global(.jrs-track)::-webkit-scrollbar { display: none; }
+  .root :global(.jrs-people),
+  .root :global(.jrs-status) { flex-wrap: wrap; padding: 0 14px 14px; }
+  .root :global(.jrs-action) { margin: 0 14px 14px; }
+  .root :global(.jrs-record-head h4) { font-size: 26px; }
+  .root :global(.jrs-more) { text-align: left; }
+}
+
+/* Nothing here depends on motion: the stage changes whether or not the fade
+   runs, and there is no autoplay to stop. */
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.jrs-rail [role="tab"]),
+  .root :global(.jrs-num),
+  .root :global(.jrs-lead),
+  .root :global(.jrs-more a span) { transition: none; }
 }
 `;
 

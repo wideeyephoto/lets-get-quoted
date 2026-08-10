@@ -24,14 +24,21 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const HOME = readFileSync('src/components/flagship/flagship-home.tsx', 'utf8');
 const FEATURES = readFileSync('src/app/features/page.tsx', 'utf8');
+/* The four capability ids moved out with the bands that carried them: they are
+   the stage tabs of the job-record component now. The contract is unchanged —
+   nine ids, all reachable from the homepage — but it is spread over two files,
+   so the source this reads has to be too. */
+const STAGES = readFileSync('src/app/features/job-record-stages.tsx', 'utf8');
 
 /** Every '/features#thing' and '/features/thing' the homepage links to. */
 const linked = [...HOME.matchAll(/["'](\/features[#/][a-z0-9#/-]+)["']/g)].map((m) => m[1]);
 const fragments = linked.filter((href) => href.includes('#')).map((href) => href.split('#')[1]);
 const paths = [...new Set(linked.filter((href) => !href.includes('#')))];
 
-/** Every `id: 'thing'` in the features page's FLAGSHIPS and CAPABILITIES. */
-const featureIds = [...FEATURES.matchAll(/\bid:\s*'([a-z0-9-]+)'/g)].map((m) => m[1]);
+/** Every `id: 'thing'` in FLAGSHIPS and in the four stages. */
+const featureIds = [...`${FEATURES}\n${STAGES}`.matchAll(/\bid:\s*'([a-z0-9-]+)'/g)].map(
+  (m) => m[1],
+);
 
 describe('homepage links into /features', () => {
   it('finds the links at all', () => {
@@ -71,9 +78,15 @@ describe('homepage links into /features', () => {
     expect(new Set(featureIds).size).toBe(featureIds.length);
   });
 
-  it('renders each capability group as an anchored, labelled section', () => {
-    expect(FEATURES).toContain('className="capability-band" id={id}');
-    expect(FEATURES).toContain('aria-labelledby={`${id}-title`}');
+  it('puts each capability id on the control a fragment should land on', () => {
+    // The id is on the stage's tab, which is also what the tabs pattern wants
+    // for aria-labelledby — so one element is the anchor target, the accessible
+    // name of the panel, and the thing that gets selected. Following the link
+    // now SELECTS the stage rather than scrolling near it.
+    expect(STAGES).toContain('id={stage.id}');
+    expect(STAGES).toContain('aria-controls={`${stage.id}-panel`}');
+    expect(STAGES).toContain('aria-labelledby={stage.id}');
+    expect(STAGES).toContain("window.addEventListener('hashchange', sync)");
   });
 });
 
