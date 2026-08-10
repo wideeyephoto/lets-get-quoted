@@ -4915,11 +4915,28 @@
    three steps and scrolled past the reader once.
 
    height:0 keeps it out of the column's flow, so it cannot push a card down,
-   and the list hangs off it. top:50vh puts the pinned line at the middle of the
-   screen, which is where the wheel's centre used to sit. */
+   and the list hangs off it. The pinned line is the middle of the screen, which
+   is where the wheel's centre used to sit.
+
+   THE LIST HANGS DOWN FROM ITS ANCHOR, NOT ACROSS IT, and that is a bug fix.
+   It used to be top:0 with translateY(-50%), which centres it on the top of
+   .steps-column — so for the whole stretch before the sticky engages, half the
+   rail sat ABOVE that column, over the section intro. Measured at 1440x900:
+   27px of the "01" node on top of "Let it capture job details, prioritize
+   leads...", at every scroll position until the rail pinned.
+
+   Sticky only governs where the element STOPS; before that it rides at its
+   normal position, so the centring had to come out of the list and go into the
+   offset. --rail-half is half the list's own height (three nodes plus two
+   gaps), so top: 50vh - half puts the CENTRE of the list on 50vh once pinned —
+   exactly where it was — while the list now starts at the column top and grows
+   downwards, where there is nothing to collide with. */
 .root :global(.step-rail) {
+  /* 3 x 46px node + 2 x 34px gap = 206; half is 103. Restated below 1100px,
+     where both numbers change. */
+  --rail-half: 103px;
   position: sticky;
-  top: 50vh;
+  top: calc(50vh - var(--rail-half));
   height: 0;
   z-index: 3;
 }
@@ -4929,7 +4946,6 @@
   left: 100%;
   margin-left: 16px;
   top: 0;
-  transform: translateY(-50%);
   display: grid;
   gap: 34px;                       /* the connector lives in this gap */
   margin-block: 0;
@@ -5017,6 +5033,8 @@
    and clear of the card's own padding. Still sticky: the whole reason this
    moved. */
 @media (max-width: 1100px) {
+  /* 3 x 34px node + 2 x 22px gap = 146; half is 73. */
+  .root :global(.step-rail) { --rail-half: 73px; }
   .root :global(.step-rail ol) {
     left: auto;
     right: 0;
