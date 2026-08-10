@@ -4150,7 +4150,10 @@ const TWEAKS = `
      and a length so it stops growing when the panel goes full-width stacked. A
      message that runs 85 characters a line has stopped looking like one. */
   max-width: min(94%, 30rem);
-  background: linear-gradient(135deg, #c9430a, #a8330b);
+  /* The app's sent-message blue, not the brand orange — see the note on
+     .inbox-bubble-outbound in globals.css. This is the same text a customer
+     receives, so it has to be the same bubble. */
+  background: linear-gradient(246deg, #0061af, #1f3b4d);
   border: 1px solid rgba(255, 255, 255, .09);
   border-bottom-right-radius: 6px;
   color: #fff;

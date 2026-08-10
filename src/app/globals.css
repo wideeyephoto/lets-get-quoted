@@ -9558,11 +9558,20 @@ button.inbox-thread-item {
    bubble of a run, so a run reads as one shape with one point of origin. */
 .inbox-bubble-inbound.is-last { border-bottom-left-radius: 6px; }
 
-/* Deeper than the brand orange on purpose. #ff7a21 carries white at about
-   2.4:1; this gradient runs 4.9:1 at its lightest end, so the bubble can keep
-   white text and still be read by somebody outdoors holding a phone. */
+/* THE SENT BUBBLE IS BLUE.
+
+   It was a deep orange, which is the brand colour and therefore the colour of
+   every button on the screen around it — so a thread read as a column of
+   things to press. Blue is what a sent message is everywhere else a person has
+   ever seen one, and it leaves orange to mean "do something".
+
+   The two ends are picked for contrast, not decoration: #0061af carries white
+   at 6.3:1 and the far end is darker still, so the bubble keeps white text and
+   stays readable outdoors on a phone. Three places draw this exact gradient —
+   here, the outgoing-text catalogue, and the thread in the /features hero —
+   because they are all the same message. Change one, change all three. */
 .inbox-bubble-outbound {
-  background: linear-gradient(135deg, #c9430a, #a8330b);
+  background: linear-gradient(246deg, #0061af, #1f3b4d);
   border: 1px solid rgba(255, 255, 255, 0.09);
   color: #ffffff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
@@ -29313,7 +29322,7 @@ body[data-schedule-overlay="job"] .sched-queue {
   padding: 0.6rem 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 18px 18px 18px 6px;
-  background: linear-gradient(135deg, #c9430a, #a8330b);
+  background: linear-gradient(246deg, #0061af, #1f3b4d);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   color: #ffffff;
   font-size: 0.88rem;
