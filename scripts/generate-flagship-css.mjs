@@ -4845,7 +4845,12 @@ const TWEAKS = `
 
 /* The two or three tools each stage is made of. They were cards on the page
    before this; they are still every word they were, under the record that
-   shows them working. */
+   shows them working — and each one is now a link to the part of a feature
+   page that writes it up. A card that names a tool and does nothing is a dead
+   end on a page whose whole job is to send people deeper.
+
+   THE WHOLE CARD IS THE LINK. Padding lives on the anchor, not the <li>, so
+   the hit area is the card rather than the two words at the top of it. */
 .root :global(.jrs-tools) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
@@ -4855,13 +4860,31 @@ const TWEAKS = `
   list-style: none;
 }
 .root :global(.jrs-tools li) {
-  padding: 16px 18px;
   border: 1px solid rgba(120, 106, 96, .2);
   border-radius: 12px;
   background: rgba(255, 255, 255, .5);
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
 }
-.root :global(.jrs-tools b) { display: block; color: var(--ink); font-size: 15px; font-weight: 700; }
-.root :global(.jrs-tools span) { display: block; margin-top: 6px; color: #5d615c; font-size: 13px; line-height: 1.55; }
+.root :global(.jrs-tools li:hover) {
+  transform: translateY(-2px);
+  border-color: rgba(201, 67, 10, .42);
+  background: rgba(255, 255, 255, .82);
+}
+.root :global(.jrs-tools a) { display: block; height: 100%; padding: 16px 18px; }
+.root :global(.jrs-tools b) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+/* The arrow is inside the heading rather than parked in a corner, so the card
+   reads as a link at the point where its name is. */
+.root :global(.jrs-tools b span) { color: #c9430a; transition: transform .2s ease; }
+.root :global(.jrs-tools li:hover b span) { transform: translateX(3px); }
+.root :global(.jrs-tools li:hover b) { text-decoration: underline; text-underline-offset: 4px; }
+.root :global(.jrs-tools a > span) { display: block; margin-top: 6px; color: #5d615c; font-size: 13px; line-height: 1.55; }
 
 .root :global(.jrs-more) { grid-column: 2; margin: 18px 0 0; text-align: right; }
 .root :global(.jrs-more a) {
@@ -4940,7 +4963,10 @@ const TWEAKS = `
   .root :global(.jrs-rail [role="tab"]),
   .root :global(.jrs-num),
   .root :global(.jrs-lead),
+  .root :global(.jrs-tools li),
+  .root :global(.jrs-tools b span),
   .root :global(.jrs-more a span) { transition: none; }
+  .root :global(.jrs-tools li:hover) { transform: none; }
 }
 `;
 

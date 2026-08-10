@@ -207,6 +207,10 @@
 
 .capGroup {
   min-width: 0;
+  /* Each group is an anchor: the nine tool cards on /features link straight at
+     the group that writes their tool up. The site header is fixed at 82px, so
+     without this every one of them arrives underneath it. */
+  scroll-margin-top: 104px;
   padding: 1.15rem 1.2rem 1.25rem;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -556,7 +560,8 @@
 
 @media (max-width: 720px) {
   .record { font-size: 0.8rem; }
-  .capGroup { padding: 1rem 1.05rem 1.1rem; }
+  /* The header is 68px below the nav breakpoint, not 82. */
+  .capGroup { padding: 1rem 1.05rem 1.1rem; scroll-margin-top: 88px; }
   /* Both panels drop their leading label column: at 390px a 6.4rem date gutter
      leaves about 9 characters for the description, which wraps to four lines. */
   .planRow,

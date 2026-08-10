@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 /**
  * /features — the four operational stages of one job record.
@@ -133,6 +133,48 @@ describe('following a link into a stage', () => {
   it('sends the section CTA to the back office', () => {
     expect(SRC).toContain('href="/features/back-office"');
     expect(SRC).toContain('Explore the connected back office');
+  });
+});
+
+describe('every tool card goes somewhere', () => {
+  const BACK_OFFICE = readFileSync('src/app/features/back-office/page.tsx', 'utf8');
+  const hrefs = [...SRC.matchAll(/href: '([^']+)'/g)].map((m) => m[1]);
+
+  it('gives all nine tools a link', () => {
+    // A card naming a tool and doing nothing is a dead end on a page whose job
+    // is to send people deeper.
+    expect(hrefs.length).toBe(9);
+    expect(SRC).toContain('<Link href={tool.href}>');
+  });
+
+  it('points every one of them at a route that exists', () => {
+    for (const href of new Set(hrefs)) {
+      const path = href.split('#')[0];
+      expect(existsSync(`src/app${path}/page.tsx`), href).toBe(true);
+    }
+  });
+
+  it('points every fragment at an id on the page it lands on', () => {
+    // These are the capability groups on /features/back-office, which gained
+    // ids for exactly this. A rename on one side only is silent: the link still
+    // 200s and the browser scrolls nowhere.
+    const fragments = hrefs
+      .filter((href) => href.startsWith('/features/back-office#'))
+      .map((href) => href.split('#')[1]);
+    expect(fragments.length).toBeGreaterThan(0);
+    for (const id of new Set(fragments)) {
+      // Two shapes on that page: a literal id="..." on a heading's section, and
+      // `id: '...'` in the capability-group data that renders id={group.id}.
+      const found = BACK_OFFICE.includes(`id="${id}"`) || BACK_OFFICE.includes(`id: '${id}'`);
+      expect(found, `no id "${id}" on /features/back-office`).toBe(true);
+    }
+    expect(BACK_OFFICE).toContain('id={group.id}');
+  });
+
+  it('lands those anchors clear of the fixed header', () => {
+    const CAP_CSS = readFileSync('src/app/features/back-office/back-office.module.css', 'utf8');
+    expect(CAP_CSS).toContain('scroll-margin-top: 104px');
+    expect(CAP_CSS).toContain('scroll-margin-top: 88px');
   });
 });
 

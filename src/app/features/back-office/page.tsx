@@ -178,8 +178,13 @@ function JobRecordExample() {
 /* rather than the category, because "scheduling" is a word and "send three    */
 /* time options by text and their pick lands on the job" is a product.         */
 /* ------------------------------------------------------------------------- */
-const CAPABILITY_GROUPS: { stage: string; items: { term: string; detail: string }[] }[] = [
+/* `id` IS A LANDING POINT, not decoration. The nine tool cards on /features
+   each link at the group that writes their tool up, so a reader who taps
+   "Payments" arrives at the payment capabilities rather than at the top of a
+   long page. Renaming one silently breaks a link; there is a test. */
+const CAPABILITY_GROUPS: { id: string; stage: string; items: { term: string; detail: string }[] }[] = [
   {
+    id: 'quote-and-approve',
     stage: 'Quote and approve',
     items: [
       {
@@ -205,6 +210,7 @@ const CAPABILITY_GROUPS: { stage: string; items: { term: string; detail: string 
     ],
   },
   {
+    id: 'schedule-and-crew',
     stage: 'Schedule and crew',
     items: [
       {
@@ -235,6 +241,7 @@ const CAPABILITY_GROUPS: { stage: string; items: { term: string; detail: string 
     ],
   },
   {
+    id: 'money',
     stage: 'Money',
     items: [
       {
@@ -260,6 +267,7 @@ const CAPABILITY_GROUPS: { stage: string; items: { term: string; detail: string 
     ],
   },
   {
+    id: 'customer-during-and-after',
     stage: 'The customer, during and after',
     items: [
       {
@@ -576,7 +584,7 @@ export default function BackOfficePage() {
 
         <div className={styles.capGroups}>
           {CAPABILITY_GROUPS.map((group) => (
-            <div key={group.stage} className={styles.capGroup}>
+            <div key={group.id} id={group.id} className={styles.capGroup}>
               <div className={styles.capGroupHead}>
                 <h3 className={styles.capGroupTitle}>{group.stage}</h3>
                 <span className={styles.capCount} aria-hidden="true">

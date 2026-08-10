@@ -51,8 +51,13 @@ type Stage = {
   /** Where the job has got to, top right of the record. */
   badge: string;
   rows: [Row, Row, Row, Row];
-  /** The tools this stage is made of. Unchanged copy from the bands. */
-  tools: [string, string][];
+  /**
+   * The tools this stage is made of. Unchanged copy from the bands, and each
+   * one now goes to the part of a feature page that writes it up — a card
+   * naming a tool and doing nothing is a dead end on a page whose whole job is
+   * to send people deeper.
+   */
+  tools: { name: string; body: string; href: string }[];
 };
 
 /* The arrival tracker's four states, in the order lib/arrival.ts moves through
@@ -96,8 +101,8 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      ['Scheduling', 'Arrival windows, capacity and the details needed to keep the promise.'],
-      ['Crew + labor', 'Assignments, time clock, hours and estimated pay.'],
+      { name: 'Scheduling', body: 'Arrival windows, capacity and the details needed to keep the promise.', href: '/features/back-office#schedule-and-crew' },
+      { name: 'Crew + labor', body: 'Assignments, time clock, hours and estimated pay.', href: '/features/back-office#schedule-and-crew' },
     ],
   },
   {
@@ -135,8 +140,8 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      ['Customer communication', 'Two-way texts and a job-specific client portal.'],
-      ['Recurring work', 'Automatic visits, saved cards and predictable revenue.'],
+      { name: 'Customer communication', body: 'Two-way texts and a job-specific client portal.', href: '/features/client-portal' },
+      { name: 'Recurring work', body: 'Automatic visits, saved cards and predictable revenue.', href: '/features/back-office#customer-during-and-after' },
     ],
   },
   {
@@ -174,9 +179,9 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      ['Quotes + e-sign', 'Itemized proposals, optional upgrades and clear approvals.'],
-      ['Payments', 'Deposits, balances and payment plans through Stripe.'],
-      ['Cash flow', 'See customer money, payroll and bills before they move.'],
+      { name: 'Quotes + e-sign', body: 'Itemized proposals, optional upgrades and clear approvals.', href: '/features/back-office#quote-and-approve' },
+      { name: 'Payments', body: 'Deposits, balances and payment plans through Stripe.', href: '/features/back-office#money' },
+      { name: 'Cash flow', body: 'See customer money, payroll and bills before they move.', href: '/features/back-office#back-office-cash' },
     ],
   },
   {
@@ -214,11 +219,12 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      ['Reviews + growth', 'Follow-ups, review requests and AI-assisted marketing.'],
-      [
-        'Campaigns + blog',
-        'Email and text campaigns, a blog that publishes to your site, and what each one did.',
-      ],
+      { name: 'Reviews + growth', body: 'Follow-ups, review requests and AI-assisted marketing.', href: '/features/back-office#customer-during-and-after' },
+      {
+        name: 'Campaigns + blog',
+        body: 'Email and text campaigns, a blog that publishes to your site, and what each one did.',
+        href: '/features/website-builder',
+      },
     ],
   },
 ];
@@ -429,11 +435,18 @@ export default function JobRecordStages() {
         >
           <JobRecord stage={stage} />
 
+          {/* The whole card is the link. A "learn more" under each of nine
+              cards would be nine identical words under nine different names,
+              and the name is already the thing you would click. */}
           <ul className="jrs-tools">
-            {stage.tools.map(([name, body]) => (
-              <li key={name}>
-                <b>{name}</b>
-                <span>{body}</span>
+            {stage.tools.map((tool) => (
+              <li key={tool.name}>
+                <Link href={tool.href}>
+                  <b>
+                    {tool.name} <span aria-hidden="true">→</span>
+                  </b>
+                  <span>{tool.body}</span>
+                </Link>
               </li>
             ))}
           </ul>
