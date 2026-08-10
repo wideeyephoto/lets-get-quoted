@@ -407,9 +407,12 @@
   /**
    * AND IT DRIFTS.
    *
-   * Six pixels corner to corner over thirteen seconds — slow enough that you
-   * never catch it moving, and the only reason it is here is that a perfectly
-   * still object in front of two breathing glows starts to look pasted on.
+   * Twenty pixels corner to corner over thirteen seconds. It was six, which
+   * measured out at 0.46px a second — running perfectly and completely
+   * invisible, which is indistinguishable from broken. "Slow enough that you
+   * never catch it moving" turned out to be the wrong target: the point is
+   * that a still object in front of two breathing glows looks pasted on, and
+   * an object moving imperceptibly looks exactly as pasted on.
    *
    * TRANSFORM ONLY. The eight filter passes above are expensive and they are
    * rasterised ONCE: promoting this to its own layer means the drift is the
@@ -425,8 +428,24 @@
 }
 
 @keyframes hero-float {
-  from { transform: translate3d(-3px, 3px, 0); }
-  to { transform: translate3d(3px, -3px, 0); }
+  from { transform: translate3d(-10px, 8px, 0); }
+  to { transform: translate3d(10px, -8px, 0); }
+}
+
+/**
+ * The parallax wrapper. Y only, written from JS one frame at a time — see
+ * HeroParallax.tsx for the rules it keeps.
+ *
+ * It exists as its own element for one reason: the drift above is a transform
+ * on the <img>, and a second transform on the SAME element would overwrite it.
+ * Nested, the two multiply through the tree and compose, which is why the shot
+ * can drift and lag the page at once.
+ *
+ * No transition. The value is already updated per frame, and easing a value
+ * that changes every frame just adds a fixed lag behind the scroll.
+ */
+.heroParallax {
+  will-change: transform;
 }
 
 /* ---------------------------------------------------------------- */
@@ -598,8 +617,11 @@
   }
 
   /* The drift is the only reason this was promoted; without it the layer is
-     just eight filter passes held in memory for nothing. */
-  .heroShot { will-change: auto; }
+     just eight filter passes held in memory for nothing. The parallax wrapper
+     goes the same way — HeroParallax never starts its loop under reduced
+     motion, so its layer would be held for a transform that never changes. */
+  .heroShot,
+  .heroParallax { will-change: auto; }
 }
 
 /* ---------------------------------------------------------------- */

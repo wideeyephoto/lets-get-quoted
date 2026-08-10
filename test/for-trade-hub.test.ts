@@ -415,6 +415,84 @@ describe('the glow and the shimmer', () => {
     }
   });
 
+  /**
+   * BIG ENOUGH TO SEE, which is not the same test as "is it running".
+   *
+   * The drift shipped at ±3px over 13s. Measured in a browser that is 0.46px a
+   * second: the animation was running, in the right direction, on a promoted
+   * layer — and completely invisible, which from the outside is
+   * indistinguishable from broken. An amplitude floor is the only part of this
+   * a stylesheet can be wrong about silently.
+   */
+  it('drifts far enough to be seen', () => {
+    const at = CSS.indexOf('@keyframes hero-float');
+    const frames = CSS.slice(at, CSS.indexOf('\n}', at));
+    const offsets = [...frames.matchAll(/translate3d\((-?\d+)px, (-?\d+)px/g)];
+    expect(offsets, 'hero-float has no translate3d endpoints').toHaveLength(2);
+    const travelX = Math.abs(Number(offsets[0][1]) - Number(offsets[1][1]));
+    const travelY = Math.abs(Number(offsets[0][2]) - Number(offsets[1][2]));
+    expect(travelX, 'corner-to-corner X travel').toBeGreaterThanOrEqual(16);
+    expect(travelY, 'corner-to-corner Y travel').toBeGreaterThanOrEqual(12);
+  });
+});
+
+/* ===========================================================================
+   7b. …and it lags the page it sits on
+   ======================================================================== */
+describe('the hero parallax', () => {
+  const PARALLAX = stripJs(read('src', 'app', 'for', 'HeroParallax.tsx'));
+
+  /**
+   * The load-bearing detail. The drift is a transform on the <img>; a parallax
+   * set on that SAME element would overwrite it, which is the usual way a
+   * hand-rolled parallax silently kills whatever animation was already there.
+   * Nested, the two multiply through the tree and compose.
+   */
+  it('is a wrapper around the shot, never a second transform on it', () => {
+    expect(PAGE).toContain('<HeroParallax className={styles.heroParallax}>');
+    const open = PAGE.indexOf('<HeroParallax');
+    const close = PAGE.indexOf('</HeroParallax>');
+    expect(open).toBeGreaterThan(-1);
+    expect(close).toBeGreaterThan(open);
+    // The image is INSIDE it, which is what makes the transforms compose.
+    expect(PAGE.slice(open, close)).toContain('className={styles.heroShot}');
+    // And the shot's own animation is untouched.
+    expect(CSS).toContain('animation: hero-float');
+  });
+
+  it('writes nothing but a transform', () => {
+    const writes = [...PARALLAX.matchAll(/el\.style\.(\w+)/g)].map((m) => m[1]);
+    expect(writes.length).toBeGreaterThan(0);
+    for (const prop of writes) expect(['transform'], `parallax writes ${prop}`).toContain(prop);
+  });
+
+  it('coalesces scroll events to one frame', () => {
+    // Scroll fires far faster than frames do; without the guard this draws
+    // several times per frame for no extra smoothness.
+    expect(PARALLAX).toContain('if (frame || !onScreen || still.matches) return;');
+    expect(PARALLAX).toContain('requestAnimationFrame(draw)');
+    expect(PARALLAX).toContain("{ passive: true }");
+  });
+
+  it('stops while the hero is off screen', () => {
+    expect(PARALLAX).toContain('new IntersectionObserver');
+    expect(PARALLAX).toContain('onScreen = entry.isIntersecting');
+  });
+
+  it('never starts under reduced motion, and gives the layer back', () => {
+    expect(PARALLAX).toContain("matchMedia('(prefers-reduced-motion: reduce)')");
+    expect(PARALLAX).toContain("el.style.transform = ''");
+    const reduced = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(reduced.slice(0, reduced.indexOf('\n}\n'))).toContain('.heroParallax');
+  });
+
+  it('and tears every listener back down', () => {
+    const cleanup = PARALLAX.slice(PARALLAX.lastIndexOf('return () => {'));
+    for (const gone of ['io.disconnect()', "removeEventListener('scroll'", "removeEventListener('resize'", 'cancelAnimationFrame']) {
+      expect(cleanup, gone).toContain(gone);
+    }
+  });
+
   /* Ambient motion with no trigger — nothing the reader started and nothing
      they can stop. */
   it('stops every one of them for anyone who asked for less motion', () => {

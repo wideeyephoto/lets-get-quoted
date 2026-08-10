@@ -7,6 +7,7 @@ import { FEE_TIERS } from '@/lib/pricing';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import SiteFooter from '@/components/site-footer';
 import TradeFinder from './TradeFinder';
+import HeroParallax from './HeroParallax';
 import styles from './for.module.css';
 
 export const metadata: Metadata = {
@@ -178,19 +179,24 @@ export default function TradeIndexPage() {
             </div>
 
             <div className={styles.heroArt}>
-              {/* Eager and high-priority: this is the LCP element at every width.
-                  The intrinsic size is the trimmed master's, printed by
-                  scripts/build-for-hero.mjs — if it stops matching, Next reserves
-                  the wrong box and the hero shifts as the image lands. */}
-              <Image
-                className={styles.heroShot}
-                src="/for/hero-quote-devices.webp"
-                alt="Let’s Get Quoted quote builder displayed on a laptop and phone."
-                width={956}
-                height={642}
-                priority
-                sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, (max-width: 1360px) 56vw, 703px"
-              />
+              {/* The parallax is a WRAPPER, not a class on the image, because the
+                  image already carries a transform of its own — the drift. Two
+                  transforms on one element overwrite; nested, they compose. */}
+              <HeroParallax className={styles.heroParallax}>
+                {/* Eager and high-priority: this is the LCP element at every width.
+                    The intrinsic size is the trimmed master's, printed by
+                    scripts/build-for-hero.mjs — if it stops matching, Next reserves
+                    the wrong box and the hero shifts as the image lands. */}
+                <Image
+                  className={styles.heroShot}
+                  src="/for/hero-quote-devices.webp"
+                  alt="Let’s Get Quoted quote builder displayed on a laptop and phone."
+                  width={956}
+                  height={642}
+                  priority
+                  sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, (max-width: 1360px) 56vw, 703px"
+                />
+              </HeroParallax>
             </div>
           </section>
 

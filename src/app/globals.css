@@ -22606,8 +22606,39 @@ a.bset-card { color: inherit; text-decoration: none; }
     rgba(var(--panel-rgb), 0.88);
 }
 
+/**
+ * THE HERO'S HEIGHT IS A BUDGET, AND IT WAS OVERSPENT.
+ *
+ * Measured on a 390px phone before this: 61px of top bar, 36 of trust strip
+ * and 307 of hero put the first thing a visitor can DO at y=448 — more than
+ * half the screen gone before a decision is offered, on a page whose only job
+ * is to take a booking.
+ *
+ * The title was the bulk of it. .workspace-title's clamp resolved to 42.9px on
+ * a phone, which wrapped "Request a visit" onto two lines at 84px tall; it is
+ * a dashboard heading size, tuned for a page where the heading IS the content.
+ * Here it is a label on a form. Smaller, and the phrase fits one line.
+ *
+ * Nothing is removed — same eyebrow, same headline, same sentence setting the
+ * expectation. It stops taking a screen and a half to say them.
+ */
+.book-hero {
+  padding: clamp(1.15rem, 3.4vw, 1.75rem);
+}
+
 .book-hero .workspace-title {
   max-width: 18ch;
+  font-size: clamp(1.85rem, 4.6vw, 2.6rem);
+  margin-bottom: 0.5rem;
+}
+
+/* The eyebrow is a 12px line of tracked caps; it needed a paragraph's worth of
+   space beneath it about as much as a caption does. */
+.book-hero .eyebrow { margin-bottom: 0.4rem; }
+
+.book-hero .workspace-lead {
+  margin: 0;
+  max-width: 46ch;
 }
 
 .book-scope .eyebrow {
@@ -23191,8 +23222,11 @@ a.bset-card { color: inherit; text-decoration: none; }
    horizontally, with a half-visible fact at the right edge doing the work of
    telling you there is more.
    ======================================================================== */
-@media (max-width: 720px) {
-  .book-facts { padding: 0.85rem 1rem 0; }
+/* 900 rather than 720: at 780px the column is at its full width and five facts
+   still wrap to two rows, which is the same stacked-header problem one
+   breakpoint up from where it was being fixed. */
+@media (max-width: 900px) {
+  .book-facts { padding: 0.7rem 1rem 0; }
 
   .book-facts ul {
     flex-wrap: nowrap;
