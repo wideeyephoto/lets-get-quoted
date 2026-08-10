@@ -389,7 +389,10 @@ export default function ScheduleTimeline({
               ) : fullDates.has(dateKey) ? (
                 <span className="sched-tl-head-flag full" title="Daily capacity reached">Full</span>
               ) : dayJobs.length > 0 ? (
-                <span className="sched-tl-head-count">{dayJobs.length}</span>
+                /* "3" sat at the far right of a row, where nothing else was a
+                   number. Stacked under a 1.4rem "11" it would have read as a
+                   second date, so it says what it counts. */
+                <span className="sched-tl-head-count">{dayJobs.length} {dayJobs.length === 1 ? 'job' : 'jobs'}</span>
               ) : null}
               <span className="sr-only">
                 {closedWithWork

@@ -27408,7 +27408,12 @@ body[data-schedule-overlay="job"] .sched-queue {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(var(--tint), 0.015);
-  overflow: hidden;
+  /* clip, not hidden. It clips to the rounded corners exactly as before, but
+     it does NOT become a scroll container — which is the whole reason
+     .sched-tl-head can now stick to the page. Nothing scrolls this box
+     programmatically; the one scrollTop we set is on .sched-tl-scroll inside
+     it. */
+  overflow: clip;
 }
 /* The column count comes from the number of days rendered, not from a
    breakpoint: the component decides how many days fit and CSS follows it, so
@@ -27436,15 +27441,31 @@ body[data-schedule-overlay="job"] .sched-queue {
   grid-template-columns: var(--tl-gutter) repeat(var(--tl-cols, 1), minmax(0, 1fr));
 }
 
-/* NOT sticky, deliberately. The head is a sibling of the scroll container, not
-   inside it, so it is permanently on screen already — and .sched-tl carries
-   overflow:hidden, which means a sticky child has nothing to stick to anyway.
-   An opaque background rather than a blur for the same reason: nothing scrolls
-   underneath it, so the blur would have been a Safari prefix and a repaint
-   cost buying a effect nobody could see. */
+/**
+ * STICKY AGAINST THE PAGE, WHICH IS THE ONLY THING THAT SCROLLS PAST IT.
+ *
+ * It used to say "not sticky, deliberately", and the reasoning held right up
+ * until the hour rows were halved twice. The head is a sibling of the internal
+ * scroll container, so it was already safe from THAT scroll — but the calendar
+ * still sits on a long dashboard page, and scrolling the page took the column
+ * names away while leaving a grid of unlabelled columns behind.
+ *
+ * The blocker named in the old comment was real: .sched-tl carried
+ * overflow:hidden, which makes it a scroll container, and a sticky child sticks
+ * to its nearest scrolling ancestor — so it stuck to a box that never scrolls
+ * and did nothing. overflow:clip clips identically without establishing a
+ * scrollport, which hands the head back to the page scroller. See .sched-tl.
+ *
+ * OPAQUE, and now for a reason: rows genuinely pass underneath it. The old
+ * translucent 3% tint over the card would have let 8am read through the
+ * weekday names.
+ */
 .sched-tl-head {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   border-bottom: 1px solid var(--line);
-  background: rgba(var(--tint), 0.03);
+  background: var(--bg-3);
 }
 .sched-tl-zone {
   display: flex;
@@ -27457,11 +27478,28 @@ body[data-schedule-overlay="job"] .sched-queue {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/**
+ * MON over 10 — not "MON 10" sharing a baseline.
+ *
+ * On one line at 0.66rem and 1rem the weekday and the date were close enough
+ * in size to read as a single string, and the Closed pill, thrown to the far
+ * end of the row by margin-left:auto, carried more colour than either of them.
+ * The thing the header exists to answer — which day is this column? — was the
+ * third thing the eye landed on.
+ *
+ * Stacked, the number wins on size alone and the badge drops to a third line
+ * where it annotates the day rather than competing with it. justify-content
+ * centres the stack so the columns with no badge still sit level with the ones
+ * that have one.
+ */
 .sched-tl-day-head {
   display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.55rem 0.6rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 56px;
+  padding: 0.4rem 0.6rem;
   border-right: 1px solid var(--line);
   min-width: 0;
 }
@@ -27470,28 +27508,71 @@ body[data-schedule-overlay="job"] .sched-queue {
   color: var(--mute-i60);
   font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
+  line-height: 1;
 }
-.sched-tl-day-head strong { font-size: 1rem; font-weight: 750; }
-.sched-tl-day-head.today small,
-.sched-tl-day-head.today strong { color: var(--accent); }
-.sched-tl-head-count {
-  margin-left: auto;
-  color: var(--mute-i60);
-  font-size: 0.7rem;
+/* Tabular figures, so 11 and 30 take the same width and a row of dates reads
+   as a row rather than a ragged one. */
+.sched-tl-day-head strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+
+/**
+ * TODAY IS A FILL AND A BAR, NOT A COLOUR SWAP.
+ *
+ * Orange text was the whole marker, which asks the reader to compare five
+ * numbers and pick the odd one out — and asks a red-green colourblind reader
+ * to tell an orange from a grey at 0.66rem. The inset bar is a second channel
+ * that does not depend on hue, and it lands in the same place every time, so
+ * it can be found without reading anything.
+ */
+.sched-tl-day-head.today {
+  background: rgba(255, 122, 33, 0.09);
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+.sched-tl-day-head.today small { color: var(--accent-ink); }
+.sched-tl-day-head.today strong { color: var(--accent); }
+
+/* margin-left:auto pushed these to the right end of a ROW. In a column it
+   would push them to the right edge instead, breaking the left alignment the
+   stack is built on. */
+.sched-tl-head-count {
+  margin-left: 0;
+  color: var(--mute-i60);
+  font-size: 0.66rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+/* Explicit, because the inherited 1.5 on a third line is 5px of the header's
+   height spent on nothing — and the header height is the budget being kept. */
 .sched-tl-head-flag {
-  margin-left: auto;
+  margin-left: 0;
   padding: 0.05rem 0.34rem;
   border-radius: 999px;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
+  line-height: 1.25;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/**
+ * The two flags that are news keep their pill. The one that is not loses it.
+ *
+ * A Sunday being closed is the schedule working correctly, and it was drawn
+ * with the same filled pill as "this day is full" and "there is work on a day
+ * you are closed" — so the routine state shouted as loudly as the two
+ * exceptions, on more days. Flattening all three would have been the other
+ * error; only the routine one comes down.
+ */
 .sched-tl-head-flag.full { background: rgba(255,138,61,.18); color: var(--ink-orange-4); }
-.sched-tl-head-flag.blocked { background: rgba(var(--tint), 0.08); color: var(--mute-i60); }
+.sched-tl-head-flag.blocked {
+  padding: 0;
+  background: none;
+  color: var(--mute-i60);
+}
 
 /* ---- the "no start time" strip ------------------------------------------- */
 .sched-tl-anytime { border-bottom: 1px solid var(--line); background: rgba(var(--tint), 0.02); }
@@ -28074,8 +28155,10 @@ body[data-schedule-overlay="job"] .sched-queue {
    only cover the window between a phone and a tablet. */
 @media (max-width: 900px) {
   .sched-tl { --tl-gutter: 2.7rem; }
-  .sched-tl-day-head { flex-wrap: wrap; gap: 0.2rem; padding: 0.45rem 0.4rem; }
-  .sched-tl-head-count, .sched-tl-head-flag { margin-left: 0; }
+  /* Seven columns inside 640px is ~85px each, which the stack fits: the
+     wrapping row this used to need is what the column direction replaced. */
+  .sched-tl-day-head { padding: 0.4rem 0.35rem; }
+  .sched-tl-day-head strong { font-size: 1.15rem; }
   .sched-crew { --crew-name: 6.5rem; }
   .sched-crew-head-axis span:nth-child(even) { color: transparent; }
 }
@@ -28600,6 +28683,9 @@ body[data-schedule-overlay="job"] .sched-queue {
    jobs on it is the one state worth a warning: the work is real and it is
    outside configured hours, and nothing about showing it moves it. */
 .sched-tl-head-flag.blocked[data-with-work] {
+  /* .blocked drops the pill because a closed Sunday is routine. This state is
+     not routine, so it takes the padding back and keeps its fill. */
+  padding: 0.05rem 0.34rem;
   border-color: var(--cedge-orange-9);
   background: rgba(255, 122, 33, 0.16);
   color: var(--accent-ink);
@@ -28615,6 +28701,10 @@ body[data-schedule-overlay="job"] .sched-queue {
   cursor: pointer;
 }
 .sched-tl-day-head:hover { background: rgba(var(--tint), 0.06); }
+/* Hovering today must not make today stop looking like today — the plain hover
+   fill would otherwise replace the accent wash for as long as the pointer is
+   on it. The inset bar survives either way; this keeps the fill too. */
+.sched-tl-day-head.today:hover { background: rgba(255, 122, 33, 0.15); }
 .sched-tl-day-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* -- the queue's first job, once you have asked for it ---------------------- */
