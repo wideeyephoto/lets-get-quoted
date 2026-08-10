@@ -32,18 +32,29 @@ export default function QuickStopFlow({
   businessName,
   serviceArea,
   days,
+  startOpen = false,
+  onExit,
 }: {
   subdomain: string;
   siteId: string;
   businessName: string;
   /** Only so the address example names their town rather than somebody else's. */
   serviceArea?: string | null;
+  /**
+   * Set when this is reached by CHOOSING it rather than by scrolling to it. The
+   * collapsed teaser is the right shape for a card at the foot of a page; it is
+   * a pointless second press when somebody has just picked this path out of
+   * two, having already read what it costs.
+   */
+  startOpen?: boolean;
+  /** Where "Cancel" goes when there is somewhere to go back to. */
+  onExit?: () => void;
   /** The days actually on offer — computed server-side from the owner's
    *  weekdays, how far ahead they accept, and whether today's window has
    *  already closed. Never assume "today": at 9pm it isn't one. */
   days: QuickStopDayOption[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [verdict, setVerdict] = useState<Qualification | null>(null);
@@ -193,7 +204,7 @@ export default function QuickStopFlow({
             questions and a photo upload to the bottom of an already long page,
             and the only way to be rid of them was a full reload — which also
             threw away whatever had been typed into the standard form above. */}
-        <button type="button" className="linklike book-qs-close" onClick={() => setOpen(false)}>
+        <button type="button" className="linklike book-qs-close" onClick={() => (onExit ? onExit() : setOpen(false))}>
           Cancel
         </button>
       </div>

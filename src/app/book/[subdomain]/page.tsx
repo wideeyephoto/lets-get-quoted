@@ -8,13 +8,11 @@ import { siteIconsMetadata } from '@/lib/brand-mark';
 import { siteCanonicalUrl } from '@/lib/seo/site-seo';
 import { phoneLink } from '@/lib/phone';
 import { PHONE_EXAMPLE, addressExample, jobExample } from '@/lib/booking-examples';
-import { submitBookingAction } from './actions';
 import BookingChrome from './BookingChrome';
-import BookingSteps from './BookingSteps';
 import InstantBookFlow from './InstantBookFlow';
 import QuickStopFlow from './QuickStopFlow';
+import RequestVisitFlow from './RequestVisitFlow';
 import { quickStopDayOptions, quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
-import SaveButton from '@/components/save-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -234,20 +232,6 @@ export default async function BookingPage({
     listServices(admin, site.account_id, { activeOnly: true }),
   ]);
 
-  const hasServices = services.length > 0;
-  // Step numbers shift when there's no price book to choose from.
-  const steps = hasServices
-    ? [
-        { n: 1, label: 'What you need' },
-        { n: 2, label: 'Pick a window' },
-        { n: 3, label: 'Your details' },
-      ]
-    : [
-        { n: 1, label: 'Pick a window' },
-        { n: 2, label: 'Your details' },
-      ];
-  const stepNo = { service: 1, window: hasServices ? 2 : 1, details: hasServices ? 3 : 2 };
-
   return (
     <BookingChrome site={site}>
       <main className="wide-shell workspace-shell payment-shell">
@@ -285,13 +269,18 @@ export default async function BookingPage({
                 Call {call.text}
               </a>
             ) : null}
+            {/* Still offered when there is nothing on the calendar to offer.
+                No open windows is precisely the situation Quick Stop exists
+                for, and it used to sit outside this branch — so the one page
+                state where the alternative path matters most was the state
+                that dropped it. */}
+            {quickStop}
           </section>
         ) : (
-          <form action={submitBookingAction.bind(null, params.subdomain)} className="panel workspace-section-card booking-form">
-            <BookingSteps steps={steps} />
+          <>
             {searchParams.error === 'incomplete' ? (
               <p className="payment-banner muted book-alert" role="status">
-                Please request a time and fill in your name, address, and a phone or email.
+                Please choose a window and fill in your name, address, and a phone or email.
               </p>
             ) : null}
             {searchParams.error === 'slot_taken' ? (
@@ -304,109 +293,33 @@ export default async function BookingPage({
                 A lot of requests came in at once. Give it a minute and try again.
               </p>
             ) : null}
-
-            {hasServices ? (
-              <>
-                <div className="section-heading workspace-section-heading book-step-head">
-                  <p className="eyebrow">Step {stepNo.service}</p>
-                  <h2>What do you need?</h2>
-                </div>
-                <div className="booking-slots">
-                  {services.map((service) => (
-                    <label className="booking-slot" key={service.id}>
-                      <input type="radio" name="service" value={service.id} />
-                      <span className="booking-slot-day">{service.name}</span>
-                      <span className="booking-slot-time">
-                        {service.unit_price > 0
-                          ? `from ${formatMoney(service.unit_price)}${UNIT_SUFFIX[service.unit] ?? ''}`
-                          : service.description || 'Tap to select'}
-                      </span>
-                    </label>
-                  ))}
-                  <label className="booking-slot">
-                    <input type="radio" name="service" value="" defaultChecked />
-                    <span className="booking-slot-day">Not sure yet</span>
-                    <span className="booking-slot-time">We&apos;ll figure it out together</span>
-                  </label>
-                </div>
-              </>
-            ) : null}
-
-            <div className="section-heading workspace-section-heading book-step-head">
-              <p className="eyebrow">Step {stepNo.window}</p>
-              <h2>Choose a window</h2>
-            </div>
-            <div className="booking-days">
-              {days.map((day) => (
-                <div className="booking-day-group" key={day.dateKey}>
-                  <p className="booking-day-heading">{day.dayLabel}</p>
-                  <div className="booking-slots">
-                    {day.slots.map((slot) => (
-                      <label className="booking-slot" key={`${day.dateKey}|${slot.time}`}>
-                        <input type="radio" name="slot" value={`${day.dateKey}|${slot.time}`} required />
-                        <span className="booking-slot-time">{slot.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="section-heading workspace-section-heading book-step-head">
-              <p className="eyebrow">Step {stepNo.details}</p>
-              <h2>Your details</h2>
-            </div>
-            <div className="form-grid">
-              <div className="field full">
-                <label htmlFor="name">Full name <span className="book-req">Required</span></label>
-                <input id="name" name="name" required placeholder="Jane Homeowner" autoComplete="name" />
-              </div>
-              {/* ABOVE the pair, not below it. A rule that only one of two
-                  fields is needed is useless once you have already filled in
-                  both, or skipped both and pressed the button — and this one
-                  sat under the boxes it governs, which is where somebody reads
-                  it for the first time while looking at a validation error. */}
-              <p className="field-hint booking-contact-hint booking-contact-rule">
-                Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to confirm.
-              </p>
-              <div className="field">
-                <label htmlFor="phone">Mobile</label>
-                <input id="phone" name="phone" type="tel" placeholder={PHONE_EXAMPLE} autoComplete="tel" />
-              </div>
-              <div className="field">
-                <label htmlFor="email">Email</label>
-                <input id="email" name="email" type="email" placeholder="jane@email.com" autoComplete="email" />
-              </div>
-              <div className="field full">
-                <label htmlFor="address">Address <span className="book-req">Required</span></label>
-                <input id="address" name="address" required placeholder={addressExample(site.service_area)} autoComplete="street-address" />
-              </div>
-              {/* This field was labelled "Anything else we should know?" while
-                  its answer became the job's SCOPE. The question and the
-                  destination disagreed, so people wrote access notes into the
-                  scope of work. Two fields now, each asking for what it stores. */}
-              {/* Marked optional out loud. It is the biggest box on the page and
-                  sits between two required fields, which made it read as
-                  required — so somebody with nothing to add stalls on it. */}
-              <div className="field full">
-                <label htmlFor="description">What&apos;s the job? <span className="book-opt">Optional</span></label>
-                <textarea id="description" name="description" rows={3} placeholder={jobExample(services.map((service) => service.name))} />
-              </div>
-              <div className="field full">
-                <label htmlFor="note">Anything we should know? <span className="book-opt">Optional</span></label>
-                <textarea id="note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
-                <small className="field-hint">This goes to whoever turns up, not just the office.</small>
-              </div>
-              <div className="field full">
-                <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request this time</SaveButton>
-                <p className="book-reassure">
-                  This is a request, not a charge. {businessName} confirms before anything is booked.
-                </p>
-              </div>
-            </div>
-          </form>
+            <RequestVisitFlow
+              subdomain={params.subdomain}
+              businessName={businessName}
+              days={days.map((day) => ({
+                dateKey: day.dateKey,
+                dayLabel: day.dayLabel,
+                slots: day.slots.map((slot) => ({ time: slot.time, label: slot.label })),
+              }))}
+              services={services.map((service) => ({
+                id: service.id,
+                name: service.name,
+                detail:
+                  service.unit_price > 0
+                    ? `from ${formatMoney(service.unit_price)}${UNIT_SUFFIX[service.unit] ?? ''}`
+                    : service.description || 'Select this',
+              }))}
+              addressExample={addressExample(site.service_area)}
+              jobExample={jobExample(services.map((service) => service.name))}
+              phoneExample={PHONE_EXAMPLE}
+              quickStop={
+                quickStopEnabled
+                  ? { siteId: site.id, serviceArea: site.service_area, days: quickStopDays }
+                  : null
+              }
+            />
+          </>
         )}
-        {quickStop}
       </main>
     </BookingChrome>
   );

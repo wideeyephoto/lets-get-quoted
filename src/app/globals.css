@@ -22769,6 +22769,143 @@ a.bset-card { color: inherit; text-decoration: none; }
   margin: 0.1rem 0 -0.35rem;
 }
 
+/* ===========================================================================
+   THE FORK, THE STEP NAVIGATION, AND THE REVIEW
+   ======================================================================== */
+
+/**
+ * Quick Stop used to be a card at the FOOT of the page, beneath the standard
+ * form's own submit — so the way to find the faster option was to scroll past
+ * the slower one and everything it asks for. Anyone who wanted it sooner had
+ * already filled in the form that does not get them there.
+ */
+.book-path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+}
+.book-path {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.book-path:hover { border-color: var(--book-accent, var(--accent)); }
+.book-path:focus-visible { outline: 2px solid var(--book-accent, var(--accent)); outline-offset: 2px; }
+/* Two channels, not one. A border colour alone is the whole selected state on
+   a control whose two options are read as a pair — and it is the channel a
+   colourblind reader cannot use. */
+.book-path.is-on {
+  border-color: var(--book-accent, var(--accent));
+  background: rgba(var(--tint), 0.07);
+  box-shadow: inset 0 0 0 1px var(--book-accent, var(--accent));
+}
+.book-path-name { font-weight: 800; font-size: 1rem; }
+.book-path.is-on .book-path-name { color: var(--book-accent, var(--accent)); }
+.book-path-detail { font-size: 0.84rem; line-height: 1.45; color: rgba(var(--tint), 0.62); }
+
+.book-step-lead { margin-top: 0.35rem; }
+
+/* Forward on the right, back on the left, and the back button visibly lighter
+   — the two are not a choice between equals. */
+.book-stepnav {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.4rem;
+}
+.book-stepnav .book-submit { flex: 1; }
+.book-stepnav .book-back {
+  flex: none;
+  min-height: 44px;
+  padding: 0 1.1rem;
+}
+
+/* A label for a group of radios, which is not a <label> and must not look like
+   one that has lost its input. */
+.book-field-group-label {
+  margin: 1.2rem 0 0.5rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: rgba(var(--tint), 0.88);
+}
+
+/**
+ * BENEATH THE FIELD, IN THE COLOUR OF A PROBLEM.
+ *
+ * The page used to lean on the browser's own validation bubble, which points
+ * at one field at a time, vanishes on the next click, and cannot say "one of
+ * these two". These stay put and read as prose.
+ */
+.field-error {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ff9b7a;
+}
+.book-contact-error { margin-top: -0.2rem; }
+
+/**
+ * The review, with the way to change each line attached to the line. A review
+ * step that can only be corrected by pressing Back twice is a review step
+ * people learn to skip.
+ */
+.book-review {
+  margin: 1rem 0 0;
+  border: 1px solid var(--rule-t08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.book-review-row {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.2rem 1rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--rule-t08);
+}
+.book-review-row:last-child { border-bottom: 0; }
+.book-review-row dt {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--tint), 0.5);
+}
+.book-review-row dd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  min-width: 0;
+}
+.book-review-value {
+  min-width: 0;
+  /* Somebody's note can be 500 characters and it still has to sit in a cell. */
+  overflow-wrap: anywhere;
+}
+.book-review-edit {
+  flex: none;
+  min-height: 44px;
+  font-size: 0.8rem;
+  color: var(--book-accent, var(--accent));
+}
+
+@media (max-width: 560px) {
+  /* 7.5rem of label beside a wrapped address is two columns of ragged text.
+     Stacked, the label becomes a caption for the value under it. */
+  .book-review-row { grid-template-columns: 1fr; }
+  .book-stepnav { flex-wrap: wrap; }
+}
+
 /* Quick Stop's way back out. A link rather than a button: leaving a path you
    opened by accident should not look like a decision of the same weight as
    the one that got you here. */
