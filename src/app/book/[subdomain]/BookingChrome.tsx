@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import { getPublishedRatingBadge, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { templateFontVars } from '@/lib/templates/fonts';
 import { readableOnAccent } from '@/lib/templates/theme-color';
 import { DEFAULT_BRAND_ACCENT } from '@/lib/brand-mark';
 import { siteCanonicalUrl } from '@/lib/seo/site-seo';
@@ -73,7 +74,11 @@ export default function BookingChrome({ site, children }: { site: Site; children
   } as CSSProperties;
 
   return (
-    <div className="book-scope" style={scope}>
+    // templateFontVars because --book-display above is the contractor's own
+    // header_font, and a saved value is a var(--font-oswald)-style reference to
+    // one of these faces. Without them here the booking page renders somebody's
+    // brand in a system font while their website next door gets it right.
+    <div className={`book-scope ${templateFontVars}`} style={scope}>
       {/* Two slow bands of light crossing the page behind everything on it.
           Fixed to the viewport rather than to a section, so a form that runs to
           two thousand pixels keeps the same light all the way down. Decorative

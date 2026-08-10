@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
+import { templateFontVars } from '@/lib/templates/fonts';
 import themeStyles from '@/lib/templates/themes.module.css';
 import { getColorScheme, getSiteContent } from '@/lib/site-content';
 import { readableOnAccent } from '@/lib/templates/theme-color';
@@ -82,7 +83,10 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
       {mounted && open
         ? createPortal(
             <div
-              className="app-modal-backdrop"
+              /* The modal portals to document.body, so it hangs outside every
+                 wrapper on the page. It renders the site's own header_font, so
+                 the variables have to travel with it. */
+              className={`app-modal-backdrop ${templateFontVars}`}
               role="presentation"
               onClick={(event) => {
                 if (event.target === event.currentTarget) setOpen(false);

@@ -1,6 +1,7 @@
 import { requireOwnerContext } from '@/lib/auth';
 import { listUploadedSiteImages } from '@/lib/site-image-storage';
 import { getOrCreateSite } from '@/lib/sites';
+import { templateFontVars } from '@/lib/templates/fonts';
 import WebsiteBuilder from './WebsiteBuilder';
 
 export const metadata = {
@@ -31,11 +32,18 @@ export default async function SitesPage({ searchParams }: { searchParams?: { bui
   const uploadedImages = await listUploadedSiteImages(accountId);
 
   return (
-    <WebsiteBuilder
-      site={site}
-      uploadedImages={uploadedImages}
-      justBuilt={justBuilt}
-      openTarget={searchParams?.open ?? null}
-    />
+    // The one dashboard route that renders the contractor's own type: the
+    // heading and company-name pickers preview each option in the face itself,
+    // and the live preview renders the site. display:contents so the wrapper
+    // carries the variables without adding a box — the builder's own layout
+    // rules expect it to be a direct child of the dashboard shell.
+    <div className={templateFontVars} style={{ display: 'contents' }}>
+      <WebsiteBuilder
+        site={site}
+        uploadedImages={uploadedImages}
+        justBuilt={justBuilt}
+        openTarget={searchParams?.open ?? null}
+      />
+    </div>
   );
 }

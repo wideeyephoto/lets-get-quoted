@@ -16,6 +16,7 @@ import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableOnAccent } from './theme-color';
+import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site }: TemplateProps) {
@@ -36,7 +37,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.forge}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)}>
+    <main className={`${templateFontVars} ${styles.site} ${styles.forge}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />

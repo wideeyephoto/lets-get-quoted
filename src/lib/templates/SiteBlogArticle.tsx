@@ -5,6 +5,7 @@ import BlogReadingProgress from './BlogReadingProgress';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import { readableOnAccent } from './theme-color';
+import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 import { cspNonce } from '@/lib/csp-nonce';
 
@@ -71,7 +72,7 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
   };
 
   return (
-    <main className={`${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
+    <main className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogReadingProgress />
       <header className={styles.blogChromeHeader}>
