@@ -1751,642 +1751,6 @@ const TWEAKS = `
   .root :global(.fee-tiers) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* ###########################################################################
-   /how-it-works
-
-   The page was 20 definition cards in a brown shell with its own header, its
-   own logo treatment and its own navigation — a documentation page linking to
-   a product site. It is now the same system as everything it links to, and the
-   five stages are a journey rather than a table with five rows.
-
-   THE COLOUR RULE, used identically on every graphic here:
-
-     orange   you or your crew did it
-     blue     the homeowner did it
-     green    nobody did it — it happened on its own
-     yellow   waiting on a person
-
-   Green never means "good" and yellow never means "accent". That is what makes
-   the swimlane readable at a glance: the middle lane is nearly empty and the
-   green lane is not.
-   ########################################################################### */
-
-.root :global(.hiw-hand-you) { color: #ff8a4c; }
-
-/* ---- hero ---------------------------------------------------------------- */
-
-.root :global(.hiw-hero) {
-  padding: clamp(52px, 7vw, 104px) clamp(20px, 5vw, 86px) clamp(56px, 7vw, 96px);
-  text-align: center;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 106, 36, .16), transparent 42%),
-    radial-gradient(circle at 12% 88%, rgba(42, 130, 161, .13), transparent 34%),
-    linear-gradient(180deg, #0d222e, #0a1c26);
-}
-.root :global(.hiw-hero .eyebrow) { justify-content: center; }
-.root :global(.hiw-hero h1) {
-  margin: 14px auto 0;
-  max-width: 16ch;
-  font-size: clamp(38px, 5.6vw, 76px);
-  line-height: 1.02;
-  letter-spacing: -.03em;
-  text-wrap: balance;
-}
-.root :global(.hiw-hero h1 em) { color: var(--orange); font-style: normal; }
-.root :global(.hiw-lede) {
-  margin: 20px auto 0;
-  max-width: 62ch;
-  font-size: clamp(16px, 1.5vw, 19px);
-  line-height: 1.65;
-  color: #a9bac4;
-}
-.root :global(.hiw-hero .hero-actions) { justify-content: center; margin-top: 34px; }
-
-/* ---- the job journey ----------------------------------------------------- */
-
-.root :global(.hiw-journey) {
-  margin: clamp(40px, 5vw, 66px) auto 0;
-  max-width: 1080px;
-  text-align: left;
-}
-.root :global(.hiw-track) { position: relative; padding-bottom: 6px; }
-.root :global(.hiw-rail) {
-  position: absolute;
-  left: 0; right: 0; top: 11px;
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(174, 199, 211, .18);
-  overflow: hidden;
-}
-.root :global(.hiw-rail i) {
-  display: block; height: 100%;
-  background: linear-gradient(90deg, var(--orange), #ffb066);
-  transform-origin: 0 50%;
-  transition: transform .62s cubic-bezier(.3, .8, .3, 1);
-  box-shadow: 0 0 12px rgba(255, 106, 36, .55);
-}
-.root :global(.hiw-nodes) {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-}
-.root :global(.hiw-node) { display: grid; justify-items: start; gap: 3px; }
-.root :global(.hiw-node-dot) {
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  border: 2px solid rgba(174, 199, 211, .3);
-  background: #0d222e;
-  transition: border-color .3s ease, background .3s ease, box-shadow .3s ease;
-}
-.root :global(.hiw-node[data-on="true"] .hiw-node-dot) {
-  border-color: var(--orange);
-  background: radial-gradient(circle, var(--orange) 38%, #0d222e 42%);
-  box-shadow: 0 0 0 5px rgba(255, 106, 36, .13);
-}
-.root :global(.hiw-node small) {
-  margin-top: 8px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .14em;
-  color: #7d92a1;
-}
-.root :global(.hiw-node b) { font-size: 13px; font-weight: 650; color: #cfdbe2; }
-.root :global(.hiw-node[data-on="true"] b) { color: #f3f7f8; }
-
-/* The record itself. It only ever gains rows — that is the argument. */
-.root :global(.hiw-record-card) {
-  margin-top: 30px;
-  padding: 20px 22px;
-  border: 1px solid rgba(255, 106, 36, .3);
-  border-radius: 16px;
-  background: linear-gradient(150deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015));
-  box-shadow: 0 26px 60px rgba(0, 0, 0, .3);
-}
-.root :global(.hiw-record-head) {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
-  padding-bottom: 13px;
-  border-bottom: 1px solid rgba(174, 199, 211, .15);
-}
-.root :global(.hiw-record-id) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 12px; letter-spacing: .13em; font-weight: 700;
-  color: var(--orange);
-}
-.root :global(.hiw-record-head em) { font-style: normal; font-size: 13px; color: #9db0bd; }
-.root :global(.hiw-record-chips) {
-  display: flex; flex-wrap: wrap; gap: 9px;
-  margin-top: 14px;
-}
-.root :global(.hiw-record-chips li) {
-  padding: 8px 13px;
-  border-radius: 999px;
-  border: 1px solid rgba(174, 199, 211, .22);
-  background: rgba(255, 255, 255, .04);
-  font-size: 13px; font-weight: 600;
-  color: #eef5f6;
-  opacity: 0; transform: translateY(7px) scale(.96);
-  transition: opacity .38s ease, transform .38s cubic-bezier(.2, .8, .3, 1);
-}
-.root :global(.hiw-record-chips li[data-on="true"]) { opacity: 1; transform: none; }
-.root :global(.hiw-record-chips li[data-hand="homeowner"]) { border-color: rgba(143, 199, 232, .5); }
-.root :global(.hiw-record-chips li[data-hand="you"]) { border-color: rgba(255, 138, 76, .55); }
-.root :global(.hiw-record-chips li[data-hand="auto"]) { border-color: rgba(74, 222, 128, .45); }
-.root :global(.hiw-record-foot) {
-  margin: 14px 0 0;
-  font-size: 13px;
-  color: #7d92a1;
-}
-
-.root :global(.hiw-legend) {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px;
-  margin: 26px auto 0;
-  font-size: 13px;
-  color: #9db0bd;
-}
-.root :global(.hiw-legend li) { display: flex; align-items: center; gap: 8px; }
-.root :global(.hiw-legend i) { width: 10px; height: 10px; border-radius: 50%; }
-.root :global(.hiw-legend li[data-hand="homeowner"] i) { background: #8fc7e8; }
-.root :global(.hiw-legend li[data-hand="you"] i) { background: var(--orange); }
-.root :global(.hiw-legend li[data-hand="auto"] i) { background: #4ade80; }
-
-/* ---- proof strip --------------------------------------------------------- */
-
-.root :global(.hiw-proof) {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  padding: 0;
-  background: rgba(174, 199, 211, .14);
-  border-block: 1px solid rgba(174, 199, 211, .14);
-}
-.root :global(.hiw-proof div) {
-  padding: 26px 18px;
-  text-align: center;
-  background: #0b1e28;
-}
-.root :global(.hiw-proof b) {
-  display: block;
-  font-size: clamp(28px, 3.4vw, 42px); font-weight: 750; letter-spacing: -.03em;
-  font-variant-numeric: tabular-nums;
-  color: #f3f7f8;
-}
-.root :global(.hiw-proof small) {
-  display: block; margin-top: 5px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .16em;
-  color: #8ea2b0;
-}
-
-/* ---- sticky stage nav ---------------------------------------------------- */
-
-.root :global(.hiw-stagenav) {
-  position: sticky; top: 0; z-index: 30;
-  background: rgba(9, 25, 35, .93);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(174, 199, 211, .14);
-}
-.root :global(.hiw-stagenav-fill) {
-  position: absolute; left: 0; bottom: -1px;
-  width: 100%; height: 2px;
-  background: linear-gradient(90deg, var(--orange), #ffb066);
-  transform-origin: 0 50%;
-  transition: transform .4s cubic-bezier(.3, .8, .3, 1);
-}
-.root :global(.hiw-stagenav ol) {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 clamp(12px, 3vw, 40px);
-}
-.root :global(.hiw-stagenav a) {
-  display: flex; align-items: center; gap: 9px;
-  padding: 15px 6px;
-  color: #8ea2b0;
-  transition: color .2s ease;
-}
-.root :global(.hiw-stagenav a:hover) { color: #e6eef2; }
-.root :global(.hiw-stagenav small) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .1em;
-}
-.root :global(.hiw-stagenav span) { font-size: 13px; font-weight: 600; }
-.root :global(.hiw-stagenav a[aria-current="true"]) { color: var(--orange); }
-
-/* ---- the five stages ----------------------------------------------------- */
-
-.root :global(.hiw-stage) {
-  display: grid;
-  grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
-  gap: clamp(34px, 5vw, 74px);
-  align-items: center;
-  padding: clamp(56px, 7vw, 108px) clamp(20px, 5vw, 86px);
-  scroll-margin-top: 62px;                 /* clears the sticky stage nav */
-  border-bottom: 1px solid rgba(174, 199, 211, .1);
-}
-.root :global(.hiw-stage[data-flip="true"] .hiw-stage-copy) { order: 2; }
-.root :global(.hiw-stage:nth-of-type(even)) { background: rgba(255, 255, 255, .014); }
-
-.root :global(.hiw-stage-kicker) {
-  display: flex; align-items: center; gap: 11px;
-  margin: 0;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .16em;
-  color: #7d92a1;
-}
-.root :global(.hiw-stage-kicker span) {
-  display: grid; place-items: center;
-  width: 30px; height: 30px;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 106, 36, .4);
-  background: rgba(255, 106, 36, .1);
-  color: var(--orange);
-  font-size: 12px; font-weight: 700;
-}
-.root :global(.hiw-stage h2) {
-  margin: 16px 0 0;
-  font-size: clamp(28px, 3.4vw, 46px);
-  line-height: 1.06; letter-spacing: -.028em;
-  text-wrap: balance;
-}
-.root :global(.hiw-stage-summary) {
-  margin: 13px 0 0;
-  max-width: 46ch;
-  font-size: clamp(15px, 1.4vw, 17px); line-height: 1.65;
-  color: #a9bac4;
-}
-
-/* The four axes. Still four, still the same words — a row each with a coloured
-   label, rather than four boxes that made every stage look like a spec sheet. */
-.root :global(.hiw-notes) { margin: 28px 0 0; border-top: 1px solid rgba(174, 199, 211, .14); }
-.root :global(.hiw-notes > div) {
-  display: grid;
-  grid-template-columns: 138px minmax(0, 1fr);
-  gap: 18px;
-  padding: 15px 0;
-  border-bottom: 1px solid rgba(174, 199, 211, .12);
-}
-.root :global(.hiw-notes dt) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-  line-height: 1.5;
-}
-.root :global(.hiw-notes > div[data-hand="you"] dt) { color: #ff9257; }
-.root :global(.hiw-notes > div[data-hand="homeowner"] dt) { color: #8fc7e8; }
-.root :global(.hiw-notes > div[data-hand="record"] dt) { color: #b8c8d3; }
-.root :global(.hiw-notes > div[data-hand="auto"] dt) { color: #6ee7a0; }
-.root :global(.hiw-notes dd) { font-size: 14px; line-height: 1.6; color: #b9c8d1; }
-
-.root :global(.hiw-stage-visual) { display: grid; gap: 12px; }
-.root :global(.hiw-stage-visual .example-mark) { margin: 0; justify-self: start; }
-
-@media (max-width: 900px) {
-  .root :global(.hiw-stage) { grid-template-columns: minmax(0, 1fr); }
-  /* The visual leads on a phone: it is the thing that says which stage this is
-     before any of the words do. */
-  .root :global(.hiw-stage-visual) { order: -1; }
-  .root :global(.hiw-stage[data-flip="true"] .hiw-stage-copy) { order: 0; }
-  .root :global(.hiw-notes > div) { grid-template-columns: minmax(0, 1fr); gap: 5px; }
-}
-
-/* ---- the five visuals ---------------------------------------------------- */
-
-.root :global(.hiw-vis) {
-  padding: clamp(16px, 2vw, 24px);
-  border: 1px solid rgba(174, 199, 211, .16);
-  border-radius: 18px;
-  background: linear-gradient(155deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .012));
-  box-shadow: 0 30px 70px rgba(0, 0, 0, .3);
-  font-size: 13px;
-  container-type: inline-size;
-}
-
-/* 01 build */
-.root :global(.hiw-browser) { border: 1px solid rgba(174, 199, 211, .18); border-radius: 12px; overflow: hidden; background: #f7f4ee; }
-.root :global(.hiw-browser-bar) {
-  display: flex; align-items: center; gap: 6px;
-  padding: 9px 12px;
-  background: #e6e0d5;
-  border-bottom: 1px solid #d3ccbf;
-}
-.root :global(.hiw-browser-bar i) { width: 9px; height: 9px; border-radius: 50%; background: #bdb5a6; }
-.root :global(.hiw-url) {
-  flex: 1; margin-left: 8px;
-  padding: 4px 10px; border-radius: 999px;
-  background: #f7f4ee;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; color: #5c5346;
-}
-.root :global(.hiw-live) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px; font-style: normal; font-weight: 700; letter-spacing: .1em;
-  color: #1d7a45;
-}
-.root :global(.hiw-browser-body) { padding: 18px 16px; }
-.root :global(.hiw-site-hero) { display: grid; gap: 5px; }
-.root :global(.hiw-site-hero b) { font-size: 19px; color: #1d2b33; letter-spacing: -.02em; }
-.root :global(.hiw-site-hero small) { font-size: 12px; color: #6b6255; }
-.root :global(.hiw-site-cta) {
-  justify-self: start; margin-top: 7px;
-  padding: 8px 14px; border-radius: 8px;
-  background: var(--orange); color: #3d1200;
-  font-size: 12px; font-weight: 800;
-}
-.root :global(.hiw-site-grid) {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
-  margin-top: 15px;
-}
-.root :global(.hiw-site-grid span) {
-  padding: 9px 11px; border-radius: 8px;
-  background: #eee8dd; color: #4b4437;
-  font-size: 12px;
-}
-.root :global(.hiw-chips) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.root :global(.hiw-chip) {
-  padding: 7px 12px; border-radius: 999px;
-  border: 1px solid rgba(255, 106, 36, .38);
-  background: rgba(255, 106, 36, .09);
-  font-size: 11px; letter-spacing: .05em; color: #ffb890;
-}
-.root :global(.hiw-chip b) { color: #fff2ea; font-weight: 700; margin-left: 5px; }
-
-/* 02 qualify — off-white is the homeowner's side, ink is yours */
-.root :global(.hiw-vis-qualify) { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-.root :global(.hiw-phone) {
-  padding: 14px; border-radius: 14px;
-  background: #f7f4ee; color: #1d2b33;
-  border: 1px solid #ded7cc;
-}
-.root :global(.hiw-phone-head) { font-size: 13px; font-weight: 700; margin-bottom: 11px; }
-.root :global(.hiw-field) { margin-bottom: 9px; padding: 9px 10px; border-radius: 9px; background: #eee8dd; }
-.root :global(.hiw-field small) { display: block; font-size: 10.5px; color: #6b6255; letter-spacing: .04em; }
-.root :global(.hiw-field b) { display: block; margin-top: 2px; font-size: 12.5px; color: #22303a; }
-.root :global(.hiw-photos) { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
-.root :global(.hiw-photos span) { width: 30px; height: 30px; border-radius: 7px; background: linear-gradient(140deg, #cfc6b6, #b6ab99); }
-.root :global(.hiw-photos small) { font-size: 11px; color: #6b6255; }
-.root :global(.hiw-verify) { font-size: 11.5px; color: #1d7a45; font-weight: 650; }
-.root :global(.hiw-verify i) { font-style: normal; margin-right: 5px; }
-
-.root :global(.hiw-leadcard) { padding: 14px; border-radius: 14px; border: 1px solid rgba(255, 106, 36, .3); background: rgba(255, 106, 36, .05); }
-.root :global(.hiw-lead-top) { display: flex; align-items: center; gap: 9px; }
-.root :global(.hiw-score) {
-  padding: 3px 9px; border-radius: 999px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px; font-weight: 800; letter-spacing: .12em;
-}
-.root :global(.hiw-hot) { background: var(--orange); color: #3d1200; }
-.root :global(.hiw-lead-top small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .1em; color: #8ea2b0; }
-.root :global(.hiw-lead-name) { display: block; margin: 10px 0 11px; font-size: 15px; color: #f3f7f8; }
-.root :global(.hiw-flags li) { display: flex; gap: 8px; padding: 5px 0; font-size: 12px; color: #b9c8d1; }
-.root :global(.hiw-flags i) { font-style: normal; font-weight: 800; }
-.root :global(.hiw-flags .ok i) { color: #4ade80; }
-.root :global(.hiw-flags .warn i) { color: #ffd166; }
-.root :global(.hiw-flags .warn) { color: #e4d3a4; }
-
-/* 03 win — the homeowner's screen, so off-white throughout */
-.root :global(.hiw-quote) { padding: 16px; border-radius: 14px; background: #f7f4ee; color: #1d2b33; border: 1px solid #ded7cc; }
-.root :global(.hiw-quote-head) { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #ded7cc; }
-.root :global(.hiw-quote-head b) { font-size: 15px; }
-.root :global(.hiw-quote-head small) { font-size: 11px; color: #6b6255; }
-.root :global(.hiw-lines li) {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline;
-  padding: 9px 0; border-bottom: 1px solid #e5dfd4;
-  font-size: 12.5px;
-}
-.root :global(.hiw-lines em) {
-  font-style: normal;
-  font-family: var(--font-geist-mono), monospace;
-  /* #7c7364 measured 4.23:1 on the quote's off-white. */
-  font-size: 10px; letter-spacing: .05em; color: #675e50;
-}
-.root :global(.hiw-lines .est em) { color: #8a6a12; }
-.root :global(.hiw-lines b) { font-variant-numeric: tabular-nums; font-size: 13px; }
-.root :global(.hiw-quote-total) { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; font-size: 13px; }
-.root :global(.hiw-quote-total b) { font-size: 21px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.root :global(.hiw-sign) { display: flex; align-items: baseline; gap: 11px; padding: 11px 12px; border-radius: 10px; background: #eee8dd; }
-.root :global(.hiw-sign small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #6b6255; }
-.root :global(.hiw-signature) { font-size: 19px; font-family: Georgia, "Times New Roman", serif; font-style: italic; color: #22303a; }
-.root :global(.hiw-sign span) { margin-left: auto; font-size: 11px; color: #6b6255; }
-.root :global(.hiw-paid) { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #dff2e4; color: #14532d; font-size: 12.5px; font-weight: 700; }
-.root :global(.hiw-paid i) { font-style: normal; margin-right: 6px; }
-
-/* 04 run */
-.root :global(.hiw-vis-run) { display: grid; gap: 14px; }
-.root :global(.hiw-week) { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.root :global(.hiw-day) { padding: 9px 7px; border-radius: 10px; border: 1px solid rgba(174, 199, 211, .15); background: rgba(255, 255, 255, .02); min-height: 84px; }
-.root :global(.hiw-day small) { display: block; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .1em; color: #7d92a1; }
-.root :global(.hiw-day.is-on) { border-color: rgba(255, 106, 36, .45); background: rgba(255, 106, 36, .07); }
-.root :global(.hiw-job) { display: block; margin-top: 7px; padding: 7px 8px; border-radius: 8px; background: var(--orange); color: #3d1200; font-size: 10.5px; font-weight: 700; line-height: 1.35; }
-.root :global(.hiw-job b) { display: block; font-size: 11.5px; }
-.root :global(.hiw-empty) { display: block; margin-top: 7px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .03); }
-.root :global(.hiw-run-side) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.root :global(.hiw-text), .root :global(.hiw-portal) { padding: 12px; border-radius: 12px; border: 1px solid rgba(174, 199, 211, .15); background: rgba(255, 255, 255, .025); }
-.root :global(.hiw-text small), .root :global(.hiw-portal small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #7d92a1; }
-.root :global(.hiw-text p) { margin: 8px 0 6px; font-size: 13px; color: #eef5f6; }
-.root :global(.hiw-text em) { font-style: normal; font-size: 11px; color: #4ade80; }
-.root :global(.hiw-portal ul) { margin-top: 9px; display: grid; gap: 6px; }
-.root :global(.hiw-portal li) { display: flex; gap: 8px; font-size: 12px; color: #94a7b4; }
-.root :global(.hiw-portal i) { font-style: normal; }
-.root :global(.hiw-portal .done) { color: #cfdbe2; }
-.root :global(.hiw-portal .done i) { color: #4ade80; }
-.root :global(.hiw-portal .now) { color: #f3f7f8; }
-.root :global(.hiw-portal .now i) { color: var(--orange); }
-
-/* 05 grow */
-.root :global(.hiw-vis-grow) { display: grid; gap: 0; }
-.root :global(.hiw-receipt) { padding: 15px 16px; border-radius: 12px; border: 1px solid rgba(74, 222, 128, .35); background: rgba(74, 222, 128, .07); }
-.root :global(.hiw-receipt small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #6ee7a0; }
-.root :global(.hiw-receipt b) { display: block; margin: 4px 0 2px; font-size: 26px; letter-spacing: -.02em; color: #f3f7f8; font-variant-numeric: tabular-nums; }
-.root :global(.hiw-receipt span) { font-size: 11.5px; color: #9db0bd; }
-.root :global(.hiw-flowline) { justify-self: center; width: 2px; height: 26px; background: rgba(74, 222, 128, .3); position: relative; }
-.root :global(.hiw-flowline i) { position: absolute; left: -3px; bottom: -1px; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
-.root :global(.hiw-follow) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.root :global(.hiw-follow-card) { padding: 12px; border-radius: 12px; border: 1px solid rgba(174, 199, 211, .15); background: rgba(255, 255, 255, .025); }
-.root :global(.hiw-follow-card small) { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; color: #7d92a1; }
-.root :global(.hiw-follow-card p) { margin: 8px 0; font-size: 13px; color: #eef5f6; }
-.root :global(.hiw-two) { display: grid; gap: 6px; margin-bottom: 8px; }
-.root :global(.hiw-two span) { padding: 7px 9px; border-radius: 8px; background: rgba(255, 255, 255, .04); font-size: 11.5px; color: #cfdbe2; }
-.root :global(.hiw-follow-card em) { font-style: normal; font-size: 11px; color: #6ee7a0; }
-
-@container (max-width: 430px) {
-  .root :global(.hiw-vis-qualify), .root :global(.hiw-run-side), .root :global(.hiw-follow) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .root :global(.hiw-week) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
-/* ---- the swimlane -------------------------------------------------------- */
-
-.root :global(.hiw-lanes-band) {
-  padding: clamp(60px, 8vw, 116px) clamp(20px, 5vw, 86px);
-  background:
-    radial-gradient(circle at 82% 6%, rgba(74, 222, 128, .09), transparent 30%),
-    radial-gradient(circle at 10% 92%, rgba(255, 106, 36, .1), transparent 30%),
-    linear-gradient(170deg, #0b1e28, #0a1721);
-  border-top: 1px solid rgba(174, 199, 211, .12);
-}
-.root :global(.hiw-lanes-head) { max-width: 720px; }
-.root :global(.hiw-lanes-head h2) {
-  margin: 15px 0 0;
-  font-size: clamp(28px, 3.6vw, 50px); line-height: 1.06; letter-spacing: -.03em;
-}
-.root :global(.hiw-lanes-head h2 em) { color: var(--orange); font-style: normal; }
-.root :global(.hiw-lanes-head > p) { margin: 16px 0 0; max-width: 60ch; font-size: 16px; line-height: 1.65; color: #a9bac4; }
-
-.root :global(.hiw-lanes) {
-  display: grid;
-  grid-template-columns: 118px repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: clamp(34px, 4vw, 54px);
-}
-.root :global(.hiw-lane-spine) {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: subgrid;
-  align-items: center;
-  padding: 10px 0;
-  border-block: 1px solid rgba(255, 106, 36, .28);
-  background: linear-gradient(90deg, rgba(255, 106, 36, .1), rgba(255, 106, 36, .02));
-}
-.root :global(.hiw-spine-id) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .13em; font-weight: 700; color: var(--orange);
-  padding-left: 12px;
-}
-.root :global(.hiw-spine-stage) {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .12em; color: #8ea2b0;
-}
-.root :global(.hiw-lane-label) {
-  grid-column: 1;
-  grid-row: calc(var(--lane) + 1);
-  margin: 0;
-  align-self: center;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-}
-.root :global(.hiw-lane-label[data-hand="homeowner"]) { color: #8fc7e8; }
-.root :global(.hiw-lane-label[data-hand="you"]) { color: #ff9257; }
-.root :global(.hiw-lane-label[data-hand="auto"]) { color: #6ee7a0; }
-
-.root :global(.hiw-lane-event) {
-  grid-row: calc(var(--lane) + 1);
-  grid-column: calc(var(--stage) + 1);
-  padding: 12px 13px;
-  border-radius: 12px;
-  border: 1px solid rgba(174, 199, 211, .16);
-  background: rgba(255, 255, 255, .03);
-}
-.root :global(.hiw-lane-event[data-hand="homeowner"]) { border-color: rgba(143, 199, 232, .34); }
-.root :global(.hiw-lane-event[data-hand="you"]) { border-color: rgba(255, 138, 76, .38); }
-.root :global(.hiw-lane-event[data-hand="auto"]) { border-color: rgba(74, 222, 128, .32); background: rgba(74, 222, 128, .05); }
-.root :global(.hiw-lane-event b) { display: block; font-size: 13px; font-weight: 650; color: #f3f7f8; line-height: 1.35; }
-.root :global(.hiw-lane-event small) { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: #9db0bd; }
-.root :global(.hiw-lane-event i) { font-style: normal; color: #6ee7a0; }
-
-.root :global(.hiw-lanes-tally) { margin: 26px 0 0; max-width: 62ch; font-size: 15px; line-height: 1.6; color: #cfdbe2; }
-.root :global(.hiw-lanes-band .example-mark) { margin: 12px 0 0; }
-
-/* On a phone the lanes become one vertical timeline in stage order — which is
-   the DOM order, so nothing has to be reordered to get it. */
-@media (max-width: 900px) {
-  .root :global(.hiw-lanes) { grid-template-columns: minmax(0, 1fr); gap: 9px; }
-  .root :global(.hiw-lane-spine) { grid-template-columns: none; display: flex; gap: 12px; flex-wrap: wrap; }
-  .root :global(.hiw-spine-id) { padding-left: 0; }
-  .root :global(.hiw-lane-label) { display: none; }
-  .root :global(.hiw-lane-event) { grid-row: auto; grid-column: 1; border-left-width: 3px; }
-  /* The lane is what the colour told you; with the labels gone it has to be
-     said. */
-  .root :global(.hiw-lane-event)::before {
-    content: attr(data-hand);
-    display: block; margin-bottom: 5px;
-    font-family: var(--font-geist-mono), monospace;
-    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
-  }
-  .root :global(.hiw-lane-event[data-hand="homeowner"])::before { content: "HOMEOWNER"; color: #8fc7e8; }
-  .root :global(.hiw-lane-event[data-hand="you"])::before { content: "YOU"; color: #ff9257; }
-  .root :global(.hiw-lane-event[data-hand="auto"])::before { content: "AUTOMATIC"; color: #6ee7a0; }
-}
-
-/* ---- price band ---------------------------------------------------------- */
-
-.root :global(.hiw-price) {
-  padding: clamp(56px, 7vw, 100px) clamp(20px, 5vw, 86px);
-  background: linear-gradient(150deg, #0d222e, #091923);
-  border-top: 1px solid rgba(174, 199, 211, .12);
-}
-.root :global(.hiw-price h2) { margin: 15px 0 0; font-size: clamp(26px, 3.2vw, 42px); letter-spacing: -.028em; line-height: 1.08; }
-.root :global(.hiw-price > p) { margin: 15px 0 0; max-width: 66ch; font-size: 16px; line-height: 1.65; color: #a9bac4; }
-.root :global(.hiw-price .fee-tiers) { max-width: 760px; }
-
-/* ---- the phone ----------------------------------------------------------- */
-
-@media (max-width: 760px) {
-  /* THE STAGE NAV. Five equal columns at 390px gives each link 73px, so every
-     label wrapped to three lines and the bar became a 106px-tall block of
-     broken words. It scrolls sideways instead — the current stage is scrolled
-     into view by the browser when you follow one of its own anchors, and the
-     fill bar underneath still says how far along the page you are. */
-  .root :global(.hiw-stagenav) { top: 68px; }         /* clear of the sticky header */
-  .root :global(.hiw-stagenav ol) {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-inline: 14px;
-  }
-  .root :global(.hiw-stagenav ol)::-webkit-scrollbar { display: none; }
-  .root :global(.hiw-stagenav li) { flex: 0 0 auto; }
-  .root :global(.hiw-stagenav a) { padding: 13px 14px 13px 0; white-space: nowrap; }
-
-  /* Tightened, not truncated. The stage sections are 60% of this page on a
-     phone and most of what made them tall was breathing room sized for a
-     desktop column. */
-  .root :global(.hiw-stage) { padding-block: 40px; scroll-margin-top: 124px; }
-  .root :global(.hiw-notes) { margin-top: 20px; }
-  .root :global(.hiw-notes > div) { padding: 11px 0; }
-  .root :global(.hiw-hero) { padding-block: 40px 46px; }
-  .root :global(.hiw-journey) { margin-top: 32px; }
-  .root :global(.hiw-lanes-band) { padding-block: 48px; }
-  .root :global(.hiw-price) { padding-block: 44px; }
-
-  /* THE FIXED BAR COVERS THINGS. It is 54px plus a 12px inset and it sits over
-     whatever is at the bottom of the viewport — on this page that was the
-     "invented job" marker under each stage visual. Reserving the bar's height
-     at the end of every section it can land on means the thing it covers is
-     always space rather than a sentence. */
-  .root :global(.hiw-stage-visual) { padding-bottom: 12px; }
-  .root :global(.hiw-lanes-band) { padding-bottom: 96px; }
-}
-
-/* The journey rail is horizontal at every width, but five labelled nodes do
-   not fit across a phone. Below 620 it becomes a vertical list — the same
-   sequence, read down the page like everything else on it. */
-@media (max-width: 620px) {
-  .root :global(.hiw-nodes) { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .root :global(.hiw-node) { grid-template-columns: 24px minmax(0, 1fr); align-items: center; column-gap: 12px; }
-  .root :global(.hiw-node-dot) { grid-row: 1 / span 2; }
-  .root :global(.hiw-node small) { margin-top: 0; grid-column: 2; align-self: end; }
-  .root :global(.hiw-node b) { grid-column: 2; align-self: start; }
-  /* A horizontal rail behind a vertical list is a line through the middle of
-     the labels. */
-  .root :global(.hiw-rail) { display: none; }
-  /* Stacking these made the strip taller (202px) than the three columns it
-     replaced (123px) — a strip whose whole job is to be glanced at. It stays
-     three across; the type comes down instead. */
-  .root :global(.hiw-proof div) { padding: 16px 8px; }
-  .root :global(.hiw-proof b) { font-size: 24px; }
-  .root :global(.hiw-proof small) { font-size: 9.5px; letter-spacing: .1em; }
-}
-
-/* The flagship's closing band carries min-height 620px, which is right when it
-   is the last word after a homepage. Here the page has already made the ask in
-   the hero and again beside the price, so it can be the size of its own
-   content. */
-@media (max-width: 760px) {
-  .root :global(.hiw-hero) ~ :global(.final-cta) { min-height: 0; padding-block: 64px 76px; }
-}
-
 /* ===========================================================================
    §90 — THE LOGO STOPS BEING CROPPED BY HAND
    ===========================================================================
@@ -3464,209 +2828,21 @@ const TWEAKS = `
 }
 
 /* ===========================================================================
-   §101 — /HOW-IT-WORKS EXPLAINS THOROUGHLY AND CONVERTS SLOWLY
+   §101 — TWO SITE-WIDE FIXES THAT ARRIVED WITH /HOW-IT-WORKS
+   ===========================================================================
+   The rest of this section styled the five-stage version of that page. That
+   page is gone — §105 is what replaced it — and so is the CSS for it. These
+   two rules outlived it because neither was ever scoped to the page.
 
-   Measured at 1280x720 and 390x844 before any of this:
-
-     page height          7,403px desktop        10,537px mobile
-     hero height            924px                 1,150px
-     first CTA at y=          782                   1,056  (and the demo
-                                                            link at 1,120)
-     fixed chrome            137px                   173px — header 68,
-                                                     stage nav 51, bottom
-                                                     signup bar 54: 20.5%
-                                                     of an 844px screen
-     tapping a stage         —                     lands on the mockup, with
-                                                     the heading that names it
-                                                     559px further down
-     copy under 12px         63 elements across 11 selectors
-
-   Five separate fixes below, plus the one in the markup (the four axes became
-   three and a <details>) and the one in site-chrome.tsx (the bottom bar stands
-   down while the stage nav is on screen).
-   =========================================================================== */
-
-/* ---- 1. the stage is three blocks, and on a phone they interleave ---------
-
-   It was a copy column and a visual column, and at 900px the visual took
-   \`order: -1\` so it led. Which meant the anchor target — the section — began
-   with a product screenshot, and the number and heading that say WHICH stage
-   you just tapped were most of a screen below it. Named areas instead: the
-   head can lead on a phone while the visual still sits beside the whole copy
-   column on a desktop. */
-.root :global(.hiw-stage) {
-  grid-template-areas: "head visual" "notes visual" "more visual";
-  column-gap: clamp(34px, 5vw, 74px);
-  row-gap: 0;
-  align-items: start;
-  align-content: center;
-  /* 82px header + 55px stage nav, plus room to breathe. The old value was 62,
-     which cleared the stage nav and left the heading under the header. */
-  scroll-margin-top: 152px;
-}
-.root :global(.hiw-stage[data-flip="true"]) {
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
-  grid-template-areas: "visual head" "visual notes" "visual more";
-}
-.root :global(.hiw-stage-head) { grid-area: head; }
-.root :global(.hiw-stage-visual) { grid-area: visual; align-self: center; }
-.root :global(.hiw-stage .hiw-notes) { grid-area: notes; }
-.root :global(.hiw-record) { grid-area: more; }
-
-@media (max-width: 900px) {
-  /* Head, then the mockup it describes, then the detail. The old
-     \`.hiw-stage-visual { order: -1 }\` and its data-flip partner are gone —
-     nothing is ordered by hand any more. */
-  .root :global(.hiw-stage),
-  .root :global(.hiw-stage[data-flip="true"]) {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "head" "visual" "notes" "more";
-  }
-  .root :global(.hiw-stage-visual) { margin-top: 26px; }
-  /* Header 68 + stage nav 51 at this width. */
-  .root :global(.hiw-stage) { scroll-margin-top: 134px; }
-}
-
-/* ---- 2. "the record gains" folds away ------------------------------------
-
-   Four dense axes per stage, five stages over. This is the one a reader can
-   take on trust, and the only one restated in the swimlane below. */
-.root :global(.hiw-record) {
-  margin: 0;
-  border-bottom: 1px solid rgba(174, 199, 211, .12);
-}
-.root :global(.hiw-record summary) {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 15px 0;
-  cursor: pointer;
-  list-style: none;
-  color: #b8c8d3;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-  transition: color .18s ease;
-}
-/* Safari draws its own triangle through ::-webkit-details-marker. */
-.root :global(.hiw-record summary::-webkit-details-marker) { display: none; }
-.root :global(.hiw-record summary:hover) { color: #e6eef2; }
-/* The chevron. Two borders on a rotated square — no glyph, so it cannot fall
-   back to a font that does not have one. */
-.root :global(.hiw-record summary i) {
-  flex: none;
-  width: 8px; height: 8px;
-  border-right: 1.6px solid currentColor;
-  border-bottom: 1.6px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-  transition: transform .2s ease;
-}
-.root :global(.hiw-record[open] summary i) { transform: translateY(1px) rotate(225deg); }
-.root :global(.hiw-record > p) {
-  margin: 0;
-  padding: 0 0 18px;
-  font-size: 14px; line-height: 1.6; color: #b9c8d1;
-}
-.root :global(.hiw-record > p b) { color: #dfe8ed; font-weight: 650; }
-
-@media (prefers-reduced-motion: reduce) {
-  .root :global(.hiw-record summary i) { transition: none; }
-}
-
-/* ---- 3. the $0 carries its own condition ---------------------------------
-
-   The strip said "$0 / PER MONTH" beside two facts that are flatly true, and
-   the rest of that sentence — the platform fee — was 9,000px down the page on
-   a phone. */
-.root :global(.hiw-proof-fee) {
-  display: block;
-  padding: 26px 18px;
-  text-align: center;
-  background: #0b1e28;
-  transition: background .18s ease;
-}
-.root :global(.hiw-proof-fee:hover) { background: #0e2532; }
-.root :global(.hiw-proof-fee b) {
-  display: block;
-  font-size: clamp(28px, 3.4vw, 42px); font-weight: 750; letter-spacing: -.03em;
-  font-variant-numeric: tabular-nums;
-  color: #f3f7f8;
-}
-.root :global(.hiw-proof-fee small) {
-  display: block; margin-top: 5px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 12px; letter-spacing: .09em; line-height: 1.5;
-  color: #8ea2b0;
-}
-.root :global(.hiw-proof-fee em) {
-  display: block; margin-top: 9px;
-  font-style: normal; font-size: 12px; font-weight: 650;
-  color: var(--orange);
-}
-
-@media (max-width: 620px) {
-  /* Three cells at 390px is 129px each, and this one has a sentence in it. */
-  .root :global(.hiw-proof) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .root :global(.hiw-proof-fee) { grid-column: 1 / -1; }
-}
-
-/* ---- 4. one disclaimer, placed -------------------------------------------
-
-   A band, not a rule on the mark itself: .example-mark is an inline-flex pill
-   with its own padding, so styling the <p> directly turns the pill into a
-   full-bleed bar. It is inline-level, which is why the centering is text-align
-   on the parent and not a margin on the child. */
-.root :global(.hiw-example-band) {
-  padding: 22px clamp(20px, 5vw, 86px) 0;
-  text-align: center;
-}
-.root :global(.hiw-example-band .example-mark) { margin: 0; }
-
-/* ---- 5. the 12px floor, on the page's own words --------------------------
-
-   63 elements of real copy rendered between 9.5px and 11.5px on a phone. The
-   45 inside the mockups are deliberately small — they are a drawing of a
-   screen, and blowing them up would break the drawing — but none of them
-   carries a claim this page needs read. These do. */
-.root :global(.hiw-hero .eyebrow),
-.root :global(.hiw-lanes-band .eyebrow),
-.root :global(.hiw-price .eyebrow),
-.root :global(.hiw-proof small),
-.root :global(.hiw-stage-kicker),
-.root :global(.hiw-stagenav small),
-.root :global(.hiw-notes dt),
-.root :global(.hiw-lane-label),
-.root :global(.hiw-spine-id),
-.root :global(.hiw-spine-stage),
-.root :global(.hiw-lane-event small),
-.root :global(.hiw-legend li),
+   1. THE 12px FLOOR. 63 elements of real copy on /how-it-works rendered
+      between 9.5px and 11.5px on a phone. Two of the selectors in that list
+      are on every page rather than that one: the closing band's kicker and the
+      footer copyright. Both are single lines in their own row, so there is
+      nothing for the extra pixel to disturb. */
 .root :global(.final-cta .eyebrow),
-.root :global(.hiw-price .fee-tiers small),
-/* Site-wide, and the last 11px string on the page: the footer copyright. It
-   is one line in its own row, so there is nothing for a pixel to disturb. */
 .root :global(footer > span) { font-size: 12px; }
 
-/* Tracking that reads at 11px is too loose at 12 in the same box — the stage
-   kicker and the nav numerals both sit in fixed-width furniture. */
-.root :global(.hiw-stage-kicker),
-.root :global(.hiw-proof small) { letter-spacing: .12em; }
-.root :global(.hiw-stagenav small) { letter-spacing: .06em; }
-
-/* ---- 7. the stage nav stops sitting on the site header -------------------
-
-   Below 760 the stage nav already carries \`top: 68px\` to clear the sticky
-   header. Above it, nobody ever set one — so the moment you scrolled past the
-   hero on a desktop, a 55px bar with z-index 30 parked itself on top of an
-   82px header with z-index 20 and the brand, the whole site nav, Sign in and
-   the header CTA were gone for the rest of the page. Measured at 1280 before
-   this: elementFromPoint at the header's own vertical centre returned a stage
-   link, on both the logo and the button.
-
-   The header is position:fixed here, so this is the one number that keeps the
-   two apart. Matched to the header's height, and to the 68px already written
-   below the breakpoint. */
-@media (min-width: 761px) {
-  .root :global(.hiw-stagenav) { top: 82px; }
-}
-
-/* ---- 6. one signup button at a time --------------------------------------
+/* ---- 2. one signup button at a time --------------------------------------
 
    Opening the menu on a phone put two orange "Build my free site" buttons on
    screen at once — the header's, still sitting in the bar, and the drawer's,
@@ -4222,6 +3398,957 @@ const TWEAKS = `
   .root :global(.hero-thread) { padding: 13px 13px 15px; }
   .root :global(.ht-event) { font-size: 11px; }
   .root :global(.ht-out) p, .root :global(.ht-in) p { max-width: 100%; }
+}
+/* ===========================================================================
+   §105 — /HOW-IT-WORKS IS A LEAD QUEUE, NOT A MANUAL
+
+   The page it replaces was five numbered stages explaining the product from
+   the beginning. It explained thoroughly and converted slowly: 7,403px on a
+   desktop, 10,537px on a phone, and the thing a contractor actually wants to
+   know — which of today's requests is worth stopping for — was never on the
+   first screen.
+
+   THE MATERIAL. Everything the product decides is printed on paper: a cream
+   receipt with a torn bottom edge, on a deep navy ground. That is not
+   decoration. A receipt is a record of a decision already made, with its
+   reasons itemised, and it is exactly what an estimate, a score and a distance
+   are. The three opportunity cards, the hero, the qualification panel and the
+   closing stamp are all the same object seen five times.
+
+   THE PALETTE. Navy #061a23 ground, two lighter navies for raised surfaces,
+   cream paper, and construction orange #ff5f22 held back for one thing at a
+   time: the action, the stamp, the current section. Green is the tick on a
+   satisfied condition and never means "accent". Yellow belongs to Quick Stops
+   alone, because a paid priority visit is a different kind of thing from a
+   lead and the page should not have to say so twice.
+
+   WHAT THE PAGE MAY CLAIM. Nothing here is bought, sold or supplied: every
+   request arrives at the contractor's own site, and the product qualifies,
+   estimates, scores, ranks and surfaces it. The CSS enforces nothing, but the
+   drawing has to agree with the words — which is why the tickets look like the
+   contractor's own paperwork and not like a marketplace listing.
+   =========================================================================== */
+
+.root:global(.hiq-page) {
+  --hiq-navy: #061a23;
+  --hiq-navy-2: #0c2731;
+  --hiq-navy-3: #12323d;
+  --hiq-paper: #f3efe7;
+  --hiq-paper-2: #fffaf1;
+  --hiq-ink: #122229;
+  --hiq-orange: #ff5f22;
+  --hiq-orange-dark: #c94212;
+  --hiq-green: #2b9e61;
+  --hiq-muted: #a8bdc5;
+  --hiq-line: rgba(174, 205, 216, .17);
+  --hiq-line-bright: rgba(185, 220, 230, .3);
+  /* Which paper this receipt is printed on. The torn edge has to be cut out of
+     the SAME colour as the card above it, so every card sets this and the tear
+     reads it rather than hard-coding cream. */
+  --hiq-tear: var(--hiq-paper);
+
+  background: var(--hiq-navy);
+  color: #f8f4ed;
+  /* The bands below are full-bleed and several of them glow past their own
+     edges. Clipped rather than hidden, so nothing here becomes a scroll
+     container for the sticky nav inside it. */
+  overflow-x: clip;
+}
+
+.root :global(.hiq-shell) {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding-inline: clamp(20px, 4vw, 32px);
+}
+
+/* ---- the shared furniture ------------------------------------------------ */
+
+.root :global(.hiq-eyebrow) {
+  margin: 0 0 20px;
+  color: #ff7840;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+/* On paper and peach the same orange is unreadable at 12px. */
+.root :global(.hiq-eyebrow-dark) { color: var(--hiq-orange-dark); }
+
+.root :global(.hiq-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 49px;
+  padding: 0 20px;
+  border: 1px solid var(--hiq-orange);
+  border-radius: 9px;
+  background: var(--hiq-orange);
+  color: #20100a;
+  font-size: 14px;
+  font-weight: 650;
+  box-shadow: 0 10px 24px rgba(255, 95, 34, .18), inset 0 1px rgba(255, 255, 255, .32);
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.root :global(.hiq-button:hover) {
+  background: #ff7542;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(255, 95, 34, .27), inset 0 1px rgba(255, 255, 255, .38);
+}
+.root :global(.hiq-button span) { margin-left: 8px; }
+
+.root :global(.hiq-textlink) {
+  color: #ff7c49;
+  font-size: 14px;
+  font-weight: 600;
+  text-underline-offset: 4px;
+}
+.root :global(.hiq-textlink:hover) { text-decoration: underline; }
+
+.root :global(.hiq-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-top: 32px;
+}
+
+/* The section heading, and the sentence that qualifies it. Two columns on a
+   desktop because the qualifying sentence is support, not a subtitle — under
+   a 60px heading it reads as one more thing to get through. */
+.root :global(.hiq-split) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, .65fr);
+  align-items: end;
+  gap: 60px;
+  margin-bottom: 50px;
+}
+.root :global(.hiq-split h2) {
+  margin: 0;
+  font-size: clamp(34px, 4.6vw, 60px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.05em;
+  text-wrap: balance;
+}
+.root :global(.hiq-split > p) {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.65;
+}
+.root :global(.hiq-opps .hiq-split > p) { color: #546469; }
+.root :global(.hiq-split-bridge > p) { color: var(--hiq-muted); }
+.root :global(.hiq-split-bridge h2) { color: #f7f3ec; font-size: clamp(32px, 4.5vw, 58px); }
+
+.root :global(.hiq-example) {
+  margin: 24px 0 0;
+  color: #7b8587;
+  font-size: 12px;
+  text-align: right;
+}
+
+/* ---- the page's own three stops ------------------------------------------
+
+   The SITE navigation is the header's and it is untouched on this page. This
+   is the page's, and it exists so the header never has to grow a second,
+   page-specific set of links. 82px is the fixed header's height; §101's
+   predecessor learned the hard way that a sticky bar with no top offset parks
+   itself on top of the brand and the signup button. */
+.root :global(.hiq-nav) {
+  position: sticky;
+  top: 82px;
+  z-index: 15;
+  border-bottom: 1px solid var(--hiq-line);
+  background: rgba(9, 32, 41, .84);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.root :global(.hiq-nav ol) {
+  display: flex;
+  gap: clamp(18px, 3vw, 34px);
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 4vw, 32px);
+  list-style: none;
+}
+.root :global(.hiq-nav a) {
+  display: block;
+  padding: 14px 0;
+  white-space: nowrap;
+  color: #9fb5be;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  transition: color .18s ease, border-color .18s ease;
+}
+.root :global(.hiq-nav a:hover) { color: #f2f7f8; }
+.root :global(.hiq-nav a[aria-current="true"]) {
+  color: #ffd0bb;
+  border-bottom-color: var(--hiq-orange);
+}
+
+/* ---- the hero ------------------------------------------------------------ */
+
+.root :global(.hiq-hero) {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr);
+  align-items: center;
+  gap: clamp(48px, 6vw, 82px);
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: clamp(56px, 6vw, 86px) clamp(20px, 4vw, 32px) clamp(64px, 7vw, 92px);
+  scroll-margin-top: 140px;
+}
+
+/* THE SLOW GLARE. Two soft lights drifting behind the copy on a thirteen
+   second cycle, and a single sheet of light lying across the whole band. Both
+   sit behind the content on their own z-indexes and neither takes pointer
+   events, so nothing here can catch a click meant for the receipt. */
+.root :global(.hiq-hero)::before {
+  content: "";
+  position: absolute;
+  inset: -80px -14vw -40px;
+  z-index: -2;
+  pointer-events: none;
+  filter: blur(10px);
+  background:
+    radial-gradient(circle at 72% 34%, rgba(255, 95, 34, .2), transparent 25%),
+    radial-gradient(circle at 23% 58%, rgba(69, 148, 165, .15), transparent 30%);
+  animation: hiqAmbient 13s ease-in-out infinite alternate;
+}
+.root :global(.hiq-hero)::after {
+  content: "";
+  position: absolute;
+  inset: 0 -25%;
+  z-index: -1;
+  pointer-events: none;
+  transform: translateX(-18%);
+  background: linear-gradient(108deg, transparent 32%, rgba(255, 255, 255, .043) 48%, transparent 63%);
+}
+
+@keyframes hiqAmbient {
+  0% { opacity: .72; transform: translate(-2%, -1%) scale(.98); }
+  100% { opacity: 1; transform: translate(3%, 2%) scale(1.06); }
+}
+
+.root :global(.hiq-hero h1) {
+  margin: 0;
+  font-size: clamp(40px, 5.5vw, 72px);
+  font-weight: 400;
+  line-height: .99;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+.root :global(.hiq-hero h1 em) { display: block; color: var(--hiq-orange); font-style: normal; }
+.root :global(.hiq-lede) {
+  max-width: 560px;
+  margin: 27px 0 0;
+  color: #b3c7ce;
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.root :global(.hiq-hero-receipt) { display: flex; justify-content: center; padding: 20px 4px 30px; }
+
+/* ---- the receipt --------------------------------------------------------- */
+
+.root :global(.hiq-receipt) {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, .76);
+  border-radius: 8px 8px 2px 2px;
+  background: var(--hiq-tear);
+  color: var(--hiq-ink);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .3), 0 0 0 1px rgba(5, 25, 33, .13), inset 0 1px rgba(255, 255, 255, .82);
+}
+/* The hairline printed INSIDE the paper, the way a real docket has one. Open
+   at the bottom, because the bottom is torn off. */
+.root :global(.hiq-receipt)::before {
+  content: "";
+  position: absolute;
+  inset: 7px 7px 0;
+  pointer-events: none;
+  border: 1px solid rgba(102, 82, 60, .09);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+}
+/* THE TEAR. A row of triangles cut out of the card's own colour and hung
+   below its bottom edge, so the paper ends in a serrated line instead of a
+   border. Sized in one place: 15px teeth on a 15px tile. */
+.root :global(.hiq-receipt)::after,
+.root :global(.hiq-final-ticket)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -14px;
+  left: 0;
+  height: 15px;
+  background: linear-gradient(135deg, transparent 7px, var(--hiq-tear) 0) repeat-x 0 0 / 15px 15px;
+}
+
+.root :global(.hiq-receipt-head) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 21px;
+  border-bottom: 1px dashed #c8c0b6;
+}
+.root :global(.hiq-receipt-head h3) {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+.root :global(.hiq-receipt-head span) {
+  color: #7a8588;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.root :global(.hiq-receipt-row) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 72px;
+  border-bottom: 1px solid #d9d2c9;
+  font-size: 14px;
+}
+/* Green is "this condition is satisfied", not "good news". Every value in
+   this column is a check the request passed. */
+.root :global(.hiq-receipt-row strong) {
+  color: var(--hiq-green);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.root :global(.hiq-receipt-total) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 31px;
+}
+.root :global(.hiq-receipt-total > strong) {
+  font-size: clamp(28px, 3.4vw, 34px);
+  font-weight: 550;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.root :global(.hiq-stamp) {
+  border: 3px solid var(--hiq-orange);
+  padding: 8px 10px;
+  color: var(--hiq-orange-dark);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .13em;
+  transform: rotate(-4deg);
+}
+/* With no total beside it the stamp has nothing to sit against, so it hangs
+   off the right edge of the paper the way one gets banged on by hand. */
+.root :global(.hiq-stamp-solo) { display: table; margin: 30px 0 0 auto; font-size: 14px; }
+
+.root :global(.hiq-receipt-hero) {
+  width: 100%;
+  max-width: 470px;
+  padding: 40px 34px 42px;
+  transform: rotate(1.5deg);
+}
+.root :global(.hiq-receipt-why) { padding: 35px 32px 45px; transform: rotate(-1deg); }
+
+/* ---- the fact rail ------------------------------------------------------- */
+
+.root :global(.hiq-facts) {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--hiq-line);
+  border-bottom: 1px solid var(--hiq-line);
+  background: linear-gradient(90deg, rgba(13, 43, 54, .78), rgba(18, 51, 62, .48), rgba(13, 43, 54, .78));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .024), inset 0 -1px rgba(0, 0, 0, .18);
+}
+.root :global(.hiq-facts > div) {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding: 27px 18px;
+}
+.root :global(.hiq-facts > div + div) { border-left: 1px solid var(--hiq-line); }
+.root :global(.hiq-facts strong) { font-size: 24px; font-weight: 600; }
+.root :global(.hiq-facts span) {
+  color: #8fa7b1;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* ---- the opportunities --------------------------------------------------- */
+
+.root :global(.hiq-opps) {
+  padding: clamp(72px, 8vw, 112px) 0 clamp(80px, 9vw, 122px);
+  background:
+    radial-gradient(circle at 14% 16%, rgba(255, 255, 255, .82), transparent 27%),
+    radial-gradient(circle at 86% 74%, rgba(255, 146, 88, .11), transparent 30%),
+    var(--hiq-paper);
+  color: var(--hiq-ink);
+  scroll-margin-top: 140px;
+}
+
+.root :global(.hiq-grid) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.root :global(.hiq-ticket) {
+  --hiq-tear: var(--hiq-paper-2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 25px 23px 29px;
+  border: 1px solid rgba(116, 94, 72, .22);
+  border-radius: 14px 14px 2px 2px;
+  background: var(--hiq-paper-2);
+  box-shadow: 0 20px 45px rgba(63, 42, 28, .1), inset 0 0 0 1px rgba(255, 255, 255, .7), inset 0 1px rgba(255, 255, 255, .95);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.root :global(.hiq-ticket):hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 95, 34, .42);
+  box-shadow: 0 28px 60px rgba(63, 42, 28, .15), inset 0 0 0 1px rgba(255, 255, 255, .82), inset 0 1px rgba(255, 255, 255, .95);
+}
+/* Same tear as the receipts, cut from the ticket's slightly whiter paper. */
+.root :global(.hiq-ticket)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -14px;
+  left: 0;
+  height: 15px;
+  background: linear-gradient(135deg, transparent 7px, var(--hiq-tear) 0) repeat-x 0 0 / 15px 15px;
+}
+
+/* A paid priority visit is not a lead, and the card says so before a word is
+   read: hazard tape along the top edge and a warm yellow surround. Restrained
+   on purpose — orange is still the page's action colour and this must not
+   compete with the button inside the card. */
+.root :global(.hiq-ticket[data-kind="quick"]) {
+  border-color: #e8b348;
+  box-shadow: 0 0 0 2px rgba(232, 179, 72, .16), 0 22px 48px rgba(63, 42, 28, .11), inset 0 1px rgba(255, 255, 255, .92);
+}
+.root :global(.hiq-ticket[data-kind="quick"])::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 7px;
+  background: repeating-linear-gradient(-45deg, #edb33b 0 6px, transparent 6px 12px);
+}
+.root :global(.hiq-ticket[data-kind="followup"]) {
+  border-color: #9dbfc3;
+  box-shadow: 0 0 0 2px rgba(94, 145, 153, .09), 0 22px 48px rgba(63, 42, 28, .1), inset 0 1px rgba(255, 255, 255, .92);
+}
+
+.root :global(.hiq-ticket-top) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 28px;
+}
+.root :global(.hiq-badge) {
+  border: 2px solid var(--hiq-orange);
+  padding: 7px 8px;
+  color: var(--hiq-orange-dark);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+}
+.root :global(.hiq-ticket[data-kind="quick"] .hiq-badge) {
+  border-color: #f2bb45;
+  background: #f2bb45;
+  color: #2c220d;
+}
+.root :global(.hiq-ticket[data-kind="followup"] .hiq-badge) { border-color: #4d7e84; color: #315e64; }
+.root :global(.hiq-ticket-time) { color: #7d8889; font-size: 11px; }
+
+.root :global(.hiq-value-label) { display: block; margin-bottom: 3px; color: #7d8889; font-size: 11px; }
+.root :global(.hiq-value) {
+  font-size: 42px;
+  font-weight: 450;
+  line-height: 1;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+}
+.root :global(.hiq-ticket h3) {
+  margin: 18px 0 10px;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+.root :global(.hiq-location) { margin: 0; color: #657174; font-size: 13px; }
+
+.root :global(.hiq-reasons) {
+  display: grid;
+  gap: 10px;
+  margin: 21px 0 0;
+  padding: 19px 0 0;
+  border-top: 1px dashed #cdc5ba;
+  list-style: none;
+}
+.root :global(.hiq-reasons li) { color: #526064; font-size: 13px; }
+/* The mark carries the card's own colour, so the three cards are legible as
+   three different KINDS of thing at a glance rather than three prices. */
+.root :global(.hiq-reasons li span) { color: var(--hiq-green); font-weight: 700; }
+.root :global(.hiq-ticket[data-kind="quick"] .hiq-reasons li span) { color: #a9750d; }
+.root :global(.hiq-ticket[data-kind="followup"] .hiq-reasons li span) { color: #35707a; }
+
+.root :global(.hiq-card-link),
+.root :global(.hiq-inlinelink) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--hiq-orange-dark);
+  font-size: 13px;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+.root :global(.hiq-card-link) { margin-top: 18px; padding-top: 15px; border-top: 1px dashed #d6cdc2; }
+.root :global(.hiq-inlinelink) { margin-top: 24px; font-size: 14px; }
+.root :global(.hiq-card-link:hover),
+.root :global(.hiq-inlinelink:hover) { text-decoration: underline; }
+.root :global(.hiq-card-link span),
+.root :global(.hiq-inlinelink span) { transition: transform .15s ease; }
+.root :global(.hiq-card-link:hover span),
+.root :global(.hiq-inlinelink:hover span) { transform: translateX(3px); }
+
+/* THE QUESTION EACH CARD ENDS ON. Pushed to the bottom of the card so all
+   three ask at the same height however long the middle runs. */
+.root :global(.hiq-ask) { margin-top: auto; padding-top: 23px; }
+.root :global(.hiq-ask-q) { display: block; margin-bottom: 11px; font-size: 14px; font-weight: 650; }
+
+/* Two answers, and "Later" is a real one. It is the same size and the same
+   height as the affirmative because the page's whole promise is that an alert
+   never costs you more than one tap. */
+.root :global(.hiq-answers) { display: grid; grid-template-columns: 1fr .78fr; gap: 9px; }
+.root :global(.hiq-answers button) {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--hiq-orange);
+  border-radius: 7px;
+  background: var(--hiq-orange);
+  color: #25120a;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .3);
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.root :global(.hiq-answers button:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(255, 95, 34, .2), inset 0 1px rgba(255, 255, 255, .34);
+}
+.root :global(.hiq-answers .hiq-later) { background: none; color: var(--hiq-orange-dark); }
+.root :global(.hiq-answers button[data-selected="true"]) { box-shadow: inset 0 0 0 2px #1e130e; }
+.root :global(.hiq-answers .hiq-later[data-selected="true"]) { background: #ffe3d5; }
+
+.root :global(.hiq-said) {
+  margin: 9px 0 0;
+  min-height: 32px;
+  color: #2c6b47;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ---- the text alert ------------------------------------------------------ */
+
+.root :global(.hiq-text) {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 24%, rgba(255, 255, 255, .72), transparent 27%),
+    radial-gradient(circle at 78% 63%, rgba(255, 118, 53, .14), transparent 28%),
+    #ffe3d1;
+  color: var(--hiq-ink);
+  scroll-margin-top: 140px;
+}
+.root :global(.hiq-text-layout) {
+  display: grid;
+  grid-template-columns: minmax(320px, .85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(48px, 8vw, 110px);
+  padding-block: clamp(64px, 8vw, 90px);
+}
+.root :global(.hiq-text-copy h2) {
+  margin: 0;
+  font-size: clamp(34px, 4.6vw, 60px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.05em;
+  text-wrap: balance;
+}
+.root :global(.hiq-text-lede) { margin: 22px 0 36px; color: #526166; font-size: 19px; line-height: 1.55; }
+.root :global(.hiq-text-copy dl) { margin: 0; }
+.root :global(.hiq-text-copy dl > div) {
+  display: grid;
+  grid-template-columns: 145px 1fr;
+  gap: 28px;
+  padding: 21px 0;
+  border-top: 1px solid rgba(25, 42, 48, .17);
+}
+.root :global(.hiq-text-copy dt) { font-weight: 700; }
+.root :global(.hiq-text-copy dd) { margin: 0; color: #5a686c; font-size: 14px; line-height: 1.5; }
+
+.root :global(.hiq-phone) {
+  position: relative;
+  width: 100%;
+  max-width: 390px;
+  margin: 0 auto;
+  padding: 18px 19px 24px;
+  border: 8px solid #17282e;
+  border-radius: 44px;
+  background: linear-gradient(#fbfaf7, #f1efeb);
+  color: #1b292e;
+  box-shadow: 0 34px 78px rgba(83, 39, 20, .25), 0 0 0 1px rgba(255, 255, 255, .8), 0 0 0 10px rgba(255, 255, 255, .18);
+}
+.root :global(.hiq-phone-speaker) {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 105px;
+  height: 18px;
+  border-radius: 999px;
+  background: #17282e;
+  transform: translateX(-50%);
+}
+.root :global(.hiq-phone-status) {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 7px 20px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.root :global(.hiq-phone-app) {
+  padding: 14px 0;
+  border-bottom: 1px solid #dedbd5;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-align: center;
+}
+.root :global(.hiq-bubble) {
+  margin-top: 34px;
+  padding: 20px;
+  border: 1px solid rgba(77, 91, 95, .1);
+  border-radius: 20px 20px 20px 5px;
+  background: linear-gradient(145deg, #ececeb, #e2e3e2);
+  box-shadow: 0 12px 25px rgba(22, 38, 44, .08), inset 0 1px rgba(255, 255, 255, .72);
+}
+.root :global(.hiq-bubble-from) {
+  display: block;
+  margin-bottom: 12px;
+  color: #657276;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .06em;
+}
+.root :global(.hiq-bubble > strong) { display: block; font-size: 17px; line-height: 1.25; }
+.root :global(.hiq-bubble > p) { margin: 9px 0 0; font-size: 13px; }
+.root :global(.hiq-bubble .hiq-answers) { margin-top: 18px; }
+.root :global(.hiq-bubble .hiq-said) { text-align: left; }
+/* A dead text field at the bottom of the screen, so the bubble reads as a
+   message thread rather than a card. Absolute, because it belongs to the
+   phone's chrome and not to the conversation. */
+.root :global(.hiq-phone-field) {
+  position: absolute;
+  right: 18px;
+  bottom: 22px;
+  left: 18px;
+  padding: 12px 16px;
+  border: 1px solid #d2cfca;
+  border-radius: 999px;
+  color: #9c9f9e;
+  font-size: 12px;
+}
+/* The field is out of flow, so the bubble has to reserve its height or a long
+   reply line ends up underneath it. */
+.root :global(.hiq-phone) { padding-bottom: 78px; }
+
+/* ---- the bridge ---------------------------------------------------------- */
+
+.root :global(.hiq-bridge) {
+  padding: clamp(72px, 8vw, 112px) 0 clamp(76px, 8vw, 118px);
+  border-top: 1px solid var(--hiq-line);
+  border-bottom: 1px solid var(--hiq-line);
+  background:
+    radial-gradient(circle at 84% 18%, rgba(255, 95, 34, .15), transparent 26%),
+    radial-gradient(circle at 18% 88%, rgba(69, 148, 165, .12), transparent 30%),
+    var(--hiq-navy-2);
+  scroll-margin-top: 140px;
+}
+
+/* Five cards separated by the grid's own 1px gap showing the border colour
+   through — one rule instead of five borders that double up at every seam. */
+.root :global(.hiq-rail) {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hiq-line-bright);
+  border-radius: 22px;
+  background: var(--hiq-line);
+  list-style: none;
+  box-shadow: 0 30px 72px rgba(0, 0, 0, .22), inset 0 1px rgba(255, 255, 255, .04);
+}
+.root :global(.hiq-stage) {
+  position: relative;
+  min-height: 245px;
+  padding: 29px 23px 26px;
+  background: linear-gradient(155deg, rgba(17, 50, 61, .98), rgba(9, 33, 43, .98));
+  transition: background .18s ease;
+}
+.root :global(.hiq-stage:hover) { background: linear-gradient(155deg, rgba(24, 61, 73, .98), rgba(11, 38, 49, .98)); }
+/* The arrow says the stages are consecutive; the last one has nowhere to
+   point, so it does not get one. */
+.root :global(.hiq-stage:not(:last-child))::after {
+  content: "→";
+  position: absolute;
+  top: 31px;
+  right: 15px;
+  color: rgba(255, 120, 64, .58);
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+.root :global(.hiq-stage-n) {
+  color: #ff7840;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+.root :global(.hiq-stage h3) { margin: 54px 0 12px; font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
+.root :global(.hiq-stage p) { margin: 0; color: #9bb1ba; font-size: 13px; line-height: 1.55; }
+
+.root :global(.hiq-bridge-actions) { margin-top: 34px; gap: 22px; }
+
+/* ---- why it surfaced ----------------------------------------------------- */
+
+.root :global(.hiq-why) {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(380px, 1.15fr);
+  align-items: center;
+  gap: clamp(48px, 8vw, 110px);
+  max-width: 1220px;
+  margin: clamp(52px, 6vw, 78px) auto;
+  padding: clamp(48px, 6vw, 82px) clamp(24px, 5vw, 72px);
+  border: 1px solid var(--hiq-line-bright);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 83% 18%, rgba(255, 95, 34, .11), transparent 27%),
+    linear-gradient(145deg, rgba(15, 45, 56, .9), rgba(8, 31, 41, .84));
+  box-shadow: 0 32px 80px rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .043), inset 0 0 70px rgba(72, 151, 169, .035);
+}
+.root :global(.hiq-why-copy h2) {
+  margin: 0;
+  font-size: clamp(32px, 4.6vw, 60px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.05em;
+  text-wrap: balance;
+}
+.root :global(.hiq-why-copy > p:last-child) { margin: 26px 0 0; color: var(--hiq-muted); font-size: 17px; line-height: 1.65; }
+
+/* ---- the ask ------------------------------------------------------------- */
+
+.root :global(.hiq-final) {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid var(--hiq-line);
+  background:
+    radial-gradient(circle at 78% 36%, rgba(255, 95, 34, .16), transparent 28%),
+    radial-gradient(circle at 18% 85%, rgba(64, 137, 153, .12), transparent 32%),
+    var(--hiq-navy-2);
+}
+.root :global(.hiq-final-layout) {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  align-items: center;
+  gap: clamp(48px, 6vw, 80px);
+  padding-block: clamp(64px, 8vw, 90px);
+}
+.root :global(.hiq-final h2) {
+  margin: 0;
+  font-size: clamp(38px, 5.3vw, 68px);
+  font-weight: 400;
+  line-height: 1.01;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+.root :global(.hiq-final h2 em) { display: block; color: var(--hiq-orange); font-style: normal; }
+.root :global(.hiq-reassurance) {
+  margin: 22px 0 0;
+  color: #91a9b2;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+/* The last piece of paper on the page: the wordmark itself, stamped and torn
+   off like everything else the product prints. */
+.root :global(.hiq-final-ticket) {
+  --hiq-tear: var(--hiq-paper);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 310px;
+  padding: 55px 32px;
+  border: 1px solid rgba(255, 255, 255, .78);
+  border-radius: 10px 10px 2px 2px;
+  background: var(--hiq-paper);
+  color: var(--hiq-orange-dark);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  transform: rotate(2deg);
+  box-shadow: 0 34px 75px rgba(0, 0, 0, .3), 0 0 0 1px rgba(5, 25, 33, .12), inset 0 1px rgba(255, 255, 255, .85);
+}
+.root :global(.hiq-final-ticket)::before {
+  content: "";
+  position: absolute;
+  inset: 54px 45px;
+  border: 6px double var(--hiq-orange);
+  border-radius: 9px;
+}
+.root :global(.hiq-final-ticket strong),
+.root :global(.hiq-final-ticket span) { position: relative; z-index: 1; }
+.root :global(.hiq-final-ticket strong) { font-size: 35px; }
+
+/* ---- tablet -------------------------------------------------------------- */
+
+@media (max-width: 960px) {
+  .root :global(.hiq-hero),
+  .root :global(.hiq-text-layout),
+  .root :global(.hiq-why),
+  .root :global(.hiq-final-layout) { grid-template-columns: minmax(0, 1fr); gap: 56px; }
+
+  .root :global(.hiq-hero-copy) { max-width: 680px; }
+  .root :global(.hiq-receipt-hero) { max-width: 520px; }
+  .root :global(.hiq-grid) { grid-template-columns: minmax(0, 1fr); }
+
+  /* Two across, and the fifth takes the whole width rather than leaving a hole
+     where a sixth stage would be. */
+  .root :global(.hiq-rail) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .root :global(.hiq-stage:last-child) { grid-column: 1 / -1; }
+
+  /* The copy leads on a narrow screen. A phone drawing at the top of a
+     section, above the heading that says what it is, is a picture nobody has
+     been given a reason to look at yet. */
+  .root :global(.hiq-text-copy) { order: -1; width: 100%; max-width: 680px; margin: 0 auto; }
+  .root :global(.hiq-why-copy) { max-width: 700px; }
+  .root :global(.hiq-why) { margin-inline: 20px; }
+  .root :global(.hiq-receipt-why),
+  .root :global(.hiq-final-ticket) { width: 100%; max-width: 560px; margin-inline: auto; }
+}
+
+/* ---- phone --------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  /* The site header is 68px below this breakpoint, not 82. */
+  .root :global(.hiq-nav) { top: 68px; }
+
+  /* Three labels across 390px wrapped to two lines each and turned a 46px bar
+     into a 112px block of broken words, under a header that is already fixed.
+     It scrolls sideways instead: the labels stay on one line, and following
+     one of the page's own anchors scrolls the matching link into view. */
+  .root :global(.hiq-nav ol) {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .root :global(.hiq-nav ol)::-webkit-scrollbar { display: none; }
+  .root :global(.hiq-nav li) { flex: 0 0 auto; }
+  .root :global(.hiq-hero),
+  .root :global(.hiq-opps),
+  .root :global(.hiq-text),
+  .root :global(.hiq-bridge) { scroll-margin-top: 122px; }
+}
+
+@media (max-width: 700px) {
+  .root :global(.hiq-hero h1),
+  .root :global(.hiq-split h2),
+  .root :global(.hiq-text-copy h2),
+  .root :global(.hiq-why-copy h2),
+  .root :global(.hiq-final h2) { font-size: 40px; }
+
+  .root :global(.hiq-hero) { padding-block: 44px 60px; }
+  .root :global(.hiq-lede) { font-size: 16px; }
+  .root :global(.hiq-receipt-hero) { padding: 30px 22px 36px; }
+  .root :global(.hiq-receipt-head h3) { font-size: 21px; }
+  .root :global(.hiq-receipt-row) { min-height: 60px; font-size: 13px; }
+  .root :global(.hiq-receipt-row strong) { font-size: 11px; }
+
+  /* Three facts across a 390px screen gives each of them 116px, and every
+     label wrapped to three lines. Stacked, they are three short sentences. */
+  .root :global(.hiq-facts) { grid-template-columns: minmax(0, 1fr); }
+  .root :global(.hiq-facts > div + div) { border-left: 0; border-top: 1px solid var(--hiq-line); }
+
+  .root :global(.hiq-split) { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 22px; }
+  .root :global(.hiq-example) { text-align: left; }
+
+  .root :global(.hiq-rail) { grid-template-columns: minmax(0, 1fr); }
+  .root :global(.hiq-stage),
+  .root :global(.hiq-stage:last-child) { grid-column: auto; min-height: 0; }
+  .root :global(.hiq-stage h3) { margin-top: 34px; }
+  /* Down a single column the arrow points off the side of the card. */
+  .root :global(.hiq-stage:not(:last-child))::after { content: "↓"; }
+
+  .root :global(.hiq-phone) { border-radius: 34px; }
+  .root :global(.hiq-text-copy dl > div) { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+
+  .root :global(.hiq-why) { margin-inline: 12px; padding-inline: 22px; border-radius: 20px; }
+  .root :global(.hiq-receipt-why) { padding: 30px 20px 40px; }
+
+  .root :global(.hiq-final-ticket) { min-height: 250px; font-size: 17px; }
+  .root :global(.hiq-final-ticket strong) { font-size: 27px; }
+  /* The fixed signup bar is 54px plus its inset and it sits over whatever is
+     at the bottom of the viewport. Reserving its height here means what it
+     covers is always space. */
+  .root :global(.hiq-final-layout) { padding-bottom: 96px; }
+}
+
+/* Nothing on this page depends on motion to be understood: the glare is
+   atmosphere and every transition is a hover affordance. */
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.hiq-hero)::before { animation: none; }
+  .root :global(.hiq-ticket),
+  .root :global(.hiq-answers button),
+  .root :global(.hiq-card-link span),
+  .root :global(.hiq-inlinelink span),
+  .root :global(.hiq-button) { transition: none; }
+  .root :global(.hiq-ticket):hover { transform: none; }
 }
 `;
 

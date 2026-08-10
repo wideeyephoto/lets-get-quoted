@@ -3,614 +3,375 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 
 // The flagship chrome and stylesheet — the same ones the homepage and
-// /features draw. This page rendered MarketingHeader inside the marketing
-// shell, so it carried a second logo treatment, a second navigation and a
-// browner palette than every page it links to.
+// /features draw, so this page is the site rather than a document about it.
 import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
 import styles from '@/components/flagship/flagship.module.css';
+import { APP_SIGNUP_URL, DEMO_URL } from '@/components/marketing/links';
 
-import JobJourney, { JourneyLegend } from './job-journey';
-import StageNav from './stage-nav';
-import { STAGE_VISUALS } from './stage-visuals';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
-import { TRADES } from '@/lib/trades';
+import OpportunityCards from './opportunity-cards';
+import SectionNav, { type NavSection } from './section-nav';
+import TextAlertDemo from './text-alert-demo';
 
 export const metadata: Metadata = {
-  title: 'How Let’s Get Quoted Works',
+  title: 'How Let’s Get Quoted Works — your best jobs rise to the top',
   description:
-    'See how one contractor job moves from a new website visit to qualified lead, approved quote, scheduled work and payment — five stages, and what each one puts on the job record.',
+    'Your website qualifies every incoming request, estimates its value and scores it, then texts you when a promising job needs an answer. Respond now — or save it for later.',
   alternates: { canonical: 'https://letsgetquoted.com/how-it-works' },
   openGraph: {
-    title: 'How Let’s Get Quoted Works',
+    title: 'Your best jobs rise to the top.',
     description:
-      'Five stages, from a website visit to money in the bank. Each one shown four ways: what you do, what the homeowner sees, what lands on the job record, and what happens automatically next.',
+      'Incoming requests are qualified, scored and surfaced when they deserve an answer — and the one you take carries straight through quote, schedule, crew, payment and review.',
     url: 'https://letsgetquoted.com/how-it-works',
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Your best jobs rise to the top.',
+    description:
+      'Incoming requests are qualified, scored and surfaced when they deserve an answer.',
   },
 };
 
 /* ---------------------------------------------------------------------------
- * The five stages.
+ * WHAT THIS PAGE MAY AND MAY NOT CLAIM.
  *
- * `title`, `summary` and every string in `does` are the Codex draft's own copy,
- * kept word for word — that draft supplied the contractor's move at each stage
- * and the sentence that frames it.
+ * Let's Get Quoted does not buy, sell or supply leads. Every request on this
+ * page arrives at the contractor's OWN website; what the product does is
+ * qualify it, estimate it, score it, rank it and surface it. So the verbs here
+ * are qualify / estimate / score / prioritise / surface, and never "get",
+ * "deliver", "send you" or "generate" leads. If a sentence here would still be
+ * true of a lead-gen marketplace, it is the wrong sentence.
  *
- * `sees`, `record` and `next` are written here, and every claim in them is
- * checked against the shipped code rather than against the pitch:
- *
- *   01  src/lib/site-seed.ts (generated services, FAQs, cities, SEO title and
- *       description), src/lib/seo/site-seo.ts (the town + service signal in the
- *       title), src/lib/sites.ts (hours, service area, published)
- *   02  src/lib/leads.ts (triage score hot/warm/low + LEAD_FLAG_LABELS),
- *       src/lib/lead-verification.ts (the code is only ever texted),
- *       src/lib/lead-photo-storage.ts, src/lib/intake-quality.ts (the three
- *       filters: timeframe, area, whether the number is real),
- *       src/lib/lead-priority.ts (whose move it is, and for how long),
- *       src/lib/email.ts (the high-value subject line)
- *   03  src/lib/quote-draft.ts (DraftSource: price-book | history | estimate),
- *       src/lib/invoices.ts signInvoice (signer name + timestamp; the lead
- *       flips to won and the job to in_progress in the same call),
- *       src/lib/jobs.ts (deposit_gate), src/lib/payments.ts (deposit)
- *   04  src/lib/scheduling.ts (the options text and the client's pick),
- *       src/lib/arrival.ts (the window, and SmsStatus as a delivery receipt),
- *       src/lib/message-context.ts (a thread resolved to a job and an address),
- *       src/lib/leads.ts convertLeadToJob (scope + address carry over)
- *   05  src/lib/payments.ts (ACH on large one-offs),
- *       src/lib/review-routing.ts (reviewRoutes cannot see the rating),
- *       src/lib/reviews.ts (rating + feedback filed on the invite),
- *       src/lib/rebook.ts (DEFAULT_REBOOK_DAYS 90, REINVITE_COOLDOWN_DAYS 14)
- *
- * Where a behaviour is a setting rather than a guarantee, the sentence says so
- * ("if you have turned that on", "set the deposit gate"). Where nothing is true
- * yet — stage 01 has no job record — it says that instead of inventing one.
+ * Every number, name and address below is invented. The section that shows the
+ * most of them carries its own marker saying so.
  * ------------------------------------------------------------------------- */
 
-type Stage = {
-  number: string;
+const NAV_SECTIONS: NavSection[] = [
+  { id: 'opportunities', label: 'Opportunities' },
+  { id: 'text-alerts', label: 'Text alerts' },
+  { id: 'back-office', label: 'What happens next' },
+];
+
+/** The receipt rows are the four signals the ranking is actually made of. */
+type ReceiptRow = { label: string; value: string };
+
+const HERO_ROWS: ReceiptRow[] = [
+  { label: 'Estimated value', value: '$8,600 · HIGH' },
+  { label: 'Lead score', value: 'HOT' },
+  { label: 'Service area', value: '✓ 4.2 MILES' },
+  { label: 'Timeline', value: '✓ WITHIN 30 DAYS' },
+];
+
+const WHY_ROWS: ReceiptRow[] = [
+  { label: 'Estimated value', value: '$8,600 · HIGH' },
+  { label: 'Trade match', value: '✓ ELECTRICAL' },
+  { label: 'Distance', value: '✓ 4.2 MILES' },
+  { label: 'Readiness', value: '✓ PHONE VERIFIED' },
+];
+
+/* The three facts under the hero. Each is a claim about the queue, not about
+   the company — "surfaces first" is checkable on the screen above it. */
+const FACTS: { fact: string; of: string }[] = [
+  { fact: 'High value', of: 'surfaces first' },
+  { fact: 'Hot · Warm · Low', of: 'AI lead scoring' },
+  { fact: '1 text', of: 'to decide now or later' },
+];
+
+/* The bridge. Five stages, and the reason the page has them at all: a reader
+   who has just been told "we rank your requests" needs to know the product
+   does not stop there. One line each — the detail is on /features. */
+const STAGES: { n: string; title: string; body: string }[] = [
+  {
+    n: '01',
+    title: 'Quote + sign',
+    body: 'The job summary becomes a polished quote the customer can approve and sign.',
+  },
+  {
+    n: '02',
+    title: 'Schedule',
+    body: 'Offer real availability and let the homeowner pick the window that suits them.',
+  },
+  {
+    n: '03',
+    title: 'Crew',
+    body: 'Scope, photos, address and promises follow the work into the field.',
+  },
+  {
+    n: '04',
+    title: 'Payment',
+    body: 'Deposits, balances and approvals stay attached to the same job.',
+  },
+  {
+    n: '05',
+    title: 'Review',
+    body: 'Finish the work, ask for feedback and keep the next visit ready to book.',
+  },
+];
+
+/* What the alert is made of. Three rows, and each names the thing on the
+   phone screen beside it rather than a product feature. */
+const ALERT_NOTES: { term: string; detail: ReactNode }[] = [
+  {
+    term: 'Value estimated',
+    detail: 'Your intake turns the homeowner’s own answers into a useful range.',
+  },
+  {
+    term: 'Priority scored',
+    detail: 'Budget, location, timing and trade fit decide what rises first.',
+  },
+  {
+    term: 'You choose when',
+    detail: 'Open the request straight away, or let it come back to you later.',
+  },
+];
+
+function Receipt({
+  className,
+  title,
+  id,
+  rows,
+  stamp,
+  total,
+  label,
+}: {
+  className: string;
   title: string;
-  summary: string;
-  /** The contractor's move. Codex copy, verbatim. */
-  does: string[];
-  /** What lands on the homeowner's phone. */
-  sees: ReactNode;
-  /** What is now permanently attached to the job. */
-  record: ReactNode;
-  /** What the product then does without being asked. */
-  next: ReactNode;
-};
-
-const STAGES: Stage[] = [
-  {
-    number: '01',
-    title: 'Build the site',
-    summary:
-      'Start with a polished, editable contractor website built around your trade and service area.',
-    /* "Connect Smart Intake" named a product without saying what it is. Smart
-       Intake is the real name of the setting (dashboard → settings → intake), so
-       it stays — with the four words that make it mean something to somebody who
-       has never seen the app. */
-    does: [
-      'Add your business basics',
-      'Generate services and local pages',
-      'Turn on Smart Intake — the quote form that asks about the actual project',
-    ],
-    sees: (
-      <>
-        A published site for your trade: the services you sell, the towns you cover, your hours, and
-        the questions everyone asks already answered. The quote request form is the front door.
-      </>
-    ),
-    record: (
-      <>
-        Nothing yet — and that is the honest answer. This stage builds the front door. The record
-        starts the moment somebody walks through it.
-      </>
-    ),
-    next: (
-      <>
-        Your page titles and descriptions are written with your service and your town in them, and
-        the form is already wired to your lead inbox. There is nothing to connect up afterwards.
-      </>
-    ),
-  },
-  {
-    number: '02',
-    title: 'Qualify the lead',
-    summary: 'Ask project-specific questions before your team spends time on a call.',
-    does: [
-      'Collect scope and photos',
-      'Consider fit, urgency, value and distance',
-      'Alert the team to strong opportunities',
-    ],
-    sees: (
-      <>
-        A short set of questions about their actual project — scope, timing, photos they can take on
-        the spot — and a code texted to their phone to confirm the number, if you have turned that
-        on.
-      </>
-    ),
-    record: (
-      <>
-        Their answers and their photos, with a triage verdict on top: hot, warm or low, and the flags
-        behind it — out of area, below your minimum, work you don’t do, phone verified.
-      </>
-    ),
-    next: (
-      <>
-        The lead lands in the priority inbox ranked on whose move it is and how long it has been
-        their move. If the estimate clears your threshold, the email that reaches you says so in the
-        subject line.
-      </>
-    ),
-  },
-  {
-    number: '03',
-    title: 'Win the job',
-    summary:
-      'Turn the same project summary into a professional quote the homeowner can approve.',
-    does: ['Create itemized options', 'Send for e-sign approval', 'Collect the deposit'],
-    sees: (
-      <>
-        A quote they can open on a phone: itemized, totaled, with a name to type — and, if you asked
-        for one, a deposit to pay on the same screen.
-      </>
-    ),
-    record: (
-      <>
-        Every line and where its price came from — your price book, what you have charged before, or
-        an estimate flagged for you to check. Then the signer’s name, the moment they signed, and the
-        deposit against the job.
-      </>
-    ),
-    next: (
-      <>
-        Signing moves the job to in progress and marks the lead won on its own. Set the deposit gate
-        and nothing can be scheduled until the money clears.
-      </>
-    ),
-  },
-  {
-    number: '04',
-    title: 'Run the work',
-    summary:
-      'Schedule the visit, assign the crew and keep the homeowner updated by text and portal.',
-    does: ['Set the arrival window', 'Share the job context', 'Keep every message attached'],
-    sees: (
-      <>
-        A text with the dates you can actually do, so they pick one instead of trading voicemails.
-        Then an “on my way” message with a window on it, and a portal showing what is done and what
-        is next.
-      </>
-    ),
-    record: (
-      <>
-        Who is going and when, the arrival text and whether it was sent or came back failed, and
-        every message tied back to the job and the address instead of to a bare phone number.
-      </>
-    ),
-    next: (
-      <>
-        Their pick writes itself into the schedule and tells you it happened. The crew’s field app
-        already carries the address and the scope from the original request.
-      </>
-    ),
-  },
-  {
-    number: '05',
-    title: 'Get paid + grow',
-    summary:
-      'Collect the balance, request the review and keep the relationship ready for recurring work.',
-    does: ['Complete payment', 'Trigger follow-up', 'Plan the next visit'],
-    sees: (
-      <>
-        A final bill payable from the same link — card, or bank transfer when the amount makes card
-        fees hurt. Then, with the feedback page switched on, one review request that offers the
-        public review and a private word in the same breath, whatever they thought of you.
-      </>
-    ),
-    record: (
-      <>
-        The payment against the job, and what they said — the rating, and any private feedback —
-        filed against the customer rather than lost in somebody’s inbox.
-      </>
-    ),
-    next: (
-      <>
-        Once a customer passes the interval you set — 90 days unless you change it — they surface as
-        due to rebook, and the invite will not go out twice within 14 days.
-      </>
-    ),
-  },
-];
-
-/** The four axes, in the order every stage answers them. */
-const AXES = [
-  { key: 'does', label: 'You do', blurb: 'The contractor’s move at this stage.' },
-  { key: 'sees', label: 'The homeowner sees', blurb: 'What actually lands on their phone.' },
-  { key: 'record', label: 'The record gains', blurb: 'What is now attached to the job for good.' },
-  { key: 'next', label: 'Then, automatically', blurb: 'What the product does without being asked.' },
-] as const;
-
-/* The job-record example under the continuity band. Invented job, invented
- * homeowner — hence the ExampleFrame — but every event type on it is one the
- * product really writes, and the wording of each ("Hot", "phone verified",
- * "Customer texted", "price book") is the product's own.
- *
- * Note what the arrival row does NOT say. SmsStatus (src/lib/arrival.ts) is
- * sent | failed | no_phone | opted_out | not_configured — there is no delivered
- * state, and the Twilio status webhook only acts on failed/undelivered, so a
- * carrier "delivered" callback is discarded. "Text delivered" would be a
- * receipt the product cannot produce; "Customer texted." is the string
- * arrival-send.ts actually writes to the timeline. */
-/* Whose hand put a line on the record.
- *
- * The page's fourth axis is "Then, automatically", and until now the timeline
- * below it drew a line the homeowner typed and a line nobody typed in exactly
- * the same ink. That flattening cost the page its own argument, so each row now
- * says which of three things happened — and the tag is checked against the code
- * that writes the row, not against the pitch:
- *
- *   homeowner  the form, the signature, the date they picked, the payment
- *   you        your move: the quote you sent, the on-my-way the tech tapped
- *   auto       nobody typed it. The intake route scores the lead itself —
- *              src/app/api/public/leads/route.ts:232 sets hot/warm/low from
- *              the flags and the estimate before the lead is ever stored.
- *
- * `auto` on a row is separate from `hand`, and it is about the DETAIL line: the
- * thing the record went on to write by itself once the row above existed.
- * Each one is a specific function:
- *
- *   row 3  src/lib/quote-draft.ts — DraftSource marks every line price-book,
- *          history or estimate; the "flagged for you to check" is the product's
- *          verdict, not a note somebody left
- *   row 4  src/lib/invoices.ts signInvoice (line 448) — one call flips the lead
- *          to won and the job from new_lead to in_progress
- *   row 5  src/lib/scheduling.ts applyScheduleSelection (line ~280) — the pick
- *          writes itself onto the job and texts the assigned crew
- *   row 6  src/lib/arrival.ts — the window and the text, composed and sent from
- *          the tech's tap
- *   row 7  src/lib/review-routing.ts reviewRoutes — the invite offers the public
- *          review and the private word together, and cannot see the rating
- *
- * Rows 1 and 2 carry no `auto` because nothing followed on its own: row 1 IS
- * the homeowner's typing and row 2 IS the automatic step. */
-type RecordHand = 'homeowner' | 'you' | 'auto';
-
-const HAND_LABEL: Record<RecordHand, string> = {
-  homeowner: 'Homeowner',
-  you: 'You',
-  auto: 'Automatic',
-};
-
-const HANDS: RecordHand[] = ['homeowner', 'you', 'auto'];
-
-const RECORD_EVENTS: {
-  stage: string;
-  event: string;
-  detail: string;
-  hand: RecordHand;
-  /** True when the detail line is what the record wrote once the event landed. */
-  auto?: true;
-}[] = [
-  {
-    stage: '01→02',
-    event: 'Quote request from your website',
-    detail: '3 photos · “Kitchen ceiling, water stain spreading” · timeframe: within a month',
-    hand: 'homeowner',
-  },
-  {
-    stage: '02',
-    event: 'Triaged Hot',
-    detail: 'In your service area · phone verified · above your minimum job size',
-    hand: 'auto',
-  },
-  {
-    stage: '03',
-    event: 'Quote sent — 4 line items',
-    detail: '3 priced from your price book, 1 estimate flagged for you to check',
-    hand: 'you',
-    auto: true,
-  },
-  {
-    stage: '03',
-    event: 'Signed by D. Whitfield · deposit paid',
-    detail: 'Lead marked won · job moved to in progress · schedule unlocked',
-    hand: 'homeowner',
-    auto: true,
-  },
-  {
-    stage: '04',
-    event: 'Homeowner picked Tue, 9–11am',
-    detail: 'Chosen from the three dates you offered · crew assigned',
-    hand: 'homeowner',
-    auto: true,
-  },
-  {
-    stage: '04',
-    event: 'On my way — 15 minutes',
-    detail: 'Customer texted · arrival window 9:15–9:45am',
-    hand: 'you',
-    auto: true,
-  },
-  {
-    stage: '05',
-    event: 'Balance paid · review request sent',
-    detail: 'Public review and a private word offered together, as they always are',
-    hand: 'homeowner',
-    auto: true,
-  },
-];
-
-
-
-/* Counted, not asserted — so the sentence under the swimlane cannot drift from
-   the rows above it if one is ever added or retagged. */
-const YOUR_ROWS = RECORD_EVENTS.filter((entry) => entry.hand === 'you').length;
-
-/** Which lane a row belongs to, top to bottom. */
-const LANE_ROW: Record<RecordHand, number> = { homeowner: 1, you: 2, auto: 3 };
-
-/** '01→02' and '02' both belong under stage 02 — the column an event LANDS in. */
-const stageColumn = (stage: string) => Number(stage.slice(-2));
-
-const FIRST_TIER = FEE_TIERS[0];
-const LAST_TIER = FEE_TIERS[FEE_TIERS.length - 1];
+  id: string;
+  rows: ReceiptRow[];
+  stamp: string;
+  /** The hero's receipt closes on the number; the qualification one does not. */
+  total?: string;
+  label: string;
+}) {
+  return (
+    <article className={`hiq-receipt ${className}`} aria-label={label}>
+      <div className="hiq-receipt-head">
+        <h3>{title}</h3>
+        <span>{id}</span>
+      </div>
+      {rows.map((row) => (
+        <div className="hiq-receipt-row" key={row.label}>
+          <span>{row.label}</span>
+          <strong>{row.value}</strong>
+        </div>
+      ))}
+      {total ? (
+        <div className="hiq-receipt-total">
+          <span className="hiq-stamp">{stamp}</span>
+          <strong>{total}</strong>
+        </div>
+      ) : (
+        <div className="hiq-stamp hiq-stamp-solo">{stamp}</div>
+      )}
+    </article>
+  );
+}
 
 export default function HowItWorksPage() {
   return (
-    <>
-      <main className={styles.root}>
-        {/* The page had no skip link, so the first tab stop was the wordmark and
-            the second was five nav links — measured before this: first=A.brand.
-            /features and the homepage both open with one. */}
-        <a className="skip-link" href="#main-content">Skip to content</a>
+    <main className={`${styles.root} hiq-page`}>
+      {/* The page had no skip link before the header, and the header comes
+          first in the DOM — a skip link written after it is not one. */}
+      <a className="skip-link" href="#main-content">Skip to content</a>
 
-        {/* SiteHeader has to be INSIDE .root: every rule that styles it is
-            scoped to that class, so rendered as a sibling it comes out as a
-            600px logo above five run-together links. The homepage nests it the
-            same way. */}
-        <SiteHeader />
+      {/* SiteHeader has to be INSIDE .root: every rule that styles it is scoped
+          to that class, so rendered as a sibling it comes out as a 600px logo
+          above five run-together links. The site's navigation is unchanged; the
+          page's own three anchors are the bar underneath it. */}
+      <SiteHeader />
+      <SectionNav sections={NAV_SECTIONS} />
 
-        {/* ------------------------------------------------------------------
-            HERO — the thesis, drawn rather than described.
-            ------------------------------------------------------------------ */}
-        <section className="hiw-hero" id="main-content" aria-labelledby="how-title">
-          <p className="eyebrow"><span>✦</span> ONE CUSTOMER RECORD · START TO FINISH</p>
-          <h1 id="how-title">Five stages. <em>No broken handoffs.</em></h1>
-          <p className="hiw-lede">
-            A homeowner begins on your website. The same details keep moving as the opportunity
-            becomes a quote, a scheduled job and money in the bank.
+      {/* ------------------------------------------------------------------
+          HERO — the queue's top row, drawn at full size.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-hero" id="main-content" aria-labelledby="hiq-title">
+        <div className="hiq-hero-copy">
+          <p className="hiq-eyebrow">AI-ranked lead queue</p>
+          <h1 id="hiq-title">
+            Your best jobs <em>rise to the top.</em>
+          </h1>
+          <p className="hiq-lede">
+            Your website qualifies every request, estimates its value and alerts you when a
+            promising job needs an answer. Respond now—or save it for later.
           </p>
-
-          {/* THE ACTIONS COME BEFORE THE DRAWING NOW.
-              The hero ran 1,150px on a 390px phone and the buttons sat 1,056px
-              down it — a screen and a quarter of reading before the page made
-              any offer at all, and the lower-commitment one ("no signup") was
-              lower still at 1,120. The journey graphic is the best thing on the
-              page and it is also 240px tall on a phone; it argues the case for
-              anyone who keeps reading, which is exactly why it does not need to
-              come first. */}
-          <div className="hero-actions">
-            <a className="button primary" href={APP_SIGNUP_URL}>
+          <div className="hiq-actions">
+            <a className="hiq-button" href={APP_SIGNUP_URL}>
               Build my free site <span aria-hidden="true">→</span>
             </a>
-            <Link className="button secondary" href="/demo">Explore the demo — no signup</Link>
+            <Link className="hiq-textlink" href={DEMO_URL}>
+              Explore the demo
+            </Link>
           </div>
-
-          <JobJourney />
-          <JourneyLegend />
-        </section>
-
-        {/* A stat strip rather than a paragraph of reassurance. Both numbers are
-            computed: TRADES.length so it cannot go stale the way a written "49"
-            did, and STAGES.length so it agrees with the sections below it. */}
-        <section className="hiw-proof" aria-label="At a glance">
-          <div><b>{TRADES.length}</b><small>TRADES</small></div>
-          <div><b>{STAGES.length}</b><small>CONNECTED STAGES</small></div>
-          {/* "$0 / PER MONTH", on its own, next to two facts that are simply
-              true, read as the whole price. The rest of the sentence was 9,000px
-              further down this page on a phone. A number that large has to carry
-              its own condition, and the cell is a link because the reader who
-              stops here is the one who most needs the full answer. */}
-          <Link className="hiw-proof-fee" href="/pricing">
-            <b>$0</b>
-            <small>PER MONTH · {FIRST_TIER.rate} ONLY WHEN YOU&rsquo;RE PAID</small>
-            <em>See the pricing <span aria-hidden="true">→</span></em>
-          </Link>
-        </section>
-
-        <StageNav stages={STAGES.map(({ number, title }) => ({ number, title }))} />
-
-        {/* ------------------------------------------------------------------
-            THE FIVE STAGES — one visual each, alternating side.
-
-            Every stage used to be four stacked definition cards, which made all
-            five look identical and none of them look like a step. The copy is
-            unchanged: the four axes are still all here, as annotations under
-            the heading rather than as four boxes.
-            ------------------------------------------------------------------ */}
-        {/* ONE DISCLAIMER, NOT SIX.
-            Every stage carried its own "an invented job, not a real customer",
-            and so did the swimlane — six repetitions of the same sentence down
-            one page. Repeating it that often stops reading as candour and starts
-            reading as the page insisting on the one thing it cannot show, which
-            is a real customer. Said once, here, before the first mockup, and
-            once more beside the swimlane 5,000px below, because a reader who
-            arrives there by anchor never passed this line. */}
-        <div className="hiw-example-band">
-          <p className="example-mark">
-            <b>Example</b> — every screen below is the same invented job, a kitchen ceiling in Royal
-            Oak. Not a real customer.
-          </p>
         </div>
 
-        {STAGES.map((stage, index) => {
-          const Visual = STAGE_VISUALS[index];
-          return (
-            <section
-              key={stage.number}
-              id={`stage-${stage.number}`}
-              className="hiw-stage"
-              data-flip={index % 2 === 1 ? 'true' : 'false'}
-              aria-labelledby={`stage-${stage.number}-title`}
-            >
-              {/* HEAD, VISUAL, NOTES — three grid children rather than a copy
-                  column and a visual, because on a phone they have to interleave.
-                  The mockup used to be `order: -1` at 900px, so tapping a stage in
-                  the sticky nav landed on a product screenshot with the heading
-                  that names it 559px further down (measured at 390x844). You
-                  could not tell the navigation had worked. */}
-              <div className="hiw-stage-head">
-                <p className="hiw-stage-kicker"><span>{stage.number}</span> STAGE {stage.number} OF {STAGES.length}</p>
-                <h2 id={`stage-${stage.number}-title`}>{stage.title}</h2>
-                <p className="hiw-stage-summary">{stage.summary}</p>
-              </div>
+        <div className="hiq-hero-receipt">
+          <Receipt
+            className="hiq-receipt-hero"
+            label="Example high-priority request"
+            title="Panel upgrade + EV charger"
+            id="LEAD #2081"
+            rows={HERO_ROWS}
+            stamp="BEST MATCH"
+            total="$8,600"
+          />
+        </div>
+      </section>
 
-              <div className="hiw-stage-visual">
-                <Visual />
-              </div>
+      {/* Three facts about the queue, on the seam between the hero and the
+          paper section — the strip is what carries the colour change. */}
+      <section className="hiq-facts" aria-label="At a glance">
+        {FACTS.map((fact) => (
+          <div key={fact.fact}>
+            <strong>{fact.fact}</strong>
+            <span>{fact.of}</span>
+          </div>
+        ))}
+      </section>
 
-              <dl className="hiw-notes">
-                <div data-hand="you">
-                  <dt>{AXES[0].label}</dt>
-                  <dd>{stage.does.join(' · ')}</dd>
-                </div>
-                <div data-hand="homeowner">
-                  <dt>{AXES[1].label}</dt>
-                  <dd>{stage.sees}</dd>
-                </div>
-                <div data-hand="auto">
-                  <dt>{AXES[3].label}</dt>
-                  <dd>{stage.next}</dd>
-                </div>
-              </dl>
-
-              {/* THE FOURTH AXIS, FOLDED.
-                  Four dense explanations per stage, five times over, is what made
-                  this page 10,537px on a phone. Of the four, "The record gains"
-                  is the one a first-time reader can take on trust and a serious
-                  one will want in full — and it is the only one whose argument is
-                  restated in the swimlane below. So it opens rather than
-                  scrolls. <details> and not a script: it works before hydration,
-                  it is in the tab order for free, and a browser's own find-in-page
-                  opens it.
-
-                  The label names the content ("what gets saved"), not the widget
-                  ("more"), which is what makes it worth tapping. */}
-              <details className="hiw-record" data-hand="record">
-                <summary>
-                  <span>See what gets saved</span>
-                  <i aria-hidden="true" />
-                </summary>
-                <p>
-                  <b>{AXES[2].label}:</b> {stage.record}
-                </p>
-              </details>
-            </section>
-          );
-        })}
-
-        {/* ------------------------------------------------------------------
-            CONTINUITY — the same events, arranged by whose hand put them there.
-
-            The rows are the ones the page already carried, tags and all. What
-            changed is the axis: as a single list, the homeowner's typing and
-            the thing nobody typed sat in one column and the page's own argument
-            went flat. Three lanes across five stages makes it the shape of the
-            picture: the middle lane is nearly empty, and that is the point.
-            ------------------------------------------------------------------ */}
-        <section className="hiw-lanes-band" aria-labelledby="continuity-title">
-          <div className="hiw-lanes-head">
-            <p className="eyebrow"><span>✦</span> THE DIFFERENCE IS CONTINUITY</p>
-            <h2 id="continuity-title">
-              The homeowner never repeats the story.<br />
-              <em>Your team never rebuilds the record.</em>
-            </h2>
+      {/* ------------------------------------------------------------------
+          OPPORTUNITIES — three tickets, three different reasons.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-opps" id="opportunities" aria-labelledby="hiq-opps-title">
+        <div className="hiq-shell">
+          <div className="hiq-split">
+            <div>
+              <p className="hiq-eyebrow hiq-eyebrow-dark">Worth your attention</p>
+              <h2 id="hiq-opps-title">Three reasons a job deserves a look.</h2>
+            </div>
             <p>
-              Website answers, photos, texts, quote decisions, schedule details, crew context and
-              payments stay attached to the same job.
+              A valuable new lead, a paid Quick Stop near your route, or a quote worth following
+              up—ranked by what can move your business today.
             </p>
           </div>
 
-          <div className="hiw-lanes" role="group" aria-label="One job record across five stages">
-            <div className="hiw-lane-spine" aria-hidden="true">
-              <span className="hiw-spine-id">JOB #1048</span>
-              {STAGES.map((stage) => (
-                <span key={stage.number} className="hiw-spine-stage">{stage.number}</span>
+          <OpportunityCards />
+
+          <p className="hiq-example">Example opportunities · values and customers are illustrative</p>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------
+          THE TEXT — one screen, one decision.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-text" id="text-alerts" aria-labelledby="hiq-text-title">
+        <div className="hiq-shell hiq-text-layout">
+          <TextAlertDemo />
+
+          <div className="hiq-text-copy">
+            <p className="hiq-eyebrow hiq-eyebrow-dark">A quiet interruption</p>
+            <h2 id="hiq-text-title">The right job. One quick decision.</h2>
+            <p className="hiq-text-lede">
+              Respond now—or save it for later and keep working.
+            </p>
+            <dl>
+              {ALERT_NOTES.map((note) => (
+                <div key={note.term}>
+                  <dt>{note.term}</dt>
+                  <dd>{note.detail}</dd>
+                </div>
               ))}
+            </dl>
+            <Link className="hiq-inlinelink" href="/features/client-portal">
+              See texts and the client portal <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------
+          THE BRIDGE.
+
+          Without this section the page reads as a ranking tool. The job a
+          contractor accepts here is the same record that gets quoted, booked,
+          worked, paid and reviewed — said once, in five short stages, with the
+          detail left on /features where it belongs.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-bridge" id="back-office" aria-labelledby="hiq-bridge-title">
+        <div className="hiq-shell">
+          <div className="hiq-split hiq-split-bridge">
+            <div>
+              <p className="hiq-eyebrow">The alert is only the beginning</p>
+              <h2 id="hiq-bridge-title">You choose the job. Quoted carries it the rest of the way.</h2>
             </div>
-
-            {HANDS.map((hand) => (
-              <p key={hand} className="hiw-lane-label" data-hand={hand} style={{ ['--lane' as string]: LANE_ROW[hand] }}>
-                {HAND_LABEL[hand]}
-              </p>
-            ))}
-
-            {RECORD_EVENTS.map((entry) => (
-              <article
-                key={`${entry.stage}-${entry.event}`}
-                className="hiw-lane-event"
-                data-hand={entry.hand}
-                style={{
-                  ['--lane' as string]: LANE_ROW[entry.hand],
-                  ['--stage' as string]: stageColumn(entry.stage),
-                }}
-              >
-                <b>{entry.event}</b>
-                <small>
-                  {entry.auto ? <i>→ Then, automatically: </i> : null}
-                  {entry.detail}
-                </small>
-              </article>
-            ))}
+            <p>
+              Once you respond, the same request becomes the quote, schedule, crew plan, customer
+              conversation, payment and review—without rebuilding the record.
+            </p>
           </div>
 
-          <p className="hiw-lanes-tally">
-            {YOUR_ROWS} of the {RECORD_EVENTS.length} lines on this record were put there by you.
-            The rest arrived with the homeowner, or the record wrote them itself.
-          </p>
-          <p className="example-mark">
-            <b>Example</b> — an invented job and homeowner. The event types and the wording of each
-            are the product’s own.
-          </p>
-        </section>
-
-        {/* ------------------------------------------------------------------
-            THE PRICE, before the ask.
-            ------------------------------------------------------------------ */}
-        <section className="hiw-price" aria-labelledby="hiw-price-title">
-          <p className="eyebrow"><span>✦</span> WHAT IT COSTS TO RUN THIS</p>
-          <h2 id="hiw-price-title">Free to build, quote and schedule.</h2>
-          <p>
-            The platform fee applies only when a homeowner has actually paid you — {FIRST_TIER.rate},
-            dropping to {LAST_TIER.rate} as your yearly volume grows, plus standard Stripe processing
-            ({STRIPE_PROCESSING_NOTE}).
-          </p>
-          <ul className="fee-tiers" aria-label="Platform fee by yearly volume collected">
-            {FEE_TIERS.map((tier) => (
-              <li key={tier.tier}><b>{tier.rate}</b><small>{tier.rangeLabel}</small></li>
+          <ol className="hiq-rail" aria-label="One connected job, five stages">
+            {STAGES.map((stage) => (
+              <li className="hiq-stage" key={stage.n}>
+                <span className="hiq-stage-n">{stage.n}</span>
+                <h3>{stage.title}</h3>
+                <p>{stage.body}</p>
+              </li>
             ))}
-          </ul>
-          <p className="fee-note">
-            <Link href="/pricing">See the full breakdown</Link>
+          </ol>
+
+          <div className="hiq-actions hiq-bridge-actions">
+            <Link className="hiq-button" href="/features/back-office">
+              Explore the connected back office <span aria-hidden="true">→</span>
+            </Link>
+            <Link className="hiq-textlink" href="/features">
+              See every feature
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------
+          WHY IT SURFACED — the receipt, second time, as an explanation.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-why" aria-labelledby="hiq-why-title">
+        <div className="hiq-why-copy">
+          <p className="hiq-eyebrow">Before we text you</p>
+          <h2 id="hiq-why-title">It doesn’t just say “new lead.”</h2>
+          <p>
+            You see why the job surfaced—its estimated value, lead score, distance and timeline—so
+            you can make the call without digging through another form.
           </p>
-        </section>
+        </div>
 
-        <section className="final-cta" id="final-cta">
-          <div className="cta-rays" />
-          <p className="eyebrow"><span>✦</span> ONE CONNECTED PATH, FROM THE FIRST CLICK</p>
-          <h2>Put your next job<br />on one connected path.</h2>
-          <p>Build the site, qualify the lead and run the work from the same record.</p>
-          <a className="button primary light" href={APP_SIGNUP_URL}>
-            Build my free site <span aria-hidden="true">→</span>
-          </a>
-          <small>No card required · No monthly subscription · Cancel anytime</small>
-        </section>
+        <Receipt
+          className="hiq-receipt-why"
+          label="Why this request was ranked first"
+          title="Why this job surfaced"
+          id="LEAD #2081"
+          rows={WHY_ROWS}
+          stamp="WORTH A LOOK"
+        />
+      </section>
 
-        <SiteFooter />
-      </main>
-    </>
+      {/* ------------------------------------------------------------------
+          THE ASK.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-final" aria-labelledby="hiq-final-title">
+        <div className="hiq-shell hiq-final-layout">
+          <div>
+            <p className="hiq-eyebrow">Know what deserves your attention</p>
+            <h2 id="hiq-final-title">
+              The right job. The right moment. <em>One quick decision.</em>
+            </h2>
+            <div className="hiq-actions">
+              <a className="hiq-button" href={APP_SIGNUP_URL}>
+                Build my free site <span aria-hidden="true">→</span>
+              </a>
+              <Link className="hiq-textlink" href={DEMO_URL}>
+                Explore the demo
+              </Link>
+            </div>
+            <p className="hiq-reassurance">No card required · $0/month · Pay only when paid</p>
+          </div>
+
+          <div className="hiq-final-ticket" aria-hidden="true">
+            <span>LET&rsquo;S GET</span>
+            <strong>QUOTED</strong>
+          </div>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </main>
   );
 }
