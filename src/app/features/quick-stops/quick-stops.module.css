@@ -255,3 +255,79 @@
   .never { padding: 1rem 1.05rem 1.1rem; }
   .rules { padding: 1rem; border-radius: 20px; gap: 0.9rem; }
 }
+
+/* ---- the questions contractors ask --------------------------------------- */
+
+.faq {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1.6rem;
+  max-width: 52rem;
+}
+
+.faq details {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* The whole question is the target, not the words in it. */
+  min-height: 56px;
+  padding: 0.9rem 1.15rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--text);
+  list-style: none;
+}
+
+.faq summary::-webkit-details-marker { display: none; }
+
+.faq summary i {
+  position: relative;
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+}
+
+/* A plus that loses its upright when the answer opens. */
+.faq summary i::before,
+.faq summary i::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--cedge-orange-2);
+}
+
+.faq summary i::after {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.faq details[open] summary i::after { transform: rotate(0deg); opacity: 0; }
+
+.faq details > p {
+  margin: 0;
+  padding: 0 1.15rem 1.1rem;
+  max-width: 62ch;
+  font-size: 0.94rem;
+  line-height: 1.65;
+  color: var(--muted-2);
+}
+
+/* The four denials sit inside the rules section now, so they need the seam a
+   section heading used to give them. */
+.denial { margin-top: 1.4rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .faq summary i::after { transition: none; }
+}

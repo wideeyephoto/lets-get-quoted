@@ -5038,6 +5038,14 @@ const TWEAKS = `
   }
 }
 
+/* THE CREAM PROOF STRIP, AT A READABLE SIZE AND A READABLE COLOUR.
+   #747873 on #f5f0e7 at 10px is the least legible run of text on the marketing
+   site — about 4.4:1, which clears the bar for body text only because the bar
+   does not know how small it is. The size floor below handles narrow screens;
+   this is the base, for the widths where four columns are genuinely wide
+   enough and the type was small anyway. */
+.root :global(.detail-proof small) { font-size: 12px; color: #5f635e; }
+
 /* ---- the first button fits on the first screen ---------------------------
 
    Measured on /features/client-portal at 1280x720: the hero's own CTA began at

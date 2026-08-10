@@ -159,20 +159,59 @@ const NEVER = [
   },
 ] as const;
 
+/* Read off the same constants the rules list and the FAQ both quote, so the
+   band a contractor is told about here cannot drift from the one the product
+   enforces. Module scope because the FAQ below needs them too. */
+const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS);
+const maxFee = centsToDollars(DEFAULT_QUICK_STOP_MAX_FEE_CENTS);
+
+/* Answers checked against the product: the fee band, the detour limit, the
+   visit ceiling and the daily cap are the same constants the rules list reads,
+   the payment deadline is DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS, and the
+   excluded work is the fixed screening list the lifecycle section describes.
+   Nothing here promises a capability the page has not already shown. */
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'What does a Quick Stop cost me?',
+    a: `Nothing to offer one. You set the price the homeowner pays, anywhere in the $${minFee} to $${maxFee} band, and you pay the same platform fee you pay on any other job — only on money you actually collect, plus Stripe's ${STRIPE_PROCESSING_NOTE}.`,
+  },
+  {
+    q: 'What if the homeowner cancels, or I can’t make it?',
+    a: `The homeowner has paid before the stop exists, so a cancellation is a refund rather than an argument about a no-show. If you cannot make it, you cancel the stop and they are refunded in full — you are never holding money for a visit that did not happen.`,
+  },
+  {
+    q: 'Where do the requests come from?',
+    a: 'Your own site. These are homeowners who asked you for work through your intake form and happen to be near a job already on your schedule — not a shared pool, and not somebody else’s leads resold to several contractors at once.',
+  },
+  {
+    q: 'What work is never offered as a Quick Stop?',
+    a: 'A fixed list of unsafe and out-of-scope work is screened out before you ever see it — gas leaks, live electrical faults, anything that needs a permit pulled, and anything that plainly cannot be finished in a single short visit. That list is not a setting; it is the same for everybody.',
+  },
+  {
+    q: 'Does it run when I am not looking at it?',
+    a: `No. The switch sits on your day plan and it is off until you turn it on, it applies to that day, and it never books anything by itself — an offer you send lapses after ${DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes if the homeowner does not pay, and you never hear about it again.`,
+  },
+];
+
 export default function QuickStopsPage() {
-  const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS);
-  const maxFee = centsToDollars(DEFAULT_QUICK_STOP_MAX_FEE_CENTS);
 
   return (
     <FeatureDetailLayout
-      eyebrow="New revenue hiding inside today’s route"
+      eyebrow="New revenue from the route you already drive"
+      /* "Turn gaps in the day into prepaid work nearby" makes the reader do the
+         arithmetic. "Fill schedule gaps with prepaid jobs nearby" is the same
+         sentence with the verb pointed at the thing they want. */
       title={
         <>
-          Turn gaps in the day into <em>prepaid work nearby.</em>
+          Fill schedule gaps with <em>prepaid jobs nearby.</em>
         </>
       }
-      lede="Quick Stops helps you spot a nearby request, choose the arrival window and price, and offer it. The stop becomes real only after the homeowner pays."
-      heroNote="Quick Stops never books anything on your behalf. Every request waits for you to approve it, and nothing reaches your calendar until the homeowner has paid."
+      lede="See requests close to jobs already on your schedule. You choose the price and arrival window, then send an offer. It only becomes a job after the homeowner pays."
+      /* The old note said the approval and payment promises a second time, two
+         lines under the lede that had just made them. Under the buttons, where
+         somebody is deciding whether to press one, the three facts that matter
+         are what it costs, who is in control and when it becomes real. */
+      heroNote="No subscription · You approve every request · Nothing books until payment"
       /* "Build my free site" is the cluster's default and it is the wrong ask
          here: somebody reading about prepaid work between jobs is evaluating a
          revenue idea, not a website. Same free account either way; the words
@@ -210,53 +249,45 @@ export default function QuickStopsPage() {
         title: 'A small detour can become productive revenue.',
         body: 'A cancellation, early finish or open window does not have to become dead time. Quick Stops lets you create a tightly controlled offer for a nearby homeowner while protecting the route you already planned.',
       }}
+      /* FOUR BECAME THREE. "Protect the schedule" and "avoid speculative
+         driving" are the same promise — nothing enters your day that you did
+         not approve and that has not been paid for — and the page makes it
+         three more times below. Said once, properly. */
       benefits={[
         {
-          title: 'Protect the schedule',
-          body: 'Only consider requests that fit the location and time window you choose.',
+          title: 'Nothing enters your day uninvited',
+          body: 'Only requests that fit the location and the time window you chose are put in front of you, and the customer pays before the visit is added to anything. Declining costs one tap and no explanation.',
         },
         {
-          title: 'Price the convenience',
-          body: 'Set a clear Quick Stop fee that makes the detour worthwhile.',
+          title: 'You price the detour',
+          body: 'Set the fee that makes the trip worth taking. It is your price on your window, not a marketplace rate somebody else set.',
         },
         {
-          title: 'Avoid speculative driving',
-          body: 'The customer pays before the visit is added to your day.',
-        },
-        {
-          title: 'Create a better local experience',
-          body: 'Nearby homeowners get a clear way to be seen sooner, without an open-ended arrival promise.',
+          title: 'A better answer for a nearby homeowner',
+          body: 'Somebody two streets away gets a real arrival window and a price instead of an open-ended promise to call them back.',
         },
       ]}
       stepsTitle="You approve the job, the price and the detour. The homeowner confirms with payment."
+      /* SEVEN BECAME THREE.
+         "Spot an opening", "a nearby request is screened in", "review nearby
+         demand", "set the offer", "the offer goes to the homeowner", "they pay
+         or it expires", "go only when paid" is one flow described at the
+         resolution of a spec. Three of those seven are the screening rules,
+         which have their own section; two more are halves of the same beat.
+         What a contractor needs to picture is: something nearby matches, you
+         name your terms, they pay. */
       steps={[
         {
-          title: 'Spot an opening',
-          body: 'Use an unscheduled window, cancellation or early finish.',
+          title: 'A nearby request matches your rules',
+          body: 'A request close to your route is checked against the location and time limits you set, and against a fixed list of unsafe and out-of-scope work. Only what passes both is put in front of you — with the job, the photos, roughly how long it should take and how far off your route it sits.',
         },
         {
-          title: 'A nearby request is screened in',
-          body: 'A request close to your route is checked against your rules and against a fixed list of unsafe and out-of-scope work. Only what passes both is put in front of you.',
+          title: 'You choose the price and the window',
+          body: `Set the service price and the arrival window, then send the offer. Sending it commits you to nothing: until they pay, your day is unchanged, and the offer lapses on its own after ${DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes if they do not take it.`,
         },
         {
-          title: 'Review nearby demand',
-          body: 'See a relevant request close to the current route — the job, the photos, roughly how long it should take and how far off your route it sits. Declining costs you one tap and no explanation.',
-        },
-        {
-          title: 'Set the offer',
-          body: 'Choose the service price and arrival window.',
-        },
-        {
-          title: 'The offer goes to the homeowner',
-          body: 'They get a text with your price, your window and a link to pay. Sending it commits you to nothing: until they pay, your day is unchanged.',
-        },
-        {
-          title: 'They pay, or it expires',
-          body: `The offer holds for ${DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes by default. If the homeowner doesn’t take it, it lapses on its own and you never hear about it again.`,
-        },
-        {
-          title: 'Go only when paid',
-          body: 'The stop is confirmed after the homeowner completes payment.',
+          title: 'They pay, and the stop is booked',
+          body: 'The visit reaches your calendar after the homeowner has completed payment — never before it.',
         },
       ]}
       cta={{
@@ -264,31 +295,6 @@ export default function QuickStopsPage() {
         note: `No monthly fee. You pay a small platform fee only on money you actually collect, plus Stripe’s ${STRIPE_PROCESSING_NOTE}.`,
       }}
     >
-      <section className="section-block" aria-labelledby="quick-stops-never-title">
-        <div>
-          <p className="eyebrow">Say the quiet part out loud</p>
-          <h2 id="quick-stops-never-title">Quick Stops is not automatic booking.</h2>
-          <p>
-            It is worth being blunt about this, because &ldquo;paid work, nearby, sooner&rdquo; sounds
-            like the sort of thing that fills your calendar while you are under a sink. It does not.
-            Every Quick Stop passes through two people before it exists, and you are the first of
-            them.
-          </p>
-        </div>
-
-        <ul className={styles.denial}>
-          {NEVER.map((item) => (
-            <li key={item.title} className={styles.never}>
-              <span className={styles.neverMark} aria-hidden="true">
-                Never
-              </span>
-              <h3 className={styles.neverTitle}>{item.title}</h3>
-              <p className={styles.neverBody}>{item.body}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
       {/* The hero's second button lands here, so the section needs a name a
           fragment can address. */}
       <section className="section-block" id="how-it-works" aria-labelledby="quick-stops-lifecycle-title">
@@ -317,14 +323,28 @@ export default function QuickStopsPage() {
 
       <section className="section-block" aria-labelledby="quick-stops-rules-title">
         <div>
-          <p className="eyebrow">Your rules, set once</p>
+          <p className="eyebrow">You stay in control</p>
           <h2 id="quick-stops-rules-title">Nothing is offered to you that breaks your own limits.</h2>
           <p>
-            These are the starting values. Every one of them is yours to change, and a request that
-            falls outside them never becomes a Quick Stop in the first place — so the requests you
-            do see are ones you might genuinely say yes to.
+            It is worth being blunt, because &ldquo;paid work, nearby, sooner&rdquo; sounds like the
+            sort of thing that fills your calendar while you are under a sink. It does not. These
+            are the starting values, every one of them is yours to change, and a request that falls
+            outside them never becomes a Quick Stop in the first place — so the requests you do see
+            are ones you might genuinely say yes to.
           </p>
         </div>
+
+        <ul className={styles.denial}>
+          {NEVER.map((item) => (
+            <li key={item.title} className={styles.never}>
+              <span className={styles.neverMark} aria-hidden="true">
+                Never
+              </span>
+              <h3 className={styles.neverTitle}>{item.title}</h3>
+              <p className={styles.neverBody}>{item.body}</p>
+            </li>
+          ))}
+        </ul>
 
         <ul className={styles.rules}>
           <li className={styles.rule}>
@@ -371,6 +391,28 @@ export default function QuickStopsPage() {
             inert
           />
         </ExampleFrame>
+      </section>
+
+      {/* <details> rather than a script: it works before hydration, it is in
+          the tab order for free, and the browser's own find-in-page opens it.
+          No `name`, so reading one answer never closes another. */}
+      <section className="section-block" aria-labelledby="quick-stops-faq-title">
+        <div>
+          <p className="eyebrow">Before you switch it on</p>
+          <h2 id="quick-stops-faq-title">The questions contractors ask us.</h2>
+        </div>
+
+        <div className={styles.faq}>
+          {FAQ.map((item, index) => (
+            <details key={item.q} open={index === 0}>
+              <summary>
+                <span>{item.q}</span>
+                <i aria-hidden="true" />
+              </summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
+        </div>
       </section>
     </FeatureDetailLayout>
   );

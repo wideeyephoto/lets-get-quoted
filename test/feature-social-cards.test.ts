@@ -436,3 +436,57 @@ describe('the client portal page', () => {
     expect(CSS).toMatch(/\.detail-hero\) \{ min-height: 0; padding-top: 118px/);
   });
 });
+
+/**
+ * /features/quick-stops — one flow, one control section, and the questions.
+ */
+describe('the quick stops page', () => {
+  const SRC = readFileSync('src/app/features/quick-stops/page.tsx', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('points the verb at the thing they want', () => {
+    expect(SRC).toContain('Fill schedule gaps with');
+    expect(SRC).toContain('prepaid jobs nearby.');
+    expect(SRC).not.toContain('Turn gaps in the day into');
+  });
+
+  it('stops repeating the approval promise under the buttons', () => {
+    // The old note restated the lede's two promises two lines under it.
+    expect(SRC).toContain(
+      'heroNote="No subscription · You approve every request · Nothing books until payment"',
+    );
+  });
+
+  it('describes the flow in three beats rather than seven', () => {
+    const steps = SRC.slice(SRC.indexOf('steps={['), SRC.indexOf('cta={{'));
+    expect([...steps.matchAll(/title: '/g)].length).toBe(3);
+    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('stepsTitle='));
+    expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
+  });
+
+  it('makes the denials and the limits one section about control', () => {
+    // Two headings, two intros and two lists were saying the same thing at
+    // different distances.
+    expect(SRC).not.toContain('quick-stops-never-title');
+    expect(SRC).toContain('<p className="eyebrow">You stay in control</p>');
+    expect(SRC).toContain('className={styles.denial}');
+  });
+
+  it('answers the five questions off the product’s own constants', () => {
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(5);
+    expect(SRC).toContain('DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS');
+    expect(SRC).toContain('const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS)');
+    expect(SRC).not.toMatch(/<details[^>]*name=/);
+  });
+
+  it('reads the cream proof strip at a readable size and colour', () => {
+    const CSS = readFileSync('src/components/flagship/flagship.module.css', 'utf8').replace(
+      /\/\*[\s\S]*?\*\//g,
+      '',
+    );
+    // #747873 on cream at 10px was the least legible run of text on the site.
+    expect(CSS).toMatch(/\.detail-proof small\) \{ font-size: 12px; color: #5f635e/);
+  });
+});
