@@ -52,8 +52,13 @@ const STARTING_RATE = FEE_TIERS[0].rate;
 // Deliberately not the fee. The closing band states it in full, with the rate
 // and Stripe's cut — saying it here too makes a page about running the work
 // argue about price twice before the reader has seen any of the work.
+/* Under the buttons, where somebody is deciding whether to press one. The old
+   line argued about packaging ("not a tier, not an add-on") before the reader
+   had asked; this one answers the two questions they actually have — what do I
+   get, and what does it cost me to find out. The "everything is included"
+   claim survives where it belongs, on the capability list itself. */
 const HERO_NOTE =
-  'Everything below is included. Not a tier, not an add-on, and not a module you unlock later — it is one product and this is what is in it.';
+  'Website and back office included · No card · No monthly subscription';
 
 /* ------------------------------------------------------------------------- */
 /* The hero: two real screens.                                                */
@@ -520,13 +525,19 @@ export default function BackOfficePage() {
   return (
     <FeatureDetailLayout
       eyebrow="The rest of the job is already connected"
+      /* The old headline led with the span of the thing ("from accepted quote
+         to final payment") and put the differentiator second. One job record
+         IS the differentiator, and it is what the hero's own slider and the
+         section under it both show — so it goes first. */
       title={
         <>
-          From accepted quote to final payment. <em>One job record.</em>
+          One job record. <em>From signed quote to final payment.</em>
         </>
       }
-      lede="Create the quote, book the work, assign the crew, collect payment and follow up without rebuilding the same customer information in five different systems."
+      lede="Quote the work, schedule your crew, collect payment, and follow up—without retyping customer details across five different tools."
       heroNote={HERO_NOTE}
+      primary={{ label: 'Start free' }}
+      secondary={{ label: 'See a job from quote to payment', href: '#back-office-record' }}
       demo={<ShotSlider shots={HERO_SHOTS} label="Back office screens" />}
       proof={[
         { title: 'Quotes + e-sign', body: 'Professional, itemized and ready for approval.' },
@@ -574,10 +585,13 @@ export default function BackOfficePage() {
           five bands of one record at once — which is the claim the capability
           list below then itemises — so it belongs immediately before that list
           rather than above a heading that has not made the claim yet. */}
-      <section className="section-block" aria-labelledby="back-office-record">
+      {/* The id is on the SECTION, not on the heading — the hero's second
+          button points here, and .section-block[id] is what carries the
+          scroll-margin that keeps the fixed header off it. */}
+      <section className="section-block" id="back-office-record" aria-labelledby="back-office-record-title">
         <div className={styles.capIntro}>
           <p className="eyebrow">One record, five bands</p>
-          <h2 id="back-office-record">The customer, the scope, the talking and the money.</h2>
+          <h2 id="back-office-record-title">The customer, the scope, the talking and the money.</h2>
           <p>
             Not five systems kept in step by hand. Everything below is one object that moves
             through stages, and this is what it looks like part-way through the work.

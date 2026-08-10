@@ -113,3 +113,38 @@ describe('tap targets in the shared chrome', () => {
     expect(CSS).toMatch(/padding-bottom: 78px/);
   });
 });
+
+/**
+ * THE SECOND BUTTON IN EVERY FEATURE HERO.
+ *
+ * Each of these pages offers a way to see the thing before signing up for it.
+ * Two failures were possible and both happened: the button said "Build my free
+ * site" on a page about something else, and the section it pointed at arrived
+ * underneath the fixed header — measured at y=0 on all three.
+ */
+describe('the feature hero CTAs', () => {
+  const CSS = readFileSync('src/components/flagship/flagship.module.css', 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+
+  const CTAS: [string, string, string][] = [
+    ['back-office', 'Start free', '#back-office-record'],
+    ['client-portal', 'Start free', '#one-job'],
+    ['quick-stops', 'Start free with Quick Stops', '#how-it-works'],
+  ];
+
+  it.each(CTAS)('%s asks for the thing the page is about', (slug, label, href) => {
+    const src = source(slug);
+    expect(src).toContain(`primary={{ label: '${label}' }}`);
+    expect(src).toContain(`href: '${href}' }}`);
+    // And the section that button points at exists, with the id on the section
+    // rather than on the heading — that is what carries the scroll-margin.
+    expect(src).toContain(`id="${href.slice(1)}"`);
+  });
+
+  it('lands those sections clear of the fixed header at both its heights', () => {
+    expect(CSS).toMatch(/\.section-block\[id\]\)\s*\{ scroll-margin-top: 104px/);
+    expect(CSS).toMatch(/\.section-block\[id\]\)\s*\{ scroll-margin-top: 88px/);
+  });
+});

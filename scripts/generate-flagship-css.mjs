@@ -5023,6 +5023,19 @@ const TWEAKS = `
   padding-inline: 14px;
 }
 
+/* ---- an in-page link lands where you can read it -------------------------
+
+   Every feature page's hero carries a second button pointing at a section
+   further down, and each of those sections arrived at y=0 — underneath a
+   header that is fixed at 82px, 68px on a phone. Measured on all three before
+   this: the heading a reader had just asked for was the one thing on screen
+   they could not see. Same two numbers as SS96, for the same reason. */
+.root :global(.section-block[id]) { scroll-margin-top: 104px; }
+
+@media (max-width: 760px) {
+  .root :global(.section-block[id]) { scroll-margin-top: 88px; }
+}
+
 /* And the room it needs, reserved at the end of the page. 78px is the bar's
    54px plus its inset plus a line of breathing room, so the last row of real
    content clears it instead of being covered by it. */

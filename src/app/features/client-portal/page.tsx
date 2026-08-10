@@ -118,7 +118,11 @@ export default function ClientPortalPage() {
           </div>
         </ExampleFrame>
       }
-      secondary={{ label: 'See the thread and the portal', href: '#one-job' }}
+      /* The page promises a portal; the button promised a website. Same free
+         account, named for the thing the reader came about — the free site is
+         supporting value, and the note under the buttons still says so. */
+      primary={{ label: 'Start free' }}
+      secondary={{ label: 'See the contractor and customer views', href: '#one-job' }}
       proof={[
         { title: 'Two-way texting', body: 'Replies stay connected to the right job.' },
         { title: 'A unique job portal', body: 'One customer view for every project.' },

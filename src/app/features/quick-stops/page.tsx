@@ -173,6 +173,12 @@ export default function QuickStopsPage() {
       }
       lede="Quick Stops helps you spot a nearby request, choose the arrival window and price, and offer it. The stop becomes real only after the homeowner pays."
       heroNote="Quick Stops never books anything on your behalf. Every request waits for you to approve it, and nothing reaches your calendar until the homeowner has paid."
+      /* "Build my free site" is the cluster's default and it is the wrong ask
+         here: somebody reading about prepaid work between jobs is evaluating a
+         revenue idea, not a website. Same free account either way; the words
+         are the ones they came for. */
+      primary={{ label: 'Start free with Quick Stops' }}
+      secondary={{ label: 'See the 3-step flow', href: '#how-it-works' }}
       demo={
         <ExampleFrame
           label="An offer you have sent, waiting on payment"
@@ -283,7 +289,9 @@ export default function QuickStopsPage() {
         </ul>
       </section>
 
-      <section className="section-block" aria-labelledby="quick-stops-lifecycle-title">
+      {/* The hero's second button lands here, so the section needs a name a
+          fragment can address. */}
+      <section className="section-block" id="how-it-works" aria-labelledby="quick-stops-lifecycle-title">
         <div>
           <p className="eyebrow">Where a request can stop</p>
           <h2 id="quick-stops-lifecycle-title">Two gates, and both of them are people.</h2>
