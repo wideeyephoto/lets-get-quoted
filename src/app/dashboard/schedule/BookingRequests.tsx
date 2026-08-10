@@ -18,10 +18,27 @@ import { confirmBookingRequestAction, declineBookingRequestAction } from './acti
 // Both are stated again on the buttons, because a person who has scrolled past
 // the header is about to press one of them.
 
-export default function BookingRequests({ requests }: { requests: PendingBooking[] }) {
+export default function BookingRequests({
+  requests,
+  openSlots,
+}: {
+  requests: PendingBooking[];
+  /**
+   * The windows still on offer to the public, as "YYYY-MM-DD|HH:MM".
+   *
+   * Only used to say whether a SECOND choice is still free, because a second
+   * choice is deliberately never held (see the migration) and may have gone to
+   * somebody else while this request sat here. Null when the page had no
+   * meaningful list to compare against — booking switched off, or nothing open
+   * at all — in which case the panel says nothing rather than telling every
+   * contractor every backup is gone.
+   */
+  openSlots?: string[] | null;
+}) {
   if (requests.length === 0) return null;
 
   const overdue = requests.filter((request) => request.isPast).length;
+  const open = openSlots && openSlots.length > 0 ? new Set(openSlots) : null;
 
   return (
     <section className="panel workspace-section-card booking-requests" id="booking-requests">
@@ -52,64 +69,121 @@ export default function BookingRequests({ requests }: { requests: PendingBooking
       ) : null}
 
       <ul className="booking-requests-list">
-        {requests.map((request) => (
-          <li key={request.id} className="booking-request" data-past={request.isPast || undefined}>
-            <div className="booking-request-main">
-              <div className="booking-request-who">
-                <strong>{request.clientName}</strong>
-                <span className="booking-request-when">
-                  {request.whenLabel}
-                  {request.isPast ? <em className="booking-request-past">date has passed</em> : null}
-                </span>
+        {requests.map((request) => {
+          // A backup you cannot act on is not a choice. A second choice whose
+          // day has already gone is dropped from the buttons entirely rather
+          // than offered and then argued with — the first choice may still be
+          // perfectly good, and the panel already flags a past date up top.
+          const backup = request.altWhenLabel && !request.altIsPast ? request.altWhenLabel : null;
+          const backupTaken = Boolean(
+            backup && open && request.altDateKey && request.altTime && !open.has(`${request.altDateKey}|${request.altTime}`),
+          );
+          return (
+            <li key={request.id} className="booking-request" data-past={request.isPast || undefined}>
+              <div className="booking-request-main">
+                <div className="booking-request-who">
+                  <strong>{request.clientName}</strong>
+                  {backup ? (
+                    /* Two windows, labelled, in the order the customer put
+                       them in. Run together as one line they read as a range
+                       — "Thu 8–12, Fri 1–5" is a two-day job, not a choice. */
+                    <span className="booking-request-choices">
+                      <span className="booking-request-choice">
+                        <em>1st</em>
+                        <span className="booking-request-when">
+                          {request.whenLabel}
+                          {request.isPast ? <em className="booking-request-past">date has passed</em> : null}
+                        </span>
+                      </span>
+                      <span className="booking-request-choice">
+                        <em>2nd</em>
+                        <span className="booking-request-when">
+                          {backup}
+                          {backupTaken ? (
+                            /* Not .booking-request-past — the day hasn't gone,
+                               somebody else took the window. Confirming it is
+                               still your call; the flag is so it isn't a
+                               surprise. */
+                            <em className="booking-request-gone" title="A backup window is never held for a customer">
+                              no longer open
+                            </em>
+                          ) : null}
+                        </span>
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="booking-request-when">
+                      {request.whenLabel}
+                      {request.isPast ? <em className="booking-request-past">date has passed</em> : null}
+                    </span>
+                  )}
+                </div>
+                <div className="booking-request-detail">
+                  {request.scope ? <span>{request.scope}</span> : null}
+                  {request.address ? <span className="booking-request-address">{request.address}</span> : null}
+                  {/* Shown before you decide, not after. "There's no side access"
+                      is exactly the thing that changes whether you can take the
+                      job at all. */}
+                  {request.note ? <span className="booking-request-note">“{request.note}”</span> : null}
+                  <span className="booking-request-contact">
+                    {[request.phone, request.email].filter(Boolean).join(' · ') || 'No contact on file'}
+                  </span>
+                </div>
               </div>
-              <div className="booking-request-detail">
-                {request.scope ? <span>{request.scope}</span> : null}
-                {request.address ? <span className="booking-request-address">{request.address}</span> : null}
-                {/* Shown before you decide, not after. "There's no side access"
-                    is exactly the thing that changes whether you can take the
-                    job at all. */}
-                {request.note ? <span className="booking-request-note">“{request.note}”</span> : null}
-                <span className="booking-request-contact">
-                  {[request.phone, request.email].filter(Boolean).join(' · ') || 'No contact on file'}
-                </span>
-              </div>
-            </div>
 
-            <div className="booking-request-actions">
-              <form action={confirmBookingRequestAction.bind(null, request.id)}>
-                <SaveButton
-                  className="btn primary booking-request-confirm"
-                  pendingLabel="Confirming…"
-                  savedLabel="Confirmed ✓"
+              <div className="booking-request-actions">
+                <form action={confirmBookingRequestAction.bind(null, request.id, 'first')}>
+                  <SaveButton
+                    className="btn primary booking-request-confirm"
+                    pendingLabel="Confirming…"
+                    savedLabel="Confirmed ✓"
+                  >
+                    {backup ? 'Confirm 1st choice' : request.phone ? 'Confirm & text customer' : 'Confirm booking'}
+                  </SaveButton>
+                </form>
+                {backup ? (
+                  /* Secondary, not equal. The customer put these in an order
+                     and the first one is what they actually want; the backup is
+                     the answer to "that morning doesn't work". */
+                  <form action={confirmBookingRequestAction.bind(null, request.id, 'alt')}>
+                    <SaveButton
+                      className="btn ghost booking-request-confirm-alt"
+                      pendingLabel="Confirming…"
+                      savedLabel="Confirmed ✓"
+                    >
+                      Confirm 2nd choice
+                    </SaveButton>
+                  </form>
+                ) : null}
+                {/* Declining sends a "can't make it" text that cannot be recalled,
+                    so it asks once. Confirming does not: it is the outcome the
+                    customer is already waiting for, and it stays fixable by
+                    rescheduling the job like any other. */}
+                <ConfirmActionButton
+                  action={declineBookingRequestAction.bind(null, request.id)}
+                  confirmMessage={
+                    request.phone
+                      ? `Decline ${request.clientName}'s booking?\n\nThey'll get a text saying you can't make ${
+                          backup ? 'either time' : request.whenLabel
+                        }, and the slot opens back up for someone else.`
+                      : `Decline ${request.clientName}'s booking?\n\nThe slot opens back up for someone else. They have no phone number on file, so they won't be told.`
+                  }
+                  className="btn ghost"
+                  pendingLabel="Declining…"
+                  savedLabel="Declined ✓"
                 >
-                  {request.phone ? 'Confirm & text customer' : 'Confirm booking'}
-                </SaveButton>
-              </form>
-              {/* Declining sends a "can't make it" text that cannot be recalled,
-                  so it asks once. Confirming does not: it is the outcome the
-                  customer is already waiting for, and it stays fixable by
-                  rescheduling the job like any other. */}
-              <ConfirmActionButton
-                action={declineBookingRequestAction.bind(null, request.id)}
-                confirmMessage={
-                  request.phone
-                    ? `Decline ${request.clientName}'s booking?\n\nThey'll get a text saying you can't make ${request.whenLabel}, and the slot opens back up for someone else.`
-                    : `Decline ${request.clientName}'s booking?\n\nThe slot opens back up for someone else. They have no phone number on file, so they won't be told.`
-                }
-                className="btn ghost"
-                pendingLabel="Declining…"
-                savedLabel="Declined ✓"
-              >
-                Can&apos;t make it
-              </ConfirmActionButton>
-            </div>
+                  {backup ? 'Neither works' : "Can't make it"}
+                </ConfirmActionButton>
+              </div>
 
-            <p className="booking-request-foot">
-              Requested {request.waitedLabel}
-              {request.phone ? ' · confirming texts them right away' : ' · no phone on file, so no text will be sent'}
-            </p>
-          </li>
-        ))}
+              <p className="booking-request-foot">
+                Requested {request.waitedLabel}
+                {request.phone ? ' · confirming texts them right away' : ' · no phone on file, so no text will be sent'}
+                {backup ? ' · they offered two times' : ''}
+              </p>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

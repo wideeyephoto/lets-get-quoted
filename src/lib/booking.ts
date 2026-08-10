@@ -309,6 +309,16 @@ export async function claimBookingHold(
   return !error;
 }
 
+/** A window the customer chose, carrying the server's own labels for it. */
+export type BookingWindow = {
+  dateKey: string;
+  dateLabel: string;
+  time: string;
+  /** The window's close. Snapshotted so a later settings change can't rewrite it. */
+  endTime: string | null;
+  timeLabel: string;
+};
+
 export type BookingInput = {
   name: string;
   phone: string | null;
@@ -322,6 +332,14 @@ export type BookingInput = {
   /** The window's close. Snapshotted so a later settings change can't rewrite it. */
   endTime: string | null;
   timeLabel: string;
+  /**
+   * The second window they said they could also do, when they named one.
+   *
+   * A PREFERENCE, not a second hold — see the migration. It is written to the
+   * job so the contractor can confirm it instead of the first choice, but it is
+   * never counted against availability, so somebody else may take it first.
+   */
+  alt?: BookingWindow | null;
   /** "Gate code is 1234, dog in the back" — for the person at the door, not for sales. */
   note: string | null;
 };
@@ -332,13 +350,18 @@ export type BookingInput = {
 // the customer gets a confirmation. Best-effort on both emails.
 export async function createBooking(admin: SupabaseClient, accountId: string, input: BookingInput): Promise<Lead> {
   const requested = `${input.dateLabel} — ${input.timeLabel}`;
+  const requestedAlt = input.alt ? `${input.alt.dateLabel} — ${input.alt.timeLabel}` : null;
   const serviceLine = input.serviceName ? `Service: ${input.serviceName}.\n` : '';
+  // Second line, not a footnote. Whoever reads the notification email is
+  // deciding yes or no on the first window, and the whole point of a backup is
+  // that it is available at the moment of that decision.
+  const altLine = requestedAlt ? `They could also do ${requestedAlt}.\n` : '';
   // The homeowner's note goes in the lead message too. It's the kind of thing
   // ("there's a dog", "use the side gate") that changes how the first visit
   // goes, and burying it only on the job record means whoever reads the lead
   // email never sees it.
   const noteLine = input.note ? `\n\nThey added: ${input.note}` : '';
-  const message = `📅 Online booking request for ${requested}.\n${serviceLine}${input.description ? `\n${input.description}` : ''}${noteLine}`.trimEnd();
+  const message = `📅 Online booking request for ${requested}.\n${altLine}${serviceLine}${input.description ? `\n${input.description}` : ''}${noteLine}`.trimEnd();
 
   const lead = await createLead(admin, accountId, {
     source: 'website_form',
@@ -349,7 +372,13 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     projectType: input.serviceName || 'Online booking',
     message,
     sourcePage: '/book',
-    triage: { score: 'warm', flags: [], timeline: requested, contactPreference: 'any' },
+    triage: {
+      score: 'warm',
+      flags: [],
+      timeline: requested,
+      ...(requestedAlt ? { timelineAlt: requestedAlt } : {}),
+      contactPreference: 'any',
+    },
   });
 
   // Record the requested window as a job that is NOT on the calendar.
@@ -404,6 +433,25 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
           booking_note: input.note,
         })
         .eq('id', job.id);
+      // The backup goes in an update OF ITS OWN, and that is the whole reason
+      // it is a second round-trip. Folded into the write above, a database that
+      // has not had the second-choice migration run against it would reject the
+      // entire statement for the unknown columns — and the request would lose
+      // its requested date, which is the field that makes it a booking at all.
+      // Alone, a missing column costs the backup and nothing else.
+      if (input.alt) {
+        const { error: altError } = await admin
+          .from('jobs')
+          .update({
+            booking_alt_date: input.alt.dateKey,
+            booking_alt_time: input.alt.time,
+            booking_alt_end_time: input.alt.endTime,
+          })
+          .eq('id', job.id);
+        if (altError) {
+          console.error(`Booking second choice not saved for account ${accountId}:`, altError.message);
+        }
+      }
       await admin.from('leads').update({ converted_job: job.id }).eq('id', lead.id);
     }
   } catch (error) {
@@ -462,6 +510,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
           businessName,
           clientName: input.name,
           whenLabel: requested,
+          altWhenLabel: requestedAlt,
           serviceName: input.serviceName,
           address: input.address,
           accountId,

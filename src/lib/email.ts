@@ -725,6 +725,8 @@ export async function sendBookingConfirmationEmail(input: {
   businessName: string;
   clientName: string;
   whenLabel: string;
+  /** The second window they said they could also do, when they named one. */
+  altWhenLabel?: string | null;
   serviceName: string | null;
   address: string | null;
   accountId?: string;
@@ -734,10 +736,20 @@ export async function sendBookingConfirmationEmail(input: {
   }
 
   const brand = await brandFor(input);
-  const paragraphs = [`Requested time: ${input.whenLabel}`];
+  // "First choice" only once there is a second one to be first of. On a request
+  // with a single window, labelling it that way invites the reader to look for
+  // the other one.
+  const paragraphs = [
+    input.altWhenLabel ? `First choice: ${input.whenLabel}` : `Requested time: ${input.whenLabel}`,
+  ];
+  if (input.altWhenLabel) paragraphs.push(`Second choice: ${input.altWhenLabel}`);
   if (input.serviceName) paragraphs.push(`Service: ${input.serviceName}`);
   if (input.address) paragraphs.push(`Where: ${input.address}`);
-  paragraphs.push(`${input.businessName} will reach out shortly to confirm. This time is not locked in until they do — if anything changes, just reply to this email.`);
+  paragraphs.push(
+    input.altWhenLabel
+      ? `${input.businessName} will reach out shortly to confirm ONE of these two times. Neither is locked in until they do — if anything changes, just reply to this email.`
+      : `${input.businessName} will reach out shortly to confirm. This time is not locked in until they do — if anything changes, just reply to this email.`,
+  );
 
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),

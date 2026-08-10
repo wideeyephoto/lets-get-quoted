@@ -24,6 +24,14 @@ export type LeadTriage = {
   // | 'while_booked' | 'repeat' | 'phone_verified'
   flags: string[];
   timeline?: string;
+  /**
+   * The SECOND window an online booking asked for, when they named one.
+   *
+   * Kept out of `timeline` on purpose: that field is a chip on the leads board
+   * and reads best as one short phrase. Two windows in it turns a chip into a
+   * sentence on every row, including the rows that only ever have one.
+   */
+  timelineAlt?: string;
   location?: string;
   estimate?: { min: number; max: number } | null;
   // 'text_only' = the homeowner asked not to be called — text first.
@@ -95,6 +103,7 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
     score: triage.score === 'hot' || triage.score === 'low' ? triage.score : 'warm',
     flags: Array.isArray(triage.flags) ? triage.flags.filter((flag): flag is string => typeof flag === 'string') : [],
     timeline: typeof triage.timeline === 'string' ? triage.timeline : undefined,
+    timelineAlt: typeof triage.timelineAlt === 'string' ? triage.timelineAlt : undefined,
     location: typeof triage.location === 'string' ? triage.location : undefined,
     estimate: triage.estimate && typeof triage.estimate === 'object' ? triage.estimate : null,
     contactPreference: triage.contactPreference === 'text_only' ? 'text_only' : 'any',

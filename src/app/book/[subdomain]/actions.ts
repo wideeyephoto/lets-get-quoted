@@ -283,6 +283,29 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     redirect(`/book/${subdomain}?error=slot_taken`);
   }
 
+  /**
+   * THE SECOND CHOICE, AND WHY IT NEVER FAILS THE BOOKING.
+   *
+   * Re-derived against the same offered days as the first choice, so a tampered
+   * or arbitrary backup can no more reach the record than a tampered first one
+   * — and, as with the first, the labels written down are the server's own.
+   *
+   * But a backup that is no longer on offer is DROPPED rather than bounced.
+   * It is the optional half of the form; refusing the whole submission over it
+   * would lose the customer the window they actually wanted, to fix a field
+   * they were told they could leave alone. Same for naming the first window
+   * twice: that is one choice, so it is stored as one.
+   *
+   * Checked BEFORE claimBookingHold, so the hold is compared against a day list
+   * that still contains the first choice.
+   */
+  const altSlot = (formData.get('altSlot') ?? '').toString();
+  const [altDateKey, altTime] = altSlot.split('|');
+  const altOffered =
+    altSlot && altSlot !== slot && altDateKey && altTime
+      ? findOfferedSlot(availableDays, altDateKey, altTime)
+      : null;
+
   // Race guard: claim an exclusive short hold so two simultaneous visitors can't
   // both pass the check above and double-book the same window.
   const held = await claimBookingHold(admin, site.account_id, dateKey, time);
@@ -313,6 +336,15 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     // could otherwise name the end of its own arrival window.
     endTime: offered.slot.endTime,
     timeLabel: offered.slot.label,
+    alt: altOffered
+      ? {
+          dateKey: altOffered.day.dateKey,
+          dateLabel: altOffered.day.dayLabel,
+          time: altOffered.slot.time,
+          endTime: altOffered.slot.endTime,
+          timeLabel: altOffered.slot.label,
+        }
+      : null,
     note,
   });
 

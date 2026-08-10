@@ -369,6 +369,18 @@ export const SPAN_COLUMNS_BEFORE_END_DATE = 'scheduled_for, status, estimated_ho
  * throw before the migration ran.
  */
 export function isMissingEndDateColumn(error: { code?: string } | null | undefined): boolean {
+  return isMissingColumnError(error);
+}
+
+/**
+ * The same check under a name that doesn't claim to know WHICH column.
+ *
+ * isMissingEndDateColumn tests nothing specific to the end date — it is the
+ * general "this query named a column the database hasn't been given yet" pair,
+ * and every migration since has wanted it. Kept as the honest name for new
+ * callers; the old one stays because a dozen call sites read fine as they are.
+ */
+export function isMissingColumnError(error: { code?: string } | null | undefined): boolean {
   return error?.code === '42703' || error?.code === 'PGRST204';
 }
 

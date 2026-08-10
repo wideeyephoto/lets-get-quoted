@@ -75,6 +75,8 @@ export default function RequestVisitFlow({
 
   const [service, setService] = useState('');
   const [slot, setSlot] = useState('');
+  /** Empty means "no backup", which is the honest default rather than a nag. */
+  const [altSlot, setAltSlot] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -97,9 +99,20 @@ export default function RequestVisitFlow({
     });
   };
 
-  const chosenDay = days.find((day) => day.slots.some((s) => `${day.dateKey}|${s.time}` === slot));
-  const chosenSlot = chosenDay?.slots.find((s) => `${chosenDay.dateKey}|${s.time}` === slot);
+  const label = (value: string): string | null => {
+    for (const day of days) {
+      const match = day.slots.find((s) => `${day.dateKey}|${s.time}` === value);
+      if (match) return `${day.dayLabel} · ${match.label}`;
+    }
+    return null;
+  };
+  const chosenLabel = label(slot);
+  const altLabel = label(altSlot);
   const chosenService = services.find((s) => s.id === service);
+  // How many windows there are to pick a SECOND from. With one open window in
+  // the whole list there is no backup to offer, and the picker would be a
+  // heading over a single "no backup" button.
+  const slotCount = days.reduce((sum, day) => sum + day.slots.length, 0);
 
   function checkWindow(): boolean {
     const next: Errors = slot ? {} : { slot: 'Choose a window before carrying on.' };
@@ -153,6 +166,7 @@ export default function RequestVisitFlow({
             what the form actually posts; nothing visible above carries a name. */}
         <input type="hidden" name="service" value={service} />
         <input type="hidden" name="slot" value={slot} />
+        <input type="hidden" name="altSlot" value={altSlot} />
         <input type="hidden" name="name" value={name} />
         <input type="hidden" name="phone" value={phone} />
         <input type="hidden" name="email" value={email} />
@@ -223,6 +237,10 @@ export default function RequestVisitFlow({
                             aria-describedby={errors.slot ? 'err-slot' : undefined}
                             onChange={() => {
                               setSlot(value);
+                              // A window cannot be both choices. Picking the
+                              // backup as your first choice drops the backup
+                              // rather than posting the same slot twice.
+                              setAltSlot((prev) => (prev === value ? '' : prev));
                               setErrors((prev) => ({ ...prev, slot: undefined }));
                             }}
                           />
@@ -234,6 +252,60 @@ export default function RequestVisitFlow({
                 </div>
               ))}
             </div>
+
+            {/* THE BACKUP, AFTER THE THING IT BACKS UP.
+                Shown once a first choice exists, for two reasons: a "second
+                choice" offered before there is a first one is a puzzle, and
+                rendering both lists at once doubles the length of the only
+                screen on this page that matters. The chosen window is filtered
+                out of it, so the two lists cannot disagree. */}
+            {slot && slotCount > 1 ? (
+              <div className="book-backup">
+                <p className="book-field-group-label" id="backup-label">
+                  A second time you could do <span className="book-opt">Optional</span>
+                </p>
+                <p className="book-backup-hint">
+                  {businessName} confirms one of the two. Giving them a second option is usually the
+                  difference between a yes and a phone call. Your first choice is held while they
+                  decide; a backup is a preference, so someone else may take it first.
+                </p>
+                <div className="booking-days" role="radiogroup" aria-labelledby="backup-label">
+                  {days.map((day) => {
+                    const options = day.slots.filter((s) => `${day.dateKey}|${s.time}` !== slot);
+                    if (options.length === 0) return null;
+                    return (
+                      <div className="booking-day-group" key={`alt-${day.dateKey}`}>
+                        <p className="booking-day-heading">{day.dayLabel}</p>
+                        <div className="booking-slots">
+                          {options.map((option) => {
+                            const value = `${day.dateKey}|${option.time}`;
+                            return (
+                              <label className="booking-slot" key={`alt-${value}`}>
+                                <input
+                                  type="radio"
+                                  name="ui-alt"
+                                  checked={altSlot === value}
+                                  onChange={() => setAltSlot(value)}
+                                />
+                                <span className="booking-slot-time">{option.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Not a radio in the group above. "No backup" is how you UNDO
+                    a choice you already made, and a homeowner who has picked
+                    one needs a way back out that isn't reloading the page. */}
+                {altSlot ? (
+                  <button type="button" className="linklike book-backup-clear" onClick={() => setAltSlot('')}>
+                    Clear my second choice
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="book-stepnav">
               <button
@@ -381,9 +453,14 @@ export default function RequestVisitFlow({
             {/* Every line editable from where it is. A review step that can only
                 be corrected by going Back twice is a review step people skip. */}
             <dl className="book-review">
-              <ReviewRow label="Window" onEdit={() => goTo(1)}>
-                {chosenDay && chosenSlot ? `${chosenDay.dayLabel} · ${chosenSlot.label}` : '—'}
+              <ReviewRow label={altLabel ? 'First choice' : 'Window'} onEdit={() => goTo(1)}>
+                {chosenLabel ?? '—'}
               </ReviewRow>
+              {altLabel ? (
+                <ReviewRow label="Second choice" onEdit={() => goTo(1)}>
+                  {altLabel}
+                </ReviewRow>
+              ) : null}
               {services.length > 0 ? (
                 <ReviewRow label="Service" onEdit={() => goTo(1)}>
                   {chosenService?.name ?? 'Not sure yet'}
@@ -407,11 +484,16 @@ export default function RequestVisitFlow({
                 Back
               </button>
               <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">
-                Request this time
+                {/* Two windows are under the button. "Request this time" over a
+                    list of two invites the reader to work out which one. */}
+                {altLabel ? 'Request these times' : 'Request this time'}
               </SaveButton>
             </div>
             <p className="book-reassure">
-              This is a request, not a charge. {businessName} confirms before anything is booked.
+              This is a request, not a charge.{' '}
+              {altLabel
+                ? `${businessName} confirms one of your two times before anything is booked.`
+                : `${businessName} confirms before anything is booked.`}
             </p>
           </>
         ) : null}

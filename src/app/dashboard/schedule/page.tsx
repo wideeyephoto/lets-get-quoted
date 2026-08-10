@@ -545,6 +545,16 @@ export default async function SchedulePage({
           hear back; that outranks looking at the month. */}
       <BookingRequests
         requests={toPendingBookings(pendingBookingRows, Date.now(), todayKey)}
+        /* Only so the panel can say whether a SECOND choice is still free —
+           second choices are never held, so one can quietly go to somebody else
+           while the request waits. Null when there is nothing to compare
+           against (booking off, or no open windows at all), because "gone" and
+           "we can't tell" are different things to say to a contractor. */
+        openSlots={
+          bookingDays.length > 0
+            ? bookingDays.flatMap((day) => day.slots.map((slot) => `${day.dateKey}|${slot.time}`))
+            : null
+        }
       />
 
       <div className="schedule-workbench">

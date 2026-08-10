@@ -18116,6 +18116,46 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   text-transform: uppercase;
   color: var(--bad);
 }
+/* TWO WINDOWS, ON TWO LINES.
+   Side by side they read as a range — "Thu 8–12, Fri 1–5" looks like a two-day
+   job rather than a choice between two mornings. Stacked and numbered, the
+   shape of the thing is a list of options, which is what it is. */
+/* The row is a baseline-aligned flex line built for "Name · when". A stacked
+   pair of windows is a block, and baseline-aligning a block against a name
+   hangs the name off the first of the two. Grid when there are two. */
+.booking-request-who:has(.booking-request-choices) { display: grid; gap: 0.28rem; }
+.booking-request-choices { display: grid; gap: 0.15rem; min-width: 0; }
+.booking-request-choice { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; }
+.booking-request-choice em {
+  flex: none;
+  font-style: normal;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--grey-5), 0.9);
+}
+/* The backup is the quieter of the two — the customer put them in an order. */
+.booking-request-choice:last-child .booking-request-when { color: rgba(var(--grey-5), 0.95); }
+
+/* A backup that somebody else has taken since. Amber, not red: the day has not
+   gone and confirming it is still the contractor's call — this is so it isn't
+   a surprise, not so it reads as an error. On its own line rather than trailing
+   the window, which on a phone left "NO" hanging at the end of it. */
+.booking-request-gone {
+  display: block;
+  margin-top: 0.1rem;
+  font-style: normal;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-amber-1);
+}
+@media (min-width: 721px) {
+  .booking-request-gone { display: inline; margin-left: 0.4rem; }
+}
+
 .booking-request-detail { display: grid; gap: 0.12rem; min-width: 0; font-size: 0.8rem; color: var(--dim-grey-2); }
 .booking-request-detail > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .booking-request-address, .booking-request-contact { color: rgba(var(--grey-5), 0.95); }
@@ -22878,6 +22918,99 @@ a.bset-card { color: inherit; text-decoration: none; }
   font-size: 0.86rem;
   font-weight: 700;
   color: rgba(var(--tint), 0.88);
+}
+
+/* --- the second window they could also do ---------------------------------
+ *
+ * Set off by a rule rather than a card. It is optional, it appears only after
+ * a first choice exists, and a panel-inside-a-panel would give the smaller
+ * decision the heavier frame. The rule says "different question" and costs a
+ * pixel.
+ */
+.book-backup {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--rule-t09);
+}
+
+.book-backup > .book-field-group-label { margin-top: 0; }
+
+.book-backup-hint {
+  margin: 0 0 0.85rem;
+  max-width: 62ch;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(var(--tint), 0.62);
+}
+
+/* The way back out of a choice you already made. Aligned under the list it
+   undoes, at a size that reads as an escape hatch rather than an equal option. */
+.book-backup-clear {
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  /* Type-height alone is a 19px target on a phone. */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The same picker on the estimate-first flow, where every open window is
+   already listed once above and a second inline copy would double the longest
+   thing on the page. <details> so it works with no JavaScript at all. */
+.book-backup-disclose {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--rule-t09);
+}
+
+.book-backup-disclose > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  /* 44px of target, not the 19px the text alone would give. */
+  min-height: 44px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: rgba(var(--tint), 0.88);
+  cursor: pointer;
+  list-style: none;
+}
+
+.book-backup-disclose > summary::-webkit-details-marker { display: none; }
+.book-backup-disclose > summary > span:first-child { flex: 1 1 auto; }
+
+.book-backup-disclose > summary::after {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.55;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.book-backup-disclose[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .book-backup-disclose > summary::after { transition: none; }
+}
+
+.book-backup-disclose > summary:focus-visible {
+  outline: 2px solid var(--book-accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.book-backup-disclose .book-backup-hint { margin-top: 0.5rem; }
+
+/* Between the two windows on the confirmation screen. Lowercase and quiet:
+   it is a conjunction, not a third value. */
+.book-done-when-or {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(var(--tint), 0.5);
 }
 
 /**

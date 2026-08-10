@@ -100,13 +100,23 @@ export default async function BookingPage({
               <h1 className="workspace-title">Thanks — you&apos;re in the book</h1>
               {requestedWindow ? (
                 <p className="book-done-when">
-                  <span className="book-done-when-label">You asked for</span>
-                  <strong>{requestedWindow}</strong>
+                  <span className="book-done-when-label">
+                    {requestedWindow.alt ? 'You asked for either' : 'You asked for'}
+                  </span>
+                  <strong>{requestedWindow.first}</strong>
+                  {requestedWindow.alt ? (
+                    <>
+                      <span className="book-done-when-or">or</span>
+                      <strong>{requestedWindow.alt}</strong>
+                    </>
+                  ) : null}
                 </p>
               ) : null}
               <p className="workspace-lead">
-                {businessName} has your request. Nothing is locked in until they confirm it — you&apos;ll get a
-                text or an email the moment they do.
+                {businessName} has your request.{' '}
+                {requestedWindow?.alt
+                  ? 'They’ll confirm one of the two — nothing is locked in until they do, and you’ll get a text or an email naming the time the moment they pick.'
+                  : 'Nothing is locked in until they confirm it — you’ll get a text or an email the moment they do.'}
               </p>
             </div>
           </section>
@@ -122,7 +132,11 @@ export default async function BookingPage({
             <ol className="book-next-list">
               <li>
                 <strong>{businessName} reviews it.</strong>
-                <span>They check the window against the rest of their day.</span>
+                <span>
+                  {requestedWindow?.alt
+                    ? 'They check both windows against the rest of their day and take whichever one fits.'
+                    : 'They check the window against the rest of their day.'}
+                </span>
               </li>
               <li>
                 <strong>You get a confirmation.</strong>
@@ -338,7 +352,7 @@ async function lookupRequestedWindow(
   admin: ReturnType<typeof createAdminClient>,
   accountId: string,
   booked: string,
-): Promise<string | null> {
+): Promise<{ first: string; alt: string | null } | null> {
   if (!/^[0-9a-f-]{36}$/i.test(booked)) return null;
   const { data } = await admin
     .from('leads')
@@ -347,6 +361,12 @@ async function lookupRequestedWindow(
     .eq('account_id', accountId)
     .eq('source_page', '/book')
     .maybeSingle();
-  const timeline = (data?.triage as { timeline?: unknown } | null)?.timeline;
-  return typeof timeline === 'string' && timeline.trim() ? timeline.trim() : null;
+  const triage = data?.triage as { timeline?: unknown; timelineAlt?: unknown } | null;
+  const timeline = triage?.timeline;
+  if (typeof timeline !== 'string' || !timeline.trim()) return null;
+  const alt = triage?.timelineAlt;
+  return {
+    first: timeline.trim(),
+    alt: typeof alt === 'string' && alt.trim() ? alt.trim() : null,
+  };
 }

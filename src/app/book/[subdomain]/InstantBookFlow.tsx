@@ -320,6 +320,9 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
     );
   }
 
+  // Nothing to pick a SECOND window from when there is only one on offer.
+  const slotCount = evaluation.days.reduce((sum, day) => sum + day.slots.length, 0);
+
   return (
     <form action={submitBooking} className="panel workspace-section-card booking-form">
       {steps}
@@ -353,6 +356,52 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           </div>
         ))}
       </div>
+
+      {/* THE BACKUP, BEHIND A DISCLOSURE.
+          This screen already lists every open window once; listing them all a
+          second time inline would double the longest thing on the page for an
+          optional field. <details> keeps it out of the way, works with no
+          JavaScript, and every option stays in the markup for find-in-page.
+
+          The radios are uncontrolled, so nothing here stops somebody naming
+          the same window twice — submitBookingAction drops a backup equal to
+          the first choice, which is where that rule belongs anyway. */}
+      {slotCount > 1 ? (
+        <details className="book-backup-disclose">
+          <summary>
+            <span>Add a second time you could do</span>
+            <span className="book-opt">Optional</span>
+          </summary>
+          <p className="book-backup-hint">
+            {businessName} confirms one of the two. Giving them a second option is usually the
+            difference between a yes and a phone call. Your first choice is held while they decide;
+            a backup is a preference, so someone else may take it first.
+          </p>
+          <div className="booking-days" role="radiogroup" aria-label="A second time you could do">
+            <div className="booking-day-group">
+              <div className="booking-slots">
+                <label className="booking-slot">
+                  <input type="radio" name="altSlot" value="" defaultChecked />
+                  <span className="booking-slot-time">No backup — just my first choice</span>
+                </label>
+              </div>
+            </div>
+            {evaluation.days.map((day) => (
+              <div className="booking-day-group" key={`alt-${day.dateKey}`}>
+                <p className="booking-day-heading">{day.dayLabel}</p>
+                <div className="booking-slots">
+                  {day.slots.map((slot) => (
+                    <label className="booking-slot" key={`alt-${day.dateKey}|${slot.time}`}>
+                      <input type="radio" name="altSlot" value={`${day.dateKey}|${slot.time}`} />
+                      <span className="booking-slot-time">{slot.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
 
       <div className="section-heading workspace-section-heading book-step-head">
         <p className="eyebrow">Your details</p>
