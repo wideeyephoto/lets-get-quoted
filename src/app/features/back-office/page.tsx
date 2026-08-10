@@ -548,7 +548,7 @@ export default function BackOfficePage() {
       story={{
         eyebrow: 'One place to run the work',
         title: 'The handoff is where most software stacks break.',
-        body: 'Let’s Get Quoted keeps the customer, property, scope, conversation and money connected as the job changes stages. That means less retyping for the office and fewer missing details for the field.',
+        body: 'The customer never starts over and neither does your team. Let’s Get Quoted keeps the customer, the property, the scope, the conversation and the money connected as the job changes stages — so the quote, the schedule, the crew plan and the payment are all the same record, and the office stops retyping what the field already knows.',
       }}
       benefits={[
         {
@@ -568,44 +568,45 @@ export default function BackOfficePage() {
           body: 'Use recurring visits, follow-ups and review requests without recreating the customer record.',
         },
       ]}
-      stepsTitle="The customer never starts over—and neither does your team."
-      steps={[
-        { title: 'Build the quote', body: 'Use the qualified request to prepare the proposal.' },
-        { title: 'Schedule and assign', body: 'Set the visit and give the crew the job context.' },
-        { title: 'Keep everyone updated', body: 'Text the customer and maintain the shared portal.' },
-        { title: 'Collect and grow', body: 'Finish payment, request the review and plan the next visit.' },
-      ]}
+      /* No steps section. It was headed "The customer never starts over—and
+         neither does your team", which is the story's sentence, and its four
+         cards — build the quote, schedule and assign, keep everyone updated,
+         collect and grow — are the four capability groups below with the
+         detail removed. Three sections were making one argument. */
+      /* THE PROOF, BEFORE THE ARGUMENT.
+          This is the only thing on the page that shows all five bands of one
+          record at once, and it was the fourth section — behind the story, the
+          benefits and a four-step workflow that all argued for it in words
+          first. A reader who is going to be convinced is convinced by this;
+          one who is not should not have to read three sections to find out.
+
+         The id is on the SECTION and not on the heading: the hero's second
+         button points here, and .section-block[id] is what carries the
+         scroll-margin that keeps the fixed header off it. */
+      afterProof={
+        <section className="section-block" id="back-office-record" aria-labelledby="back-office-record-title">
+          <div className={styles.capIntro}>
+            <p className="eyebrow">One record, five bands</p>
+            <h2 id="back-office-record-title">The customer, the scope, the talking and the money.</h2>
+            <p>
+              Not five systems kept in step by hand. Everything below is one object that moves
+              through stages, and this is what it looks like part-way through the work.
+            </p>
+          </div>
+
+          <ExampleFrame
+            label="One job record, part-way through the work"
+            note="An invented job with invented figures, shown to make one point: the customer, the scope, the conversation and the money are bands of a single record, not five systems kept in step by hand."
+          >
+            <JobRecordExample />
+          </ExampleFrame>
+        </section>
+      }
       cta={{
         title: 'Put the entire job behind one front door.',
         note: `No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you and falls as your volume grows; card processing is Stripe’s standard ${STRIPE_PROCESSING_NOTE}.`,
       }}
     >
-      {/* THE DRAWING, WHERE ITS ARGUMENT IS ACTUALLY MADE.
-          This was the hero. It is the only thing on the page that shows all
-          five bands of one record at once — which is the claim the capability
-          list below then itemises — so it belongs immediately before that list
-          rather than above a heading that has not made the claim yet. */}
-      {/* The id is on the SECTION, not on the heading — the hero's second
-          button points here, and .section-block[id] is what carries the
-          scroll-margin that keeps the fixed header off it. */}
-      <section className="section-block" id="back-office-record" aria-labelledby="back-office-record-title">
-        <div className={styles.capIntro}>
-          <p className="eyebrow">One record, five bands</p>
-          <h2 id="back-office-record-title">The customer, the scope, the talking and the money.</h2>
-          <p>
-            Not five systems kept in step by hand. Everything below is one object that moves
-            through stages, and this is what it looks like part-way through the work.
-          </p>
-        </div>
-
-        <ExampleFrame
-          label="One job record, part-way through the work"
-          note="An invented job with invented figures, shown to make one point: the customer, the scope, the conversation and the money are bands of a single record, not five systems kept in step by hand."
-        >
-          <JobRecordExample />
-        </ExampleFrame>
-      </section>
-
       <section className="section-block" aria-labelledby="back-office-capabilities">
         <div className={styles.capIntro}>
           <p className="eyebrow">Everything on the record</p>
@@ -627,14 +628,37 @@ export default function BackOfficePage() {
                   {String(group.items.length).padStart(2, '0')}
                 </span>
               </div>
-              <dl className={styles.capList}>
+              {/* SEVENTEEN NAMES, NOT SEVENTEEN PARAGRAPHS.
+                  Every item's explanation is two or three lines long and there
+                  are seventeen of them, which is most of why this page ran
+                  11,443px on a phone. The NAMES are what somebody scanning for
+                  "does it do change orders" needs, so all seventeen stay
+                  visible; the explanation is one tap away and still in the
+                  HTML, so nothing is hidden from search or from find-in-page.
+
+                  <details> rather than a script: it works before hydration, it
+                  is in the tab order for free, and the browser's own
+                  find-in-page opens it. No `name`, so reading one answer never
+                  closes another. */}
+              {/* A LIST, NOT A DEFINITION LIST.
+                  It was <dl><dt>name</dt><dd>explanation</dd></dl>, which is
+                  the right shape for a term and its definition — but a <dt>
+                  may not contain a <dd>, so the disclosure cannot live inside
+                  the pair. The list of capabilities is a list; each item names
+                  one and can explain itself. */}
+              <ul className={styles.capList}>
                 {group.items.map((item) => (
-                  <div key={item.term}>
-                    <dt>{item.term}</dt>
-                    <dd>{item.detail}</dd>
-                  </div>
+                  <li key={item.term}>
+                    <details>
+                      <summary>
+                        <span>{item.term}</span>
+                        <i aria-hidden="true" />
+                      </summary>
+                      <p>{item.detail}</p>
+                    </details>
+                  </li>
                 ))}
-              </dl>
+              </ul>
             </div>
           ))}
         </div>

@@ -27,6 +27,16 @@ export type FeatureDetailLayoutProps = {
   primary?: { label: string; href?: string };
   secondary?: { label: string; href?: string } | null;
   proof: FeatureProofPoint[];
+  /**
+   * A section between the proof strip and the story.
+   *
+   * There was nowhere to put a page's single strongest piece of evidence
+   * except after the story, the benefits and the four steps — three sections
+   * of argument in front of the thing that settles it. /features/back-office
+   * had exactly that problem: the one-job-record panel is the most
+   * differentiated thing on the page and it was the fourth thing you reached.
+   */
+  afterProof?: ReactNode;
   story: {
     eyebrow: string;
     title: ReactNode;
@@ -34,8 +44,10 @@ export type FeatureDetailLayoutProps = {
   };
   benefits: FeatureDetailCard[];
   stepsEyebrow?: string;
-  stepsTitle: ReactNode;
-  steps: FeatureDetailCard[];
+  /** Omit both to drop the section — a page whose steps only restate its story
+      should not print the same argument twice. */
+  stepsTitle?: ReactNode;
+  steps?: FeatureDetailCard[];
   cta: Omit<MarketingCtaProps, 'variant'>;
   backLink?: { href: string; label: string } | null;
   storyId?: string;
@@ -76,11 +88,12 @@ export default function FeatureDetailLayout({
   primary,
   secondary,
   proof,
+  afterProof,
   story,
   benefits,
   stepsEyebrow = 'BUILT INTO THE WORKFLOW',
   stepsTitle,
-  steps,
+  steps = [],
   cta,
   backLink = DEFAULT_BACK_LINK,
   storyId = 'details',
@@ -137,6 +150,8 @@ export default function FeatureDetailLayout({
         ))}
       </section>
 
+      {afterProof ?? null}
+
       <section className="detail-story" id={storyId}>
         <div>
           <p className="eyebrow">
@@ -159,23 +174,25 @@ export default function FeatureDetailLayout({
         </div>
       </section>
 
-      <section className="detail-process">
-        <div className="detail-process-head">
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> {stepsEyebrow}
-          </p>
-          <h2>{stepsTitle}</h2>
-        </div>
-        <div className="process-steps">
-          {steps.map((item, index) => (
-            <article key={item.title}>
-              <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      {steps.length ? (
+        <section className="detail-process">
+          <div className="detail-process-head">
+            <p className="eyebrow">
+              <span aria-hidden="true">✦</span> {stepsEyebrow}
+            </p>
+            <h2>{stepsTitle}</h2>
+          </div>
+          <div className="process-steps">
+            {steps.map((item, index) => (
+              <article key={item.title}>
+                <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {children}
 

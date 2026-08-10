@@ -217,3 +217,74 @@ describe('the website builder page', () => {
     expect(SRC).toContain('Invented company, invented range');
   });
 });
+
+/**
+ * /features/back-office, restructured.
+ *
+ * Measured at 390x844 before: 11,443px and 1,810 words, with the page's single
+ * strongest piece of evidence as the fourth section and three sections making
+ * one argument in front of it.
+ */
+describe('the back office page', () => {
+  const SRC = readFileSync('src/app/features/back-office/page.tsx', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('puts the job record under the hero, before the argument for it', () => {
+    // Order on the PAGE, not order in the file: these are props, so the source
+    // says nothing about where they render. What matters is that the record is
+    // the thing in `afterProof` — the layout renders that slot above the story
+    // — and not a child, which lands after the story and the benefits.
+    const at = SRC.indexOf('afterProof={');
+    expect(at).toBeGreaterThan(-1);
+    const slot = SRC.slice(at, SRC.indexOf('cta={{', at));
+    expect(slot).toContain('id="back-office-record"');
+    expect(slot).toContain('<JobRecordExample />');
+  });
+
+  it('stops making the same argument three times', () => {
+    // The steps section was headed with the story's own sentence and its four
+    // cards were the four capability groups with the detail removed.
+    expect(SRC).not.toContain('stepsTitle=');
+    expect(SRC).not.toContain('steps={[');
+    expect(SRC).toContain('The customer never starts over');
+  });
+
+  it('shows seventeen names and hides seventeen paragraphs', () => {
+    expect(SRC).toContain('<summary>');
+    expect(SRC).toContain('<p>{item.detail}</p>');
+    // A <dt> may not contain a <dd>, so the pair could not hold the disclosure.
+    expect(SRC).not.toContain('<dl className={styles.capList}>');
+    expect(SRC).toContain('<ul className={styles.capList}>');
+    // Nothing is conditionally rendered, so every explanation stays in the HTML
+    // for search and for the browser's own find-in-page.
+    expect(SRC).not.toMatch(/open &&|\? <p>\{item\.detail\}/);
+  });
+
+  it('gives each disclosure a row-sized target', () => {
+    const CAP = readFileSync('src/app/features/back-office/back-office.module.css', 'utf8');
+    expect(CAP).toMatch(/\.capList summary \{[^}]*min-height: 44px/);
+  });
+});
+
+describe('the shared layout gained two optional slots', () => {
+  const LAYOUT = readFileSync('src/components/marketing/feature-detail-layout.tsx', 'utf8');
+
+  it('can place a section between the proof strip and the story', () => {
+    expect(LAYOUT).toContain('afterProof?: ReactNode;');
+    expect(LAYOUT).toContain('{afterProof ?? null}');
+  });
+
+  it('can drop the steps section entirely', () => {
+    expect(LAYOUT).toContain('steps?: FeatureDetailCard[];');
+    expect(LAYOUT).toContain('steps = []');
+    expect(LAYOUT).toContain('{steps.length ? (');
+  });
+
+  it('leaves the pages that still use those sections alone', () => {
+    for (const slug of ['ai-intake', 'quick-stops', 'client-portal', 'website-builder']) {
+      expect(source(slug), slug).toContain('steps={[');
+    }
+  });
+});
