@@ -6,9 +6,33 @@ import styles from './client-portal.module.css';
 
 export const metadata: Metadata = {
   title: 'Contractor Texting and Client Portals',
+  // The old line named the parts and not the outcome. This one says what the
+  // homeowner does NOT have to do, which is the thing that sells a portal.
   description:
-    'Keep customer texts, quotes, schedules, updates and payments connected to each job.',
+    'Give every contractor job one client portal for texts, quotes, scheduling, arrival updates, approvals and payments — no customer app or password required.',
   alternates: { canonical: 'https://letsgetquoted.com/features/client-portal' },
+  /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
+     Next replaces the parent metadata's `openGraph` object wholesale rather
+     than merging into it — but only if the child declares one. Without this
+     block every share of this URL unfurled as the homepage: its title, its
+     description, a screenshot of a website template, and an og:url pointing at
+     letsgetquoted.com, so the card sent people somewhere else entirely. */
+  openGraph: {
+    type: 'website',
+    url: 'https://letsgetquoted.com/features/client-portal',
+    siteName: "Let's Get Quoted",
+    title: 'Every customer message tied to the right job.',
+    description:
+      'Give every contractor job one client portal for texts, quotes, scheduling, arrival updates, approvals and payments — no customer app or password required.',
+    images: [{ url: '/features/og-client-portal.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted client portal and two-way texting for contractors' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Every customer message tied to the right job.',
+    description:
+      'Give every contractor job one client portal for texts, quotes, scheduling, arrival updates, approvals and payments — no customer app or password required.',
+    images: ['/features/og-client-portal.jpg'],
+  },
 };
 
 /* One customer, one job, three panels.

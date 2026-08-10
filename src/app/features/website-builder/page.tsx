@@ -10,6 +10,28 @@ export const metadata: Metadata = {
   description:
     'Launch a complete, editable contractor website and connect it to your back office.',
   alternates: { canonical: 'https://letsgetquoted.com/features/website-builder' },
+  /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
+     Next replaces the parent metadata's `openGraph` object wholesale rather
+     than merging into it — but only if the child declares one. Without this
+     block every share of this URL unfurled as the homepage: its title, its
+     description, a screenshot of a website template, and an og:url pointing at
+     letsgetquoted.com, so the card sent people somewhere else entirely. */
+  openGraph: {
+    type: 'website',
+    url: 'https://letsgetquoted.com/features/website-builder',
+    siteName: "Let's Get Quoted",
+    title: 'A contractor website that turns visits into ready-to-quote jobs.',
+    description:
+      'Launch a complete, editable contractor site in minutes — built for your trade, with an instant estimate form wired in from day one. Your domain stays yours.',
+    images: [{ url: '/features/og-website-builder.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted AI website builder for contractors' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'A contractor website that turns visits into ready-to-quote jobs.',
+    description:
+      'Launch a complete, editable contractor site in minutes — built for your trade, with an instant estimate form wired in from day one. Your domain stays yours.',
+    images: ['/features/og-website-builder.jpg'],
+  },
 };
 
 /* One invented business, used by every mock on the page, so the site preview,

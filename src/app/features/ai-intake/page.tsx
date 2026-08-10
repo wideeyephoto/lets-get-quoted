@@ -16,6 +16,28 @@ export const metadata: Metadata = {
   description:
     'Qualify, score and prioritize contractor leads before the first call. Smart Intake asks trade-specific follow-ups, collects photos and timing, and surfaces the work worth answering first.',
   alternates: { canonical: 'https://letsgetquoted.com/features/ai-intake' },
+  /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
+     Next replaces the parent metadata's `openGraph` object wholesale rather
+     than merging into it — but only if the child declares one. Without this
+     block every share of this URL unfurled as the homepage: its title, its
+     description, a screenshot of a website template, and an og:url pointing at
+     letsgetquoted.com, so the card sent people somewhere else entirely. */
+  openGraph: {
+    type: 'website',
+    url: 'https://letsgetquoted.com/features/ai-intake',
+    siteName: "Let's Get Quoted",
+    title: 'Qualify every lead before you pick up the phone.',
+    description:
+      'Smart Intake asks trade-specific follow-up questions, collects photos, timing, location and budget signals, then scores every job by fit, urgency, value and distance.',
+    images: [{ url: '/features/og-ai-intake.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted AI Smart Intake for contractors' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Qualify every lead before you pick up the phone.',
+    description:
+      'Smart Intake asks trade-specific follow-up questions, collects photos, timing, location and budget signals, then scores every job by fit, urgency, value and distance.',
+    images: ['/features/og-ai-intake.jpg'],
+  },
 };
 
 /* The arriving lead, as the priority inbox draws it.

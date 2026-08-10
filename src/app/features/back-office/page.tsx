@@ -15,6 +15,28 @@ export const metadata: Metadata = {
   description:
     'Connect contractor quotes, scheduling, crews, payments, recurring work and follow-up. One job record from accepted quote to final payment.',
   alternates: { canonical: 'https://letsgetquoted.com/features/back-office' },
+  /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
+     Next replaces the parent metadata's `openGraph` object wholesale rather
+     than merging into it — but only if the child declares one. Without this
+     block every share of this URL unfurled as the homepage: its title, its
+     description, a screenshot of a website template, and an og:url pointing at
+     letsgetquoted.com, so the card sent people somewhere else entirely. */
+  openGraph: {
+    type: 'website',
+    url: 'https://letsgetquoted.com/features/back-office',
+    siteName: "Let's Get Quoted",
+    title: 'One job record, from signed quote to final payment.',
+    description:
+      'Quote the work, schedule your crew, collect payment and follow up — without retyping customer details across five different tools.',
+    images: [{ url: '/features/og-back-office.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted connected contractor back office' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'One job record, from signed quote to final payment.',
+    description:
+      'Quote the work, schedule your crew, collect payment and follow up — without retyping customer details across five different tools.',
+    images: ['/features/og-back-office.jpg'],
+  },
 };
 
 /* The one number the page quotes, taken from the canonical fee model rather

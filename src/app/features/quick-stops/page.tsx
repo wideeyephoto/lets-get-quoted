@@ -19,10 +19,35 @@ export const metadata: Metadata = {
   // No brand suffix — the root layout's template is "%s · Let's Get Quoted",
   // so this previously rendered "Quick Stops | Let's Get Quoted · Let's Get
   // Quoted". See the matching note in ../ai-intake/page.tsx.
-  title: 'Quick Stops',
+  // Named for the search it should win rather than for the button in our own
+  // nav: "Quick Stops" alone means nothing to somebody who has never heard of
+  // us, and the title is the strongest signal Google uses to write the result.
+  title: 'Quick Stops for Contractors: Prepaid Jobs Nearby',
   description:
-    'Turn open route time into optional, prepaid contractor work nearby. You approve every job, set the price and the arrival window, and nothing is added to your day until the homeowner has paid.',
+    'Fill gaps in your route with nearby, prepaid jobs. You approve every request, set the price and arrival window, and go only after the homeowner has paid.',
   alternates: { canonical: 'https://letsgetquoted.com/features/quick-stops' },
+  /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
+     Next replaces the parent metadata's `openGraph` object wholesale rather
+     than merging into it — but only if the child declares one. Without this
+     block every share of this URL unfurled as the homepage: its title, its
+     description, a screenshot of a website template, and an og:url pointing at
+     letsgetquoted.com, so the card sent people somewhere else entirely. */
+  openGraph: {
+    type: 'website',
+    url: 'https://letsgetquoted.com/features/quick-stops',
+    siteName: "Let's Get Quoted",
+    title: 'Fill schedule gaps with prepaid jobs nearby.',
+    description:
+      'See requests close to jobs already on your schedule. You choose the price and arrival window, then send an offer. It only becomes a job after the homeowner pays.',
+    images: [{ url: '/features/og-quick-stops.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted Quick Stops: prepaid contractor jobs nearby' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fill schedule gaps with prepaid jobs nearby.',
+    description:
+      'See requests close to jobs already on your schedule. You choose the price and arrival window, then send an offer. It only becomes a job after the homeowner pays.',
+    images: ['/features/og-quick-stops.jpg'],
+  },
 };
 
 /* The offer as the contractor sends it.

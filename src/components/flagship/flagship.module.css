@@ -6977,3 +6977,65 @@
   .root :global(.jrs-more a span) { transition: none; }
   .root :global(.jrs-tools li:hover) { transform: none; }
 }
+/* ===========================================================================
+   §108 — THE THINGS YOU TAP ON A PHONE
+
+   Measured at 390x844 on /features/back-office before this, and the same three
+   are on every marketing page because they are all in the shared chrome:
+
+     .header-cta    129 x 36     the signup button, and the most-tapped
+                                 control on the site
+     .nav-toggle     37 x 44     44 was set and something narrower won
+     .detail-back   108 x 13     a 13px-high hit area on the only way back to
+                                 the feature index
+
+   The floor everybody quotes is 44x44 (Apple) or 48x48 (Material); WCAG 2.2's
+   Target Size (Minimum) is 24x24 and all three failed the spirit of it and two
+   failed the letter. None of these needs to look bigger — the padding goes
+   where it cannot be seen.
+   =========================================================================== */
+
+.root :global(.header-cta) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* min-width as well as width: the width was already 44 and lost to something
+   narrower, and a minimum cannot be outbid by a smaller length. */
+.root :global(.nav-toggle) { min-width: 44px; min-height: 44px; flex: 0 0 auto; }
+
+/* THE PADDING IS THE TARGET, NOT THE TYPE.
+   The label stays 10px and the row stays where it was: the extra height is
+   padding above and below, taken back out of the margin underneath so nothing
+   on the page moves. */
+.root :global(.detail-back) {
+  padding-block: 16px;
+  margin-top: -16px;
+  margin-bottom: 6px;
+}
+
+/* ---- the fixed bar stops sitting on things -------------------------------
+
+   Two separate problems. The first is the notch: "bottom: 12px" puts the bar
+   inside the home-indicator area on every iPhone since the X, so the last 20
+   or so pixels of a 54px button are behind a system control. The second is
+   that a fixed bar is 66px of viewport that the page does not know about —
+   SiteFooter already stands it down over the hero, the closing CTA and the
+   footer, but between those it floats over whatever happens to be at the
+   bottom of the screen.
+
+   env() with a fallback, because the same rule has to work in a browser that
+   has never heard of a safe area. */
+.root :global(.mobile-cta) {
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  padding-inline: 14px;
+}
+
+/* And the room it needs, reserved at the end of the page. 78px is the bar's
+   54px plus its inset plus a line of breathing room, so the last row of real
+   content clears it instead of being covered by it. */
+@media (max-width: 760px) {
+  .root :global(.detail-hero) ~ :global(.page-cta),
+  .root :global(.detail-hero) ~ :global(.final-cta) { padding-bottom: 78px; }
+}

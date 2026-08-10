@@ -46,7 +46,10 @@ describe('the hero shots', () => {
   });
 
   it('describes what is on each screen rather than naming the file', () => {
-    const alts = [...PAGE.matchAll(/alt:\s*'([^']+)'/g)].map((m) => m[1]);
+    // HERO_SHOTS only. The page's Open Graph block carries an `alt` too, and it
+    // describes the social card rather than a screen in the slider.
+    const shots = PAGE.slice(PAGE.indexOf('const HERO_SHOTS'), PAGE.indexOf('];', PAGE.indexOf('const HERO_SHOTS')));
+    const alts = [...shots.matchAll(/alt:\s*'([^']+)'/g)].map((m) => m[1]);
     expect(alts.length).toBe(2);
     for (const alt of alts) {
       expect(alt.length).toBeGreaterThan(80);
