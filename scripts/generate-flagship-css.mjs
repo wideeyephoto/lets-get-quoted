@@ -5038,6 +5038,23 @@ const TWEAKS = `
   }
 }
 
+/* ---- the first button fits on the first screen ---------------------------
+
+   Measured on /features/client-portal at 1280x720: the hero's own CTA began at
+   y=783, sixty-three pixels below the fold, so the first screen of a page
+   whose job is to get somebody to press a button contained no button but the
+   header's. The hero reserves min-height 790px and 150px of top padding, which
+   is right on a tall monitor and is more than the whole viewport on a laptop.
+
+   Keyed to the VIEWPORT HEIGHT rather than its width, because that is the
+   thing that is short — a 1280x720 laptop and a 1280x1100 desktop want
+   different heroes and the same columns. */
+@media (max-height: 860px) and (min-width: 901px) {
+  .root :global(.detail-hero) { min-height: 0; padding-top: 118px; padding-bottom: 64px; }
+  .root :global(.detail-hero h1) { font-size: clamp(44px, 4.4vw, 64px); letter-spacing: -3px; }
+  .root :global(.detail-hero-note) { margin-top: 14px; }
+}
+
 /* ---- copy on a feature page is copy, not a caption -----------------------
 
    Measured on /features/ai-intake at 390x844: fifteen runs of real prose under

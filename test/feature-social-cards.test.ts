@@ -377,3 +377,62 @@ describe('the shared layout stops setting sentences at caption size', () => {
     expect(CSS).toContain('(min-width: 901px) and (max-width: 1200px)');
   });
 });
+
+/**
+ * /features/client-portal — shorter hero, shorter thread, honest reassurance.
+ */
+describe('the client portal page', () => {
+  const SRC = readFileSync('src/app/features/client-portal/page.tsx', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const CSS = readFileSync('src/components/flagship/flagship.module.css', 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+
+  it('says what the homeowner does not have to do', () => {
+    expect(SRC).toContain('Keep every customer updated');
+    expect(SRC).toContain('and every message tied to the right job.');
+    expect(SRC).toContain('not another app or password');
+  });
+
+  it('fits the eyebrow on one line', () => {
+    // "Text messaging + a portal for every job" wrapped at 390px and left the
+    // word JOB alone on the second line.
+    expect(SRC).toContain('eyebrow="Client portals + two-way texting"');
+  });
+
+  it('offers real reassurance instead of an invented testimonial', () => {
+    // There are no testimonials and none will be invented. These four are
+    // checkable: the portal is a per-job link, texts are SMS with STOP, and
+    // Stripe holds the card.
+    const note = SRC.slice(SRC.indexOf('heroNote='), SRC.indexOf('demo={'));
+    expect(note).toContain('private per-job link');
+    expect(note).toContain('STOP');
+    expect(note).toContain('Stripe');
+    expect(note).toContain('Pay only when you get paid');
+  });
+
+  it('puts the six texture messages behind a disclosure', () => {
+    // Quote sent, approved, booked, on the way, paid is the argument; eleven
+    // messages on a phone was a scroll most readers did not finish.
+    expect(SRC).toContain('View the complete conversation');
+    expect(SRC).toContain('<details className={styles.threadMore}>');
+    // Still in the HTML — nothing conditionally rendered.
+    expect(SRC).not.toMatch(/showAll|\{expanded &&/);
+  });
+
+  it('compresses five benefits into three', () => {
+    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('stepsTitle='));
+    expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
+  });
+
+  it('gets the hero CTA above the fold on a laptop', () => {
+    // Measured at 1280x720 before: the hero's own button began at y=783, so the
+    // first screen of a page whose job is to get a button pressed had none.
+    // Keyed to viewport HEIGHT — that is the thing that is short.
+    expect(CSS).toContain('@media (max-height: 860px) and (min-width: 901px)');
+    expect(CSS).toMatch(/\.detail-hero\) \{ min-height: 0; padding-top: 118px/);
+  });
+});

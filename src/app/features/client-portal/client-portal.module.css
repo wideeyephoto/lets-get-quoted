@@ -439,3 +439,70 @@
     margin-bottom: 0.35rem;
   }
 }
+
+/* ---- the rest of the conversation ---------------------------------------
+
+   Quote sent, approved, booked, on the way, paid is the whole argument; the
+   other six messages are texture, and eleven of them on a phone was a scroll
+   most readers did not finish. Every one is still in the HTML — nothing is
+   hidden from search or from find-in-page — and <details> works before
+   hydration and is in the tab order for free. */
+
+.threadMore {
+  margin: 0.55rem 0;
+  border-top: 1px dashed var(--edge-t08);
+  border-bottom: 1px dashed var(--edge-t08);
+}
+
+.threadMore summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  /* The whole row is the target, not the words in it. */
+  min-height: 44px;
+  padding: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  list-style: none;
+}
+
+.threadMore summary::-webkit-details-marker { display: none; }
+.threadMore summary:hover { color: var(--text); }
+
+.threadMore summary i {
+  position: relative;
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+}
+
+.threadMore summary i::before,
+.threadMore summary i::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--cedge-orange-2);
+}
+
+.threadMore summary i::after {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.threadMore[open] summary i::after { transform: rotate(0deg); opacity: 0; }
+
+/* The messages inside keep the thread's own spacing; the disclosure only
+   supplies the seam. */
+.threadMore > :nth-child(2) { margin-top: 0.55rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .threadMore summary i::after { transition: none; }
+}

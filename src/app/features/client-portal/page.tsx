@@ -70,18 +70,20 @@ function JobStrip() {
 export default function ClientPortalPage() {
   return (
     <FeatureDetailLayout
-      eyebrow="Text messaging + a portal for every job"
+      /* Shorter than "Text messaging + a portal for every job", which wrapped
+         at 390px and left "JOB" alone on the second line. */
+      eyebrow="Client portals + two-way texting"
       title={
         <>
-          Every customer knows what&rsquo;s next. <em>Every message stays attached.</em>
+          Keep every customer updated&mdash;<em>and every message tied to the right job.</em>
         </>
       }
-      lede="Give every job its own client portal and keep two-way text conversations connected to the same customer record—from quote approval through final payment."
+      lede="Give each job one simple customer portal for quotes, schedules, arrival updates, conversations and payments. Homeowners get a link — not another app or password."
       // Not the fee — the closing band already states it. On a page about the
       // conversation, the useful reassurance is that the homeowner does not
       // have to install anything to take part: the portal is /client/jobs/[token]
       // (a link, no account) and the texts go out over Twilio as ordinary SMS.
-      heroNote="Texting and the portal are both included. The homeowner needs no app and no account — the portal is a link, and the texts are ordinary texts."
+      heroNote="No card required · No monthly subscription · Pay only when you get paid. The portal is a private per-job link rather than an account, texts are ordinary SMS the homeowner can stop at any time by replying STOP, and card payments are handled by Stripe — we never hold the card."
       demo={
         <ExampleFrame
           label="The job record on the contractor’s side. The conversation is part of the record, not a separate inbox."
@@ -140,26 +142,25 @@ export default function ClientPortalPage() {
         title: 'Stop making customers hunt through old texts and emails.',
         body: 'The portal becomes the homeowner’s clear source of truth. Your team can text naturally while the important job details remain organized behind the conversation.',
       }}
+      /* FIVE BECAME THREE.
+         "Keep every reply with the job", "give customers one clear
+         destination", "make handoffs less fragile", "keep the next action
+         obvious" and "answer the repeated questions once" are two ideas — the
+         record holds the conversation, and the homeowner has one page — told
+         from five angles. The two panels below show both, so the cards only
+         have to name what each is FOR. */
       benefits={[
         {
-          title: 'Keep every reply with the job',
-          body: 'See the conversation alongside the customer, property, quote and schedule.',
+          title: 'Every reply lands on the job',
+          body: 'The conversation sits beside the customer, the property, the quote and the schedule — so the owner, the office and the crew see the same history without asking the homeowner to repeat it.',
         },
         {
-          title: 'Give customers one clear destination',
-          body: 'A direct job-specific link puts the current quote, status, updates and payment in one view.',
+          title: 'The homeowner has one page',
+          body: 'A private job link puts the current quote, the arrival window, the updates and the balance in one place. Are we still on for Thursday, what did I approve, what do I owe — all three are already answered there.',
         },
         {
-          title: 'Make handoffs less fragile',
-          body: 'The owner, office and crew can see the same history without asking the customer to repeat it.',
-        },
-        {
-          title: 'Keep the next action obvious',
-          body: 'Approval, scheduling, arrival updates and payment each have a clear place to happen.',
-        },
-        {
-          title: 'Answer the repeated questions once',
-          body: 'Are we still on for Thursday, what did I approve, what do I owe, did you get my payment — all four are already on the page the homeowner has, so they get asked far less often and answered without stopping work.',
+          title: 'The next action has a place to happen',
+          body: 'Approval, scheduling, arrival updates and payment each happen on the record rather than in somebody’s inbox, so finishing one moves the job rather than creating an errand.',
         },
       ]}
       stepsTitle="One job record for your team. One clear experience for the homeowner."
@@ -244,6 +245,19 @@ export default function ClientPortalPage() {
                 <span className={styles.money}>{JOB.total}</span> &middot; e-signed 9:31 AM
               </p>
 
+              {/* THE PIVOTAL FIVE, THEN THE REST ON REQUEST.
+                  Quote sent, approved, booked, on the way, paid is the whole
+                  argument; the other six messages are texture, and on a phone
+                  they were a scroll most readers did not finish. <details>
+                  keeps every one of them in the HTML — nothing is hidden from
+                  search or from the browser's own find-in-page — and it works
+                  before hydration. */}
+              <details className={styles.threadMore}>
+                <summary>
+                  <span>View the complete conversation</span>
+                  <i aria-hidden="true" />
+                </summary>
+
               <p className={styles.dayRow}>Wednesday</p>
 
               <div className={`${styles.msg} ${styles.msgIn}`}>
@@ -321,6 +335,8 @@ export default function ClientPortalPage() {
                 </span>
                 <p className={styles.msgBody}>Paid. Thanks {JOB.crew}.</p>
               </div>
+
+              </details>
 
               <p className={styles.sysRow}>
                 <span className={styles.sysDot}>&bull;</span> Payment received &middot;{' '}
