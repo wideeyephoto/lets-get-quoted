@@ -79,33 +79,54 @@ const FACTS: { fact: string; of: string }[] = [
 
 /* The bridge. Five stages, and the reason the page has them at all: a reader
    who has just been told "we rank your requests" needs to know the product
-   does not stop there. One line each — the detail is on /features. */
-const STAGES: { n: string; title: string; body: string }[] = [
+   does not stop there. One line each — the detail is on /features, and each
+   card is a link to the part of it that does the thing named.
+   Scheduling and Crew land on the same capability band on purpose: arrival
+   windows and crew assignment are one section there, not two. */
+const STAGES: { n: string; title: string; body: string; href: string }[] = [
   {
     n: '01',
     title: 'Quote + sign',
     body: 'The job summary becomes a polished quote the customer can approve and sign.',
+    href: '/features/back-office',
   },
   {
     n: '02',
     title: 'Schedule',
     body: 'Offer real availability and let the homeowner pick the window that suits them.',
+    href: '/features#planning-and-scheduling',
   },
   {
     n: '03',
     title: 'Crew',
     body: 'Scope, photos, address and promises follow the work into the field.',
+    href: '/features#planning-and-scheduling',
   },
   {
     n: '04',
     title: 'Payment',
     body: 'Deposits, balances and approvals stay attached to the same job.',
+    href: '/features#payments',
   },
   {
     n: '05',
     title: 'Review',
     body: 'Finish the work, ask for feedback and keep the next visit ready to book.',
+    href: '/features#website-and-growth',
   },
+];
+
+/* THE LAST PIECE OF PAPER ON THE PAGE.
+   It was the wordmark on a card, which is the one thing on this page that
+   asked the reader to look at something and gave them nothing back. This is
+   the same job the hero opened on, four stages later — the only honest way to
+   close a page whose argument is that the request you accept is the record
+   that gets paid. */
+const PAID_ROWS: ReceiptRow[] = [
+  { label: 'Quote signed', value: '✓ MAR 4' },
+  { label: 'Scheduled', value: '✓ MAR 11 · 9–11' },
+  { label: 'Work complete', value: '✓ MAR 12' },
+  { label: 'Deposit + balance', value: '✓ PAID IN FULL' },
 ];
 
 /* What the alert is made of. Three rows, and each names the thing on the
@@ -291,7 +312,9 @@ export default function HowItWorksPage() {
           <div className="hiq-split hiq-split-bridge">
             <div>
               <p className="hiq-eyebrow">The alert is only the beginning</p>
-              <h2 id="hiq-bridge-title">You choose the job. Quoted carries it the rest of the way.</h2>
+              <h2 id="hiq-bridge-title">
+                You choose the job. Let’s Get Quoted carries it the rest of the way.
+              </h2>
             </div>
             <p>
               Once you respond, the same request becomes the quote, schedule, crew plan, customer
@@ -302,9 +325,16 @@ export default function HowItWorksPage() {
           <ol className="hiq-rail" aria-label="One connected job, five stages">
             {STAGES.map((stage) => (
               <li className="hiq-stage" key={stage.n}>
-                <span className="hiq-stage-n">{stage.n}</span>
-                <h3>{stage.title}</h3>
-                <p>{stage.body}</p>
+                {/* The whole card is the link, not a "learn more" under it —
+                    five of those in a row is five identical words where the
+                    stage name is already the thing you would click. */}
+                <Link href={stage.href}>
+                  <span className="hiq-stage-n">{stage.n}</span>
+                  <h3>
+                    {stage.title} <span className="hiq-stage-go" aria-hidden="true">→</span>
+                  </h3>
+                  <p>{stage.body}</p>
+                </Link>
               </li>
             ))}
           </ol>
@@ -331,6 +361,11 @@ export default function HowItWorksPage() {
             You see why the job surfaced—its estimated value, lead score, distance and timeline—so
             you can make the call without digging through another form.
           </p>
+          {/* The section shows the OUTPUT of the ranking. This is the way to
+              the page that explains how each of those four lines is decided. */}
+          <Link className="hiq-inlinelink hiq-inlinelink-light" href="/features/ai-intake">
+            See how AI Smart Intake scores a request <span aria-hidden="true">→</span>
+          </Link>
         </div>
 
         <Receipt
@@ -364,9 +399,17 @@ export default function HowItWorksPage() {
             <p className="hiq-reassurance">No card required · $0/month · Pay only when paid</p>
           </div>
 
-          <div className="hiq-final-ticket" aria-hidden="true">
-            <span>LET&rsquo;S GET</span>
-            <strong>QUOTED</strong>
+          <div className="hiq-final-receipt">
+            <Receipt
+              className="hiq-receipt-paid"
+              label="The same example job, paid"
+              title="Panel upgrade + EV charger"
+              id="JOB #1048"
+              rows={PAID_ROWS}
+              stamp="PAID"
+              total="$8,600"
+            />
+            <p className="hiq-example">The same example request, eight days later</p>
           </div>
         </div>
       </section>

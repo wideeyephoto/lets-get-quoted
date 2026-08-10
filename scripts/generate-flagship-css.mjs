@@ -3678,8 +3678,7 @@ const TWEAKS = `
 /* THE TEAR. A row of triangles cut out of the card's own colour and hung
    below its bottom edge, so the paper ends in a serrated line instead of a
    border. Sized in one place: 15px teeth on a 15px tile. */
-.root :global(.hiq-receipt)::after,
-.root :global(.hiq-final-ticket)::after {
+.root :global(.hiq-receipt)::after {
   content: "";
   position: absolute;
   right: 0;
@@ -3699,33 +3698,44 @@ const TWEAKS = `
 }
 .root :global(.hiq-receipt-head h3) {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
+  font-size: clamp(24px, 2.4vw, 29px);
+  font-weight: 700;
   letter-spacing: -.035em;
 }
 .root :global(.hiq-receipt-head span) {
-  color: #7a8588;
+  color: #5c6a6e;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
+/* SET AT READING SIZE, NOT CAPTION SIZE.
+   The receipt IS the argument of this page — four lines saying why a request
+   is worth stopping for — and it was printed at 14px label / 12px value in a
+   470px card, which left a third of the paper empty and made the one thing
+   the reader is meant to study the faintest thing on the screen. The label is
+   now body copy and the value is the weight of a stamped figure. */
 .root :global(.hiq-receipt-row) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  min-height: 72px;
-  border-bottom: 1px solid #d9d2c9;
-  font-size: 14px;
+  gap: 20px;
+  min-height: 74px;
+  border-bottom: 1px solid #cfc7bc;
+  font-size: clamp(16px, 1.5vw, 18px);
+  font-weight: 500;
 }
 /* Green is "this condition is satisfied", not "good news". Every value in
-   this column is a check the request passed. */
+   this column is a check the request passed. Darkened from #2b9e61, which
+   carried 3.1:1 on cream — under the bar for text this small before it was
+   made this large, and comfortably over it now at 4.9:1. */
 .root :global(.hiq-receipt-row strong) {
-  color: var(--hiq-green);
+  color: #1c7a49;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: clamp(13px, 1.25vw, 15px);
+  font-weight: 700;
+  letter-spacing: .01em;
   text-align: right;
 }
 
@@ -3748,14 +3758,14 @@ const TWEAKS = `
   padding: 8px 10px;
   color: var(--hiq-orange-dark);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: .13em;
   transform: rotate(-4deg);
 }
 /* With no total beside it the stamp has nothing to sit against, so it hangs
    off the right edge of the paper the way one gets banged on by hand. */
-.root :global(.hiq-stamp-solo) { display: table; margin: 30px 0 0 auto; font-size: 14px; }
+.root :global(.hiq-stamp-solo) { display: table; margin: 30px 0 0 auto; font-size: 16px; }
 
 .root :global(.hiq-receipt-hero) {
   width: 100%;
@@ -3955,8 +3965,8 @@ const TWEAKS = `
   border-radius: 7px;
   background: var(--hiq-orange);
   color: #25120a;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: inset 0 1px rgba(255, 255, 255, .3);
   transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
@@ -3969,11 +3979,14 @@ const TWEAKS = `
 .root :global(.hiq-answers button[data-selected="true"]) { box-shadow: inset 0 0 0 2px #1e130e; }
 .root :global(.hiq-answers .hiq-later[data-selected="true"]) { background: #ffe3d5; }
 
+/* The answer to the question the card just asked, so it cannot be the
+   quietest thing on it. #14603a is 6.4:1 on the ticket's paper. */
 .root :global(.hiq-said) {
-  margin: 9px 0 0;
-  min-height: 32px;
-  color: #2c6b47;
-  font-size: 12px;
+  margin: 11px 0 0;
+  min-height: 34px;
+  color: #14603a;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.4;
 }
 
@@ -4038,39 +4051,54 @@ const TWEAKS = `
   background: #17282e;
   transform: translateX(-50%);
 }
+/* EVERY LINE IN HERE HAS TO SURVIVE A JOBSITE.
+   The whole message was set between 11px and 13px in grey on grey — a drawing
+   of a notification rather than one you can read at a glance, which is the
+   only claim it is making. Ink is near-black on a paler bubble, the sender is
+   a real label rather than a whisper, and nothing in the thread is under
+   12px. Measured against the bubble: 13.9:1 on the body, 6.1:1 on the sender
+   and 5.6:1 on the reply line. */
 .root :global(.hiq-phone-status) {
   display: flex;
   justify-content: space-between;
   padding: 7px 7px 20px;
-  font-size: 12px;
-  font-weight: 650;
+  color: #17282e;
+  font-size: 13px;
+  font-weight: 700;
 }
 .root :global(.hiq-phone-app) {
   padding: 14px 0;
-  border-bottom: 1px solid #dedbd5;
+  border-bottom: 1px solid #cfccc5;
+  color: #26383f;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: .08em;
   text-align: center;
 }
 .root :global(.hiq-bubble) {
   margin-top: 34px;
   padding: 20px;
-  border: 1px solid rgba(77, 91, 95, .1);
+  border: 1px solid rgba(60, 75, 80, .22);
   border-radius: 20px 20px 20px 5px;
-  background: linear-gradient(145deg, #ececeb, #e2e3e2);
-  box-shadow: 0 12px 25px rgba(22, 38, 44, .08), inset 0 1px rgba(255, 255, 255, .72);
+  background: linear-gradient(145deg, #f6f6f5, #eceded);
+  color: #101c21;
+  box-shadow: 0 12px 25px rgba(22, 38, 44, .1), inset 0 1px rgba(255, 255, 255, .9);
 }
 .root :global(.hiq-bubble-from) {
   display: block;
   margin-bottom: 12px;
-  color: #657276;
+  color: #3d4f56;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: .06em;
 }
-.root :global(.hiq-bubble > strong) { display: block; font-size: 17px; line-height: 1.25; }
-.root :global(.hiq-bubble > p) { margin: 9px 0 0; font-size: 13px; }
+.root :global(.hiq-bubble > strong) { display: block; font-size: 19px; font-weight: 700; line-height: 1.25; }
+/* :not, because the reply line is a <p> child of the bubble too — and
+   .hiq-bubble > p outranks .hiq-said on specificity, so without this the
+   answer to the question comes out the same colour as the question. */
+.root :global(.hiq-bubble > p:not(.hiq-said)) { margin: 10px 0 0; color: #24343a; font-size: 15px; font-weight: 500; }
 .root :global(.hiq-bubble .hiq-answers) { margin-top: 18px; }
 .root :global(.hiq-bubble .hiq-said) { text-align: left; }
 /* A dead text field at the bottom of the screen, so the bubble reads as a
@@ -4082,10 +4110,10 @@ const TWEAKS = `
   bottom: 22px;
   left: 18px;
   padding: 12px 16px;
-  border: 1px solid #d2cfca;
+  border: 1px solid #c4c1bb;
   border-radius: 999px;
-  color: #9c9f9e;
-  font-size: 12px;
+  color: #6b7371;
+  font-size: 13px;
 }
 /* The field is out of flow, so the bubble has to reserve its height or a long
    reply line ends up underneath it. */
@@ -4121,21 +4149,40 @@ const TWEAKS = `
 }
 .root :global(.hiq-stage) {
   position: relative;
-  min-height: 245px;
-  padding: 29px 23px 26px;
   background: linear-gradient(155deg, rgba(17, 50, 61, .98), rgba(9, 33, 43, .98));
   transition: background .18s ease;
 }
 .root :global(.hiq-stage:hover) { background: linear-gradient(155deg, rgba(24, 61, 73, .98), rgba(11, 38, 49, .98)); }
+/* THE WHOLE CARD IS THE LINK. Five "learn more" lines in a row would be five
+   identical words under five different headings; the stage name is already
+   the thing you would click. Padding lives on the anchor rather than the card
+   so the hit area is the card, not a word inside it. */
+.root :global(.hiq-stage a) {
+  display: block;
+  min-height: 245px;
+  padding: 29px 23px 26px;
+}
+.root :global(.hiq-stage-go) {
+  display: inline-block;
+  color: #ff7840;
+  transition: transform .15s ease;
+}
+.root :global(.hiq-stage a:hover .hiq-stage-go) { transform: translateX(4px); }
+.root :global(.hiq-stage a:hover h3) { color: #ffd0bb; }
 /* The arrow says the stages are consecutive; the last one has nowhere to
    point, so it does not get one. */
+/* The connector between consecutive stages, distinct from the go-arrow in
+   each heading: this one says the five are a sequence, that one says the card
+   is a link. The last stage has nowhere to point, so it does not get one. */
 .root :global(.hiq-stage:not(:last-child))::after {
   content: "→";
   position: absolute;
   top: 31px;
   right: 15px;
+  z-index: 1;
   color: rgba(255, 120, 64, .58);
   font-family: var(--font-mono), ui-monospace, monospace;
+  pointer-events: none;
 }
 .root :global(.hiq-stage-n) {
   color: #ff7840;
@@ -4144,7 +4191,7 @@ const TWEAKS = `
   font-weight: 700;
   letter-spacing: .14em;
 }
-.root :global(.hiq-stage h3) { margin: 54px 0 12px; font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
+.root :global(.hiq-stage h3) { margin: 54px 0 12px; font-size: 20px; font-weight: 600; letter-spacing: -.025em; transition: color .18s ease; }
 .root :global(.hiq-stage p) { margin: 0; color: #9bb1ba; font-size: 13px; line-height: 1.55; }
 
 .root :global(.hiq-bridge-actions) { margin-top: 34px; gap: 22px; }
@@ -4175,7 +4222,11 @@ const TWEAKS = `
   letter-spacing: -.05em;
   text-wrap: balance;
 }
-.root :global(.hiq-why-copy > p:last-child) { margin: 26px 0 0; color: var(--hiq-muted); font-size: 17px; line-height: 1.65; }
+/* Not :last-child — the section gained a link after the paragraph, and the
+   paragraph's own styling should not depend on nothing following it. */
+.root :global(.hiq-why-copy > p) { margin: 26px 0 0; color: var(--hiq-muted); font-size: 17px; line-height: 1.65; }
+/* The inline feature link, on navy rather than on paper. */
+.root :global(.hiq-inlinelink-light) { color: #ff8f5f; }
 
 /* ---- the ask ------------------------------------------------------------- */
 
@@ -4212,39 +4263,16 @@ const TWEAKS = `
   letter-spacing: .04em;
   text-transform: uppercase;
 }
-/* The last piece of paper on the page: the wordmark itself, stamped and torn
-   off like everything else the product prints. */
-.root :global(.hiq-final-ticket) {
-  --hiq-tear: var(--hiq-paper);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 310px;
-  padding: 55px 32px;
-  border: 1px solid rgba(255, 255, 255, .78);
-  border-radius: 10px 10px 2px 2px;
-  background: var(--hiq-paper);
-  color: var(--hiq-orange-dark);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 23px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  transform: rotate(2deg);
-  box-shadow: 0 34px 75px rgba(0, 0, 0, .3), 0 0 0 1px rgba(5, 25, 33, .12), inset 0 1px rgba(255, 255, 255, .85);
-}
-.root :global(.hiq-final-ticket)::before {
-  content: "";
-  position: absolute;
-  inset: 54px 45px;
-  border: 6px double var(--hiq-orange);
-  border-radius: 9px;
-}
-.root :global(.hiq-final-ticket strong),
-.root :global(.hiq-final-ticket span) { position: relative; z-index: 1; }
-.root :global(.hiq-final-ticket strong) { font-size: 35px; }
+/* THE LAST PIECE OF PAPER ON THE PAGE.
+   It was the wordmark on a card — the one thing here that asked to be looked
+   at and gave nothing back. It is now the same job the hero opened on, four
+   stages later and paid, which is the only honest way to close a page whose
+   argument is that the request you accept becomes the record that gets paid.
+   Rotated the other way from the hero's receipt so the two read as two
+   dockets rather than one repeated. */
+.root :global(.hiq-receipt-paid) { padding: 34px 30px 40px; transform: rotate(2deg); }
+.root :global(.hiq-receipt-paid .hiq-stamp) { border-color: var(--hiq-green); color: #15633b; }
+.root :global(.hiq-final-receipt .hiq-example) { margin-top: 30px; text-align: center; color: #7f97a1; }
 
 /* ---- tablet -------------------------------------------------------------- */
 
@@ -4270,7 +4298,7 @@ const TWEAKS = `
   .root :global(.hiq-why-copy) { max-width: 700px; }
   .root :global(.hiq-why) { margin-inline: 20px; }
   .root :global(.hiq-receipt-why),
-  .root :global(.hiq-final-ticket) { width: 100%; max-width: 560px; margin-inline: auto; }
+  .root :global(.hiq-receipt-paid) { width: 100%; max-width: 560px; margin-inline: auto; }
 }
 
 /* ---- phone --------------------------------------------------------------- */
@@ -4331,8 +4359,7 @@ const TWEAKS = `
   .root :global(.hiq-why) { margin-inline: 12px; padding-inline: 22px; border-radius: 20px; }
   .root :global(.hiq-receipt-why) { padding: 30px 20px 40px; }
 
-  .root :global(.hiq-final-ticket) { min-height: 250px; font-size: 17px; }
-  .root :global(.hiq-final-ticket strong) { font-size: 27px; }
+  .root :global(.hiq-receipt-paid) { padding: 28px 20px 36px; }
   /* The fixed signup bar is 54px plus its inset and it sits over whatever is
      at the bottom of the viewport. Reserving its height here means what it
      covers is always space. */

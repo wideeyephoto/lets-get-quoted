@@ -122,7 +122,21 @@ describe('the copy the brief specified', () => {
     for (const stage of ['Quote + sign', 'Schedule', 'Crew', 'Payment', 'Review']) {
       expect(PAGE).toContain(`title: '${stage}'`);
     }
-    expect(PAGE).toContain('You choose the job. Quoted carries it the rest of the way.');
+  });
+
+  it('calls the product by its whole name where it makes the promise', () => {
+    // "Quoted carries it the rest of the way" reads as a different product.
+    expect(PAGE).toContain('Let’s Get Quoted carries it the rest of the way.');
+    expect(PAGE).not.toMatch(/job\.\s*Quoted carries/);
+  });
+
+  it('closes on the same job, paid, rather than on the wordmark', () => {
+    expect(PAGE).toContain('PAID_ROWS');
+    expect(PAGE).toContain("value: '✓ PAID IN FULL'");
+    expect(PAGE).toContain('stamp="PAID"');
+    // Both receipts carry the same money, because it is the same job.
+    expect(PAGE.match(/total="\$8,600"/g)?.length).toBe(2);
+    expect(PAGE).toContain('The same example request, eight days later');
   });
 
   it('prints the qualification signals on both receipts', () => {
@@ -155,6 +169,35 @@ describe('where the page sends you', () => {
     expect(PAGE).toContain('href="/features/client-portal"');
     expect(PAGE).toContain('href="/features/back-office"');
     expect(PAGE).toContain('href="/features"');
+  });
+
+  it('sends the section that shows the ranking to the page that explains it', () => {
+    // "Before we text you" shows the OUTPUT of the scoring and said nothing
+    // about how any of its four lines is decided.
+    expect(PAGE).toContain('href="/features/ai-intake"');
+    expect(PAGE).toContain('See how AI Smart Intake scores a request');
+  });
+
+  it('makes each of the five stages a link to what does that part', () => {
+    const targets = [
+      '/features/back-office',
+      '/features#planning-and-scheduling',
+      '/features#planning-and-scheduling',
+      '/features#payments',
+      '/features#website-and-growth',
+    ];
+    for (const href of targets) expect(PAGE).toContain(`href: '${href}'`);
+    // Every stage carries one — a card without an href renders an empty link.
+    expect(PAGE.match(/href: '\/features/g)?.length).toBe(targets.length);
+    expect(PAGE).toContain('<Link href={stage.href}>');
+  });
+
+  /* Two of the five anchors are the same because scheduling and crew are one
+     capability band on /features, not two. Asserted rather than left to look
+     like a copy-paste slip. */
+  it('lands Schedule and Crew on the band that covers both', () => {
+    const scheduling = PAGE.match(/'\/features#planning-and-scheduling'/g);
+    expect(scheduling?.length).toBe(2);
   });
 
   it('points both signup buttons at the shared signup constant, not the app root', () => {
@@ -293,6 +336,24 @@ describe('the stylesheet', () => {
 
   it('has no CSS left for the page this one replaced', () => {
     expect(CSS).not.toContain('hiw-');
+    // The wordmark card at the foot of the page went with the receipt that
+    // replaced it, and so did the double-ruled border it was the only user of.
+    expect(CSS).not.toContain('hiq-final-ticket');
+  });
+
+  it('sets the receipt at reading size rather than caption size', () => {
+    // It is the page's whole argument — four lines saying why a request is
+    // worth stopping for — and it was 14px label over a 12px value.
+    const row = CSS.slice(CSS.indexOf('.hiq-receipt-row) {'));
+    expect(row.slice(0, row.indexOf('}'))).toContain('font-size: clamp(16px, 1.5vw, 18px)');
+    const value = CSS.slice(CSS.indexOf('.hiq-receipt-row strong) {'));
+    expect(value.slice(0, value.indexOf('}'))).toContain('font-weight: 700');
+  });
+
+  it('does not let the bubble\'s paragraph rule outrank the reply line', () => {
+    // .hiq-bubble > p is (0,1,1) and .hiq-said is (0,1,0), so without the
+    // :not() the answer comes out the same colour as the question.
+    expect(CSS).toContain('.hiq-bubble > p:not(.hiq-said)');
   });
 
   it('keeps the two site-wide rules that section carried', () => {
