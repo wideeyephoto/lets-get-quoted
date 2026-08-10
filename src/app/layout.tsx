@@ -6,7 +6,33 @@ import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
 import { resolveTheme, THEME_COOKIE } from '@/lib/theme';
-import './globals.css';
+/**
+ * THE BASE SHEET, NOT THE WHOLE ONE.
+ *
+ * globals.css builds to 714KB and this layout wraps every route in the product,
+ * so importing it here downloaded and parsed all of it on the marketing site,
+ * on every contractor's public website, on every booking page and on the admin
+ * console. Measured against the production build, each of those used between
+ * 2.8% and 4.7% of it.
+ *
+ * globals-lite.css is the same file with the ~590KB of rules that can only
+ * match inside /dashboard, /admin and /demo deleted — 714KB becomes 334KB. It
+ * is generated; see scripts/build-css-subset.mjs, which also explains why those
+ * rules are deleted from a COPY rather than moved into a sheet of their own
+ * (moving them changes which declaration wins in thousands of places).
+ *
+ * Those three trees import the full globals.css on top of this. That is a
+ * deliberate duplication and it is what makes the change safe: globals.css
+ * contains every rule in this file, in the same order, and loads after it, so
+ * every cascade decision on a dashboard page resolves exactly as it did when
+ * this layout imported globals.css directly. The cost is that they carry both.
+ *
+ * It is imported HERE rather than per-route because this layout renders the app
+ * shell — the header, nav and footer on every page — and because Next does not
+ * collect global CSS imported from special files like not-found.tsx. Wiring it
+ * per-route left the 404 rendering the whole chrome in Times New Roman.
+ */
+import './globals-lite.css';
 
 const bodyFont = IBM_Plex_Sans({
   subsets: ['latin'],
