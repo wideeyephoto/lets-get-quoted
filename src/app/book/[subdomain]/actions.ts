@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
-import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { checkRateLimit, checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -50,6 +50,17 @@ export async function evaluateBookingAction(
   input: { estimateMax: number | null; inArea: boolean | null; excluded: boolean; address: string | null },
 ): Promise<BookingEvaluation | null> {
   const admin = createAdminClient();
+  const ip = clientIpFrom(headers());
+  // A flood guard on the action itself, and no more than that. This is a server
+  // action, so it is reachable by anyone who can load the page — but everything
+  // above rankNearby is three indexed reads, which makes this a question of
+  // database load rather than money. Hence fail-OPEN and a loose ceiling: a real
+  // visitor evaluates once, twice if they redo the estimate.
+  //
+  // The part that costs money is one level down, behind its own much tighter
+  // budget. See rankNearby.
+  if (!(await checkRateLimit(admin, `bookeval:ip:${ip}`, 60, 60))) return null;
+
   const site = await getPublicSiteBySubdomain(admin, subdomain);
   if (!site) return null;
   const businessName = site.company_name || 'this contractor';
@@ -78,6 +89,7 @@ export async function evaluateBookingAction(
       mode: normalizeGeoMode(account?.instant_book_geo_mode),
       scheduleDayHours: Number(account?.schedule_day_hours) || 8,
       driveTime: Boolean(account?.instant_book_drive_time),
+      ip,
     });
   }
   return { verdict, businessName, days, fallback: bookingFallbackMessage(verdict.tier, businessName) };
@@ -86,15 +98,41 @@ export async function evaluateBookingAction(
 // Rank/annotate the open days by proximity to the contractor's existing same-day
 // stops (route-density). Geocodes the lead address (precise-only) and gathers
 // anchor jobs; when either is missing it degrades to plain availability with no
-// proximity claim (cold start), so a customer is never stranded.
+// proximity claim (cold start), so a customer is never stranded. That same
+// degradation is what the paid-lookup budget below spends when it runs out.
 async function rankNearby(
   admin: ReturnType<typeof createAdminClient>,
   accountId: string,
   days: BookingDay[],
   address: string | null,
-  opts: { radiusMiles: number; mode: 'prefer' | 'restrict'; scheduleDayHours: number; driveTime: boolean },
+  opts: { radiusMiles: number; mode: 'prefer' | 'restrict'; scheduleDayHours: number; driveTime: boolean; ip: string },
 ): Promise<RankedBookingDay[]> {
   if (days.length === 0) return [];
+
+  /**
+   * THE BILLED LINE, AND THE ONLY BUDGET IN FRONT OF IT.
+   *
+   * geocodeAddress and driveDistances are paid Google calls, made on behalf of
+   * an anonymous visitor, on a string that visitor typed. Everything else on
+   * this route is a database read. Without this the booking page is an open,
+   * unmetered tap on the Maps bill — the one place on the public surface where
+   * traffic turns directly into money out.
+   *
+   * Fail CLOSED, which is affordable here only because going over budget fails
+   * nothing. It returns the answer this function already gives when an address
+   * won't geocode: every day is still offered, just without a proximity claim.
+   * So the worst case for a real customer sharing a carrier NAT with a busy
+   * neighbourhood is a missing "near you" badge rather than a lost booking, and
+   * a limiter outage costs the platform that badge rather than its bookings.
+   *
+   * Checked HERE and not at the top of the action, so the budget is only spent
+   * when a paid call is genuinely about to happen — an ineligible visitor, or
+   * one the owner has no open days for, never reaches this line.
+   */
+  if (!(await checkRateLimitStrict(admin, `bookgeo:ip:${opts.ip}`, 12, 60))) {
+    return days.map((day) => ({ ...day, nearby: false }));
+  }
+
   const geo = await geocodeAddress(address);
   const leadCoord = geo?.precise ? { lat: geo.lat, lng: geo.lng } : null;
   if (!leadCoord) return days.map((day) => ({ ...day, nearby: false }));

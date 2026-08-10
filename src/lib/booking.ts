@@ -13,6 +13,7 @@ import {
 import { loadBusinessName } from '@/lib/business-name';
 import { createLead, type Lead } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
+import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { bookingAvailabilityFromAccount, windowsForTimes, timeToMinutes, type BookingAvailability } from '@/lib/booking-availability';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
@@ -426,18 +427,46 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     console.error(`Booking owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);
   }
 
-  // Customer: a confirmation that closes the loop (transactional). Best-effort.
+  /**
+   * Customer: a confirmation that closes the loop (transactional). Best-effort,
+   * and CAPPED PER RECIPIENT.
+   *
+   * This address arrived on a public form and nobody proved they own it, which
+   * makes /book a way to have our sending domain deliver mail to an inbox of a
+   * stranger's choosing. app/login/actions.ts names the same exposure on the
+   * sign-in link and answers it the same way — a per-IP limit AND a per-address
+   * one. The per-IP limit on submitBookingAction cannot carry this alone: it is
+   * fail-open by design, so it disappears in exactly the incident where it is
+   * needed, and rented addresses are cheap enough that per-IP is a speed bump.
+   *
+   * Three an hour sits far above what a real customer produces (one) and far
+   * below the volume that costs a sending domain its reputation — which is the
+   * actual asset at risk here, not the victim's attention.
+   *
+   * Fail CLOSED: a dropped confirmation is recoverable and visible, because the
+   * booking is already written and the owner is emailed either way.
+   *
+   * NOT solved here, and said out loud so nobody reads this as airtight:
+   * plus-addressing gives one inbox unlimited distinct buckets. Stripping it
+   * is provider-specific — on plenty of domains user+tag is a different person
+   * — so the per-IP limit stays the backstop for that case.
+   */
   if (input.email) {
     try {
-      await sendBookingConfirmationEmail({
-        recipientEmail: input.email,
-        businessName,
-        clientName: input.name,
-        whenLabel: requested,
-        serviceName: input.serviceName,
-        address: input.address,
-        accountId,
-      });
+      // Already lower-cased and trimmed by readContact, which is what stops
+      // Victim@x.com and victim@x.com being two separate allowances.
+      const withinCap = await checkRateLimitStrict(admin, `bookconfirm:email:${input.email}`, 3, 3600);
+      if (withinCap) {
+        await sendBookingConfirmationEmail({
+          recipientEmail: input.email,
+          businessName,
+          clientName: input.name,
+          whenLabel: requested,
+          serviceName: input.serviceName,
+          address: input.address,
+          accountId,
+        });
+      }
     } catch (error) {
       console.error(`Booking confirmation email failed for account ${accountId}:`, error instanceof Error ? error.message : error);
     }
