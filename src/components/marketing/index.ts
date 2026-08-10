@@ -22,6 +22,9 @@ export type { ExampleFrameProps } from './example-frame';
 export { default as ShotSlider } from './shot-slider';
 export type { Shot } from './shot-slider';
 
+export { default as ExampleSiteShowcase } from './example-site-showcase';
+export type { ExampleSiteShowcaseProps, ExampleSiteMode } from './example-site-showcase';
+
 export { default as PriceZeroDial } from './price-zero-dial';
 export type { PriceZeroDialProps } from './price-zero-dial';
 

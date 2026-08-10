@@ -43,6 +43,18 @@ export type FeatureDetailLayoutProps = {
     body: ReactNode;
   };
   benefits: FeatureDetailCard[];
+  /**
+   * A section between the benefits and the steps.
+   *
+   * The sibling of `afterProof`, for evidence that answers the benefits rather
+   * than introducing them. /features/website-builder shows a site somebody
+   * actually published here: after the three things the page has just promised
+   * a visitor, and before the four answers it takes to get one.
+   *
+   * `children` could not do it — that renders after the steps, three sections
+   * further down, by which point the page has finished arguing.
+   */
+  afterBenefits?: ReactNode;
   stepsEyebrow?: string;
   /** Omit both to drop the section — a page whose steps only restate its story
       should not print the same argument twice. */
@@ -91,6 +103,7 @@ export default function FeatureDetailLayout({
   afterProof,
   story,
   benefits,
+  afterBenefits,
   stepsEyebrow = 'BUILT INTO THE WORKFLOW',
   stepsTitle,
   steps = [],
@@ -173,6 +186,8 @@ export default function FeatureDetailLayout({
           ))}
         </div>
       </section>
+
+      {afterBenefits ?? null}
 
       {steps.length ? (
         <section className="detail-process">

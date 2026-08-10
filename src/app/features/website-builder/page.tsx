@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
+import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
 import { TRADES } from '@/lib/trades';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './website-builder.module.css';
@@ -207,6 +208,36 @@ export default function WebsiteBuilderPage() {
           body: 'The description, the answers, the location, the photos and the range arrive together — ready to quote, text or schedule.',
         },
       ]}
+      /* A SITE SOMEBODY ACTUALLY PUBLISHED, right after the three things the
+         page has just promised and before the four answers it takes to get one.
+         Every other panel on this page is a drawn mock of Cedar Creek Roofing,
+         an invented company — necessary, because the panels show screens that
+         would otherwise expose a real contractor's customers. This one does not
+         have that problem: it is a public marketing site, so it can be the real
+         thing, and a page arguing "we build you a complete site" is much better
+         off showing one than describing it a fourth time.
+
+         WHAT IT DOES NOT CLAIM. Not a customer story, not a testimonial, no
+         traffic or conversion number. "Example site created with Let's Get
+         Quoted" is the whole claim, and it is one we can stand behind by
+         pointing at the URL. */
+      afterBenefits={
+        <ExampleSiteShowcase
+          eyebrow="Example site created with Let’s Get Quoted"
+          title="From three answers to a complete contractor website."
+          body="See how Lawn & Order brings its services, project gallery, trust signals and instant estimate together in one connected site."
+          linkLabel="Visit the Lawn & Order example site ↗"
+          support={{
+            src: '/media/website-builder/lawn-and-order/lawn-and-order-project-gallery.jpg',
+            alt: 'Lawn & Order project gallery showing landscaping service examples.',
+            label: 'Generated together',
+            caption:
+              'Service pages, project galleries, reviews and instant estimates—generated as one connected site.',
+            width: 1425,
+            height: 891,
+          }}
+        />
+      }
       storyId="how-it-works"
       stepsEyebrow="Three answers. One complete site."
       stepsTitle="Go from “we need a website” to ready for business."

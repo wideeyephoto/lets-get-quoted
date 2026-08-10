@@ -1,0 +1,386 @@
+/* The example-site band on /features/website-builder.
+ *
+ * WHERE IT SITS, which decides how it looks. Between .detail-story (cream) and
+ * .detail-process (#07131d), so it takes the cream ground and continues the
+ * light passage — the argument and then the proof of it, as one chapter. Making
+ * it dark would have merged it into the process band below and cost the page
+ * its alternation.
+ *
+ * THE ORANGE IS #b8430f AND NOT var(--orange). That is not a preference. This
+ * codebase already measured it: #ff6a24 on #f5f0e7 is 2.50:1, well under the
+ * 4.5:1 that text this size needs, and #b8430f on the same ground is 4.85:1 in
+ * the same hue family. See the trust-strip note in flagship.module.css.
+ *
+ * Every other value is a flagship token or a colour already used on the cream
+ * band: --cream, --ink, #6f746f for body copy, #d1c9bd for hairlines. Nothing
+ * new is introduced and flagship.module.css — which is GENERATED — is untouched.
+ */
+
+.band {
+  /* Matches the rhythm of the bands either side without equalling them: this is
+     a sub-chapter of the story above, not a third chapter. */
+  padding: clamp(72px, 8vw, 108px) clamp(24px, 6vw, 104px);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(255, 106, 36, 0.08), transparent 30%),
+    var(--cream, #f5f0e7);
+  color: var(--ink, #07131d);
+}
+
+/* ---- the copy ------------------------------------------------------------ */
+
+.head {
+  max-width: 720px;
+}
+
+.eyebrow {
+  margin: 0 0 20px;
+  color: #b8430f;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.4;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+}
+
+.head h2 {
+  margin: 0;
+  /* Deliberately under .detail-story h2's clamp(42px,4.8vw,72px). */
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.05;
+  letter-spacing: -1.8px;
+  text-wrap: balance;
+}
+
+.body {
+  margin: 22px 0 0;
+  max-width: 60ch;
+  color: #6f746f;
+  font-size: 16px;
+  line-height: 1.72;
+}
+
+/* EVERY CONTROL BELOW IS SCOPED UNDER .band, and that is load-bearing rather
+   than tidy. The flagship shell styles the elements themselves — `.root
+   :global(button) { color: inherit }` and `.root :global(a) { color: inherit }`
+   — which at (0,1,1) outranks a lone module class at (0,1,0). A bare .playBtn
+   lost its colour to the band's ink and rendered dark-on-dark over the video.
+   The descendant form is (0,2,1) and wins honestly, without !important.
+   Focus rings need it too: `.root :global(*:focus-visible)` is (0,2,0), so the
+   ring is written at (0,3,0) — and it is #b8430f rather than the shell's
+   --yellow, which is unreadable on cream. */
+
+.band .visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  /* 44px of target including the padding, not 44px of underlined words. */
+  min-height: 44px;
+  margin-top: 22px;
+  padding: 0.55rem 1.05rem;
+  border: 1px solid rgba(184, 67, 15, 0.42);
+  border-radius: 999px;
+  color: #b8430f;
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.band .visit:hover {
+  border-color: #b8430f;
+  background: rgba(184, 67, 15, 0.07);
+}
+
+/* ---- the switcher -------------------------------------------------------- */
+
+.stageWrap {
+  margin-top: clamp(32px, 4vw, 48px);
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #d1c9bd;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.band .tab {
+  min-width: 104px;
+  /* 44px including padding — the brief's floor, and a phone's. */
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #5c6560;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+.band .tab[data-on='true'] {
+  background: var(--ink, #07131d);
+  color: #f5f0e7;
+}
+.band .tab:hover[data-on='false'] {
+  color: var(--ink, #07131d);
+}
+
+/* One visible focus treatment for every control in the band. Drawn outside the
+   element so a dark tab on a dark pill still shows it. */
+.band .tab:focus-visible,
+.band .visit:focus-visible,
+.band .playBtn:focus-visible {
+  outline: 2px solid #b8430f;
+  outline-offset: 3px;
+}
+
+.panel {
+  margin-top: clamp(20px, 2.5vw, 30px);
+}
+.panel[hidden] {
+  display: none;
+}
+
+/* ---- the two frames ------------------------------------------------------ */
+
+/* A browser window, drawn rather than screenshotted, so the capture keeps its
+   own pixels and the chrome stays crisp at any width. */
+.browser {
+  position: relative;
+  /* A DEFINITE width, not fit-content. The stage inside is sized in percent, so
+     shrink-to-fit made the two depend on each other and the whole frame
+     collapsed to the width of the address bar's text. */
+  width: min(100%, 980px);
+  overflow: hidden;
+  border: 1px solid #cfc7ba;
+  border-radius: 16px;
+  background: var(--ink, #07131d);
+  box-shadow: 0 26px 60px -32px rgba(7, 19, 29, 0.5);
+}
+
+.browserBar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  height: 34px;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid rgba(174, 199, 211, 0.17);
+  background: #0d1d29;
+}
+.dots {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+.dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(174, 199, 211, 0.28);
+}
+.url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #9db0bd;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+}
+
+/* The phone. Proportionate to the capture rather than to a device — the clip is
+   464x968, so the frame is that shape plus a bezel. */
+/* Left-aligned, not centred. The tabs, the copy and the desktop frame all share
+   the band's left edge, and a centred phone made switching tabs slide the media
+   sideways under the cursor that had just switched it. It re-centres below
+   720px, where the band is narrow enough that a left-aligned phone leaves an
+   odd margin on one side only. */
+.phone {
+  position: relative;
+  width: fit-content;
+  padding: 10px;
+  border: 1px solid #cfc7ba;
+  border-radius: 34px;
+  background: var(--ink, #07131d);
+  box-shadow: 0 26px 60px -32px rgba(7, 19, 29, 0.5);
+}
+.speaker {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 52px;
+  height: 4px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(174, 199, 211, 0.25);
+}
+
+/* ---- the stage ----------------------------------------------------------- */
+
+/* THE SHAPE IS SET BEFORE ANYTHING LOADS, which is what keeps the section from
+   jumping. aspect-ratio on a known width does that without a padding hack.
+   The two sizes are chosen so both land near 610px tall at desktop widths —
+   switching tabs then barely moves the page under the visitor's cursor. */
+.stageDesktop,
+.stageMobile {
+  position: relative;
+  overflow: hidden;
+  background: #07131d;
+}
+.stageDesktop {
+  width: 100%;
+  aspect-ratio: 1424 / 890;
+}
+/* Sized in vw and px rather than in percent, so the phone frame around it can
+   stay shrink-to-fit without the same circularity. */
+.stageMobile {
+  width: min(292px, 62vw);
+  aspect-ratio: 464 / 968;
+  border-radius: 24px;
+}
+
+.still,
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* The stage is cut to the capture's own ratio, so this crops nothing — it is
+     here to absorb sub-pixel rounding rather than to fit a mismatch. */
+  object-fit: cover;
+  display: block;
+}
+/* The video sits over the still and is transparent until it has a source, so
+   the frame shows the screenshot from the first paint and never an empty box. */
+.video {
+  z-index: 1;
+}
+
+.band .playBtn {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(245, 240, 231, 0.28);
+  border-radius: 999px;
+  /* Its own ground, because it sits over a photograph whose colour it cannot
+     know. 12.9:1 against #f5f0e7 text. */
+  background: rgba(7, 19, 29, 0.78);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #f5f0e7;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.band .playBtn:hover {
+  background: rgba(7, 19, 29, 0.92);
+}
+/* Clear of the phone's 10px bezel AND the stage's 24px corner radius, which the
+   browser frame does not have at the bottom. */
+.band .phone .playBtn {
+  left: 22px;
+  bottom: 22px;
+}
+
+/* Two glyphs drawn rather than typed: ▶/⏸ render as emoji on some platforms and
+   as a missing box on others. */
+.band .playBtn span[data-icon] {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 11px;
+  background: currentColor;
+}
+.band .playBtn span[data-icon='play'] {
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.band .playBtn span[data-icon='pause'] {
+  clip-path: polygon(0 0, 32% 0, 32% 100%, 0 100%, 68% 0, 100% 0, 100% 100%, 68% 100%);
+}
+
+/* ---- the still that does not move ---------------------------------------- */
+
+/* Capped at the video's own width and given the smaller share of it. The still
+   is the supporting evidence, not a second headline act — at full band width it
+   came out larger than the walkthrough above it and swapped the two over. */
+.support {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.68fr);
+  align-items: center;
+  gap: clamp(24px, 3.5vw, 48px);
+  max-width: 980px;
+  margin: clamp(40px, 5vw, 64px) 0 0;
+  padding-top: clamp(32px, 4vw, 48px);
+  border-top: 1px solid #d1c9bd;
+}
+
+.supportImg {
+  width: 100%;
+  height: auto;
+  border: 1px solid #cfc7ba;
+  border-radius: 14px;
+  background: #07131d;
+}
+
+.supportCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  color: #6f746f;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.supportLabel {
+  color: #b8430f;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+}
+
+/* ---- narrower ------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  /* Copy above media is already the source order, so stacking is only the
+     support figure. */
+  .support {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .browser,
+  .phone {
+    /* Centred, and never wider than the band's content box — a phone frame that
+       overhangs is a horizontal scrollbar on the whole page. */
+    margin-inline: auto;
+  }
+  .stageMobile {
+    width: min(292px, 68vw);
+  }
+  .tabs {
+    display: flex;
+    width: 100%;
+  }
+  /* .band-scoped for the same reason as the base rules — a media query adds no
+     specificity, so a bare .tab here would simply lose to .band .tab. */
+  .band .tab {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band .tab,
+  .band .visit {
+    transition: none;
+  }
+}
