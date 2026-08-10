@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ExampleFrame, FeatureDetailLayout } from '@/components/marketing';
+import { ExampleFrame, FeatureDetailLayout, ShotSlider, type Shot } from '@/components/marketing';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   DEFAULT_PLAN,
@@ -32,6 +32,36 @@ const STARTING_RATE = FEE_TIERS[0].rate;
 // argue about price twice before the reader has seen any of the work.
 const HERO_NOTE =
   'Everything below is included. Not a tier, not an add-on, and not a module you unlock later — it is one product and this is what is in it.';
+
+/* ------------------------------------------------------------------------- */
+/* The hero: two real screens.                                                */
+/*                                                                            */
+/* This page used to open on the hand-built job record below, which makes the  */
+/* page's argument well but is still divs shaped like software at the top of a */
+/* page selling software. These are captures of the running app. The drawing   */
+/* has not been thrown away — it now sits where that argument is made.         */
+/*                                                                            */
+/* The two do not share a shape and are not made to: ShotSlider contains       */
+/* rather than crops, so the monitor render keeps its corners. Intrinsic       */
+/* dimensions are the files' own, so next/image reserves the right box.        */
+/* ------------------------------------------------------------------------- */
+const HERO_SHOTS: Shot[] = [
+  {
+    src: '/features/back-office-quote.jpg',
+    label: 'Sending a quote',
+    width: 900,
+    height: 551,
+    mobile: { src: '/features/back-office-quote-mobile.jpg', width: 426, height: 700 },
+    alt: 'The quote builder: itemized line items with a recurring plan, the running quote total, estimated hours, and payment terms — pay in full, deposit plus balance, or a payment plan — with the text the client will receive shown underneath.',
+  },
+  {
+    src: '/features/back-office-insights.png',
+    label: 'Insights',
+    width: 1000,
+    height: 684,
+    alt: 'The Insights screen on a monitor: what you kept over the last 90 days, revenue against costs, cash position and how long invoices have been owed, average job value, arrival reliability and customer responsiveness.',
+  },
+];
 
 /* ------------------------------------------------------------------------- */
 /* The hero panel: one job, part-way through the work.                        */
@@ -467,14 +497,7 @@ export default function BackOfficePage() {
       }
       lede="Create the quote, book the work, assign the crew, collect payment and follow up without rebuilding the same customer information in five different systems."
       heroNote={HERO_NOTE}
-      demo={
-        <ExampleFrame
-          label="One job record, part-way through the work"
-          note="An invented job with invented figures, shown to make one point: the customer, the scope, the conversation and the money are bands of a single record, not five systems kept in step by hand."
-        >
-          <JobRecordExample />
-        </ExampleFrame>
-      }
+      demo={<ShotSlider shots={HERO_SHOTS} label="Back office screens" />}
       proof={[
         { title: 'Quotes + e-sign', body: 'Professional, itemized and ready for approval.' },
         { title: 'Scheduling + crews', body: 'Keep the promise and the people connected.' },
@@ -516,6 +539,29 @@ export default function BackOfficePage() {
         note: `No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you and falls as your volume grows; card processing is Stripe’s standard ${STRIPE_PROCESSING_NOTE}.`,
       }}
     >
+      {/* THE DRAWING, WHERE ITS ARGUMENT IS ACTUALLY MADE.
+          This was the hero. It is the only thing on the page that shows all
+          five bands of one record at once — which is the claim the capability
+          list below then itemises — so it belongs immediately before that list
+          rather than above a heading that has not made the claim yet. */}
+      <section className="section-block" aria-labelledby="back-office-record">
+        <div className={styles.capIntro}>
+          <p className="eyebrow">One record, five bands</p>
+          <h2 id="back-office-record">The customer, the scope, the talking and the money.</h2>
+          <p>
+            Not five systems kept in step by hand. Everything below is one object that moves
+            through stages, and this is what it looks like part-way through the work.
+          </p>
+        </div>
+
+        <ExampleFrame
+          label="One job record, part-way through the work"
+          note="An invented job with invented figures, shown to make one point: the customer, the scope, the conversation and the money are bands of a single record, not five systems kept in step by hand."
+        >
+          <JobRecordExample />
+        </ExampleFrame>
+      </section>
+
       <section className="section-block" aria-labelledby="back-office-capabilities">
         <div className={styles.capIntro}>
           <p className="eyebrow">Everything on the record</p>

@@ -6386,3 +6386,156 @@
   .root :global(.hiq-button) { transition: none; }
   .root :global(.hiq-ticket):hover { transform: none; }
 }
+/* ===========================================================================
+   §106 — A FEATURE PAGE'S HERO CAN SHOW THE ACTUAL SCREEN
+
+   /features/back-office opened on a hand-built drawing of a job record. It is
+   a good drawing and it makes the page's argument — that the customer, the
+   scope, the conversation and the money are one object — but it is still divs
+   shaped like software, at the top of a page selling software. The drawing has
+   moved down to where that argument is actually made; the hero shows two real
+   screens.
+
+   CONTAINED, NOT COVERED, which is the whole reason this is not the homepage's
+   slider. That one fits three flat captures to one 1600x1000 canvas and crops
+   with "cover", which is right when a script has already normalised the set.
+   Here the two shots are a flat capture of the quote builder and a transparent
+   monitor render, and "cover" takes the corners off the monitor. Both are
+   contained on a ground the colour of the app's own chrome instead: nothing is
+   cut, they agree on a frame without agreeing on a shape, and the transparent
+   one sits on a surface rather than on whatever is behind the section.
+   =========================================================================== */
+
+.root :global(.shot-slider) { position: relative; }
+
+/* Sized by aspect ratio rather than by the image, so swapping a screenshot for
+   one a few pixels different cannot shift the hero. */
+.root :global(.shot-frame) {
+  position: relative;
+  aspect-ratio: 1600 / 1000;
+  overflow: hidden;
+  border: 1px solid rgba(174, 199, 211, .18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 106, 36, .07), transparent 58%),
+    #0a1017;
+  box-shadow:
+    0 40px 90px -30px rgba(0, 0, 0, .7),
+    inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+/* The <picture> is what stacks and cross-fades; the <img> inside it is what
+   gets contained. Setting both on one element would mean the source-switching
+   wrapper had no box of its own. */
+.root :global(.shot-pic) {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  transition: opacity .55s ease;
+}
+.root :global(.shot-pic[data-on="true"]) { opacity: 1; }
+.root :global(.shot-img) {
+  width: 100%;
+  height: 100%;
+  padding: clamp(10px, 1.6vw, 20px);
+  object-fit: contain;
+}
+
+/* ---- the dots, over the frame -------------------------------------------
+
+   Same treatment as the homepage slider's (§93): the screen names are doing
+   real work as accessible labels, but a second row of named controls under a
+   screenshot competes with the screenshot. The dot is drawn INSIDE a 44px
+   button rather than being the target itself. */
+.root :global(.shot-tabs) {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 6px;
+  border-radius: 0 0 18px 18px;
+  /* A wash, so the dots hold against a pale screenshot without drawing a bar
+     across the image. */
+  background: linear-gradient(to top, rgba(6, 11, 17, .55), transparent);
+  pointer-events: none;
+}
+.root :global(.shot-tabs button) {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  /* The label is the accessible name; it must not be painted. */
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  pointer-events: auto;
+}
+.root :global(.shot-tabs i) {
+  position: relative;
+  display: block;
+  width: 9px;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .42);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+  transition: background .2s ease, transform .2s ease;
+}
+.root :global(.shot-tabs button:hover i) { background: rgba(255, 255, 255, .7); transform: scale(1.15); }
+.root :global(.shot-tabs button[data-on="true"] i) { background: rgba(255, 106, 36, .35); transform: scale(1.25); }
+/* The dot doubles as the dwell timer, so the rotation is legible rather than
+   something that just happens to you. Shares the homepage slider's keyframe. */
+.root :global(.shot-tabs button[data-on="true"] i s) {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--orange);
+  transform: scale(0);
+  animation-name: showcaseDwell;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* The name of the screen you are looking at, under the frame. The dots say
+   where you are; this says what it is, which the dots deliberately do not. */
+.root :global(.shot-caption) {
+  margin: 12px 0 0;
+  color: #9db0bd;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* Paused on hover, and never animated for somebody who asked for less motion.
+   In both cases the dot is simply filled: a half-filled timer that is not
+   counting is a lie about what is about to happen. */
+.root :global(.shot-slider:hover .shot-tabs button[data-on="true"] i s) { animation: none; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.shot-img) { transition: none; }
+  .root :global(.shot-tabs i) { transition: none; }
+  .root :global(.shot-tabs button[data-on="true"] i s) { animation: none; transform: scale(1); }
+}
+
+/* ON A PHONE THE FRAME TURNS PORTRAIT.
+   A desktop capture contained in a 358px-wide landscape box renders the quote
+   builder's line items about four pixels tall — a picture of software rather
+   than a readable screen. Below 700px the frame is 3:4 and any shot carrying a
+   phone capture serves that instead (see Shot.mobile), which is legible at the
+   width it actually gets. A shot without one is simply centred in the taller
+   box; a monitor render with air around it reads as deliberate, whereas the
+   same render cropped to fill would lose its corners. */
+@media (max-width: 700px) {
+  .root :global(.shot-frame) { aspect-ratio: 3 / 4; }
+  .root :global(.shot-img) { padding: 8px; }
+  .root :global(.shot-caption) { font-size: 11px; }
+}

@@ -19,6 +19,9 @@ export { MARKETING_PAGE_CLASS, MARKETING_MAIN_ID } from './marketing-page';
 export { default as ExampleFrame } from './example-frame';
 export type { ExampleFrameProps } from './example-frame';
 
+export { default as ShotSlider } from './shot-slider';
+export type { Shot } from './shot-slider';
+
 export { default as PriceZeroDial } from './price-zero-dial';
 export type { PriceZeroDialProps } from './price-zero-dial';
 
