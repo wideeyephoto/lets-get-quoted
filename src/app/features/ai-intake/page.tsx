@@ -178,6 +178,7 @@ export default function AIIntakePage() {
          you to it and the signup is the second. */
       primary={{ label: 'Try a sample intake', href: '#sample-intake' }}
       secondary={{ label: 'Build my free site', href: APP_SIGNUP_URL }}
+      tertiary={{ label: 'See scored leads in the demo', href: '/demo/leads' }}
       demo={
         <ExampleFrame
           label="One request, from two words to a job you can quote"

@@ -45,6 +45,7 @@ export default function SchedulingFeaturePage() {
       lede="Send the times you can actually do. The customer picks one from a text, it lands on the calendar, and the crew is told — without three voicemails and a date somebody wrote on a different calendar."
       heroNote="Arrival windows rather than a minute that will be wrong. Weather is flagged for you to decide on — nothing here ever moves a job by itself."
       secondary={{ label: 'What the calendar handles', href: '#capabilities' }}
+      tertiary={{ label: 'Open the live calendar', href: '/demo/schedule' }}
       demo={
         <ExampleFrame
           label="Three windows sent by text, and the one they picked."

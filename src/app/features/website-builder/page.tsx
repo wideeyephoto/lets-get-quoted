@@ -163,6 +163,13 @@ export default function WebsiteBuilderPage() {
         </ExampleFrame>
       }
       secondary={{ label: 'See how it works', href: '#how-it-works' }}
+      /* The smallest ask on the page, and the one most visitors arrive
+         wanting. /demo/sites rather than /themes/<one template>: that route
+         is a live picker — choose a template, tap an accent, watch a real
+         preview redraw — and it loads the real /themes route in its frame,
+         so "preview templates" is what it does rather than a single
+         example labelled as a gallery. */
+      tertiary={{ label: 'Preview site templates', href: '/demo/sites' }}
       proof={[
         {
           title: 'Minutes, not weeks',

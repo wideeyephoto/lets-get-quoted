@@ -218,6 +218,7 @@ export default function QuickStopsPage() {
          are the ones they came for. */
       primary={{ label: 'Start free with Quick Stops' }}
       secondary={{ label: 'See the 3-step flow', href: '#how-it-works' }}
+      tertiary={{ label: 'See Quick Stops in the demo', href: '/demo/quick-stops' }}
       demo={
         <ExampleFrame
           label="An offer you have sent, waiting on payment"

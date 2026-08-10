@@ -44,6 +44,7 @@ export default function QuotesFeaturePage() {
       lede="Build an itemized quote from your own price book, offer the upgrades you actually want to sell, and let the homeowner approve it from the link — no printer, no PDF, no third follow-up call."
       heroNote="The draft is priced from the services you set up. Anything priced outside your book is flagged before it goes out, and the approval is recorded with the name and the moment."
       secondary={{ label: 'What the record keeps', href: '#capabilities' }}
+      tertiary={{ label: 'See a job record in the demo', href: '/demo/jobs' }}
       demo={
         <ExampleFrame
           label="A quote as the homeowner sees it, with one upgrade taken."

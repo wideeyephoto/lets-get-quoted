@@ -125,6 +125,7 @@ export default function ClientPortalPage() {
          supporting value, and the note under the buttons still says so. */
       primary={{ label: 'Start free' }}
       secondary={{ label: 'See the contractor and customer views', href: '#one-job' }}
+      tertiary={{ label: 'See the live message thread', href: '/demo/messages' }}
       proof={[
         { title: 'Two-way texting', body: 'Replies stay connected to the right job.' },
         { title: 'A unique job portal', body: 'One customer view for every project.' },

@@ -229,3 +229,63 @@ describe('the shell', () => {
     expect(SHELL).toContain('href="/features"');
   });
 });
+
+/**
+ * THE THIRD HERO BUTTON: "show me".
+ *
+ * The two that were there are "sign up" and "read on". Neither is the smallest
+ * ask on the page, and the route to the live demo of the thing being described
+ * was the /demo index and then the right tab.
+ *
+ * WHY THE LABEL IS CHECKED AGAINST THE DESTINATION. A button that 200s but
+ * lands on an adjacent screen is worse than no button, because the
+ * disappointment is what the visitor remembers. /features/payments deliberately
+ * has none: no demo screen IS payments — the money in /demo/cash-flow is the
+ * forecast, and quotes and deposits live on /demo/jobs, which two other pages
+ * already point at for what it actually shows.
+ */
+describe('every feature hero offers the live demo of its own feature', () => {
+  const DEMOS: Record<string, string> = {
+    'website-builder': '/demo/sites',
+    'ai-intake': '/demo/leads',
+    'quick-stops': '/demo/quick-stops',
+    'client-portal': '/demo/messages',
+    'back-office': '/demo/jobs',
+    quotes: '/demo/jobs',
+    scheduling: '/demo/schedule',
+    crew: '/demo/crew',
+    recurring: '/demo/recurring',
+    'cash-flow': '/demo/cash-flow',
+    reviews: '/demo/reviews',
+  };
+
+  it.each(Object.entries(DEMOS))('/features/%s -> %s', (slug, href) => {
+    const source = page(slug);
+    const match = source.match(/tertiary=\{\{ label: '([^']+)', href: '([^']+)' \}\}/);
+    expect(match, `${slug} has no tertiary hero action`).toBeTruthy();
+    expect(match![2]).toBe(href);
+    expect(match![1].length).toBeGreaterThan(8);
+  });
+
+  it.each(Object.values(DEMOS))('%s is a route that exists', (href) => {
+    expect(existsSync(`src/app${href}/page.tsx`), href).toBe(true);
+  });
+
+  it('leaves /features/payments without one, on purpose', () => {
+    // If a demo screen ever becomes payments, this is the test to delete.
+    expect(page('payments')).not.toContain('tertiary=');
+  });
+
+  it('is a slot on the shared layout, not markup copied into twelve pages', () => {
+    const layout = strip(read('src/components/marketing/feature-detail-layout.tsx'));
+    expect(layout).toContain('tertiary?: { label: string; href: string } | null;');
+    expect(layout).toContain('{tertiary ? (');
+    // Plain <a>: next/link would prefetch a heavy demo route on hover from
+    // every feature page, for a button most visitors never press.
+    expect(layout).toMatch(/\{tertiary \? \(\s*<a className="button secondary"/);
+  });
+
+  it('passes through the suite shell too', () => {
+    expect(SHELL).toContain('tertiary?: { label: string; href: string } | null;');
+  });
+});

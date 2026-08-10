@@ -39,6 +39,8 @@ export type SuiteFeaturePageProps = {
   demo?: ReactNode;
   primary?: { label: string; href?: string };
   secondary?: { label: string; href?: string } | null;
+  /** The live demo screen for this feature. See FeatureDetailLayout. */
+  tertiary?: { label: string; href: string } | null;
   proof: FeatureProofPoint[];
   story: { eyebrow: string; title: ReactNode; body: ReactNode };
   benefits: FeatureDetailCard[];

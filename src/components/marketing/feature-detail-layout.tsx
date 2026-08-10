@@ -26,6 +26,19 @@ export type FeatureDetailLayoutProps = {
   demo?: ReactNode;
   primary?: { label: string; href?: string };
   secondary?: { label: string; href?: string } | null;
+  /**
+   * A third hero action, for the live demo of the thing the page is about.
+   *
+   * The two existing buttons are "sign up" and "read on". Neither of them is
+   * "show me", which is the smallest ask on the page and the one closest to
+   * what most visitors arrive wanting — and the route to it was the /demo index
+   * and then the right tab.
+   *
+   * Deliberately absent on the pages where no demo screen IS the feature: a
+   * third button that lands somewhere adjacent is worse than two, because the
+   * disappointment is what the visitor remembers.
+   */
+  tertiary?: { label: string; href: string } | null;
   proof: FeatureProofPoint[];
   /**
    * A section between the proof strip and the story.
@@ -99,6 +112,7 @@ export default function FeatureDetailLayout({
   demo,
   primary,
   secondary,
+  tertiary,
   proof,
   afterProof,
   story,
@@ -145,6 +159,13 @@ export default function FeatureDetailLayout({
             {secondarySpec ? (
               <a className="button secondary" href={secondarySpec.href ?? `#${storyId}`}>
                 {secondarySpec.label}
+              </a>
+            ) : null}
+            {/* next/link would prefetch a demo route on hover from every feature
+                page. It is a heavy screen and most visitors will not press it. */}
+            {tertiary ? (
+              <a className="button secondary" href={tertiary.href}>
+                {tertiary.label}
               </a>
             ) : null}
           </div>

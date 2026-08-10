@@ -570,6 +570,7 @@ export default function BackOfficePage() {
       heroNote={HERO_NOTE}
       primary={{ label: 'Start free' }}
       secondary={{ label: 'See a job from quote to payment', href: '#back-office-record' }}
+      tertiary={{ label: 'Open a live job record', href: '/demo/jobs' }}
       demo={<ShotSlider shots={HERO_SHOTS} label="Back office screens" />}
       proof={[
         { title: 'Quotes + e-sign', body: 'Professional, itemized and ready for approval.' },
