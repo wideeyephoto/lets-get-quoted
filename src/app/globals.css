@@ -18525,8 +18525,10 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
    than one at a time dropping under the status text on its own. */
 .bset-master-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .bset-how,
+.bset-open,
 .bset-setup { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
 .bset-how svg,
+.bset-open svg,
 .bset-setup svg { width: 0.95rem; height: 0.95rem; }
 
 /* The foot of the page: the way back up, since every path through this page

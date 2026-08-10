@@ -248,8 +248,15 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
               "preview" on the thing they had just configured and found no sign
               of it. There is no unpublished preview mode to send them to, so
               the label stops claiming one. */}
+          {/* bset-OPEN, not bset-preview. That name already belonged to the
+              right-rail preview CARD in BookingSetup — a section with a heading
+              and a phone mock — so this button was inheriting 1.2rem of
+              padding, a 2px border and an 18px radius, and rendering as a card
+              in a row of buttons. Its icon came out oversized for the same
+              reason: the 0.95rem svg cap is on .bset-setup, which this never
+              had. Two symptoms, one collision. */}
           {bookingUrl ? (
-            <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="btn secondary bset-preview">
+            <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="btn secondary bset-open">
               <Icon name="external" />
               {live ? 'Preview what customers see' : 'View booking page — Quick Stops hidden'}
             </a>
