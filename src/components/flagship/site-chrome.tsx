@@ -79,8 +79,15 @@ function useSignedIn(): boolean {
  * The header used to say "Product" where the footer said "Features" and the
  * page it leads to is titled "Features" — three names for one destination.
  */
+/* WEBSITE SITS NEXT TO FEATURES, not inside it. It is a subset of Features and
+   is deliberately promoted out of it: the site is the thing most people arrive
+   looking for, the homepage's own headline is about it, and until now the only
+   way to reach that page from the chrome was to go to Features first and find
+   it among five cards. Second rather than first, so the general list still
+   reads before the specific offer. */
 const NAV = [
   ['/features', 'Features'],
+  ['/features/website-builder', 'Website'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],
   ['/pricing', 'Pricing'],

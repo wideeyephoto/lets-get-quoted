@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isOwnChromeRoute, OWN_CHROME_MARKETING_ROUTES } from '@/lib/marketing-chrome';
 
@@ -116,5 +116,51 @@ describe('isOwnChromeRoute', () => {
     expect(isOwnChromeRoute('/home-classic')).toBe(true);
     expect(isOwnChromeRoute('/home-editorial')).toBe(true);
     expect(isOwnChromeRoute('/home-compact')).toBe(true);
+  });
+});
+
+/**
+ * ONE NAV LIST, THREE SURFACES.
+ *
+ * The header, the mobile drawer and the footer all render the same NAV array —
+ * which is the whole reason a link can be added in one place and appear in all
+ * three. It is also why a regression here is a regression everywhere at once,
+ * and why the desktop nav being right proves nothing about the phone: the
+ * header's <nav> is display:none below 1024px and the drawer replaces it.
+ *
+ * Measured at eight widths from 390 to 1440 when Website was added: six items
+ * in the header down to 1100, six in the drawer below that, seven in the footer
+ * (it appends Sign in), no overlap with the brand or the CTA at any of them.
+ */
+describe('the marketing nav', () => {
+  const CHROME = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8').replace(/\r\n/g, '\n');
+  const NAV_BLOCK = CHROME.slice(CHROME.indexOf('const NAV = ['), CHROME.indexOf('] as const;'));
+  const entries = [...NAV_BLOCK.matchAll(/\['([^']+)', '([^']+)'\]/g)].map((m) => ({ href: m[1], label: m[2] }));
+
+  it('is one list, not three', () => {
+    // Three separate arrays is how the header once said "Product" where the
+    // footer said "Features" and the page was titled "Features".
+    expect(entries.length).toBeGreaterThan(4);
+    expect(CHROME.match(/NAV\.map\(/g)?.length).toBe(3);
+  });
+
+  it('carries a Website link to the page about websites', () => {
+    const website = entries.find((entry) => entry.label === 'Website');
+    expect(website, 'no Website entry in NAV').toBeDefined();
+    expect(website?.href).toBe('/features/website-builder');
+  });
+
+  it('points every entry at a route that exists on disk', () => {
+    for (const { href, label } of entries) {
+      expect(existsSync(`src/app${href}/page.tsx`), `${label} -> ${href}`).toBe(true);
+    }
+  });
+
+  it('renders that one list in the header, the drawer and the footer', () => {
+    expect(CHROME).toContain('<nav aria-label="Main navigation">');
+    expect(CHROME).toContain('<div className="site-menu" id="site-menu" hidden={!open}>');
+    expect(CHROME).toContain('className="footer-links"');
+    // A closed drawer must be out of the tab order, not merely invisible.
+    expect(CHROME).toContain('hidden={!open}');
   });
 });
