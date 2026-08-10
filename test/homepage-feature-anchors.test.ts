@@ -50,7 +50,10 @@ describe('homepage links into /features', () => {
   });
 
   it('points every fragment at an id that exists on the features page', () => {
-    expect(fragments.length).toBeGreaterThan(0);
+    // NOT "there is at least one fragment" any more. The seven suite cards were
+    // the only fragment links the homepage had, and each of them now has a page
+    // of its own — so zero is the correct answer here, and the assertion is
+    // that any fragment which SURVIVES still resolves.
     expect(fragments.filter((id) => !featureIds.includes(id))).toEqual([]);
   });
 
@@ -59,9 +62,24 @@ describe('homepage links into /features', () => {
     expect(missing).toEqual([]);
   });
 
-  it('keeps the four capability groups reachable from the suite cards', () => {
+  it('gives every suite card a page of its own', () => {
+    // These used to land on a capability group on /features, or part-way down
+    // /features/back-office. A card that promises "See payroll, bills and
+    // customer money before it moves" and arrives at a heading called Money in
+    // a list of seventeen is a card that answered a different question.
+    const suite = HOME.slice(HOME.indexOf('const suite:'), HOME.indexOf('];', HOME.indexOf('const suite:')));
+    const hrefs = [...suite.matchAll(/"(\/features\/[a-z-]+)"/g)].map((m) => m[1]);
+    expect(hrefs).toHaveLength(7);
+    for (const href of hrefs) {
+      expect(href, href).not.toContain('#');
+      expect(existsSync(`src/app${href}/page.tsx`), href).toBe(true);
+    }
+  });
+
+  it('keeps the four capability groups on the features page itself', () => {
+    // Still the anchors the stage tabs use, and still reachable by URL — the
+    // homepage just no longer aims a specific promise at a general one.
     for (const id of ['planning-and-scheduling', 'automations', 'payments', 'website-and-growth']) {
-      expect(fragments).toContain(id);
       expect(featureIds).toContain(id);
     }
   });

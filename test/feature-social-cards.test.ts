@@ -14,7 +14,21 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
  * it renders, and it is only visible in somebody else's Slack.
  */
 
-const SLUGS = ['website-builder', 'ai-intake', 'quick-stops', 'client-portal', 'back-office'];
+/** The five flagship pages, and the seven suite pages the homepage links at. */
+const SLUGS = [
+  'website-builder',
+  'ai-intake',
+  'quick-stops',
+  'client-portal',
+  'back-office',
+  'quotes',
+  'scheduling',
+  'crew',
+  'payments',
+  'recurring',
+  'cash-flow',
+  'reviews',
+];
 
 const source = (slug: string) =>
   readFileSync(`src/app/features/${slug}/page.tsx`, 'utf8').replace(/\r\n/g, '\n');
@@ -80,7 +94,13 @@ describe('the cards themselves', () => {
     const script = readFileSync('scripts/build-feature-og.mjs', 'utf8');
     const cards = script.slice(script.indexOf('const CARDS'), script.indexOf('/** The real mark'));
     expect(cards).not.toMatch(/\b\d+[,\d]*\+? (contractors|customers|users|businesses)\b/i);
-    expect(cards).not.toMatch(/trusted by|rated|reviews|award/i);
+    // The CLAIM shape, not the noun. "reviews" used to be banned outright, which
+    // stopped being right the moment a page was about them: /features/reviews is
+    // titled "More reviews, without gaming the reviews." What must never appear
+    // is a count, a score or a badge we cannot substantiate.
+    expect(cards).not.toMatch(/trusted by|award[- ]winning/i);
+    expect(cards).not.toMatch(/\b\d[\d,]*\+?\s*(reviews|ratings|stars)\b/i);
+    expect(cards).not.toMatch(/\brated\s*\d|\b\d(\.\d)?\s*(out of|\/)\s*5\b/i);
   });
 });
 

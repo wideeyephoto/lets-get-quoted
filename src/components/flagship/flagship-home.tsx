@@ -143,8 +143,12 @@ const features: Feature[] = [
  * after showing it working is not reinforcement, it is the reader wondering
  * whether they missed something. The section above is the version that stays.
  *
- * Every card is a link now. Four go to the capability groups on /features
- * (which is what those groups are for) and two to the pages that go deeper.
+ * EVERY CARD NOW HAS A PAGE OF ITS OWN. They used to land on a capability group
+ * on /features or on an anchor part-way down /features/back-office — so a
+ * visitor who read "Cash flow · See payroll, bills and customer money before it
+ * moves" and pressed it arrived at a heading called Money, in a list of
+ * seventeen capabilities, on a page about something broader. The card made a
+ * specific promise and the destination answered a general one.
  */
 /** How long each product screen holds before the next one. */
 const SUITE_DWELL = 1250;
@@ -165,13 +169,13 @@ const SUITE_DWELL = 1250;
 const SUITE_ROTATE_MIN = 1024;
 
 const suite: Array<[title: string, body: string, href: string]> = [
-  ["Quotes + e-sign", "Professional, itemized quotes with optional upgrades.", "/features/back-office"],
-  ["Scheduling", "Arrival windows, capacity and weather-aware planning.", "/features#planning-and-scheduling"],
-  ["Crew + labor", "Assignments, time clock, hours and estimated pay.", "/features/back-office"],
-  ["Payments", "Deposits, balances and payment plans through Stripe.", "/features#payments"],
-  ["Recurring work", "Automatic visits, saved cards and predictable revenue.", "/features#automations"],
-  ["Cash flow", "See payroll, bills and customer money before it moves.", "/features#payments"],
-  ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing.", "/features#website-and-growth"],
+  ["Quotes + e-sign", "Professional, itemized quotes with optional upgrades.", "/features/quotes"],
+  ["Scheduling", "Arrival windows, capacity and weather-aware planning.", "/features/scheduling"],
+  ["Crew + labor", "Assignments, time clock, hours and estimated pay.", "/features/crew"],
+  ["Payments", "Deposits, balances and payment plans through Stripe.", "/features/payments"],
+  ["Recurring work", "Automatic visits, saved cards and predictable revenue.", "/features/recurring"],
+  ["Cash flow", "See payroll, bills and customer money before it moves.", "/features/cash-flow"],
+  ["Reviews + growth", "Follow-ups, review requests and AI-assisted marketing.", "/features/reviews"],
 ];
 
 /**

@@ -101,8 +101,8 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      { name: 'Scheduling', body: 'Arrival windows, capacity and the details needed to keep the promise.', href: '/features/back-office#schedule-and-crew' },
-      { name: 'Crew + labor', body: 'Assignments, time clock, hours and estimated pay.', href: '/features/back-office#schedule-and-crew' },
+      { name: 'Scheduling', body: 'Arrival windows, capacity and the details needed to keep the promise.', href: '/features/scheduling' },
+      { name: 'Crew + labor', body: 'Assignments, time clock, hours and estimated pay.', href: '/features/crew' },
     ],
   },
   {
@@ -141,7 +141,7 @@ const STAGES: Stage[] = [
     ],
     tools: [
       { name: 'Customer communication', body: 'Two-way texts and a job-specific client portal.', href: '/features/client-portal' },
-      { name: 'Recurring work', body: 'Automatic visits, saved cards and predictable revenue.', href: '/features/back-office#customer-during-and-after' },
+      { name: 'Recurring work', body: 'Automatic visits, saved cards and predictable revenue.', href: '/features/recurring' },
     ],
   },
   {
@@ -179,9 +179,9 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      { name: 'Quotes + e-sign', body: 'Itemized proposals, optional upgrades and clear approvals.', href: '/features/back-office#quote-and-approve' },
-      { name: 'Payments', body: 'Deposits, balances and payment plans through Stripe.', href: '/features/back-office#money' },
-      { name: 'Cash flow', body: 'See customer money, payroll and bills before they move.', href: '/features/back-office#back-office-cash' },
+      { name: 'Quotes + e-sign', body: 'Itemized proposals, optional upgrades and clear approvals.', href: '/features/quotes' },
+      { name: 'Payments', body: 'Deposits, balances and payment plans through Stripe.', href: '/features/payments' },
+      { name: 'Cash flow', body: 'See customer money, payroll and bills before they move.', href: '/features/cash-flow' },
     ],
   },
   {
@@ -219,7 +219,7 @@ const STAGES: Stage[] = [
       },
     ],
     tools: [
-      { name: 'Reviews + growth', body: 'Follow-ups, review requests and AI-assisted marketing.', href: '/features/back-office#customer-during-and-after' },
+      { name: 'Reviews + growth', body: 'Follow-ups, review requests and AI-assisted marketing.', href: '/features/reviews' },
       {
         name: 'Campaigns + blog',
         body: 'Email and text campaigns, a blog that publishes to your site, and what each one did.',

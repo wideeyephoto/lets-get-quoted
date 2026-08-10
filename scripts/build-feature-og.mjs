@@ -63,6 +63,51 @@ const CARDS = [
     title: 'One job record, from signed quote to final payment.',
     foot: 'Quote · Schedule · Crew · Payment · Follow-up',
   },
+  /* The seven suite pages. Same rule as above: the eyebrow and headline are the
+     page's own, so a card cannot end up advertising something the page it links
+     to does not say. */
+  {
+    slug: 'quotes',
+    eyebrow: 'QUOTES + E-SIGNATURE',
+    title: 'Send the quote. Get it signed from a phone.',
+    foot: 'Priced from your book · Optional upgrades · Signed and timestamped',
+  },
+  {
+    slug: 'scheduling',
+    eyebrow: 'SCHEDULING + ONLINE BOOKING',
+    title: 'Book the job without the phone tag.',
+    foot: 'They pick the window · Booking from your site · See a day is full',
+  },
+  {
+    slug: 'crew',
+    eyebrow: 'CREW, LABOR + THE FIELD APP',
+    title: 'Your crew gets the job. You get the real margin.',
+    foot: 'The job on their phone · Hours and materials on site · Margin before the invoice',
+  },
+  {
+    slug: 'payments',
+    eyebrow: 'PAYMENTS THROUGH STRIPE',
+    title: 'Get paid on the job, not thirty days after it.',
+    foot: 'Deposits and balances · 0% payment plans · You pay only when you get paid',
+  },
+  {
+    slug: 'recurring',
+    eyebrow: 'RECURRING + AUTO-BILLING',
+    title: 'Set the plan once. It books and bills itself.',
+    foot: 'Weekly, biweekly or monthly · A real job each visit · A real invoice each time',
+  },
+  {
+    slug: 'cash-flow',
+    eyebrow: 'CASH FLOW + INSIGHTS',
+    title: 'Find out about the bad week before it arrives.',
+    foot: 'Dated, not averaged · Confirmed vs expected · Clean books at year end',
+  },
+  {
+    slug: 'reviews',
+    eyebrow: 'REVIEWS + GROWTH',
+    title: 'More reviews, without gaming the reviews.',
+    foot: 'No star-rating gating · Sent when the job is done · Bring past customers back',
+  },
 ];
 
 /** The real mark, inlined — the renderer has no origin to fetch it from. */

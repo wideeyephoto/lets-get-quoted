@@ -155,20 +155,36 @@ describe('every tool card goes somewhere', () => {
   });
 
   it('points every fragment at an id on the page it lands on', () => {
-    // These are the capability groups on /features/back-office, which gained
-    // ids for exactly this. A rename on one side only is silent: the link still
-    // 200s and the browser scrolls nowhere.
+    // NOT "there is at least one fragment" any more. Seven of the nine tools
+    // named something that now has a page of its own — "Cash flow" used to land
+    // on a heading called Money in a list of seventeen capabilities — so the
+    // back-office anchors are no longer the destination for any of them. What
+    // is asserted is that a fragment which SURVIVES still resolves.
     const fragments = hrefs
-      .filter((href) => href.startsWith('/features/back-office#'))
-      .map((href) => href.split('#')[1]);
-    expect(fragments.length).toBeGreaterThan(0);
-    for (const id of new Set(fragments)) {
-      // Two shapes on that page: a literal id="..." on a heading's section, and
-      // `id: '...'` in the capability-group data that renders id={group.id}.
-      const found = BACK_OFFICE.includes(`id="${id}"`) || BACK_OFFICE.includes(`id: '${id}'`);
-      expect(found, `no id "${id}" on /features/back-office`).toBe(true);
+      .filter((href) => href.includes('#'))
+      .map((href) => [href.split('#')[0], href.split('#')[1]] as const);
+    for (const [path, id] of fragments) {
+      const source = readFileSync(`src/app${path}/page.tsx`, 'utf8');
+      // Two shapes: a literal id="..." on a heading's section, and `id: '...'`
+      // in group data that renders id={group.id}.
+      const found = source.includes(`id="${id}"`) || source.includes(`id: '${id}'`);
+      expect(found, `no id "${id}" on ${path}`).toBe(true);
+    }
+  });
+
+  it('leaves the back-office capability anchors intact for direct links', () => {
+    // Nothing on this page aims at them now, but they are real URLs that may
+    // have been shared, and the page still renders them.
+    for (const id of ['quote-and-approve', 'schedule-and-crew', 'money', 'customer-during-and-after']) {
+      expect(BACK_OFFICE, id).toContain(`id: '${id}'`);
     }
     expect(BACK_OFFICE).toContain('id={group.id}');
+  });
+
+  it('sends each tool to the page about that tool', () => {
+    for (const slug of ['scheduling', 'crew', 'recurring', 'quotes', 'payments', 'cash-flow', 'reviews']) {
+      expect(hrefs, slug).toContain(`/features/${slug}`);
+    }
   });
 
   it('lands those anchors clear of the fixed header', () => {

@@ -1,0 +1,307 @@
+/* The seven suite pages: /features/quotes, scheduling, crew, payments,
+ * recurring, cash-flow and reviews.
+ *
+ * ONE FILE FOR SEVEN PAGES, on purpose. These pages differ in what they say and
+ * not in how they are built, so seven modules would be seven copies of the same
+ * rules drifting apart one hover state at a time. The five flagship pages keep
+ * their own modules because each of them draws something the others do not.
+ *
+ * Same discipline as the flagship pages: the shell, the section blocks, the
+ * eyebrows and the closing band come from globals.css unchanged, globals.css is
+ * never edited from here, and every colour below is a token that already exists
+ * on these dark sections. */
+
+.head {
+  max-width: 46rem;
+}
+.head h2 {
+  max-width: 28ch;
+}
+.head > p {
+  margin: 0.9rem 0 0;
+  max-width: 60ch;
+}
+
+/* ---- the capability list, read out of lib/features.ts -------------------- */
+
+.group {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.group:first-of-type {
+  border-top: 0;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.groupHead h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.groupHead span {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--flare, #ff7a21);
+}
+
+.groupIntro {
+  margin: 0.45rem 0 0;
+  max-width: 58ch;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 0.7rem;
+  margin: 1.15rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.list > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+}
+.list > li + li {
+  margin-top: 0;
+}
+.list strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.list span {
+  /* 15px, not a caption. These are sentences and the shared layout was already
+     corrected once for setting sentences at 11px. */
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.total {
+  margin: 1.75rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+.total a {
+  color: var(--gold-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- the mock panels ----------------------------------------------------- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.panelHead p {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.pill,
+.pillGood,
+.pillFlag {
+  padding: 0.18rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  white-space: nowrap;
+}
+.pillGood {
+  border-color: rgba(127, 224, 178, 0.4);
+  background: rgba(127, 224, 178, 0.1);
+  color: var(--good);
+}
+.pillFlag {
+  border-color: var(--cedge-orange-2);
+  background: rgba(255, 122, 33, 0.08);
+  color: var(--accent-ink);
+}
+
+.rows {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.rows > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem 0.9rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.rows dt {
+  min-width: 0;
+  color: var(--muted-2);
+  overflow-wrap: anywhere;
+}
+.rows dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+/* The line the panel is actually about — a total, a balance, a dip. */
+.rowStrong {
+  border-color: var(--cedge-orange-2) !important;
+  background: rgba(255, 122, 33, 0.07) !important;
+}
+.rowStrong dd {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--gold-ink);
+  font-weight: 800;
+}
+
+.panelNote {
+  margin: 0;
+  padding-left: 0.8rem;
+  border-left: 2px solid var(--cedge-orange-2);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* A control the mock only depicts. Spans, deliberately: a real <button> would
+   take a tab stop on a marketing page and do nothing when pressed. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.actions > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.34rem 0.75rem;
+  border: 1px solid var(--cedge-orange-2);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+/* ---- the questions ------------------------------------------------------- */
+
+.faq {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 2rem;
+  max-width: 52rem;
+}
+.faq details {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* A 56px row, so the whole question is the target and not the words in it. */
+  min-height: 56px;
+  padding: 0.95rem 1.2rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  list-style: none;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary i {
+  position: relative;
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  transition: transform 0.2s ease;
+}
+/* A plus that becomes a minus: two rules, one of which rotates away. */
+.faq summary i::before,
+.faq summary i::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--flare, #ff7a21);
+}
+.faq summary i::after {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.faq details[open] summary i::after {
+  transform: rotate(0deg);
+  opacity: 0;
+}
+.faq details > p {
+  margin: 0;
+  padding: 0 1.2rem 1.15rem;
+  max-width: 62ch;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq summary i,
+  .faq summary i::after {
+    transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .rows dd {
+    text-align: left;
+    white-space: normal;
+  }
+}

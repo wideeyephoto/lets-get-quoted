@@ -5,14 +5,25 @@ import { ARTICLES } from '@/lib/resources';
 
 export const dynamic = 'force-dynamic';
 
-// The five feature detail routes, derived from one list so the sitemap cannot
+// The twelve feature detail routes, derived from one list so the sitemap cannot
 // drift from the directories under src/app/features.
+//
+// The first five are the flagship pages. The seven after them are the suite
+// pages the homepage's card grid links at — each one used to land on an anchor
+// part-way down back-office or on a capability group on /features.
 const FEATURE_SLUGS = [
   'ai-intake',
   'quick-stops',
   'client-portal',
   'website-builder',
   'back-office',
+  'quotes',
+  'scheduling',
+  'crew',
+  'payments',
+  'recurring',
+  'cash-flow',
+  'reviews',
 ] as const;
 
 /**
