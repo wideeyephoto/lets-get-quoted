@@ -3129,6 +3129,13 @@ create index if not exists jobs_morning_confirm_idx
 -- style may change and what it may not. Nullable with no default so "never
 -- chose" stays distinguishable from "chose the middle one"; every reader puts
 -- it through normalizeQuoteStyle, which lands on 'signature' either way.
+-- Whether this contractor's customers may change their own optional extras
+-- after approving, up to the day the job starts. Off by default: the same
+-- control that lets somebody add the gate lets them drop the pressure-washing,
+-- possibly off materials already bought, so a contractor opts in. Every rule
+-- about when the window shuts lives in src/lib/quote-options.ts and is
+-- re-derived server-side at the moment of the write.
+alter table accounts add column if not exists client_quote_changes boolean not null default false;
 alter table accounts add column if not exists quote_style text;
 alter table accounts drop constraint if exists accounts_quote_style_check;
 alter table accounts add constraint accounts_quote_style_check

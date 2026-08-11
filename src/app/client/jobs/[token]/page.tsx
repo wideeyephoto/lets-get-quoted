@@ -10,6 +10,7 @@ import { brandPaint } from '@/lib/contractor-brand';
 import { quoteStyleClass } from '@/lib/quote-style';
 import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
 import { isSignatureMethod, safeSignaturePath } from '@/lib/signature';
+import { optionsClosedCopy, quoteOptionsWindow, todayIn } from '@/lib/quote-options';
 import { formatScheduleOption } from '@/lib/scheduling';
 import {
   approveClientJobQuoteAction,
@@ -17,11 +18,12 @@ import {
   requestDifferentClientJobScheduleOptionsAction,
   selectClientJobScheduleOptionAction,
   startSubscriptionAction,
+  updateQuoteOptionsAction,
   authorizePaymentPlanAction,
   payPlanBalanceAction,
 } from './actions';
 import QuoteDocument from './QuoteDocument';
-import QuoteAcceptance, { QuoteApproved } from './QuoteAcceptance';
+import QuoteAcceptance, { QuoteApproved, QuoteOptionsUpdate } from './QuoteAcceptance';
 import { QuoteBottomBar, QuoteDeckProvider, type PayMode } from './QuoteDeck';
 import ScheduleChoice from './ScheduleChoice';
 import PayChoice from './PayChoice';
@@ -82,6 +84,8 @@ const FLASH: Record<string, { tone: 'good' | 'bad'; text: string }> = {
   'schedule-requested': { tone: 'good', text: 'Sent. Your contractor will send different dates to choose from.' },
   asked: { tone: 'good', text: 'Your question is on its way. The quote stays open while they reply.' },
   'ask-failed': { tone: 'bad', text: 'That question did not send. Please try again, or call the number at the top of this page.' },
+  'options-updated': { tone: 'good', text: 'Your options are updated and your contractor has been told. Your new total is below.' },
+  'options-failed': { tone: 'bad', text: 'We could not change those options. Your quote is unchanged — please call your contractor.' },
 };
 
 export default async function ClientJobDashboardPage({
@@ -234,6 +238,25 @@ export default async function ClientJobDashboardPage({
       ? 'typed'
       : null;
   const signedOn = formatDay(signatureRow?.quote_signed_at ?? null) || null;
+
+  /* Whether the extras are still theirs to change. Decided here for what to
+     render, and decided AGAIN inside the action for what to write — the form
+     being hidden is not a check. */
+  const optionsWindow = quoteOptionsWindow({
+    approved: dashboard.quoteApproved,
+    allowed: dashboard.allowOptionChanges,
+    hasAddons: deckAddons.length > 0,
+    jobStatus: dashboard.job.status,
+    startedAt: dashboard.job.started_at ?? null,
+    scheduledFor: dashboard.job.scheduled_for,
+    today: todayIn(dashboard.timezone),
+    planStatus: plan?.status ?? null,
+    planAuthorized: Boolean(plan?.authorized),
+    paidToDate: dashboard.payments
+      .filter((payment) => payment.status === 'paid')
+      .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
+  });
+  const optionsClosedNote = optionsWindow.open ? null : optionsClosedCopy(optionsWindow.reason, dashboard.businessName);
 
   const projectType = projectTypeOf(items, dashboard.job.scope);
   const firstName = firstNameOf(dashboard.job.client_name);
@@ -573,6 +596,7 @@ export default async function ClientJobDashboardPage({
              because the person at the table is sometimes the other half of the
              household and the record should say who actually accepted. */
           initialSigner={dashboard.job.client_name ?? ''}
+          optionsOpen={optionsWindow.open}
         >
           {flash ? (
             <p className={`quote-flash is-${flash.tone}`} role="status">
@@ -806,18 +830,32 @@ export default async function ClientJobDashboardPage({
                     planTotal={plan ? plan.totalCents / 100 : null}
                   />
                 ) : (
-                  <QuoteApproved
-                    total={formatMoney(agreedTotal)}
-                    addons={chosenAddonLabels}
-                    scheduledLabel={scheduledLabel}
-                    signerName={signedName}
-                    signedAt={signedOn}
-                    signaturePath={signedPath}
-                    signatureMethod={signedMethod}
-                    nextStep={nextStep}
-                    nextHref={nextHref}
-                    nextLabel={nextLabel}
-                  />
+                  <>
+                    <QuoteApproved
+                      total={formatMoney(agreedTotal)}
+                      addons={chosenAddonLabels}
+                      scheduledLabel={scheduledLabel}
+                      signerName={signedName}
+                      signedAt={signedOn}
+                      signaturePath={signedPath}
+                      signatureMethod={signedMethod}
+                      nextStep={nextStep}
+                      nextHref={nextHref}
+                      nextLabel={nextLabel}
+                    />
+                    {/* Changing your mind about the extras, under the receipt
+                        rather than instead of it: what was agreed stays on
+                        screen while it is being changed. */}
+                    {optionsWindow.open ? (
+                      <QuoteOptionsUpdate
+                        updateAction={updateQuoteOptionsAction.bind(null, params.token)}
+                        until={optionsWindow.until ? formatDay(optionsWindow.until) : null}
+                        businessName={dashboard.businessName}
+                      />
+                    ) : optionsClosedNote ? (
+                      <p className="quote-options-closed">{optionsClosedNote}</p>
+                    ) : null}
+                  </>
                 )}
               </div>
             </aside>

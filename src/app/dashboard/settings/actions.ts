@@ -1179,3 +1179,25 @@ export async function setQuoteStyleAction(style: string) {
 
   revalidatePath('/dashboard/settings');
 }
+
+/**
+ * Whether this contractor's customers may change their own optional extras
+ * after approving.
+ *
+ * Off by default and turned on deliberately: the same control that lets
+ * somebody add the gate lets them drop the pressure-washing, possibly off
+ * materials already bought. Everything about when the window shuts is decided
+ * server-side at the moment of the write — see lib/quote-options.
+ */
+export async function setClientQuoteChangesAction(next: boolean) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ client_quote_changes: next === true })
+    .eq('id', accountId);
+
+  if (error) throw new Error('Could not save that setting.');
+
+  revalidatePath('/dashboard/settings');
+}

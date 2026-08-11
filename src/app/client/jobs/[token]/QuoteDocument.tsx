@@ -69,7 +69,7 @@ export default function QuoteDocument({
    */
   insurance?: { summary: string; url: string | null; filename: string | null } | null;
 }) {
-  const { addons, selected, setAddon, awaitingApproval } = useQuoteDeck();
+  const { addons, selected, setAddon, awaitingApproval, canEditOptions, optionsOpen } = useQuoteDeck();
   const baseItems = items.filter((item) => item.kind === 'base');
   const subscriptionItems = items.filter((item) => item.kind === 'subscription');
 
@@ -112,7 +112,9 @@ export default function QuoteDocument({
           <p className="quote-doc-group-note">
             {awaitingApproval
               ? 'Yours to take or leave. Your total updates as you choose.'
-              : 'What you chose when you approved this quote.'}
+              : optionsOpen
+                ? 'Changed your mind? Tick or untick, then confirm in the summary.'
+                : 'What you chose when you approved this quote.'}
           </p>
           <ul className="quote-doc-list quote-doc-addons">
             {addons.map((item) => {
@@ -130,7 +132,7 @@ export default function QuoteDocument({
                          submits. */
                       form={QUOTE_FORM_ID}
                       checked={isOn}
-                      disabled={!awaitingApproval}
+                      disabled={!canEditOptions}
                       onChange={(event) => setAddon(item.id, event.target.checked)}
                     />
                     <span className="quote-doc-addon-name">

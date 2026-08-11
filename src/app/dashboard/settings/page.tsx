@@ -22,6 +22,7 @@ import { insuranceState } from '@/lib/insurance';
 import { insuranceProofUrl } from '@/lib/insurance-storage';
 import JobCostingSection from './JobCostingSection';
 import QuoteStyleSection from './QuoteStyleSection';
+import QuoteChangesSection from './QuoteChangesSection';
 import { normalizeQuoteStyle } from '@/lib/quote-style';
 import { brandPaint, shapeContractorBrand } from '@/lib/contractor-brand';
 import { displayPhone } from '@/lib/phone';
@@ -74,8 +75,10 @@ export default async function SettingsPage({
   // than added to the accounts select above, because that select is a `.single()`
   // — on a database where the migration has not run, naming a column that isn't
   // there fails the whole query and takes the Settings page with it.
-  const { data: styleRow } = await supabase.from('accounts').select('quote_style').eq('id', accountId).maybeSingle();
-  const quoteStyle = normalizeQuoteStyle((styleRow as { quote_style?: string | null } | null)?.quote_style);
+  const settingsRead = await supabase.from('accounts').select('quote_style, client_quote_changes').eq('id', accountId).maybeSingle();
+  const styleRow = settingsRead.error ? null : (settingsRead.data as { quote_style?: string | null; client_quote_changes?: boolean | null } | null);
+  const quoteStyle = normalizeQuoteStyle(styleRow?.quote_style);
+  const clientQuoteChanges = styleRow?.client_quote_changes === true;
   // Their color, so the three previews are previews of THEIR page.
   const quotePaint = brandPaint(shapeContractorBrand(account, site).accent);
   const quoteBrandStyle = quotePaint
@@ -317,7 +320,7 @@ export default async function SettingsPage({
             // job-costing was missing, so /dashboard/settings#job-costing
             // resolved to no tab and did nothing at all — the section exists,
             // carries that id, and could not be linked to.
-            anchors: ['job-costing', 'business-basics', 'quote-style', 'import', 'export', 'marketing-address', 'finances', 'insurance', 'quickbooks', 'addresses'],
+            anchors: ['job-costing', 'business-basics', 'quote-style', 'quote-changes', 'import', 'export', 'marketing-address', 'finances', 'insurance', 'quickbooks', 'addresses'],
             content: (
               <BusinessWorkspace
                 setup={setup}
@@ -332,7 +335,7 @@ export default async function SettingsPage({
           id: 'profile',
           label: 'Profile & locations',
           blurb: 'Who you are, what you do, and where you work from.',
-          anchors: ['business-basics', 'quote-style', 'marketing-address', 'addresses'],
+          anchors: ['business-basics', 'quote-style', 'quote-changes', 'marketing-address', 'addresses'],
           content: (
               <>
                 {/* The customer portal used to sit here. It moved to
@@ -340,6 +343,7 @@ export default async function SettingsPage({
                     on its own, which is that tab, not a business detail. */}
 
                 <QuoteStyleSection current={quoteStyle} businessName={businessName} brandStyle={quoteBrandStyle} />
+                <QuoteChangesSection enabled={clientQuoteChanges} />
 
                 <section className="panel workspace-section-card" id="business-basics">
                   <div className="section-heading workspace-section-heading compact-heading">

@@ -7124,6 +7124,10 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
      that prints its own input surface is a specific kind of embarrassing. */
   .client-job-dashboard .sigpad,
   .client-job-dashboard .sign-method { display: none !important; }
+  /* Same reasoning: an offer to change the extras is a control, and the printed
+     copy is a record of what was agreed rather than an invitation to revise it. */
+  .client-job-dashboard .quote-options-update,
+  .client-job-dashboard .quote-options-closed { display: none !important; }
 }
 
 .client-attention-card {
@@ -15176,4 +15180,23 @@ select optgroup {
 
 @media (prefers-reduced-motion: reduce) {
   .sign-method-tab { transition: none; }
+}
+
+/* ── Changing your mind about the extras, after you said yes ────────────────
+   A separate card under the receipt rather than instead of it: what was agreed
+   stays on screen while it is being changed. */
+.quote-options-update {
+  border-style: dashed;
+  background: rgba(var(--tint), 0.02);
+}
+.quote-rail-lines li.is-off > span:first-child { text-decoration: line-through; opacity: 0.7; }
+.quote-rail-lines li.is-off > span:last-child { color: var(--muted); }
+.quote-options-closed {
+  margin: 0.75rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px dashed var(--edge-t16);
+  border-radius: var(--q-radius, 12px);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
 }

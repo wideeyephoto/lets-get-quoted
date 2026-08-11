@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuote } from '@/lib/job-feed';
 import { askQuoteQuestion } from '@/lib/client-question';
+import { updateClientQuoteOptions } from '@/lib/quote-options-data';
 import { startSubscriptionSignup, type SubscriptionSignupMode } from '@/lib/subscription-signup';
 import { authorizePlanAndGetDepositUrl, startPlanPayoff } from '@/lib/payment-plans';
 
@@ -71,6 +72,22 @@ export async function approveClientJobQuoteAction(token: string, formData: FormD
   await approveClientJobQuote(token, selectedAddonIds, signerName, path ? { path } : null);
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?approved=1`);
+}
+
+/**
+ * Changing your mind about the extras, after you already said yes.
+ *
+ * The window, the floor and which ids may move are all re-derived inside
+ * updateClientQuoteOptions from what the database says. Nothing about what this
+ * page chose to render reaches it: a server action is a public endpoint
+ * reachable by anybody holding the link, so "the form was hidden" is not a
+ * check. See lib/quote-options.
+ */
+export async function updateQuoteOptionsAction(token: string, formData: FormData) {
+  const addonIds = formData.getAll('addon').map((value) => value.toString());
+  const result = await updateClientQuoteOptions(token, addonIds);
+  revalidatePath(`/client/jobs/${token}`);
+  redirect(`/client/jobs/${token}?${result.ok ? 'options-updated=1' : 'options-failed=1'}`);
 }
 
 // The other thing a person can want to do with a quote. See lib/client-question.

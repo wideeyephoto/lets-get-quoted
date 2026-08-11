@@ -89,6 +89,18 @@ type DeckValue = {
   payMode: PayMode | null;
   setPayMode: (mode: PayMode) => void;
   awaitingApproval: boolean;
+  /**
+   * The extras are still open to change, even though the quote is approved.
+   * See lib/quote-options — the contractor has to have turned this on, and it
+   * shuts on the day the crew arrives.
+   */
+  optionsOpen: boolean;
+  /** Either state where a box may be ticked. */
+  canEditOptions: boolean;
+  /** The selection differs from what is currently agreed. */
+  hasOptionChanges: boolean;
+  /** What the agreed total was before anything was re-ticked. */
+  committedTotal: number;
 };
 
 const DeckContext = createContext<DeckValue | null>(null);
@@ -117,6 +129,7 @@ export function QuoteDeckProvider({
    * and the record should say who actually accepted.
    */
   initialSigner = '',
+  optionsOpen = false,
   children,
 }: {
   addons: DeckAddon[];
@@ -124,6 +137,7 @@ export function QuoteDeckProvider({
   awaitingApproval: boolean;
   initialPayMode?: PayMode | null;
   initialSigner?: string;
+  optionsOpen?: boolean;
   children: ReactNode;
 }) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
@@ -171,6 +185,10 @@ export function QuoteDeckProvider({
   }, [total]);
 
   const signerValid = isSignature(signer);
+  // What is currently agreed, captured from the props rather than from state —
+  // these flags ARE the agreement once a quote is approved.
+  const committedTotal = baseTotal + addons.reduce((sum, addon) => (addon.selected ? sum + addon.amount : sum), 0);
+  const hasOptionChanges = addons.some((addon) => Boolean(selected[addon.id]) !== addon.selected);
 
   const value = useMemo<DeckValue>(
     () => ({
@@ -197,8 +215,12 @@ export function QuoteDeckProvider({
       payMode,
       setPayMode,
       awaitingApproval,
+      optionsOpen,
+      canEditOptions: awaitingApproval || optionsOpen,
+      hasOptionChanges,
+      committedTotal,
     }),
-    [addons, selected, setAddon, addonCount, baseTotal, addonsTotal, total, shownTotal, signer, signerValid, signMethod, signaturePath, preferredDate, payMode, awaitingApproval],
+    [addons, selected, setAddon, addonCount, baseTotal, addonsTotal, total, shownTotal, signer, signerValid, signMethod, signaturePath, preferredDate, payMode, awaitingApproval, optionsOpen, hasOptionChanges, committedTotal],
   );
 
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
@@ -218,16 +240,20 @@ export function QuoteDeckProvider({
  * take them to the decision, not to make it for them.
  */
 export function QuoteBottomBar({ label = 'Review & approve' }: { label?: string }) {
-  const { awaitingApproval } = useQuoteDeck();
-  if (!awaitingApproval) return null;
+  const { awaitingApproval, optionsOpen, hasOptionChanges } = useQuoteDeck();
+  // After approval the bar earns its space only once something has actually
+  // been re-ticked. A pinned bar on a settled job is chrome asking to be
+  // dismissed.
+  const changing = !awaitingApproval && optionsOpen && hasOptionChanges;
+  if (!awaitingApproval && !changing) return null;
   return (
     <div className="quote-bottom-bar">
       <span className="quote-bottom-total">
-        <small>Your total</small>
+        <small>{changing ? 'New total' : 'Your total'}</small>
         <LiveTotal className="quote-bottom-amount" />
       </span>
       <a className="btn primary quote-bottom-cta" href={`#${QUOTE_FORM_ID}`}>
-        {label}
+        {changing ? 'Review changes' : label}
       </a>
     </div>
   );

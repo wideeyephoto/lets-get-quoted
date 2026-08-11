@@ -221,6 +221,81 @@ export default function QuoteAcceptance({
   );
 }
 
+/**
+ * Changing the extras on a quote that is already approved.
+ *
+ * A SEPARATE, DELIBERATE ACT — never an autosave. Ticking a box on a signed
+ * agreement should not change what somebody owes the moment their thumb lifts;
+ * the button names the old total and the new one, and it does nothing until it
+ * is pressed. It reuses QUOTE_FORM_ID because only ever one of these two forms
+ * renders, so the add-on boxes in the document always point at whichever one is
+ * live without knowing which that is.
+ */
+export function QuoteOptionsUpdate({
+  updateAction,
+  until,
+  businessName,
+}: {
+  updateAction: (formData: FormData) => void;
+  /** The last day changes are taken, already formatted. Null when unscheduled. */
+  until: string | null;
+  businessName: string;
+}) {
+  const { hasOptionChanges, committedTotal, total, addons, selected } = useQuoteDeck();
+
+  const added = addons.filter((addon) => selected[addon.id] && !addon.selected);
+  const removed = addons.filter((addon) => !selected[addon.id] && addon.selected);
+  const difference = total - committedTotal;
+
+  return (
+    <form action={updateAction} id={QUOTE_FORM_ID} className="quote-rail-card quote-options-update">
+      <p className="quote-rail-eyebrow">Change your options</p>
+
+      {hasOptionChanges ? (
+        <>
+          <ul className="quote-rail-lines">
+            {added.map((addon) => (
+              <li key={addon.id} className="is-on">
+                <span>Adding {addon.label}</span>
+                <span>+{formatUsd(addon.amount)}</span>
+              </li>
+            ))}
+            {removed.map((addon) => (
+              <li key={addon.id} className="is-off">
+                <span>Removing {addon.label}</span>
+                <span>−{formatUsd(addon.amount)}</span>
+              </li>
+            ))}
+          </ul>
+          <dl className="quote-rail-facts">
+            <div>
+              <dt>New total</dt>
+              <dd>
+                {formatUsd(total)}{' '}
+                <small>
+                  was {formatUsd(committedTotal)} · {difference >= 0 ? '+' : '−'}
+                  {formatUsd(Math.abs(difference))}
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <SaveButton className="btn primary quote-rail-approve" pendingLabel="Updating…" savedLabel="Updated ✓">
+            Confirm change · {formatUsd(total)}
+          </SaveButton>
+          <p className="quote-doc-fineprint">
+            {businessName} is told straight away. Anything already invoiced or paid is settled against the new total.
+          </p>
+        </>
+      ) : (
+        <p className="quote-rail-next">
+          Tick or untick an optional extra above and confirm it here
+          {until ? <> — up until {until}</> : null}.
+        </p>
+      )}
+    </form>
+  );
+}
+
 /** "Approve · $3,500.00" — the button names the number it commits to. */
 function ApproveLabel() {
   const { total } = useQuoteDeck();

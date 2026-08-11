@@ -76,12 +76,22 @@ export type ClientJobDashboard = {
    * yet, both arrive here as the default. See @/lib/quote-style.
    */
   quoteStyle: QuoteStyle;
+  /**
+   * Whether this contractor lets customers change their own optional extras
+   * after approving. Off unless they turned it on — see
+   * migrations/2026-08-13-client-quote-changes.sql for why that is the default.
+   */
+  allowOptionChanges: boolean;
+  /** The crew's timezone, so "starts today" means their today. */
+  timezone: string | null;
   job: {
     id: string;
     ref: string;
     client_name: string;
     address: string | null;
     status: string;
+    /** Set when somebody pressed "Job started". Null means nobody has. */
+    started_at?: string | null;
     scheduled_for: string | null;
     scheduled_time: string | null;
     schedule_label: string;
@@ -356,7 +366,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     admin.from('sites').select(CONTRACTOR_BRAND_COLUMNS).eq('account_id', access.account_id).maybeSingle(),
     admin
       .from('jobs')
-      .select('id, ref, client_name, address, status, scheduled_for, scheduled_time, scope')
+      .select('id, ref, client_name, address, status, started_at, scheduled_for, scheduled_time, scope')
       .eq('account_id', access.account_id)
       .eq('id', access.job_id)
       .maybeSingle(),
@@ -494,20 +504,25 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   const brand = shapeContractorBrand(account, site);
 
   // Read on its own rather than added to the accounts select above: on a
-  // database where the migration has not run, selecting a column that isn't
-  // there fails the whole query, and a presentation preference must never be
-  // the reason a homeowner's quote link 404s. A missing column reads as "never
-  // chose", which is what it is.
-  const { data: styleRow } = await admin
+  // database where a migration has not run, selecting a column that isn't there
+  // fails the whole query, and neither a presentation preference nor a feature
+  // switch may be the reason a homeowner's quote link 404s. Both missing
+  // columns read as their safe default — the middle style, and changes off.
+  const settings = await admin
     .from('accounts')
-    .select('quote_style')
+    .select('quote_style, client_quote_changes, timezone')
     .eq('id', access.account_id)
     .maybeSingle();
+  const settingsRow = settings.error
+    ? (await admin.from('accounts').select('timezone').eq('id', access.account_id).maybeSingle()).data
+    : settings.data;
 
   return {
     businessName: brand.businessName,
     brand,
-    quoteStyle: normalizeQuoteStyle(styleRow?.quote_style),
+    quoteStyle: normalizeQuoteStyle((settingsRow as { quote_style?: string | null } | null)?.quote_style),
+    allowOptionChanges: (settingsRow as { client_quote_changes?: boolean | null } | null)?.client_quote_changes === true,
+    timezone: ((settingsRow as { timezone?: string | null } | null)?.timezone as string | null) ?? null,
     job: {
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),

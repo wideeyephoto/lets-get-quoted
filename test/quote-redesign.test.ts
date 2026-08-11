@@ -329,8 +329,12 @@ describe('a contractor picks one of three treatments', () => {
 
   it('is loaded defensively, so an un-migrated database renders the default rather than nothing', () => {
     const feed = read('src', 'lib', 'job-feed.ts');
-    expect(feed).toContain("select('quote_style')");
-    expect(feed).toContain('normalizeQuoteStyle(styleRow?.quote_style)');
+    // Read with the other customer-facing switch, behind a narrow fallback, so
+    // a database missing either column still renders the page with defaults.
+    expect(feed).toContain("select('quote_style, client_quote_changes, timezone')");
+    expect(feed).toContain("settings.error");
+    expect(feed).toContain("select('timezone')");
+    expect(feed).toContain('normalizeQuoteStyle(');
     // Not folded into the accounts select above it, which would fail the whole
     // query — and the whole page — on a database missing the column.
     expect(feed).not.toContain("select('business_name, quote_style')");
