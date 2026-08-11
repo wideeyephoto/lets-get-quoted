@@ -24,10 +24,21 @@ export default function Milestones({
   quotedAmount,
   clientPhone,
   actions,
+  suggestSplit = true,
 }: {
   entries: MilestoneEntryView[];
   quotedAmount: number;
   clientPhone: string | null;
+  /**
+   * Whether a four-way split is worth leading with on THIS job.
+   *
+   * "Split $99.94 into 4 stages" is the product talking to itself. Staged
+   * payments earn their complexity on a job big enough that a homeowner would
+   * hesitate to pay it all at once, or long enough that proof of progress is
+   * the thing being paid for — see shouldSuggestStages. On everything else the
+   * neutral "Add a payment stage" leads and the split is still there behind it.
+   */
+  suggestSplit?: boolean;
   actions: {
     seed: () => Promise<ActionResult>;
     create: (formData: FormData) => Promise<ActionResult>;
@@ -67,10 +78,21 @@ export default function Milestones({
         </p>
         {error ? <p className="quote-draft-error">{error}</p> : null}
         <div className="milestone-empty-actions">
-          <button type="button" className="btn primary" disabled={pending} onClick={() => run(actions.seed)}>
-            {quotedAmount > 0 ? `Split ${money(quotedAmount)} into 4 stages` : 'Add standard stages'}
-          </button>
-          <button type="button" className="btn secondary" onClick={() => setAdding(true)}>Add one stage</button>
+          {suggestSplit ? (
+            <>
+              <button type="button" className="btn primary" disabled={pending} onClick={() => run(actions.seed)}>
+                {quotedAmount > 0 ? `Split ${money(quotedAmount)} into 4 stages` : 'Add standard stages'}
+              </button>
+              <button type="button" className="btn secondary" onClick={() => setAdding(true)}>Add one stage</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn secondary" onClick={() => setAdding(true)}>Add a payment stage</button>
+              <button type="button" className="btn secondary" disabled={pending} onClick={() => run(actions.seed)}>
+                {quotedAmount > 0 ? `Split ${money(quotedAmount)} into 4 stages` : 'Add standard stages'}
+              </button>
+            </>
+          )}
         </div>
         {adding ? (
           <MilestoneForm

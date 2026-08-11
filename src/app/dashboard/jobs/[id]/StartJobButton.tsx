@@ -18,11 +18,18 @@ export default function StartJobButton({
   action,
   clientName,
   quoteUnapproved,
+  primary = false,
 }: {
   action: (formData: FormData) => Promise<void>;
   clientName: string;
   /** The job is still sitting at the quote stage. */
   quoteUnapproved: boolean;
+  /**
+   * True only on the day the work is booked for. Starting a job three days
+   * early is a typo, not an intention — see primaryJobAction — so until then
+   * this stays as quiet as everything else on the row.
+   */
+  primary?: boolean;
 }) {
   const who = clientName?.trim() || 'the customer';
 
@@ -39,16 +46,16 @@ export default function StartJobButton({
         if (!window.confirm(message)) event.preventDefault();
       }}
     >
-      <StartSubmit />
+      <StartSubmit primary={primary} />
     </form>
   );
 }
 
 /** Its own component so useFormStatus reads THIS form's pending state. */
-function StartSubmit() {
+function StartSubmit({ primary }: { primary: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="btn secondary" disabled={pending} aria-busy={pending}>
+    <button type="submit" className={`btn ${primary ? 'primary' : 'secondary'}`} disabled={pending} aria-busy={pending}>
       {pending ? 'Starting…' : 'Job started'}
     </button>
   );

@@ -28,18 +28,26 @@ export default function CompleteJobButton({
   action,
   warning,
   pill,
+  muted = false,
 }: {
   action: (formData: FormData) => Promise<void>;
   /** Everything except the pill, which this component owns. */
   warning: Omit<CompleteJobWarningInput, 'sendReview'>;
   pill: ReviewPillState;
+  /**
+   * True until the job has actually started. This was the loudest control on
+   * the page for jobs whose service date was days away — an invitation to close
+   * a job early and then unpick the review text that went out with it. It stays
+   * available, because small same-day jobs are real; it just stops shouting.
+   */
+  muted?: boolean;
 }) {
   const [sendReview, setSendReview] = useState(pill.canAsk ? pill.defaultOn : false);
   const input: CompleteJobWarningInput = { ...warning, sendReview };
 
   return (
     <form
-      className="job-done-field"
+      className={`job-done-field${muted ? ' is-muted' : ''}`}
       action={action}
       onSubmit={(event) => {
         // Only when something is about to happen that can't be taken back.

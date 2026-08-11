@@ -73,10 +73,25 @@ export default function QuoteBuilder({
   quotedAmount = 0,
   services = [],
   onItemsChange,
+  approved = false,
+  approvedTotal = 0,
+  clientLabel = 'the customer',
+  changeOrderHref,
 }: {
   // Job page: persists on its own Save button. Lead form: omit action and pass
   // onItemsChange to feed a parent <form> (the form's submit does the saving).
-  action?: (items: QuoteItem[]) => Promise<{ ok: boolean; total: number; message?: string }>;
+  action?: (items: QuoteItem[], options?: { revision?: boolean }) => Promise<{ ok: boolean; total: number; message?: string; needsRevision?: boolean }>;
+  /**
+   * The customer has already agreed to this quote. Editing it is then a
+   * revision of a live agreement rather than work on a draft, and the builder
+   * says so before it saves. See saveQuoteItemsAction.
+   */
+  approved?: boolean;
+  /** What they agreed to, for the sentence that names it. */
+  approvedTotal?: number;
+  clientLabel?: string;
+  /** The cleaner route for extra work: bill the difference, not the whole job. */
+  changeOrderHref?: string;
   // AI drafting, where a job's scope exists to draft from. Absent on the lead
   // form, which has no saved job yet.
   draftAction?: () => Promise<
@@ -371,11 +386,25 @@ export default function QuoteBuilder({
       .filter((row) => row.label.length > 0);
   }
 
-  function save() {
+  /**
+   * `revision` is only ever true after the confirm below. The server refuses a
+   * save against an approved quote without it — see saveQuoteItemsAction — so
+   * this is the moment the contractor is told, in figures, that they are about
+   * to change a document somebody has already agreed to.
+   */
+  function save(revision = false) {
     if (!action) return;
+    if (approved && !revision) {
+      const message =
+        `This quote has already been approved${approvedTotal > 0 ? ` at ${formatUsd(approvedTotal)}` : ''}.\n\n` +
+        `Saving changes what ${clientLabel} sees, and their approval covered the previous version. ` +
+        `They will get a note on their job page saying the total changed.\n\n` +
+        `For extra work on top of an agreed price, a change order is cleaner — it asks them to approve just the difference.`;
+      if (!window.confirm(message)) return;
+    }
     const clean = cleanRows();
     startTransition(async () => {
-      const res = await action(clean);
+      const res = await action(clean, revision || approved ? { revision: true } : undefined);
       setResult({ ok: res.ok, message: res.ok ? `Saved. Quote total ${formatUsd(res.total)}.` : res.message || 'Could not save the quote.' });
       // Only on a real save: a failed one still has work worth keeping.
       if (res.ok) clearStoredDraft();
@@ -643,10 +672,27 @@ export default function QuoteBuilder({
         ) : null}
       </div>
 
+      {/* AN AGREEMENT, NOT A DRAFT. Said before the buttons, because the whole
+          point is that the person editing knows which of the two they are
+          looking at. */}
+      {action && approved ? (
+        <div className="quote-approved-lock">
+          <p>
+            <strong>{clientLabel} has approved this quote{approvedTotal > 0 ? ` at ${formatUsd(approvedTotal)}` : ''}.</strong>{' '}
+            Editing it changes what they see, and their approval covered the previous version.
+          </p>
+          {changeOrderHref ? (
+            <a className="btn secondary compact" href={changeOrderHref}>
+              Raise a change order instead
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
       {action ? (
         <div className="quote-builder-save">
-          <button type="button" className="btn primary" onClick={save} disabled={pending}>
-            {pending ? 'Saving…' : 'Save quote'}
+          <button type="button" className="btn primary" onClick={() => save()} disabled={pending}>
+            {pending ? 'Saving…' : approved ? 'Save revised quote' : 'Save quote'}
           </button>
           {notifyAction ? (
             <button type="button" className="btn secondary" onClick={saveAndNotify} disabled={pending}>

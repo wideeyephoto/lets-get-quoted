@@ -5226,6 +5226,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   justify-self: end;
   align-self: start;
 }
+.job-money-strip.is-over { border-color: var(--cedge-red-6); }
+.job-money-strip.is-over > div:last-child dd { color: var(--bad); }
 
 .workspace-hero-copy {
   display: flex;
@@ -11221,6 +11223,18 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .btn.job-done-btn::after { animation: none; opacity: 0; }
   .btn.job-done-btn:hover:not(:disabled) { transform: none; }
 }
+
+/* Before the job has started, "Mark job complete" is available but is not the
+   loudest thing on the page. It sat in full glow beside "Job started" on jobs
+   whose service date was days away, which is an invitation to close a job early
+   and then unpick the review text that went out with it. */
+.job-done-field.is-muted .job-done-shell {
+  background: rgba(var(--tint), 0.05);
+  border-color: var(--edge-t18);
+  box-shadow: none;
+}
+.job-done-field.is-muted .job-done-submit { color: var(--text); }
+.job-done-field.is-muted .job-done-hint { opacity: 0.7; }
 .job-done-pill.is-on {
   background: rgba(190, 245, 208, 0.95);
   color: #0f4d28;

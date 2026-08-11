@@ -76,6 +76,10 @@ export const CLIENT_FEED_KINDS: Record<string, Rendering> = {
   // the contractor's internal précis — so it is always replaced.
   job_created: { title: 'Quote prepared', body: 'own', note: 'Your quote is ready to review above.' },
   quote_approved: { title: 'You approved the quote', body: 'own', note: 'Thanks — your contractor has been notified.' },
+  // A quote edited AFTER approval. Client-visible on purpose: the number on
+  // this page changing under somebody who already agreed to it is the whole
+  // reason the revision gate exists. See saveQuoteItemsAction.
+  quote_revised: { title: 'Your quote was updated', body: 'pass' },
 
   job_scheduled: { title: 'Start date', body: 'pass' },
   job_started: { title: 'Work started', body: 'pass' },

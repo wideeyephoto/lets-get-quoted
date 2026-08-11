@@ -5,7 +5,11 @@ import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
-import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, markPaymentPaidManually, retryPayment, type PaymentKind } from '@/lib/payments';
+import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, listPayments, refundPayment, markPaymentFailed, markPaymentPaidManually, retryPayment, type PaymentKind } from '@/lib/payments';
+import { formatMoneyExact } from '@/lib/jobs';
+import { jobMoney, overageForNewRequest } from '@/lib/job-lifecycle';
+import { listChangeOrders } from '@/lib/change-orders-data';
+import { changeOrderTotals } from '@/lib/change-orders';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { createPaymentFeedEvent, createJobFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -36,6 +40,34 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
   const homeownerPhone = phoneInput ? normalizeUsPhone(phoneInput) : null;
   if (sendSms && !homeownerPhone) {
     throw new Error('Enter a valid homeowner mobile number before sending a text.');
+  }
+
+  /* THE GUARDRAIL. A $99.94 job carried two $250 deposit requests, and nothing
+     anywhere compared what had been asked for against what had been agreed.
+     Not a refusal: collecting more than the quote is legitimate — a change
+     agreed on site, a price that moved — so this states the overage in figures
+     and lets it through once somebody has said yes to that sentence. Change
+     orders count toward the approved total, which is the honest way to raise it. */
+  if (formData.get('confirmOverage') !== 'on') {
+    const [existingPayments, orders, jobRow] = await Promise.all([
+      listPayments(supabase, accountId, jobId),
+      listChangeOrders(supabase, accountId, jobId),
+      getJob(supabase, accountId, jobId),
+    ]);
+    const money = jobMoney({
+      quotedAmount: Number(jobRow?.quoted_amount) || 0,
+      approvedChangeOrderTotal: changeOrderTotals(orders).approved,
+      payments: existingPayments,
+    });
+    const overage = overageForNewRequest(money, Math.round((Number(amount) || 0) * 100));
+    if (overage > 0) {
+      throw new Error(
+        `This would ask ${formatMoneyExact(overage / 100)} more than the job is approved for ` +
+          `(approved ${formatMoneyExact(money.approvedCents / 100)}, already asked for ` +
+          `${formatMoneyExact((money.paidCents + money.requestedCents) / 100)}). ` +
+          'Raise a change order so the customer approves the difference, or tick "collect more than the approved total" to send it anyway.',
+      );
+    }
   }
 
   if (sendSms && homeownerPhone) await recordSmsConsent(accountId, homeownerPhone);

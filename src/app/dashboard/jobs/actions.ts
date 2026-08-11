@@ -28,6 +28,7 @@ import {
   getJob,
   formatJobQuoteSummary,
   formatJobSchedule,
+  formatMoneyExact,
   parseQuoteItems,
   saveQuoteItems,
   updateJob,
@@ -901,12 +902,67 @@ export async function deleteCostAction(jobId: string, costId: string) {
 // job's quoted_amount is recomputed inside saveQuoteItems, so the margin panel
 // and any future invoice stay in sync. Returns the new total for the builder to
 // echo back.
-export async function saveQuoteItemsAction(jobId: string, items: QuoteItem[]): Promise<{ ok: boolean; total: number; message?: string }> {
+/**
+ * AN APPROVED QUOTE IS NOT A DRAFT.
+ *
+ * Save rewrote quote_items and quoted_amount whatever state the job was in,
+ * including one a customer had already read, agreed to, and — since the
+ * acceptance signature landed — typed their name against. The number on their
+ * page changed underneath them and the agreement they signed no longer
+ * described anything.
+ *
+ * So a save against an approved quote needs `revision: true`, which the builder
+ * only sends after saying out loud what is about to happen. It is not a lock:
+ * prices move, scopes change, and refusing outright would just push people into
+ * editing around the product. It is a deliberate act that leaves a trace — the
+ * customer gets a client-visible feed row naming the old total and the new one,
+ * so a changed quote can never again be a silent one.
+ *
+ * What this does NOT do is version the approved quote. The signature columns
+ * still evidence that an approval happened; they do not preserve the itemized
+ * document that was approved. That needs a snapshot table, and is the next step.
+ */
+export async function saveQuoteItemsAction(
+  jobId: string,
+  items: QuoteItem[],
+  options?: { revision?: boolean },
+): Promise<{ ok: boolean; total: number; message?: string; needsRevision?: boolean }> {
   const { supabase, accountId } = await requireOwnerContext();
   try {
+    const before = await getJob(supabase, accountId, jobId);
+    const previousTotal = Number(before?.quoted_amount) || 0;
+    // Accepted by any route — client link, verbal, signature, start of work.
+    const approved = Boolean(before) && before!.status !== 'new_lead';
+
+    if (approved && !options?.revision) {
+      return {
+        ok: false,
+        total: previousTotal,
+        needsRevision: true,
+        message: 'This quote has already been approved. Saving changes it for the customer too.',
+      };
+    }
+
     const job = await saveQuoteItems(supabase, accountId, jobId, Array.isArray(items) ? items : []);
+    const newTotal = Number(job.quoted_amount) || 0;
+
+    if (approved && Math.round(previousTotal * 100) !== Math.round(newTotal * 100)) {
+      // Best-effort: the save has happened, and a failed note must not undo it.
+      try {
+        await createJobFeedEvent(supabase, accountId, jobId, {
+          kind: 'quote_revised',
+          title: 'Quote revised after approval',
+          body: `The total changed from ${formatMoneyExact(previousTotal)} to ${formatMoneyExact(newTotal)}. Your earlier approval covered the previous version.`,
+          visibility: 'client_financial',
+          amount: newTotal,
+        });
+      } catch (error) {
+        console.error(`Could not record the quote revision on job ${jobId}:`, error instanceof Error ? error.message : error);
+      }
+    }
+
     revalidatePath(`/dashboard/jobs/${jobId}`);
-    return { ok: true, total: Number(job.quoted_amount) || 0 };
+    return { ok: true, total: newTotal };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Could not save the quote.';
     return { ok: false, total: 0, message };

@@ -7798,6 +7798,95 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin: 0;
 }
 
+/* ── The job, ahead of whose it is ───────────────────────────────────────────
+   "Dana Whitfield" as the headline is not enough when a customer has three
+   jobs open. The work is the title; the customer, the stage and the date are
+   the line under it. */
+.job-hero-title {
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  max-width: 22ch;
+  text-transform: none;
+}
+.job-hero-ref {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--mute-i58);
+}
+.job-hero-who {
+  margin: 0.15rem 0 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ── The money, subtracted, always on screen ─────────────────────────────────
+   A $99.94 quote carrying two $250 deposit requests read as "Request payment"
+   because nothing on the page compared the asks against the deal. */
+.job-money-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.job-money-strip > div { display: grid; gap: 0.1rem; min-width: 0; }
+.job-money-strip dt {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i58);
+}
+.job-money-strip dd {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.job-money-strip.is-over { border-color: var(--cedge-red-6); }
+.job-money-strip.is-over > div:last-child dd { color: var(--bad); }
+.job-money-warn {
+  margin: -0.4rem 0 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--bad);
+}
+
+/* The deal, stated where the ask is typed. */
+.payment-approved-line {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.9rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+.payment-approved-line strong { font-variant-numeric: tabular-nums; }
+
+/* An approved quote is not a draft. */
+.quote-approved-lock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.9rem;
+  margin: 0.9rem 0 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--cedge-amber-9);
+  border-radius: 12px;
+  background: rgba(255, 209, 102, 0.08);
+}
+.quote-approved-lock p { margin: 0; font-size: 0.86rem; line-height: 1.5; flex: 1 1 20rem; }
+
+@media (max-width: 640px) {
+  .job-money-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .job-title-edit-link {
   color: var(--mute-i58);
   font-size: 0.85rem;
@@ -21705,6 +21794,18 @@ a.bset-card { color: inherit; text-decoration: none; }
    -------------------------------------------------------------------------- */
 
 .job-done-field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+/* Before the job has started, "Mark job complete" is available but is not the
+   loudest thing on the page. It sat in full glow beside "Job started" on jobs
+   whose service date was days away, which is an invitation to close a job early
+   and then unpick the review text that went out with it. */
+.job-done-field.is-muted .job-done-shell {
+  background: rgba(var(--tint), 0.05);
+  border-color: var(--edge-t18);
+  box-shadow: none;
+}
+.job-done-field.is-muted .job-done-submit { color: var(--text); }
+.job-done-field.is-muted .job-done-hint { opacity: 0.7; }
 
 .job-done-shell {
   position: relative;

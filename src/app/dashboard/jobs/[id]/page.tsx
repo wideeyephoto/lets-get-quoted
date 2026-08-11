@@ -14,7 +14,14 @@ import {
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, buildPipelineChecklist, completionBlockers } from '@/lib/job-badges';
-import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems } from '@/lib/jobs';
+import {
+  jobMoney,
+  jobStage,
+  primaryJobAction,
+  shouldSuggestStages,
+  JOB_STAGE_LABEL,
+} from '@/lib/job-lifecycle';
+import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatMoneyExact, formatPercent, parseQuoteItems } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
 import { COST_SOURCE_LABEL, costConfidence, describeDuplicate, duplicateCostIds, marginVerdict } from '@/lib/cost-truth';
 import { getMinMarginPct } from '@/lib/cost-truth-data';
@@ -302,6 +309,50 @@ export default async function JobDetailPage({
   const clientLink = searchParams.clientToken ? `${quoteLinkOrigin}/client/jobs/${searchParams.clientToken}` : null;
   const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount, originatingLead?.id ?? null);
   const heroStatus = deriveJobListBadge(job, payments, invoices, activeClientLinkCount);
+
+  /* ONE LIFECYCLE, ONE PRIMARY ACTION, ONE SUM.
+     The hero used to badge the job from one derivation, offer every action at
+     once regardless of stage, and headline a customer's name — while the money
+     figures on the page never subtracted. See lib/job-lifecycle for the page
+     that made all three worth fixing at once. */
+  const money = jobMoney({
+    quotedAmount: Number(job.quoted_amount) || 0,
+    approvedChangeOrderTotal: changeOrderTotals(changeOrders).approved,
+    payments,
+  });
+  const stage = jobStage({
+    status: job.status,
+    quotedAmount: Number(job.quoted_amount) || 0,
+    startedAt: job.started_at ?? null,
+    scheduledFor: job.scheduled_for ?? null,
+    clientLinkCount: activeClientLinkCount,
+    remainingCents: money.remainingCents,
+  });
+  const primaryAction = primaryJobAction(stage, {
+    todayKey,
+    scheduledFor: job.scheduled_for ?? null,
+    reviewConfigured: Boolean(reviewUrl),
+    reviewAlreadyRequested: Boolean(lastReviewRequest),
+  });
+  const isPrimary = (key: string) => primaryAction?.key === key;
+  const suggestStages = shouldSuggestStages({
+    quotedAmount: Number(job.quoted_amount) || 0,
+    estimatedHours: job.estimated_hours ? Number(job.estimated_hours) : null,
+    dayHours: scheduleDayHours,
+  });
+
+  /* WHAT THIS JOB IS, ahead of whose it is. "Dana Whitfield" is not enough when
+     a customer has three jobs open; the first line of the scope is what the
+     contractor called the work, and the first quote line is the fallback. */
+  const jobTitle =
+    (job.scope ? job.scope.split('\n')[0].trim().slice(0, 70) : '') ||
+    quoteItems.find((item) => item.kind === 'base')?.label ||
+    'Job';
+
+  // Only when there is a section to land on. Change orders currently originate
+  // from a crew member's find, so a job with none has no panel to link to, and
+  // a dead link is worse than no link.
+  const changeOrderHref = changeOrders.length > 0 ? `/dashboard/jobs/${job.id}#change-orders` : undefined;
   const nextPipelineIndex = pipelineChecklist.findIndex((item) => !item.complete);
   const currentPipelineIndex = nextPipelineIndex === -1 ? pipelineChecklist.length - 1 : nextPipelineIndex;
   const displayedFeed: JobFeedEvent[] = sortJobFeed([
@@ -340,7 +391,8 @@ export default async function JobDetailPage({
       <section className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
           <div className="job-title-row">
-            <h1 className="workspace-title">{job.client_name}</h1>
+            <h1 className="workspace-title job-hero-title">{jobTitle}</h1>
+            <span className="job-hero-ref">{job.ref}</span>
             <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`} className="job-title-edit-link">
               (edit)
             </Link>
@@ -348,10 +400,36 @@ export default async function JobDetailPage({
               <Link href={`/dashboard/clients/${job.client_id}`} className="job-title-edit-link">Client profile ↗</Link>
             ) : null}
           </div>
+          <p className="job-hero-who">
+            {job.client_name}
+            {' · '}
+            {/* The stage, from the one ladder. The badge below still carries the
+                finer-grained "payment issue" / "client signed" states — this
+                says where the job IS, which is the thing four controls used to
+                disagree about. */}
+            {JOB_STAGE_LABEL[stage]}
+            {job.scheduled_for ? ` · ${formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)}` : ''}
+          </p>
           <div className="workspace-inline-row">
             <span className={`status-badge status-${heroStatus.tone}`} title={heroStatus.title}>{heroStatus.label}</span>
             <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
           </div>
+
+          {/* THE MONEY, SUBTRACTED, and always on screen. A $99.94 quote with
+              two $250 deposit requests against it read as "Request payment"
+              because nothing on the page ever compared the asks to the deal. */}
+          <dl className={`job-money-strip${money.overRequestedCents > 0 ? ' is-over' : ''}`} aria-label="Money on this job">
+            <div><dt>Approved</dt><dd>{formatMoneyExact(money.approvedCents / 100)}</dd></div>
+            <div><dt>Requested</dt><dd>{formatMoneyExact(money.requestedCents / 100)}</dd></div>
+            <div><dt>Paid</dt><dd>{formatMoneyExact(money.paidCents / 100)}</dd></div>
+            <div><dt>Remaining</dt><dd>{formatMoneyExact(money.remainingCents / 100)}</dd></div>
+          </dl>
+          {money.overRequestedCents > 0 ? (
+            <p className="job-money-warn">
+              {formatMoneyExact(money.overRequestedCents / 100)} more has been asked for than this job is approved for. Raise a
+              change order so the customer approves the difference, or cancel a request below.
+            </p>
+          ) : null}
           {job.client_phone || job.client_email ? (
             <div className="job-hero-contact">
               {job.client_phone ? (
@@ -406,8 +484,18 @@ export default async function JobDetailPage({
               </span>
             ) : null}
           </div>
+          {/* ONE control looks like a control. Everything on this row used to be
+              offered at once — "Request payment" in primary orange beside "Job
+              started" beside a dominant "Mark Job Completed", on a job whose
+              service date was three days away. The stage decides which one is
+              bright; the rest stay available and quiet. See primaryJobAction. */}
           <div className="actions workspace-actions">
-            <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
+            <Link
+              href={`/dashboard/jobs/${job.id}?open=payment#request-payment`}
+              className={`btn ${isPrimary('request_payment') ? 'primary' : 'secondary'}`}
+            >
+              Request payment
+            </Link>
             <ModalDialog triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
               <form action={boundCreateCost} className="cost-form">
                 <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
@@ -426,6 +514,7 @@ export default async function JobDetailPage({
                 action={boundMarkJobStarted}
                 clientName={job.client_name}
                 quoteUnapproved={job.status === 'new_lead'}
+                primary={isPrimary('start')}
               />
             ) : null}
             {job.status !== 'complete' && job.status !== 'archived' ? (
@@ -466,6 +555,7 @@ export default async function JobDetailPage({
                   alreadyRequested: Boolean(lastReviewRequest),
                   channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
                 })}
+                muted={!isPrimary('complete')}
               />
             ) : null}
             {job.status === 'complete' ? (
@@ -556,6 +646,7 @@ export default async function JobDetailPage({
           entries={milestoneViews}
           quotedAmount={Number(job.quoted_amount) || 0}
           clientPhone={job.client_phone}
+          suggestSplit={suggestStages}
           actions={{
             seed: seedMilestonesAction.bind(null, job.id),
             create: createMilestoneAction.bind(null, job.id),
@@ -590,6 +681,10 @@ export default async function JobDetailPage({
           initialItems={quoteItems}
           quotedAmount={Number(job.quoted_amount) || 0}
           services={priceBook}
+          approved={job.status !== 'new_lead'}
+          approvedTotal={Number(job.quoted_amount) || 0}
+          clientLabel={job.client_name}
+          changeOrderHref={changeOrderHref}
         />
       </section>
 
@@ -887,6 +982,21 @@ export default async function JobDetailPage({
                   <label htmlFor="pay-label">Notes (optional)</label>
                   <input id="pay-label" name="label" placeholder="Optional payment note" />
                 </div>
+              </div>
+              {/* The deal, stated where the ask is typed. The server refuses an
+                  over-request without this box ticked — see the guardrail in
+                  createDepositRequestAction — so the checkbox is the sentence
+                  somebody has to agree to, not a nicety. */}
+              <div className="payment-approved-line">
+                <span>
+                  Approved <strong>{formatMoneyExact(money.approvedCents / 100)}</strong> · already asked for{' '}
+                  <strong>{formatMoneyExact((money.paidCents + money.requestedCents) / 100)}</strong> · room left{' '}
+                  <strong>{formatMoneyExact(Math.max(0, money.remainingCents) / 100)}</strong>
+                </span>
+                <label className="sms-consent-check">
+                  <input name="confirmOverage" type="checkbox" />
+                  <span>Collect more than the approved total (a change order is the cleaner way to raise it)</span>
+                </label>
               </div>
               <div className="payment-sms-options">
                 <label className="field" htmlFor="homeowner-phone">
@@ -1393,7 +1503,7 @@ export default async function JobDetailPage({
             </details>
 
             {changeOrders.length > 0 ? (
-              <details className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
+              <details id="change-orders" className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
                 <summary className="workspace-details-summary job-action-summary">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Extra work</p>
