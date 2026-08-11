@@ -17,6 +17,22 @@
  */
 
 .band {
+  /* THE WIDTH OF THE MEDIA COLUMN, written once and used by both the browser
+     frame and the still below it so the two can never disagree.
+
+     Why it is not simply 100%. The stage is locked to the capture's 1424:890,
+     so width decides height — filling a 1712px band would make a 1070px-tall
+     frame, taller than the screen it is being watched on, and the visitor would
+     never see the whole site at once. So it is whichever is smaller: the band,
+     or the width at which the frame still fits the viewport. The 82vh leaves
+     the heading above it on screen too, the 36px is the address bar plus the
+     two borders, and 1.6 is 1424/890 exactly.
+
+     The 1425px is the capture's own width and is a hard ceiling: measured at
+     2560x1440 the viewport rule alone allowed 1832px, which is a 1.29x upscale
+     of a screen recording, and the site's own text inside it goes soft. */
+  --frame: min(100%, 1425px, max(760px, (82vh - 36px) * 1.6));
+
   /* Matches the rhythm of the bands either side without equalling them: this is
      a sub-chapter of the story above, not a third chapter. */
   padding: clamp(72px, 8vw, 108px) clamp(24px, 6vw, 104px);
@@ -28,7 +44,18 @@
 
 /* ---- the copy ------------------------------------------------------------ */
 
+/* The copy shares the media column rather than the band, so the heading's left
+   edge is the frame's left edge. The alternative — copy on the band's edge,
+   frame centred — put 285px of daylight between a heading and the thing it
+   introduces, which reads as a mistake rather than as a composition. The words
+   stay left-ragged inside that column; it is the column that is centred, not
+   the text. */
 .head {
+  max-width: var(--frame);
+  margin-inline: auto;
+}
+
+.head h2 {
   max-width: 720px;
 }
 
@@ -92,8 +119,11 @@
 
 /* ---- the switcher -------------------------------------------------------- */
 
+/* The same centred column as the copy above and the still below, so the switcher
+   starts where the frame starts and the whole band reads down one left edge. */
 .stageWrap {
-  margin-top: clamp(32px, 4vw, 48px);
+  max-width: var(--frame);
+  margin: clamp(32px, 4vw, 48px) auto 0;
 }
 
 .tabs {
@@ -137,6 +167,7 @@
 }
 
 .panel {
+  width: 100%;
   margin-top: clamp(20px, 2.5vw, 30px);
 }
 .panel[hidden] {
@@ -151,8 +182,9 @@
   position: relative;
   /* A DEFINITE width, not fit-content. The stage inside is sized in percent, so
      shrink-to-fit made the two depend on each other and the whole frame
-     collapsed to the width of the address bar's text. */
-  width: min(100%, 980px);
+     collapsed to the width of the address bar's text. The ceiling and the
+     centring are on .stageWrap; here it simply fills the column. */
+  width: 100%;
   overflow: hidden;
   border: 1px solid #cfc7ba;
   border-radius: 16px;
@@ -191,14 +223,15 @@
 
 /* The phone. Proportionate to the capture rather than to a device — the clip is
    464x968, so the frame is that shape plus a bezel. */
-/* Left-aligned, not centred. The tabs, the copy and the desktop frame all share
-   the band's left edge, and a centred phone made switching tabs slide the media
-   sideways under the cursor that had just switched it. It re-centres below
-   720px, where the band is narrow enough that a left-aligned phone leaves an
-   odd margin on one side only. */
+/* Centred. It used to be left-aligned to match a left-aligned browser frame;
+   now that the frame is centred, a phone hugging the left edge of a 1700px band
+   is stranded — measured at 1920, 1398px of empty band to its right.
+   margin-inline and not the flex column above, which does not reach it: the tab
+   panel is in between, and it is a block. */
 .phone {
   position: relative;
   width: fit-content;
+  margin-inline: auto;
   padding: 10px;
   border: 1px solid #cfc7ba;
   border-radius: 34px;
@@ -307,16 +340,25 @@
 
 /* ---- the still that does not move ---------------------------------------- */
 
-/* Capped at the video's own width and given the smaller share of it. The still
+/* Capped at the frame's own width and given the smaller share of it. The still
    is the supporting evidence, not a second headline act — at full band width it
-   came out larger than the walkthrough above it and swapped the two over. */
-.support {
+   came out larger than the walkthrough above it and swapped the two over. Which
+   is why it shares --frame rather than carrying a number of its own: any width
+   the video cannot reach is a width this must not reach either.
+
+   .band-SCOPED, and that is the third time this shell has caught this file out.
+   `.root p, .root figure, .root blockquote, .root dl, .root dd { margin: 0 }`
+   is (0,1,1) and a bare .support is (0,1,0), so BOTH margins here were being
+   dropped on the floor: the figure sat hard against the frame above it and, once
+   the frame started centring, stayed stuck to the band's left edge while the
+   video moved away from it. Measured at 1920: figure at x=105, video at x=390. */
+.band .support {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.68fr);
   align-items: center;
   gap: clamp(24px, 3.5vw, 48px);
-  max-width: 980px;
-  margin: clamp(40px, 5vw, 64px) 0 0;
+  max-width: var(--frame);
+  margin: clamp(40px, 5vw, 64px) auto 0;
   padding-top: clamp(32px, 4vw, 48px);
   border-top: 1px solid #d1c9bd;
 }
@@ -350,19 +392,15 @@
 
 @media (max-width: 900px) {
   /* Copy above media is already the source order, so stacking is only the
-     support figure. */
-  .support {
+     support figure. .band-scoped because the base rule now is too — a media
+     query adds no specificity, so a bare .support here would lose to it and the
+     figure would simply never stack. */
+  .band .support {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 720px) {
-  .browser,
-  .phone {
-    /* Centred, and never wider than the band's content box — a phone frame that
-       overhangs is a horizontal scrollbar on the whole page. */
-    margin-inline: auto;
-  }
   .stageMobile {
     width: min(292px, 68vw);
   }

@@ -257,6 +257,43 @@ describe('it can be used without a mouse or without sight', () => {
   });
 });
 
+describe('the frame fills the band without outgrowing the screen', () => {
+  it('sizes the column once and shares it', () => {
+    // The heading, the switcher, the frame and the still are one centred
+    // column. Four separate widths is four chances for them to drift apart —
+    // which is exactly what happened when the frame moved and the still, which
+    // had its own 980px, stayed behind on the band's left edge.
+    expect(CSS).toMatch(/--frame:\s*min\(/);
+    expect(CSS.match(/var\(--frame\)/g)?.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('is bounded by the viewport height, not just the band', () => {
+    // The stage is locked to 1424:890, so width decides height. Filling a
+    // 1712px band makes a 1070px frame — taller than the screen watching it.
+    expect(CSS).toMatch(/--frame:[^;]*\dvh/);
+  });
+
+  it('never upscales past the capture it is showing', () => {
+    // Measured at 2560x1440: the viewport rule alone allowed 1832px of a
+    // 1425px screen recording.
+    expect(CSS).toMatch(/--frame:[^;]*1425px/);
+  });
+
+  it('scopes the still under .band, or the shell eats both its margins', () => {
+    // `.root p, .root figure, ... { margin: 0 }` is (0,1,1) and a bare .support
+    // is (0,1,0). This is the third rule in this file to lose that fight.
+    expect(CSS).toContain('.band .support');
+    // A rule whose selector STARTS with .support — `.band .support {` starts
+    // with .band, so it survives this.
+    expect(CSS).not.toMatch(/^\s*\.support\s*\{/m);
+    // And the media query that stacks it has to be scoped too — a media query
+    // adds no specificity, so a bare .support there would lose to the base rule
+    // and the figure would never stack.
+    const narrow = CSS.slice(CSS.indexOf('@media (max-width: 900px)'));
+    expect(narrow).toContain('.band .support');
+  });
+});
+
 describe('the assets stay where they were put', () => {
   it('nothing outside this section references them', () => {
     // The brief's rule: no scattering them through unrelated pages, and no new
