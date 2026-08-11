@@ -19,6 +19,7 @@ import {
 } from './hero-thread';
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
+import ProductTour from './ProductTour';
 
 /**
  * The Product page, in the standalone site's visual language.
@@ -343,6 +344,13 @@ export default function FeaturesPage() {
           </span>
         ))}
       </section>
+
+      {/* THE PRODUCT, MOVING, BEFORE THE PAGE DESCRIBES IT FIVE MORE TIMES.
+          Directly above "Five connected advantages", which is the last moment
+          before the page turns into a list of claims. Nothing here autoplays
+          for somebody who asked for less motion or less data, and the 2.4MB is
+          not fetched at all until the section is within a screen. */}
+      <ProductTour />
 
       <section className="flagship-index" id="flagship-index">
         <div className="index-heading">

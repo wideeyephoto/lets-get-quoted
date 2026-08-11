@@ -5256,6 +5256,86 @@ const TWEAKS = `
   .root :global(.index-proof b) { font-size: 18px; }
 }
 
+/* ---- the product tour ---------------------------------------------------
+
+   Across the middle of the page, directly above "Five connected advantages" —
+   the last moment before the page becomes a list of claims.
+
+   CAPPED AT 1280px, WHICH IS THE CAPTURE'S OWN WIDTH. Filling a 1712px band
+   would be a 1.34x upscale of a screen recording, and the product's own text
+   inside it goes soft — the same measurement that put a hard ceiling on the
+   example-site frame at 2560x1440. At 1440 the page's gutters leave 1,232px,
+   so it very nearly fills the band anyway; wider than that it centres. */
+.root :global(.tour-band) {
+  padding: clamp(34px, 4vw, 56px) clamp(24px, 6vw, 104px) clamp(10px, 1.4vw, 18px);
+}
+.root :global(.tour-frame) {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid rgba(174, 199, 211, .18);
+  border-radius: 20px;
+  background: #07131d;
+  box-shadow: 0 34px 70px -40px rgba(0, 0, 0, .8);
+}
+/* aspect-ratio on a known width holds the box before a byte arrives, which is
+   what stops the section jumping when the poster lands. */
+.root :global(.tour-video) {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1280 / 720;
+  object-fit: cover;
+  background: #07131d;
+}
+.root :global(.tour-play) {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 .95rem;
+  border: 1px solid rgba(245, 240, 231, .28);
+  border-radius: 999px;
+  /* Its own ground, because it sits over a recording whose colour it cannot
+     know. 12.9:1 against #f5f0e7 text. */
+  background: rgba(7, 19, 29, .78);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #f5f0e7;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.root :global(.tour-play:hover) { background: rgba(7, 19, 29, .92); }
+.root :global(.tour-play:focus-visible) { outline: 2px solid var(--orange); outline-offset: 3px; }
+/* Two glyphs drawn rather than typed: the play and pause characters render as
+   emoji on some platforms and as a missing box on others. */
+.root :global(.tour-play span[data-icon]) { flex: 0 0 auto; width: 9px; height: 11px; background: currentColor; }
+.root :global(.tour-play span[data-icon="play"]) { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.root :global(.tour-play span[data-icon="pause"]) {
+  clip-path: polygon(0 0, 32% 0, 32% 100%, 0 100%, 68% 0, 100% 0, 100% 100%, 68% 100%);
+}
+.root :global(.tour-note) {
+  max-width: 1280px;
+  margin: 14px auto 0;
+  color: #9db0bd;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .root :global(.tour-band) { padding-inline: 20px; }
+  .root :global(.tour-frame) { border-radius: 14px; }
+  .root :global(.tour-play) { left: 10px; bottom: 10px; }
+}
+
 /* ---- Quick Stops, as the extra it is ------------------------------------
 
    Not a sixth card. The five above are one job moving from a click to a
