@@ -70,7 +70,11 @@ export function quickStopOfferText(input: {
   payUrl: string;
   minutes: number;
 }): string {
-  return `Your Quick Stop Offer from ${input.businessName}: arrive ${input.whenLabel} for ${input.feeLabel}. Complete payment within ${input.minutes} min to reserve this window: ${input.payUrl}. Reply STOP to opt out.`;
+  /* "for $145" read as the price of the visit. It is the price of getting the
+     visit — the work is quoted and invoiced separately, and a homeowner who
+     learns that at the door is a refund request we caused. Costs one segment
+     boundary at most and prevents the argument. */
+  return `Your Quick Stop offer from ${input.businessName}: arrive ${input.whenLabel} for a ${input.feeLabel}. This reserves the visit; service and parts are billed separately. Pay within ${input.minutes} min to hold this window: ${input.payUrl}. Reply STOP to opt out.`;
 }
 
 export function quickStopConfirmedText(input: {
@@ -79,7 +83,7 @@ export function quickStopConfirmedText(input: {
   statusUrl?: string;
 }): string {
   const manage = input.statusUrl ? ` Manage or cancel: ${input.statusUrl}.` : '';
-  return `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. We'll text updates on the way.${manage} Reply STOP to opt out.`;
+  return `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. Your visit fee is paid; any service or parts are billed separately. We'll text updates on the way.${manage} Reply STOP to opt out.`;
 }
 
 // -- crew --------------------------------------------------------------------

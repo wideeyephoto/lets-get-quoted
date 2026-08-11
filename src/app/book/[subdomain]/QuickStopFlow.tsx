@@ -164,8 +164,9 @@ export default function QuickStopFlow({
           <h2>Request sent 👍</h2>
         </div>
         <p className="workspace-details-copy" style={{ marginTop: '.5rem' }}>
-          {businessName} will review your job and, if they can fit you in, text you an arrival window and the
-          Quick Stop fee. You only pay after you approve the time and price — nothing is booked until then.
+          {businessName} will review your job and, if they can fit you in, text you an arrival window and a
+          priority visit fee. That fee reserves the visit — the service itself is quoted and billed
+          separately. You only pay after you have seen both, and nothing is booked until then.
         </p>
       </section>
     );
@@ -179,8 +180,9 @@ export default function QuickStopFlow({
           <h2>Quick Stop</h2>
         </div>
         <p className="workspace-details-copy" style={{ marginTop: '.5rem', marginBottom: '1rem' }}>
-          Get added to the contractor&apos;s route sooner. The contractor will review the job, propose an
-          arrival window, and set the separate fee required to add another stop.
+          Get added to the contractor&apos;s route sooner. They will review the job, propose an arrival
+          window, and set a priority visit fee for making the extra trip. The fee reserves the visit;
+          the work itself is quoted and billed separately.
         </p>
         {/* Secondary, not primary. This sits directly under the booking form's
             own submit, and two identical orange buttons on one screen is two

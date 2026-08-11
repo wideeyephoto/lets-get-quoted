@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Contractor Software Features | Let�
 const flagships = [
   ["01", "One-click website", "Launch a complete, editable contractor site with Smart Intake connected from day one.", "/features/website-builder", "BUILD THE FRONT DOOR"],
   ["02", "AI Smart Intake", "Ask better questions, build a useful project summary and surface the leads that deserve attention first.", "/features/ai-intake", "QUALIFY THE OPPORTUNITY"],
-  ["03", "Quick Stops", "Turn an opening in today’s route into an optional, prepaid nearby job at a price you choose.", "/features/quick-stops", "EARN BETWEEN JOBS"],
+  ["03", "Quick Stops", "Sell a nearby homeowner a priority visit at a fee you set — paid before you go, and on top of the work itself.", "/features/quick-stops", "EARN BETWEEN JOBS"],
   ["04", "Texts + client portal", "Keep every conversation, approval, update and payment connected to the right job.", "/features/client-portal", "KEEP CUSTOMERS INFORMED"],
   ["05", "Connected back office", "Move from quote to schedule, crew, payment, review and recurring work without rebuilding the record.", "/features/back-office", "RUN THE WORK"],
 ];

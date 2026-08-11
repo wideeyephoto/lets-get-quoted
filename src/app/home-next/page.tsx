@@ -97,11 +97,11 @@ const FEATURES: Feature[] = [
   {
     number: '03',
     kicker: 'QUICK STOPS',
-    title: 'Turn gaps in the day into prepaid work nearby.',
+    title: 'Get paid to fit nearby customers into today’s route.',
     body: 'Offer a nearby homeowner a same-day arrival window and price you choose. Nothing books until they pay.',
     proof: ['Route-aware matching', 'You control every offer', 'Always optional—never auto-booked'],
     input: 'A gap in today’s route',
-    output: 'A prepaid offer you approve',
+    output: 'A paid priority visit you approved',
     demoLabel: 'A same-day request sitting near a route already planned, and the offer you would send.',
   },
 ];
@@ -110,7 +110,7 @@ const TRUST = [
   ['WEBSITE INCLUDED', 'One-click AI builder'],
   ['SMART INTAKE INCLUDED', 'Qualify every request'],
   ['BACK OFFICE INCLUDED', 'Quote, schedule and collect'],
-  ['QUICK STOPS INCLUDED', 'Nearby prepaid work'],
+  ['QUICK STOPS INCLUDED', 'Paid priority visits nearby'],
 ];
 
 const PIPELINE = [

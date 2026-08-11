@@ -64,9 +64,10 @@ export default async function DemoQuickStopsPage() {
             />
           </h1>
           <p>
-            Quick Stops lets nearby customers pay to be fitted in sooner than your normal schedule. You review every
-            request, choose the arrival window and fee, and accept only when it fits your route. Nothing is booked until
-            the customer pays.
+            Quick Stops lets nearby customers pay a fee to be fitted in sooner than your normal schedule. You review
+            every request, choose the arrival window and the priority visit fee, and accept only when it fits your
+            route. The fee reserves the visit and is paid before you go; the work itself is quoted and invoiced as
+            usual.
           </p>
         </div>
         <span className="btn secondary bset-head-cta" aria-disabled="true">
@@ -89,6 +90,14 @@ export default async function DemoQuickStopsPage() {
           and had already drifted from it. Everything it shows is the same
           derivation an owner sees: which of the prerequisites are met, and which
           single one is missing when it is not live. */}
+      {/* NO PREVIEW LINK, because there is nowhere true to send one. bookingUrl
+          was `https://evergreenlawn.letsgetquoted.com/book` and that 404s:
+          middleware rewrites a tenant host to /site/<subdomain><path>, and
+          src/app/site/[subdomain] has no `book` route — the real booking page is
+          /book/<subdomain> on the app host, which is what a signed-in owner's
+          own link uses. The demo account is fixture data with no published site
+          behind it either way, so both addresses are a promise the click cannot
+          keep. QuickStopStatus renders no button when this is null. */}
       <QuickStopStatus
         readOnly
         enabled
@@ -98,7 +107,7 @@ export default async function DemoQuickStopsPage() {
         feeSet
         daysSet
         stripeConnected
-        bookingUrl={`https://${DEMO_SITE_HOST}/book`}
+        bookingUrl={null}
         dayNames="Mon – Fri"
         dayCount={5}
         hoursLabel={`8 AM – ${clockLabel(DEMO_QUICK_STOPS.cutoffTime)}`}

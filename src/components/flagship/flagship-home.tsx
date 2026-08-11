@@ -64,7 +64,7 @@ const PROMISES = [
   { label: 'WEBSITE INCLUDED', blurb: 'One-click AI builder', href: '/features/website-builder' },
   { label: 'SMART INTAKE INCLUDED', blurb: 'Qualify every request', href: '/features/ai-intake' },
   { label: 'BACK OFFICE INCLUDED', blurb: 'Quote, schedule and collect', href: '/features/back-office' },
-  { label: 'QUICK STOPS INCLUDED', blurb: 'Nearby prepaid work', href: '/features/quick-stops' },
+  { label: 'QUICK STOPS INCLUDED', blurb: 'Paid priority visits nearby', href: '/features/quick-stops' },
 ];
 
 /**
@@ -124,11 +124,11 @@ const features: Feature[] = [
   {
     number: "03",
     kicker: "QUICK STOPS",
-    title: "Turn gaps in the day into prepaid work nearby.",
+    title: "Get paid to fit nearby customers into today’s route.",
     body: "Offer a nearby homeowner a same-day arrival window and price you choose. Nothing books until they pay.",
     proof: ["Route-aware matching", "You control every offer", "Always optional—never auto-booked"],
     input: "A gap in today’s route",
-    output: "A prepaid offer you approve",
+    output: "A paid priority visit you approved",
     href: "/features/quick-stops",
   },
 ];

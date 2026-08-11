@@ -391,7 +391,7 @@ export default function QuickStopConfigurator({
                   <div className="form-grid compact-form">
                     <div className="field full">
                       <RangeSlider
-                        label="Quick Stop fee range"
+                        label="Priority visit fee range"
                         nameMin="quickStopMinFee"
                         nameMax="quickStopMaxFee"
                         min={0}

@@ -109,16 +109,17 @@ export default function QuickStopExplainer({
             Earn more from customers willing to <span className="es-accent">pay for speed</span>
           </h2>
           <p className="es-lead">
-            Quick Stops lets nearby customers pay to be fitted in sooner than your normal
-            schedule. You review the request, choose the arrival window, set the fee, and accept
-            only when it suits you.
+            Quick Stops lets nearby customers pay a fee to be fitted in sooner than your normal
+            schedule. You review the request, choose the arrival window, set the priority visit fee,
+            and accept only when it suits you. The fee is on top of the work itself, which you quote
+            and invoice as usual.
           </p>
 
           <ul className="es-promises">
             <li><Icon name="check" /> You approve every request</li>
             <li><Icon name="check" /> You set the time</li>
-            <li><Icon name="check" /> You set the fee</li>
-            <li><Icon name="check" /> Nothing books until payment clears</li>
+            <li><Icon name="check" /> You set the priority visit fee</li>
+            <li><Icon name="check" /> The window is confirmed when the fee is paid</li>
           </ul>
 
           <div className="es-hero-cta">
@@ -151,11 +152,12 @@ export default function QuickStopExplainer({
         <aside className="es-earnings is-illustration" aria-label="What a Quick Stop is worth">
           <p className="es-earnings-label">The arithmetic</p>
           <p className="es-earnings-line">
-            <strong>${typicalFee}</strong> a visit. One a week for a year would be{' '}
-            <strong>${yearly.toLocaleString('en-US')}</strong>.
+            <strong>${typicalFee}</strong> priority visit fee, plus your normal service charge. One a
+            week for a year is <strong>${yearly.toLocaleString('en-US')}</strong> in visit fees alone.
           </p>
           <p className="es-earnings-note">
-            That is a multiplication, not a projection — nothing here says anyone will ask.{' '}
+            Before anything the work itself earns — the fee buys the detour, not the repair. That is
+            a multiplication, not a projection, and nothing here says anyone will ask.{' '}
             {hasRange
               ? `$${typicalFee} is the middle of the $${minFeeDollars}–$${maxFeeDollars} band you set, and you name the fee on every single request.`
               : 'You name the fee on every single request.'}
@@ -178,12 +180,13 @@ export default function QuickStopExplainer({
             The job, the address, the customer&apos;s details and how far off your route they are — texted and emailed
             to you the moment it lands.
           </Step>
-          <Step n={3} icon="tag" title="You make an offer">
-            Pick the arrival window and the fee that makes it worth doing. Or decline, and it stays an ordinary lead.
+          <Step n={3} icon="tag" title="You set the terms">
+            Pick the arrival window and the priority visit fee that makes the detour worth taking. Or decline, and it
+            stays an ordinary lead.
           </Step>
-          <Step n={4} icon="check" title="The customer chooses">
-            They pay the fee and it&apos;s confirmed, or they skip it and carry on as a normal enquiry. Either way you
-            keep the lead.
+          <Step n={4} icon="check" title="They pay the visit fee">
+            The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and
+            carry on as a normal enquiry. Either way you keep the lead.
           </Step>
         </ol>
       </section>
@@ -197,7 +200,7 @@ export default function QuickStopExplainer({
               {businessName}
             </p>
             <p className="es-phone-bubble">We&apos;re in your area today. Want us out sooner?</p>
-            <p className="es-phone-sub">Choose faster service for a Quick Stop fee, or carry on as a normal enquiry.</p>
+            <p className="es-phone-sub">Pay a priority visit fee for faster service, or carry on as a normal enquiry.</p>
             <p className="es-phone-choice primary">
               Pay for faster service <span aria-hidden="true">→</span>
               <small>booked once payment clears</small>
@@ -221,7 +224,7 @@ export default function QuickStopExplainer({
             <div className="es-example-offer-box">
               <p className="es-example-label">Your offer</p>
               <p className="es-example-offer">6:30 – 7:15 PM</p>
-              <p className="es-example-fee">${typicalFee}<span>Quick Stop fee</span></p>
+              <p className="es-example-fee">${typicalFee}<span>Priority visit fee</span></p>
             </div>
             <p className="es-example-note">If they pass, the lead stays yours as a normal enquiry.</p>
           </div>

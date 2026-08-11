@@ -474,17 +474,65 @@ describe('the quick stops page', () => {
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
-  it('points the verb at the thing they want', () => {
-    expect(SRC).toContain('Fill schedule gaps with');
-    expect(SRC).toContain('prepaid jobs nearby.');
-    expect(SRC).not.toContain('Turn gaps in the day into');
+  it('says what the money buys in the first sentence', () => {
+    // "Prepaid jobs nearby" is the one thing a Quick Stop is not. The homeowner
+    // buys a PRIORITY VISIT — a place in today's route and an arrival window —
+    // and the work is quoted and invoiced like any other job. The old page
+    // reached its fifth section before saying so, which is a refund request and
+    // a chargeback waiting to happen.
+    expect(SRC).toContain('Get paid to fit nearby customers into');
+    expect(SRC).toContain('today’s route.');
+    expect(SRC).toMatch(/Any service, labor or\s+parts are charged separately\./);
+    expect(SRC).toContain('It is not payment toward the service');
   });
 
-  it('stops repeating the approval promise under the buttons', () => {
-    // The old note restated the lede's two promises two lines under it.
-    expect(SRC).toContain(
-      'heroNote="No subscription · You approve every request · Nothing books until payment"',
-    );
+  it('never calls a Quick Stop a prepaid job', () => {
+    // The whole failure in one word: "prepaid" says the thing you are buying is
+    // the job. Banned on this page and on every surface that links to it.
+    // Comments stripped first: this page's own note quotes the headline it
+    // replaced, which is the sentence that has to stay findable.
+    const strip = (text: string) =>
+      text
+        .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+    for (const file of [
+      'src/app/features/quick-stops/page.tsx',
+      'src/app/features/page.tsx',
+      'src/components/flagship/flagship-home.tsx',
+    ]) {
+      expect(strip(readFileSync(file, 'utf8')), file).not.toMatch(/prepaid (job|work|offer)/i);
+    }
+  });
+
+  it('draws the two charges rather than only asserting they are two', () => {
+    // A single number on a page is read as the price of the thing on the page,
+    // however many sentences around it say otherwise. The split gives the
+    // second box no figure at all, because "priced separately" IS the fact.
+    const card = SRC.slice(SRC.indexOf('function PendingOffer'), SRC.indexOf('const LIFECYCLE'));
+    expect(card).toContain('Priority visit fee · due now');
+    expect(card).toContain('Priced and charged separately');
+    expect(card).not.toContain('Your fee');
+    expect(SRC).toContain('The priority visit fee');
+    expect(SRC).toContain('The service charge');
+    expect(SRC).toContain('It does not pay for the service.');
+  });
+
+  it('keeps the one exception the product actually has', () => {
+    // /quick-stop/[id] tells the homeowner, in these words, that the fee
+    // "applies as a deposit — you'd only pay the difference" on a diagnostic
+    // conversion. A marketing page that flatly denied it would be contradicted
+    // by our own screen.
+    expect(SRC).toContain('diagnostic');
+    expect(SRC).toMatch(/comes\s+off that total/);
+    const CUSTOMER = readFileSync('src/app/quick-stop/[id]/page.tsx', 'utf8');
+    expect(CUSTOMER).toContain('applies as a deposit');
+  });
+
+  it('counts the visit fee as revenue on top of the work, not instead of it', () => {
+    expect(SRC).toContain('plus your normal service charge');
+    expect(SRC).toContain('in visit fees alone');
+    expect(SRC).toContain('the fee buys the detour, not the repair');
   });
 
   it('describes the flow once, in the four beats the dashboard uses', () => {
@@ -526,7 +574,7 @@ describe('the quick stops page', () => {
     // It read "See the 3-step flow" and landed on a six-rung ladder headed
     // "Two gates, and both of them are people."
     expect(SRC).not.toContain('See the 3-step flow');
-    expect(SRC).toContain("label: 'See the flow, start to finish', href: '#how-it-works'");
+    expect(SRC).toContain("label: 'See how the fee works', href: '#how-it-works'");
     expect(SRC).toContain('id="how-it-works" aria-labelledby="quick-stops-pitch-title"');
     // The ladder kept an addressable name of its own.
     expect(SRC).toContain('id="two-gates"');
@@ -553,8 +601,10 @@ describe('the quick stops page', () => {
     expect(SRC).toContain('className={styles.denial}');
   });
 
-  it('answers the five questions off the product’s own constants', () => {
-    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(5);
+  it('answers the six questions off the product’s own constants', () => {
+    // Six since "What exactly is the homeowner paying for?" was added — the
+    // question the page previously left a visitor to answer for themselves.
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(6);
     expect(SRC).toContain('DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS');
     expect(SRC).toContain('const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS)');
     expect(SRC).not.toMatch(/<details[^>]*name=/);

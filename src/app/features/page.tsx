@@ -109,7 +109,7 @@ const FLAGSHIPS: Flagship[] = [
     number: '03',
     id: 'quick-stops',
     title: 'Quick Stops',
-    body: 'Turn an opening in today’s route into an optional, prepaid nearby job at a price you choose.',
+    body: 'Sell a nearby homeowner a priority visit at a fee you set — paid before you go, and on top of whatever the work itself comes to.',
     href: '/features/quick-stops',
     kicker: 'EARN BETWEEN JOBS',
     produces: ['Openings in today’s route', 'Paid before you arrive', 'Your price, your radius'],

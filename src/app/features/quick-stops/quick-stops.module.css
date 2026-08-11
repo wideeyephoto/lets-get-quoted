@@ -258,6 +258,91 @@
   color: #8aa2b1;
 }
 
+/* ---- what the money is for ----------------------------------------------- */
+
+/* Two boxes with ONE number between them.
+ *
+ * Every sentence on this page can say the fee is separate from the service and
+ * a skim will still read "$145" as the price of the visit, because a single
+ * number on a page is taken as the price of the thing on the page. This shape
+ * cannot be skimmed that way: the second box is deliberately given no figure at
+ * all, because "priced separately" is the fact rather than a missing one. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.9rem;
+  margin-top: 1.5rem;
+}
+
+.splitCard {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.15rem 1.25rem 1.3rem;
+  border: 1px solid rgba(174, 199, 211, 0.14);
+  border-radius: 18px;
+  background: rgba(174, 199, 211, 0.04);
+}
+/* The one that is paid today carries the emphasis. */
+.splitCard[data-lead='true'] {
+  border-color: rgba(255, 106, 36, 0.45);
+  background: rgba(255, 106, 36, 0.07);
+}
+
+.pitch .splitTag {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8aa2b1;
+}
+.splitCard[data-lead='true'] .splitTag { color: #ff6a24; }
+
+.pitch .splitTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #f3f7fa;
+}
+
+.pitch .splitBody {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: #9fb3c0;
+}
+
+.pitch .splitPlus {
+  margin: 0;
+  align-self: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #5e7382;
+}
+
+.pitch .splitNote {
+  margin: 1.1rem 0 0;
+  max-width: 76ch;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  font-weight: 700;
+  color: #dce8ef;
+}
+/* The exception, in the same paragraph but not in the same voice — it is a real
+   carve-out and burying it would repeat the mistake this section fixes. */
+.pitch .splitNote span {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #8aa2b1;
+}
+
 /* ---- the four beats ------------------------------------------------------ */
 
 .pitch .flowTitle {
@@ -348,6 +433,8 @@
 
 @media (max-width: 1000px) {
   .pitchGrid { grid-template-columns: minmax(0, 1fr); }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .pitch .splitPlus { justify-self: center; }
   .pitch .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 0.8rem; }
 }
 
@@ -355,6 +442,21 @@
   .pitch .flow { grid-template-columns: minmax(0, 1fr); }
   .pitch .promises { gap: 0.55rem 1.1rem; }
 }
+
+/* The line that stops "$145" being read as the price of the repair. A block, so
+   it cannot be mistaken for the tail of the bullet list above it. */
+.heroImportant {
+  display: block;
+  margin-top: 0.7rem;
+  max-width: 56ch;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.55;
+  color: var(--ink-orange-1);
+}
+
+/* The lead row of the example card: the number that is actually due. */
+.offer .offerFacts .factLead .factValue { color: var(--ink-orange-1); font-size: 1.05rem; }
 
 /* ---- the status ladder -------------------------------------------------- */
 

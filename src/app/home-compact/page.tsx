@@ -31,7 +31,7 @@ const proof = [
   'Website included',
   'Leads arrive qualified',
   'Quote, schedule and collect',
-  'Nearby prepaid work',
+  'Paid priority visits nearby',
 ];
 
 export default function HomeCompactPage() {

@@ -21,7 +21,7 @@ const included = [
   ['Website included', 'A complete contractor site, generated in one click and editable before it goes live.'],
   ['Smart Intake included', 'Every inquiry arrives as a project summary, not a name and a phone number.'],
   ['Back office included', 'Quotes, scheduling, crews and payments, already connected to the lead.'],
-  ['Quick Stops included', 'Nearby work that fits a gap in the day, prepaid before it books.'],
+  ['Quick Stops included', 'Nearby work that fits a gap in the day, with the visit fee paid before it books.'],
 ];
 
 const chapters = [
@@ -46,11 +46,11 @@ const chapters = [
   {
     n: '03',
     kicker: 'Quick Stops',
-    title: 'Turn gaps in the day into prepaid work nearby.',
+    title: 'Get paid to fit nearby customers into today’s route.',
     body: 'When the day opens up, nearby requests that fit the route surface as offers. The contractor sets the arrival window and the price, and the homeowner pays before anything is booked. It is never automatic, and it is always declinable.',
     proof: ['Route-aware, never auto-booked', 'You set the window and the price', 'Nothing books until the homeowner pays'],
     from: 'A gap in today’s route',
-    to: 'A prepaid offer you approved',
+    to: 'A paid priority visit you approved',
   },
 ];
 

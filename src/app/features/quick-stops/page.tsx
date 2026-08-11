@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   // Named for the search it should win rather than for the button in our own
   // nav: "Quick Stops" alone means nothing to somebody who has never heard of
   // us, and the title is the strongest signal Google uses to write the result.
-  title: 'Quick Stops for Contractors: Prepaid Jobs Nearby',
+  title: 'Quick Stops for Contractors: Paid Priority Visits Nearby',
   description:
-    'Fill gaps in your route with nearby, prepaid jobs. You approve every request, set the price and arrival window, and go only after the homeowner has paid.',
+    'Get paid to fit nearby customers into today’s route. You set a priority visit fee and the arrival window; they pay that fee to reserve the visit. Service, labor and parts are charged separately.',
   alternates: { canonical: 'https://letsgetquoted.com/features/quick-stops' },
   /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
      Next replaces the parent metadata's `openGraph` object wholesale rather
@@ -37,21 +37,27 @@ export const metadata: Metadata = {
     type: 'website',
     url: 'https://letsgetquoted.com/features/quick-stops',
     siteName: "Let's Get Quoted",
-    title: 'Fill schedule gaps with prepaid jobs nearby.',
+    title: 'Get paid to fit nearby customers into today’s route.',
     description:
-      'See requests close to jobs already on your schedule. You choose the price and arrival window, then send an offer. It only becomes a job after the homeowner pays.',
-    images: [{ url: '/features/og-quick-stops.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted Quick Stops: prepaid contractor jobs nearby' }],
+      'You set the priority visit fee and the arrival window. The homeowner pays that fee to reserve the visit — service, labor and parts are charged separately, on top.',
+    images: [{ url: '/features/og-quick-stops.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted Quick Stops: paid priority visits for contractors' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Fill schedule gaps with prepaid jobs nearby.',
+    title: 'Get paid to fit nearby customers into today’s route.',
     description:
-      'See requests close to jobs already on your schedule. You choose the price and arrival window, then send an offer. It only becomes a job after the homeowner pays.',
+      'You set the priority visit fee and the arrival window. The homeowner pays that fee to reserve the visit — service, labor and parts are charged separately, on top.',
     images: ['/features/og-quick-stops.jpg'],
   },
 };
 
 /* The offer as the contractor sends it.
+ *
+ * THE CARD'S JOB IS THE DISTINCTION, and it did not used to make it. "Your fee
+ * · $145" beside "Visit length · about 45 min" reads as the price of the 45
+ * minutes. It is not: $145 buys the priority visit and the arrival window, and
+ * the work is quoted and invoiced like any other job. Two rows now, one of them
+ * carrying no number at all, because "priced separately" IS the fact.
  *
  * The status chip is imported from the real lifecycle table rather than
  * retyped, so this panel cannot drift from the status a contractor actually
@@ -68,17 +74,17 @@ function PendingOffer() {
       </div>
 
       <ul className={styles.offerFacts}>
-        <li className={styles.fact}>
-          <span className={styles.factLabel}>Your fee</span>
+        <li className={`${styles.fact} ${styles.factLead}`}>
+          <span className={styles.factLabel}>Priority visit fee · due now</span>
           <span className={styles.factValue}>$145</span>
+        </li>
+        <li className={styles.fact}>
+          <span className={styles.factLabel}>Service work</span>
+          <span className={styles.factValue}>Priced and charged separately</span>
         </li>
         <li className={styles.fact}>
           <span className={styles.factLabel}>Arrival window</span>
           <span className={styles.factValue}>Today, 3:00 – 4:00 PM</span>
-        </li>
-        <li className={styles.fact}>
-          <span className={styles.factLabel}>Visit length</span>
-          <span className={styles.factValue}>About 45 min</span>
         </li>
         <li className={styles.fact}>
           <span className={styles.factLabel}>Pay window</span>
@@ -87,9 +93,10 @@ function PendingOffer() {
       </ul>
 
       <p className={styles.offerNote}>
-        <strong>Not on your calendar yet.</strong> You chose the price and the window and sent it.
-        The homeowner now has {DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes to pay. If they
-        don’t, the offer expires and your afternoon is exactly as you left it.
+        <strong>Not on your calendar yet.</strong> The homeowner has{' '}
+        {DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes to pay the $145 priority visit fee. Once
+        it clears, the arrival window is confirmed. Any diagnosis, labor, parts or repair is
+        separate — you quote and invoice it the way you would on any other job.
       </p>
     </div>
   );
@@ -118,19 +125,19 @@ const LIFECYCLE = [
     status: QUICK_STOP_STATUS_LABEL.contractor_offer_sent,
     who: 'You set the terms',
     gate: false,
-    body: 'You chose the fee and the arrival window, and the offer has gone out. This is as far as anything gets on your say-so alone.',
+    body: 'You chose the priority visit fee and the arrival window, and the offer has gone out. This is as far as anything gets on your say-so alone.',
   },
   {
     status: QUICK_STOP_STATUS_LABEL.awaiting_customer_payment,
     who: 'They decide',
     gate: true,
-    body: 'The homeowner gets a text with the price, the window and a pay link. It waits for them, and expires if they leave it.',
+    body: 'The homeowner gets a text naming the priority visit fee, the window and a pay link, and saying that service is charged separately. It waits for them, and expires if they leave it.',
   },
   {
     status: QUICK_STOP_STATUS_LABEL.confirmed,
-    who: 'Payment clears',
+    who: 'Fee clears',
     gate: false,
-    body: 'Only now does the visit become a real appointment on your calendar. Payment is the thing that books it — there is no other route to this row.',
+    body: 'Only now does the visit become a real appointment on your calendar. The visit fee is the thing that books it — there is no other route to this row. What the work costs is still to be agreed on site.',
   },
   {
     status: `${QUICK_STOP_STATUS_LABEL.en_route} → ${QUICK_STOP_STATUS_LABEL.arrived} → ${QUICK_STOP_STATUS_LABEL.completed}`,
@@ -152,7 +159,7 @@ const NEVER = [
   },
   {
     title: 'It never sets your price or your hours',
-    body: 'The fee, the arrival window, how far you will divert, how long a visit can run and how many you will take in a day are all yours. Quick Stops only offers work that already fits inside them.',
+    body: 'The priority fee, the arrival window, how far you will divert, how long a visit can run and how many you will take in a day are all yours — and so is everything you charge for the work itself, which Quick Stops has no opinion about at all.',
   },
   {
     title: 'It never takes the choice away later',
@@ -193,8 +200,8 @@ const yearlyFee = typicalFee * 52;
 const PROMISES = [
   'You approve every request',
   'You set the time',
-  'You set the fee',
-  'Nothing books until payment clears',
+  'You set the priority visit fee',
+  'The window is confirmed when the fee is paid',
 ] as const;
 
 const FLOW = [
@@ -210,13 +217,13 @@ const FLOW = [
   },
   {
     icon: 'tag',
-    title: 'You make an offer',
-    body: 'Pick the arrival window and the fee that makes it worth doing. Or decline, and it stays an ordinary lead.',
+    title: 'You set the terms',
+    body: 'Pick the arrival window and the priority visit fee that makes the detour worth taking. Or decline, and it stays an ordinary lead.',
   },
   {
     icon: 'check',
-    title: 'The customer chooses',
-    body: 'They pay the fee and it is confirmed, or they skip it and carry on as a normal enquiry. Either way you keep the lead.',
+    title: 'They pay the visit fee',
+    body: 'The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and carry on as a normal enquiry. Either way you keep the lead.',
   },
 ] as const;
 
@@ -227,12 +234,16 @@ const FLOW = [
    Nothing here promises a capability the page has not already shown. */
 const FAQ: { q: string; a: string }[] = [
   {
+    q: 'What exactly is the homeowner paying for?',
+    a: `The priority visit: a place in today's route and an arrival window. It is not a payment toward the repair. You quote and invoice the service — diagnosis, labor, parts — exactly as you would on any other job, and that invoice is on top of the fee. The one exception is a diagnostic conversion: if you propose turning the visit into a paid diagnostic while you are there, the fee they already paid comes off that total and they pay the difference. Their own status page says so in those words.`,
+  },
+  {
     q: 'What does a Quick Stop cost me?',
-    a: `Nothing to offer one. You set the price the homeowner pays, anywhere in the $${minFee} to $${maxFee} band, and you pay the same platform fee you pay on any other job — only on money you actually collect, plus Stripe's ${STRIPE_PROCESSING_NOTE}.`,
+    a: `Nothing to offer one. You set the priority visit fee the homeowner pays, anywhere in the $${minFee} to $${maxFee} band, and you pay the same platform fee you pay on any other job — only on money you actually collect, plus Stripe's ${STRIPE_PROCESSING_NOTE}.`,
   },
   {
     q: 'What if the homeowner cancels, or I can’t make it?',
-    a: `The homeowner has paid before the stop exists, so a cancellation is a refund rather than an argument about a no-show. If you cannot make it, you cancel the stop and they are refunded in full — you are never holding money for a visit that did not happen.`,
+    a: `The visit fee is paid before the stop exists, so a cancellation is a refund rather than an argument about a no-show. If you cannot make it, you cancel the stop and they are refunded in full — you are never holding a visit fee for a visit that did not happen.`,
   },
   {
     q: 'Where do the requests come from?',
@@ -244,7 +255,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Does it run when I am not looking at it?',
-    a: `No. The switch sits on your day plan and it is off until you turn it on, it applies to that day, and it never books anything by itself — an offer you send lapses after ${DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes if the homeowner does not pay, and you never hear about it again.`,
+    a: `No. The switch sits on your day plan and it is off until you turn it on, it applies to that day, and it never books anything by itself — an offer you send lapses after ${DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes if the homeowner does not pay the visit fee, and you never hear about it again.`,
   },
 ];
 
@@ -253,33 +264,46 @@ export default function QuickStopsPage() {
   return (
     <FeatureDetailLayout
       eyebrow="New revenue from the route you already drive"
-      /* "Turn gaps in the day into prepaid work nearby" makes the reader do the
-         arithmetic. "Fill schedule gaps with prepaid jobs nearby" is the same
-         sentence with the verb pointed at the thing they want. */
-      title={
+      /* WHAT THE MONEY IS FOR, IN THE FIRST SENTENCE.
+         This page used to be headed "Fill schedule gaps with prepaid jobs
+         nearby", and "prepaid job" is the one thing a Quick Stop is not. The
+         homeowner is paying for a PRIORITY VISIT — a place in today's route and
+         an arrival window — and the work itself is quoted and invoiced exactly
+         as it would be on any other job. Read the old page top to bottom and
+         you reached the fifth section before anything said so.
+         That is not a wording preference. A homeowner who thinks $145 covered
+         the repair is a refund request, a chargeback, and a contractor standing
+         in a kitchen having an argument we caused. */
+      title={<>Get paid to fit nearby customers into <em>today’s route.</em></>}
+      lede={
         <>
-          Fill schedule gaps with <em>prepaid jobs nearby.</em>
+          When a nearby homeowner wants faster service, you choose the arrival window and set a
+          Quick Stop priority fee. They pay that fee to reserve the visit. Any service, labor or
+          parts are charged separately.
         </>
       }
-      lede="See requests close to jobs already on your schedule. You choose the price and arrival window, then send an offer. It only becomes a job after the homeowner pays."
-      /* The old note said the approval and payment promises a second time, two
-         lines under the lede that had just made them. Under the buttons, where
-         somebody is deciding whether to press one, the three facts that matter
-         are what it costs, who is in control and when it becomes real. */
-      heroNote="No subscription · You approve every request · Nothing books until payment"
+      heroNote={
+        <>
+          No subscription · You approve every request · The visit fee is paid before you go
+          <strong className={styles.heroImportant}>
+            The Quick Stop fee reserves the priority visit. It is not payment toward the service
+            itself.
+          </strong>
+        </>
+      }
       /* "Build my free site" is the cluster's default and it is the wrong ask
-         here: somebody reading about prepaid work between jobs is evaluating a
+         here: somebody reading about paid priority visits is evaluating a
          revenue idea, not a website. Same free account either way; the words
          are the ones they came for. */
       primary={{ label: 'Start free with Quick Stops' }}
       /* It said "See the 3-step flow" and landed on a six-rung lifecycle ladder
          headed "Two gates, and both of them are people." Now it lands on the
          flow, which is four beats and says so. */
-      secondary={{ label: 'See the flow, start to finish', href: '#how-it-works' }}
+      secondary={{ label: 'See how the fee works', href: '#how-it-works' }}
       tertiary={{ label: 'See Quick Stops in the demo', href: '/demo/quick-stops' }}
       demo={
         <ExampleFrame
-          label="An offer you have sent, waiting on payment"
+          label="An offer you have sent, waiting on the visit fee"
           note="Sample job and fee. The status and the pay window are the product’s real ones."
         >
           <PendingOffer />
@@ -295,18 +319,18 @@ export default function QuickStopsPage() {
           body: 'You decide whether an opportunity fits the day.',
         },
         {
-          title: 'Your price',
-          body: 'Choose the amount and arrival window before sending.',
+          title: 'Your fee',
+          body: 'Set the priority visit fee and the arrival window before sending.',
         },
         {
-          title: 'Prepaid to confirm',
-          body: 'Nothing is added to the route until payment.',
+          title: 'Paid before you go',
+          body: 'The window is confirmed when the visit fee is paid. Service is billed separately.',
         },
       ]}
       story={{
         eyebrow: 'Fill the gaps without losing control',
-        title: 'A small detour can become productive revenue.',
-        body: 'A cancellation, early finish or open window does not have to become dead time. Quick Stops lets you create a tightly controlled offer for a nearby homeowner while protecting the route you already planned.',
+        title: 'A small detour, paid for before you make it.',
+        body: 'A cancellation, early finish or open window does not have to become dead time. Quick Stops lets you sell the one thing a nearby homeowner actually wants — sooner — at a fee you set, on top of whatever the work itself comes to.',
       }}
       /* FOUR BECAME THREE. "Protect the schedule" and "avoid speculative
          driving" are the same promise — nothing enters your day that you did
@@ -318,12 +342,12 @@ export default function QuickStopsPage() {
           body: 'Only requests that fit the location and the time window you chose are put in front of you, and the customer pays before the visit is added to anything. Declining costs one tap and no explanation.',
         },
         {
-          title: 'You price the detour',
-          body: 'Set the fee that makes the trip worth taking. It is your price on your window, not a marketplace rate somebody else set.',
+          title: 'You price the detour, not the work',
+          body: 'The priority fee is what the trip is worth to you — your number on your window, not a marketplace rate somebody else set. What the job comes to is a separate question you answer the way you always have.',
         },
         {
           title: 'A better answer for a nearby homeowner',
-          body: 'Somebody two streets away gets a real arrival window and a price instead of an open-ended promise to call them back.',
+          body: 'Somebody two streets away gets a real arrival window today instead of an open-ended promise to call them back — and they are told plainly what the fee does and does not cover before they pay it.',
         },
       ]}
       /* THE STEPS SECTION IS GONE, AND THE FLOW BELOW REPLACED IT.
@@ -346,9 +370,10 @@ export default function QuickStopsPage() {
                 Earn more from customers willing to <span className={styles.accent}>pay for speed</span>
               </h2>
               <p className={styles.pitchLede}>
-                Quick Stops lets nearby customers pay to be fitted in sooner than your normal
-                schedule. You review the request, choose the arrival window, set the fee, and accept
-                only when it suits you.
+                Quick Stops lets nearby customers pay a fee to be fitted in sooner than your normal
+                schedule. You review the request, choose the arrival window, set the priority visit
+                fee, and accept only when it suits you. The fee is on top of the work itself, which
+                you quote and invoice as usual.
               </p>
 
               <ul className={styles.promises}>
@@ -364,7 +389,9 @@ export default function QuickStopsPage() {
                   offer between them is not a third chance, it is noise. This
                   line is the part that was doing work: it answers "what am I
                   committing to", which is the question the promises raise. */}
-              <p className={styles.pitchNote}>Pause or change it whenever you like.</p>
+              <p className={styles.pitchNote}>
+                Pause or change it whenever you like.
+              </p>
             </div>
 
             {/* DELIBERATELY THE SMALLEST TYPE IN THE BLOCK. The dashboard drew
@@ -373,19 +400,56 @@ export default function QuickStopsPage() {
                 multiplication — a fee times fifty-two — so it is drawn as a
                 caption and the conditional is in the sentence rather than in a
                 footnote under it. */}
-            <aside className={styles.math} aria-label="What a Quick Stop is worth">
+            <aside className={styles.math} aria-label="What a Quick Stop priority fee is worth">
               <p className={styles.mathLabel}>The arithmetic</p>
               <p className={styles.mathLine}>
-                <strong>${typicalFee}</strong> a visit. One a week for a year would be{' '}
-                <strong>${yearlyFee.toLocaleString('en-US')}</strong>.
+                <strong>${typicalFee}</strong> priority visit fee, plus your normal service charge.
+                One a week for a year is{' '}
+                <strong>${yearlyFee.toLocaleString('en-US')}</strong> in visit fees alone.
               </p>
               <p className={styles.mathNote}>
-                That is a multiplication, not a projection — nothing here says anyone will ask. $
+                Before anything the work itself earns — the fee buys the detour, not the repair.
+                That is a multiplication, not a projection, and nothing here says anyone will ask. $
                 {typicalFee} is the middle of the ${minFee}&ndash;${maxFee} band, and you name the fee
                 on every single request.
               </p>
             </aside>
           </div>
+
+          {/* THE DISTINCTION, DRAWN RATHER THAN STATED.
+              Every sentence on this page can say "the fee is separate" and a
+              skim will still take "$145" as the price of the visit, because a
+              single number on a page is read as the price of the thing on the
+              page. Two boxes with one number between them cannot be skimmed
+              that way. */}
+          <h3 className={styles.flowTitle}>What the homeowner pays, and for what</h3>
+          <div className={styles.split}>
+            <div className={styles.splitCard} data-lead="true">
+              <p className={styles.splitTag}>Paid now</p>
+              <p className={styles.splitTitle}>The priority visit fee</p>
+              <p className={styles.splitBody}>
+                Your number, anywhere in the ${minFee}&ndash;${maxFee} band. It buys a place in
+                today&rsquo;s route and an arrival window, and it is paid before you set off.
+              </p>
+            </div>
+            <p className={styles.splitPlus} aria-hidden="true">+</p>
+            <div className={styles.splitCard}>
+              <p className={styles.splitTag}>Priced separately</p>
+              <p className={styles.splitTitle}>The service charge</p>
+              <p className={styles.splitBody}>
+                Diagnosis, labor, parts, the repair. Quoted and invoiced the way you do it on every
+                other job — Quick Stops has no opinion about what you charge for the work.
+              </p>
+            </div>
+          </div>
+          <p className={styles.splitNote}>
+            The visit fee gets you to their door. It does not pay for the service.{' '}
+            <span>
+              One exception, and the product says so on the homeowner&rsquo;s own screen: if you
+              propose turning the visit into a paid diagnostic, the fee they have already paid comes
+              off that total and they pay only the difference.
+            </span>
+          </p>
 
           <h3 className={styles.flowTitle}>The flow, start to finish</h3>
           <ol className={styles.flow}>
@@ -408,7 +472,7 @@ export default function QuickStopsPage() {
       }
       cta={{
         title: 'Make the route you already drive earn more.',
-        note: `No monthly fee. You pay a small platform fee only on money you actually collect, plus Stripe’s ${STRIPE_PROCESSING_NOTE}.`,
+        note: `No monthly fee. You pay a small platform fee only on money you actually collect — the visit fee and the invoice alike — plus Stripe’s ${STRIPE_PROCESSING_NOTE}.`,
       }}
     >
       {/* #how-it-works moved up to the flow, which is what that fragment
@@ -468,7 +532,7 @@ export default function QuickStopsPage() {
             <span className={styles.ruleValue}>
               ${minFee} – ${maxFee}
             </span>
-            <span className={styles.ruleLabel}>Fee band you can charge for a stop</span>
+            <span className={styles.ruleLabel}>Priority visit fee you can charge, before the work</span>
           </li>
           <li className={styles.rule}>
             <span className={styles.ruleValue}>{DEFAULT_QUICK_STOP_MAX_DETOUR_MILES} miles</span>

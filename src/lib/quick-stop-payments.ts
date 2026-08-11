@@ -57,8 +57,14 @@ export async function sendQuickStopOffer(supabase: SupabaseClient, accountId: st
   }
   const minutes = Number(account.extra_stop_payment_deadline_mins) || 15;
 
+  /* THE LABEL IS WHAT THE HOMEOWNER SEES ON CHECKOUT AND ON THE RECEIPT.
+     "Quick Stop fee" told them the amount and nothing about what it buys, and
+     "Quick Stop" is our word, not theirs — so a homeowner paying $145 could
+     reasonably think it covered the repair. It names the visit now, which is
+     what the money actually reserves. The service is invoiced separately and
+     the offer text below says so. */
   const payment = await createDepositRequest(supabase, accountId, request.job_id, {
-    label: 'Quick Stop fee',
+    label: 'Quick Stop priority visit fee',
     amount: centsToDollars(request.fee_cents),
     kind: 'deposit',
     homeownerPhone: request.client_phone,
@@ -90,7 +96,7 @@ export async function sendQuickStopOffer(supabase: SupabaseClient, accountId: st
   if (request.client_phone) {
     const admin = createAdminClient();
     const businessName = await businessNameFor(admin, accountId);
-    const feeLabel = `${fmtMoneyCents(request.fee_cents)} Quick Stop fee${request.diagnostic_fee_cents ? ` (+ ${fmtMoneyCents(request.diagnostic_fee_cents)} diagnostic)` : ''}`;
+    const feeLabel = `${fmtMoneyCents(request.fee_cents)} priority visit fee${request.diagnostic_fee_cents ? ` (+ ${fmtMoneyCents(request.diagnostic_fee_cents)} diagnostic)` : ''}`;
     await sendQuickStopOfferSms({
       accountId,
       toPhone: request.client_phone,

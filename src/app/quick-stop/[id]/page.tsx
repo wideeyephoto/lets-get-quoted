@@ -135,7 +135,17 @@ export default async function QuickStopStatusPage({
         </div>
         <div className="form-grid" style={{ marginTop: '.75rem' }}>
           <div className="field"><label>Job</label><p className="job-meta" style={{ margin: 0 }}>{req.ai_summary || 'Quick visit'}</p></div>
-          <div className="field"><label>Quick Stop fee</label><p className="job-meta" style={{ margin: 0 }}>{money(req.fee_cents)}{req.diagnostic_fee_cents ? ` + ${money(req.diagnostic_fee_cents)} diagnostic` : ''}</p></div>
+          {/* NAMED, and told what it does not cover. This screen is where a
+              homeowner checks what they paid for, and "Quick Stop fee · $145"
+              beside the job description reads as the price of the job. */}
+          <div className="field">
+            <label>Priority visit fee</label>
+            <p className="job-meta" style={{ margin: 0 }}>{money(req.fee_cents)}{req.diagnostic_fee_cents ? ` + ${money(req.diagnostic_fee_cents)} diagnostic` : ''}</p>
+          </div>
+          <div className="field">
+            <label>Service work</label>
+            <p className="job-meta" style={{ margin: 0 }}>Priced and charged separately</p>
+          </div>
           {req.refund_cents ? <div className="field"><label>Refunded</label><p className="job-meta" style={{ margin: 0 }}>{money(req.refund_cents)}</p></div> : null}
         </div>
 
