@@ -406,6 +406,30 @@ export type OrderedPlan = {
   finishMinutes: number;
   // Minutes past the end of the working day (0 when it fits).
   overflowMinutes: number;
+  /**
+   * How long the working day actually is, and how much work is on it.
+   *
+   * The overrun on its own reads as "work late": "runs 9 hr past your 5:00 PM
+   * finish" invites a contractor to squint at the last stop, when the real
+   * problem is that a 9-hour day has 16 hours of work on it. Two multi-day jobs
+   * each take a full day's share — dayLoad computes each one in isolation and
+   * nothing reconciles the total against the day — so the honest statement is
+   * the pair, not the difference.
+   */
+  dayMinutes: number;
+  /**
+   * Stops still being worked when the working day ends.
+   *
+   * "Starts after the day ends" was the obvious measure and it is the wrong
+   * one: in the reported day the second stop began at 4:57 PM, three minutes
+   * INSIDE a day ending at 5:00, and was then worked until 12:57 AM. What makes
+   * a stop undoable today is that it cannot be finished, not that it cannot be
+   * begun.
+   *
+   * Listed rather than dropped: the route still has to be costed end to end,
+   * and a stop the page silently omitted would be a job the contractor forgot.
+   */
+  unfinishedByDayEnd: string[];
 };
 
 // Cost one specific visit order, rather than searching for a better one.
@@ -460,6 +484,10 @@ export function scheduleOrder(orderedIds: string[], input: PlanInput): OrderedPl
     workMinutes,
     finishMinutes,
     overflowMinutes: Math.max(0, Math.round(finishMinutes - endMinutes)),
+    dayMinutes: Math.max(0, endMinutes - startMinutes),
+    unfinishedByDayEnd: result.planned
+      .filter((entry) => entry.arrivalMinutes + visitMinutesOf(entry.stop, defaultVisitMinutes) > endMinutes)
+      .map((entry) => entry.stop.id),
   };
 }
 

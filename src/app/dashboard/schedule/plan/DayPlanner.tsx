@@ -353,6 +353,27 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
   );
 
   const overtime = plan.overflowMinutes > 0;
+  /**
+   * The day cannot hold what is on it — which is a different statement from
+   * "it runs late", and the one the contractor needs.
+   *
+   * "Runs 9 hr 2 min past your 5:00 PM finish" invites somebody to squint at
+   * the last stop and wonder whether to work the evening. The cause of a 2 AM
+   * finish is usually not one long stop: it is two multi-day jobs on one day,
+   * each of which dayLoad gave a full working day because it computes each job
+   * in isolation and nothing reconciles the total. 16 hours of work in a
+   * 9-hour day is not an overrun, it is an impossible day, and the fix is to
+   * move one of them rather than to start later.
+   */
+  const dayMinutes = plan.dayMinutes;
+  const committedMinutes = plan.workMinutes + Math.round(plan.minutes);
+  const overCapacity = dayMinutes > 0 && committedMinutes > dayMinutes;
+  // The stops still being worked when the day ends. Only ever shown on a row
+  // while the day is over capacity: on a day that merely runs twenty minutes
+  // late the banner has already said so, and a badge on the last stop would be
+  // the same sentence twice.
+  const strandedIds = new Set(overCapacity ? plan.unfinishedByDayEnd : []);
+  const stranded = plan.planned.filter((entry) => strandedIds.has(entry.stop.id));
   const workdayEndLabel = formatTimeLabel(parseTimeMinutes(payload.workdayEnd) ?? 17 * 60);
   // Only jobs have a page to open. A supply stop's id would build a /dashboard/
   // jobs/rs:… link that 404s, so every "open the job" affordance resolves to the
@@ -427,8 +448,30 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
           <div className="plan-overtime-head">
             <span className="plan-overtime-icon" aria-hidden="true">!</span>
             <div>
-              <strong>Schedule runs {minutesLabel(plan.overflowMinutes)} past your {workdayEndLabel} finish</strong>
-              <p>The last stop is expected to finish around {formatClockLabel(plan.finishMinutes)}.</p>
+              <strong>
+                {overCapacity
+                  ? `${minutesLabel(committedMinutes)} of work and driving on a ${minutesLabel(dayMinutes)} day`
+                  : `Schedule runs ${minutesLabel(plan.overflowMinutes)} past your ${workdayEndLabel} finish`}
+              </strong>
+              <p>
+                {overCapacity ? (
+                  <>
+                    This day is {minutesLabel(committedMinutes - dayMinutes)} more than it holds, so
+                    the plan runs to {formatClockLabel(plan.finishMinutes)}. Something has to move —
+                    starting earlier cannot fix it.
+                    {stranded.length > 0 ? (
+                      <>
+                        {' '}
+                        {stranded.length === 1 ? 'One stop' : `${stranded.length} stops`} cannot be{' '}
+                        <em>finished</em> before your {workdayEndLabel} finish:{' '}
+                        {stranded.map((entry) => entry.stop.label).join(', ')}.
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <>The last stop is expected to finish around {formatClockLabel(plan.finishMinutes)}.</>
+                )}
+              </p>
             </div>
           </div>
           <div className="plan-overtime-actions">
@@ -504,6 +547,7 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
                 dateKey={payload.dateKey}
                 crewId={payload.crewId}
                 onMyWay={arrivalByJobId[entry.stop.id] ?? null}
+                startsAfterDayEnd={strandedIds.has(entry.stop.id)}
                 menuOpen={menuFor === entry.stop.id}
                 onMenu={(open) => setMenuFor(open ? entry.stop.id : null)}
                 onTogglePin={() => togglePin(entry.stop.id)}
@@ -571,6 +615,9 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
             isCurrent={isCurrent}
             optimizerHelps={optimizerHelps}
             overtime={overtime}
+            overCapacity={overCapacity}
+            dayMinutes={dayMinutes}
+            committedMinutes={committedMinutes}
             overflowMinutes={plan.overflowMinutes}
             workdayEndLabel={workdayEndLabel}
             manualDeltaMiles={manualDeltaMiles}
@@ -735,6 +782,9 @@ function RouteInsights({
   isCurrent,
   optimizerHelps,
   overtime,
+  overCapacity,
+  dayMinutes,
+  committedMinutes,
   overflowMinutes,
   workdayEndLabel,
   manualDeltaMiles,
@@ -745,6 +795,10 @@ function RouteInsights({
   isCurrent: boolean;
   optimizerHelps: boolean;
   overtime: boolean;
+  /** More work and driving on the day than the working day is long. */
+  overCapacity: boolean;
+  dayMinutes: number;
+  committedMinutes: number;
   overflowMinutes: number;
   workdayEndLabel: string;
   manualDeltaMiles: number;
@@ -793,9 +847,11 @@ function RouteInsights({
 
   notes.push({
     tone: overtime ? 'warn' : 'good',
-    text: overtime
-      ? `The day runs ${minutesLabel(overflowMinutes)} past your ${workdayEndLabel} finish.`
-      : `Everything fits inside your working hours, finishing by ${workdayEndLabel}.`,
+    text: overCapacity
+      ? `This day holds ${minutesLabel(dayMinutes)} and has ${minutesLabel(committedMinutes)} of work and driving on it. Multi-day jobs each take a full day's share, so two of them on one day will always overrun.`
+      : overtime
+        ? `The day runs ${minutesLabel(overflowMinutes)} past your ${workdayEndLabel} finish.`
+        : `Everything fits inside your working hours, finishing by ${workdayEndLabel}.`,
   });
 
   if (payload.filteredOutCount > 0) {
@@ -853,6 +909,7 @@ function StopRow({
   dateKey,
   crewId,
   onMyWay,
+  startsAfterDayEnd,
   menuOpen,
   onMenu,
   onTogglePin,
@@ -887,6 +944,8 @@ function StopRow({
   crewId: string | null;
   /** Null on a supply stop, which has no customer to tell. */
   onMyWay: StopArrivalProps | null;
+  /** The plan does not reach this stop until after the working day has ended. */
+  startsAfterDayEnd: boolean;
   menuOpen: boolean;
   onMenu: (open: boolean) => void;
   onTogglePin: () => void;
@@ -1038,6 +1097,14 @@ function StopRow({
         ) : (
           <span className="plan-badge flexible" title="This stop can be dragged anywhere in the day.">Flexible</span>
         )}
+        {/* Not "finishes late" — that is the whole day's overrun. This one
+            cannot be STARTED, which is a different conversation and the one
+            that ends with moving a job rather than working an evening. */}
+        {startsAfterDayEnd ? (
+          <span className="plan-badge warn" title="This stop is still being worked after your day ends. Move a job to another day, or shorten one — starting earlier will not fit it.">
+            Cannot be finished today
+          </span>
+        ) : null}
         {entry.late ? (
           <span className="plan-badge warn">Tight — you&apos;d arrive nearer {formatTimeLabel(entry.arrivalMinutes)}</span>
         ) : null}

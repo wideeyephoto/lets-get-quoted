@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';
 import { listCrewAssignmentsForJobs } from '@/lib/crew';
-import { planDayRoute, type PlanStop, type RoutePlan } from '@/lib/route-plan';
+import { parseTimeMinutes, planDayRoute, type PlanStop, type RoutePlan } from '@/lib/route-plan';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import {
   addDaysToDateKey,
@@ -118,7 +118,20 @@ export async function getPlanAccountSettings(
     workdayStart: (data?.workday_start as string) || '08:00',
     workdayEnd: (data?.workday_end as string) || '17:00',
     bufferMinutes: Number(data?.job_buffer_minutes) || 0,
-    scheduleDayHours: Number(data?.schedule_day_hours) || 8,
+    /**
+     * Capacity, bounded by the working day it has to fit inside.
+     *
+     * schedule_day_hours and workday_start/end are two independent settings,
+     * and nothing has ever stopped them disagreeing — a 10-hour capacity on an
+     * 08:00–17:00 day says a job can take ten hours of a nine-hour day. The
+     * route is the one place that difference becomes a wrong number rather than
+     * a rounding one, so the smaller of the two wins here.
+     */
+    scheduleDayHours: Math.min(
+      Number(data?.schedule_day_hours) || 8,
+      Math.max(1, ((parseTimeMinutes((data?.workday_end as string) || '17:00') ?? 17 * 60) -
+        (parseTimeMinutes((data?.workday_start as string) || '08:00') ?? 8 * 60)) / 60),
+    ),
     workingWeekdays: normalizeBookingWeekdays((data as { booking_weekdays?: unknown } | null)?.booking_weekdays),
     // A job with no hours estimate gets a conservative slice of the working day
     // rather than a guess of zero, which would stack stops on top of each other.
