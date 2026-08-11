@@ -21978,6 +21978,21 @@ a.bset-card { color: inherit; text-decoration: none; }
   color: var(--text);
 }
 
+/* Quick Stop: refused at the last step, after the name and the address and the
+   press. Unlike the "one answer short" block above, this one IS an error, and
+   the first line has to be the one that gets read. */
+.es-refused {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+}
+.es-refused p { margin: 0; }
+.es-refused-head {
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--text);
+}
+
 /* The matching boxes further up the form, so "one question above is blank"
    comes with somewhere to look. */
 .es-field-wanted label { color: var(--accent); }

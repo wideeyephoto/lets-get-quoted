@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { qualifyQuickStop, qualifyOptionsFromSettings, quickStopFollowUps } from '@/lib/quick-stop-qualify';
+import { makeQuickStopVerdictToken } from '@/lib/quick-stop-verdict';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -83,5 +84,15 @@ export async function POST(request: NextRequest) {
   // dead-ending someone who was one answer short.
   const followUps = quickStopFollowUps(qualification, { startedWhen, worsening, propertyType });
 
-  return NextResponse.json({ enabled: true, ...qualification, followUps });
+  // The answer, signed, so pressing "Send the request" honors what this screen
+  // just said instead of rolling the AI again and possibly contradicting it.
+  // Null for anything the screener decided — that layer is deterministic and
+  // costs nothing to repeat. See lib/quick-stop-verdict.
+  const verdictToken = makeQuickStopVerdictToken(
+    site.account_id as string,
+    { issue, startedWhen, worsening, propertyType },
+    qualification,
+  );
+
+  return NextResponse.json({ enabled: true, ...qualification, followUps, verdictToken });
 }

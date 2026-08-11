@@ -18,6 +18,13 @@ type Qualification = {
   reason?: string | null;
   /** Scoping questions left blank that could still change a "no". */
   followUps?: { key: string; label: string }[];
+  /**
+   * The server's own signed record of this verdict, handed back on submit so
+   * "Send the request" is answered by the screening the customer just read
+   * rather than by a fresh one that might disagree. Opaque here; only the
+   * server can read or forge it. See lib/quick-stop-verdict.
+   */
+  verdictToken?: string | null;
   error?: string;
 };
 
@@ -60,6 +67,13 @@ export default function QuickStopFlow({
   const [verdict, setVerdict] = useState<Qualification | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * A refusal at SEND, which is a different animal from a refusal at CHECK and
+   * used to render as the same grey sentence under the button: no heading, no
+   * statement that nothing had been sent, and the "✓ This looks like a fit"
+   * banner still sitting above it. Held separately so it can say what happened.
+   */
+  const [refused, setRefused] = useState<string | null>(null);
 
   const [issue, setIssue] = useState('');
   const [startedWhen, setStartedWhen] = useState('');
@@ -84,6 +98,7 @@ export default function QuickStopFlow({
 
   async function checkEligibility() {
     setError(null);
+    setRefused(null);
     if (!issue.trim()) {
       setError('Describe the issue first.');
       return;
@@ -115,6 +130,7 @@ export default function QuickStopFlow({
 
   async function submit() {
     setError(null);
+    setRefused(null);
     // This one submits through JS, not a form submit, so the `required` on the
     // input never fires — the browser only enforces it on a real submit event.
     // Without this check the button silently posted a Quick Stop with nowhere
@@ -139,6 +155,11 @@ export default function QuickStopFlow({
       fd.set('phone', phone);
       fd.set('email', email);
       fd.set('address', address);
+      // The verdict the server gave us a moment ago, signed by it. Sending it
+      // back is what stops the AI being asked a second time and answering
+      // differently — the server verifies it and ignores anything it didn't
+      // sign, so this is a shortcut, not a claim.
+      fd.set('verdictToken', verdict?.verdictToken ?? '');
       for (const file of photos) fd.append('photos', file);
 
       const result = await submitQuickStopRequestAction(fd);
@@ -146,6 +167,11 @@ export default function QuickStopFlow({
         setDone(true);
       } else if (result.unsafe && result.safety) {
         setVerdict({ unsafe: true, safety: result.safety });
+      } else if (result.notAFit) {
+        // Clear the verdict with it: leaving "✓ This looks like a fit" on screen
+        // above the sentence explaining that it isn't is how this read before.
+        setVerdict(null);
+        setRefused(result.error);
       } else {
         setError(result.error);
       }
@@ -276,6 +302,24 @@ export default function QuickStopFlow({
         <p className="payment-banner warning" style={{ marginTop: '1rem' }}>
           ⚠️ {verdict.safety}
         </p>
+      ) : null}
+
+      {/* TURNED AWAY AT THE LAST STEP, said out loud. Somebody has just filled
+          in their name, mobile and address and pressed a button called "Send
+          the request", so the one thing this has to establish is that nothing
+          was sent — and then give them the door that is still open. */}
+      {refused ? (
+        <div className="payment-banner warning es-refused" style={{ marginTop: '1rem' }}>
+          <p className="es-refused-head">Your request wasn&apos;t sent</p>
+          <p>{refused}</p>
+          <p>
+            Nothing was booked and your contact details weren&apos;t passed on. {businessName} can still
+            do this job — it just isn&apos;t one they can drop into a route that&apos;s already running.
+          </p>
+          <button type="button" className="btn secondary" onClick={() => (onExit ? onExit() : setOpen(false))}>
+            Request a regular booking
+          </button>
+        </div>
       ) : null}
       {verdict && !verdict.unsafe && verdict.needsPhotos ? (
         <p className="payment-banner muted" style={{ marginTop: '1rem' }}>{verdict.reason}</p>

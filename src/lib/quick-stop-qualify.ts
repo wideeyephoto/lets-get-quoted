@@ -175,18 +175,15 @@ function extractOutputText(payload: unknown): string {
   return textPart?.text ?? '{}';
 }
 
-// Main entry. Runs the screener, then (only if clear) the AI pass. Fails CLOSED:
-// if the AI is required but unavailable or incoherent, the request is not
-// eligible for Quick Stop (it can still fall back to standard booking upstream).
-export async function qualifyQuickStop(
-  input: QuickStopQualifyInput,
-  opts: QuickStopQualifyOptions,
-): Promise<QuickStopQualification> {
-  const issue = (input.issue ?? '').toString().trim();
-  const text = [input.issue, input.startedWhen, input.worsening, input.propertyType, input.availability]
-    .filter(Boolean)
-    .join(' \n ');
-
+/**
+ * The verdict the deterministic layer reaches on its own — or null when it found
+ * nothing to object to and the AI has to decide.
+ *
+ * Split out of qualifyQuickStop because it is now needed twice: once at the
+ * front of a fresh qualification, and again when a REMEMBERED verdict is held up
+ * against the text as it finally stands. See reaffirmQualification.
+ */
+export function screenerVerdict(text: string, issue: string): QuickStopQualification | null {
   const screen = screenHardExclusions(text);
   if (screen.unsafe) {
     return {
@@ -216,6 +213,59 @@ export async function qualifyQuickStop(
       decidedBy: 'screener',
     };
   }
+  return null;
+}
+
+/**
+ * Hold a remembered verdict up against the text as it finally stands.
+ *
+ * A signed token skips the AI pass, not the safety net. Between "check if this
+ * qualifies" and "send the request" the customer types their availability —
+ * free text the screener reads and the AI is never shown — so the fuller text
+ * can trip a rule the shorter one didn't ("only Saturdays, and it'll want two
+ * guys"). The screener therefore runs again here.
+ *
+ * The account's visit-minute limit is re-applied too, so an approval cannot
+ * outlive the one number it might now exceed. The category list is not
+ * re-checked: the AI's category isn't carried on the verdict, and it was
+ * already gated when the verdict was made.
+ */
+export function reaffirmQualification(
+  cached: QuickStopQualification,
+  text: string,
+  opts: Pick<QuickStopQualifyOptions, 'maxVisitMinutes'>,
+): QuickStopQualification {
+  const screened = screenerVerdict(text, cached.summary);
+  if (screened) return screened;
+
+  if (cached.eligible && cached.visitMinutes != null && cached.visitMinutes > opts.maxVisitMinutes) {
+    // Same label as the live path, so the owner's insights panel counts both
+    // under one heading rather than splitting them.
+    return {
+      ...cached,
+      eligible: false,
+      exclusions: [`Longer than your ${opts.maxVisitMinutes}-minute Quick Stop limit`],
+      reason: `This looks longer than a ${opts.maxVisitMinutes}-minute visit, which is as long as this contractor's route can spare.`,
+    };
+  }
+
+  return cached;
+}
+
+// Main entry. Runs the screener, then (only if clear) the AI pass. Fails CLOSED:
+// if the AI is required but unavailable or incoherent, the request is not
+// eligible for Quick Stop (it can still fall back to standard booking upstream).
+export async function qualifyQuickStop(
+  input: QuickStopQualifyInput,
+  opts: QuickStopQualifyOptions,
+): Promise<QuickStopQualification> {
+  const issue = (input.issue ?? '').toString().trim();
+  const text = [input.issue, input.startedWhen, input.worsening, input.propertyType, input.availability]
+    .filter(Boolean)
+    .join(' \n ');
+
+  const screened = screenerVerdict(text, issue);
+  if (screened) return screened;
 
   const apiKey = opts.apiKey ?? process.env.OPENAI_API_KEY ?? null;
   if (!apiKey) {

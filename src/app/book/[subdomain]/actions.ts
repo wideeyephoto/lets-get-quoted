@@ -24,14 +24,19 @@ import { rankByProximity, type RankedBookingDay } from '@/lib/route-density';
 import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, type BookingVerdict } from '@/lib/instant-booking';
 import { listServices } from '@/lib/services';
 import { quickStopSettingsFromAccount, isAllowedQuickStopDay, QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
-import { qualifyQuickStop, qualifyOptionsFromSettings } from '@/lib/quick-stop-qualify';
+import { qualifyQuickStop, qualifyOptionsFromSettings, reaffirmQualification } from '@/lib/quick-stop-qualify';
+import { readQuickStopVerdictToken } from '@/lib/quick-stop-verdict';
 import { recordQuickStopScreening } from '@/lib/quick-stop-screenings';
 import { createQuickStopRequest, hasActiveQuickStopRequest } from '@/lib/quick-stop-requests';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 
 export type QuickStopSubmitResult =
   | { ok: true }
-  | { ok: false; unsafe?: boolean; safety?: string | null; error: string };
+  // `notAFit` separates "we screened this job and said no" from every other way
+  // a submit can fail (rate limit, missing address, duplicate). They read
+  // identically as a bare sentence, and one of them is a refusal that has to
+  // announce itself as one — see the refusal panel in QuickStopFlow.
+  | { ok: false; unsafe?: boolean; safety?: string | null; notAFit?: boolean; error: string };
 
 export type BookingEvaluation = {
   verdict: BookingVerdict;
@@ -355,9 +360,16 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
 }
 
 // Create a Quick Stop request from the public Book flow. Called with JS (not a
-// form redirect) so the client can render the verdict inline. ALWAYS re-runs the
-// qualification server-side — the client verdict is advisory and never trusted:
-// an unsafe or ineligible job cannot be forced through by a tampered request.
+// form redirect) so the client can render the verdict inline.
+//
+// The qualification is ALWAYS settled server-side; what the client sends is
+// never taken at its word. It may, however, send back the SIGNED verdict this
+// server minted when they pressed "Check if this qualifies" — in which case the
+// AI's opinion is honored rather than rolled a second time, and only the
+// deterministic screener runs again. See lib/quick-stop-verdict for why, and
+// for the four things that void a token. Absent or invalid, we qualify from
+// scratch exactly as before.
+//
 // Returns a small serializable result; never throws to the caller.
 export async function submitQuickStopRequestAction(formData: FormData): Promise<QuickStopSubmitResult> {
   try {
@@ -419,10 +431,23 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     }
 
     // Server-authoritative qualification. Unsafe ⇒ safety copy, never a booking.
-    const qualification = await qualifyQuickStop(
-      { issue, startedWhen: startedWhen ?? '', worsening: worsening ?? '', propertyType: propertyType ?? '', availability: availability ?? '', businessName: site.company_name || '', serviceArea: site.service_area ?? '' },
-      qualifyOptionsFromSettings(settings),
-    );
+    //
+    // The verdict this server already gave them, if they still hold a valid one:
+    // signed, bound to this account and to this job's wording, and good for half
+    // an hour. Being told "✓ this looks like a fit", filling in a form, and then
+    // being refused for a different reason is not a screening — it is a coin
+    // toss the customer paid for with their address.
+    const facts = { issue, startedWhen, worsening, propertyType };
+    const remembered = readQuickStopVerdictToken((formData.get('verdictToken') ?? '').toString(), site.account_id, facts);
+    // The availability text arrives AFTER the check, and the screener reads it,
+    // so the remembered verdict is re-screened over the fuller text.
+    const screenText = [issue, startedWhen, worsening, propertyType, availability].filter(Boolean).join(' \n ');
+    const qualification = remembered
+      ? reaffirmQualification(remembered, screenText, settings)
+      : await qualifyQuickStop(
+          { issue, startedWhen: startedWhen ?? '', worsening: worsening ?? '', propertyType: propertyType ?? '', availability: availability ?? '', businessName: site.company_name || '', serviceArea: site.service_area ?? '' },
+          qualifyOptionsFromSettings(settings),
+        );
     // Log the verdict either way, and BEFORE returning. A refusal used to leave
     // no trace at all, so an owner staring at an empty queue couldn't tell
     // "nobody asked" from "everybody asked and we turned them all away" — two
@@ -437,7 +462,9 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     });
 
     if (qualification.unsafe) return { ok: false, unsafe: true, safety: qualification.safety, error: 'This needs urgent attention, not an online booking.' };
-    if (!qualification.eligible) return { ok: false, error: qualification.reason || 'This job isn’t a fit for a Quick Stop. You can request a regular booking instead.' };
+    if (!qualification.eligible) {
+      return { ok: false, notAFit: true, error: qualification.reason || 'This job needs longer than a single short visit on an existing route.' };
+    }
 
     // Upload photos (best-effort per file) and geocode the address (precise-only).
     const photoPaths: string[] = [];
