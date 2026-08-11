@@ -238,8 +238,35 @@ export function formatMoney(n: number): string {
   // The sign belongs outside the currency symbol: a loss is "-$1,500", never
   // "$-1,500". Insights renders a negative gross profit, job margin renders a
   // negative profit, and a client statement renders a negative balance.
+  //
+  // ROUNDS TO WHOLE DOLLARS, which is right for a summary and wrong for a
+  // charge. Use formatMoneyExact for anything a customer pays or authorizes.
   const rounded = Math.round(n) || 0;
   return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString();
+}
+
+/**
+ * Money to the cent, for anything a customer is asked to pay, authorize or add
+ * up.
+ *
+ * formatMoney rounds. On a dashboard that is a kindness; on a payment schedule
+ * it is a lie that does not even hold together. A $3,500 plan at 50% down
+ * splits into a $1,750 deposit and four installments of $437.50 — exactly
+ * $3,500, because the math is done in integer cents. Rounded for display, that
+ * same schedule reads "$1,750" and four times "$438", and a homeowner adding up
+ * what they were about to authorize got $3,502 underneath a sentence promising
+ * "this splits the same total, nothing more".
+ *
+ * The /pay button had the same fault in a worse place: it said "Pay $438" over
+ * a card charge of $437.50.
+ *
+ * So: always two decimals, never rounded away. Cents are the unit money is
+ * actually moved in, and this is where a customer checks our arithmetic.
+ */
+export function formatMoneyExact(n: number): string {
+  const cents = Math.round((Number.isFinite(n) ? n : 0) * 100) || 0;
+  const abs = Math.abs(cents) / 100;
+  return (cents < 0 ? '-$' : '$') + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatJobQuoteSummary(

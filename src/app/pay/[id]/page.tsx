@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import { formatMoneyExact } from '@/lib/jobs';
 import { getPublicPayment, getQuotedFee, ACH_MIN_AMOUNT, type PaymentStatus } from '@/lib/payments';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
@@ -16,9 +17,10 @@ const KIND_LABEL: Record<string, string> = {
   plan_installment: 'Installment',
 };
 
-function formatMoney(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
-}
+// To the cent. This page's button issues the charge it names — rounding it to
+// "$438" over a $437.50 card charge is the one place a display shortcut becomes
+// a false statement about money. See formatMoneyExact.
+const formatMoney = formatMoneyExact;
 
 export default async function PublicPaymentPage({
   params,

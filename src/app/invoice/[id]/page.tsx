@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import { formatMoneyExact } from '@/lib/jobs';
 import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { invoicePayState, type InvoicePayment } from '@/lib/invoice-pay';
 import { loadContractorBrand } from '@/lib/contractor-brand';
@@ -9,9 +10,9 @@ import { payInvoiceAction, signInvoiceAction } from './actions';
 // so it must never be statically cached (same reasoning as /pay/[id]).
 export const dynamic = 'force-dynamic';
 
-function formatMoney(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
-}
+// To the cent — an invoice has to add up on the page, and its line items rarely
+// land on whole dollars once tax is on them. See formatMoneyExact.
+const formatMoney = formatMoneyExact;
 
 export default async function PublicInvoicePage({ params }: { params: { id: string } }) {
   const record = await getPublicInvoice(params.id);

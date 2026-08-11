@@ -1,4 +1,7 @@
-import { formatJobSchedule, formatMoney } from '@/lib/jobs';
+// Exact, not rounded: every amount in this file names a charge, a receipt or a
+// refund. "Requested a deposit of $438" against a $437.50 card charge is the
+// same defect as the payment page's button. See formatMoneyExact.
+import { formatJobSchedule, formatMoneyExact as formatMoney } from '@/lib/jobs';
 
 /**
  * Declared here rather than in lib/sms, which imports this file — the words come

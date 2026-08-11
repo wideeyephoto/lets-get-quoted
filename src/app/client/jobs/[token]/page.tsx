@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import SaveButton from '@/components/save-button';
 import { getClientJobDashboard } from '@/lib/job-feed';
-import { formatMoney } from '@/lib/jobs';
+// Every number on this page is one the homeowner is asked to pay, authorize, or
+// add up against the total they were quoted. To the cent, all of it.
+import { formatMoneyExact as formatMoney } from '@/lib/jobs';
 import { formatScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction, startSubscriptionAction, authorizePaymentPlanAction, payPlanBalanceAction } from './actions';
 import QuoteDocument from './QuoteDocument';
