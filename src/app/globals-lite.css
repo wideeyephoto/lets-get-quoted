@@ -11813,47 +11813,20 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 /* ===========================================================================
-   THE FORK, THE STEP NAVIGATION, AND THE REVIEW
+   THE ALTERNATIVE, THE STEP NAVIGATION, AND THE REVIEW
    ======================================================================== */
 
 /**
- * Quick Stop used to be a card at the FOOT of the page, beneath the standard
- * form's own submit — so the way to find the faster option was to scroll past
- * the slower one and everything it asks for. Anyone who wanted it sooner had
- * already filled in the form that does not get them there.
+ * THE ALTERNATIVE, UNDER THE WINDOWS IT IS AN ALTERNATIVE TO.
+ *
+ * These rules dressed a fork at the top of the page — two co-equal buttons
+ * asking a homeowner to pick a lane before the page had asked what was wrong.
+ * That version was reported as confusing and is gone; what is left is one
+ * quiet card under the window list, which is where somebody has just read the
+ * earliest time on offer and decided it is too long to wait.
  */
-.book-path-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 0.7rem;
-  margin-top: 0.9rem;
-}
-.book-path {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--edge-t16);
-  border-radius: 14px;
-  background: rgba(var(--tint), 0.03);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.book-path:hover { border-color: var(--book-accent, var(--accent)); }
-.book-path:focus-visible { outline: 2px solid var(--book-accent, var(--accent)); outline-offset: 2px; }
-/* Two channels, not one. A border colour alone is the whole selected state on
-   a control whose two options are read as a pair — and it is the channel a
-   colourblind reader cannot use. */
-.book-path.is-on {
-  border-color: var(--book-accent, var(--accent));
-  background: rgba(var(--tint), 0.07);
-  box-shadow: inset 0 0 0 1px var(--book-accent, var(--accent));
-}
-.book-path-name { font-weight: 800; font-size: 1rem; }
-.book-path.is-on .book-path-name { color: var(--book-accent, var(--accent)); }
-.book-path-detail { font-size: 0.84rem; line-height: 1.45; color: rgba(var(--tint), 0.62); }
+.book-sooner { margin-top: 1rem; }
+.book-sooner-copy { margin-top: 0.5rem; margin-bottom: 1rem; }
 
 .book-step-lead { margin-top: 0.35rem; }
 

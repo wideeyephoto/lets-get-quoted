@@ -160,7 +160,7 @@ export default function QuickStopFlow({
     return (
       <section className="panel workspace-section-card" style={{ marginTop: '1rem', borderColor: 'rgba(25,214,174,.4)' }}>
         <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Quick Stop</p>
+          <p className="eyebrow">Priority visit</p>
           <h2>Request sent 👍</h2>
         </div>
         <p className="workspace-details-copy" style={{ marginTop: '.5rem' }}>
@@ -177,7 +177,7 @@ export default function QuickStopFlow({
       <section className="panel workspace-section-card book-aside" style={{ marginTop: '1rem' }}>
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Need it sooner?</p>
-          <h2>Quick Stop</h2>
+          <h2>Ask for a priority visit</h2>
         </div>
         <p className="workspace-details-copy" style={{ marginTop: '.5rem', marginBottom: '1rem' }}>
           Get added to the contractor&apos;s route sooner. They will review the job, propose an arrival
@@ -189,7 +189,7 @@ export default function QuickStopFlow({
             chances to press the wrong one — the alternative path shouldn't
             shout louder than the main one. */}
         <button type="button" className="btn secondary" onClick={() => setOpen(true)}>
-          Request a Quick Stop
+          Ask about a priority visit
         </button>
       </section>
     );
@@ -199,7 +199,7 @@ export default function QuickStopFlow({
     <section className="panel workspace-section-card" style={{ marginTop: '1rem' }}>
       <div className="section-heading workspace-section-heading compact-heading book-qs-head">
         <div>
-          <p className="eyebrow">Quick Stop</p>
+          <p className="eyebrow">Priority visit</p>
           <h2>Tell us about the job</h2>
         </div>
         {/* THE WAY BACK OUT, which did not exist. Opening this added five
@@ -307,7 +307,7 @@ export default function QuickStopFlow({
           </div>
         ) : (
           <p className="payment-banner muted" style={{ marginTop: '1rem' }}>
-            {verdict.reason || 'This job isn’t a fit for a Quick Stop.'} You can still request a regular booking above.
+            {verdict.reason || 'This job isn’t a fit for a priority visit.'} You can still request a regular booking above.
           </p>
         )
       ) : null}
@@ -368,7 +368,7 @@ export default function QuickStopFlow({
           </div>
           <div className="field full" style={{ marginTop: '.5rem' }}>
             <button type="button" className="btn primary" onClick={submit} disabled={submitting}>
-              {submitting ? 'Sending…' : 'Request a Quick Stop'}
+              {submitting ? 'Sending…' : 'Send the request'}
             </button>
           </div>
         </>

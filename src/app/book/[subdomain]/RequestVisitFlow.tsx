@@ -139,7 +139,6 @@ export default function RequestVisitFlow({
   if (path === 'quick' && quickStop) {
     return (
       <>
-        <PathChoice path={path} setPath={setPath} businessName={businessName} />
         <QuickStopFlow
           subdomain={subdomain}
           siteId={quickStop.siteId}
@@ -157,8 +156,16 @@ export default function RequestVisitFlow({
 
   return (
     <>
-      {quickStop ? <PathChoice path={path} setPath={setPath} businessName={businessName} /> : null}
+      {/* THE FORK USED TO BE HERE, above everything, and it was the wrong shape.
+          A homeowner arrives on a page headed "Request a visit" and the first
+          thing it did was stop them to choose between "Standard visit" and
+          "Quick Stop" — two co-equal buttons, one of them named after a product
+          they have never heard of and carrying a fee. Being asked to pick a
+          lane before being asked what is wrong is the confusion.
 
+          So the page does the thing it says it does, and the alternative sits
+          under it as an alternative: read after the windows, by somebody who
+          has just looked at them and thought "that is too long to wait". */}
       <form action={submitBookingAction.bind(null, subdomain)} className="panel workspace-section-card booking-form">
         <BookingSteps steps={STEPS} current={step} />
 
@@ -498,62 +505,48 @@ export default function RequestVisitFlow({
           </>
         ) : null}
       </form>
+
+      {/* Shown on the window step only. This is the answer to "none of these
+          are soon enough", which is a thought somebody has while looking at the
+          windows — not while typing their address on step 2, and certainly not
+          on the review screen where the page has one job left. */}
+      {quickStop && step === 1 ? <SoonerOffer businessName={businessName} onChoose={() => setPath('quick')} /> : null}
     </>
   );
 }
 
 /**
- * THE CHOICE, AT THE TOP.
+ * THE ALTERNATIVE, WHERE IT ANSWERS A QUESTION SOMEBODY IS ACTUALLY ASKING.
  *
- * Quick Stop used to be a card at the FOOT of the page, under the standard
- * form's own submit — so the way to discover the faster option was to scroll
- * past the slower one and everything it asked for. Anyone who wanted it sooner
- * had already filled in the form that does not get them there. Offered as a
- * fork before either path asks for anything, with the fee and the approval
- * said out loud in the card rather than after the questions.
+ * This has now been in three places. It was a card at the foot of the page,
+ * below the standard form's own submit — so the way to find the faster option
+ * was to scroll past the slower one and everything it asks for. Then it became
+ * a fork at the top, two co-equal buttons before either path asked anything,
+ * and that is the version reported as confusing: a homeowner arrives on a page
+ * headed "Request a visit" and is stopped to choose a lane, one of them named
+ * after a product they have never heard of and carrying a fee.
+ *
+ * It sits under the windows now. That is the exact moment the thought occurs —
+ * you have just read the earliest one on offer and it is Thursday. The heading
+ * is the question rather than our name for the answer, the fee is in the first
+ * sentence, and the button is quiet: this is the alternative, not the offer.
  */
-function PathChoice({
-  path,
-  setPath,
-  businessName,
-}: {
-  path: 'standard' | 'quick';
-  setPath: (next: 'standard' | 'quick') => void;
-  businessName: string;
-}) {
+function SoonerOffer({ businessName, onChoose }: { businessName: string; onChoose: () => void }) {
   return (
-    <section className="panel workspace-section-card book-paths">
+    <section className="panel workspace-section-card book-aside book-sooner">
       <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Two ways in</p>
-        <h2>How soon do you need them?</h2>
+        <p className="eyebrow">None of these soon enough?</p>
+        <h2>Ask for a priority visit</h2>
       </div>
-      <div className="book-path-grid" role="radiogroup" aria-label="How soon do you need them">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={path === 'standard'}
-          className={`book-path${path === 'standard' ? ' is-on' : ''}`}
-          onClick={() => setPath('standard')}
-        >
-          <span className="book-path-name">Standard visit</span>
-          <span className="book-path-detail">
-            Choose a preferred arrival window from {businessName}&apos;s open days. No extra fee.
-          </span>
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={path === 'quick'}
-          className={`book-path${path === 'quick' ? ' is-on' : ''}`}
-          onClick={() => setPath('quick')}
-        >
-          <span className="book-path-name">Quick Stop</span>
-          <span className="book-path-detail">
-            Sooner — added to a route they&apos;re already running. Subject to approval, and a separate fee they
-            quote before you commit.
-          </span>
-        </button>
-      </div>
+      <p className="workspace-details-copy book-sooner-copy">
+        {businessName} can add you to a route they are already running. They review the job first, then
+        set an arrival window and a priority visit fee for making the extra trip. The fee reserves the
+        visit; the work itself is quoted and billed separately, and nothing is charged until you have
+        seen both.
+      </p>
+      <button type="button" className="btn secondary" onClick={onChoose}>
+        Ask about a priority visit
+      </button>
     </section>
   );
 }

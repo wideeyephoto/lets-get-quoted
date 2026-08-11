@@ -149,24 +149,56 @@ describe('every rule the server enforces is checked against a field first', () =
 });
 
 /* ===========================================================================
-   4. Quick Stop is a fork, not a footnote
+   4. The faster path, where it answers a question
    ======================================================================== */
-describe('the faster path is offered before the slower one asks for anything', () => {
+describe('the faster path is offered where somebody asks for it', () => {
   /**
-   * It used to be a card at the FOOT of the page, under the standard form's
-   * own submit — so finding the faster option meant scrolling past the slower
-   * one and everything it wanted. Anyone who needed it sooner had already
-   * filled in the form that does not get them there.
+   * IT HAS NOW BEEN IN THREE PLACES, and the middle one is why this describe
+   * was rewritten.
+   *
+   * First it was a card at the FOOT of the page, under the standard form's own
+   * submit — so finding the faster option meant scrolling past the slower one
+   * and everything it wanted. Then it became a fork at the TOP: two co-equal
+   * buttons before either path asked anything. That version was reported as
+   * confusing, and fairly — a homeowner arrives on a page headed "Request a
+   * visit" and is stopped to pick a lane, one of them named after a product
+   * they have never heard of and carrying a fee.
+   *
+   * It sits under the WINDOW LIST now, on the window step only. That is the
+   * moment the thought occurs: you have just read the earliest time on offer
+   * and it is Thursday.
    */
-  it('renders the choice above the form', () => {
-    expect(FLOW.indexOf('<PathChoice')).toBeLessThan(FLOW.indexOf('<form action='));
+  it('is under the windows, not a fork above the form', () => {
+    expect(FLOW).not.toContain('<PathChoice');
+    expect(FLOW).not.toContain('function PathChoice');
+    expect(FLOW.indexOf('<form action=')).toBeLessThan(FLOW.indexOf('<SoonerOffer'));
+    // Step 1 is the window list. On step 2 somebody is typing their address and
+    // on step 3 the page has one job left.
+    expect(FLOW).toContain('{quickStop && step === 1 ? <SoonerOffer');
   });
 
-  it('names the fee and the approval in the card, before any question', () => {
-    const card = FLOW.slice(FLOW.indexOf('function PathChoice'));
-    expect(card).toContain('Subject to approval');
-    expect(card).toMatch(/separate fee/);
-    expect(card).toContain('No extra fee.');
+  it('asks the question rather than naming our product', () => {
+    const card = FLOW.slice(FLOW.indexOf('function SoonerOffer'));
+    expect(card).toContain('None of these soon enough?');
+    expect(card).toContain('Ask for a priority visit');
+    // "Quick Stop" is our word. A homeowner has never heard it.
+    expect(card).not.toContain('Quick Stop');
+  });
+
+  it('names the fee, the approval and what the fee is not', () => {
+    const card = FLOW.slice(FLOW.indexOf('function SoonerOffer'));
+    expect(card).toMatch(/review the job first/);
+    expect(card).toMatch(/priority visit fee/);
+    // The distinction the whole product depends on: the fee buys the visit.
+    expect(card).toMatch(/quoted and billed\s+separately/);
+    expect(card).toMatch(/nothing is charged until you have\s+seen both/);
+  });
+
+  it('keeps our name out of the customer-facing screens it leads to', () => {
+    const shown = QUICK.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(shown).not.toContain('>Quick Stop<');
+    expect(shown).not.toContain('Request a Quick Stop');
+    expect(shown).not.toContain("fit for a Quick Stop");
   });
 
   it('opens straight into the questions when it is chosen rather than found', () => {
@@ -176,7 +208,7 @@ describe('the faster path is offered before the slower one asks for anything', (
     expect(QUICK).toContain('const [open, setOpen] = useState(startOpen);');
   });
 
-  it('and Cancel goes back to the fork rather than collapsing in place', () => {
+  it('and Cancel goes back to the windows rather than collapsing in place', () => {
     expect(FLOW).toContain("onExit={() => setPath('standard')}");
     expect(QUICK).toContain('onClick={() => (onExit ? onExit() : setOpen(false))}');
   });
