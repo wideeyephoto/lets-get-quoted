@@ -289,3 +289,96 @@ describe('every feature hero offers the live demo of its own feature', () => {
     expect(SHELL).toContain('tertiary?: { label: string; href: string } | null;');
   });
 });
+
+/**
+ * THE VIDEO STUDIO, which the catalog had never heard of.
+ *
+ * Six section layouts, uploads, codec sniffing and size advice all ship in
+ * dashboard/sites/VideoStudio — and lib/features.ts, the catalog /features and
+ * the homepage grid and every suite page read from, did not mention video once.
+ * So a shipped feature was invisible everywhere the product lists what it does.
+ *
+ * WHAT IS PINNED IS THE LIMIT OF THE CLAIM. The page says the builder checks a
+ * clip and names the fix. It must not start saying it writes shot lists or
+ * scripts anything — nothing in the product does that, and it is the obvious
+ * next sentence for somebody rewriting this copy.
+ */
+describe('the video studio is in the catalog and on the page', () => {
+  const WEBSITE = page('website-builder');
+  const site = FEATURE_CATEGORIES.find((category) => category.slug === 'website')!;
+
+  it('the catalog carries the layouts, the upload and the checks', () => {
+    for (const id of ['video-sections', 'video-upload', 'video-checks']) {
+      expect(site.features.map((f) => f.id), id).toContain(id);
+    }
+  });
+
+  it('the builder page says video in its eyebrow, lede and a benefit', () => {
+    expect(WEBSITE).toMatch(/eyebrow="[^"]*video/i);
+    expect(WEBSITE).toMatch(/lede="[^"]*video/i);
+    const benefits = WEBSITE.slice(WEBSITE.indexOf('benefits={['), WEBSITE.indexOf('storyId='));
+    expect(benefits).toMatch(/video/i);
+    // Still three. The compression this page was rebuilt for stands.
+    expect([...benefits.matchAll(/title: '/g)]).toHaveLength(3);
+  });
+
+  it('counts the six layouts the product actually has', () => {
+    // VIDEO_SECTION_STYLES is the source of truth; if a seventh is added, the
+    // page and the catalog entry both start lying and this is what says so.
+    const styles = readFileSync('src/lib/site-content.ts', 'utf8');
+    const block = styles.slice(styles.indexOf('VIDEO_SECTION_STYLES'), styles.indexOf('const VIDEO_STYLE_KEYS'));
+    expect([...block.matchAll(/\{ key: '/g)]).toHaveLength(6);
+    expect(site.features.find((f) => f.id === 'video-sections')?.desc).toContain('Six layouts');
+    expect(WEBSITE).toContain('six video layouts');
+  });
+
+  it('promises checking, not scriptwriting', () => {
+    // The line the copy must not cross. Nothing in the product plans a shoot.
+    expect(WEBSITE).not.toMatch(/shot list|storyboard|script(s|ing|ed)? (your|the) video|we film/i);
+    // And the check is advice, which is how it behaves — videoPlaybackWarning
+    // and heroDurationAdvice both warn and return; neither refuses an upload.
+    expect(WEBSITE).toMatch(/advises rather than refusing|never blocks|It advises/i);
+  });
+
+  it('reaches the builder from the nav and the hero', () => {
+    const chrome = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
+    expect(chrome).toMatch(/\['\/features\/website-builder', '[^']*video[^']*'\]/i);
+    expect(WEBSITE).toMatch(/tertiary=\{\{ label: '[^']*video[^']*', href: '\/demo\/sites' \}\}/i);
+  });
+});
+
+/**
+ * A CATALOG NOTHING RENDERS IS A CATALOG NOBODY MAINTAINS.
+ *
+ * lib/features.ts's own header used to say the /features page rendered the full
+ * list. It has not since that page's "everything" band became the job-record
+ * component — so the three video entries added with this change raised a count
+ * on /pricing and appeared in no list anywhere until the website-builder page
+ * started rendering its category.
+ */
+describe('every catalog category is rendered by some page', () => {
+  const RENDERED = [
+    ...SUITE.flatMap((entry) => entry.catalog),
+    'website', // /features/website-builder
+  ];
+
+  it('the website category is on the builder page', () => {
+    const source = page('website-builder');
+    expect(source).toContain('<CapabilitySection');
+    expect(source).toContain("catalog={['website']}");
+  });
+
+  it('names only categories that exist', () => {
+    for (const slug of RENDERED) {
+      expect(FEATURE_CATEGORIES.map((c) => c.slug), slug).toContain(slug);
+    }
+  });
+
+  it('reports which categories no page shows', () => {
+    // Not a failure — several are genuinely covered by the flagship pages in
+    // prose rather than as a list. It is here so the gap is VISIBLE when a
+    // category is added, instead of being discovered by a count that moved.
+    const missing = FEATURE_CATEGORIES.map((c) => c.slug).filter((slug) => !RENDERED.includes(slug));
+    expect(missing.sort()).toEqual(['clients', 'getting-found', 'leads']);
+  });
+});

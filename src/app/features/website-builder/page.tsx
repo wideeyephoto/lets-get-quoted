@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
+import { CapabilitySection } from '@/components/marketing/suite-feature-page';
 import { TRADES } from '@/lib/trades';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './website-builder.module.css';
@@ -82,6 +83,10 @@ const FAQ: { q: string; a: string }[] = [
     a: 'You get the job description, the trade-specific answers, the location, any photos and the range the visitor was shown — together, on one request, ready to quote or text back.',
   },
   {
+    q: 'What kind of video can I put on it?',
+    a: 'Your own — filmed on a phone is fine. Drop in an MP4, a MOV or a YouTube link and choose from six layouts: a hero loop behind your headline, video beside your message, a project story, a reel of tall phone clips, a customer on camera, or one video above the steps of what happens next. Up to four video bands on a page. The builder checks each clip as it uploads and tells you if it is too big, too long for a background loop, or in a format most visitors could not play — and what to change. It advises rather than refusing, because your site is yours.',
+  },
+  {
     q: 'What does it cost to run?',
     a: `Nothing monthly. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}).`,
   },
@@ -90,7 +95,13 @@ const FAQ: { q: string; a: string }[] = [
 export default function WebsiteBuilderPage() {
   return (
     <FeatureDetailLayout
-      eyebrow="AI website builder for contractors"
+      /* VIDEO IS IN THE EYEBROW because it is the part of this builder a
+         contractor cannot get from the other ones, and it was previously
+         mentioned nowhere on the page that sells the builder. What is claimed
+         is only what ships: six layouts, your own footage, and checks that tell
+         you when a clip will show a blank player. Not "we script your videos"
+         — nothing here writes a shot list. */
+      eyebrow="AI website builder, with video"
       /* The old headline described the transition ("from no website to ready
          for business") and left the reader to work out what the site DOES. The
          outcome is the differentiator: other builders end at a contact form,
@@ -100,7 +111,7 @@ export default function WebsiteBuilderPage() {
           A contractor website that turns visits into <em>ready-to-quote jobs.</em>
         </>
       }
-      lede="Tell us your business name, trade and service area. We build the complete site — then connect every visitor to an instant estimate and a request you can act on."
+      lede="Tell us your business name, trade and service area. We build the complete site — with video sections for the work you want seen, an instant estimate on the front page, and a request you can act on."
       // Not the fee — the closing band states it in full, with the rate range
       // and Stripe's cut. What belongs here is what a contractor about to
       // generate a site wants to know: that it is theirs. Custom domains are
@@ -169,7 +180,7 @@ export default function WebsiteBuilderPage() {
          preview redraw — and it loads the real /themes route in its frame,
          so "preview templates" is what it does rather than a single
          example labelled as a gallery. */
-      tertiary={{ label: 'Preview site templates', href: '/demo/sites' }}
+      tertiary={{ label: 'Preview templates and video', href: '/demo/sites' }}
       proof={[
         {
           title: 'Minutes, not weeks',
@@ -204,7 +215,7 @@ export default function WebsiteBuilderPage() {
       benefits={[
         {
           title: 'Look established from click one',
-          body: 'Launch with polished service pages, local pages, trust content and FAQs — without starting from a blank screen.',
+          body: 'Launch with polished service pages, local pages, trust content and FAQs — without starting from a blank screen. Put your own footage on them too: six video layouts, from a hero loop to a project story to a customer on camera.',
         },
         {
           title: 'Answer “how much?” while interest is high',
@@ -426,6 +437,20 @@ export default function WebsiteBuilderPage() {
           </ExampleFrame>
         </div>
       </section>
+
+      {/* WHAT THE SITE ACTUALLY SHIPS WITH, read out of lib/features.ts rather
+          than restated here — the same catalog /pricing counts and the suite
+          pages list. It is on this page because the video studio's entries had
+          nowhere else to appear: /features stopped rendering the catalog when
+          its "everything" band became the job-record component, so three real
+          features were raising a number on /pricing and showing up in no list
+          anywhere. A catalog nothing renders is a catalog nobody maintains. */}
+      <CapabilitySection
+        catalog={['website']}
+        eyebrow="Everything the site ships with"
+        title="The whole front door, including the video."
+        note="Read from the product's own feature catalog rather than written here, so this page cannot describe a website builder that no longer exists."
+      />
 
       {/* ------------------------------------------------------------------
           THE PRACTICAL QUESTIONS.

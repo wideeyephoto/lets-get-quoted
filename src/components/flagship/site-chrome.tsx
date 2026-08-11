@@ -87,7 +87,11 @@ function useSignedIn(): boolean {
    reads before the specific offer. */
 const NAV = [
   ['/features', 'Features'],
-  ['/features/website-builder', 'Website'],
+  /* "Website + video" and not "Website": the video studio is the part of this
+     builder a contractor cannot get from the other ones, and the nav is where
+     somebody scanning for it would look. The "+" is the house pattern already
+     used by Quotes + e-sign, Crew + labor and Reviews + growth. */
+  ['/features/website-builder', 'Website + video'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],
   ['/pricing', 'Pricing'],

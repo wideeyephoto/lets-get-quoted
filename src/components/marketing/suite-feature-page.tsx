@@ -65,6 +65,74 @@ export type SuiteFeaturePageProps = {
   children?: ReactNode;
 };
 
+/**
+ * The capability section, on its own so a page that is not a suite page can
+ * still show one.
+ *
+ * /features/website-builder is the case that forced this out: it is a flagship
+ * page with its own structure, and the video studio's catalog entries would
+ * otherwise have raised a count on /pricing and appeared in no list anywhere.
+ * A catalog nothing renders is a catalog nobody maintains.
+ */
+export function CapabilitySection({
+  catalog,
+  eyebrow,
+  title,
+  note,
+  id = 'capabilities',
+}: {
+  catalog: string[];
+  eyebrow: string;
+  title: ReactNode;
+  note: ReactNode;
+  id?: string;
+}) {
+  const groups = catalog.map((slug) => {
+    const group = FEATURE_CATEGORIES.find((category) => category.slug === slug);
+    // Loud rather than silent. A typo here would otherwise render a page whose
+    // whole second half is missing, and nothing else would notice.
+    if (!group) throw new Error(`page names a feature category that does not exist: ${slug}`);
+    return group;
+  });
+  const count = groups.reduce((total, group) => total + group.features.length, 0);
+  const total = FEATURE_CATEGORIES.reduce((n, g) => n + g.features.length, 0);
+
+  return (
+    <section className="section-block" id={id} aria-labelledby={`${id}-title`}>
+      <div className={styles.head}>
+        <p className="eyebrow">{eyebrow}</p>
+        <h2 id={`${id}-title`}>{title}</h2>
+        <p>{note}</p>
+      </div>
+
+      {groups.map((group) => (
+        <div key={group.slug} className={styles.group}>
+          <div className={styles.groupHead}>
+            <h3>{group.title}</h3>
+            {/* The count is decoration for a sighted reader and noise read
+                aloud — the list underneath is already a list. */}
+            <span aria-hidden="true">{String(group.features.length).padStart(2, '0')}</span>
+          </div>
+          <p className={styles.groupIntro}>{group.intro}</p>
+          <ul className={styles.list}>
+            {group.features.map((feature) => (
+              <li key={feature.id}>
+                <strong>{feature.name}</strong>
+                <span>{feature.desc}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      <p className={styles.total}>
+        {count} of the {total} things the platform does.{' '}
+        <a href="/features">See all of them</a>.
+      </p>
+    </section>
+  );
+}
+
 export default function SuiteFeaturePage({
   catalog,
   catalogEyebrow,
@@ -74,49 +142,14 @@ export default function SuiteFeaturePage({
   children,
   ...layout
 }: SuiteFeaturePageProps) {
-  const groups = catalog.map((slug) => {
-    const group = FEATURE_CATEGORIES.find((category) => category.slug === slug);
-    // Loud rather than silent. A typo here would otherwise render a page whose
-    // whole second half is missing, and nothing else would notice.
-    if (!group) throw new Error(`suite page names a feature category that does not exist: ${slug}`);
-    return group;
-  });
-  const count = groups.reduce((total, group) => total + group.features.length, 0);
-
   return (
     <FeatureDetailLayout {...layout}>
-      <section className="section-block" id="capabilities" aria-labelledby="capabilities-title">
-        <div className={styles.head}>
-          <p className="eyebrow">{catalogEyebrow}</p>
-          <h2 id="capabilities-title">{catalogTitle}</h2>
-          <p>{catalogNote}</p>
-        </div>
-
-        {groups.map((group) => (
-          <div key={group.slug} className={styles.group}>
-            <div className={styles.groupHead}>
-              <h3>{group.title}</h3>
-              {/* The count is decoration for a sighted reader and noise read
-                  aloud — the list underneath is already a list. */}
-              <span aria-hidden="true">{String(group.features.length).padStart(2, '0')}</span>
-            </div>
-            <p className={styles.groupIntro}>{group.intro}</p>
-            <ul className={styles.list}>
-              {group.features.map((feature) => (
-                <li key={feature.id}>
-                  <strong>{feature.name}</strong>
-                  <span>{feature.desc}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-
-        <p className={styles.total}>
-          {count} of the {FEATURE_CATEGORIES.reduce((n, g) => n + g.features.length, 0)} things the
-          platform does. <a href="/features">See all of them</a>.
-        </p>
-      </section>
+      <CapabilitySection
+        catalog={catalog}
+        eyebrow={catalogEyebrow}
+        title={catalogTitle}
+        note={catalogNote}
+      />
 
       {children}
 

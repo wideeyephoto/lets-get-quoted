@@ -1,7 +1,19 @@
-// Single source of truth for the product's feature catalog. Both the public
-// /features page (full list) and the homepage "favorites" grid read from here,
-// so the two can never drift apart. Flip `favorite` to promote/demote a feature
-// into the headline set. Every entry is grounded in real, shipped functionality.
+// Single source of truth for the product's feature catalog. Every entry is
+// grounded in real, shipped functionality.
+//
+// WHO ACTUALLY READS THIS, corrected — the note here used to say "the public
+// /features page (full list) and the homepage favorites grid", and neither is
+// true any more. /features rebuilt its "everything" band as the job-record
+// component and stopped rendering the catalog at all. Today:
+//
+//   the COUNT      /pricing, /for/[trade], /founder
+//   the ENTRIES    the seven suite pages under /features, and
+//                  /features/website-builder — both via CapabilitySection
+//
+// That matters when adding a category: entries in a category no page names are
+// entries nobody will ever see, however correct they are.
+//
+// Flip `favorite` to promote/demote a feature into the headline set.
 
 export type Feature = {
   id: string;
@@ -30,6 +42,15 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     features: [
       { id: 'hosted-website', name: 'Hosted contractor website', desc: 'Publish a polished marketing site on your own domain, publish or unpublish anytime.', favorite: true },
       { id: 'templates', name: '15+ design templates', desc: 'Distinct layouts, motion, and hero styles for every trade.' },
+      /* VIDEO WAS MISSING FROM THIS CATALOG ENTIRELY, which meant a shipped
+         feature — six section layouts, uploads, codec and size checking — was
+         absent from /features, the homepage grid and every capability list that
+         reads from here. Three entries rather than one because they are three
+         different promises: the layouts, the upload, and the part that stops a
+         clip going live that nobody can play. */
+      { id: 'video-sections', name: 'Video sections', desc: 'Six layouts — hero loop, video + text, project story, reel gallery, testimonial, process — up to four bands on a page.', favorite: true },
+      { id: 'video-upload', name: 'Your own footage', desc: 'MP4, MOV, WebM or a YouTube link. Up to 50 MB a clip, 12 MB for a hero loop every visitor downloads.' },
+      { id: 'video-checks', name: 'Playback and size checks', desc: 'Warns when a clip is HEVC, oversized or has no still frame, and names the fix — down to the iPhone setting. It advises; it never blocks.' },
       { id: 'customization', name: 'Deep customization', desc: 'Color schemes, accent color, brand fonts, 7 header layouts, 4 footers, and logo framing.' },
       { id: 'sections', name: 'Toggleable, reorderable sections', desc: 'Services, how-it-works, galleries, before/after, stats, FAQs, testimonials, and service areas.' },
       { id: 'auto-logo', name: 'Auto brand logo', desc: 'No logo? A trade-based mark drives your header, footer, favicon, and a downloadable icon.' },

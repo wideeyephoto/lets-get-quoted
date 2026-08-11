@@ -215,9 +215,14 @@ describe('the website builder page', () => {
 
   it('answers the practical questions with disclosures that work unhydrated', () => {
     expect(SRC).toContain('<details key={item.q} open={index === 0}>');
-    // No `name`: an exclusive accordion hides four answers from find-in-page.
+    // No `name`: an exclusive accordion hides five answers from find-in-page.
     expect(SRC).not.toMatch(/<details[^>]*name=/);
-    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(5);
+    // SIX now, not five. The page was repositioned around the video studio —
+    // eyebrow, lede and a benefit — and a page that claims video and never
+    // answers "what kind of video, and what will actually play" leaves its one
+    // new claim hanging. The other five are unchanged.
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(6);
+    expect(SRC).toContain('What kind of video can I put on it?');
   });
 
   it('keeps the claims that were already checked against the product', () => {
