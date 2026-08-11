@@ -202,6 +202,39 @@ describe('the job page uses the one ladder', () => {
   });
 });
 
+describe('a long record you can get around', () => {
+  const page = read('src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx');
+  const css = readFileSync(join(process.cwd(), 'src', 'app', 'globals.css'), 'utf8').replace(/\r\n/g, '\n');
+
+  it('carries a sub-nav whose every link lands on a real section', () => {
+    const nav = page.slice(page.indexOf('<nav className="job-subnav"'), page.indexOf('</nav>'));
+    const targets = [...nav.matchAll(/href="#([\w-]+)"/g)].map((match) => match[1]);
+    expect(targets).toEqual(['job-top', 'checklist', 'quote-breakdown', 'job-feed', 'request-payment', 'job-details']);
+    for (const id of targets) {
+      expect(page, `#${id} has no section`).toMatch(new RegExp(`id="${id}"`));
+    }
+  });
+
+  it('works without JavaScript — plain anchors, not a click handler', () => {
+    const nav = page.slice(page.indexOf('<nav className="job-subnav"'), page.indexOf('</nav>'));
+    expect(nav).not.toContain('onClick');
+    expect(nav).toMatch(/<a href="#/);
+  });
+
+  it('leaves room under the sticky bar so an anchor does not land behind it', () => {
+    expect(css).toContain('scroll-margin-top');
+  });
+
+  it('collapses the sections that are only worth their height when filled', () => {
+    expect(page).toMatch(/<details id="milestones"[\s\S]{0,200}open=\{milestoneViews\.length > 0\}/);
+    expect(page).toMatch(/<details id="checklist"[\s\S]{0,200}open=\{jobTasks\.length > 0\}/);
+  });
+
+  it('puts the primary control first on a phone instead of stacking four buttons', () => {
+    expect(css).toContain('.job-command-hero .workspace-actions > .btn.primary { order: -1; }');
+  });
+});
+
 describe('the guardrails are on the server, not only in the markup', () => {
   it('a payment request past the approved total needs an explicit confirmation', () => {
     const actions = read('src', 'app', 'dashboard', 'jobs', 'payments-actions.ts');

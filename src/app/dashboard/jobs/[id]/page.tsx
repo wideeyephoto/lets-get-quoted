@@ -388,7 +388,7 @@ export default async function JobDetailPage({
       {searchParams.delivery ? (
         <QuoteDeliveryBanner delivery={searchParams.delivery} clientLink={clientLink} clientName={job.client_name} clientEmail={job.client_email} />
       ) : null}
-      <section className="workspace-hero panel job-command-hero">
+      <section id="job-top" className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
           <div className="job-title-row">
             <h1 className="workspace-title job-hero-title">{jobTitle}</h1>
@@ -589,6 +589,21 @@ export default async function JobDetailPage({
 
       </section>
 
+      {/* THE WAY AROUND A LONG RECORD.
+          Quote, stages, punch list, feed, payment, scheduling, expenses,
+          selections, warranty and ROI make a page nobody can hold in their
+          head, and on a phone reaching the money meant scrolling past all of
+          it. Plain anchors, so it works before any JavaScript has run and on a
+          job page opened in a van with one bar. */}
+      <nav className="job-subnav" aria-label="Jump to a section">
+        <a href="#job-top">Overview</a>
+        <a href="#checklist">Work</a>
+        <a href="#quote-breakdown">Quote</a>
+        <a href="#job-feed">Feed</a>
+        <a href="#request-payment">Money</a>
+        <a href="#job-details">More</a>
+      </nav>
+
       {/* Arrival. Only on a job with a date — "on my way" to something
           unscheduled is a message with no visit behind it. Sits high on the
           page because on the day itself it is the only thing on this screen
@@ -635,13 +650,22 @@ export default async function JobDetailPage({
       {/* Proof-to-Pay. Directly under the quote, because stages are how the
           quote gets collected — and above the checklist, because the checklist
           is now partly evidence for these. */}
-      <section id="milestones" className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <div>
+      {/* Collapsed until this job actually has stages. On a small job the empty
+          state is a paragraph of pitch, and it sat between the arrival panel
+          and the quote on every job whether or not staged payments made any
+          sense for it. */}
+      <details id="milestones" className="panel workspace-section-card job-section-collapsible" open={milestoneViews.length > 0}>
+        <summary className="workspace-details-summary job-action-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Getting paid</p>
             <h2>Stages &amp; proof</h2>
           </div>
-        </div>
+          <span className="workspace-details-copy">
+            {milestoneViews.length > 0
+              ? `${milestoneViews.length} stage${milestoneViews.length === 1 ? '' : 's'} on this job.`
+              : 'Get paid as each part is finished, with the proof attached.'}
+          </span>
+        </summary>
         <Milestones
           entries={milestoneViews}
           quotedAmount={Number(job.quoted_amount) || 0}
@@ -658,7 +682,7 @@ export default async function JobDetailPage({
             requestPayment: requestMilestonePaymentAction.bind(null, job.id),
           }}
         />
-      </section>
+      </details>
 
       <section id="quote-breakdown" className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
@@ -709,11 +733,20 @@ export default async function JobDetailPage({
         </section>
       ) : null}
 
-      <section id="checklist" className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Checklist</p>
-          <h2>Punch list{taskStats.total > 0 ? ` · ${taskStats.done}/${taskStats.total} done` : ''}</h2>
-        </div>
+      {/* Collapsed while it is empty. An untouched punch list is a heading, a
+          paragraph of explanation and an empty state — three screenfuls of
+          nothing between the quote and the feed on a phone. It opens the moment
+          it has anything in it. */}
+      <details id="checklist" className="panel workspace-section-card job-section-collapsible" open={jobTasks.length > 0}>
+        <summary className="workspace-details-summary job-action-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Checklist</p>
+            <h2>Punch list{taskStats.total > 0 ? ` · ${taskStats.done}/${taskStats.total} done` : ''}</h2>
+          </div>
+          <span className="workspace-details-copy">
+            {jobTasks.length > 0 ? 'What your crew ticks off from the field app.' : 'Nothing on it yet.'}
+          </span>
+        </summary>
         <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
           Build the punch list for this job. Your crew can tick items off from the field app, and you&apos;ll see who did what.
         </p>
@@ -743,7 +776,7 @@ export default async function JobDetailPage({
           <p className="empty-state">No checklist items yet. Add the first below.</p>
         )}
         <TaskAddForm action={addJobTaskAction.bind(null, job.id)} />
-      </section>
+      </details>
 
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
             <div className="section-heading workspace-section-heading">

@@ -5229,6 +5229,50 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .job-money-strip.is-over { border-color: var(--cedge-red-6); }
 .job-money-strip.is-over > div:last-child dd { color: var(--bad); }
 
+/* An anchor landing under the sticky bar is an anchor that missed. */
+#job-top,
+.job-section-collapsible,
+#quote-breakdown,
+#job-feed,
+#request-payment,
+#job-details {
+  scroll-margin-top: 4.5rem;
+}
+
+@media (max-width: 640px) {
+  .job-money-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* ── The first screen on a phone ──────────────────────────────────────────
+     Contact details and four stacked full-width buttons filled it. The phone
+     and email compress onto one line, and the action row scrolls sideways with
+     the primary control first rather than stacking. */
+  .job-hero-contact {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    font-size: 0.82rem;
+  }
+  .job-hero-contact::-webkit-scrollbar { display: none; }
+  .job-hero-contact > * { flex: none; }
+
+  .job-command-hero .workspace-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+  .job-command-hero .workspace-actions::-webkit-scrollbar { display: none; }
+  .job-command-hero .workspace-actions > * { flex: none; }
+  /* The bright one leads, whichever it is this stage. */
+  .job-command-hero .workspace-actions > .btn.primary { order: -1; }
+  .job-command-hero .workspace-actions .job-done-field.is-muted { order: 1; }
+}
+
 .workspace-hero-copy {
   display: flex;
   flex-direction: column;
