@@ -6474,10 +6474,6 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   font-size: 0.78rem;
 }
 
-.workspace-grid-gap {
-  gap: 1.25rem;
-}
-
 .workspace-section-card {
   background: var(--bg-elevated);
 }
@@ -6515,16 +6511,6 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   align-items: center;
   gap: 0.7rem;
   flex-wrap: wrap;
-}
-
-.workspace-inline-note {
-  color: var(--mute-i58);
-  font-size: 0.92rem;
-}
-
-.sticky-card {
-  position: sticky;
-  top: 7rem;
 }
 
 .payment-shell {
@@ -7066,16 +7052,40 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   .client-job-dashboard .quote-doc-print,
   .client-job-dashboard .quote-doc-sign,
   .client-job-dashboard .client-secure-note,
+  /* The redesign's controls. A rail whose whole job is to be tapped, a bar
+     pinned to a viewport that does not exist on paper, and two sets of cards
+     that are choices rather than facts — none of them are the document. The
+     summary they carry is already on the page: the total is in the quote's own
+     total row, which is what a printed quote has always ended with. */
+  .client-job-dashboard .quote-deck-rail,
+  .client-job-dashboard .quote-bottom-bar,
+  .client-job-dashboard .quote-flash,
+  .client-job-dashboard .date-choice,
+  .client-job-dashboard .date-choice-alt,
+  .client-job-dashboard .pay-choice-grid,
   .cbrand-actions,
   .cbrand-foot {
     display: none !important;
   }
+  /* The two-column deck is a screen layout. On paper it is one column, in the
+     order the sections are written, or the document prints in a 60% gutter. */
+  .client-job-dashboard .quote-deck,
+  .client-job-dashboard .quote-deck-main {
+    display: block !important;
+  }
   .client-job-dashboard .panel,
+  .client-job-dashboard .quote-hero,
   .client-job-dashboard .workspace-hero {
     border: none !important;
     padding: 0 !important;
     margin: 0 0 1.2rem !important;
   }
+  /* Bold sets the hero to a solid fill of the contractor's colour with computed
+     ink on top. Backgrounds do not print, so that ink would be white on white —
+     the exact failure that produced an empty two-page PDF. */
+  .client-job-dashboard .quote-hero,
+  .client-job-dashboard .quote-hero * { color: #111 !important; }
+  .client-job-dashboard .quote-hero { border-bottom: 1px solid #999 !important; padding-bottom: 0.6rem !important; }
   .client-job-dashboard .quote-doc-line,
   .client-job-dashboard .quote-doc-addon,
   .client-job-dashboard .quote-doc-group { break-inside: avoid; }
@@ -7556,7 +7566,6 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 }
 
 .detail-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
-.detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1rem; align-items: start; }
 
 .cost-type-picker { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
 .cost-type-btn {
@@ -14447,4 +14456,519 @@ select optgroup {
   color: var(--mute-t62);
   font-size: 0.8rem;
   line-height: 1.45;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE CUSTOMER'S QUOTE PAGE
+   ══════════════════════════════════════════════════════════════════════════
+
+   Three finished treatments, one set of rules. Every difference between
+   Classic, Signature and Bold is a custom property redefined on the page root
+   — see src/lib/quote-style.ts for what a style is allowed to change, and the
+   short answer is: how it looks, never what it says or the order it says it in.
+
+   The contractor's own colour drives all three through --cbrand, which the
+   page sets from brandPaint. Every reference falls back to the platform orange,
+   so an account with an unreadable accent renders exactly as it always did.  */
+
+.client-job-dashboard {
+  /* Geometry */
+  --q-radius: 14px;
+  --q-card-radius: 18px;
+  --q-border: 1px;
+  /* Type */
+  --q-display: inherit;
+  --q-title-size: clamp(1.9rem, 4.4vw, 2.9rem);
+  --q-title-weight: 800;
+  --q-title-tracking: -0.025em;
+  --q-title-leading: 1.08;
+  --q-eyebrow-tracking: 0.12em;
+  --q-eyebrow-weight: 800;
+  /* Hero */
+  --q-hero-pad: 2.4rem 2.2rem 2.1rem;
+  --q-hero-ground: linear-gradient(160deg, var(--cbrand-soft, rgba(255, 138, 61, 0.16)), transparent 62%);
+  --q-hero-ink: inherit;
+  --q-hero-edge: var(--cbrand-edge, var(--cedge-orange-36));
+  --q-hero-rule: none;
+  /* Cards */
+  --q-card-shadow: 0 26px 60px -46px rgba(0, 0, 0, 0.95);
+  --q-rail-ground: linear-gradient(180deg, var(--cbrand-soft, rgba(255, 138, 61, 0.16)), transparent 42%);
+
+  padding-bottom: 1.5rem;
+}
+
+/* ── Bold ───────────────────────────────────────────────────────────────────
+   Their colour at full strength. --cbrand-on is the computed black-or-white
+   that is legible ON that colour — the one contrast decision on this page that
+   cannot be guessed, so brandPaint computes it. */
+.qstyle-bold {
+  --q-radius: 10px;
+  --q-card-radius: 12px;
+  --q-border: 2px;
+  --q-title-size: clamp(2.2rem, 6vw, 3.6rem);
+  --q-title-weight: 900;
+  --q-title-tracking: -0.035em;
+  --q-title-leading: 1;
+  --q-eyebrow-tracking: 0.2em;
+  --q-hero-pad: 2.6rem 2.2rem 2.3rem;
+  --q-hero-ground: var(--cbrand, #ff8a3d);
+  --q-hero-ink: var(--cbrand-on, #12100e);
+  --q-hero-edge: var(--cbrand, #ff8a3d);
+  --q-card-shadow: 0 20px 46px -38px rgba(0, 0, 0, 0.9);
+}
+
+/* ── The hero ───────────────────────────────────────────────────────────────
+   Who it is from, who it is for, what the work is, where it is, where it
+   stands. It replaced "Your quote" set over the customer's full name in
+   display caps, which is how a record refers to somebody. */
+.quote-hero {
+  display: grid;
+  gap: 0.5rem;
+  padding: var(--q-hero-pad);
+  border: var(--q-border) solid var(--q-hero-edge);
+  border-radius: var(--q-card-radius);
+  background: var(--q-hero-ground);
+  color: var(--q-hero-ink);
+}
+.quote-hero-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: var(--q-eyebrow-weight);
+  letter-spacing: var(--q-eyebrow-tracking);
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+.quote-hero-sep { opacity: 0.5; }
+.quote-hero-ref { font-variant-numeric: tabular-nums; }
+.quote-hero-title,
+.client-job-dashboard .quote-hero-title {
+  margin: 0;
+  max-width: 20ch;
+  font-family: var(--q-display);
+  font-size: var(--q-title-size);
+  font-weight: var(--q-title-weight);
+  letter-spacing: var(--q-title-tracking);
+  line-height: var(--q-title-leading);
+  text-transform: none;
+  text-wrap: balance;
+}
+.quote-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.82;
+}
+.quote-hero-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+.quote-hero-when { font-size: 0.86rem; opacity: 0.8; }
+/* On Bold the hero is a solid fill of the contractor's colour, so the badge
+   has to stop being a coloured chip on a coloured ground. */
+.qstyle-bold .quote-hero .status-badge {
+  border-color: currentColor;
+  background: rgba(0, 0, 0, 0.14);
+  color: inherit;
+}
+
+/* ── The deck: document on the left, the decision on the right ──────────────
+   The Approve button used to sit at the bottom of the itemised list, so the
+   total scrolled out of view above the button that agreed to it. */
+.quote-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+.quote-deck-main {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.quote-deck-rail { min-width: 0; }
+.quote-rail-sticky {
+  position: sticky;
+  /* Clears the contractor's brand bar, which is the only fixed chrome here. */
+  top: 1rem;
+}
+
+.quote-rail-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.25rem;
+  border: var(--q-border) solid var(--cbrand-edge, var(--cedge-orange-29));
+  border-radius: var(--q-card-radius);
+  background: var(--q-rail-ground), rgba(var(--panel-rgb), 0.96);
+  box-shadow: var(--q-card-shadow);
+}
+.quote-rail-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: var(--q-eyebrow-weight);
+  letter-spacing: var(--q-eyebrow-tracking);
+  text-transform: uppercase;
+  opacity: 0.66;
+}
+.quote-rail-total { margin: -0.15rem 0 0; }
+.quote-rail-amount {
+  font-family: var(--q-display);
+  font-size: clamp(1.9rem, 3.4vw, 2.4rem);
+  font-weight: var(--q-title-weight);
+  letter-spacing: var(--q-title-tracking);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.quote-rail-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0.7rem 0;
+  display: grid;
+  gap: 0.45rem;
+  border-top: 1px solid var(--rule-t08);
+  border-bottom: 1px solid var(--rule-t08);
+  font-size: 0.84rem;
+}
+.quote-rail-lines li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.quote-rail-lines li > span:last-child {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.quote-rail-lines li.is-on > span:last-child {
+  color: var(--cbrand, #ff8a3d);
+  font-weight: 700;
+}
+.quote-rail-addon-names {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  opacity: 0.62;
+}
+.quote-rail-facts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+.quote-rail-facts > div { display: grid; gap: 0.1rem; }
+.quote-rail-facts dt {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.quote-rail-facts dd { margin: 0; font-size: 0.88rem; line-height: 1.4; }
+.quote-rail-facts dd small { opacity: 0.65; }
+
+/* Said out loud when the plan and the selections have come apart, rather than
+   printing two totals and letting somebody find the difference. */
+.quote-rail-mismatch {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--cedge-amber-8);
+  border-radius: var(--q-radius);
+  background: rgba(255, 209, 102, 0.08);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.quote-rail-form {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  /* The mobile bar links here; without this the brand bar covers the heading. */
+  scroll-margin-top: 5rem;
+}
+.quote-rail-form label { font-size: 0.8rem; font-weight: 700; }
+.quote-rail-form input[type='text'] { width: 100%; }
+.quote-rail-hint { margin: 0; font-size: 0.74rem; line-height: 1.45; color: var(--muted); }
+.client-job-dashboard .quote-rail-approve {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.2rem;
+  font-variant-numeric: tabular-nums;
+}
+.client-job-dashboard .quote-rail-approve:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.quote-rail-card.is-approved { border-color: var(--cedge-green-40); }
+.quote-rail-tick {
+  display: inline-grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+  font-size: 0.72rem;
+}
+.quote-rail-next { margin: 0; font-size: 0.88rem; line-height: 1.5; }
+
+/* ── What just happened ─────────────────────────────────────────────────────
+   Every action redirects back here with a flag and nothing read them, so a
+   question that FAILED to send looked exactly like one that had. */
+.quote-flash {
+  margin: 0;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--edge-t18);
+  border-radius: var(--q-radius);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.quote-flash.is-good { border-color: var(--cedge-green-40); background: rgba(74, 222, 128, 0.09); }
+.quote-flash.is-bad { border-color: var(--cedge-red-6); background: rgba(248, 113, 113, 0.09); }
+
+/* ── The dates, as dates ────────────────────────────────────────────────────
+   One radio group and one shared note, not one form per card: the note typed
+   under option two used to be discarded the moment option three was pressed. */
+.date-choice { display: grid; gap: 0.9rem; justify-items: start; }
+.date-choice-set { margin: 0; padding: 0; border: 0; }
+.date-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.6rem;
+}
+.date-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 0.9rem;
+  border: var(--q-border) solid var(--edge-t16);
+  border-radius: var(--q-radius);
+  background: rgba(var(--tint), 0.03);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.date-card:hover { border-color: var(--cbrand-edge, var(--cedge-orange-29)); transform: translateY(-1px); }
+.date-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.date-card:focus-within {
+  border-color: var(--cbrand, #ff8a3d);
+  box-shadow: 0 0 0 2px var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
+.date-card.is-chosen {
+  border-color: var(--cbrand, #ff8a3d);
+  background: var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
+.date-card-body { display: grid; gap: 0.15rem; flex: 1; min-width: 0; }
+.date-card-label {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.date-card-when { font-size: 0.95rem; line-height: 1.3; }
+.date-card-tick {
+  flex: 0 0 auto;
+  width: 1.3rem;
+  text-align: center;
+  color: var(--cbrand, #ff8a3d);
+  font-weight: 800;
+}
+.date-choice-note { display: grid; gap: 0.3rem; width: 100%; font-size: 0.8rem; font-weight: 700; }
+.date-choice-note textarea { width: 100%; }
+.date-choice-alt { margin-top: 0.2rem; }
+
+/* ── Two ways to pay, presented as two ways to pay ──────────────────────────
+   Quoting on plan terms used to remove paying in full for the HOMEOWNER, not
+   just for the contractor. Neither is pre-selected: a default here is a thumb
+   on the scale. */
+.pay-choice { display: grid; gap: 0.9rem; }
+.pay-choice-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.66;
+}
+.pay-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.7rem;
+}
+.pay-option {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.95rem 1rem;
+  border: var(--q-border) solid var(--edge-t16);
+  border-radius: var(--q-radius);
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.pay-option:hover { border-color: var(--cbrand-edge, var(--cedge-orange-29)); transform: translateY(-1px); }
+.pay-option.is-chosen {
+  border-color: var(--cbrand, #ff8a3d);
+  background: var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
+.pay-option-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pay-option-head strong { font-size: 0.98rem; }
+.pay-option-tick { color: var(--cbrand, #ff8a3d); font-weight: 800; }
+.pay-option-amount {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+.pay-option small { font-size: 0.78rem; line-height: 1.5; opacity: 0.72; }
+.pay-choice-detail { display: grid; gap: 0.7rem; }
+
+/* ── The bar that stays on a phone ──────────────────────────────────────────
+   It scrolls to the approval panel rather than submitting: a fixed bar that
+   commits somebody to a contract with one thumb press, halfway through reading
+   it, is the wrong control. Hidden at desktop, where the rail is already on
+   screen and a second copy of the same total is noise. */
+.quote-bottom-bar { display: none; }
+
+/* ── Ends of the road ───────────────────────────────────────────────────── */
+.quote-dead-link { display: grid; gap: 0.8rem; max-width: 46rem; }
+.quote-dead-link .workspace-lead { margin: 0; }
+.quote-dead-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.2rem 0; }
+
+.quote-skeleton .panel,
+.quote-skeleton .quote-rail-card,
+.quote-skeleton .quote-hero { display: grid; gap: 0.7rem; }
+.quote-skeleton-rows { display: grid; gap: 0.5rem; }
+.skel {
+  display: block;
+  border-radius: 6px;
+  background: rgba(var(--tint), 0.07);
+  animation: quote-skel 1.4s ease-in-out infinite;
+}
+.skel-line { height: 0.75rem; width: 100%; }
+.skel-tall { height: 1.1rem; }
+.skel-title { height: 2.1rem; width: 70%; border-radius: 8px; }
+.skel-pill { height: 1.6rem; width: 9rem; border-radius: 999px; }
+.skel-row { height: 2.4rem; border-radius: 8px; }
+.skel-total { height: 3rem; }
+.skel-btn { height: 2.75rem; border-radius: 10px; }
+@keyframes quote-skel {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
+/* ── The add-on cards, in the contractor's colour ───────────────────────────
+   These were hardcoded #ff8a3d — our orange, on a page meant to belong to a
+   landscaper whose colour is green. Same geometry, their paint. */
+.quote-doc-addon {
+  border-color: var(--cbrand-edge, var(--cedge-orange-34));
+  border-radius: var(--q-radius, 12px);
+  background: rgba(var(--tint), 0.03);
+}
+.quote-doc-addon.is-selected {
+  border-color: var(--cbrand, #ff8a3d);
+  background: var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+  box-shadow: none;
+}
+.quote-doc-addon:focus-within {
+  border-color: var(--cbrand, #ff8a3d);
+  box-shadow: 0 0 0 2px var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
+.quote-doc-addon.is-selected .quote-doc-addon-price { color: var(--cbrand, #ff8a3d); }
+.quote-doc-addon-btn { border-color: var(--cbrand-edge, var(--cedge-orange-17)); color: inherit; }
+.quote-doc-addon.is-selected .quote-doc-addon-btn {
+  border-color: transparent;
+  background: var(--cbrand, #ff8a3d);
+  color: var(--cbrand-on, #1a0f04);
+}
+.quote-doc-group-note { margin: -0.25rem 0 0.55rem; font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
+.quote-doc-total strong { font-family: var(--q-display); }
+
+/* ── Tablet and phone: the rail drops under the document ─────────────────── */
+@media (max-width: 1023px) {
+  .quote-deck { grid-template-columns: minmax(0, 1fr); }
+  .quote-rail-sticky { position: static; }
+  .client-job-dashboard { padding-bottom: 5.5rem; }
+
+  .quote-bottom-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--cbrand-edge, var(--cedge-orange-29));
+    background: rgba(var(--panel-rgb), 0.97);
+    /* Prefixed first: this bar's whole reason to exist is a phone, and on iOS
+       Safari the unprefixed property does nothing. */
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .quote-bottom-total { display: grid; gap: 0.05rem; min-width: 0; }
+  .quote-bottom-total small {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.62;
+  }
+  .quote-bottom-amount {
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.015em;
+  }
+  .client-job-dashboard .quote-bottom-cta { white-space: nowrap; }
+}
+
+@media (max-width: 560px) {
+  .client-job-dashboard { --q-hero-pad: 1.6rem 1.25rem 1.5rem; }
+  .qstyle-classic { --q-hero-pad: 1.4rem 0 1.1rem; }
+  .quote-rail-card { padding: 1rem; }
+  .date-choice-grid,
+  .pay-choice-grid { grid-template-columns: minmax(0, 1fr); }
+  .quote-hero-title { max-width: none; }
+}
+
+/* Motion is an answer to a tap here — the total counting to its new value —
+   never atmosphere. Somebody who has asked for less of it gets none. */
+@media (prefers-reduced-motion: reduce) {
+  .date-card,
+  .pay-option,
+  .quote-doc-addon { transition: none; }
+  .date-card:hover,
+  .pay-option:hover,
+  .quote-doc-addon:hover { transform: none; }
+  .skel { animation: none; }
+}
+.qstyle-choice.is-chosen {
+  border-color: var(--cbrand, #ff8a3d);
+  background: rgba(var(--tint), 0.06);
+  box-shadow: 0 0 0 1px var(--cbrand, #ff8a3d);
 }

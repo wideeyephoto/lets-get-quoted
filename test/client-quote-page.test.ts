@@ -178,7 +178,15 @@ describe('brandPaint', () => {
 
 describe('the client job page asks in the right order', () => {
   const page = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
-  const body = page.slice(page.indexOf('<main className="wide-shell workspace-shell client-job-dashboard"'));
+  // The <main> className became a template literal when the page started
+  // wearing one of three style classes, so this anchors on the class rather
+  // than on the whole attribute.
+  const mainAt = page.indexOf('client-job-dashboard ${quoteStyleClass');
+  const body = page.slice(mainAt);
+
+  it('found the page body, so nothing below is vacuously true', () => {
+    expect(mainAt).toBeGreaterThan(-1);
+  });
 
   it('shows the quote before it asks for money', () => {
     const quote = body.indexOf('{quoteSection}');
@@ -194,23 +202,33 @@ describe('the client job page asks in the right order', () => {
   });
 
   it('does not offer the card-authorization form until the quote is approved', () => {
-    const planBlock = page.slice(page.indexOf('const planSection'), page.indexOf('const subscriptionsSection'));
-    const gate = planBlock.indexOf('awaitingApproval ?');
-    const form = planBlock.indexOf('authorizePaymentPlanAction');
+    // The plan card's contents moved into PayChoice when the routes became two
+    // selectable cards. The rule did not: the card authorization is gated on
+    // the quote already being accepted, and until then the schedule is shown
+    // as a preview with "you'll set it up after you approve".
+    const choice = read('src', 'app', 'client', 'jobs', '[token]', 'PayChoice.tsx');
+    const gate = choice.indexOf('awaitingApproval ? (');
+    const form = choice.indexOf('action={authorizeAction}');
     expect(gate).toBeGreaterThan(-1);
     expect(form).toBeGreaterThan(gate);
-    expect(planBlock).toContain('client-plan-later');
+    expect(choice).toContain('client-plan-later');
+    expect(page).toContain('awaitingApproval={awaitingApproval}');
   });
 
   it('states the schedule’s own total, since the copy promises it splits the total', () => {
-    expect(page).toContain('client-plan-sum');
+    expect(read('src', 'app', 'client', 'jobs', '[token]', 'PayChoice.tsx')).toContain('client-plan-sum');
   });
 
   it('collects a signature against the quote, separately from the card authorization', () => {
-    const quote = read('src', 'app', 'client', 'jobs', '[token]', 'QuoteDocument.tsx');
-    expect(quote).toContain('name="signerName"');
-    expect(quote).toContain('Type your full name to accept this quote');
-    expect(page).toContain('This is separate from your');
+    // The signature moved to the summary rail, beside the total it signs for.
+    // It is still its OWN agreement — the card authorization collects a second
+    // name of its own, and says so.
+    const accept = read('src', 'app', 'client', 'jobs', '[token]', 'QuoteAcceptance.tsx');
+    const choice = read('src', 'app', 'client', 'jobs', '[token]', 'PayChoice.tsx');
+    expect(accept).toContain('name="signerName"');
+    expect(accept).toContain('Type your full name to accept this quote');
+    expect(choice).toContain('name="signerName"');
+    expect(choice).toMatch(/This is separate\s+from your approval of the quote/);
   });
 
   it('gives somebody who is not ready a door that is not "Approve"', () => {

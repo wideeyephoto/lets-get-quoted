@@ -1,21 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import SaveButton from '@/components/save-button';
+import { formatUsdExact as formatUsd } from '@/lib/money-format';
 import type { QuoteItem } from '@/lib/jobs';
-
-function formatUsd(amount: number): string {
-  return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-}
-
-function formatUsdRounded(amount: number): string {
-  return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-}
+import { QUOTE_FORM_ID, useQuoteDeck } from './QuoteDeck';
 
 const FREQ_SUFFIX: Record<'weekly' | 'biweekly' | 'monthly', string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
 
-// type="button" matters: this sits inside the approval form, and a bare button
-// in a form submits it. Printing a quote must never approve it.
+// type="button" matters: this used to sit inside the approval form, where a bare
+// button submits it. It no longer does — the form is the rail — but printing a
+// quote must never approve it, and that is not a fact worth re-learning.
 function PrintButton() {
   return (
     <button type="button" className="linklike quote-doc-print" onClick={() => window.print()}>
@@ -37,26 +30,29 @@ function subCaption(item: QuoteItem): string {
   return parts.join(' · ');
 }
 
-// Client-facing itemized quote. Base items are shown as included; optional
-// add-ons are Add/Added toggles that update the running total live (with a short
-// count-up). Submitting posts the accepted add-on ids to the approval action.
+/**
+ * The quote as a document: what the work is, what is included, what can be
+ * added, and what it comes to.
+ *
+ * IT NO LONGER CARRIES THE FORM. The signature and the Approve button moved to
+ * the rail beside the total (QuoteAcceptance), so the thing somebody presses is
+ * next to the number they are agreeing to rather than a screen below the last
+ * line item. The add-on checkboxes stay here, where the add-ons are, and reach
+ * the form by `form={QUOTE_FORM_ID}` — the same submission, the same field
+ * name, the same server action.
+ */
 export default function QuoteDocument({
   items,
-  approveAction,
   insurance = null,
   header,
-  businessName,
 }: {
   items: QuoteItem[];
-  approveAction: (formData: FormData) => void;
   /**
    * What the quote is FOR. A page of prices with no job attached is a bill, not
    * a quote — the reference, the address and the scope have to be on the
    * document being signed, not scattered up the page above it.
    */
   header?: { ref: string; address: string | null; scope: string | null };
-  /** Named in the acceptance line, because that is who is being agreed with. */
-  businessName?: string;
   /**
    * The contractor's certificate, already vetted for whether it may be shown —
    * null covers "none uploaded", "switched off" and "expired" alike, and this
@@ -65,48 +61,12 @@ export default function QuoteDocument({
    */
   insurance?: { summary: string; url: string | null; filename: string | null } | null;
 }) {
+  const { addons, selected, setAddon, awaitingApproval } = useQuoteDeck();
   const baseItems = items.filter((item) => item.kind === 'base');
-  const addonItems = items.filter((item) => item.kind === 'addon');
   const subscriptionItems = items.filter((item) => item.kind === 'subscription');
 
-  const [selected, setSelected] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(addonItems.map((item) => [item.id, item.selected])),
-  );
-
-  const baseTotal = useMemo(() => baseItems.reduce((sum, item) => sum + item.amount, 0), [baseItems]);
-  const addonsTotal = addonItems.reduce((sum, item) => (selected[item.id] ? sum + item.amount : sum), 0);
-  const total = baseTotal + addonsTotal;
-
-  // Count the headline total up/down when the client toggles an add-on. Honors
-  // reduced-motion, and settles on the exact (cents-accurate) value at rest.
-  const [shownTotal, setShownTotal] = useState(total);
-  const shownRef = useRef(total);
-  shownRef.current = shownTotal;
-  useEffect(() => {
-    const from = shownRef.current;
-    if (from === total) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setShownTotal(total);
-      return;
-    }
-    const start = performance.now();
-    const duration = 380;
-    let raf = 0;
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setShownTotal(from + (total - from) * eased);
-      if (progress < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [total]);
-
-  const atRest = Math.abs(shownTotal - total) < 0.5;
-  const totalLabel = atRest ? formatUsd(total) : formatUsdRounded(Math.round(shownTotal));
-
   return (
-    <form action={approveAction} className="quote-document">
+    <div className="quote-document">
       {header ? (
         <div className="quote-doc-head">
           <div className="quote-doc-head-row">
@@ -135,11 +95,19 @@ export default function QuoteDocument({
         </div>
       ) : null}
 
-      {addonItems.length > 0 ? (
+      {addons.length > 0 ? (
         <div className="quote-doc-group">
           <p className="quote-doc-group-label">Optional add-ons</p>
+          {/* Said once, plainly, above the first one. An upsell that does not
+              state it is optional is read as a line somebody has already been
+              committed to. */}
+          <p className="quote-doc-group-note">
+            {awaitingApproval
+              ? 'Yours to take or leave. Your total updates as you choose.'
+              : 'What you chose when you approved this quote.'}
+          </p>
           <ul className="quote-doc-list quote-doc-addons">
-            {addonItems.map((item) => {
+            {addons.map((item) => {
               const isOn = Boolean(selected[item.id]);
               return (
                 <li className={`quote-doc-addon${isOn ? ' is-selected' : ''}`} key={item.id}>
@@ -149,8 +117,13 @@ export default function QuoteDocument({
                       type="checkbox"
                       name="addon"
                       value={item.id}
+                      /* The form owner, which is in the rail. This is what lets
+                         the button that submits sit beside the total it
+                         submits. */
+                      form={QUOTE_FORM_ID}
                       checked={isOn}
-                      onChange={(event) => setSelected((current) => ({ ...current, [item.id]: event.target.checked }))}
+                      disabled={!awaitingApproval}
+                      onChange={(event) => setAddon(item.id, event.target.checked)}
                     />
                     <span className="quote-doc-addon-name">
                       {item.label}
@@ -177,33 +150,19 @@ export default function QuoteDocument({
               </li>
             ))}
           </ul>
-          <p className="quote-doc-sub-note">Billed separately on approval — you’ll set up a card for these.</p>
+          <p className="quote-doc-sub-note">Billed separately on approval — you&rsquo;ll set up a card for these.</p>
         </div>
       ) : null}
 
+      {/* The total is stated here as well as in the rail, because the rail is
+          not on the paper and is not on a phone until you reach the bottom.
+          Same number, same source. */}
       <div className="quote-doc-total">
         <span>Your total{subscriptionItems.length > 0 ? ' today' : ''}</span>
-        <strong>{totalLabel}</strong>
+        <strong><DocTotal /></strong>
       </div>
 
-      {/* THE SIGNATURE THAT BELONGS TO THIS AGREEMENT.
-          A typed name was already being collected on this page — under
-          "authorize automatic installment payments", which accepts a card
-          schedule and says nothing about the work or the price. Accepting the
-          quote is the other agreement, and it had no signature at all. Two
-          agreements, two signatures, in the order they are made. */}
-      <div className="quote-doc-sign">
-        <label htmlFor="quote-signer">Type your full name to accept this quote</label>
-        <input id="quote-signer" name="signerName" type="text" placeholder="Your full name" autoComplete="name" required />
-        <p className="quote-doc-fineprint">
-          Accepting confirms the work and the price above{businessName ? `, with ${businessName}` : ''}. It is not a payment
-          and no card is charged — anything owed is asked for separately, after this.
-        </p>
-      </div>
-
-      <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>
-
-      {/* Below the total and the button, not above them.
+      {/* Below the total, not above it.
           This is reassurance, and reassurance belongs where somebody looks when
           they hesitate — putting it above the price makes the quote lead with
           an argument nobody asked for yet. */}
@@ -234,6 +193,12 @@ export default function QuoteDocument({
           ) : null}
         </div>
       ) : null}
-    </form>
+    </div>
   );
+}
+
+function DocTotal() {
+  const { total, shownTotal } = useQuoteDeck();
+  const atRest = Math.abs(shownTotal - total) < 0.005;
+  return <>{atRest ? formatUsd(total) : formatUsd(Math.round(shownTotal))}</>;
 }

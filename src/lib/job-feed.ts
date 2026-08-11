@@ -14,6 +14,7 @@ import type { MilestoneStatus } from '@/lib/milestones';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 import { pickBusinessName } from '@/lib/business-name';
 import { toClientFeed, clientSafeText, type ClientFeedItem } from '@/lib/client-feed';
+import { normalizeQuoteStyle, type QuoteStyle } from '@/lib/quote-style';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -67,6 +68,13 @@ export type ClientJobDashboard = {
   /** Logo, color and website — everything the page needs to wear the
    *  contractor's brand rather than ours. See @/lib/contractor-brand. */
   brand: ContractorBrand;
+  /**
+   * Which of the three treatments this contractor hands their customers.
+   * Already normalized, so it is always one of the three — an account that has
+   * never opened the setting, and a database where the column does not exist
+   * yet, both arrive here as the default. See @/lib/quote-style.
+   */
+  quoteStyle: QuoteStyle;
   job: {
     id: string;
     ref: string;
@@ -484,9 +492,21 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   // `company_name || business_name || something`, which is how they drift.
   const brand = shapeContractorBrand(account, site);
 
+  // Read on its own rather than added to the accounts select above: on a
+  // database where the migration has not run, selecting a column that isn't
+  // there fails the whole query, and a presentation preference must never be
+  // the reason a homeowner's quote link 404s. A missing column reads as "never
+  // chose", which is what it is.
+  const { data: styleRow } = await admin
+    .from('accounts')
+    .select('quote_style')
+    .eq('id', access.account_id)
+    .maybeSingle();
+
   return {
     businessName: brand.businessName,
     brand,
+    quoteStyle: normalizeQuoteStyle(styleRow?.quote_style),
     job: {
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),

@@ -18,6 +18,7 @@ import { sendTestDigest } from '@/lib/daily-digest';
 import { backfillAccount, syncAccount } from '@/lib/quickbooks/sync';
 import { deleteInsuranceProof, isInsuranceFile, uploadInsuranceProof } from '@/lib/insurance-storage';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
+import { normalizeQuoteStyle } from '@/lib/quote-style';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
 import { recordAccountEvent } from '@/lib/account-events';
 import { ARRIVAL_WINDOW_CHOICES, DEFAULT_WINDOW_MINUTES } from '@/lib/arrival';
@@ -1154,5 +1155,27 @@ export async function removeInsuranceAction() {
       insurance_uploaded_at: null,
     })
     .eq('id', accountId);
+  revalidatePath('/dashboard/settings');
+}
+
+/**
+ * Which of the three treatments this contractor's quotes wear.
+ *
+ * Presentation only — see @/lib/quote-style for what a style is allowed to
+ * change, and what it is not. Normalised rather than validated-and-rejected: a
+ * server action is a public endpoint, and the honest response to a value that
+ * is not one of the three is the default, not a 500 in front of somebody who
+ * clicked a card.
+ */
+export async function setQuoteStyleAction(style: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ quote_style: normalizeQuoteStyle(style) })
+    .eq('id', accountId);
+
+  if (error) throw new Error('Could not save your quote style.');
+
   revalidatePath('/dashboard/settings');
 }

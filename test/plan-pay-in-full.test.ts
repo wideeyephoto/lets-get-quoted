@@ -112,31 +112,54 @@ describe('and the webhook closes it properly', () => {
   });
 });
 
+/**
+ * The choice moved into its own component when the page was redesigned around a
+ * summary rail — it is a control, not a paragraph, and it needed local state to
+ * reveal the route somebody picked. What is guarded here did not change: both
+ * prices named, the offer only where the contractor made one, and neither route
+ * pre-selected.
+ */
 describe('the homeowner is shown both prices, not just the schedule', () => {
   const page = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
-  // Anchored forward from the branch itself: `plan.status === 'active'` also
-  // appears earlier, inside the card's own heading expression, so a plain
-  // indexOf for the end marker lands before the start and slices nothing.
+  const choice = read('src', 'app', 'client', 'jobs', '[token]', 'PayChoice.tsx');
   const start = page.indexOf("{plan.status === 'pending_deposit' ? (");
   const pending = page.slice(start, page.indexOf("plan.status === 'active' ?", start));
 
+  it('is still what the pending-deposit branch renders', () => {
+    expect(pending).toContain('<PayChoice');
+    expect(pending).toContain('allowPayInFull={plan.allowPayInFull}');
+    expect(pending).toContain('payInFullInFlight={plan.payInFullInFlight}');
+  });
+
   it('names the full total and the deposit side by side', () => {
-    expect(pending).toContain('Two ways to pay this');
     expect(pending).toContain('formatMoney(plan.totalCents / 100)');
     expect(pending).toContain('formatMoney(plan.depositCents / 100)');
+    expect(choice).toContain('Pay in full');
+    expect(choice).toContain('Pay over time');
+    expect(choice).toContain('{totalLabel}');
+    expect(choice).toContain('{depositLabel} today');
   });
 
   it('offers it only when the contractor did', () => {
-    expect(pending).toMatch(/plan\.allowPayInFull && !plan\.payInFullInFlight/);
+    expect(choice).toContain('const showChoice = allowPayInFull;');
+    // With no choice on offer, the plan route still renders — losing the
+    // schedule because the contractor declined to offer a payoff would be a
+    // worse bug than the one this file exists for.
+    expect(choice).toContain('{!showChoice || payMode === ');
   });
 
   it('stops offering it once a full payment is at checkout', () => {
-    expect(pending).toContain('plan.payInFullInFlight');
-    expect(pending).toContain('A full payment is being processed');
+    expect(choice).toContain('if (payInFullInFlight)');
+    expect(choice).toContain('A full payment is being processed');
   });
 
   it('leaves the plan route exactly where it was, under its own heading', () => {
     expect(pending).toContain('authorizePaymentPlanAction');
-    expect(pending).toContain('Pay over time');
+    expect(choice).toContain('authorize automatic installment payments');
+  });
+
+  it('pre-selects neither, because a default here is a thumb on the scale', () => {
+    // The page only pre-selects when there is genuinely nothing to choose.
+    expect(page).toContain("const initialPayMode: PayMode | null = plan && !plan.allowPayInFull ? 'plan' : null;");
   });
 });

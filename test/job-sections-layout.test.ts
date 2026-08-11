@@ -59,9 +59,29 @@ describe('the job page sections stack in one column', () => {
     for (const page of [
       ['src', 'app', 'dashboard', 'clients', '[id]', 'page.tsx'],
       ['src', 'app', 'dashboard', 'jobs', '[id]', 'invoices', '[invoiceId]', 'page.tsx'],
-      ['src', 'app', 'client', 'jobs', '[token]', 'page.tsx'],
     ]) {
       expect(read(...page), `${page.join('/')} lost its detail-grid`).toContain('detail-grid');
     }
+  });
+
+  /**
+   * The customer's quote page left this list on purpose.
+   *
+   * It used `.detail-grid` for one thing — the activity feed beside the
+   * documents card, low on the page — which put the log level with the quote
+   * itself and left the total scrolling away from the button that agreed to it.
+   * The whole page is a main-plus-rail now, and the rail is the approval: the
+   * total, the selections, the date, the payment choice and the signature, all
+   * sticky. That is a different layout with a different job, not a page that
+   * lost its columns.
+   */
+  it('the client quote page uses its own main-plus-rail instead', () => {
+    const quote = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
+    expect(quote).not.toContain('detail-grid');
+    expect(quote).toContain('quote-deck');
+    expect(quote).toContain('quote-deck-rail');
+    expect(GLOBALS).toMatch(/\.quote-deck \{[^}]*grid-template-columns: minmax\(0, 1fr\) 22rem/);
+    // And it collapses, rather than staying two columns on a phone.
+    expect(GLOBALS).toMatch(/@media \(max-width: 1023px\) \{\s*\.quote-deck \{ grid-template-columns: minmax\(0, 1fr\); \}/);
   });
 });

@@ -3113,6 +3113,16 @@ alter table jobs add column if not exists arrival_confirm_sent_at timestamptz;
 create index if not exists jobs_morning_confirm_idx
   on jobs (account_id, scheduled_for) where arrival_confirm_sent_at is null;
 
+-- Which of the three treatments this contractor's quote page wears — Classic,
+-- Signature or Bold. Presentation only; see src/lib/quote-style.ts for what a
+-- style may change and what it may not. Nullable with no default so "never
+-- chose" stays distinguishable from "chose the middle one"; every reader puts
+-- it through normalizeQuoteStyle, which lands on 'signature' either way.
+alter table accounts add column if not exists quote_style text;
+alter table accounts drop constraint if exists accounts_quote_style_check;
+alter table accounts add constraint accounts_quote_style_check
+  check (quote_style is null or quote_style in ('classic', 'signature', 'bold'));
+
 -- ============================================================================
 -- PROOF-TO-PAY MILESTONES
 --

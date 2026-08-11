@@ -4,9 +4,11 @@ import SaveButton from '@/components/save-button';
 import { getClientJobDashboard } from '@/lib/job-feed';
 // Every number on this page is one the homeowner is asked to pay, authorize, or
 // add up against the total they were quoted. To the cent, all of it.
-import { formatMoneyExact as formatMoney } from '@/lib/jobs';
+import { formatMoneyExact as formatMoney, computeQuoteTotal } from '@/lib/jobs';
 import { clientJobStatus } from '@/lib/client-feed';
 import { brandPaint } from '@/lib/contractor-brand';
+import { quoteStyleClass } from '@/lib/quote-style';
+import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
 import { formatScheduleOption } from '@/lib/scheduling';
 import {
   approveClientJobQuoteAction,
@@ -18,6 +20,10 @@ import {
   payPlanBalanceAction,
 } from './actions';
 import QuoteDocument from './QuoteDocument';
+import QuoteAcceptance, { QuoteApproved } from './QuoteAcceptance';
+import { QuoteBottomBar, QuoteDeckProvider, type PayMode } from './QuoteDeck';
+import ScheduleChoice from './ScheduleChoice';
+import PayChoice from './PayChoice';
 import ChangeOrders from './ChangeOrders';
 import { createAdminClient } from '@/lib/auth';
 import { loadClientChangeOrders } from '@/lib/change-orders-data';
@@ -47,20 +53,43 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
   void: 'Void',
 };
 
+const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
+const FREQ_WORD: Record<string, string> = { weekly: 'weekly', biweekly: 'every two weeks', monthly: 'monthly' };
+
 function formatFeedTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-/**
- * Who this is for, said the way a person would say it. The page used to headline
- * the customer's full name in display type — "DANA WHITFIELD" — which is how a
- * record refers to somebody, not how you greet them.
- */
-function firstNameOf(fullName: string): string {
-  return (fullName ?? '').trim().split(/\s+/)[0] || 'you';
+function formatDay(value: string | null): string {
+  if (!value) return '';
+  const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default async function ClientJobDashboardPage({ params }: { params: { token: string } }) {
+/**
+ * What just happened, said once at the top.
+ *
+ * Every action on this page redirects back to it with a flag — ?approved=1,
+ * ?asked=1, ?ask-failed=1 — and nothing read them. So a homeowner who sent a
+ * question got a page that looked exactly like the one they had just submitted
+ * from, with no acknowledgement anywhere, and a question that FAILED to send
+ * looked identical to one that had.
+ */
+const FLASH: Record<string, { tone: 'good' | 'bad'; text: string }> = {
+  approved: { tone: 'good', text: 'Thanks — your approval is recorded and your contractor has been notified.' },
+  scheduled: { tone: 'good', text: 'Your start date is confirmed. Your contractor can see it now.' },
+  'schedule-requested': { tone: 'good', text: 'Sent. Your contractor will send different dates to choose from.' },
+  asked: { tone: 'good', text: 'Your question is on its way. The quote stays open while they reply.' },
+  'ask-failed': { tone: 'bad', text: 'That question did not send. Please try again, or call the number at the top of this page.' },
+};
+
+export default async function ClientJobDashboardPage({
+  params,
+  searchParams,
+}: {
+  params: { token: string };
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const dashboard = await getClientJobDashboard(params.token);
 
   // Loaded from the token independently of the dashboard so an un-migrated
@@ -84,29 +113,56 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   // be relying on when they approve.
   const clientInsurance = access ? await clientInsuranceFor(admin, access.accountId) : null;
 
+  // The signature on the quote, for the receipt. Read defensively and on its own
+  // because it ships behind its own migration, and a missing column must show a
+  // receipt without a name rather than no page at all.
+  const { data: signatureRow } = access
+    ? await admin
+        .from('jobs')
+        // quoted_amount rides along because a legacy single-amount quote has no
+        // line items to total, and the receipt still has to name a figure.
+        .select('quote_signer_name, quote_signed_at, quoted_amount')
+        .eq('account_id', access.accountId)
+        .eq('id', access.jobId)
+        .maybeSingle()
+    : { data: null };
+
+  /* --- the link itself is the first thing that can be wrong ----------------
+     A revoked, expired or mistyped token is not an error — it is the ordinary
+     end of a link's life, and it deserves an answer a person can act on rather
+     than one sentence and a dead end. */
   if (!dashboard) {
     return (
-      <main className="wide-shell workspace-shell">
-        <section className="panel workspace-section-card">
-          <p className="eyebrow">Client view</p>
-          <h1 className="workspace-title">This job link is no longer available</h1>
-          <p className="workspace-lead">Ask your contractor for a fresh client view link.</p>
+      <main className="wide-shell workspace-shell client-job-dashboard qstyle-signature">
+        <section className="panel workspace-section-card quote-dead-link">
+          <p className="eyebrow">This link has closed</p>
+          <h1 className="workspace-title">This quote link is no longer active</h1>
+          <p className="workspace-lead">
+            Links expire, and a contractor can close one at any time — usually because the quote was replaced with a newer
+            one, or the job is finished.
+          </p>
+          <p className="workspace-lead">
+            Nothing is lost. Reply to the text or email you received it in and ask for a fresh link, and it will open right
+            where this one did.
+          </p>
         </section>
       </main>
     );
   }
+
+  const flashKey = Object.keys(FLASH).find((key) => searchParams?.[key] === '1');
+  const flash = flashKey ? FLASH[flashKey] : null;
 
   // Plan-linked payments (deposit / installments / payoff) are surfaced in the
   // Payment Plan card below, not the generic "Payment requests" list.
   const openPayments = dashboard.payments.filter(
     (payment) => (payment.status === 'requested' || payment.status === 'processing') && !payment.payment_plan_id,
   );
+  const settledPayments = dashboard.payments.filter((payment) => payment.status === 'paid' && !payment.payment_plan_id);
   const depositPayment = openPayments.find((payment) => payment.kind === 'deposit');
   const plan = dashboard.paymentPlan;
   const PLAN_INST_STATUS: Record<string, string> = { paid: 'Paid', processing: 'Processing', requested: 'Scheduled', failed: 'Payment failed — retrying', refunded: 'Refunded' };
-  const formatPlanDay = (value: string | null) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
   const pendingSubscriptions = dashboard.job.quote_items.filter((item) => item.kind === 'subscription' && !item.signedUp);
-  const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
   // Today, in the viewer's own terms. A plan can start today but never earlier —
   // a back-dated first visit would generate visits that are already overdue.
   const earliestStart = new Date().toISOString().slice(0, 10);
@@ -115,6 +171,11 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   const scheduleOpen = dashboard.scheduleRequest?.status === 'open';
   const awaitingApproval = !dashboard.quoteApproved;
   const depositDue = Boolean(depositPayment) || plan?.status === 'pending_deposit';
+  const scheduledLabel = selectedScheduleOption
+    ? formatScheduleOption(selectedScheduleOption)
+    : dashboard.job.scheduled_for
+      ? dashboard.job.schedule_label
+      : null;
 
   /**
    * ONE STATUS, AND IT AGREES WITH THE PAGE.
@@ -142,6 +203,65 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     ? ({ '--cbrand': paint.accent, '--cbrand-on': paint.onAccent, '--cbrand-soft': paint.soft, '--cbrand-edge': paint.edge } as CSSProperties)
     : undefined;
 
+  /* --- the quote, as numbers ----------------------------------------------- */
+  const items = dashboard.job.quote_items;
+  const baseTotal = items.filter((item) => item.kind === 'base').reduce((sum, item) => sum + item.amount, 0);
+  const deckAddons = items
+    .filter((item) => item.kind === 'addon')
+    .map((item) => ({ id: item.id, label: item.label, amount: item.amount, recommended: item.recommended, selected: item.selected }));
+  // Post-approval the stored `selected` flags ARE the agreement, so this is the
+  // number that was actually agreed rather than a live preview of one. A quote
+  // with no lines falls back to the single amount it was written as.
+  const agreedTotal = items.length > 0 ? computeQuoteTotal(items) : Number(signatureRow?.quoted_amount ?? 0) || 0;
+  const chosenAddonLabels = items.filter((item) => item.kind === 'addon' && item.selected).map((item) => item.label);
+
+  const projectType = projectTypeOf(items, dashboard.job.scope);
+  const firstName = firstNameOf(dashboard.job.client_name);
+  const headline = quoteHeadline({ firstName, projectType, approved: !awaitingApproval });
+
+  /* --- what happens next, once the answer is yes ---------------------------- */
+  const nextStep = depositPayment
+    ? 'Your deposit is the last step before the work is booked in.'
+    : plan?.status === 'pending_deposit'
+      ? 'Set up how you would like to pay, and the job is booked in.'
+      : scheduleOpen
+        ? 'Choose the start date that suits you.'
+        : scheduledLabel
+          ? `See you on ${scheduledLabel}.`
+          : openPayments.length > 0
+            ? 'There is one payment waiting below.'
+            : `${dashboard.businessName} will be in touch about scheduling.`;
+  const nextHref = depositPayment ? `/pay/${depositPayment.id}` : scheduleOpen ? '#dates' : openPayments[0] ? `/pay/${openPayments[0].id}` : plan?.status === 'pending_deposit' ? '#plan' : null;
+  const nextLabel = depositPayment
+    ? `Pay ${formatMoney(Number(depositPayment.amount))} deposit`
+    : scheduleOpen
+      ? 'Choose a start date'
+      : openPayments[0]
+        ? `Pay ${formatMoney(Number(openPayments[0].amount))}`
+        : plan?.status === 'pending_deposit'
+          ? 'Set up payment'
+          : null;
+
+  /* --- how they will pay, in one line for the rail -------------------------- */
+  const planInstallmentLabel = plan
+    ? `${plan.schedule.length} payment${plan.schedule.length === 1 ? '' : 's'} of ${formatMoney(plan.schedule[0]?.amount ?? 0)}, ${FREQ_WORD[plan.frequency] ?? 'monthly'}`
+    : '';
+  const paymentSummary = {
+    full: plan ? formatMoney(plan.totalCents / 100) : null,
+    plan: plan ? `${formatMoney(plan.depositCents / 100)} today, then ${planInstallmentLabel}` : null,
+    fallback: plan
+      ? plan.allowPayInFull
+        ? 'In full or over time — your choice, after you approve'
+        : `${formatMoney(plan.depositCents / 100)} today, then ${planInstallmentLabel}`
+      : depositPayment
+        ? `${formatMoney(Number(depositPayment.amount))} deposit, then the balance`
+        : openPayments.length > 0
+          ? 'See the payment request below'
+          : 'Invoiced when the work is done',
+  };
+  // Pre-selected only when there is genuinely nothing to choose between.
+  const initialPayMode: PayMode | null = plan && !plan.allowPayInFull ? 'plan' : null;
+
   /* --- the sections, in the order somebody decides things ------------------
      Review the quote → make the choices in it → approve and sign → pick a start
      date → pay. The page used to open on "authorize automatic charges and pay a
@@ -149,60 +269,48 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
      line by line. Nobody should be asked for a card before they have been shown
      a quote. */
 
-  const quoteSection = awaitingApproval ? (
+  const quoteSection = (
     <section className="panel workspace-section-card client-quote-card" id="quote">
       <div className="section-heading workspace-section-heading">
-        <p className="eyebrow">Your quote</p>
-        <h2>Review and approve</h2>
+        <p className="eyebrow">{awaitingApproval ? 'Your quote' : 'What you approved'}</p>
+        <h2>{awaitingApproval ? 'Scope and pricing' : 'Scope and pricing'}</h2>
       </div>
-      {dashboard.job.quote_items.length > 0 ? (
+      {items.length > 0 || dashboard.job.scope ? (
         <QuoteDocument
-          items={dashboard.job.quote_items}
-          approveAction={approveClientJobQuoteAction.bind(null, params.token)}
+          items={items}
           insurance={clientInsurance}
-          businessName={dashboard.businessName}
           header={{ ref: dashboard.job.ref, address: dashboard.job.address, scope: dashboard.job.scope }}
         />
       ) : (
-        <form action={approveClientJobQuoteAction.bind(null, params.token)} className="quote-document">
-          {dashboard.job.scope ? <p className="quote-doc-scope">{dashboard.job.scope}</p> : null}
-          <div className="quote-doc-sign">
-            <label htmlFor="quote-signer">Type your full name to accept this quote</label>
-            <input id="quote-signer" name="signerName" type="text" placeholder="Your full name" autoComplete="name" required />
-          </div>
-          <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>
-        </form>
+        /* A quote with no lines and no scope is not a bug on this page — it is
+           a quote that has not been written yet, and saying so beats an empty
+           card that looks broken. */
+        <p className="empty-state">
+          {dashboard.businessName} hasn&rsquo;t added the details to this quote yet. They will appear here as soon as they do,
+          on this same link.
+        </p>
       )}
 
-      {/* THE OTHER THING A PERSON CAN WANT TO DO. A quote whose only control is
-          "Approve" leaves somebody who wants one line explained choosing between
-          agreeing to something they don't understand and closing the tab. It is
-          a <details> so it costs nothing until it's wanted, and a separate form
-          because it cannot be nested inside the approval one. */}
-      <details className="client-ask">
-        <summary>Not ready to approve? Ask a question</summary>
-        <form action={askQuoteQuestionAction.bind(null, params.token)} className="client-ask-form">
-          <label htmlFor="quote-question">What would you like to know?</label>
-          <textarea id="quote-question" name="question" rows={3} required placeholder="Does the price include hauling away the old material?" />
-          <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent">Send to {dashboard.businessName}</SaveButton>
-          <p className="client-ask-note">This doesn&apos;t decline the quote — it stays open while they get back to you.</p>
-        </form>
-      </details>
+      {awaitingApproval ? (
+        /* THE OTHER THING A PERSON CAN WANT TO DO. A quote whose only control is
+           "Approve" leaves somebody who wants one line explained choosing between
+           agreeing to something they don't understand and closing the tab. It is
+           a <details> so it costs nothing until it's wanted. */
+        <details className="client-ask">
+          <summary>Not ready to approve? Ask a question</summary>
+          <form action={askQuoteQuestionAction.bind(null, params.token)} className="client-ask-form">
+            <label htmlFor="quote-question">What would you like to know?</label>
+            <textarea id="quote-question" name="question" rows={3} required placeholder="Does the price include hauling away the old material?" />
+            <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent">Send to {dashboard.businessName}</SaveButton>
+            <p className="client-ask-note">This doesn&apos;t decline the quote — it stays open while they get back to you.</p>
+          </form>
+        </details>
+      ) : null}
     </section>
-  ) : null;
-
-  const approvedSection = dashboard.quoteApprovedByClient ? (
-    <section className="panel workspace-section-card client-attention-card success">
-      <div className="section-heading workspace-section-heading">
-        <p className="eyebrow">Quote approved</p>
-        <h2>You&apos;re all set</h2>
-      </div>
-      <p className="workspace-card-copy">Thanks! Your contractor has been notified and will be in touch about next steps.</p>
-    </section>
-  ) : null;
+  );
 
   const scheduleSection = plan?.status === 'pending_deposit' ? null : scheduleOpen && dashboard.depositBlocksScheduling ? (
-    <section className="panel workspace-section-card client-attention-card">
+    <section className="panel workspace-section-card client-attention-card" id="dates">
       <div className="section-heading workspace-section-heading">
         <p className="eyebrow">One step first</p>
         <h2>Pay your deposit to unlock scheduling</h2>
@@ -227,36 +335,26 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     <section className="panel workspace-section-card client-attention-card" id="dates">
       <div className="section-heading workspace-section-heading">
         <p className="eyebrow">Choose your start date</p>
-        <h2>{awaitingApproval ? 'Approve the quote and schedule the job' : 'Pick a start date'}</h2>
+        <h2>{awaitingApproval ? 'Approve and book a date' : 'Pick a start date'}</h2>
       </div>
-      <p className="workspace-card-copy">Pick the start time that works best. Your contractor will see your choice immediately.</p>
-      <div className="schedule-choice-grid client-schedule-choice-grid">
-        {dashboard.scheduleRequest!.options.map((option, index) => (
-          <form action={selectClientJobScheduleOptionAction.bind(null, params.token)} className="schedule-choice-card" key={`${option.date}-${option.time ?? 'anytime'}`}>
-            <input type="hidden" name="optionIndex" value={index} />
-            <span className="schedule-choice-label">Option {index + 1}</span>
-            <strong>{formatScheduleOption(option)}</strong>
-            <textarea name="notes" rows={2} placeholder="Optional note" />
-            <SaveButton pendingLabel="Scheduling..." savedLabel="Scheduled">{awaitingApproval ? 'Approve quote and schedule' : 'Choose this date'}</SaveButton>
-          </form>
-        ))}
-      </div>
-      <form action={requestDifferentClientJobScheduleOptionsAction.bind(null, params.token)} className="form-grid client-different-schedule-form">
-        <div className="field full">
-          <label htmlFor="different-notes">Need a different time?</label>
-          <textarea id="different-notes" name="notes" rows={3} placeholder="Share days or times that usually work better for you." />
-        </div>
-        <div className="field full">
-          <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent">Request different dates</SaveButton>
-        </div>
-      </form>
+      <p className="workspace-card-copy">
+        {awaitingApproval
+          ? 'Picking a date here approves the quote and books it in one step. Your contractor sees your choice immediately.'
+          : 'Pick the start time that works best. Your contractor will see your choice immediately.'}
+      </p>
+      <ScheduleChoice
+        options={dashboard.scheduleRequest!.options.map((option, index) => ({ label: formatScheduleOption(option), index }))}
+        selectAction={selectClientJobScheduleOptionAction.bind(null, params.token)}
+        differentAction={requestDifferentClientJobScheduleOptionsAction.bind(null, params.token)}
+        awaitingApproval={awaitingApproval}
+      />
     </section>
   ) : null;
 
   const scheduledSection = dashboard.scheduleRequest?.status === 'selected' && selectedScheduleOption ? (
     <section className="panel workspace-section-card client-attention-card success">
       <div className="section-heading workspace-section-heading">
-        <p className="eyebrow">Start date selected</p>
+        <p className="eyebrow">Start date confirmed</p>
         <h2>{formatScheduleOption(selectedScheduleOption)}</h2>
       </div>
       <p className="workspace-card-copy">Your contractor has your selected start time.</p>
@@ -276,9 +374,8 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     <section className="panel workspace-section-card client-attention-card" id="pay">
       <div className="section-heading workspace-section-heading">
         <p className="eyebrow">Needs attention</p>
-        <h2>Payment requests</h2>
+        <h2>{openPayments.length === 1 ? 'One payment to make' : 'Payments to make'}</h2>
       </div>
-      <p className="workspace-card-copy">Please review these requests to keep the job moving.</p>
       <div className="cost-list">
         {openPayments.map((payment) => (
           <Link href={`/pay/${payment.id}`} className="cost-item client-attention-link" key={payment.id}>
@@ -297,12 +394,35 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     </section>
   ) : null;
 
+  /* Money already taken, said back. A page that only ever shows what is owed
+     reads like a demand; the same page showing what has been received reads
+     like a record. */
+  const settledSection = settledPayments.length > 0 ? (
+    <section className="panel workspace-section-card client-settled-card">
+      <div className="section-heading workspace-section-heading compact-heading">
+        <p className="eyebrow">Received</p>
+        <h2>Payments made</h2>
+      </div>
+      <div className="cost-list">
+        {settledPayments.map((payment) => (
+          <div className="cost-item" key={payment.id}>
+            <div className="cost-item-main">
+              <span className="cost-item-desc">{payment.label || 'Payment'}</span>
+              <span className="cost-item-sub">Paid{payment.paid_at ? ` · ${formatDay(payment.paid_at)}` : ''}</span>
+            </div>
+            <span className="cost-item-amount">{formatMoney(Number(payment.amount))}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  ) : null;
+
   const planSection = plan ? (
     <section className={`panel workspace-section-card client-attention-card${plan.status === 'paid_off' ? ' success' : ''}`} id="plan">
       <div className="section-heading workspace-section-heading">
         <p className="eyebrow">Payment plan</p>
         <h2>
-          {plan.status === 'paid_off' ? 'Paid in full' : plan.status === 'active' ? 'Your payment plan' : 'Set up your payment plan'}
+          {plan.status === 'paid_off' ? 'Paid in full' : plan.status === 'active' ? 'Your payment plan' : 'How you’d like to pay'}
         </h2>
       </div>
 
@@ -313,100 +433,27 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
       </div>
 
       {plan.status === 'pending_deposit' ? (
-        <>
-          {/* A PLAN IS AN OFFER, NOT A REQUIREMENT.
-              The contractor's payment terms are mutually exclusive radios, so
-              choosing "Payment Plan" removed paying in full — for the
-              homeowner, not just for the contractor. Somebody who would happily
-              have settled the whole thing was shown a deposit, four dated
-              installments and a card authorization, with no way to say "I'll
-              just pay it". Both amounts are named here, at the moment the
-              choice is actually made. */}
-          {plan.allowPayInFull && !plan.payInFullInFlight ? (
-            <div className="plan-choice">
-              <p className="plan-choice-label">Two ways to pay this</p>
-              <div className="plan-choice-grid">
-                <form action={payPlanBalanceAction.bind(null, params.token)} className="plan-choice-card">
-                  <input type="hidden" name="planId" value={plan.id} />
-                  <strong>Pay in full</strong>
-                  <span className="plan-choice-amount">{formatMoney(plan.totalCents / 100)}</span>
-                  <small>One payment, and you&apos;re done. Nothing is scheduled and no card is saved for later.</small>
-                  <SaveButton className="btn secondary" pendingLabel="Starting...">Pay {formatMoney(plan.totalCents / 100)} now</SaveButton>
-                </form>
-                <div className="plan-choice-card is-plan">
-                  <strong>Pay over time</strong>
-                  <span className="plan-choice-amount">{formatMoney(plan.depositCents / 100)} today</span>
-                  <small>
-                    then {plan.schedule.length} payment{plan.schedule.length === 1 ? '' : 's'} of{' '}
-                    {formatMoney(plan.schedule[0]?.amount ?? 0)}. 0% interest, no fees.
-                  </small>
-                  <span className="plan-choice-note">Set it up below ↓</span>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {plan.payInFullInFlight ? (
-            <p className="client-plan-fineprint">A full payment is being processed…</p>
-          ) : null}
-
-          <p className="workspace-card-copy">
-            You pay a {formatMoney(plan.depositCents / 100)} deposit now, then {plan.schedule.length} installment{plan.schedule.length === 1 ? '' : 's'}. 0% interest,
-            no fees — this splits the same total, nothing more.
-          </p>
-          <div className="client-plan-schedule">
-            <div className="client-plan-row"><span>Deposit (today)</span><strong>{formatMoney(plan.depositCents / 100)}</strong></div>
-            {plan.schedule.map((entry) => (
-              <div className="client-plan-row" key={entry.seq}>
-                <span>Installment {entry.seq} · {entry.label}</span>
-                <strong>{formatMoney(entry.amount)}</strong>
-              </div>
-            ))}
-            {/* The sum, stated. The schedule above claims to split the total and
-                nothing more, and a claim about arithmetic should be checkable
-                without arithmetic. */}
-            <div className="client-plan-row client-plan-sum">
-              <span>Total</span>
-              <strong>{formatMoney(plan.totalCents / 100)}</strong>
-            </div>
-          </div>
-          {awaitingApproval ? (
-            /* TWO AGREEMENTS, IN ORDER. Authorizing a card schedule is not
-               accepting a quote, and this form used to be the first thing on the
-               page — asked for before the work, the prices or the total had been
-               shown once. It waits its turn now. */
-            <p className="client-plan-later">
-              This is how the total would be split. You&apos;ll set it up — and authorize the card — after you approve the
-              quote above. Nothing is charged before then.
-            </p>
-          ) : plan.authorized ? (
-            plan.deposit ? (
-              <>
-                <Link href={`/pay/${plan.deposit.paymentId}`} className="btn primary client-plan-cta">Pay {formatMoney(plan.deposit.amount)} deposit</Link>
-                <SecureNote />
-              </>
-            ) : null
-          ) : (
-            <form action={authorizePaymentPlanAction.bind(null, params.token)} className="client-plan-authorize">
-              <input type="hidden" name="planId" value={plan.id} />
-              {plan.allowPayInFull ? <p className="client-plan-option-head">Pay over time</p> : null}
-              <label htmlFor="plan-signer">Type your full name to authorize automatic installment payments</label>
-              <input id="plan-signer" name="signerName" type="text" placeholder="Your full name" autoComplete="name" required />
-              <p className="client-plan-fineprint">
-                By typing your name you authorize {dashboard.businessName} to charge your saved card for each installment shown above on its
-                due date. You can pay the remaining balance in full at any time with no penalty. This is separate from your
-                approval of the quote.
-              </p>
-              <SaveButton pendingLabel="Starting...">Authorize &amp; pay {formatMoney(plan.depositCents / 100)} deposit</SaveButton>
-              <SecureNote />
-            </form>
-          )}
-        </>
+        <PayChoice
+          planId={plan.id}
+          totalLabel={formatMoney(plan.totalCents / 100)}
+          depositLabel={formatMoney(plan.depositCents / 100)}
+          installments={plan.schedule.map((entry) => ({ seq: entry.seq, label: entry.label, amount: formatMoney(entry.amount) }))}
+          installmentLabel={planInstallmentLabel}
+          allowPayInFull={plan.allowPayInFull}
+          payInFullInFlight={plan.payInFullInFlight}
+          awaitingApproval={awaitingApproval}
+          authorized={plan.authorized}
+          businessName={dashboard.businessName}
+          payInFullAction={payPlanBalanceAction.bind(null, params.token)}
+          authorizeAction={authorizePaymentPlanAction.bind(null, params.token)}
+          depositHref={plan.deposit ? `/pay/${plan.deposit.paymentId}` : null}
+          secureNote={<SecureNote />}
+        />
       ) : plan.status === 'active' ? (
         <>
           {plan.nextInstallment ? (
             <p className="workspace-card-copy">
-              Next payment: <strong>{formatMoney(plan.nextInstallment.amount)}</strong> on {formatPlanDay(plan.nextInstallment.dueDate)}
+              Next payment: <strong>{formatMoney(plan.nextInstallment.amount)}</strong> on {formatDay(plan.nextInstallment.dueDate)}
               {plan.card ? ` · ${plan.card.brand ?? 'card'} ••${plan.card.last4}` : ''}.
             </p>
           ) : (
@@ -422,7 +469,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
             ) : null}
             {plan.installments.map((inst) => (
               <div className={`client-plan-row${inst.status === 'failed' ? ' is-failed' : ''}`} key={inst.id}>
-                <span>Installment {inst.seq} · {formatPlanDay(inst.dueDate)}</span>
+                <span>Installment {inst.seq} · {formatDay(inst.dueDate)}</span>
                 <span className="client-plan-status">{PLAN_INST_STATUS[inst.status] ?? inst.status}</span>
                 <strong>{formatMoney(inst.amount)}</strong>
               </div>
@@ -434,7 +481,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
             ) : (
               <form action={payPlanBalanceAction.bind(null, params.token)} className="client-plan-payoff">
                 <input type="hidden" name="planId" value={plan.id} />
-                <SaveButton className="btn secondary" pendingLabel="Starting...">Pay remaining balance · {formatMoney(plan.remainingCents / 100)}</SaveButton>
+                <SaveButton className="btn secondary" pendingLabel="Starting…">Pay remaining balance · {formatMoney(plan.remainingCents / 100)}</SaveButton>
               </form>
             )
           ) : null}
@@ -475,9 +522,9 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
                   <span>First visit</span>
                   <input type="date" name="startDate" defaultValue={earliestStart} min={earliestStart} required />
                 </label>
-                <SaveButton className="btn secondary" pendingLabel="Starting..." name="mode" value="cycle">Pay {formatMoney(item.amount)}{freq}</SaveButton>
+                <SaveButton className="btn secondary" pendingLabel="Starting…" name="mode" value="cycle">Pay {formatMoney(item.amount)}{freq}</SaveButton>
                 {term > 0 ? (
-                  <SaveButton className="btn primary" pendingLabel="Starting..." name="mode" value="prepay">Pay {formatMoney(prepaidTotal)} up front{discount > 0 ? ` · save ${discount}%` : ''}</SaveButton>
+                  <SaveButton className="btn primary" pendingLabel="Starting…" name="mode" value="prepay">Pay {formatMoney(prepaidTotal)} up front{discount > 0 ? ` · save ${discount}%` : ''}</SaveButton>
                 ) : null}
               </form>
             </div>
@@ -493,210 +540,263 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
       {/* The contractor's mark and name, not ours. This is the page a homeowner
           opens from a text to approve a quote — the one place it matters most
           that the business they hired is the business on the page. */}
-      <ContractorBrandBar brand={dashboard.brand} context={`Job ${dashboard.job.ref ?? ''}`.trim()} />
-      <main className="wide-shell workspace-shell client-job-dashboard" style={brandStyle}>
-        <section className="workspace-hero panel client-hero">
-          <div className="workspace-hero-copy">
-            <p className="eyebrow">{dashboard.businessName}</p>
-            <h1 className="workspace-title client-hero-title">{awaitingApproval ? 'Your quote' : 'Your job'}</h1>
-            <p className="client-hero-for">
-              Prepared for {firstNameOf(dashboard.job.client_name)}
-              {dashboard.job.address ? <> · {dashboard.job.address}</> : null}
+      <ContractorBrandBar brand={dashboard.brand} context={`Quote ${dashboard.job.ref ?? ''}`.trim()} />
+      <main className={`wide-shell workspace-shell client-job-dashboard ${quoteStyleClass(dashboard.quoteStyle)}`} style={brandStyle}>
+        <QuoteDeckProvider
+          addons={deckAddons}
+          baseTotal={baseTotal}
+          awaitingApproval={awaitingApproval}
+          initialPayMode={initialPayMode}
+        >
+          {flash ? (
+            <p className={`quote-flash is-${flash.tone}`} role="status">
+              {flash.text}
             </p>
-            <div className="workspace-inline-row">
+          ) : null}
+
+          {/* --- the hero -------------------------------------------------------
+              Who it is from, who it is for, what the work is, where it is, and
+              where it stands. Five facts the contractor already filled in, none
+              of them invented, each one degrading to nothing rather than to a
+              placeholder. */}
+          <header className="quote-hero">
+            <p className="quote-hero-eyebrow">
+              {dashboard.businessName}
+              <span className="quote-hero-sep" aria-hidden="true">·</span>
+              <span className="quote-hero-ref">Quote {dashboard.job.ref}</span>
+            </p>
+            <h1 className="quote-hero-title client-hero-title">{headline}</h1>
+            <p className="quote-hero-meta client-hero-for">
+              {dashboard.job.address ? <span className="quote-hero-where">{dashboard.job.address}</span> : null}
+              {firstName && dashboard.job.address ? <span className="quote-hero-sep" aria-hidden="true">·</span> : null}
+              {firstName ? <span>Prepared for {dashboard.job.client_name}</span> : null}
+            </p>
+            <div className="quote-hero-status">
               <span className={`status-badge client-status client-status-${status.tone}`}>{status.label}</span>
-              <span className="workspace-inline-note">{dashboard.job.ref}</span>
+              {scheduledLabel ? <span className="quote-hero-when">{scheduledLabel}</span> : null}
             </div>
-            {dashboard.job.scheduled_for ? <p className="workspace-lead">Schedule: {dashboard.job.schedule_label}</p> : null}
-          </div>
-        </section>
+          </header>
 
-        {quoteSection}
-        {approvedSection}
+          <div className="quote-deck">
+            <div className="quote-deck-main">
+              {quoteSection}
 
-        {/* Above the schedule: a choice inside the quote changes what is being
-            scheduled and what it costs. */}
-        <Selections token={params.token} selections={clientSelections} businessName={dashboard.businessName} />
-        <ChangeOrders token={params.token} orders={clientChangeOrders} />
+              {/* Above the schedule: a choice inside the quote changes what is
+                  being scheduled and what it costs. */}
+              <Selections token={params.token} selections={clientSelections} businessName={dashboard.businessName} />
+              <ChangeOrders token={params.token} orders={clientChangeOrders} />
 
-        {scheduleSection}
-        {scheduledSection}
+              {scheduleSection}
+              {scheduledSection}
 
-        {paymentsSection}
-        {planSection}
-        {subscriptionsSection}
+              {paymentsSection}
+              {planSection}
+              {subscriptionsSection}
+              {settledSection}
 
-        {/* Cover, and the way back to the contractor. Placed with the rest of the
-            job rather than in a separate portal, because this page is the link a
-            homeowner still has in their inbox two years later. */}
-        <Warranties token={params.token} warranties={clientWarranties} />
+              {/* Cover, and the way back to the contractor. Placed with the rest
+                  of the job rather than in a separate portal, because this page
+                  is the link a homeowner still has in their inbox two years
+                  later. */}
+              <Warranties token={params.token} warranties={clientWarranties} />
 
-        {/* Proof-to-Pay stages. Above the general checklist because a stage
-            carries its own evidence AND the amount attached to it — this is the
-            part a homeowner opens the page to see. */}
-        {dashboard.milestones.length > 0 ? (
-          <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">Your job, stage by stage</p>
-              <h2>What&rsquo;s been done</h2>
-            </div>
-            <div className="client-milestones">
-              {dashboard.milestones.map((milestone) => (
-                <article key={milestone.id} className={`client-milestone status-${milestone.status}`}>
-                  <div className="client-milestone-head">
-                    <div>
-                      <h3>{milestone.title}</h3>
-                      {milestone.scope ? <p className="client-milestone-scope">{milestone.scope}</p> : null}
-                    </div>
-                    <div className="client-milestone-money">
-                      <span className="client-milestone-amount">{formatMoney(milestone.amount)}</span>
-                      <span className={`client-milestone-status status-${milestone.status}`}>{milestone.statusLabel}</span>
-                    </div>
+              {/* Proof-to-Pay stages. Above the general checklist because a stage
+                  carries its own evidence AND the amount attached to it — this is
+                  the part a homeowner opens the page to see. */}
+              {dashboard.milestones.length > 0 ? (
+                <section className="panel workspace-section-card">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Your job, stage by stage</p>
+                    <h2>What&rsquo;s been done</h2>
                   </div>
+                  <div className="client-milestones">
+                    {dashboard.milestones.map((milestone) => (
+                      <article key={milestone.id} className={`client-milestone status-${milestone.status}`}>
+                        <div className="client-milestone-head">
+                          <div>
+                            <h3>{milestone.title}</h3>
+                            {milestone.scope ? <p className="client-milestone-scope">{milestone.scope}</p> : null}
+                          </div>
+                          <div className="client-milestone-money">
+                            <span className="client-milestone-amount">{formatMoney(milestone.amount)}</span>
+                            <span className={`client-milestone-status status-${milestone.status}`}>{milestone.statusLabel}</span>
+                          </div>
+                        </div>
 
-                  {milestone.status !== 'paid' ? (
-                    <div className="task-progress" aria-hidden="true">
-                      <div className="task-progress-fill" style={{ width: `${milestone.progressPct}%` }} />
+                        {milestone.status !== 'paid' ? (
+                          <div className="task-progress" aria-hidden="true">
+                            <div className="task-progress-fill" style={{ width: `${milestone.progressPct}%` }} />
+                          </div>
+                        ) : null}
+
+                        {milestone.tasks.length > 0 ? (
+                          <ul className="client-task-list client-milestone-tasks">
+                            {milestone.tasks.map((task, index) => (
+                              <li key={index} className={`client-task${task.done ? ' is-done' : ''}`}>
+                                <span className="client-task-check" aria-hidden="true">{task.done ? '✓' : '○'}</span>
+                                <span>{task.title}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+
+                        {milestone.photos.length > 0 ? (
+                          <div className="client-milestone-photos">
+                            {(['before', 'after'] as const).map((phase) => {
+                              const shots = milestone.photos.filter((photo) => photo.phase === phase);
+                              if (shots.length === 0) return null;
+                              return (
+                                <div key={phase}>
+                                  <p className="client-milestone-phase">{phase === 'before' ? 'Before' : 'After'}</p>
+                                  <div className="client-milestone-grid">
+                                    {shots.map((photo) => (
+                                      <figure key={photo.id}>
+                                        {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, one-hour life */}
+                                        <img src={photo.url} alt={photo.caption || `${phase} photo`} loading="lazy" />
+                                        {photo.caption ? <figcaption>{photo.caption}</figcaption> : null}
+                                      </figure>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
+                        {milestone.payHref ? (
+                          <a className="btn primary client-milestone-pay" href={milestone.payHref}>
+                            Pay {formatMoney(milestone.amount)}
+                          </a>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {dashboard.tasks.length > 0 ? (() => {
+                const doneCount = dashboard.tasks.filter((task) => task.done).length;
+                const pct = Math.round((doneCount / dashboard.tasks.length) * 100);
+                return (
+                  <section className="panel workspace-section-card">
+                    <div className="section-heading workspace-section-heading compact-heading">
+                      <p className="eyebrow">Progress</p>
+                      <h2>Work checklist · {doneCount}/{dashboard.tasks.length} done</h2>
                     </div>
-                  ) : null}
-
-                  {milestone.tasks.length > 0 ? (
-                    <ul className="client-task-list client-milestone-tasks">
-                      {milestone.tasks.map((task, index) => (
+                    <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${pct}%` }} /></div>
+                    <ul className="client-task-list">
+                      {dashboard.tasks.map((task, index) => (
                         <li key={index} className={`client-task${task.done ? ' is-done' : ''}`}>
                           <span className="client-task-check" aria-hidden="true">{task.done ? '✓' : '○'}</span>
                           <span>{task.title}</span>
                         </li>
                       ))}
                     </ul>
-                  ) : null}
+                  </section>
+                );
+              })() : null}
 
-                  {milestone.photos.length > 0 ? (
-                    <div className="client-milestone-photos">
-                      {(['before', 'after'] as const).map((phase) => {
-                        const shots = milestone.photos.filter((photo) => photo.phase === phase);
-                        if (shots.length === 0) return null;
-                        return (
-                          <div key={phase}>
-                            <p className="client-milestone-phase">{phase === 'before' ? 'Before' : 'After'}</p>
-                            <div className="client-milestone-grid">
-                              {shots.map((photo) => (
-                                <figure key={photo.id}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, one-hour life */}
-                                  <img src={photo.url} alt={photo.caption || `${phase} photo`} loading="lazy" />
-                                  {photo.caption ? <figcaption>{photo.caption}</figcaption> : null}
-                                </figure>
-                              ))}
-                            </div>
+              {/* The record, last. It is the thing somebody comes back for, not
+                  the thing they arrived for — and it used to sit in a second
+                  column beside the documents, which put the activity log level
+                  with the quote itself. */}
+              <section className="panel workspace-section-card">
+                <div className="section-heading workspace-section-heading compact-heading">
+                  <p className="eyebrow">Job feed</p>
+                  <h2>Updates</h2>
+                </div>
+                {dashboard.feed.length === 0 ? (
+                  <p className="empty-state">Nothing has happened yet. Updates from {dashboard.businessName} will appear here.</p>
+                ) : (
+                  <div className="job-feed-list">
+                    {/* Curated upstream by toClientFeed, not filtered — this used
+                        to print whatever title and body the row held, which is
+                        how the contractor's intake notes ended up here. */}
+                    {dashboard.feed.map((event) => (
+                      <article className="job-feed-item" key={event.id}>
+                        <div className="job-feed-dot" />
+                        <div className="job-feed-content">
+                          <div className="job-row-header">
+                            <span className="cost-item-desc">{event.title}</span>
+                            {event.amount ? <span className="cost-item-amount">{formatMoney(Number(event.amount))}</span> : null}
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-
-                  {milestone.payHref ? (
-                    <a className="btn primary client-milestone-pay" href={milestone.payHref}>
-                      Pay {formatMoney(milestone.amount)}
-                    </a>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {dashboard.tasks.length > 0 ? (() => {
-          const doneCount = dashboard.tasks.filter((task) => task.done).length;
-          const pct = Math.round((doneCount / dashboard.tasks.length) * 100);
-          return (
-            <section className="panel workspace-section-card">
-              <div className="section-heading workspace-section-heading compact-heading">
-                <p className="eyebrow">Progress</p>
-                <h2>Work checklist · {doneCount}/{dashboard.tasks.length} done</h2>
-              </div>
-              <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${pct}%` }} /></div>
-              <ul className="client-task-list">
-                {dashboard.tasks.map((task, index) => (
-                  <li key={index} className={`client-task${task.done ? ' is-done' : ''}`}>
-                    <span className="client-task-check" aria-hidden="true">{task.done ? '✓' : '○'}</span>
-                    <span>{task.title}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })() : null}
-
-        <section className="detail-grid workspace-grid-gap">
-          <div>
-            <div className="panel workspace-section-card">
-              <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Job feed</p>
-                <h2>Status updates</h2>
-              </div>
-              {dashboard.feed.length === 0 ? (
-                <p className="empty-state">No updates yet.</p>
-              ) : (
-                <div className="job-feed-list">
-                  {/* Curated upstream by toClientFeed, not filtered — this used
-                      to print whatever title and body the row held, which is
-                      how the contractor's intake notes ended up here. */}
-                  {dashboard.feed.map((event) => (
-                    <article className="job-feed-item" key={event.id}>
-                      <div className="job-feed-dot" />
-                      <div className="job-feed-content">
-                        <div className="job-row-header">
-                          <span className="cost-item-desc">{event.title}</span>
-                          {event.amount ? <span className="cost-item-amount">{formatMoney(Number(event.amount))}</span> : null}
+                          {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
+                          <p className="job-meta">
+                            {formatFeedTime(event.at)}
+                            {event.actionUrl ? (
+                              <>
+                                {' · '}
+                                <Link href={event.actionUrl}>Open</Link>
+                              </>
+                            ) : null}
+                          </p>
                         </div>
-                        {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
-                        <p className="job-meta">
-                          {formatFeedTime(event.at)}
-                          {event.actionUrl ? (
-                            <>
-                              {' · '}
-                              <Link href={event.actionUrl}>Open</Link>
-                            </>
-                          ) : null}
-                        </p>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="panel workspace-section-card">
+                <div className="section-heading workspace-section-heading compact-heading">
+                  <p className="eyebrow">Documents</p>
+                  <h2>Your paperwork</h2>
                 </div>
-              )}
+                {dashboard.invoices.length === 0 ? (
+                  /* "No invoices have been shared yet" read as an absence of
+                     paperwork on a page that was asking for money. The quote IS
+                     the paperwork at this stage, and it can be saved. */
+                  <p className="empty-state">
+                    Your quote is above — use <strong>Print or save as PDF</strong> to keep a copy. An invoice appears here once
+                    the work is billed.
+                  </p>
+                ) : (
+                  <div className="cost-list">
+                    {dashboard.invoices.map((invoice) => (
+                      <Link href={`/invoice/${invoice.id}`} className="cost-item" key={invoice.id}>
+                        <div className="cost-item-main">
+                          <span className="cost-item-desc">{invoice.ref}</span>
+                          <span className="cost-item-sub">{INVOICE_STATUS_LABEL[invoice.status]}</span>
+                        </div>
+                        <span className="cost-item-amount">{formatMoney(Number(invoice.total))}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
+
+            {/* The decision, beside the number it is about — and still on screen
+                while the rest of the page is read. */}
+            <aside className="quote-deck-rail" aria-label="Your quote summary">
+              <div className="quote-rail-sticky">
+                {awaitingApproval ? (
+                  <QuoteAcceptance
+                    approveAction={approveClientJobQuoteAction.bind(null, params.token)}
+                    businessName={dashboard.businessName}
+                    scheduleOffered={scheduleOpen}
+                    scheduledLabel={scheduledLabel}
+                    payment={paymentSummary}
+                    planTotal={plan ? plan.totalCents / 100 : null}
+                  />
+                ) : (
+                  <QuoteApproved
+                    total={formatMoney(agreedTotal)}
+                    addons={chosenAddonLabels}
+                    scheduledLabel={scheduledLabel}
+                    signerName={(signatureRow?.quote_signer_name as string | null) ?? null}
+                    signedAt={formatDay((signatureRow?.quote_signed_at as string | null) ?? null) || null}
+                    nextStep={nextStep}
+                    nextHref={nextHref}
+                    nextLabel={nextLabel}
+                  />
+                )}
+              </div>
+            </aside>
           </div>
 
-          <div>
-            <div className="panel workspace-section-card sticky-card">
-              <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Documents</p>
-                <h2>Your paperwork</h2>
-              </div>
-              {dashboard.invoices.length === 0 ? (
-                /* "No invoices have been shared yet" read as an absence of
-                   paperwork on a page that was asking for money. The quote IS
-                   the paperwork at this stage, and it can be saved. */
-                <p className="empty-state">
-                  Your quote is above — use <strong>Print or save as PDF</strong> to keep a copy. An invoice appears here once
-                  the work is billed.
-                </p>
-              ) : (
-                <div className="cost-list">
-                  {dashboard.invoices.map((invoice) => (
-                    <Link href={`/invoice/${invoice.id}`} className="cost-item" key={invoice.id}>
-                      <div className="cost-item-main">
-                        <span className="cost-item-desc">{invoice.ref}</span>
-                        <span className="cost-item-sub">{INVOICE_STATUS_LABEL[invoice.status]}</span>
-                      </div>
-                      <span className="cost-item-amount">{formatMoney(Number(invoice.total))}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+          <QuoteBottomBar />
+        </QuoteDeckProvider>
         <ContractorBrandFoot businessName={dashboard.businessName} />
       </main>
     </>

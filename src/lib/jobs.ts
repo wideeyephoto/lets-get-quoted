@@ -263,11 +263,10 @@ export function formatMoney(n: number): string {
  * So: always two decimals, never rounded away. Cents are the unit money is
  * actually moved in, and this is where a customer checks our arithmetic.
  */
-export function formatMoneyExact(n: number): string {
-  const cents = Math.round((Number.isFinite(n) ? n : 0) * 100) || 0;
-  const abs = Math.abs(cents) / 100;
-  return (cents < 0 ? '-$' : '$') + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// One implementation, in a module with no dependencies, so the customer's quote
+// page can format its live total in the browser without pulling this file (and
+// the Supabase client under it) into their phone. See @/lib/money-format.
+export { formatUsdExact as formatMoneyExact } from '@/lib/money-format';
 
 export function formatJobQuoteSummary(
   job: Pick<Job, 'client_name' | 'address' | 'scope' | 'estimated_hours' | 'quoted_amount'>,
