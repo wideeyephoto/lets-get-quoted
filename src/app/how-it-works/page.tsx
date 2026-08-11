@@ -77,43 +77,63 @@ const FACTS: { fact: string; of: string }[] = [
   { fact: '1 text', of: 'to decide now or later' },
 ];
 
-/* The bridge. Five stages, and the reason the page has them at all: a reader
-   who has just been told "we rank your requests" needs to know the product
-   does not stop there. One line each — the detail is on /features, and each
-   card is a link to the part of it that does the thing named.
-   Scheduling and Crew land on the same capability band on purpose: arrival
-   windows and crew assignment are one section there, not two. */
-const STAGES: { n: string; title: string; body: string; href: string }[] = [
+/**
+ * THE TWO QUESTIONS "AI-RANKED LEAD QUEUE" RAISES IN THE FIRST SECOND.
+ *
+ * How does it know, and will it hide a good one. Both were answered on this
+ * page — three sections and 2,600px below the words that raised them, in a
+ * receipt captioned "why this job surfaced". A reader who is not sure a machine
+ * is safe with their leads does not scroll to find out; they leave.
+ *
+ * EVERY LINE IS CHECKED AGAINST THE CODE, not against the pitch:
+ *
+ *   the signals   api/public/leads/route.ts computes the flags from the OWNER'S
+ *                 filters — service area, minimum job size, work-you-don't-take,
+ *                 timeline, fully-booked mode — plus the AI estimate and whether
+ *                 the phone was verified.
+ *   demote only   "Flags demote; they never reject" is a comment on that
+ *                 function and LEAD_PRUNE_FLAGS only ever writes score 'low'.
+ *                 Nothing is deleted, hidden or withheld.
+ *   the estimate  classify-estimate/route.ts asks one question at a time until
+ *                 it can price confidently, prices what this trade would
+ *                 actually charge, shades it by the posture the owner picked
+ *                 (estimate-posture.ts), and — this is the honest part —
+ *                 returns no price at all rather than inventing one.
+ */
+const TRUST: { term: string; detail: ReactNode }[] = [
   {
-    n: '01',
-    title: 'Quote + sign',
-    body: 'The job summary becomes a polished quote the customer can approve and sign.',
-    href: '/features/back-office',
+    term: 'It scores on rules you set',
+    detail:
+      'The service area you drew, the smallest job worth your time, the work you don’t take, how soon they need it, and whether the number checked out. Your filters, applied to their answers.',
   },
   {
-    n: '02',
-    title: 'Schedule',
-    body: 'Offer real availability and let the homeowner pick the window that suits them.',
-    href: '/features#planning-and-scheduling',
+    term: 'It demotes. It never hides',
+    detail:
+      'A low score means a request doesn’t interrupt your day — it does not mean you don’t get it. Every request lands on the same board, with the reason it was demoted printed on it, and you can act on any of them.',
   },
   {
-    n: '03',
-    title: 'Crew',
-    body: 'Scope, photos, address and promises follow the work into the field.',
-    href: '/features#planning-and-scheduling',
+    term: 'The value is an estimate, not your quote',
+    detail:
+      'The range comes from the homeowner’s own answers, asked one at a time until the job can be priced, at what your trade actually charges for that work. You choose whether it leans budget or premium — and when it can’t price something confidently it shows no number rather than a wrong one.',
   },
-  {
-    n: '04',
-    title: 'Payment',
-    body: 'Deposits, balances and approvals stay attached to the same job.',
-    href: '/features#payments',
-  },
-  {
-    n: '05',
-    title: 'Review',
-    body: 'Finish the work, ask for feedback and keep the next visit ready to book.',
-    href: '/features#website-and-growth',
-  },
+];
+
+/**
+ * THE JOURNEY, NAMED.
+ *
+ * The page follows one invented $8,600 job from the hero to the closing
+ * receipt, which is the right idea and was doing it implicitly — the same
+ * numbers turning up in four places over 5,300px reads as repetition unless
+ * the page says out loud that it is the same job moving. Six beats, in order,
+ * with the three the page has already shown marked as shown.
+ */
+const JOURNEY: { n: string; title: string; body: string; href: string; done?: boolean }[] = [
+  { n: '1', title: 'Request', body: 'A homeowner describes the job on your own site.', href: '/features/website-builder', done: true },
+  { n: '2', title: 'Ranked', body: 'Estimated, scored against your filters, and placed in the queue.', href: '/features/ai-intake', done: true },
+  { n: '3', title: 'Texted', body: 'One message when a job is worth interrupting you for.', href: '#text-alerts', done: true },
+  { n: '4', title: 'Quoted', body: 'The summary becomes a quote they approve and sign from a phone.', href: '/features/quotes' },
+  { n: '5', title: 'Scheduled', body: 'A window they pick, a crew assigned, the scope in the field.', href: '/features/scheduling' },
+  { n: '6', title: 'Paid', body: 'Deposit, balance and review, on the record that started it.', href: '/features/payments' },
 ];
 
 /* THE LAST PIECE OF PAPER ON THE PAGE.
@@ -217,7 +237,7 @@ export default function HowItWorksPage() {
           </p>
           <div className="hiq-actions">
             <a className="hiq-button" href={APP_SIGNUP_URL}>
-              Build my free site <span aria-hidden="true">→</span>
+              Start free <span aria-hidden="true">→</span>
             </a>
             <Link className="hiq-textlink" href={DEMO_URL}>
               Explore the demo
@@ -247,6 +267,74 @@ export default function HowItWorksPage() {
             <span>{fact.of}</span>
           </div>
         ))}
+      </section>
+
+      {/* ------------------------------------------------------------------
+          THE ANSWER TO THE QUESTION THE HERO JUST RAISED.
+
+          "AI-ranked lead queue" asks two things of a contractor in the first
+          second: how does it know, and will it hide a good one. Both were
+          answered on this page — 2,600px and three sections below the words
+          that raised them. Somebody unsure a machine is safe with their leads
+          does not scroll to find out.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-trust" aria-labelledby="hiq-trust-title">
+        <div className="hiq-shell">
+          <div className="hiq-split">
+            <div>
+              <p className="hiq-eyebrow hiq-eyebrow-dark">Before you trust it with your leads</p>
+              <h2 id="hiq-trust-title">How the ranking decides, and what it cannot do.</h2>
+            </div>
+            <p>
+              Nothing here is a judgement about your business. It is your own filters, applied to
+              what the homeowner answered — and the worst it can do to a request is stop it from
+              interrupting you.
+            </p>
+          </div>
+
+          <dl className="hiq-trust-list">
+            {TRUST.map((item) => (
+              <div key={item.term}>
+                <dt>{item.term}</dt>
+                <dd>{item.detail}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <Link className="hiq-inlinelink hiq-inlinelink-light" href="/features/ai-intake">
+            See exactly what the intake asks and scores <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------
+          THE JOURNEY, NAMED.
+
+          One invented $8,600 job runs from the hero to the closing receipt.
+          That is the right idea, and over 5,300px of desktop it reads as
+          repetition unless the page says out loud that it is the same job
+          moving. Six beats, in order; the first three are what the sections
+          above have just shown.
+          ------------------------------------------------------------------ */}
+      <section className="hiq-journey" aria-labelledby="hiq-journey-title">
+        <div className="hiq-shell">
+          <h2 id="hiq-journey-title" className="hiq-journey-title">
+            One request, six steps: <em>Request → Ranked → Texted → Quoted → Scheduled → Paid.</em>
+          </h2>
+          <ol className="hiq-journey-rail">
+            {JOURNEY.map((beat) => (
+              <li key={beat.n} data-done={beat.done ? 'true' : 'false'}>
+                <Link href={beat.href}>
+                  <span className="hiq-journey-n" aria-hidden="true">
+                    {beat.n}
+                  </span>
+                  <strong>{beat.title}</strong>
+                  <span className="hiq-journey-body">{beat.body}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       {/* ------------------------------------------------------------------
@@ -322,23 +410,13 @@ export default function HowItWorksPage() {
             </p>
           </div>
 
-          <ol className="hiq-rail" aria-label="One connected job, five stages">
-            {STAGES.map((stage) => (
-              <li className="hiq-stage" key={stage.n}>
-                {/* The whole card is the link, not a "learn more" under it —
-                    five of those in a row is five identical words where the
-                    stage name is already the thing you would click. */}
-                <Link href={stage.href}>
-                  <span className="hiq-stage-n">{stage.n}</span>
-                  <h3>
-                    {stage.title} <span className="hiq-stage-go" aria-hidden="true">→</span>
-                  </h3>
-                  <p>{stage.body}</p>
-                </Link>
-              </li>
-            ))}
-          </ol>
-
+          {/* THE FIVE-CARD RAIL THAT USED TO BE HERE IS GONE.
+              It named Quote + sign, Schedule, Crew, Payment and Review — which
+              is beats 4, 5 and 6 of the journey printed a second time, 1,900px
+              after the rail that names all six. On a 9,700px phone page, saying
+              the same sequence twice is the repetition the page was criticised
+              for. The journey rail carries the sequence; this section carries
+              the sentence that makes it matter, and the way through to it. */}
           <div className="hiq-actions hiq-bridge-actions">
             <Link className="hiq-button" href="/features/back-office">
               Explore the connected back office <span aria-hidden="true">→</span>
@@ -390,13 +468,13 @@ export default function HowItWorksPage() {
             </h2>
             <div className="hiq-actions">
               <a className="hiq-button" href={APP_SIGNUP_URL}>
-                Build my free site <span aria-hidden="true">→</span>
+                Start free <span aria-hidden="true">→</span>
               </a>
               <Link className="hiq-textlink" href={DEMO_URL}>
                 Explore the demo
               </Link>
             </div>
-            <p className="hiq-reassurance">No card required · $0/month · Pay only when paid</p>
+            <p className="hiq-reassurance">Free website included · $0/month · Pay only when paid</p>
           </div>
 
           <div className="hiq-final-receipt">

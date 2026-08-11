@@ -7265,6 +7265,143 @@
   .root :global(.index-proof b) { font-size: 18px; }
 }
 
+/* ===========================================================================
+   §110 — /how-it-works ANSWERS ITS OWN HEADLINE, AND NAMES THE JOURNEY
+
+   "AI-ranked lead queue" asks a contractor two things in the first second: how
+   does it know, and will it hide a good one. Both were answered on the page —
+   2,600px and three sections below the words that raised them. The trust list
+   is that answer, moved to where the question is asked.
+
+   The journey rail is the other half: one invented job runs the whole page, and
+   over 5,300px of desktop that reads as repetition unless the page says out
+   loud that it is the same job moving.
+   =========================================================================== */
+
+.root :global(.hiq-trust) {
+  padding: clamp(52px, 6vw, 88px) 0;
+  background: var(--hiq-paper, #f6f2ea);
+  color: var(--hiq-ink, #10242f);
+}
+.root :global(.hiq-trust-list) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(18px, 2.4vw, 32px);
+  margin: clamp(28px, 3.4vw, 44px) 0 0;
+}
+.root :global(.hiq-trust-list > div) {
+  padding-top: 18px;
+  border-top: 2px solid rgba(16, 36, 47, .18);
+}
+.root :global(.hiq-trust-list dt) {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -.015em;
+}
+.root :global(.hiq-trust-list dd) {
+  margin: 0;
+  /* #4a5a63 on this paper, not the dark band's grey. Same correction §109 made
+     to the cream section on /features, and the same reason. */
+  color: #4a5a63;
+  font-size: 14.5px;
+  line-height: 1.66;
+}
+
+/* AND THE SPLIT'S OWN PARAGRAPH, which is where this section would have
+   shipped the same bug /features had. The .hiq-split paragraph is written for the dark
+   bands at #9db0bd; on paper it measured 1.95:1 — a sentence about trust,
+   unreadable. This is the third band on this site to lose that fight, so it is
+   fixed for every paper section rather than only for the new one. */
+.root :global(.hiq-trust .hiq-split p),
+.root :global(.hiq-opps .hiq-split p) { color: #4a5a63; }
+
+/* Two more of the same family, both pre-existing and both measured: the
+   "example values" caption at 3.30:1 and the receipt labels at 3.51:1. */
+.root :global(.hiq-example) { color: #55636a; }
+.root :global(.hiq-value-label) { color: #4a5a63; }
+
+/* The light-band eyebrow, at #c94212, measured 4.29:1 on the paper and 4.02:1
+   on the peach — 12px uppercase is nowhere near WCAG's large-text threshold
+   (18.66px bold), so both needed the 4.5. #b23a10 is 4.89:1 on the peach and
+   better on the paper, in the same hue. */
+.root :global(.hiq-eyebrow-dark) { color: #b23a10; }
+
+/* ---- the journey ---- */
+
+.root :global(.hiq-journey) {
+  padding: clamp(44px, 5vw, 72px) 0;
+  background: var(--hiq-paper, #f6f2ea);
+  color: var(--hiq-ink, #10242f);
+  border-top: 1px solid rgba(16, 36, 47, .12);
+}
+.root :global(.hiq-journey-title) {
+  margin: 0;
+  max-width: 28ch;
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 750;
+  letter-spacing: -.03em;
+  line-height: 1.14;
+}
+.root :global(.hiq-journey-title em) { font-style: normal; color: #b8430f; }
+
+.root :global(.hiq-journey-rail) {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin: clamp(22px, 2.6vw, 34px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.root :global(.hiq-journey-rail li) { margin: 0; }
+.root :global(.hiq-journey-rail a) {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 100%;
+  padding: 14px 15px 16px;
+  border: 1px solid rgba(16, 36, 47, .16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .6);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .18s ease, background .18s ease;
+}
+.root :global(.hiq-journey-rail a:hover) { border-color: #b8430f; background: #fff; }
+/* THE THREE THE PAGE HAS ALREADY SHOWN, marked in two channels rather than one
+   — colour alone is the channel a colourblind reader cannot use, so the done
+   beats also carry the filled numeral. */
+.root :global(.hiq-journey-rail li[data-done="true"] a) {
+  border-color: rgba(184, 67, 15, .38);
+  background: rgba(184, 67, 15, .06);
+}
+.root :global(.hiq-journey-n) {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(16, 36, 47, .26);
+  border-radius: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+.root :global(.hiq-journey-rail li[data-done="true"] .hiq-journey-n) {
+  border-color: #b8430f;
+  background: #b8430f;
+  color: #fff;
+}
+.root :global(.hiq-journey-rail strong) { font-size: 15px; font-weight: 750; letter-spacing: -.01em; }
+.root :global(.hiq-journey-body) { color: #4a5a63; font-size: 13px; line-height: 1.5; }
+
+@media (max-width: 1000px) {
+  .root :global(.hiq-trust-list) { grid-template-columns: minmax(0, 1fr); }
+  .root :global(.hiq-journey-rail) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .root :global(.hiq-journey-rail) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ---- the product tour ---------------------------------------------------
 
    Across the middle of the page, directly above "Five connected advantages" —

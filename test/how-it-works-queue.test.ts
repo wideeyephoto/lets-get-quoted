@@ -113,15 +113,58 @@ describe('the copy the brief specified', () => {
   });
 
   it('offers the same two actions in the hero and at the close', () => {
-    expect(PAGE.match(/Build my free site/g)?.length).toBe(2);
+    // "Start free" rather than the site-wide "Build my free site", and that is
+    // deliberate: this page's ask is the whole workflow, not one artefact of
+    // it. The website is not dropped from the promise — it moves into the line
+    // under the button, where the rest of the terms already were.
+    expect(PAGE.match(/Start free/g)?.length).toBe(2);
     expect(PAGE.match(/Explore the demo/g)?.length).toBe(2);
-    expect(PAGE).toContain('No card required · $0/month · Pay only when paid');
+    expect(PAGE).toContain('Free website included · $0/month · Pay only when paid');
   });
 
-  it('names all five back-office stages', () => {
-    for (const stage of ['Quote + sign', 'Schedule', 'Crew', 'Payment', 'Review']) {
-      expect(PAGE).toContain(`title: '${stage}'`);
-    }
+  it('names the whole journey, in order, as one sequence', () => {
+    /* THE SEQUENCE USED TO BE IMPLICIT AND THEN PRINTED TWICE.
+       One invented $8,600 job runs from the hero to the closing receipt, which
+       is the right idea — but over 5,300px of desktop the same numbers turning
+       up in four places read as repetition rather than continuity, because
+       nothing said out loud that it was the same job moving. And the bridge's
+       five-card rail named beats 4, 5 and 6 a second time, 1,900px after the
+       rail that names all six. One rail now, six beats, in order. */
+    const beats = [...PAGE.matchAll(/title: '([A-Za-z ]+)', body:/g)].map((m) => m[1]);
+    expect(beats).toEqual(['Request', 'Ranked', 'Texted', 'Quoted', 'Scheduled', 'Paid']);
+    expect(PAGE).toContain('Request → Ranked → Texted → Quoted → Scheduled → Paid.');
+    // The three the page has already shown, marked as shown.
+    expect([...PAGE.matchAll(/done: true/g)]).toHaveLength(3);
+    expect(PAGE).toContain("data-done={beat.done ? 'true' : 'false'}");
+  });
+
+  it('answers the two questions its own headline raises, under the headline', () => {
+    /* "AI-ranked lead queue" asks a contractor how it knows and whether it will
+       hide a good one. Both were answered 2,600px and three sections below the
+       words that raised them, in a receipt captioned "why this job surfaced".
+       Somebody unsure a machine is safe with their leads does not scroll. */
+    const trust = PAGE.slice(PAGE.indexOf('const TRUST'), PAGE.indexOf('const JOURNEY'));
+    expect(trust).toContain('It scores on rules you set');
+    expect(trust).toContain('It demotes. It never hides');
+    expect(trust).toContain('The value is an estimate, not your quote');
+    // Above the opportunities section, which is where the old answer sat.
+    expect(PAGE.indexOf('className="hiq-trust"')).toBeLessThan(PAGE.indexOf('id="opportunities"'));
+  });
+
+  it('describes the ranking the way the code actually behaves', () => {
+    /* Checked against api/public/leads/route.ts, whose own comment reads
+       "Flags demote; they never reject", and LEAD_PRUNE_FLAGS, which only ever
+       writes score 'low'. Nothing is deleted, hidden or withheld. */
+    const trust = PAGE.slice(PAGE.indexOf('const TRUST'), PAGE.indexOf('const JOURNEY'));
+    expect(trust).toMatch(/does not mean you don’t get it/);
+    expect(trust).toMatch(/lands on the same board/);
+    expect(trust).not.toMatch(/\b(filters out|removes|deletes|blocks)\b/i);
+    // The estimate is the AI's market range shaded by posture — NOT the
+    // contractor's price book, which is what drafts a QUOTE. Naming the book
+    // here would be a sentence about a different feature.
+    expect(trust).not.toMatch(/price book/i);
+    expect(trust).toMatch(/leans budget or premium/);
+    expect(trust).toMatch(/shows no number\s+rather than a wrong one/);
   });
 
   it('calls the product by its whole name where it makes the promise', () => {
@@ -178,26 +221,28 @@ describe('where the page sends you', () => {
     expect(PAGE).toContain('See how AI Smart Intake scores a request');
   });
 
-  it('makes each of the five stages a link to what does that part', () => {
+  it('makes each journey beat a link to the thing that does it', () => {
     const targets = [
-      '/features/back-office',
-      '/features#planning-and-scheduling',
-      '/features#planning-and-scheduling',
-      '/features#payments',
-      '/features#website-and-growth',
+      '/features/website-builder',
+      '/features/ai-intake',
+      '#text-alerts',
+      '/features/quotes',
+      '/features/scheduling',
+      '/features/payments',
     ];
-    for (const href of targets) expect(PAGE).toContain(`href: '${href}'`);
-    // Every stage carries one — a card without an href renders an empty link.
-    expect(PAGE.match(/href: '\/features/g)?.length).toBe(targets.length);
-    expect(PAGE).toContain('<Link href={stage.href}>');
+    for (const href of targets) expect(PAGE, href).toContain(`href: '${href}'`);
+    // Every beat carries one — a card without an href renders an empty link.
+    expect(PAGE).toContain('<Link href={beat.href}>');
   });
 
   /* Two of the five anchors are the same because scheduling and crew are one
      capability band on /features, not two. Asserted rather than left to look
      like a copy-paste slip. */
-  it('lands Schedule and Crew on the band that covers both', () => {
-    const scheduling = PAGE.match(/'\/features#planning-and-scheduling'/g);
-    expect(scheduling?.length).toBe(2);
+  it('sends each beat somewhere different, or the rail is decoration', () => {
+    const journey = PAGE.slice(PAGE.indexOf('const JOURNEY'), PAGE.indexOf('/* THE LAST PIECE OF PAPER'));
+    const hrefs = [...journey.matchAll(/href: '([^']+)'/g)].map((m) => m[1]);
+    expect(hrefs).toHaveLength(6);
+    expect(new Set(hrefs).size).toBe(6);
   });
 
   it('points both signup buttons at the shared signup constant, not the app root', () => {
