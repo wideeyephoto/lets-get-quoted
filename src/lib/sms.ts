@@ -8,6 +8,7 @@ import {
   cardSetupText,
   cardUpdateText,
   clientJobDashboardText,
+  quoteUpdatedText,
   crewAssignmentText,
   crewScheduleSelectedText,
   inboxReplyText,
@@ -518,6 +519,28 @@ export async function sendClientJobDashboardSms(params: {
   accountId?: string;
 }) {
   const message = clientJobDashboardText({ ...params, link: clientJobLink(params.token) });
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
+/**
+ * The quote changed after the homeowner already had it.
+ *
+ * Deliberately separate from sendClientJobDashboardSms: that one announces a
+ * quote for the first time, and re-using it for an edit would tell somebody
+ * their quote "is ready" for the second time and say nothing about what moved.
+ */
+export async function sendQuoteUpdatedSms(params: {
+  phone: string;
+  businessName: string;
+  jobRef: string;
+  token: string;
+  total?: string | null;
+  direction?: 'up' | 'down' | 'same';
+  accountId?: string;
+}) {
+  const message = quoteUpdatedText({ ...params, link: clientJobLink(params.token) });
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

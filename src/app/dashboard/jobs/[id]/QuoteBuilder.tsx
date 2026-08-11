@@ -21,12 +21,52 @@ function formatUsd(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
+/**
+ * A stable fingerprint of the quote as the SERVER would see it.
+ *
+ * Row ids are generated from Date.now() and change every time a line is added
+ * or an AI draft is applied, so JSON.stringify(rows) says "different" for two
+ * quotes that are word for word the same. This compares what is actually
+ * saved — and it is the thing that decides whether a stored draft is offered,
+ * so a false difference is a restore prompt for an edit nobody made.
+ */
+function serializeRows(rows: Row[]): string {
+  return JSON.stringify(
+    rows
+      .filter((row) => row.label.trim().length > 0)
+      .map((row) => [
+        row.label.trim(),
+        Math.max(0, Number(row.amount) || 0),
+        row.kind,
+        row.selected ? 1 : 0,
+        row.recommended ? 1 : 0,
+        row.frequency ?? '',
+        row.termCycles ?? 0,
+        row.prepayDiscountPercent ?? 0,
+      ]),
+  );
+}
+
+/** "just now" / "6 minutes ago" / "2 hours ago". Rendered client-side only. */
+function ago(at: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
 // Owner-facing itemized quote editor on the job page. Rows are either base
 // (always billed) or optional add-ons the client can accept. The running total
 // mirrors what the client will see; Save persists the items and recomputes the
 // job's quoted amount server-side.
 export default function QuoteBuilder({
   action,
+  notifyAction,
+  autosaveKey,
   draftAction,
   reviewAction,
   initialItems,
@@ -47,6 +87,31 @@ export default function QuoteBuilder({
   reviewAction?: (
     lines: { id: string; label: string; amount: number; kind: QuoteItemKind; selected: boolean }[],
   ) => Promise<{ ok: true; findings: QuoteFinding[]; aiRan: boolean } | { ok: false; message: string }>;
+  /**
+   * Save AND tell the homeowner the quote changed.
+   *
+   * The gap it closes: editing a quote that has already gone out and pressing
+   * Save changed the number on the client's own page and notified nobody. Save
+   * on its own stays, because "I am not finished yet" is a real state — this is
+   * the other button, for when you are.
+   */
+  notifyAction?: (items: QuoteItem[]) => Promise<{
+    ok: boolean;
+    total: number;
+    delivery: 'sms' | 'email' | 'none' | 'failed';
+    message: string;
+  }>;
+  /**
+   * Where the unsaved draft is kept, and the reason it can be kept at all.
+   *
+   * A quote is typed in one sitting on a phone in a driveway, and until now
+   * every one of them lived in React state only: a reload, a back button, a
+   * tab the OS reclaimed, and twenty minutes of pricing was gone with no trace
+   * that anything had existed. Pass the job id and edits are written to this
+   * browser as you type. Omitted — the lead form, which has no job yet — there
+   * is no autosave, because there is nothing stable to key it to.
+   */
+  autosaveKey?: string;
   initialItems: QuoteItem[];
   /**
    * What the job says it is worth right now, itemized or not.
@@ -84,6 +149,90 @@ export default function QuoteBuilder({
   useEffect(() => {
     onItemsChangeRef.current?.(rows);
   }, [rows]);
+
+  /* ---------------------------------------------------------------------
+     THE DRAFT THAT SURVIVES THE TAB CLOSING.
+
+     A quote is typed in one sitting, often on a phone in a driveway, and until
+     now it lived in React state only: a reload, a back button, or a tab the OS
+     reclaimed took twenty minutes of pricing with it and left no evidence it
+     had ever existed.
+
+     WHAT IS DELIBERATELY NOT HAPPENING HERE. It does not auto-save to the
+     SERVER. saveQuoteItems recomputes the job's quoted amount, and once a quote
+     has been sent that number is on a page the homeowner can be looking at —
+     so a background save would rewrite what somebody is reading, on a timer,
+     because a finger brushed a keypad. What a contractor asked for is not
+     losing work; what they did not ask for is their customer watching the price
+     change while they think about it. So the browser keeps the draft and the
+     person still decides when it becomes real.
+
+     AND IT IS NEVER APPLIED WITHOUT BEING OFFERED. A stored draft that silently
+     overwrote what the server has would be worse than losing it: it is older,
+     it may be from a different device's idea of this job, and nobody asked. It
+     is shown, with its age, and restored by pressing the button.
+     --------------------------------------------------------------------- */
+  const storageKey = autosaveKey ? `lgq.quote-draft.${autosaveKey}` : null;
+  /** The last state we know the server has. Everything is diffed against it. */
+  const savedRef = useRef(serializeRows(initialItems));
+  const [stored, setStored] = useState<{ rows: Row[]; at: number } | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Read once, on mount. Offered rather than applied — see above.
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { rows?: Row[]; at?: number };
+      if (!Array.isArray(parsed.rows)) return;
+      // Identical to what the server already has is not a draft, it is noise.
+      if (serializeRows(parsed.rows) === savedRef.current) {
+        window.localStorage.removeItem(storageKey);
+        return;
+      }
+      setStored({ rows: parsed.rows, at: Number(parsed.at) || Date.now() });
+    } catch {
+      // A corrupt or unreadable entry is not worth an error on a quote screen.
+    }
+  }, [storageKey]);
+
+  // And written as you type, debounced. Cleared the moment the rows match what
+  // the server has, so a contractor who undoes their own edit is not offered a
+  // restore of the thing they just undid.
+  useEffect(() => {
+    if (!storageKey) return;
+    const current = serializeRows(rows);
+    const timer = window.setTimeout(() => {
+      try {
+        if (current === savedRef.current) {
+          window.localStorage.removeItem(storageKey);
+          setSavedAt(null);
+          return;
+        }
+        const at = Date.now();
+        window.localStorage.setItem(storageKey, JSON.stringify({ rows, at }));
+        setSavedAt(at);
+      } catch {
+        // Private mode, a full quota, a browser with storage switched off. The
+        // builder still works; it just cannot promise to remember.
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [rows, storageKey]);
+
+  function clearStoredDraft() {
+    savedRef.current = serializeRows(rows);
+    setSavedAt(null);
+    setStored(null);
+    if (storageKey) {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // Nothing to do about it, and nothing depends on it.
+      }
+    }
+  }
 
   function updateRow(id: string, patch: Partial<Row>) {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -216,19 +365,76 @@ export default function QuoteBuilder({
     setResult(null);
   }
 
-  function save() {
-    if (!action) return;
-    const clean = rows
+  function cleanRows() {
+    return rows
       .map((row) => ({ ...row, label: row.label.trim(), amount: Math.max(0, Number(row.amount) || 0) }))
       .filter((row) => row.label.length > 0);
+  }
+
+  function save() {
+    if (!action) return;
+    const clean = cleanRows();
     startTransition(async () => {
       const res = await action(clean);
       setResult({ ok: res.ok, message: res.ok ? `Saved. Quote total ${formatUsd(res.total)}.` : res.message || 'Could not save the quote.' });
+      // Only on a real save: a failed one still has work worth keeping.
+      if (res.ok) clearStoredDraft();
+    });
+  }
+
+  // Save and tell them. The result carries what ACTUALLY happened — a provider
+  // failure comes back as a warning with the fix, never as a quiet success.
+  function saveAndNotify() {
+    if (!notifyAction) return;
+    const clean = cleanRows();
+    startTransition(async () => {
+      const res = await notifyAction(clean);
+      setResult({ ok: res.ok && res.delivery !== 'failed' && res.delivery !== 'none', message: res.message });
+      if (res.ok) clearStoredDraft();
     });
   }
 
   return (
     <div className="quote-builder">
+      {/* Offered, never applied. See the autosave block above for why. */}
+      {stored ? (
+        <div className="quote-restore-bar">
+          <p>
+            <strong>Unsaved changes from {ago(stored.at)}.</strong> They were kept in this browser
+            when you left. Nothing was sent to the client.
+          </p>
+          <div className="quote-restore-actions">
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => {
+                setRows(stored.rows);
+                setStored(null);
+                setResult(null);
+              }}
+            >
+              Restore them
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                setStored(null);
+                if (storageKey) {
+                  try {
+                    window.localStorage.removeItem(storageKey);
+                  } catch {
+                    // Nothing depends on it.
+                  }
+                }
+              }}
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {draftAction ? (
         <div className="quote-draft-bar">
           <button type="button" className="btn secondary" onClick={runDraft} disabled={drafting}>
@@ -442,8 +648,25 @@ export default function QuoteBuilder({
           <button type="button" className="btn primary" onClick={save} disabled={pending}>
             {pending ? 'Saving…' : 'Save quote'}
           </button>
+          {notifyAction ? (
+            <button type="button" className="btn secondary" onClick={saveAndNotify} disabled={pending}>
+              {pending ? 'Saving…' : 'Save & text the client'}
+            </button>
+          ) : null}
           {result ? (
             <small className={`review-request-hint ${result.ok ? 'is-ok' : 'is-error'}`}>{result.message}</small>
+          ) : null}
+          {/* Two buttons need one sentence saying which is which, or the
+              difference is discovered by pressing the wrong one. */}
+          {notifyAction && !result ? (
+            <small className="quote-builder-note quote-save-note">
+              Save keeps it to yourself. Save &amp; text sends them the updated total and the link.
+            </small>
+          ) : null}
+          {savedAt !== null ? (
+            <small className="quote-builder-note quote-autosave-note">
+              Draft kept in this browser · nothing has been sent
+            </small>
           ) : null}
         </div>
       ) : null}

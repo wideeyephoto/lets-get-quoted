@@ -51,8 +51,8 @@ import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
-import { sendReviewRequestEmail, sendReviewRequestConfirmationEmail } from '@/lib/email';
+import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendQuoteUpdatedSms, sendReviewRequestSms } from '@/lib/sms';
+import { sendClientQuoteEmail, sendReviewRequestEmail, sendReviewRequestConfirmationEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
 import { sendPushToCrew } from '@/lib/push';
 import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
@@ -911,6 +911,152 @@ export async function saveQuoteItemsAction(jobId: string, items: QuoteItem[]): P
     const message = error instanceof Error ? error.message : 'Could not save the quote.';
     return { ok: false, total: 0, message };
   }
+}
+
+export type QuoteNotifyResult = {
+  ok: boolean;
+  total: number;
+  /** What actually happened, not what we hoped would. */
+  delivery: 'sms' | 'email' | 'none' | 'failed';
+  message: string;
+};
+
+/**
+ * Save the quote AND tell the homeowner it changed.
+ *
+ * THE GAP THIS CLOSES. Editing a quote that has already gone out and pressing
+ * Save changed the number on the homeowner's own page and notified nobody. They
+ * come back to a link they have already read and the total is different, with
+ * no message anywhere saying so — which reads as a bait and switch even when
+ * the edit is a correction in their favour. Save on its own is still there and
+ * still does exactly what it did, because "I am not finished yet" is a real
+ * state; this is the other button, for when you are.
+ *
+ * IT NEVER CLAIMS MORE THAN IT DID. The old total is read BEFORE the save so
+ * the text can say which way the number moved, delivery is best-effort, and the
+ * result carries what really happened — a provider failure comes back as
+ * 'failed' with the reason, not as a silent success. The job's own feed records
+ * the send, so there is a trail on the record and not only in a toast.
+ */
+export async function saveQuoteItemsAndNotifyAction(
+  jobId: string,
+  items: QuoteItem[],
+): Promise<QuoteNotifyResult> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const before = await getJob(supabase, accountId, jobId);
+  if (!before) return { ok: false, total: 0, delivery: 'none', message: 'Job not found for this account.' };
+  const previousTotal = Number(before.quoted_amount) || 0;
+
+  let job;
+  try {
+    job = await saveQuoteItems(supabase, accountId, jobId, Array.isArray(items) ? items : []);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not save the quote.';
+    return { ok: false, total: 0, delivery: 'none', message };
+  }
+  const total = Number(job.quoted_amount) || 0;
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+
+  // Which way it moved, decided from the numbers rather than from the edit —
+  // an owner can add a line and remove two in the same sitting.
+  const direction = total > previousTotal ? 'up' : total < previousTotal ? 'down' : 'same';
+  const totalLabel = total > 0 ? total.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : null;
+
+  const phone = normalizeUsPhone(job.client_phone ?? '');
+  const email = job.client_email?.trim() || null;
+  const optedOut = phone ? await isPhoneOptedOut(accountId, phone) : false;
+  // kind: 'requested' — this is the quote they asked for, arriving again
+  // because it changed. A STOP reply therefore takes the phone out of
+  // consideration and an emailed copy still goes; it does not cancel the
+  // message outright the way it does for something we send on our own.
+  const route = resolveClientChannel({
+    phone,
+    email,
+    preference: await jobMessageChannel(supabase, accountId, jobId),
+    optedOut,
+    kind: 'requested',
+  });
+
+  if (route.channel === 'none') {
+    return {
+      ok: true,
+      total,
+      delivery: 'none',
+      message: `Saved. Quote total ${totalLabel ?? '$0.00'} — but nothing was sent: ${route.reason.replace(/_/g, ' ')}.`,
+    };
+  }
+
+  const businessName = await loadBusinessName(supabase, accountId);
+  // A fresh token rather than hunting for a live one: they are per-job and
+  // additive, the homeowner's old link keeps working, and a quote that changed
+  // is exactly the moment to hand over a link that certainly resolves.
+  const token = await createClientJobAccessToken(supabase, accountId, jobId, {
+    clientPhone: job.client_phone,
+    clientEmail: job.client_email,
+  });
+
+  if (route.channel === 'sms' && phone) {
+    try {
+      await recordSmsConsent(accountId, phone, 'client_job_dashboard');
+      await sendQuoteUpdatedSms({
+        phone,
+        businessName,
+        jobRef: job.ref,
+        token,
+        total: totalLabel,
+        direction,
+        accountId,
+      });
+    } catch (error) {
+      console.error(`Quote update SMS failed for job ${jobId}:`, error);
+      return {
+        ok: true,
+        total,
+        delivery: 'failed',
+        message: `Saved — but the text did not go through. Send ${job.client_name} the link yourself.`,
+      };
+    }
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'job_update',
+      title: 'Updated quote texted to client',
+      body: `The quote was updated${totalLabel ? ` to ${totalLabel}` : ''} and the link was texted to ${job.client_name}.`,
+      visibility: 'client',
+    });
+    return { ok: true, total, delivery: 'sms', message: `Saved and texted to ${job.client_name}.` };
+  }
+
+  if (email) {
+    try {
+      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+      await sendClientQuoteEmail({
+        recipientEmail: email,
+        businessName,
+        clientName: job.client_name,
+        jobRef: job.ref,
+        quotedAmount: total,
+        quoteUrl: `${origin}/client/jobs/${token}`,
+        accountId,
+      });
+    } catch (error) {
+      console.error(`Quote update email failed for job ${jobId}:`, error);
+      return {
+        ok: true,
+        total,
+        delivery: 'failed',
+        message: `Saved — but the email did not go through. Send ${job.client_name} the link yourself.`,
+      };
+    }
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'job_update',
+      title: 'Updated quote emailed to client',
+      body: `The quote was updated${totalLabel ? ` to ${totalLabel}` : ''} and the link was emailed to ${email}.`,
+      visibility: 'client',
+    });
+    return { ok: true, total, delivery: 'email', message: `Saved and emailed to ${email}.` };
+  }
+
+  return { ok: true, total, delivery: 'none', message: `Saved. Quote total ${totalLabel ?? '$0.00'}.` };
 }
 
 // Draft an itemized quote from the job's scope, the owner's price book and what

@@ -8596,6 +8596,32 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   flex-wrap: wrap;
 }
 
+/* Both notes take the whole row under the buttons rather than trailing them:
+   at any narrow width a wrapped sentence beside two buttons reads as a caption
+   on whichever one it happens to land under. */
+.quote-save-note,
+.quote-autosave-note { flex: 1 0 100%; margin: 0; }
+.quote-autosave-note { opacity: 0.7; }
+
+/* ---- the draft that survived the tab closing ----
+   Offered, never applied: a stored draft that silently overwrote what the
+   server has would be worse than losing it — it is older, it may be from a
+   different device's idea of this job, and nobody asked for it. */
+.quote-restore-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.quote-restore-bar p { margin: 0; font-size: 0.88rem; line-height: 1.55; }
+.quote-restore-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
 /* ---- Quote document (client, approval) ---- */
 .quote-document {
   display: flex;

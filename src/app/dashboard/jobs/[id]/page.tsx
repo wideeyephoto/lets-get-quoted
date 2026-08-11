@@ -49,6 +49,7 @@ import {
   requestJobReviewAction,
   resolveAccountReviewUrl,
   saveQuoteItemsAction,
+  saveQuoteItemsAndNotifyAction,
   draftQuoteAction,
   reviewQuoteAction,
   scheduleJobAction,
@@ -566,6 +567,8 @@ export default async function JobDetailPage({
         </p>
         <QuoteBuilder
           action={boundSaveQuoteItems}
+          notifyAction={saveQuoteItemsAndNotifyAction.bind(null, job.id)}
+          autosaveKey={job.id}
           draftAction={draftQuoteAction.bind(null, job.id)}
           reviewAction={reviewQuoteAction.bind(null, job.id)}
           initialItems={quoteItems}

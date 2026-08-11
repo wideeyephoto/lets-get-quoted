@@ -162,6 +162,34 @@ export function clientJobDashboardText(input: {
   return `${input.businessName} here — ${invitation} ${input.link}. Reply STOP to opt out.`;
 }
 
+/**
+ * The quote changed after it went out.
+ *
+ * WHY THIS EXISTS AT ALL. Saving an edit to a quote the homeowner has already
+ * been sent changed the number on their screen and told them nothing — they
+ * came back to a link they had already read and the total was different, with
+ * no message anywhere saying so. Silence there is not neutral; it is the shape
+ * of a bait and switch even when the edit is a correction in their favour.
+ *
+ * It names the direction and the number, because "your quote has been updated"
+ * is the sentence that makes somebody open a link fearing the worst. Whether
+ * the total went up, went down or stayed the same is the first thing they want
+ * to know, and it costs eight words to say.
+ */
+export function quoteUpdatedText(input: {
+  businessName: string;
+  jobRef: string;
+  link: string;
+  /** Formatted, e.g. "$3,300.00". Omitted when the job has no itemized total. */
+  total?: string | null;
+  direction?: 'up' | 'down' | 'same';
+}): string {
+  const move =
+    input.direction === 'up' ? 'went up to' : input.direction === 'down' ? 'came down to' : 'is now';
+  const amount = input.total ? ` The total ${move} ${input.total}.` : '';
+  return `${input.businessName} here — your quote for job ${input.jobRef} has been updated.${amount} Review and approve it here: ${input.link}. Reply STOP to opt out.`;
+}
+
 export function schedulingOptionsText(input: {
   businessName: string;
   jobRef: string;
