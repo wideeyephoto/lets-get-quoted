@@ -8603,6 +8603,129 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .quote-autosave-note { flex: 1 0 100%; margin: 0; }
 .quote-autosave-note { opacity: 0.7; }
 
+/* ---- what the homeowner is about to get ----
+   The quote builder has had a preview since it shipped. The invoice and the
+   payment link — the two things that actually ask somebody for money — had
+   none, and everything that form does happens on somebody else's phone. */
+.payment-send-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+}
+
+.preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(4, 10, 18, 0.66);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.preview-dialog {
+  width: min(640px, 100%);
+  /* Never taller than the screen it is on: the invoice panel grows with the
+     line items and a dialog that runs off the bottom hides its own close. */
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface, #0f1a25);
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
+}
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.preview-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.preview-close {
+  min-height: 40px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.preview-tabs {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.7rem 1.1rem 0;
+}
+.preview-tab {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.preview-tab[data-on='true'] { border-color: var(--accent); color: var(--text); }
+.preview-body { overflow-y: auto; padding: 1rem 1.1rem 1.2rem; }
+
+.preview-doc {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.preview-doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
+.preview-doc-head strong { display: block; font-size: 0.98rem; }
+.preview-doc-head span { display: block; margin-top: 0.15rem; font-size: 0.8rem; color: var(--muted); }
+.preview-doc-status {
+  flex: none;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.preview-doc-to { margin: 0.7rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.preview-doc-lines { list-style: none; margin: 0.9rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.preview-doc-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.preview-doc-lines b { font-variant-numeric: tabular-nums; }
+.preview-doc-empty { margin: 0.9rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.preview-doc-totals { margin: 0.9rem 0 0; display: grid; gap: 0.35rem; }
+.preview-doc-totals > div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; }
+.preview-doc-totals dt, .preview-doc-totals dd { margin: 0; }
+.preview-doc-totals dd { font-variant-numeric: tabular-nums; }
+.preview-doc-total { font-weight: 700; font-size: 0.95rem !important; }
+
+/* The message, in the shape it arrives in. */
+.preview-sms {
+  padding: 0.85rem 1rem;
+  border-radius: 16px 16px 16px 4px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.preview-sms p { margin: 0; font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; }
+.preview-sms-meta { margin: 0 0 0.6rem; font-size: 0.78rem; color: var(--muted); }
+.preview-note { margin: 0.8rem 0 0; font-size: 0.82rem; line-height: 1.55; color: var(--muted); }
+.preview-note-warn { color: var(--warning, #f0b23a); }
+
 /* ---- the draft that survived the tab closing ----
    Offered, never applied: a stored draft that silently overwrote what the
    server has would be worse than losing it — it is older, it may be from a

@@ -31,7 +31,9 @@ import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 import { listPayments } from '@/lib/payments';
-import { listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
+import { computeInvoiceTotals, getInvoiceWithItems, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
+import { loadBusinessName } from '@/lib/business-name';
+import PaymentPreview from './PaymentPreview';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { getLeadByConvertedJob } from '@/lib/leads';
@@ -218,6 +220,20 @@ export default async function JobDetailPage({
   const invoiceDisplayTotal = jobInvoice ? Math.max(Number(jobInvoice.total), Number(job.quoted_amount)) : Number(job.quoted_amount);
   const invoiceBalance = jobInvoice ? Math.max(0, invoiceDisplayTotal - invoicePaidTotal) : null;
   const outstandingBalance = Math.max(0, invoiceDisplayTotal - invoicePaidTotal);
+
+  /* THE INVOICE AS THE CLIENT WILL SEE IT, for the preview beside the send
+     button. Lines and charges rather than a total, because a preview that only
+     repeats the number already on the screen answers no question anybody had.
+     Loaded only when there is an invoice, so a job with none costs no query. */
+  const previewInvoice = jobInvoice ? await getInvoiceWithItems(supabase, accountId, jobInvoice.id) : null;
+  const previewTotals = previewInvoice
+    ? computeInvoiceTotals(
+        previewInvoice.items,
+        Number(previewInvoice.invoice.discount_percent) || 0,
+        Number(previewInvoice.invoice.tax_rate) || 0,
+      )
+    : null;
+  const previewBusinessName = await loadBusinessName(supabase, accountId);
   const jobPhotos = await createJobPhotoLinks(accountId, job.photo_paths || []);
   const { data: accountRow } = await supabase
     .from('accounts')
@@ -838,7 +854,7 @@ export default async function JobDetailPage({
               </div>
             )}
 
-            <form action={boundCreateDepositRequest} className="cost-form workspace-form-block">
+            <form id="payment-request-form" action={boundCreateDepositRequest} className="cost-form workspace-form-block">
               <div className="invoice-context-pill">
                 <span>Job invoice</span>
                 <strong>{jobInvoice ? `${jobInvoice.ref} · Balance ${formatMoney(invoiceBalance ?? 0)}` : 'Draft invoice will be created automatically'}</strong>
@@ -882,8 +898,40 @@ export default async function JobDetailPage({
                   <span>Text the secure payment link and automatic payment updates. The homeowner agreed to transactional texts; message and data rates may apply. Reply STOP to opt out.</span>
                 </label>
               </div>
-              <div style={{ marginTop: '0.8rem' }}>
+              {/* THE BUTTON THAT ASKS FOR MONEY GETS A PREVIEW, like the one
+                  that sends a quote already has. Everything this form does
+                  happens on somebody else's phone, and until now the first time
+                  anyone read the message was after it had gone. */}
+              <div className="payment-send-row">
                 <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Send invoice/payment link</SaveButton>
+                <PaymentPreview
+                  formId="payment-request-form"
+                  businessName={previewBusinessName}
+                  jobRef={job.ref}
+                  clientName={job.client_name}
+                  payOrigin={quoteLinkOrigin}
+                  invoice={
+                    previewInvoice && previewTotals
+                      ? {
+                          ref: previewInvoice.invoice.ref,
+                          statusLabel: INVOICE_STATUS_LABEL[previewInvoice.invoice.status],
+                          items: previewInvoice.items.map((item) => ({
+                            id: item.id,
+                            description: item.description,
+                            amount: Number(item.amount) || 0,
+                          })),
+                          subtotal: previewTotals.subtotal,
+                          discountPercent: previewTotals.discountPercent,
+                          discountAmount: previewTotals.discountAmount,
+                          taxRate: previewTotals.taxRate,
+                          taxAmount: previewTotals.taxAmount,
+                          total: previewTotals.total,
+                          paid: invoicePaidTotal,
+                          balance: invoiceBalance ?? 0,
+                        }
+                      : null
+                  }
+                />
               </div>
             </form>
 
