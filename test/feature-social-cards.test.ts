@@ -454,10 +454,20 @@ describe('the client portal page', () => {
     '',
   );
 
-  it('says what the homeowner does not have to do', () => {
-    expect(SRC).toContain('Keep every customer updated');
-    expect(SRC).toContain('and every message tied to the right job.');
+  it('says what the homeowner does not have to do, where it can be seen', () => {
+    // It was the tail of the lede. On this page it is the objection the reader
+    // is most afraid of — "my customers will never use it" — so it is a proof
+    // chip now, four words wide, above the fold.
+    expect(SRC).toContain("title: 'No app, no password'");
     expect(SRC).toContain('not another app or password');
+  });
+
+  it('has a headline short enough to leave room for the button', () => {
+    // The old one ran to four lines and 288px on a 360px phone, which put the
+    // primary CTA off the first screen on its own.
+    const title = SRC.slice(SRC.indexOf('title={'), SRC.indexOf('lede='));
+    expect(title).toContain('Every message, <em>on the right job.</em>');
+    expect(title).not.toContain('Keep every customer updated');
   });
 
   it('fits the eyebrow on one line', () => {

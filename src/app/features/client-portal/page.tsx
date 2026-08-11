@@ -73,9 +73,15 @@ export default function ClientPortalPage() {
       /* Shorter than "Text messaging + a portal for every job", which wrapped
          at 390px and left "JOB" alone on the second line. */
       eyebrow="Client portals + two-way texting"
+      /* SHORTER, BECAUSE IT WAS 288px OF A 667px SCREEN. The old headline —
+         "Keep every customer updated—and every message tied to the right job"
+         — ran to four lines on a 360px phone and pushed the button off the
+         first screen on its own. Both halves survive: the lede below still
+         promises the updates, and "the right job" is the half that is
+         actually differentiated. */
       title={
         <>
-          Keep every customer updated&mdash;<em>and every message tied to the right job.</em>
+          Every message, <em>on the right job.</em>
         </>
       }
       lede="Give each job one simple customer portal for quotes, schedules, arrival updates, conversations and payments. Homeowners get a link — not another app or password."
@@ -134,8 +140,13 @@ export default function ClientPortalPage() {
           body: 'Approvals, schedule, updates and money together.',
         },
         {
-          title: 'One conversation',
-          body: 'The office and field team share the same context.',
+          /* THE OBJECTION, AS A CHIP. "Homeowners get a link — not another app
+             or password" was buried at the end of the lede, and it is the
+             single thing a contractor is most afraid of on this page: that
+             their customers will refuse to adopt it. It answers itself in four
+             words at the top instead. */
+          title: 'No app, no password',
+          body: 'A homeowner opens a link. Nothing to download or sign into.',
         },
       ]}
       story={{

@@ -7632,3 +7632,112 @@
   /* Still gets out of the way; it just does not slide. */
   .root :global(.mobile-cta) { transition: none; }
 }
+
+/* ===========================================================================
+   §111 — THE BUTTON IS ON THE FIRST SCREEN
+
+   Measured at 360x667 — the smallest phone anybody still carries — the primary
+   CTA fell below the fold on /features/website-builder, /features/client-portal
+   and /features/reviews, and was barely visible on /features/quick-stops. A
+   hero whose entire job is to get somebody to press a button, that you have to
+   scroll to find the button in.
+
+   667px is the whole budget, and the old rules spent it like this:
+
+     118px  padding-top (header clearance, set for a 900px-wide tablet)
+      20px  the "All features" back link
+      34px  the eyebrow, plus its margin
+    ~196px  h1 at 49px/0.98 — four lines, because 49px on a 360px screen fits
+            about four words a line
+      58px  the margins around the lede
+    ~103px  the lede at 15px/1.72, four lines
+     ————
+     529px before the buttons, on the shortest headline. A long one — client
+     portal's was 288px on its own — put the button at 600px+ and off-screen.
+
+   Below 430px the type steps down and the paddings tighten. 38px is still a
+   hero headline; it is just one that leaves room for the thing it is asking
+   you to do. Keyed to 430px rather than 390 so it also covers the 414–428px
+   phones, where a long headline had the same problem one line later.
+   =========================================================================== */
+@media (max-width: 430px) {
+  .root :global(.detail-hero) { padding: 92px 18px 48px; gap: 32px; }
+  .root :global(.detail-hero h1),
+  .root :global(.trades-hero h1),
+  .root :global(.pricing-hero h1),
+  .root :global(.founder-hero h1) { font-size: 38px; letter-spacing: -1.6px; line-height: 1.02; }
+  .root :global(.detail-hero-copy>p:not(.eyebrow)) { margin: 16px 0 20px; font-size: 15px; line-height: 1.6; }
+  /* The back link is navigation, not part of the pitch — it keeps its tap
+     target and gives up only the space under it. */
+  .root :global(.detail-back) { margin-bottom: 10px; }
+  .root :global(.detail-hero .hero-actions) { gap: 10px; }
+  /* Full width, stacked, in stated order. Two half-width buttons at 360px
+     truncate their own labels — "Open the live calendar" does not fit in
+     165px — and a truncated button is a button nobody presses. */
+  .root :global(.detail-hero .hero-actions .button) {
+    width: 100%;
+    justify-content: center;
+    padding-inline: 14px;
+  }
+  /* Below the fold on purpose. It is reassurance for somebody who has already
+     read the buttons, so it is the one thing here that may cost a scroll. */
+  .root :global(.detail-hero-note) { margin-top: 14px; font-size: 12.5px; }
+}
+
+/* ===========================================================================
+   §112 — PROSE IS NOT A CAPTION, AND A FOOTER LINK IS SOMETHING YOU TAP
+
+   §108 raised the three worst runs in the shared detail layout. The same
+   numbers are all over the rest of the sheet, because the source stylesheet
+   sets running text in the same sizes it sets badges: fifteen selectors at
+   11px and twenty at 10px, and most of them are sentences.
+
+   The rule applied here is a distinction the source never made:
+
+     · A SENTENCE gets 13px and its line-height. If it has a line-height it is
+       prose, and prose under 12px is a thing people give up on rather than
+       squint at — these are paragraphs of product explanation, on a page
+       asking somebody to trust us with their customers' money.
+
+     · A LABEL keeps its size. Chips, initials, table keys and the letter-
+       spaced eyebrow are glanced at, not read, and inflating them would just
+       break the layouts they sit in. .contact-avatar, .pricing-checks span and
+       the like are deliberately not in this list.
+
+   FOOTER LINKS. Measured 19–21px high — inside WCAG 2.2's 24x24 floor, on the
+   only navigation at the bottom of every marketing page. The gap already
+   separates them, so the fix is vertical padding: it costs nothing visually
+   and takes each target over 24px without moving the row apart.
+   =========================================================================== */
+
+/* The sentences. */
+.root :global(.ai-rail p),
+.root :global(.ai-split-story .ai-rail p),
+.root :global(.suite-grid p),
+.root :global(.client-benefits small),
+.root :global(.msg p),
+.root :global(.score-panel>p),
+.root :global(.process-steps p),
+.root :global(.feature-link-grid p),
+.root :global(.trade-grid p),
+.root :global(.stage-list li),
+.root :global(.pricing-model p),
+.root :global(.pricing-faq article p),
+.root :global(.founder-chapters p),
+.root :global(.founder-principles article p) {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* The footer's own copy, which is a sentence about who we are. */
+.root :global(footer) { font-size: 13px; }
+
+/* The tap targets. min-height rather than a taller font: the row keeps its
+   look and each link clears 24x24 on its own. */
+.root :global(.footer-links a) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding-block: 4px;
+  font-size: 13px;
+}
