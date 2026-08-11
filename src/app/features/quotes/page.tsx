@@ -118,6 +118,12 @@ export default function QuotesFeaturePage() {
         </>
       }
       lede="Build an itemized quote from your own price book, offer the upgrades you actually want to sell, and let the homeowner approve it from the link — no printer, no PDF, no third follow-up call."
+      /* The reassurance that actually closes the doubt, moved above the button.
+         "You see the customer's copy before it sends" was nowhere near the top,
+         and it is the answer to the fear that stops people using a tool like
+         this: that something goes to a customer in your name that you have not
+         read. */
+      heroChips={['You read their copy before it sends', 'Signed from a phone, no account', 'No per-quote fee']}
       heroNote="The draft is priced from the services you set up. Anything priced outside your book is flagged before it goes out, and the approval is recorded with the name and the moment."
       /* A specific job, not the job list. job-13 is the demo record sitting at
          the quote stage — "open a sample quote" that lands on an index of jobs
@@ -234,25 +240,15 @@ export default function QuotesFeaturePage() {
         </section>
       }
       stepsEyebrow="From request to signature"
-      stepsTitle="Four steps, and you type the price once."
-      steps={[
-        {
-          title: 'Start from the request',
-          body: 'The customer, the property, the scope and any photos are already on the record. You are editing a draft, not opening a blank document.',
-        },
-        {
-          title: 'Price it from your book',
-          body: 'Pull in services at the rates you set. Add anything one-off by hand — it will be flagged as priced outside the book, which is the point.',
-        },
-        {
-          title: 'Add the optional upgrades',
-          body: 'Each one shows what the quote already covers and what the upgrade adds, so the customer is choosing rather than negotiating.',
-        },
-        {
-          title: 'Send the link and let it chase',
-          body: 'They approve and sign from their phone. If they do not, the quote reminds them up to twice and then stops — a quote that nags forever costs you the next job too.',
-        },
-      ]}
+      /* THE FOUR STEPS ARE GONE, because they were the three benefits again.
+         "Price it from your book" is "Stop pricing from memory", "Add the
+         optional upgrades" is "Sell the upgrade without the sales call", and
+         "Send the link and let it chase" is "Get the yes in writing, from a
+         phone" — the same argument, in the same order, one section later, with
+         the real screenshots of the builder sitting between the two tellings.
+         The shared layout drops the section when neither prop is passed, and
+         its own comment says why: a page whose steps only restate its story
+         should not print the same argument twice. */
       catalog={['quotes']}
       catalogEyebrow="What the quote carries"
       catalogTitle="Everything attached to an approved quote."
@@ -265,6 +261,24 @@ export default function QuotesFeaturePage() {
         {
           q: 'What happens if the job turns out to be bigger?',
           a: 'A change order. The crew photographs what they found, the extra work is priced, and the homeowner agrees to it in writing on the same record — instead of on a phone call two people remember differently.',
+        },
+        {
+          /* Three answers the page never gave, all of them checked against the
+             product rather than assumed. Quotes carry no expiry column, tax
+             lives on the invoice (invoices.tax_rate) and not on quote_items,
+             and what survives an approval is the signature pair plus a
+             client-visible revision note — NOT a full document version, which
+             is the honest limit and is stated as one. */
+          q: 'Do quotes expire?',
+          a: 'Not on their own — an old link still opens, and there is no date after which a customer finds a dead page. What stops is the chasing: the quote follows up twice by default, up to three times if you set it that way, and then goes quiet. If a price is no longer good, revise the quote; the customer is told the total changed rather than discovering it.',
+        },
+        {
+          q: 'How is sales tax handled?',
+          a: 'The quote is the price you set — line by line, as the customer sees it. Tax is applied on the invoice, where the rate and the discount live, so it is calculated once against the amount actually being billed rather than being carried through every draft and revision.',
+        },
+        {
+          q: 'What is kept once a quote is approved?',
+          a: 'The name they typed, the moment they typed it, the line items and the upgrades they took or left. Edit an approved quote afterwards and the product makes you say so deliberately, then puts a note on the customer’s own page naming the old total and the new one — a changed quote can never be a silent one. What it does not yet do is keep a full copy of the earlier document, so for extra work on an agreed price a change order is the cleaner route: it prices the difference and gets that agreed on its own.',
         },
         {
           q: 'Can I require a deposit before I schedule?',

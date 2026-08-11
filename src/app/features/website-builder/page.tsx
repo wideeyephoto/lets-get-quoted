@@ -132,7 +132,13 @@ export default function WebsiteBuilderPage() {
       // and Stripe's cut. What belongs here is what a contractor about to
       // generate a site wants to know: that it is theirs. Custom domains are
       // real (contractor-brand.ts carries custom_domain + custom_domain_verified_at).
-      heroNote="The site, the subdomain and the instant estimate are included. Connect your own domain when you are ready, and edit every word before anything goes live."
+      /* The three facts, above the button rather than in a sentence below it.
+         They are the three objections in order — is the content mine to
+         change, do I have to use your address, and is the estimator extra —
+         and as prose under the actions they were read after the decision
+         instead of before it. */
+      heroChips={['Every word editable', 'Your own domain', 'Instant estimate included']}
+      heroNote="Published on a free subdomain the moment it is ready. Connecting a custom domain is a separate switch that never holds up going live."
       demo={
         <ExampleFrame
           label="A generated site, before a word has been edited — with the instant estimate on the front page."
