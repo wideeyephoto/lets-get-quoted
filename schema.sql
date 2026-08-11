@@ -1443,6 +1443,11 @@ create table if not exists payment_plans (
   updated_at                timestamptz not null default now()
 );
 create index if not exists payment_plans_job_idx on payment_plans (job_id);
+-- Whether the homeowner may settle the whole total instead of starting the plan.
+-- A plan is an offer, not a requirement; see
+-- migrations/2026-08-11-plan-pay-in-full.sql for why the default is true and why
+-- this never gates paying OFF an already-active plan.
+alter table payment_plans add column if not exists allow_pay_in_full boolean not null default true;
 
 -- Link installment (+ deposit / payoff) payment rows back to their plan, plus
 -- the installment's scheduled due date and order. Added here — after

@@ -94,6 +94,20 @@ export default function DepositField() {
               <input name="planFirstDate" type="date" defaultValue={defaultFirstDate()} aria-label="First installment date" />
             </label>
           </div>
+          {/* THE PLAN AS AN OFFER, NOT A REQUIREMENT.
+              These radios are mutually exclusive, so picking Payment Plan used
+              to remove paying in full from the CLIENT's page too — somebody who
+              would happily have settled the whole thing got a deposit, four
+              dated installments and a card authorization, and no way to say
+              "I'll just pay it". On by default, because a contractor willing to
+              be paid in four parts is rarely unwilling to be paid in one. */}
+          <label className={styles.planAllowFull}>
+            <input type="checkbox" name="planAllowPayInFull" defaultChecked />
+            <span>
+              <strong>Also let them pay in full</strong>
+              <small>The client chooses: the whole total in one payment, or the schedule below. Most say yes to one of the two.</small>
+            </span>
+          </label>
           <p className={styles.planHint}>
             The deposit is collected before scheduling. After it clears, the remaining balance is split into equal
             installments charged automatically to the client&rsquo;s saved card. The client sees every amount and date and

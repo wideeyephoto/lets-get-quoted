@@ -382,6 +382,10 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
       clientPhone,
       smsConsent: Boolean(clientPhone),
       invoiceId: invoice.id,
+      // Ticked by default in the form. An unchecked box posts nothing at all,
+      // so absence has to mean "off" — which is why this reads the value rather
+      // than defaulting a missing key to true.
+      allowPayInFull: formData.get('planAllowPayInFull') === 'on',
     });
     await createPaymentFeedEvent(supabase, depositPaymentId, 'payment_requested');
     // A plan deposit always gates scheduling until it's paid.

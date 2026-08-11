@@ -118,6 +118,10 @@ export type ClientJobDashboard = {
     paidCents: number;
     remainingCents: number;
     authorized: boolean;
+    /** The contractor offered the plan as a choice, not as the only route. */
+    allowPayInFull: boolean;
+    /** A pay-in-full is already at checkout, so the choice has been made. */
+    payInFullInFlight: boolean;
     frequency: string;
     card: { brand: string | null; last4: string | null } | null;
     deposit: { paymentId: string; amount: number; status: string } | null;
@@ -460,6 +464,11 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
       paidCents,
       remainingCents: Math.max(0, (planRow.total_cents as number) - paidCents),
       authorized: Boolean(planRow.authorized_at),
+      // Defaults to true on an un-migrated database for the same reason the
+      // column defaults to true: a contractor willing to be paid in four parts
+      // is not unwilling to be paid in one.
+      allowPayInFull: planRow.allow_pay_in_full !== false,
+      payInFullInFlight: rows.some((row) => row.kind === 'final' && (row.status === 'requested' || row.status === 'processing')),
       frequency: planRow.frequency as string,
       card: planRow.card_last4 ? { brand: planRow.card_brand as string | null, last4: planRow.card_last4 as string } : null,
       deposit: depositRow ? { paymentId: depositRow.id, amount: Number(depositRow.amount), status: depositRow.status } : null,

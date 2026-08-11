@@ -5409,6 +5409,51 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .client-plan-authorize label { font-size: 0.82rem; font-weight: 700; }
 .client-plan-fineprint { margin: 0; font-size: 0.74rem; line-height: 1.45; opacity: 0.62; }
 .client-plan-cta { justify-self: start; }
+/* ── Two ways to pay, both priced ────────────────────────────────────────────
+   A payment plan used to be the only route on a page that offered one. Both
+   totals are named side by side, at the moment the choice is made. */
+.plan-choice { margin: 0.25rem 0 1rem; }
+.plan-choice-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i58);
+}
+.plan-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+.plan-choice-card {
+  display: grid;
+  gap: 0.25rem;
+  align-content: start;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.plan-choice-card strong { font-size: 0.92rem; }
+.plan-choice-amount {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+.plan-choice-card small { font-size: 0.78rem; line-height: 1.45; color: var(--muted); }
+.plan-choice-card .btn { margin-top: 0.4rem; justify-self: start; }
+/* The right-hand card describes the form below rather than carrying its own —
+   authorizing needs a typed name, which cannot live in a summary. */
+.plan-choice-card.is-plan { border-color: var(--cbrand-edge, var(--cedge-orange-29)); }
+.plan-choice-note { margin-top: 0.4rem; font-size: 0.78rem; font-weight: 800; color: var(--muted); }
+.client-plan-option-head {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+@media (max-width: 560px) { .plan-choice-grid { grid-template-columns: 1fr; } }
+
 /* The schedule's own sum, so "this splits the same total, nothing more" can be
    checked by reading rather than by adding. */
 .client-plan-sum { border-color: var(--edge-t18); background: rgba(var(--tint), 0.06); font-weight: 700; }

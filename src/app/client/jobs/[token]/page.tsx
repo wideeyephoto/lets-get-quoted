@@ -314,6 +314,42 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
 
       {plan.status === 'pending_deposit' ? (
         <>
+          {/* A PLAN IS AN OFFER, NOT A REQUIREMENT.
+              The contractor's payment terms are mutually exclusive radios, so
+              choosing "Payment Plan" removed paying in full — for the
+              homeowner, not just for the contractor. Somebody who would happily
+              have settled the whole thing was shown a deposit, four dated
+              installments and a card authorization, with no way to say "I'll
+              just pay it". Both amounts are named here, at the moment the
+              choice is actually made. */}
+          {plan.allowPayInFull && !plan.payInFullInFlight ? (
+            <div className="plan-choice">
+              <p className="plan-choice-label">Two ways to pay this</p>
+              <div className="plan-choice-grid">
+                <form action={payPlanBalanceAction.bind(null, params.token)} className="plan-choice-card">
+                  <input type="hidden" name="planId" value={plan.id} />
+                  <strong>Pay in full</strong>
+                  <span className="plan-choice-amount">{formatMoney(plan.totalCents / 100)}</span>
+                  <small>One payment, and you&apos;re done. Nothing is scheduled and no card is saved for later.</small>
+                  <SaveButton className="btn secondary" pendingLabel="Starting...">Pay {formatMoney(plan.totalCents / 100)} now</SaveButton>
+                </form>
+                <div className="plan-choice-card is-plan">
+                  <strong>Pay over time</strong>
+                  <span className="plan-choice-amount">{formatMoney(plan.depositCents / 100)} today</span>
+                  <small>
+                    then {plan.schedule.length} payment{plan.schedule.length === 1 ? '' : 's'} of{' '}
+                    {formatMoney(plan.schedule[0]?.amount ?? 0)}. 0% interest, no fees.
+                  </small>
+                  <span className="plan-choice-note">Set it up below ↓</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {plan.payInFullInFlight ? (
+            <p className="client-plan-fineprint">A full payment is being processed…</p>
+          ) : null}
+
           <p className="workspace-card-copy">
             You pay a {formatMoney(plan.depositCents / 100)} deposit now, then {plan.schedule.length} installment{plan.schedule.length === 1 ? '' : 's'}. 0% interest,
             no fees — this splits the same total, nothing more.
@@ -353,6 +389,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
           ) : (
             <form action={authorizePaymentPlanAction.bind(null, params.token)} className="client-plan-authorize">
               <input type="hidden" name="planId" value={plan.id} />
+              {plan.allowPayInFull ? <p className="client-plan-option-head">Pay over time</p> : null}
               <label htmlFor="plan-signer">Type your full name to authorize automatic installment payments</label>
               <input id="plan-signer" name="signerName" type="text" placeholder="Your full name" autoComplete="name" required />
               <p className="client-plan-fineprint">

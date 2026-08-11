@@ -42,6 +42,15 @@ export type PaymentPlan = {
   authorized_name: string | null;
   payoff_locked_at: string | null;
   deposit_payment_id: string | null;
+  /**
+   * Whether the homeowner may settle the whole total instead of starting the
+   * plan. A plan is an offer, not a requirement — see the migration.
+   *
+   * Only gates the choice BEFORE the plan starts. Paying off an ACTIVE plan
+   * early is a separate promise, made to the client in writing on the
+   * authorization form, and this flag must never be read as withdrawing it.
+   */
+  allow_pay_in_full: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -97,6 +106,8 @@ export type CreatePaymentPlanInput = {
   clientPhone: string | null;
   smsConsent: boolean;
   invoiceId?: string | null;
+  /** Defaults to true — see PaymentPlan.allow_pay_in_full. */
+  allowPayInFull?: boolean;
 };
 
 export async function createPaymentPlan(
@@ -118,6 +129,7 @@ export async function createPaymentPlan(
       frequency: input.frequency,
       first_installment_date: input.firstInstallmentDate,
       status: 'pending_deposit',
+      allow_pay_in_full: input.allowPayInFull !== false,
     })
     .select('*')
     .single();
@@ -472,11 +484,23 @@ export async function runDuePlanInstallments(): Promise<PlanRunSummary> {
 }
 
 // ---------------------------------------------------------------------------
-// Early payoff — the client pays the whole remaining balance at any time, with
-// no penalty. Locking is atomic so a payoff can never run alongside a scheduled
+// Pay the whole thing — which is the same act at two different moments, so it
+// is one function.
+//
+//   BEFORE the plan starts (pending_deposit): "I'd rather just pay it." The
+//   plan was an offer; this declines the schedule and settles the total. Gated
+//   on allow_pay_in_full, because a contractor may have priced the job around
+//   the schedule.
+//
+//   AFTER it starts (active): early payoff of the remaining balance, with no
+//   penalty. NEVER gated — that is a promise made to the client in writing on
+//   the authorization form, and a flag set by the contractor afterwards cannot
+//   take it back.
+//
+// Locking is atomic so a payoff can never run alongside a scheduled
 // installment: we take the plan's payoff lock (pausing the cron for this plan),
-// then collect the remaining balance through the ordinary /pay checkout. The
-// plan is only closed by the webhook confirming that payoff paid.
+// then collect the balance through the ordinary /pay checkout. The plan is only
+// closed by the webhook confirming that payment paid.
 // ---------------------------------------------------------------------------
 
 export async function startPlanPayoff(clientToken: string, planId: string): Promise<{ redirectUrl: string }> {
@@ -502,16 +526,30 @@ export async function startPlanPayoff(clientToken: string, planId: string): Prom
   const plan = planRow as PaymentPlan | null;
   if (!plan) throw new Error('Plan not found.');
   if (plan.status === 'paid_off') return { redirectUrl: `/client/jobs/${clientToken}?plan=paid` };
-  if (plan.status !== 'active') throw new Error('This plan is not active.');
+  if (plan.status === 'canceled') throw new Error('This plan is no longer available.');
+  if (plan.status === 'pending_deposit' && plan.allow_pay_in_full === false) {
+    throw new Error('This contractor has asked for this job to be paid on the plan schedule.');
+  }
 
   // An installment already mid-charge (processing) can't be safely folded into a
   // payoff amount — if we excluded it and it later failed we'd under-collect, and
   // if we included it we'd risk double-charging. Have the client retry shortly.
   const { data: rows } = await admin
     .from('payments')
-    .select('amount, status')
+    .select('amount, status, kind, homeowner_phone, sms_consent, sms_consent_at')
     .eq('payment_plan_id', plan.id);
-  const list = (rows ?? []) as Array<{ amount: number; status: string }>;
+  const list = (rows ?? []) as Array<{
+    amount: number;
+    status: string;
+    kind: string;
+    homeowner_phone: string | null;
+    sms_consent: boolean | null;
+    sms_consent_at: string | null;
+  }>;
+  // The consent the deposit request was raised with. A pay-in-full stands in
+  // for that request, so it inherits the same permission rather than silently
+  // losing the customer's payment texts.
+  const consentSource = list.find((row) => row.kind === 'deposit') ?? null;
   if (list.some((row) => row.status === 'processing')) {
     throw new Error('A scheduled payment is processing right now — please try the payoff again in a few minutes.');
   }
@@ -524,12 +562,14 @@ export async function startPlanPayoff(clientToken: string, planId: string): Prom
   }
 
   // Atomic lock: pauses the installment cron for this plan while payoff is in
-  // flight. Only one payoff can hold the lock at a time.
+  // flight. Only one payoff can hold the lock at a time. Both live statuses are
+  // eligible — before the plan starts this is "pay it all now instead", after
+  // it starts it is an early payoff, and neither may run twice.
   const { data: locked } = await admin
     .from('payment_plans')
     .update({ payoff_locked_at: now, updated_at: now })
     .eq('id', plan.id)
-    .eq('status', 'active')
+    .in('status', ['active', 'pending_deposit'])
     .is('payoff_locked_at', null)
     .select('id')
     .maybeSingle();
@@ -544,9 +584,12 @@ export async function startPlanPayoff(clientToken: string, planId: string): Prom
       job_id: plan.job_id,
       payment_plan_id: plan.id,
       kind: 'final',
-      label: 'Remaining balance — payment plan payoff',
+      label: plan.status === 'pending_deposit' ? 'Paid in full — instead of the payment plan' : 'Remaining balance — payment plan payoff',
       amount: fromCents(remainingCents),
       status: 'requested',
+      homeowner_phone: consentSource?.homeowner_phone ?? null,
+      sms_consent: consentSource?.sms_consent ?? false,
+      sms_consent_at: consentSource?.sms_consent_at ?? null,
     })
     .select('id')
     .single();
@@ -570,12 +613,15 @@ async function finalizePlanPayoff(admin: ReturnType<typeof createAdminClient>, p
     .maybeSingle();
   if (!payment || payment.kind !== 'final' || !payment.payment_plan_id || payment.status !== 'paid') return;
 
+  // Both live statuses close here. A plan paid in full BEFORE it started never
+  // reached 'active' — its installments were never scheduled and its deposit
+  // was never taken — and closing it is exactly as final either way.
   const { data: closedRow } = await admin
     .from('payment_plans')
     .update({ status: 'paid_off', payoff_locked_at: null, updated_at: new Date().toISOString() })
     .eq('id', payment.payment_plan_id)
-    .eq('status', 'active')
-    .select('id, account_id, job_id')
+    .in('status', ['active', 'pending_deposit'])
+    .select('id, account_id, job_id, status, deposit_payment_id')
     .maybeSingle();
   if (!closedRow) return;
 
@@ -586,10 +632,21 @@ async function finalizePlanPayoff(admin: ReturnType<typeof createAdminClient>, p
     .eq('kind', 'plan_installment')
     .in('status', ['requested', 'failed']);
 
+  // And the deposit request the plan raised, which nobody is going to pay now.
+  // Same "cancel is a delete of an unstarted request" rule the owner's own
+  // cancel button uses — only ever a row still sitting at 'requested', so a
+  // deposit that had begun processing is untouched.
+  await admin
+    .from('payments')
+    .delete()
+    .eq('payment_plan_id', closedRow.id)
+    .eq('kind', 'deposit')
+    .eq('status', 'requested');
+
   await createJobFeedEvent(admin, closedRow.account_id, closedRow.job_id, {
     kind: 'payment_plan_paid_off',
-    title: 'Payment plan paid in full',
-    body: 'The remaining balance was paid. The plan is complete and no further payments will be charged.',
+    title: 'Paid in full',
+    body: 'The full amount was paid. No further payments are scheduled.',
     visibility: 'client_financial',
   });
 }
@@ -604,11 +661,14 @@ async function releasePlanPayoffLock(admin: ReturnType<typeof createAdminClient>
     .eq('id', paymentId)
     .maybeSingle();
   if (!payment || payment.kind !== 'final' || !payment.payment_plan_id) return;
+  // Both live statuses, matching the lock. A pay-in-full abandoned at checkout
+  // has to hand the plan back — otherwise a pending plan whose customer changed
+  // their mind is locked out of its own deposit forever.
   await admin
     .from('payment_plans')
     .update({ payoff_locked_at: null, updated_at: new Date().toISOString() })
     .eq('id', payment.payment_plan_id)
-    .eq('status', 'active');
+    .in('status', ['active', 'pending_deposit']);
 }
 
 // ---------------------------------------------------------------------------
