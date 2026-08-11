@@ -1,7 +1,10 @@
 'use client';
 
 import SaveButton from '@/components/save-button';
+import SignaturePad from '@/components/signature-pad';
+import SignatureMark from '@/components/signature-mark';
 import { formatUsdExact as formatUsd } from '@/lib/money-format';
+import type { SignatureMethod } from '@/lib/signature';
 import { LiveTotal, QUOTE_FORM_ID, useQuoteDeck } from './QuoteDeck';
 
 /**
@@ -49,7 +52,24 @@ export default function QuoteAcceptance({
   payment: PaymentSummary;
   planTotal: number | null;
 }) {
-  const { signer, setSigner, signerValid, addons, selected, addonCount, addonsTotal, baseTotal, total, preferredDate, payMode } = useQuoteDeck();
+  const {
+    signer,
+    setSigner,
+    signerValid,
+    signMethod,
+    setSignMethod,
+    signaturePath,
+    setSignaturePath,
+    canApprove,
+    addons,
+    selected,
+    addonCount,
+    addonsTotal,
+    baseTotal,
+    total,
+    preferredDate,
+    payMode,
+  } = useQuoteDeck();
 
   const chosen = addons.filter((addon) => selected[addon.id]);
   const dateLine = preferredDate ?? scheduledLabel ?? (scheduleOffered ? 'Choose one below' : null);
@@ -115,7 +135,7 @@ export default function QuoteAcceptance({
           quote is the other agreement, and it had no signature at all. Two
           agreements, two signatures, in the order they are made. */}
       <form action={approveAction} id={QUOTE_FORM_ID} className="quote-rail-form quote-doc-sign">
-        <label htmlFor="quote-signer">Type your full name to accept this quote</label>
+        <label htmlFor="quote-signer">Your name</label>
         <input
           id="quote-signer"
           name="signerName"
@@ -127,18 +147,70 @@ export default function QuoteAcceptance({
           onChange={(event) => setSigner(event.target.value)}
           aria-describedby="quote-signer-hint"
         />
-        <p id="quote-signer-hint" className="quote-rail-hint">
-          {signerValid ? 'Your typed name is your signature.' : 'Type your first and last name to enable approval.'}
-        </p>
+        {!signerValid ? (
+          <p id="quote-signer-hint" className="quote-rail-hint">
+            Enter your first and last name.
+          </p>
+        ) : null}
+
+        {/* DRAWING IS THE DEFAULT, AND TYPING IS NOT A FALLBACK.
+            A canvas cannot be operated from a keyboard, and no amount of ARIA
+            makes one that can — so the alternative has to be a real, equal
+            control that is announced and reachable, not something hidden behind
+            a "having trouble?" link. Both are signatures under E-SIGN; the
+            record stores which one was made rather than flattening them. */}
+        <fieldset className="sign-method">
+          <legend>How would you like to sign?</legend>
+          <div className="sign-method-tabs" role="radiogroup" aria-label="How would you like to sign?">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={signMethod === 'drawn'}
+              className={`sign-method-tab${signMethod === 'drawn' ? ' is-chosen' : ''}`}
+              onClick={() => setSignMethod('drawn')}
+            >
+              Draw my signature
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={signMethod === 'typed'}
+              className={`sign-method-tab${signMethod === 'typed' ? ' is-chosen' : ''}`}
+              onClick={() => setSignMethod('typed')}
+            >
+              Type my name
+            </button>
+          </div>
+        </fieldset>
+
+        {signMethod === 'drawn' ? (
+          <>
+            <SignaturePad onChange={setSignaturePath} label="Sign here" hint="Use your finger, a stylus, or your mouse." />
+            {/* The mark itself. Only ever set from the pad, and cleaned again
+                on the server before it can reach a column. */}
+            <input type="hidden" name="signaturePath" value={signaturePath ?? ''} />
+          </>
+        ) : (
+          <div className="sign-typed">
+            <SignatureMark path={null} name={signer.trim() || null} method="typed" />
+            <p className="quote-rail-hint">Your typed name is your signature.</p>
+          </div>
+        )}
 
         <SaveButton
           className="btn primary quote-rail-approve"
-          disabled={!signerValid}
+          disabled={!canApprove}
           pendingLabel="Approving…"
           savedLabel="Approved ✓"
         >
           <ApproveLabel />
         </SaveButton>
+
+        {!canApprove && signerValid && signMethod === 'drawn' ? (
+          <p className="quote-rail-hint" role="status">
+            Sign in the box above to approve.
+          </p>
+        ) : null}
 
         <p className="quote-doc-fineprint">
           Accepting confirms the work and the price above{businessName ? `, with ${businessName}` : ''}. It is not a payment
@@ -169,6 +241,8 @@ export function QuoteApproved({
   scheduledLabel,
   signerName,
   signedAt,
+  signaturePath,
+  signatureMethod,
   nextStep,
   nextHref,
   nextLabel,
@@ -178,6 +252,8 @@ export function QuoteApproved({
   scheduledLabel: string | null;
   signerName: string | null;
   signedAt: string | null;
+  signaturePath: string | null;
+  signatureMethod: SignatureMethod | null;
   nextStep: string;
   nextHref: string | null;
   nextLabel: string | null;
@@ -213,6 +289,12 @@ export function QuoteApproved({
           <div>
             <dt>Accepted by</dt>
             <dd>
+              {/* Their own mark, where a line of text used to say their name.
+                  A drawn signature IS the readback — the name under it is the
+                  caption, not the evidence. */}
+              {signatureMethod === 'drawn' && signaturePath ? (
+                <SignatureMark path={signaturePath} name={signerName} method="drawn" className="is-receipt" />
+              ) : null}
               {signerName}
               {signedAt ? <small> · {signedAt}</small> : null}
             </dd>

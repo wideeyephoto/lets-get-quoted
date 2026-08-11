@@ -9,6 +9,7 @@ import { clientJobStatus } from '@/lib/client-feed';
 import { brandPaint } from '@/lib/contractor-brand';
 import { quoteStyleClass } from '@/lib/quote-style';
 import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
+import { isSignatureMethod, safeSignaturePath } from '@/lib/signature';
 import { formatScheduleOption } from '@/lib/scheduling';
 import {
   approveClientJobQuoteAction,
@@ -113,19 +114,26 @@ export default async function ClientJobDashboardPage({
   // be relying on when they approve.
   const clientInsurance = access ? await clientInsuranceFor(admin, access.accountId) : null;
 
-  // The signature on the quote, for the receipt. Read defensively and on its own
-  // because it ships behind its own migration, and a missing column must show a
-  // receipt without a name rather than no page at all.
-  const { data: signatureRow } = access
-    ? await admin
-        .from('jobs')
-        // quoted_amount rides along because a legacy single-amount quote has no
-        // line items to total, and the receipt still has to name a figure.
-        .select('quote_signer_name, quote_signed_at, quoted_amount')
-        .eq('account_id', access.accountId)
-        .eq('id', access.jobId)
-        .maybeSingle()
-    : { data: null };
+  // The signature on the quote, for the receipt and for the executed document.
+  // Read on its own and behind a fallback because the mark columns ship behind
+  // their own migration: naming a column that isn't there fails the whole
+  // query, and a receipt with no name is a worse answer than a receipt with no
+  // mark. quoted_amount rides along because a legacy single-amount quote has no
+  // line items to total and the receipt still has to name a figure.
+  const readSignature = async (columns: string) =>
+    access
+      ? admin.from('jobs').select(columns).eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle()
+      : { data: null, error: null };
+  const wide = await readSignature('quote_signer_name, quote_signed_at, quoted_amount, quote_signature_path, quote_signature_method');
+  const signatureRow = (wide.error ? (await readSignature('quote_signer_name, quote_signed_at, quoted_amount')).data : wide.data) as
+    | {
+        quote_signer_name?: string | null;
+        quote_signed_at?: string | null;
+        quoted_amount?: number | null;
+        quote_signature_path?: string | null;
+        quote_signature_method?: string | null;
+      }
+    | null;
 
   /* --- the link itself is the first thing that can be wrong ----------------
      A revoked, expired or mistyped token is not an error — it is the ordinary
@@ -215,6 +223,18 @@ export default async function ClientJobDashboardPage({
   const agreedTotal = items.length > 0 ? computeQuoteTotal(items) : Number(signatureRow?.quoted_amount ?? 0) || 0;
   const chosenAddonLabels = items.filter((item) => item.kind === 'addon' && item.selected).map((item) => item.label);
 
+  /* What was signed, and how. Put through the same allowlist the writer used,
+     because a value that reached the column before the check existed — or by
+     any other route — is not one to hand to a renderer on trust. */
+  const signedName = signatureRow?.quote_signer_name ?? null;
+  const signedPath = safeSignaturePath(signatureRow?.quote_signature_path);
+  const signedMethod = isSignatureMethod(signatureRow?.quote_signature_method)
+    ? signatureRow.quote_signature_method
+    : signedName
+      ? 'typed'
+      : null;
+  const signedOn = formatDay(signatureRow?.quote_signed_at ?? null) || null;
+
   const projectType = projectTypeOf(items, dashboard.job.scope);
   const firstName = firstNameOf(dashboard.job.client_name);
   const headline = quoteHeadline({ firstName, projectType, approved: !awaitingApproval });
@@ -280,6 +300,7 @@ export default async function ClientJobDashboardPage({
           items={items}
           insurance={clientInsurance}
           header={{ ref: dashboard.job.ref, address: dashboard.job.address, scope: dashboard.job.scope }}
+          signature={awaitingApproval ? null : { name: signedName, at: signedOn, path: signedPath, method: signedMethod }}
         />
       ) : (
         /* A quote with no lines and no scope is not a bug on this page — it is
@@ -547,6 +568,11 @@ export default async function ClientJobDashboardPage({
           baseTotal={baseTotal}
           awaitingApproval={awaitingApproval}
           initialPayMode={initialPayMode}
+          /* Signing with a finger should be one gesture, not a name typed
+             first — and the job already knows whose quote this is. Editable,
+             because the person at the table is sometimes the other half of the
+             household and the record should say who actually accepted. */
+          initialSigner={dashboard.job.client_name ?? ''}
         >
           {flash ? (
             <p className={`quote-flash is-${flash.tone}`} role="status">
@@ -784,8 +810,10 @@ export default async function ClientJobDashboardPage({
                     total={formatMoney(agreedTotal)}
                     addons={chosenAddonLabels}
                     scheduledLabel={scheduledLabel}
-                    signerName={(signatureRow?.quote_signer_name as string | null) ?? null}
-                    signedAt={formatDay((signatureRow?.quote_signed_at as string | null) ?? null) || null}
+                    signerName={signedName}
+                    signedAt={signedOn}
+                    signaturePath={signedPath}
+                    signatureMethod={signedMethod}
                     nextStep={nextStep}
                     nextHref={nextHref}
                     nextLabel={nextLabel}

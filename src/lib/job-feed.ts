@@ -15,6 +15,7 @@ import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } 
 import { pickBusinessName } from '@/lib/business-name';
 import { toClientFeed, clientSafeText, type ClientFeedItem } from '@/lib/client-feed';
 import { normalizeQuoteStyle, type QuoteStyle } from '@/lib/quote-style';
+import { safeSignaturePath, type SignatureMethod } from '@/lib/signature';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -635,6 +636,12 @@ export async function approveClientJobQuote(
    * evidence attached.
    */
   signerName?: string | null,
+  /**
+   * The mark, when they drew one instead of only typing. Optional so every
+   * existing caller behaves exactly as before — a typed acceptance is still an
+   * acceptance, it just has a different kind of evidence attached.
+   */
+  drawn?: { path: string | null } | null,
 ): Promise<void> {
   const admin = createAdminClient();
   const tokenHash = hashToken(clientToken);
@@ -691,17 +698,37 @@ export async function approveClientJobQuote(
 
   // The signature on the QUOTE, which is a different agreement from the payment
   // plan's authorization and used to have nowhere to live. Best-effort and
-  // separate from the acceptance itself: this ships ahead of its migration, and
-  // an acceptance must never fail because a column isn't there yet.
+  // separate from the acceptance itself: an acceptance must never fail because
+  // a column isn't there yet.
   const signature = (signerName ?? '').toString().trim().slice(0, 120);
   if (signature) {
-    try {
-      await admin
+    // Cleaned here rather than trusted from the caller. This arrives from an
+    // anonymous visitor holding a link, and safeSignaturePath returns the path
+    // or nothing — never a partially-scrubbed string, because a mark that had
+    // to be sanitised to be storable is not evidence of anything.
+    const drawnPath = safeSignaturePath(drawn?.path);
+    const method: SignatureMethod = drawnPath ? 'drawn' : 'typed';
+
+    const record = async (patch: Record<string, unknown>) =>
+      admin
         .from('jobs')
-        .update({ quote_signer_name: signature, quote_signed_at: now })
+        .update(patch)
         .eq('account_id', accountId)
         .eq('id', jobId)
         .is('quote_signed_at', null);
+
+    try {
+      const { error } = await record({
+        quote_signer_name: signature,
+        quote_signed_at: now,
+        quote_signature_path: drawnPath,
+        quote_signature_method: method,
+      });
+      // A database without the mark columns yet still gets the name and the
+      // moment. Losing the drawing during a deploy window is a shame; losing
+      // WHO ACCEPTED, because the write named a column that wasn't there, is a
+      // hole in the record.
+      if (error) await record({ quote_signer_name: signature, quote_signed_at: now });
     } catch (error) {
       console.error(`Could not record the quote signature for job ${jobId}:`, error instanceof Error ? error.message : error);
     }

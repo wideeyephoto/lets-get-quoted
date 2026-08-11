@@ -548,6 +548,17 @@ alter table jobs add column if not exists deposit_gate text;
 -- was ever being signed. See migrations/2026-08-11-quote-acceptance-signature.
 alter table jobs add column if not exists quote_signer_name text;
 alter table jobs add column if not exists quote_signed_at timestamptz;
+-- The mark, when they signed with a finger rather than only typing. SVG path
+-- data in a fixed 600x200 viewBox, not a rasterised image: it prints at the
+-- printer's resolution, it is kilobytes rather than tens of them, and path data
+-- is numbers and eight letters — which a strict allowlist can prove is inert,
+-- and this value arrives from an anonymous visitor holding a link. See
+-- src/lib/signature.ts and migrations/2026-08-13-quote-signature.sql.
+alter table jobs add column if not exists quote_signature_path text;
+alter table jobs add column if not exists quote_signature_method text;
+alter table jobs drop constraint if exists jobs_quote_signature_method_check;
+alter table jobs add constraint jobs_quote_signature_method_check
+  check (quote_signature_method is null or quote_signature_method in ('drawn', 'typed'));
 -- Geocoded coordinates of the job address — the anchors for instant-booking
 -- route-density ("we'll already be near you that day"). Populated best-effort at
 -- job create (see src/lib/geocode.ts); only precise (rooftop/interpolated)

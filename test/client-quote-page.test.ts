@@ -226,7 +226,11 @@ describe('the client job page asks in the right order', () => {
     const accept = read('src', 'app', 'client', 'jobs', '[token]', 'QuoteAcceptance.tsx');
     const choice = read('src', 'app', 'client', 'jobs', '[token]', 'PayChoice.tsx');
     expect(accept).toContain('name="signerName"');
-    expect(accept).toContain('Type your full name to accept this quote');
+    // "Type your full name" stopped being the instruction when drawing became
+    // the default way to sign. The name is still collected and still belongs to
+    // this agreement alone; how the mark is made is now a choice.
+    expect(accept).toContain('How would you like to sign?');
+    expect(accept).toContain('name="signaturePath"');
     expect(choice).toContain('name="signerName"');
     expect(choice).toMatch(/This is separate\s+from your approval of the quote/);
   });

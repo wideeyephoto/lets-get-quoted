@@ -103,10 +103,11 @@ describe('the approval sits in the rail with the total', () => {
     expect(accept).toContain('Approve quote · {formatUsd(total)}');
   });
 
-  it('will not submit without a name, and says which name', () => {
-    expect(accept).toContain('disabled={!signerValid}');
-    expect(accept).toContain('Type your full name to accept this quote');
+  it('will not submit without a name and a signature', () => {
+    expect(accept).toContain('disabled={!canApprove}');
     expect(accept).toContain('aria-describedby="quote-signer-hint"');
+    // Each method is gated on its own evidence, not on the other's.
+    expect(deck).toContain("canApprove: signerValid && (signMethod === 'typed' || signaturePath !== null)");
   });
 
   it('keeps the server action, the field names and the loading state exactly as they were', () => {
@@ -260,7 +261,7 @@ describe('every end of the road has a page', () => {
     for (const fact of ['Accepted by', 'Start date', 'quote-rail-next']) {
       expect(accept, fact).toContain(fact);
     }
-    expect(page).toContain('signerName={(signatureRow?.quote_signer_name');
+    expect(page).toContain('signerName={signedName}');
   });
 
   it('money already taken is shown back, not only money still owed', () => {

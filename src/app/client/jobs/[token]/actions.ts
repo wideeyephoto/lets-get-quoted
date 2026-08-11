@@ -64,7 +64,11 @@ export async function approveClientJobQuoteAction(token: string, formData: FormD
   const selectedAddonIds = formData.getAll('addon').map((value) => value.toString());
   // Their name, typed against the QUOTE — not against a card authorization.
   const signerName = optionalText(formData.get('signerName'));
-  await approveClientJobQuote(token, selectedAddonIds, signerName);
+  // The mark, when they signed with a finger rather than only typing. Passed
+  // through raw: what may be stored is decided by safeSignaturePath, in one
+  // place, rather than by whichever endpoint happened to receive it.
+  const path = optionalText(formData.get('signaturePath'));
+  await approveClientJobQuote(token, selectedAddonIds, signerName, path ? { path } : null);
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?approved=1`);
 }

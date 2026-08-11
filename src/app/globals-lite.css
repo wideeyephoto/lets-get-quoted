@@ -7102,6 +7102,28 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   /* An unticked add-on is not part of what was quoted, so it should not print
      as though it might be. */
   .quote-doc-addon:not(.is-selected) { opacity: 0.55; }
+
+  /* THE SIGNATURE PRINTS, AND IT IS THE REASON THE MARK IS A PATH.
+     Stored as SVG rather than a canvas bitmap, it comes out at the printer's
+     resolution instead of the phone's. `stroke="currentColor"` picks up the
+     forced #111 above, so it is ink like everything else. */
+  .client-job-dashboard .quote-doc-executed {
+    border-top: 1px solid #999 !important;
+    break-inside: avoid;
+    padding-top: 0.9rem;
+  }
+  /* Signature lines are backgrounds, and backgrounds do not print. Redrawn as
+     borders, which do. */
+  .client-job-dashboard .quote-doc-executed-rule {
+    height: 0 !important;
+    border-top: 1px solid #111 !important;
+  }
+  .client-job-dashboard .sigmark-ink { max-width: 12rem; }
+  /* The pad and the method switch are controls, not the document. They sit
+     inside the rail, which is already hidden — named anyway, because a page
+     that prints its own input surface is a specific kind of embarrassing. */
+  .client-job-dashboard .sigpad,
+  .client-job-dashboard .sign-method { display: none !important; }
 }
 
 .client-attention-card {
@@ -14971,4 +14993,187 @@ select optgroup {
   border-color: var(--cbrand, #ff8a3d);
   background: rgba(var(--tint), 0.06);
   box-shadow: 0 0 0 1px var(--cbrand, #ff8a3d);
+}
+
+/* ── Signing with a finger ──────────────────────────────────────────────────
+   Drawing is the default and typing is an equal alternative, not a fallback:
+   a canvas cannot be operated from a keyboard and no amount of ARIA makes one
+   that can, so the other route has to be a real control somebody can reach. */
+.sign-method {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  border: 0;
+}
+.sign-method legend {
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.sign-method-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  padding: 0.25rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.03);
+}
+.sign-method-tab {
+  padding: 0.42rem 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sign-method-tab.is-chosen {
+  background: var(--cbrand, #ff8a3d);
+  color: var(--cbrand-on, #1a0f04);
+}
+
+.sigpad { display: grid; gap: 0.35rem; }
+.sigpad-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.sigpad-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.sigpad-tools { display: flex; gap: 0.65rem; }
+.sigpad-tools .linklike { font-size: 0.75rem; font-weight: 700; }
+.sigpad-tools .linklike:disabled { opacity: 0.35; cursor: default; }
+
+.sigpad-surface {
+  position: relative;
+  border: 1px solid var(--cbrand-edge, var(--cedge-orange-29));
+  border-radius: var(--q-radius, 12px);
+  background: rgba(var(--tint), 0.04);
+  overflow: hidden;
+}
+.sigpad-canvas {
+  /* touch-action is the half of pointer capture that lives in CSS: without it
+     the browser claims the gesture for scrolling and the first downstroke of
+     every signature scrolls the page instead of drawing. */
+  touch-action: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  /* Stacked above the guide line. An absolutely positioned sibling paints over
+     a static one whatever the DOM order, so the ink has to say so explicitly or
+     the line sits on top of the signature. */
+  position: relative;
+  z-index: 1;
+}
+.sigpad-surface:focus-within { box-shadow: 0 0 0 2px var(--cbrand-soft, rgba(255, 138, 61, 0.16)); }
+/* The line people aim at, and the mark that says the box is for drawing in. */
+.sigpad-rule {
+  position: absolute;
+  z-index: 0;
+  left: 8%;
+  right: 8%;
+  bottom: 26%;
+  height: 1px;
+  background: rgba(var(--tint), 0.22);
+  pointer-events: none;
+}
+.sigpad-ghost {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 1.6rem;
+  opacity: 0.22;
+  pointer-events: none;
+}
+.sigpad-hint { margin: 0; font-size: 0.74rem; line-height: 1.45; color: var(--muted); }
+
+.sign-typed {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: var(--q-radius, 12px);
+  background: rgba(var(--tint), 0.03);
+}
+
+/* ── A signature, read back ────────────────────────────────────────────────
+   One component for the customer's page, the contractor's copy and paper, so a
+   mark can never render one way on screen and another at the printer. */
+.sigmark { display: block; }
+.sigmark-ink {
+  display: block;
+  width: 100%;
+  max-width: 14rem;
+  height: auto;
+  color: inherit;
+}
+.sigmark.is-receipt .sigmark-ink { max-width: 9rem; margin-bottom: 0.15rem; }
+.sigmark-typed {
+  /* A typed acceptance rendered as a name in a hand, not as form input echoed
+     back — it is the mark, and it should look like one. */
+  font-family: 'Segoe Script', 'Bradley Hand', 'Snell Roundhand', 'Apple Chancery', cursive;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+/* ── The execution block, on the document ──────────────────────────────────
+   The mark is collected in the rail, and the rail is a screen control that
+   does not print. A signed quote whose printed copy shows no signature is not
+   a signed quote. */
+.quote-doc-executed {
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule-t08);
+}
+.quote-doc-executed-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.6rem;
+  margin-top: 0.5rem;
+}
+.quote-doc-executed-mark { flex: 1 1 14rem; min-width: 0; }
+.quote-doc-executed-when { flex: 0 1 10rem; }
+.quote-doc-executed-when strong {
+  display: block;
+  padding-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.quote-doc-executed-rule {
+  display: block;
+  height: 1px;
+  margin: 0.15rem 0 0.3rem;
+  background: var(--edge-t28);
+}
+.quote-doc-executed small {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+@media (max-width: 560px) {
+  .quote-doc-executed-row { gap: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sign-method-tab { transition: none; }
 }

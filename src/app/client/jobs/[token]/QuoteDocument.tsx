@@ -1,6 +1,8 @@
 'use client';
 
+import SignatureMark from '@/components/signature-mark';
 import { formatUsdExact as formatUsd } from '@/lib/money-format';
+import type { SignatureMethod } from '@/lib/signature';
 import type { QuoteItem } from '@/lib/jobs';
 import { QUOTE_FORM_ID, useQuoteDeck } from './QuoteDeck';
 
@@ -45,8 +47,14 @@ export default function QuoteDocument({
   items,
   insurance = null,
   header,
+  signature = null,
 }: {
   items: QuoteItem[];
+  /**
+   * Present once the quote has been accepted. The mark, the name and the day —
+   * on the document, so the printed copy is the executed one.
+   */
+  signature?: { name: string | null; at: string | null; path: string | null; method: SignatureMethod | null } | null;
   /**
    * What the quote is FOR. A page of prices with no job attached is a bill, not
    * a quote — the reference, the address and the scope have to be on the
@@ -191,6 +199,32 @@ export default function QuoteDocument({
               View certificate
             </a>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* THE EXECUTION BLOCK, ON THE DOCUMENT ITSELF.
+          The mark was collected in the rail, and the rail is a screen control
+          that does not print. A signed quote whose printed copy shows no
+          signature is not a signed quote — this is the part somebody files, and
+          it is deliberately the last thing on the page, where a proposal has
+          always put it. */}
+      {signature?.name ? (
+        <div className="quote-doc-executed">
+          <p className="quote-doc-group-label">Accepted</p>
+          <div className="quote-doc-executed-row">
+            <span className="quote-doc-executed-mark">
+              <SignatureMark path={signature.path} name={signature.name} method={signature.method} />
+              <span className="quote-doc-executed-rule" aria-hidden="true" />
+              <small>{signature.name}</small>
+            </span>
+            {signature.at ? (
+              <span className="quote-doc-executed-when">
+                <strong>{signature.at}</strong>
+                <span className="quote-doc-executed-rule" aria-hidden="true" />
+                <small>Date accepted</small>
+              </span>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

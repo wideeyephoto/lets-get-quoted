@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { formatUsdExact, formatUsdRounded } from '@/lib/money-format';
+import type { SignatureMethod } from '@/lib/signature';
 
 /**
  * The state a homeowner is holding in their head while they read a quote.
@@ -74,6 +75,14 @@ type DeckValue = {
   signer: string;
   setSigner: (value: string) => void;
   signerValid: boolean;
+  /** How they are signing. Drawn is the default — see QuoteAcceptance. */
+  signMethod: SignatureMethod;
+  setSignMethod: (method: SignatureMethod) => void;
+  /** Path data for a drawn mark, null until there is enough of one. */
+  signaturePath: string | null;
+  setSignaturePath: (path: string | null) => void;
+  /** Name AND a signature by whichever method is selected. */
+  canApprove: boolean;
   /** The start date they have highlighted, as a label. Null until they pick. */
   preferredDate: string | null;
   setPreferredDate: (label: string | null) => void;
@@ -99,18 +108,30 @@ export function QuoteDeckProvider({
   awaitingApproval,
   /** Pre-selected when the contractor only offers one route. */
   initialPayMode = null,
+  /**
+   * The name the quote was prepared for, pre-filled.
+   *
+   * Signing with a finger should be one gesture, and it is not if the page
+   * first demands a name it already has on the job. It stays editable — the
+   * person at the kitchen table is sometimes the other half of the household,
+   * and the record should say who actually accepted.
+   */
+  initialSigner = '',
   children,
 }: {
   addons: DeckAddon[];
   baseTotal: number;
   awaitingApproval: boolean;
   initialPayMode?: PayMode | null;
+  initialSigner?: string;
   children: ReactNode;
 }) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(addons.map((addon) => [addon.id, addon.selected])),
   );
-  const [signer, setSigner] = useState('');
+  const [signer, setSigner] = useState(initialSigner);
+  const [signMethod, setSignMethod] = useState<SignatureMethod>('drawn');
+  const [signaturePath, setSignaturePath] = useState<string | null>(null);
   const [preferredDate, setPreferredDate] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<PayMode | null>(initialPayMode);
 
@@ -149,6 +170,8 @@ export function QuoteDeckProvider({
     return () => cancelAnimationFrame(raf);
   }, [total]);
 
+  const signerValid = isSignature(signer);
+
   const value = useMemo<DeckValue>(
     () => ({
       addons,
@@ -161,14 +184,21 @@ export function QuoteDeckProvider({
       shownTotal,
       signer,
       setSigner,
-      signerValid: isSignature(signer),
+      signerValid,
+      signMethod,
+      setSignMethod,
+      signaturePath,
+      setSignaturePath,
+      // Drawing requires a mark; typing requires the name to BE the mark. Each
+      // method is gated on its own evidence rather than on the other's.
+      canApprove: signerValid && (signMethod === 'typed' || signaturePath !== null),
       preferredDate,
       setPreferredDate,
       payMode,
       setPayMode,
       awaitingApproval,
     }),
-    [addons, selected, setAddon, addonCount, baseTotal, addonsTotal, total, shownTotal, signer, preferredDate, payMode, awaitingApproval],
+    [addons, selected, setAddon, addonCount, baseTotal, addonsTotal, total, shownTotal, signer, signerValid, signMethod, signaturePath, preferredDate, payMode, awaitingApproval],
   );
 
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
