@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from 'next';
 import ExampleFrame from '@/components/marketing/example-frame';
 import SuiteFeaturePage, {
@@ -8,6 +9,81 @@ import SuiteFeaturePage, {
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import styles from './quotes.module.css';
+
+const SHOTS = '/media/quotes';
+
+/**
+ * THE ACTUAL SCREENS, IN THE ORDER YOU MEET THEM.
+ *
+ * Everything else on this page is a drawn mock of an invented job — the right
+ * call for a screen that would otherwise carry a real homeowner's name, address
+ * and price. These four are the contractor's own side of the product, captured
+ * from a demo account belonging to an invented landscaping business, so there
+ * is nobody's data in them and no reason to draw them instead.
+ *
+ * WHAT THEY ARE NOT. Not a customer, not a result, not a claim about anybody's
+ * revenue. The whole claim is "this is the screen", and it is one we can stand
+ * behind because it is a photograph of it.
+ */
+const QUOTE_FLOW: {
+  step: string;
+  title: string;
+  body: string;
+  media:
+    | { kind: 'image'; src: string; alt: string; width: number; height: number }
+    | { kind: 'video'; src: string; poster: string; width: number; height: number; label: string };
+}[] = [
+  {
+    step: 'Step 1',
+    title: 'List what is included, then what is optional',
+    body: 'Included lines make the price. Optional add-ons sit under them, each one either pre-ticked on the homeowner’s copy or starred as a recommendation — and the total updates live as they take them.',
+    media: {
+      kind: 'image',
+      src: `${SHOTS}/quote-builder-line-items.jpg`,
+      alt: 'The quote builder with four line items — two included, two optional add-ons marked pre-checked and recommended — and a $3,300 total.',
+      width: 1570,
+      height: 824,
+    },
+  },
+  {
+    step: 'Step 2',
+    title: 'See their copy before you send it',
+    body: 'Preview opens the homeowner’s own approval screen — the included work, the add-ons they can take, and the total moving as they do. Nothing has been sent at this point.',
+    media: {
+      kind: 'video',
+      src: `${SHOTS}/quote-preview-popup.mp4`,
+      poster: `${SHOTS}/quote-preview-popup-poster.jpg`,
+      width: 432,
+      height: 452,
+      label: 'A three-second recording of the preview panel: adding an optional tree removal raises the total from $3,000 to $4,000.',
+    },
+  },
+  {
+    step: 'Step 3',
+    title: 'Choose how they pay, and whether we text them',
+    body: 'Pay in full, a deposit with the balance later, or a 0%-interest plan — a deposit now and equal monthly installments on their saved card. The send toggle is yours: leave it off and nothing goes out automatically, and you get a link to send yourself.',
+    media: {
+      kind: 'image',
+      src: `${SHOTS}/quote-builder-payment-terms.jpg`,
+      alt: 'Payment terms on the quote: pay in full, deposit plus balance, or a payment plan with a 50% deposit and four monthly installments, above Preview and Send quote buttons.',
+      width: 1568,
+      height: 770,
+    },
+  },
+  {
+    step: 'Step 4',
+    title: 'They authorize the exact schedule',
+    body: 'The homeowner sees every amount and every date before anything is charged, and types their name to authorize the installments. They can pay the balance off early with no penalty.',
+    media: {
+      kind: 'image',
+      src: `${SHOTS}/homeowner-payment-plan.png`,
+      alt: 'The homeowner’s payment-plan screen: a $1,650 deposit today and four $413 installments dated monthly, with a name field to authorize them.',
+      width: 1191,
+      height: 794,
+    },
+  },
+];
 
 export const metadata: Metadata = {
   title: 'Quotes and E-Signatures for Contractors',
@@ -95,6 +171,66 @@ export default function QuotesFeaturePage() {
           body: 'The homeowner opens one link, reads the scope, takes or leaves the upgrades and types their full legal name. No account, no password, no app to install.',
         },
       ]}
+      afterBenefits={
+        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+          <div className={styles.shotsHead}>
+            <p className="eyebrow">The quote builder, as it ships</p>
+            <h2 id="screens-title">This is the screen, not a drawing of it.</h2>
+            <p>
+              A demo account belonging to an invented landscaping business, captured as it is
+              today. The numbers are made up; everything around them is the product.
+            </p>
+          </div>
+
+          <ol className={styles.shots}>
+            {QUOTE_FLOW.map((shot) => (
+              <li className={styles.shot} key={shot.step}>
+                <div className={styles.shotCopy}>
+                  <span className={styles.shotStep}>{shot.step}</span>
+                  <h3 className={styles.shotTitle}>{shot.title}</h3>
+                  <p className={styles.shotBody}>{shot.body}</p>
+                </div>
+                <div className={styles.shotMedia}>
+                  {shot.media.kind === 'image' ? (
+                    <img
+                      src={shot.media.src}
+                      alt={shot.media.alt}
+                      width={shot.media.width}
+                      height={shot.media.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    /* controls and preload="none": nothing here autoplays, so
+                       there is no motion preference to respect and no reason to
+                       spend 400KB of somebody's data on a section they may never
+                       reach. The poster is what shows until they press it. */
+                    <video
+                      className={styles.shotVideo}
+                      src={shot.media.src}
+                      poster={shot.media.poster}
+                      width={shot.media.width}
+                      height={shot.media.height}
+                      aria-label={shot.media.label}
+                      controls
+                      muted
+                      loop
+                      playsInline
+                      preload="none"
+                    />
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <p className={styles.shotNote}>
+            Every amount above is invented. What is real is the shape: included work and optional
+            add-ons on one total, a preview of the homeowner’s copy before anything sends, and a
+            plan they authorize date by date.
+          </p>
+        </section>
+      }
       stepsEyebrow="From request to signature"
       stepsTitle="Four steps, and you type the price once."
       steps={[

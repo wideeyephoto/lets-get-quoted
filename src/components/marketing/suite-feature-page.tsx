@@ -44,6 +44,15 @@ export type SuiteFeaturePageProps = {
   proof: FeatureProofPoint[];
   story: { eyebrow: string; title: ReactNode; body: ReactNode };
   benefits: FeatureDetailCard[];
+  /**
+   * A section between the benefits and the steps. See FeatureDetailLayout.
+   *
+   * `children` could not do it: that renders after the capability list, by
+   * which point the page has finished arguing. /features/quotes needs it for
+   * the real screenshots of the quote builder — evidence that answers the
+   * three promises above it, not a coda after the catalog.
+   */
+  afterBenefits?: ReactNode;
   stepsEyebrow?: string;
   stepsTitle?: ReactNode;
   steps?: FeatureDetailCard[];

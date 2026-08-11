@@ -1,0 +1,134 @@
+/* /features/quotes — the real quote builder, in four screens.
+ *
+ * WHY IT EXISTS. Every other panel on this page is a drawn mock of an invented
+ * job, which is the right call for a screen that would otherwise expose a real
+ * homeowner's name, address and price. These four do not have that problem:
+ * they are the contractor's own side of the product, from a demo account, with
+ * a made-up landscaping business on it. A page arguing "the quote is the start
+ * of the job" is much better off showing the screen than describing it.
+ *
+ * EVERY RULE IS :global(.section-block)-SCOPED, and that is load-bearing rather
+ * than tidy. The flagship shell this page renders inside resets the elements
+ * themselves — `.root p, .root figure, .root dl, .root dd { margin: 0 }`,
+ * `.root ol, .root ul { margin: 0; padding: 0; list-style: none }` — all at
+ * (0,1,1), which outranks a lone module class at (0,1,0). This codebase has now
+ * lost that fight five separate times. The descendant form is (0,2,0) and wins
+ * without !important.
+ */
+
+:global(.section-block) .shotsHead h2 {
+  margin: 0.6rem 0 0;
+  font-size: clamp(28px, 3.2vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  color: var(--text);
+  text-wrap: balance;
+}
+
+:global(.section-block) .shotsHead > p:last-child {
+  margin: 0.9rem 0 0;
+  max-width: 60ch;
+  color: var(--mute);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+/* ONE COLUMN, WITH THE WORDS BESIDE THE PICTURE, and that is a measurement
+   rather than a preference. Two cards across at 1440 gives each capture 617px
+   of a 1,570px screenshot — 39%, at which the product's own headings are a grey
+   smudge and the evidence stops being evidence. Beside a 300px caption the same
+   capture gets ~840px, and the section costs about what the two-column version
+   did because each row is half as tall. */
+:global(.section-block) .shots {
+  display: grid;
+  gap: clamp(18px, 2.2vw, 28px);
+  margin: clamp(28px, 3.4vw, 44px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+:global(.section-block) .shot {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 2vw, 30px);
+  margin: 0;
+  padding: clamp(16px, 1.8vw, 22px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+}
+
+/* The caption column. Its own grid so the three lines stack tightly whatever
+   the picture beside them is doing. */
+:global(.section-block) .shotCopy {
+  display: grid;
+  gap: 0.5rem;
+  align-content: center;
+}
+
+:global(.section-block) .shotStep {
+  color: var(--flare, #ff7a21);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+:global(.section-block) .shotTitle {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+:global(.section-block) .shotBody {
+  margin: 0 0 0.35rem;
+  color: var(--mute);
+  font-size: 0.87rem;
+  line-height: 1.6;
+}
+
+:global(.section-block) .shotMedia {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #07131d;
+}
+
+:global(.section-block) .shotMedia img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* CAPPED AT ITS NATIVE 432px AND CENTRED. The clip is a 432x452 screen
+   recording; stretched to a 600px column it is a 1.4x upscale and the product's
+   own text inside it goes soft. Every other card here is a 1,570px capture that
+   can fill the column honestly. */
+:global(.section-block) .shotVideo {
+  display: block;
+  width: 100%;
+  max-width: 432px;
+  height: auto;
+  margin-inline: auto;
+  background: #07131d;
+}
+
+:global(.section-block) .shotNote {
+  margin: clamp(20px, 2.4vw, 28px) 0 0;
+  color: var(--mute);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 860px) {
+  /* Scoped like the base rule — a media query adds no specificity, so a bare
+     .shot here would lose to it and the card would never stack. */
+  :global(.section-block) .shot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

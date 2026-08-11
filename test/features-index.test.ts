@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { FEE_TIERS } from '@/lib/pricing';
 
 /**
@@ -181,5 +181,76 @@ describe('the phone', () => {
     expect(CHROME).toContain("window.addEventListener('scroll', onScroll, { passive: true })");
     expect(CSS).toMatch(/\.mobile-cta\[data-scroll="down"\]\)\s*\{[^}]*opacity: 0/);
     expect(CSS).toMatch(/\.mobile-cta\[data-scroll="down"\]\)\s*\{[^}]*pointer-events: none/);
+  });
+});
+
+/**
+ * The real quote-builder screens on /features/quotes.
+ *
+ * TWO FAILURES LIVE HERE AND NEITHER SHOWS UP IN A BUILD. A missing asset
+ * renders as an empty frame — the page returns 200 and nobody notices that the
+ * thing the section exists to show is not there. And the section points at the
+ * product's own screens, so the words around them are the only thing keeping
+ * "here is the software" from drifting into "here is a customer".
+ */
+describe('the quote builder is shown, not drawn', () => {
+  const QUOTES = strip(read('src/app/features/quotes/page.tsx'));
+  const QCSS = read('src/app/features/quotes/quotes.module.css');
+  /* The array alone. QUOTE_FLOW is declared above `export const metadata`, so a
+     slice that runs to `export default` swallows the og:image and its
+     1200x630 — which would make the size assertion below count a pair it does
+     not mean. */
+  const FLOW = QUOTES.slice(
+    QUOTES.indexOf('const QUOTE_FLOW'),
+    QUOTES.indexOf('];', QUOTES.indexOf('const QUOTE_FLOW')),
+  );
+
+  it('shows four steps, in the order you meet them', () => {
+    expect([...FLOW.matchAll(/step: 'Step \d'/g)]).toHaveLength(4);
+    expect(FLOW).toContain("step: 'Step 1'");
+    expect(FLOW).toContain("step: 'Step 4'");
+  });
+
+  it('every file it names is on disk and not empty', () => {
+    const named = [...QUOTES.matchAll(/\$\{SHOTS\}\/([\w.-]+)/g)].map((m) => m[1]);
+    expect(named.length).toBeGreaterThanOrEqual(5);
+    for (const name of named) {
+      expect(statSync(`public/media/quotes/${name}`).size, name).toBeGreaterThan(10_000);
+    }
+  });
+
+  it('declares each capture at its real pixel size', () => {
+    // This is what reserves the box before anything loads. A wrong number here
+    // is a layout shift on the section the page's evidence lives in.
+    // Read from QUOTE_FLOW only: the og:image above it is also a width/height
+    // pair, and counting it would make this assert a number it does not mean.
+    const declared = [...FLOW.matchAll(/width: (\d+),\s+height: (\d+),/g)].map(
+      (m) => `${m[1]}x${m[2]}`,
+    );
+    expect(declared).toEqual(['1570x824', '432x452', '1568x770', '1191x794']);
+  });
+
+  it('costs nobody 400KB they did not ask for', () => {
+    // Nothing autoplays, so there is no motion preference to respect — and
+    // preload="none" behind a poster means the clip is fetched by the press.
+    expect(QUOTES).toContain('preload="none"');
+    expect(QUOTES).toContain('controls');
+    expect(QUOTES).not.toContain('autoPlay');
+  });
+
+  it('says the numbers are invented and claims no customer', () => {
+    const band = QUOTES.slice(QUOTES.indexOf('afterBenefits'), QUOTES.indexOf('stepsEyebrow'));
+    expect(band).toMatch(/invented/i);
+    expect(band).not.toMatch(/\b(testimonial|case study|our customer|success story|real customer)\b/i);
+    expect(band).not.toMatch(/\d+\s*%\s*(more|faster|increase)/i);
+  });
+
+  it('scopes its CSS under .section-block, or the shell eats the margins', () => {
+    // `.root ol { margin: 0; padding: 0 }` is (0,1,1) and a bare .shots is
+    // (0,1,0). Five files in this codebase have lost that fight already.
+    expect(QCSS).not.toMatch(/^\s*\.shots\s*\{/m);
+    expect(QCSS).toContain(':global(.section-block) .shots');
+    const narrow = QCSS.slice(QCSS.indexOf('@media (max-width: 860px)'));
+    expect(narrow).toContain(':global(.section-block) .shot');
   });
 });
