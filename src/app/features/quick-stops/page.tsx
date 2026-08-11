@@ -95,11 +95,15 @@ function PendingOffer() {
         </li>
       </ul>
 
+      {/* The last sentence — "any diagnosis, labor, parts or repair is
+          separate" — is the fourth time the page makes that distinction, and
+          the two-card split below makes it far better than any sentence can.
+          What survives is the thing only this panel says: nothing is booked
+          yet. */}
       <p className={styles.offerNote}>
         <strong>Not on your calendar yet.</strong> The homeowner has{' '}
         {DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes to pay the $145 priority visit fee. Once
-        it clears, the arrival window is confirmed. Any diagnosis, labor, parts or repair is
-        separate — you quote and invoice it the way you would on any other job.
+        it clears, the arrival window is confirmed.
       </p>
     </div>
   );
@@ -176,20 +180,9 @@ const NEVER = [
 const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS);
 const maxFee = centsToDollars(DEFAULT_QUICK_STOP_MAX_FEE_CENTS);
 
-/* THE MIDDLE OF THE BAND, NOT THE TOP.
- *
- * The dashboard explainer computes this from the account's own configured fee
- * range and says why: using the highest fee available would produce the most
- * flattering number on the page, which is the wrong instinct for a figure
- * somebody might plan around. A logged-out visitor has no configured range, so
- * this is the middle of the SHIPPED default band — the same two constants the
- * rules grid and the first FAQ answer already print, which is what stops this
- * number and those ones drifting apart.
- *
- * Both are derived, not typed: at $50–$250 they read $150 and $7,800, and if
- * the band ever moves they move with it. */
-const typicalFee = Math.round((minFee + maxFee) / 2);
-const yearlyFee = typicalFee * 52;
+/* A "typical fee" — the middle of the band — used to be derived here, purely to
+   feed the yearly multiplication that has been removed. The band itself is what
+   a contractor needs, and they set the number per request anyway. */
 
 /* The four things a contractor is promised, and the four beats of the flow.
  *
@@ -395,26 +388,21 @@ export default function QuickStopsPage() {
               </p>
             </div>
 
-            {/* DELIBERATELY THE SMALLEST TYPE IN THE BLOCK. The dashboard drew
-                this as a glowing card with the year figure as the largest number
-                on the page, and everything about that said forecast. It is one
-                multiplication — a fee times fifty-two — so it is drawn as a
-                caption and the conditional is in the sentence rather than in a
-                footnote under it. */}
-            <aside className={styles.math} aria-label="What a Quick Stop priority fee is worth">
-              <p className={styles.mathLabel}>The arithmetic</p>
-              <p className={styles.mathLine}>
-                <strong>${typicalFee}</strong> priority visit fee, plus your normal service charge.
-                One a week for a year is{' '}
-                <strong>${yearlyFee.toLocaleString('en-US')}</strong> in visit fees alone.
-              </p>
-              <p className={styles.mathNote}>
-                Before anything the work itself earns — the fee buys the detour, not the repair.
-                That is a multiplication, not a projection, and nothing here says anyone will ask. $
-                {typicalFee} is the middle of the ${minFee}&ndash;${maxFee} band, and you name the fee
-                on every single request.
-              </p>
-            </aside>
+            {/* THE ARITHMETIC IS GONE, and it should not come back.
+
+                It read "$150 priority visit fee … one a week for a year is
+                $7,800 in visit fees alone", under three sentences of hedging
+                that it was a multiplication rather than a projection. All of
+                that hedging was true and none of it works: a dollar figure of
+                that size on a page selling a revenue idea is read as what you
+                will make, and the caveats are read as small print. It had
+                already been demoted once — from a glowing card on the dashboard
+                to the smallest type in this block — which is the tell that the
+                problem was the number and not its styling.
+
+                Everything the reader actually needs is still here and is not a
+                guess: the fee band, that they set the fee per request, and the
+                split below showing what the fee buys and what it does not. */}
           </div>
 
           {/* THE DISTINCTION, DRAWN RATHER THAN STATED.
@@ -443,8 +431,11 @@ export default function QuickStopsPage() {
               </p>
             </div>
           </div>
+          {/* The first sentence used to be "The visit fee gets you to their
+              door. It does not pay for the service." — which is the two cards
+              above, restated in prose immediately under them. The exception is
+              the only part that was new, so it is the only part left. */}
           <p className={styles.splitNote}>
-            The visit fee gets you to their door. It does not pay for the service.{' '}
             <span>
               One exception, and the product says so on the homeowner&rsquo;s own screen: if you
               propose turning the visit into a paid diagnostic, the fee they have already paid comes

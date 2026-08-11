@@ -560,7 +560,11 @@ describe('the quick stops page', () => {
     expect(card).not.toContain('Your fee');
     expect(SRC).toContain('The priority visit fee');
     expect(SRC).toContain('The service charge');
-    expect(SRC).toContain('It does not pay for the service.');
+    // "The visit fee gets you to their door. It does not pay for the service."
+    // sat immediately under the two cards, restating them in prose. The cards
+    // are the distinction; a sentence repeating them is the fourth time the
+    // page makes the same point.
+    expect(SRC).not.toContain('It does not pay for the service.');
   });
 
   it('keeps the one exception the product actually has', () => {
@@ -575,9 +579,11 @@ describe('the quick stops page', () => {
   });
 
   it('counts the visit fee as revenue on top of the work, not instead of it', () => {
-    expect(SRC).toContain('plus your normal service charge');
-    expect(SRC).toContain('in visit fees alone');
-    expect(SRC).toContain('the fee buys the detour, not the repair');
+    // Said by the two cards and by the hero, rather than by the removed
+    // arithmetic block that used to carry these phrases.
+    expect(SRC).toContain('Priced separately');
+    expect(SRC).toMatch(/charged separately/);
+    expect(SRC).toContain('has no opinion about what you charge for the work');
   });
 
   it('describes the flow once, in the four beats the dashboard uses', () => {
@@ -599,20 +605,25 @@ describe('the quick stops page', () => {
     expect(SRC).toContain('texted and emailed to you the moment it lands');
   });
 
-  it('states the earnings as arithmetic, and derives every digit of it', () => {
-    // The dashboard explainer's rule, which this inherits: the middle of the
-    // band and not the top, because the top is the most flattering number
-    // available and somebody might plan around it.
-    expect(SRC).toContain('const typicalFee = Math.round((minFee + maxFee) / 2)');
-    expect(SRC).toContain('const yearlyFee = typicalFee * 52');
-    // $150 and $7,800 are what those constants currently produce. Neither may
-    // appear as a literal, or the day the fee band moves the page keeps
-    // quoting the old one.
-    expect(SRC).not.toMatch(/\$150\b/);
+  it('quotes no earnings figure at all', () => {
+    /* It used to read "$150 priority visit fee … one a week for a year is
+       $7,800 in visit fees alone", under three sentences insisting it was a
+       multiplication rather than a projection. Every one of those sentences was
+       true and none of them worked: a number that size on a page selling a
+       revenue idea is read as what you will make, and the hedging is read as
+       small print. It had already been demoted once — from a glowing card on
+       the dashboard to the smallest type in the block — which is the tell that
+       the number was the problem and not its styling. */
+    expect(SRC).not.toContain('yearlyFee');
+    expect(SRC).not.toContain('typicalFee');
+    expect(SRC).not.toMatch(/in visit fees alone/);
     expect(SRC).not.toMatch(/7,?800/);
-    // And it is labelled as the multiplication it is.
-    expect(SRC).toContain('That is a multiplication, not a projection');
     expect(SRC).not.toMatch(/\b(forecast|projected|earn up to|on average|typically earn)\b/i);
+    // What survives is the band, which is a fact about the product rather than
+    // a claim about anybody's income, and is read from the shipped constants.
+    expect(SRC).toContain('DEFAULT_QUICK_STOP_MIN_FEE_CENTS');
+    expect(SRC).toContain('DEFAULT_QUICK_STOP_MAX_FEE_CENTS');
+    expect(SRC).not.toMatch(/\$150\b/);
   });
 
   it('sends the hero button somewhere that matches its label', () => {

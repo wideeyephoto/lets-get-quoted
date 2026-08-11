@@ -7741,3 +7741,33 @@
   padding-block: 4px;
   font-size: 13px;
 }
+
+/* ---- reassurance goes BEFORE the button, not four lines under it ---------
+
+   "Website and back office included · No card · No monthly subscription" was
+   set as .detail-hero-note: prose colour, prose size, below the actions, below
+   the fold on a phone. It is not prose — it is three facts that decide whether
+   somebody presses the button above them, so it sits above the button. The
+   sentence-shaped notes on the other pages stay where they are; those are read
+   after deciding NOT to press, which is a different job. */
+.root :global(.detail-hero-chips) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+.root :global(.detail-hero-chips li) {
+  padding: 6px 12px;
+  border: 1px solid rgba(174, 199, 211, .22);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .1px;
+  color: #cfdde4;
+}
+@media (max-width: 430px) {
+  .root :global(.detail-hero-chips) { gap: 6px; margin-bottom: 16px; }
+  .root :global(.detail-hero-chips li) { padding: 5px 10px; font-size: 12px; }
+}

@@ -36,6 +36,8 @@ export type SuiteFeaturePageProps = {
   title: ReactNode;
   lede: ReactNode;
   heroNote?: ReactNode;
+  /** Short reassurance chips, above the actions. See FeatureDetailLayout. */
+  heroChips?: string[];
   demo?: ReactNode;
   /** The contextual "show me" action — usually this feature's live demo screen.
    *  See FeatureDetailLayout for why it is not sign-up. */

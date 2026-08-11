@@ -12,7 +12,9 @@ import { KIND_LABEL, buildForecast, type CashEvent } from '@/lib/cash-forecast';
 import styles from './back-office.module.css';
 
 export const metadata: Metadata = {
-  title: 'Contractor back office',
+  // "Contractor back office" is what we call it; "Contractor Back Office
+  // Software" is what somebody types into Google when they are looking for one.
+  title: 'Contractor Back Office Software',
   description:
     'Connect contractor quotes, scheduling, crews, payments, recurring work and follow-up. One job record from accepted quote to final payment.',
   alternates: { canonical: 'https://letsgetquoted.com/features/back-office' },
@@ -58,8 +60,10 @@ const STARTING_RATE = FEE_TIERS[0].rate;
    had asked; this one answers the two questions they actually have — what do I
    get, and what does it cost me to find out. The "everything is included"
    claim survives where it belongs, on the capability list itself. */
-const HERO_NOTE =
-  'Website and back office included · No card · No monthly subscription';
+/* Three facts, ABOVE the button rather than four lines under it. They are what
+   decides whether somebody presses it, and as a "·"-joined sentence in prose
+   type they were below the fold on a phone. See the heroChips prop. */
+const HERO_CHIPS = ['Website and back office included', 'No card', 'No monthly subscription'];
 
 /* ------------------------------------------------------------------------- */
 /* The hero: two real screens.                                                */
@@ -567,7 +571,7 @@ export default function BackOfficePage() {
         </>
       }
       lede="Quote the work, schedule your crew, collect payment, and follow up—without retyping customer details across five different tools."
-      heroNote={HERO_NOTE}
+      heroChips={HERO_CHIPS}
       /* The page's whole claim is "one job record", so the proof action is
          opening one. It was the third button, behind a signup and a jump link
          to a section that describes the record this button lets you use. */

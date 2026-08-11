@@ -22,7 +22,22 @@ export type FeatureDetailLayoutProps = {
   eyebrow: string;
   title: ReactNode;
   lede: ReactNode;
+  /**
+   * A sentence of reassurance, under the buttons, for somebody who has read
+   * them and hesitated. Prose — the fee mechanics, what Stripe holds, what the
+   * product will not do.
+   */
   heroNote?: ReactNode;
+  /**
+   * The short "· separated" kind of reassurance — "Website included · No card ·
+   * No monthly subscription" — which is not prose and was being set as though
+   * it were, four lines under the button it qualifies.
+   *
+   * Rendered ABOVE the actions, as chips. The distinction is worth a second
+   * prop: this is read BEFORE deciding whether to press, and heroNote is read
+   * after deciding not to.
+   */
+  heroChips?: string[];
   demo?: ReactNode;
   /**
    * THE ONE ACTION THIS PAGE IS FOR.
@@ -114,6 +129,7 @@ export default function FeatureDetailLayout({
   title,
   lede,
   heroNote,
+  heroChips,
   demo,
   primary,
   secondary,
@@ -160,6 +176,13 @@ export default function FeatureDetailLayout({
           </p>
           <h1>{title}</h1>
           <p>{lede}</p>
+          {heroChips?.length ? (
+            <ul className="detail-hero-chips">
+              {heroChips.map((chip) => (
+                <li key={chip}>{chip}</li>
+              ))}
+            </ul>
+          ) : null}
           <div className="hero-actions">
             <a className="button primary" href={primaryHref}>
               {primaryLabel} <span aria-hidden="true">→</span>
