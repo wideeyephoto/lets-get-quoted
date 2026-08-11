@@ -106,7 +106,7 @@ export type SendArrivalResult =
  *
  * Starts a trip, or revises the one already in flight. A second announcement
  * for the same visit is deliberately an UPDATE to the existing link rather than
- * a new one: the customer already has a page open, and the right behaviour is
+ * a new one: the customer already has a page open, and the right behavior is
  * for it to change under them, not for a second link to arrive.
  */
 export async function sendArrival(

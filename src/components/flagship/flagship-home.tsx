@@ -159,7 +159,7 @@ const SUITE_DWELL = 1250;
  * Not a performance guard — a layout one. The five mockups are different
  * heights, and a panel that resizes every 1.25s drags every section below it up
  * and down the page. Above this width the spread is 123px and is absorbed by a
- * reserved min-height with the shorter screens centred (see §97). Below it the
+ * reserved min-height with the shorter screens centerd (see §97). Below it the
  * spread is 476px — the leads pipeline is more than twice the height of the
  * schedule at 390px — and reserving for that would put a screen and a half of
  * empty space under every short one.
@@ -385,7 +385,7 @@ export default function FlagshipHome() {
 
   /* A tablist is expected to move with the arrow keys, and Home/End to the
      ends. Without this the strip is a row of buttons that happens to say
-     role="tab" — the role promises behaviour a screen-reader user will look
+     role="tab" — the role promises behavior a screen-reader user will look
      for and not find. */
   const onScreenKeys = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const ids = COMMAND_CENTER_SCREENS.map((option) => option.id);
@@ -785,7 +785,7 @@ export default function FlagshipHome() {
       {/* ONE SECTION, NOT TWO. This was the largest duplication on the page.
 
           "One system from quote to review" NAMED eight capabilities in a
-          sentence each. The command centre directly under it SHOWED six of
+          sentence each. The command center directly under it SHOWED six of
           them, each a heading plus a dashboard mockup taller than most
           viewports — six screens of scrolling to see one product from six
           angles, immediately after being told about it in a grid.

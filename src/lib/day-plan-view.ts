@@ -144,14 +144,14 @@ export function endOn(order: string[], preferredLastId: string | null): string[]
 }
 
 /**
- * The colour of one leg of the day.
+ * The color of one leg of the day.
  *
  * A single blue line tells you where the van goes but not which way, and on a
  * route that crosses itself — which most days do — that is the whole question.
  * Legs run cool to warm across the day, so the first drive and the last are
- * never the same colour and the list beside the map can use the same ramp.
+ * never the same color and the list beside the map can use the same ramp.
  *
- * Direction itself is carried by arrows on the line, not by the colour: colour
+ * Direction itself is carried by arrows on the line, not by the color: color
  * says WHICH leg, arrows say WHICH WAY, so neither depends on telling hues
  * apart.
  */

@@ -3,7 +3,7 @@
 //
 // Inner markup only: NO .fw-scope wrapper. That wrapper is where the palette
 // custom properties (--panel, --ink, --orange, --mono ...) are declared, so
-// whatever renders this has to supply it or the markup loses every colour and
+// whatever renders this has to supply it or the markup loses every color and
 // font. Split out of one 31KB string so each half can be rendered alone.
 /* eslint-disable */
 

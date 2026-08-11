@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PageCTA, SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
 import type { MarketingCtaProps } from './marketing-cta';
-import { APP_SIGNUP_URL, FEATURES_URL } from './links';
+import { APP_SIGNUP_URL, FEATURES_URL, SECONDARY_SIGNUP_LABEL } from './links';
 import styles from '@/components/flagship/flagship.module.css';
 
 /** One cell of the proof bar under the hero. */
@@ -24,21 +24,26 @@ export type FeatureDetailLayoutProps = {
   lede: ReactNode;
   heroNote?: ReactNode;
   demo?: ReactNode;
-  primary?: { label: string; href?: string };
-  secondary?: { label: string; href?: string } | null;
   /**
-   * A third hero action, for the live demo of the thing the page is about.
+   * THE ONE ACTION THIS PAGE IS FOR.
    *
-   * The two existing buttons are "sign up" and "read on". Neither of them is
-   * "show me", which is the smallest ask on the page and the one closest to
-   * what most visitors arrive wanting — and the route to it was the /demo index
-   * and then the right tab.
-   *
-   * Deliberately absent on the pages where no demo screen IS the feature: a
-   * third button that lands somewhere adjacent is worse than two, because the
-   * disappointment is what the visitor remembers.
+   * On a capability page that is "show me the thing" — Open the live calendar,
+   * Try the quote builder, Open the live crew screen. It is not sign-up: eight
+   * of these pages used to lead with "Build my free site" while selling
+   * payments, scheduling or crew management, which answers a question the
+   * reader did not ask.
    */
-  tertiary?: { label: string; href: string } | null;
+  primary?: { label: string; href?: string };
+  /**
+   * Signing up, quietly. Defaults to "Start free" at the app's signup route —
+   * pass a spec to override, or null on a page where a second action would be
+   * noise.
+   *
+   * There is no third. Eleven of the twelve feature pages offered three, which
+   * is not a choice so much as an invitation to make none: a demo, a sign-up
+   * and a jump link, all at once, all competing.
+   */
+  secondary?: { label: string; href?: string } | null;
   proof: FeatureProofPoint[];
   /**
    * A section between the proof strip and the story.
@@ -112,7 +117,6 @@ export default function FeatureDetailLayout({
   demo,
   primary,
   secondary,
-  tertiary,
   proof,
   afterProof,
   story,
@@ -126,12 +130,16 @@ export default function FeatureDetailLayout({
   storyId = 'details',
   children,
 }: FeatureDetailLayoutProps) {
-  // One primary label across the whole cluster. A visitor bouncing between
-  // three feature pages should see the same button each time, not three offers.
+  /* TWO ACTIONS, AND THE FIRST ONE BELONGS TO THIS PAGE.
+     The old default was "Build my free site" for anything that did not override
+     it, which is how a page about crew scheduling came to lead with an offer of
+     a website. There is no default primary now — a page that does not say what
+     its own action is falls back to signing up, and that fallback is a signal
+     the page has not decided rather than a template doing it for them. */
   const primaryLabel = primary?.label ?? 'Build my free site';
   const primaryHref = primary?.href ?? APP_SIGNUP_URL;
   const secondarySpec =
-    secondary === null ? null : (secondary ?? { label: 'See how it works', href: `#${storyId}` });
+    secondary === null ? null : (secondary ?? { label: SECONDARY_SIGNUP_LABEL, href: APP_SIGNUP_URL });
 
   return (
     <main className={`${styles.root} inner-site`}>
@@ -156,16 +164,12 @@ export default function FeatureDetailLayout({
             <a className="button primary" href={primaryHref}>
               {primaryLabel} <span aria-hidden="true">→</span>
             </a>
+            {/* next/link is deliberately not used for either: the signup host
+                is external, and a demo route is a heavy screen that should not
+                be prefetched on hover from every feature page. */}
             {secondarySpec ? (
               <a className="button secondary" href={secondarySpec.href ?? `#${storyId}`}>
                 {secondarySpec.label}
-              </a>
-            ) : null}
-            {/* next/link would prefetch a demo route on hover from every feature
-                page. It is a heavy screen and most visitors will not press it. */}
-            {tertiary ? (
-              <a className="button secondary" href={tertiary.href}>
-                {tertiary.label}
               </a>
             ) : null}
           </div>

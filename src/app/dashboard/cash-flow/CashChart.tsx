@@ -542,7 +542,7 @@ export default function CashChart({
                 {shape === 'down' ? <path className="cash-marker-shape" d="M0,5 L4.4,-2.8 L-4.4,-2.8 Z" /> : null}
                 {shape === 'circle' ? <circle className="cash-marker-shape" r={4} /> : null}
                 {/* A grouped marker is a disc carrying the count. Shape AND
-                    colour still separate in from out on the ungrouped ones; a
+                    color still separate in from out on the ungrouped ones; a
                     group is neither, so it says how many instead. */}
                 {shape === 'cluster' ? (
                   <>

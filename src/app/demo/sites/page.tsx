@@ -20,7 +20,7 @@ import { APP_SIGNUP_URL } from '@/components/marketing/links';
 // It is not a replica in the way the old pages were, either: AVAILABLE_TEMPLATES,
 // COLOR_SCHEMES and ThemeIcon are all imported from the real modules, and the
 // preview iframe loads the real /themes/[template] route. Add a template to the
-// app and it appears here on its own. What is hand-written is the customiser
+// app and it appears here on its own. What is hand-written is the customizer
 // around them, and that is the part with no equivalent to drift from.
 
 // Preset accent swatches — mirrors the website builder's palette so the demo
@@ -184,7 +184,7 @@ export default function DemoSitesPage() {
       </section>
 
       {/* Under the customizer, because it is the next thing you would do:
-          the colours make it yours, the video makes it convincing. */}
+          the colors make it yours, the video makes it convincing. */}
       <DemoVideoStudio />
     </main>
   );

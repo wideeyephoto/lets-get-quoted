@@ -19,7 +19,7 @@ export default function SitePortalPage({
   enabled,
   form,
 }: {
-  /** site.accent_override — the contractor's colour, so this reads as theirs. */
+  /** site.accent_override — the contractor's color, so this reads as theirs. */
   accent: string | null;
   businessName: string;
   /** accounts.client_portal_enabled. */

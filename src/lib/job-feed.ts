@@ -64,7 +64,7 @@ export type ClientMilestone = {
 
 export type ClientJobDashboard = {
   businessName: string;
-  /** Logo, colour and website — everything the page needs to wear the
+  /** Logo, color and website — everything the page needs to wear the
    *  contractor's brand rather than ours. See @/lib/contractor-brand. */
   brand: ContractorBrand;
   job: {

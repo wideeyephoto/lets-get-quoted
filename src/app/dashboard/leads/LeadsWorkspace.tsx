@@ -175,14 +175,14 @@ export default function LeadsWorkspace({
   // clicking the same pin twice count twice, so re-clicking the lead you're
   // already on still brings its details back into view.
   const [pinRequest, setPinRequest] = useState<{ id: string; nonce: number } | null>(null);
-  // Which lead the Focus pane has open, so the map can centre on it.
+  // Which lead the Focus pane has open, so the map can center on it.
   const [focusLeadId, setFocusLeadId] = useState<string | null>(null);
   // Stable identity: LeadFocusView calls this from an effect, so a new function
   // every render would re-fire it on every render.
   const onFocusSelect = useCallback((id: string | null) => setFocusLeadId(id), []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
-  // Local map colour, so the demo's picker works with no cookie behind it.
+  // Local map color, so the demo's picker works with no cookie behind it.
   const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
   const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
 
@@ -258,7 +258,7 @@ export default function LeadsWorkspace({
   }
 
   // Smoothie owns its own map — it is a pane you switch to, not a band above
-  // the page — so its gear offers the view list and the map's COLOUR, and no
+  // the page — so its gear offers the view list and the map's COLOR, and no
   // placement setting that would govern a map this view never renders.
   const smoothie = view === 'smoothie';
 
@@ -272,7 +272,7 @@ export default function LeadsWorkspace({
       // No map PLACEMENT in the gear any more, in any view. Where the map goes
       // is not a view setting — it is a toolbar toggle beside the views now, so
       // leaving a second control for it here would be two switches for one
-      // thing. Its colour is still a preference, so that stays.
+      // thing. Its color is still a preference, so that stays.
       mapTheme={effectiveMapTheme}
       onSetMapTheme={setTheme}
       label="View"
@@ -368,7 +368,7 @@ function SplitView({
   const detailRef = useRef<HTMLDivElement | null>(null);
 
   // Same treatment the jobs pipeline gives a pin click: open the record, bring
-  // its detail into view, and centre its row in the list's own scroller — each
+  // its detail into view, and center its row in the list's own scroller — each
   // only when it isn't already fully visible, so working down the list on a
   // wide monitor doesn't yank the page or shunt the row under the cursor.
   const reveal = useCallback((id: string) => {

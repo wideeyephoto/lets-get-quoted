@@ -10,7 +10,7 @@
  *
  * Inline SVG rather than a new file: it is the same shape as public/favicon.png
  * (orange ring, dark disc, orange tick), it stays crisp at any size, it takes
- * its colour from the accent token so a theme change cannot leave it behind,
+ * its color from the accent token so a theme change cannot leave it behind,
  * and it costs no request on a page a homeowner opens once from a text.
  */
 export default function BrandLogo({ className, size = 34 }: { className?: string; size?: number }) {

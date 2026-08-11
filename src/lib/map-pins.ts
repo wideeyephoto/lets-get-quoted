@@ -19,7 +19,7 @@ function scheduledLabel(dateIso: string, time: string | null): string {
 }
 
 // Assemble the dashboard map's pins for an account: active leads and jobs that
-// have geocoded coordinates, colour-coded by what they need next, each carrying
+// have geocoded coordinates, color-coded by what they need next, each carrying
 // a few detail rows for the map card.
 //   lead        → a lead awaiting a response (orange)
 //   unscheduled → a job/quote with no date yet (gold)

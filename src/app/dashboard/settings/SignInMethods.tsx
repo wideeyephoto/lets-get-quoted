@@ -268,7 +268,7 @@ export default function SignInMethods({ email, phone, providers }: Props) {
 
       {/* --gold-ink, not the #ffd166 literal it used to be: identical in dark,
           but a JSX literal is unreachable by the light-theme flip and that
-          yellow is unreadable on paper. Same colour .auth-message uses. */}
+          yellow is unreadable on paper. Same color .auth-message uses. */}
       {message ? (
         <p className="workspace-card-copy" style={{ color: message.type === 'error' ? 'var(--gold-ink)' : undefined, marginTop: '1rem' }} role="status">
           {message.text}

@@ -63,7 +63,7 @@ export default function MarketingCalendar({
    *
    * When the contractor has already drafted it, the text they READ is what goes
    * in the box. Asking the server to write it again would put different words
-   * there from the ones they just approved — the old behaviour, and a genuinely
+   * there from the ones they just approved — the old behavior, and a genuinely
    * confusing one. Only an un-drafted topic needs a round trip.
    */
   function handOverToComposer(beatId: string) {

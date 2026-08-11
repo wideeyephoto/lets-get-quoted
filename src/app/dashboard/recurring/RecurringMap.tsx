@@ -15,7 +15,7 @@ import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 // plan appears here once a visit has been geocoded, and the count says how many
 // couldn't be placed rather than quietly drawing a smaller book than you have.
 //
-// Colour is plan STATE, not value: orange for the ones needing attention,
+// Color is plan STATE, not value: orange for the ones needing attention,
 // because "which of these bills nobody" is the only thing on this page worth
 // interrupting somebody about. Blue is running, grey is paused.
 

@@ -11,7 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const MISSING_TABLE = '42P01';
 
-/** Enough to recognise the job. Longer than this is a paragraph, not a label. */
+/** Enough to recognize the job. Longer than this is a paragraph, not a label. */
 const ISSUE_MAX = 240;
 
 export type ScreeningOutcome = 'accepted' | 'not_a_fit' | 'unsafe';

@@ -172,7 +172,7 @@ function sameFilter(a: StatFilter, b: StatFilter): boolean {
  * Declared as data rather than as six hand-written buttons so that the label,
  * the filter it applies and the selected state it shows are one thing. When
  * they were six buttons, "Hours logged" filtered to approved rows — a card
- * whose heading and behaviour disagreed, on the screen where a number's meaning
+ * whose heading and behavior disagreed, on the screen where a number's meaning
  * is the whole product.
  */
 const STAT_CARDS: Array<{
@@ -444,7 +444,7 @@ export default function HoursAndPay({
     });
   }
 
-  // Colour only — the layout this tab is in stays exactly as it was.
+  // Color only — the layout this tab is in stays exactly as it was.
   function pickSkin(next: CrewSkin) {
     setSkin(next);
     applyCrewSkin(next);

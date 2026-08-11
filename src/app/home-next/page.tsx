@@ -20,7 +20,7 @@ import styles from './home-next.module.css';
  * meaningless — so the copy is not edited, reordered or "improved" here.
  *
  * WHERE THE LOOK CAME FROM. None of the Codex stylesheet came with it. Chrome,
- * colour, type and spacing are this app's: `.marketing-shell`, `.hero-grid`,
+ * color, type and spacing are this app's: `.marketing-shell`, `.hero-grid`,
  * `.section-block`, `.eyebrow`, `.btn`, `.compare-table`, `.pricing-tier`,
  * `.cta-band` and the rest are used from globals.css, read-only, and the module
  * beside this file defines only the pieces globals has no class for. The dark
@@ -55,7 +55,7 @@ import styles from './home-next.module.css';
  * effect, and the section is not big enough to deserve its own module.
  *
  * NO STRUCTURED DATA. The live page emits Organization, SoftwareApplication and
- * FAQPage JSON-LD. A noindexed draft claiming to be the same organisation is
+ * FAQPage JSON-LD. A noindexed draft claiming to be the same organization is
  * not something to hand a crawler, so it is left out rather than copied.
  */
 

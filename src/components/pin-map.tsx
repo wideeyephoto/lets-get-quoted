@@ -7,7 +7,7 @@ import { createAdvancedMarker } from '@/lib/advanced-markers';
 import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 import { WORKFLOW_STAGE_LABEL } from '@/lib/workflow-stages';
 
-// A pin on the dashboard map. `kind` drives the marker colour + legend.
+// A pin on the dashboard map. `kind` drives the marker color + legend.
 export type MapPinKind = 'lead' | 'unscheduled' | 'scheduled';
 export type MapPinRow = { label: string; value: string };
 export type MapPin = {
@@ -300,7 +300,7 @@ export default function PinMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
-  // Centre on one pin when the page asks — the jobs pipeline points this at
+  // Center on one pin when the page asks — the jobs pipeline points this at
   // whichever job is open, so the map follows the selection instead of showing
   // the same whole-territory view whatever you're looking at.
   //
@@ -382,7 +382,7 @@ export default function PinMap({
       ) : null}
       {status === 'error' ? <div className="pin-map-empty">Map unavailable.</div> : null}
       {/* The legend is the filter. It already names every kind of pin and shows
-          its colour, so making it clickable adds a control without adding a
+          its color, so making it clickable adds a control without adding a
           control — and on a busy map "just the leads" is the first thing
           anybody wants. */}
       <div className="pin-map-legend">

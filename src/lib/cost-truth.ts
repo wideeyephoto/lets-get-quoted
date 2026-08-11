@@ -23,7 +23,7 @@
 // only means anything if a string can reach it. The narrower `number | null |
 // undefined` described a contract the callers were already breaking and the
 // implementation was already handling, which left the tests covering that
-// behaviour unable to compile.
+// behavior unable to compile.
 export function resolveBurdenPct(crewBurdenPct: number | string | null | undefined, accountDefaultPct: number | string | null | undefined): number {
   const own = toFiniteOrNull(crewBurdenPct);
   if (own !== null) return clampBurden(own);

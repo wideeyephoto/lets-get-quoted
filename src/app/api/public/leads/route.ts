@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   }
   // Refused only when the string CANNOT deliver. A junk-but-deliverable address
   // (test@test.com, a burner inbox) is kept and flagged below — losing a real
-  // enquiry over a typed-in filler address is the worse trade, and the phone
+  // inquiry over a typed-in filler address is the worse trade, and the phone
   // number is usually how this work gets won anyway.
   const emailVerdict = classifyEmail(email);
   if (email && !emailVerdict.valid) {

@@ -343,7 +343,7 @@ export async function confirmUpcomingAppointment(
 // would be a stack of mail at 10pm rather than a signal worth reading.
 //
 // Entirely best-effort — the reminders themselves have already been sent, and a
-// failure here must not colour the run's result.
+// failure here must not color the run's result.
 async function sendReminderSummaries(
   admin: SupabaseClient,
   byAccount: Map<string, { sent: number; failed: number }>,

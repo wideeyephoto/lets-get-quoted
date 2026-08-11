@@ -36,7 +36,7 @@ export type CrewMember = {
   payroll_id?: string | null;
   // What this person may do around an arrival. Optional for the same
   // pre-migration reason; arrivalPermissionsFromCrew() resolves an absent
-  // column to the behaviour that shipped before permissions existed.
+  // column to the behavior that shipped before permissions existed.
   can_send_arrival?: boolean | null;
   can_share_location?: boolean | null;
   can_view_client_contact?: boolean | null;

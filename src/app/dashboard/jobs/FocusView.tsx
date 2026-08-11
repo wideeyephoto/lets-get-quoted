@@ -68,11 +68,11 @@ export default function FocusView({
 
   // The cache, the debounce, the abort and the stale-response guard now live
   // in useJobDetail so Smoothie runs the same code rather than a second copy.
-  // Nothing about the behaviour moved with them.
+  // Nothing about the behavior moved with them.
   const { detail, loading, error, armPrefetch, cancelPrefetch } = useJobDetail({ selectedId, jobs, details });
 
   // Opened from the map. Goes through the same path as a click on the list, so
-  // the pane scrolls into view and the row centres itself exactly as it would.
+  // the pane scrolls into view and the row centers itself exactly as it would.
   useEffect(() => {
     if (!openRequest) return;
     if (!jobs.some((j) => j.id === openRequest.id)) return; // filtered out
@@ -110,7 +110,7 @@ export default function FocusView({
     onSelect?.(selectedId);
   }, [selectedId, onSelect]);
 
-  // Centre the selected row in the list. The list scrolls independently of the
+  // Center the selected row in the list. The list scrolls independently of the
   // page, so a job picked from the map, from the keyboard, or one that's simply
   // further down than the rows on screen would otherwise stay highlighted
   // somewhere you can't see. Only when it isn't already fully visible, so

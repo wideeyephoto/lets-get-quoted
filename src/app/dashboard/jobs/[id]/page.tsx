@@ -1507,7 +1507,7 @@ export default async function JobDetailPage({
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading compact-heading">
                   <p className="eyebrow">Selections</p>
-                  <h2>Colours, materials &amp; fixtures</h2>
+                  <h2>Colors, materials &amp; fixtures</h2>
                 </div>
                 <span className={`workspace-details-copy${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>
                   {selectionStatus.label || 'What the customer has to choose, and what it costs.'}

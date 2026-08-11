@@ -241,7 +241,7 @@ export async function sendCampaignAction(formData: FormData) {
   const audience = String(formData.get('audience') ?? '') as CampaignAudience;
   const subject = String(formData.get('subject') ?? '').trim();
   const body = String(formData.get('body') ?? '').trim();
-  // Only ever a topic id we recognise. It comes from the browser, and an
+  // Only ever a topic id we recognize. It comes from the browser, and an
   // unchecked value here would write arbitrary text into the send history.
   const beatRaw = String(formData.get('beatId') ?? '').trim();
   const beatId = BEATS.some((beat) => beat.id === beatRaw) ? beatRaw : null;

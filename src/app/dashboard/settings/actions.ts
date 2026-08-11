@@ -1032,7 +1032,7 @@ export async function updateArrivalWindowAction(minutes: number): Promise<void> 
   revalidatePath('/dashboard/settings');
 }
 
-// The two optional arrival behaviours, which are not part of the core card.
+// The two optional arrival behaviors, which are not part of the core card.
 // A morning text to today's customers and clocking drive time are separate
 // decisions about different things — one is a send, one is job costing — and
 // putting them beside the window width made a simple screen look complicated.

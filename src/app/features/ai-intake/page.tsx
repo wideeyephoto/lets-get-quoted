@@ -4,7 +4,6 @@ import SampleIntake from './sample-intake';
 import ExampleFrame from '@/components/marketing/example-frame';
 import { TRADES } from '@/lib/trades';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { TIER_LABEL } from '@/lib/lead-priority';
 import styles from './ai-intake.module.css';
 
@@ -98,7 +97,7 @@ function ArrivingLead() {
 
 /* Which leads are allowed to interrupt you.
  *
- * All three rungs are real behaviour from the public lead endpoint: a
+ * All three rungs are real behavior from the public lead endpoint: a
  * high-value lead (its estimate clears the threshold the owner set) escalates
  * to a louder email and, opt-in, a text to the owner's mobile; an ordinary lead
  * emails; and a low-scoring one stays silent by default while still landing on
@@ -119,7 +118,7 @@ const ALERT_LADDER = [
   {
     tone: 'quiet',
     channel: 'No alert',
-    title: 'A poor-fit enquiry lands',
+    title: 'A poor-fit inquiry lands',
     body: 'Leads that score low do not text you and do not email you — that is the default, not a setting you have to find. They are still captured and still on the board when you go looking. Nothing is thrown away; it just stops arriving as an interruption.',
   },
 ] as const;
@@ -177,8 +176,12 @@ export default function AIIntakePage() {
          there, and on a phone it is below the fold — so the first button takes
          you to it and the signup is the second. */
       primary={{ label: 'Try a sample intake', href: '#sample-intake' }}
-      secondary={{ label: 'Build my free site', href: APP_SIGNUP_URL }}
-      tertiary={{ label: 'See scored leads in the demo', href: '/demo/leads' }}
+      /* Both actions are "look at it working", and neither is a signup. This is
+         the one page where that is right: the whole argument is that the intake
+         does something a form does not, and asking somebody to open an account
+         before they have watched it is asking on faith. The closing CTA takes
+         the signup. */
+      secondary={{ label: 'See scored leads in the demo', href: '/demo/leads' }}
       demo={
         <ExampleFrame
           label="One request, from two words to a job you can quote"
@@ -220,7 +223,7 @@ export default function AIIntakePage() {
          of your day on poor-fit leads", "keeps the intake usable" and "sets
          price expectations early" are three outcomes and two mechanisms. The
          mechanisms are shown rather than claimed — the demo above is the
-         context being built, and the alert ladder below is the prioritising —
+         context being built, and the alert ladder below is the prioritizing —
          so what is left is what a contractor gets out of it. */
       benefits={[
         {
@@ -232,8 +235,8 @@ export default function AIIntakePage() {
           body: 'Fit, urgency, value and distance decide what rises. With the service-area question switched on, whether a job sits inside the patch you actually cover is one of the signals doing the ranking.',
         },
         {
-          title: 'Stop losing days to poor-fit enquiries',
-          body: 'Set a minimum job size and list the work you don’t take, and enquiries below the line arrive flagged rather than mixed in. An instant estimate also gives the homeowner a realistic starting point before either side spends time on a call.',
+          title: 'Stop losing days to poor-fit inquiries',
+          body: 'Set a minimum job size and list the work you don’t take, and inquiries below the line arrive flagged rather than mixed in. An instant estimate also gives the homeowner a realistic starting point before either side spends time on a call.',
         },
       ]}
       stepsTitle="From a vague inquiry to a prioritized opportunity — before you pick up the phone."

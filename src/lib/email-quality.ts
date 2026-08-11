@@ -77,7 +77,7 @@ const PLACEHOLDER_DOMAINS = new Set([
   'nomail.com', 'domain.com', 'sample.com', 'yourdomain.com',
 ]);
 
-// Shared mailboxes. Real, but they belong to an organisation rather than a
+// Shared mailboxes. Real, but they belong to an organization rather than a
 // person: they draw complaints and are a poor target for a review request.
 const ROLE_LOCALS = new Set([
   'admin', 'administrator', 'billing', 'contact', 'info', 'help', 'hello', 'sales', 'support',
@@ -94,7 +94,7 @@ const COMMON_DOMAINS = [
   'mail.com', 'email.com',
 ];
 
-// Every domain this module has an opinion about. A domain we RECOGNISE is never
+// Every domain this module has an opinion about. A domain we RECOGNIZE is never
 // offered a correction, whatever it's one edit away from — "mail.com" is one
 // insert from "gmail.com" and is a real provider with real customers behind it.
 // Knowing what something is beats guessing what it resembles.
@@ -140,7 +140,7 @@ export function suggestEmailFix(address: string): string | null {
   if (at <= 0) return null;
   const local = address.slice(0, at);
   const domain = address.slice(at + 1).toLowerCase();
-  // Nothing to correct about a domain we already recognise.
+  // Nothing to correct about a domain we already recognize.
   if (!domain || KNOWN_DOMAINS.has(domain)) return null;
 
   // Exactly one edit, transpositions included. Two would start reaching real,
@@ -158,7 +158,7 @@ export function suggestEmailFix(address: string): string | null {
  * `valid: false` means the string cannot be delivered to and should be refused
  * at the form. `junk: true` means it probably can be delivered to but shouldn't
  * be mailed — the lead is kept either way, because a phone number is usually
- * how this work gets won and losing the whole enquiry over a typed-in
+ * how this work gets won and losing the whole inquiry over a typed-in
  * "none@none.com" is a far worse outcome than not emailing them.
  */
 export function classifyEmail(input: string | null | undefined): EmailVerdict {

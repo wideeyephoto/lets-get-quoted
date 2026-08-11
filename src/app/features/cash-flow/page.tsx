@@ -43,9 +43,8 @@ export default function CashFlowFeaturePage() {
         </>
       }
       lede="Deposits and balances you are owed, payroll and bills you owe — dated and projected forward from today’s balance. The week you cannot cover payroll becomes a warning rather than a Friday morning discovery."
-      heroNote="Built from money the product already knows about: approved quotes, deposits, instalments, recurring visits, logged hours and the bills you enter. Nothing here is a guess about your industry."
-      secondary={{ label: 'What it can tell you', href: '#capabilities' }}
-      tertiary={{ label: 'Open the live forecast', href: '/demo/cash-flow' }}
+      heroNote="Built from money the product already knows about: approved quotes, deposits, installments, recurring visits, logged hours and the bills you enter. Nothing here is a guess about your industry."
+      primary={{ label: 'Open the live forecast', href: '/demo/cash-flow' }}
       demo={
         <ExampleFrame
           label="Two weeks forward, with the day the balance dips below the buffer."
@@ -80,12 +79,12 @@ export default function CashFlowFeaturePage() {
       story={{
         eyebrow: 'The number that decides whether you take the job',
         title: 'Profitable businesses fail on timing, not on margin.',
-        body: 'A job can be worth doing and still be the thing that empties your account, because the materials go out three weeks before the balance comes in. A forecast built from the deposits, instalments and payroll the product already holds turns that from a feeling into a date — and a date is something you can move a bill or chase a balance against.',
+        body: 'A job can be worth doing and still be the thing that empties your account, because the materials go out three weeks before the balance comes in. A forecast built from the deposits, installments and payroll the product already holds turns that from a feeling into a date — and a date is something you can move a bill or chase a balance against.',
       }}
       benefits={[
         {
           title: 'See money before it moves',
-          body: 'Deposits and balances you are owed, instalments due, recurring visits ahead, payroll from logged hours and the bills you enter — all dated, all applied forward from what is actually in the account today.',
+          body: 'Deposits and balances you are owed, installments due, recurring visits ahead, payroll from logged hours and the bills you enter — all dated, all applied forward from what is actually in the account today.',
         },
         {
           title: 'Know how much of it is real',
@@ -105,7 +104,7 @@ export default function CashFlowFeaturePage() {
         },
         {
           title: 'Money in, from the work',
-          body: 'Approved deposits, balances due, instalment dates and recurring visits — with a late allowance, because customers are late and a forecast that assumes otherwise is fiction.',
+          body: 'Approved deposits, balances due, installment dates and recurring visits — with a late allowance, because customers are late and a forecast that assumes otherwise is fiction.',
         },
         {
           title: 'Money out, from the crew and the bills',
@@ -123,7 +122,7 @@ export default function CashFlowFeaturePage() {
       faq={[
         {
           q: 'Does this connect to my bank?',
-          a: 'No. You tell it what is in the account today, and it projects forward from money the product already knows about — approved quotes, deposits, instalments, recurring visits, logged hours and bills you enter. That means no bank credentials to hand over, and a forecast you can explain line by line.',
+          a: 'No. You tell it what is in the account today, and it projects forward from money the product already knows about — approved quotes, deposits, installments, recurring visits, logged hours and bills you enter. That means no bank credentials to hand over, and a forecast you can explain line by line.',
         },
         {
           q: 'How does it handle customers who pay late?',

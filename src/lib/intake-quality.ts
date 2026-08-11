@@ -54,7 +54,7 @@ export function intakeQuality(input: IntakeQualityInput): IntakeQuality {
     detail:
       filtersOn > 0
         ? `${filtersOn} of ${filters.length} lead filters are enabled — leads get ranked on timeframe, area and whether the number is real.`
-        : 'Every enquiry arrives ranked the same, so a tyre-kicker sits level with a job starting Monday.',
+        : 'Every inquiry arrives ranked the same, so a tyre-kicker sits level with a job starting Monday.',
     tone: fitTone,
     label: LABELS[fitTone],
   };

@@ -117,7 +117,7 @@ export default function JobsWorkspace({
 }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
-  // Which job the Focus pane has open, so the map can centre on it.
+  // Which job the Focus pane has open, so the map can center on it.
   const [focusJobId, setFocusJobId] = useState<string | null>(null);
   // Stable identity: FocusView calls this from an effect, so a new function
   // every render would re-fire it on every render.

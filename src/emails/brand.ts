@@ -3,7 +3,7 @@
 // Before this, all fifteen were hand-written HTML strings carrying Let's Get
 // Quoted's amber-and-navy palette, and the customer saw OUR name in the From
 // line for THEIR plumber's invoice. This is the one shell they all render
-// through, wearing the contractor's name, colour and logo.
+// through, wearing the contractor's name, color and logo.
 //
 // Emails our own customers get — the daily digest, lead alerts, "your quote was
 // sent" confirmations — deliberately do NOT use this. Those are us talking to
@@ -83,12 +83,12 @@ export function contractorFrom(businessName: string): string {
 
 /**
  * The masthead: their uploaded logo if they have one, otherwise their name set
- * in their own colour.
+ * in their own color.
  *
  * Deliberately NOT the SVG brand mark the site and favicon use. Gmail refuses
  * data: URIs on images and several clients don't render SVG at all, so it would
  * be an empty box for most recipients — worse than a wordmark, which always
- * works and still carries the colour.
+ * works and still carries the color.
  */
 function brandLockup(brand: EmailBrand): string {
   const accent = safeAccent(brand.accent);

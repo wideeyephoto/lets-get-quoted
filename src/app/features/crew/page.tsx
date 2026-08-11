@@ -43,8 +43,7 @@ export default function CrewFeaturePage() {
       }
       lede="Assign the people and the job is on their phone — address, scope, photos, contact. They log hours and materials from the site, and the profit on that job is a number you can see before you invoice it."
       heroNote="Hours carry the rate they were logged at. Marking somebody paid records that you paid them — it does not move money or calculate tax, and the product does not pretend otherwise."
-      secondary={{ label: 'What the field app carries', href: '#capabilities' }}
-      tertiary={{ label: 'Open the live crew screen', href: '/demo/crew' }}
+      primary={{ label: 'Open the live crew screen', href: '/demo/crew' }}
       demo={
         <ExampleFrame
           label="One job, part-way through, with labor and materials already on it."

@@ -54,7 +54,7 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
   }
 
   // The same variables every template root sets, built the same way, so the
-  // preview can't drift into showing a colour the live site doesn't use.
+  // preview can't drift into showing a color the live site doesn't use.
   const scheme = getColorScheme(getSiteContent(site.content).colorScheme);
   const themeStyle = {
     '--theme-accent': site.accent_override || scheme?.accent || '#2563eb',
@@ -116,7 +116,7 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
                       and read the theme variables a template root sets. Rendered
                       outside one, the submit button loses its fill entirely — so
                       the preview reproduces that wrapper rather than approximating
-                      it, and the card comes out the colour and button shape the
+                      it, and the card comes out the color and button shape the
                       published site will actually use. */}
                   <div className="intake-preview-stage">
                     <div className={themeStyles.site} style={themeStyle} data-button={site.button_style || 'solid'}>

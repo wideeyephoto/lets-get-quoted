@@ -34,7 +34,7 @@ export async function loadPriorityZones(supabase: SupabaseClient, accountId: str
     const zones: PriorityZone[] = [];
     for (const row of (data ?? []) as ZoneRow[]) {
       // numeric columns come back as strings from PostgREST; a silently NaN
-      // centre would place a zone at the origin, which is in the Atlantic.
+      // center would place a zone at the origin, which is in the Atlantic.
       const centerLat = num(row.center_lat);
       const centerLng = num(row.center_lng);
       const radiusMiles = num(row.radius_miles);

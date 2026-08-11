@@ -869,7 +869,7 @@ export function buildTopOpportunities(signals: OpportunitySignals): Opportunity[
       id: 'chase-leads',
       icon: 'follow-up-quotes',
       title: `Chase ${signals.uncontactedLeads} lead${signals.uncontactedLeads === 1 ? '' : 's'} with no quote`,
-      detail: 'Enquiries that came in and never got priced.',
+      detail: 'Inquiries that came in and never got priced.',
       value: null,
       count: signals.uncontactedLeads,
       priority: 'medium',

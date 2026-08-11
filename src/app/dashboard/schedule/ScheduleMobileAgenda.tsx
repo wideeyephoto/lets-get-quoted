@@ -228,7 +228,7 @@ export default function ScheduleMobileAgenda({
       {view === 'agenda' ? (
         <div className="sched-mobile-panel" data-view="agenda" id="sched-panel" role="tabpanel" aria-labelledby="sched-tab-agenda">
           {/* How full the day is, beside the day it belongs to — a word and a
-              number, not a colour. */}
+              number, not a color. */}
           <div className="sched-cap" data-state={capacity.state}>
             <p className="sched-cap-text">
               <strong>{capacity.word}</strong>

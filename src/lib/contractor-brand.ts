@@ -11,7 +11,7 @@ import { siteOrigin } from '@/lib/seo/site-pages';
  * the payment page, their portal — was carrying the Let's Get Quoted mark and
  * wordmark at the top. That is the wrong name on the door twice over: the
  * homeowner hired a contractor they can name, and on the payment page in
- * particular a brand they do not recognise above a card form is the moment they
+ * particular a brand they do not recognize above a card form is the moment they
  * stop and ring somebody. Our name belongs in the footer, small, as the thing
  * that carried the message.
  *
@@ -26,7 +26,7 @@ export type ContractorBrand = {
   logoUrl: string | null;
   /** Inline SVG for the derived mark. Null when `logoUrl` is used instead. */
   markSvg: string | null;
-  /** Their colour, so the page reads as theirs rather than as ours. */
+  /** Their color, so the page reads as theirs rather than as ours. */
   accent: string;
   /** Their published website, for the "back to" link. Null before publishing. */
   siteUrl: string | null;
@@ -93,13 +93,13 @@ export function shapeContractorBrand(
   };
 }
 
-/** Anything that isn't a hex colour falls back, rather than reaching a `fill=`
+/** Anything that isn't a hex color falls back, rather than reaching a `fill=`
  *  attribute verbatim. */
 function normalizeAccent(value: string | null | undefined): string {
   return value && /^#[0-9a-fA-F]{3,8}$/.test(value.trim()) ? value.trim() : DEFAULT_BRAND_ACCENT;
 }
 
-/* --- painting a page in somebody else's colour -----------------------------
+/* --- painting a page in somebody else's color -----------------------------
    The brand bar re-points --accent on ITSELF and deliberately stopped there,
    because handing an arbitrary contractor hex to .btn.primary is how you get a
    navy Pay button with a label nobody can read. That reasoning was right and it
@@ -139,24 +139,24 @@ const BRAND_DARK_INK: Rgb = [18, 16, 14];
 const BRAND_LIGHT_INK: Rgb = [255, 255, 255];
 
 export type BrandPaint = {
-  /** The contractor's colour, for fills and stripes. */
+  /** The contractor's color, for fills and stripes. */
   accent: string;
   /** Black or white — whichever is legible ON that fill. Computed, not chosen. */
   onAccent: string;
-  /** A low-alpha wash of the same colour, for card grounds. Carries no text. */
+  /** A low-alpha wash of the same color, for card grounds. Carries no text. */
   soft: string;
   /** A mid-alpha edge, for borders. Carries no text either. */
   edge: string;
 };
 
 /**
- * The four values a page needs to wear a contractor's colour safely.
+ * The four values a page needs to wear a contractor's color safely.
  *
  * Only `onAccent` is a contrast decision, and it is the only one that has to be:
  * `soft` and `edge` are washes behind and around content that keeps its own
- * colour, so nothing legible is ever placed on an unknown hex.
+ * color, so nothing legible is ever placed on an unknown hex.
  *
- * Returns null for an unparseable colour, and the caller keeps the platform
+ * Returns null for an unparseable color, and the caller keeps the platform
  * palette — a page in the wrong brand is better than a page in no brand.
  */
 export function brandPaint(hex: string | null | undefined): BrandPaint | null {

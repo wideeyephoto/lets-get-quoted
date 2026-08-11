@@ -936,7 +936,7 @@ function StopRow({
   /** Whether it IS last right now — which, being a preference, it may not be. */
   actuallyLast: boolean;
   anchoredToHome: boolean;
-  /** Matches the leg drawn on the map, so a row and its line are the same colour. */
+  /** Matches the leg drawn on the map, so a row and its line are the same color. */
   legColor: string;
   // Set when this row is a supply stop rather than a job.
   routeStop: RouteStop | null;
@@ -1034,7 +1034,7 @@ function StopRow({
 
       <div className="plan-stop-flags">
         <span className="plan-stop-drive">
-          {/* The same colour as this leg on the map — the numbers already pair
+          {/* The same color as this leg on the map — the numbers already pair
               the two, this pairs the drive between them. */}
           {index === 0 && !anchoredToHome ? null : (
             <i className="plan-leg-key" style={{ background: legColour }} aria-hidden="true" />

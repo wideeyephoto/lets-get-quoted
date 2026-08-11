@@ -43,7 +43,7 @@ const DEMO_SECTIONS: SiteVideoSectionContent[] = [
     style: 'split',
     eyebrow: 'Meet the owner',
     // Evergreen Lawn & Landscape is a LANDSCAPER. This said "Twelve years on
-    // Royal Oak roofs" — the demo selling personalisation while showing a
+    // Royal Oak roofs" — the demo selling personalization while showing a
     // different trade than the account it belongs to.
     headline: 'Twelve years on Royal Oak lawns',
     body: 'Dana walks you through how an Evergreen estimate works, what the crew does on day one, and why the yard gets left cleaner than they found it.',

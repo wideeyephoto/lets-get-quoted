@@ -34,7 +34,7 @@ type Opportunity = {
   value: string;
   title: string;
   location: string;
-  /** The mark in front of each reason. Carries the card's colour, so it is not decoration. */
+  /** The mark in front of each reason. Carries the card's color, so it is not decoration. */
   mark: string;
   reasons: string[];
   link: { href: string; label: string };

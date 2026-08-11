@@ -150,7 +150,7 @@ export function dateKeyPlusDays(dateKey: string, days: number): string {
  * - `healthy` — none of the above.
  *
  * Every reason is a sentence the card can print, because a status nobody can
- * act on is just a colour. Deliberately NOT counted as unhealthy: a paused plan
+ * act on is just a color. Deliberately NOT counted as unhealthy: a paused plan
  * (pausing is a decision, not a fault) and a plan with no crew assigned when no
  * visit job exists yet (nothing to assign anyone to).
  */

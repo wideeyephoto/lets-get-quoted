@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * What the colours on the calendar mean.
+ * What the colors on the calendar mean.
  *
- * THEY DID NOT MEAN ANYTHING. Every block took its colour from a six-way hash
+ * THEY DID NOT MEAN ANYTHING. Every block took its color from a six-way hash
  * of the job's id — `(sum of char codes) % 6` — so a day showed blue, yellow,
  * purple and green blocks that encoded nothing at all. A legend for that would
- * have been a legend for randomness, so the colour moved to STATUS first and
+ * have been a legend for randomness, so the color moved to STATUS first and
  * this names the four it can be.
  *
  * The id hash was not useless: it told two abutting blocks apart. That job is
@@ -28,10 +28,10 @@ const STATUSES = [
 /**
  * Month is a different question, so it gets a different caption.
  *
- * The status colours above are what a BLOCK is in Day and Week. A month cell
+ * The status colors above are what a BLOCK is in Day and Week. A month cell
  * has no blocks in it — it is one bar answering "how full is this day" — and
  * showing the status key over a grid that uses none of it is a legend for
- * colours that are not on screen. Rendering both at once would be two captions
+ * colors that are not on screen. Rendering both at once would be two captions
  * for one grid, so the view picks.
  */
 const CAPACITY = [
@@ -45,7 +45,7 @@ const CAPACITY = [
 export default function CalendarLegend({ variant = 'status' }: { variant?: 'status' | 'capacity' }) {
   if (variant === 'capacity') {
     return (
-      <div className="calendar-legend" role="group" aria-label="What the day colours mean">
+      <div className="calendar-legend" role="group" aria-label="What the day colors mean">
         {CAPACITY.map((band) => (
           <span className="calendar-legend-item" key={band.key}>
             <span className="calendar-legend-dot" data-load={band.key} aria-hidden="true" />
@@ -57,7 +57,7 @@ export default function CalendarLegend({ variant = 'status' }: { variant?: 'stat
   }
 
   return (
-    <div className="calendar-legend" role="group" aria-label="What the calendar colours mean">
+    <div className="calendar-legend" role="group" aria-label="What the calendar colors mean">
       {STATUSES.map((status) => (
         <span className="calendar-legend-item" key={status.key}>
           <span className={`calendar-legend-dot calendar-job-status-${status.key}`} aria-hidden="true" />

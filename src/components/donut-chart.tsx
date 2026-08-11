@@ -6,7 +6,7 @@
 // Drawn with stroke-dasharray on stacked circles rather than arc <path> maths:
 // one circle per segment, each showing only its slice of the circumference and
 // rotated to start where the previous one ended. Crisp at any size, and a single
-// segment of 100% is a whole ring with no seam. Colours arrive as CSS values on
+// segment of 100% is a whole ring with no seam. Colors arrive as CSS values on
 // each segment (e.g. 'var(--accent)') and are applied through style so a token
 // resolves; the component owns no palette.
 //
@@ -15,7 +15,7 @@
 
 export type DonutSegment = {
   key: string;
-  /** Any CSS colour, including a token like 'var(--accent)'. */
+  /** Any CSS color, including a token like 'var(--accent)'. */
   color: string;
   value: number;
 };

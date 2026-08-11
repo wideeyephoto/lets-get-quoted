@@ -10,12 +10,12 @@ import type { ContractorBrand } from '@/lib/contractor-brand';
  * in the root layout and has no idea which account a link token belongs to,
  * which is exactly why it drew our logo on every one of these pages.
  *
- * `--accent` is re-pointed at the contractor's colour on THIS BAR ONLY, not on
+ * `--accent` is re-pointed at the contractor's color on THIS BAR ONLY, not on
  * the page under it, and that is deliberate. Repainting the page's controls
  * would hand `.btn.primary` an arbitrary hex: a contractor who picks a deep
  * navy or a mid-blue gets a Pay button that fails contrast against this dark
  * ground, and there is no upper bound on what they can choose. The mark and the
- * name are the brand; the control colour stays the one that is known to be
+ * name are the brand; the control color stays the one that is known to be
  * readable. Giving them the buttons too needs a derived, contrast-checked shade
  * — real work, not a variable swap.
  */

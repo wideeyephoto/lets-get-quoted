@@ -83,7 +83,7 @@ export function todayDateKey(): string {
  * from the day that was actually agreed, so February borrows the 28th and March
  * gives the 31st straight back.
  *
- * Optional so every existing caller keeps its exact behaviour; the plan-driven
+ * Optional so every existing caller keeps its exact behavior; the plan-driven
  * paths pass `plan.anchor_day`.
  */
 export function advanceDate(dateKey: string, frequency: RecurringFrequency, anchorDay?: number | null): string {
@@ -711,7 +711,7 @@ export async function ensurePlanVisits(
     .in('recurring_visit_date', dates);
   // Pre-migration the columns don't exist (42703). Creating visits without the
   // link would make jobs the sweep can never find and would then duplicate, so
-  // the correct degradation is the old behaviour: nothing ahead.
+  // the correct degradation is the old behavior: nothing ahead.
   if (error) return 0;
 
   const have = new Set(((existing ?? []) as Array<{ recurring_visit_date: string }>).map((row) => row.recurring_visit_date));

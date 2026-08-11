@@ -71,7 +71,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
 
   // The Project showcase now renders in this reorderable stack on EVERY theme,
   // Haven (handy) included, so the owner can move it like any other section.
-  // Haven keeps its two behaviours: its own band styling (.careWorks, below) and
+  // Haven keeps its two behaviors: its own band styling (.careWorks, below) and
   // a fallback to gallery placeholders so the band is never empty. Every other
   // theme shows the section only once real project photos exist, so placeholder
   // photos never go live where they aren't expected.

@@ -271,7 +271,7 @@ export default function ClientSmoothieView({
                       <span className={styles.rowMain}>
                         <span className={styles.rowTop}>
                           <strong className={styles.rowName}>{client.name}</strong>
-                          {/* The band as a word, never only a colour. */}
+                          {/* The band as a word, never only a color. */}
                           <span className={styles.rowHeat} data-band={band}>{BAND_LABEL[band]}</span>
                         </span>
                         <span className={styles.rowDetail}>{client.address || client.contactLine || 'No contact details'}</span>

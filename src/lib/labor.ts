@@ -507,7 +507,7 @@ export function summarizeCrewLabor(
   // rounded figure rather than read off the stored amount — otherwise the table
   // would show 8.25 hours at $30 and a total of $242.50, which adds up to
   // nothing anyone can check. With no rule set, the stored amount is used
-  // unchanged, so the default behaviour is exactly what it was.
+  // unchanged, so the default behavior is exactly what it was.
   const round = options?.roundHours;
   const byCrew = new Map<
     string,

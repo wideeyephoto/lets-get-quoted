@@ -17,7 +17,7 @@ export const metadata = { title: 'Account settings — Live Demo' };
  * read-only would mean guarding all thirty-three — and the result would be a
  * screen of disabled inputs, which teaches a prospect less than a plain summary
  * of what is configurable. The value here is knowing the settings EXIST and how
- * they are organised, not operating them.
+ * they are organized, not operating them.
  *
  * So the compromise: the real SettingsTabs shell, with the real four tabs in
  * their real order, over purpose-built read-only summaries. A prospect sees the

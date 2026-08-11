@@ -36,9 +36,9 @@ function listUnsubscribeHeaders(oneClickUrl: string): Record<string, string> {
 /**
  * The contractor's brand for a customer-facing email.
  *
- * With an accountId we can reach their colour, logo and — the one that matters
+ * With an accountId we can reach their color, logo and — the one that matters
  * most — the address a reply should go to. Without one we still put their NAME
- * in the From line, which is most of what a customer needs to recognise it.
+ * in the From line, which is most of what a customer needs to recognize it.
  *
  * Never throws: an email that failed to send because branding could not be
  * loaded would be a far worse bug than one that looks plain.
@@ -477,7 +477,7 @@ export async function sendQuoteFollowupEmail(input: {
 /**
  * "There are choices waiting for you" — the email fallback.
  *
- * The colours, materials and fixtures a homeowner has to pick before ordering
+ * The colors, materials and fixtures a homeowner has to pick before ordering
  * can start. Named in the subject rather than hidden behind "an update on your
  * job", because the whole point is that it needs an action from them.
  */

@@ -112,7 +112,7 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
 
 /**
  * Read the account row into settings, defensively. An un-migrated database is
- * missing every one of these columns, and the correct behaviour there is the
+ * missing every one of these columns, and the correct behavior there is the
  * documented default — not a crash on the one screen a tech opens while
  * standing in a driveway.
  *
@@ -167,7 +167,7 @@ export type ArrivalPermissions = {
 };
 
 /**
- * Crew capabilities. Absent columns read as the pre-permission behaviour, so a
+ * Crew capabilities. Absent columns read as the pre-permission behavior, so a
  * database that hasn't taken the migration keeps working exactly as it did —
  * except for rescheduling, which is new and therefore off until granted.
  */

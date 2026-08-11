@@ -224,7 +224,7 @@ const CADENCE_WORD: Record<PlannedVisit['frequency'], string> = {
 };
 
 // Says what it is AND that it isn't booked yet — the chip is visibly different,
-// but a tooltip that only repeats the name would leave the difference to colour.
+// but a tooltip that only repeats the name would leave the difference to color.
 function plannedTitle(visit: PlannedVisit): string {
   const money = visit.amount > 0 ? ` · $${Math.round(visit.amount).toLocaleString('en-US')}` : '';
   const left = visit.remainingAfter != null ? ` · ${visit.remainingAfter} visit${visit.remainingAfter === 1 ? '' : 's'} left after this` : '';
@@ -869,11 +869,11 @@ export default function ScheduleCalendar({
           thing it explains, and it is not a control, so it does not belong in
           a row of them.
 
-          WHICH caption depends on the view, because the two grids are coloured
-          by different things. Day, Week and Crew draw blocks whose colour is
+          WHICH caption depends on the view, because the two grids are colored
+          by different things. Day, Week and Crew draw blocks whose color is
           the job's status; Month draws no blocks at all — a cell is one bar
           answering how full the day is, on the five-step ramp. Showing the
-          status key over Month was a legend for colours that were not on the
+          status key over Month was a legend for colors that were not on the
           screen. */}
       <div className="calendar-desktop-views">
         <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} />
@@ -1144,7 +1144,7 @@ export default function ScheduleCalendar({
                 city and a crew badge, each ellipsised into a fragment — "WORK
                 S…", "1!". The chip is now time, name and one signal; everything
                 else is here, at a width where it can be read, spelled out and
-                labelled rather than inferred from a colour. */}
+                labelled rather than inferred from a color. */}
             <dl className="schedule-job-facts">
               <div>
                 <dt>Where</dt>

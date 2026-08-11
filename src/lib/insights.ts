@@ -559,7 +559,7 @@ export function recommendedActions(input: ActionInput): RecommendedAction[] {
     actions.push({
       id: 'stale-leads',
       title: `Chase ${input.leadsNeedingFollowUp} lead${input.leadsNeedingFollowUp === 1 ? '' : 's'} with no quote`,
-      detail: 'Enquiries that came in and never got priced.',
+      detail: 'Inquiries that came in and never got priced.',
       impact: 4,
       impactLabel: impactLabel(4),
       value: null,
@@ -816,7 +816,7 @@ export async function buildInsights(
     deltas: {
       revenue: computeDelta(cur.collected, prev.collected),
       // Costs going UP is not good news, but the pill only reports direction —
-      // the page decides what colour "up" is per metric (see toneFor).
+      // the page decides what color "up" is per metric (see toneFor).
       costs: computeDelta(cur.costs, prev.costs),
       profit: computeDelta(cur.grossProfit, prev.grossProfit),
       margin: computePointDelta(cur.marginPct, prev.marginPct),

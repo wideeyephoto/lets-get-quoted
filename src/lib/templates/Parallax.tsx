@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 // Lightweight scroll parallax. Renders nothing; on scroll it nudges every
 // [data-parallax] element vertically by a fraction of its distance from the
-// viewport centre. data-parallax="0.2" sets the strength (default 0.15).
+// viewport center. data-parallax="0.2" sets the strength (default 0.15).
 //
 // Safe by construction:
 // - No-ops in an embedded iframe (the builder preview doesn't scroll the frame)

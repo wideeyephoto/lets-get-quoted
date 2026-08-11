@@ -18,7 +18,7 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   '/dashboard/crew': '<path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m0-4a6 6 0 0 1 6 6v3M4 15v-3a6 6 0 0 1 6-6"/><rect x="2" y="15" width="20" height="4" rx="1"/>',
   '/dashboard/recurring': '<path d="M17 3l3.2 3.2L17 9.4"/><path d="M20.2 6.2H8.5a4.3 4.3 0 0 0-4.3 4.3v.6"/><path d="M7 21l-3.2-3.2L7 14.6"/><path d="M3.8 17.8h11.7a4.3 4.3 0 0 0 4.3-4.3v-.6"/>',
   // Money going round: a dollar inside a clockwise loop, in green — see
-  // .sidenav-link[href$='/cash-flow'] in globals.css for the colour.
+  // .sidenav-link[href$='/cash-flow'] in globals.css for the color.
   //
   // A trend arrow was the wrong idea for this page. It says "up", and cash flow
   // is not a direction — it is money arriving and leaving on a cycle, which is
@@ -71,7 +71,7 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   '/dashboard/marketing/blog': '<path d="M14.6 3.4H6a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 6 20.4h9a1.5 1.5 0 0 0 1.5-1.5v-6.2"/><path d="M8 9h4.2M8 12.6h3.4M8 16.2h5.4"/><path d="M17.7 3.1a1.5 1.5 0 0 1 2.1 2.1l-5.3 5.3-2.8.7.7-2.8z"/>',
   '/dashboard/rebook': '<path d="M4 11.5a8 8 0 1 1 2.3 6.3"/><path d="M3.5 4.5v5h5"/>',
   // A star in a badge rather than a bare star. A loose star is the most reused
-  // glyph there is — favourite, rating, featured — and the frame is what says
+  // glyph there is — favorite, rating, featured — and the frame is what says
   // this row is a place where reviews are collected rather than a thing you
   // press to rate something.
   '/dashboard/reviews': '<rect x="3.3" y="3.3" width="17.4" height="17.4" rx="4.2"/><path d="M12 7.5l1.72 3.48 3.84.56-2.78 2.71.66 3.82L12 16.27l-3.44 1.8.66-3.82-2.78-2.71 3.84-.56z"/>',

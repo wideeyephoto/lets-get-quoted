@@ -15,7 +15,7 @@
 //
 //   1. The "first" reminder for a date three weeks out went a fortnight early,
 //      and the needed-by date itself passed in silence. Nobody chose seven days;
-//      it was a constant that existed to colour a label on the board and got
+//      it was a constant that existed to color a label on the board and got
 //      reused as a send rule.
 //   2. The "second" was whenever the next daily run happened to notice, which is
 //      one day later, not two.
@@ -643,7 +643,7 @@ export function choiceReminderText(input: ChoiceMessageInput): string {
 /**
  * The message the settings panel previews.
  *
- * A fixed, recognisable example rather than the contractor's real data: the
+ * A fixed, recognizable example rather than the contractor's real data: the
  * panel is rendered on a settings page that knows nothing about any particular
  * job, and a preview built from "whichever job happens to be first" changes
  * under the reader for reasons that have nothing to do with the setting.

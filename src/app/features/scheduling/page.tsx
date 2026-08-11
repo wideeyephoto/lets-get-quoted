@@ -44,8 +44,10 @@ export default function SchedulingFeaturePage() {
       }
       lede="Send the times you can actually do. The customer picks one from a text, it lands on the calendar, and the crew is told — without three voicemails and a date somebody wrote on a different calendar."
       heroNote="Arrival windows rather than a minute that will be wrong. Weather is flagged for you to decide on — nothing here ever moves a job by itself."
-      secondary={{ label: 'What the calendar handles', href: '#capabilities' }}
-      tertiary={{ label: 'Open the live calendar', href: '/demo/schedule' }}
+      /* The calendar IS the argument — it explains the capacity model faster
+         than the four paragraphs under it. Signing up is the second option,
+         which is the shared shell's default. */
+      primary={{ label: 'Open the live calendar', href: '/demo/schedule' }}
       demo={
         <ExampleFrame
           label="Three windows sent by text, and the one they picked."
@@ -89,7 +91,7 @@ export default function SchedulingFeaturePage() {
         },
         {
           title: 'See a day is full before you promise it',
-          body: 'Every day is scored from open to over — booked hours against the hours that exist. The month view is a colour ramp, so the question “where is there room” is answered by looking rather than by reading.',
+          body: 'Every day is scored from open to over — booked hours against the hours that exist. The month view is a color ramp, so the question “where is there room” is answered by looking rather than by reading.',
         },
         {
           title: 'Keep the promise once it is made',

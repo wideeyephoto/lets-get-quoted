@@ -2,7 +2,7 @@ import { deflateSync } from 'node:zlib';
 
 // A minimal opaque-PNG writer, used for iOS touch icons.
 //
-// Everything here is colour type 2 — truecolour with NO alpha channel — because
+// Everything here is color type 2 — truecolour with NO alpha channel — because
 // that is the whole point: iOS flattens any transparency in a touch icon to
 // white, so the only way to stop getting a white tile is to ship pixels that
 // were never transparent.
@@ -54,7 +54,7 @@ export function encodeOpaquePng(size: number, rgb: (x: number, y: number) => [nu
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
   ihdr[8] = 8; // bit depth
-  ihdr[9] = 2; // colour type 2 — truecolour, no alpha
+  ihdr[9] = 2; // color type 2 — truecolour, no alpha
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk('IHDR', ihdr),
@@ -79,9 +79,9 @@ function mix(a: [number, number, number], b: [number, number, number], t: number
 }
 
 /**
- * A contractor's touch icon as a plain shape: their accent colour, corner to
+ * A contractor's touch icon as a plain shape: their accent color, corner to
  * corner, with a ring in the contrasting tone so it reads as a deliberate mark
- * rather than a coloured square. Drawn with arithmetic, so it works anywhere.
+ * rather than a colored square. Drawn with arithmetic, so it works anywhere.
  */
 export function brandTilePng(accentHex: string, inkHex: string, size = 180): Buffer {
   const accent = hexToRgb(accentHex);

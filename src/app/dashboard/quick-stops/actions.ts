@@ -346,7 +346,7 @@ export async function proposeDiagnosticConversionAction(requestId: string, formD
    own reasons — see the migration for why this is never derived from income or
    demographic data.
 
-   Added by TYPING a city or ZIP code. This replaced tapping a centre on the map,
+   Added by TYPING a city or ZIP code. This replaced tapping a center on the map,
    which asked an owner to express "Birmingham" as a pin and a radius — two
    numbers nobody holds in their head about a place they already know by name.
    The circle is still what gets stored, because the whole downstream stack

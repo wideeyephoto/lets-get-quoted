@@ -30,6 +30,21 @@ export const APP_LOGIN_URL = 'https://app.letsgetquoted.com/login';
 export const DEMO_URL = '/demo';
 export const FEATURES_URL = '/features';
 
+/**
+ * THE SIGN-UP ACTION WHEN IT IS NOT THE POINT OF THE PAGE.
+ *
+ * Eight feature pages led with "Build my free site" — including the ones
+ * selling payments, scheduling and crew management, where a free website is not
+ * what the reader came for and answering them with one is a non sequitur. On a
+ * capability page the contextual action wins the hero ("Open the live
+ * calendar", "Try the quote builder") and signing up is the quieter second
+ * option, which is what this label is for.
+ *
+ * "Build my free site" is not retired — it stays the primary on the homepage,
+ * /features and the website-builder page, where the site IS the offer.
+ */
+export const SECONDARY_SIGNUP_LABEL = 'Start free';
+
 /** A button or link on a marketing page. */
 export type CtaLinkSpec = {
   label: ReactNode;

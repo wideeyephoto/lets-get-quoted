@@ -175,7 +175,7 @@ export async function computeQuickStopRoute(
  * Roughly where this account works, for opening a map when today is empty.
  *
  * The coverage map fits itself to today's route, which on a quiet day is
- * nothing at all — and a map with no centre is a map that never renders, which
+ * nothing at all — and a map with no center is a map that never renders, which
  * took the priority-area drawing tool down with it. Priority areas are a
  * setting about where you WOULD go, so they cannot depend on what happens to be
  * booked.

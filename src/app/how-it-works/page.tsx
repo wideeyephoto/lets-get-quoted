@@ -38,7 +38,7 @@ export const metadata: Metadata = {
  * Let's Get Quoted does not buy, sell or supply leads. Every request on this
  * page arrives at the contractor's OWN website; what the product does is
  * qualify it, estimate it, score it, rank it and surface it. So the verbs here
- * are qualify / estimate / score / prioritise / surface, and never "get",
+ * are qualify / estimate / score / prioritize / surface, and never "get",
  * "deliver", "send you" or "generate" leads. If a sentence here would still be
  * true of a lead-gen marketplace, it is the wrong sentence.
  *
@@ -259,7 +259,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* Three facts about the queue, on the seam between the hero and the
-          paper section — the strip is what carries the colour change. */}
+          paper section — the strip is what carries the color change. */}
       <section className="hiq-facts" aria-label="At a glance">
         {FACTS.map((fact) => (
           <div key={fact.fact}>

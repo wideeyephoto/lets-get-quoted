@@ -52,7 +52,7 @@ export function needsFirstRun(account: FirstRunAccount | null | undefined): bool
  * flows back. Measured on the live database, all six existing accounts still
  * read "My Business" while their sites say BrokePipes, Chelsea's Cleaning
  * Service, and so on. Falling back to the site means an existing owner confirms
- * a name they recognise instead of retyping one we already have.
+ * a name they recognize instead of retyping one we already have.
  */
 export function initialBusinessName(
   account: FirstRunAccount | null | undefined,

@@ -52,8 +52,8 @@ export default function ViewGear<T extends string, S extends string = string>({
   onPickView?: (next: T) => void;
   /**
    * How the page LOOKS, as opposed to how it's laid out. Its own section
-   * because the two are independent — picking a colour must not rearrange the
-   * page, and rearranging the page must not change its colour.
+   * because the two are independent — picking a color must not rearrange the
+   * page, and rearranging the page must not change its color.
    */
   skins?: ViewOption<S>[];
   activeSkin?: S;
@@ -95,7 +95,7 @@ export default function ViewGear<T extends string, S extends string = string>({
   const showSkins = Boolean(skins && skins.length > 0 && onPickSkin);
   const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
   // Theme without placement is a real combination now: Smoothie's map is a pane
-  // you switch to, not a band that is on or off, so it has a colour to choose
+  // you switch to, not a band that is on or off, so it has a color to choose
   // and no position to choose. Every existing caller passes mapView, which
   // makes `!showMapOptions` false and leaves this exactly as it was.
   const showMapTheme =

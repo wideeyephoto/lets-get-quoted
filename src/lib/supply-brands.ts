@@ -3,15 +3,15 @@
 // WHY NOT THE REAL LOGO. Shipping The Home Depot's or Lowe's actual logo means
 // bundling and redistributing someone else's trademark, and a logo file is the
 // one asset that quietly rots — a rebrand and every contractor's map is wrong.
-// So each chain gets its own colour and its own initials, which is what anyone
+// So each chain gets its own color and its own initials, which is what anyone
 // actually reads at 22 pixels anyway: orange square = Home Depot, blue = Lowe's,
-// red = Ace. Recognisable without being a copy.
+// red = Ace. Recognizable without being a copy.
 //
 // Anything not on this list keeps a neutral storefront mark rather than being
 // guessed at. An independent lumber yard mislabelled "HD" is worse than one
 // labelled "supply store".
 //
-// Client-safe: names, colours and a pure matcher.
+// Client-safe: names, colors and a pure matcher.
 
 export type SupplyBrand = {
   /** Stable id — used by tests and to cache the drawn marker. */
@@ -20,9 +20,9 @@ export type SupplyBrand = {
   label: string;
   /** Up to three characters for the chip. Empty means "draw the storefront mark". */
   short: string;
-  /** Chip fill, from the chain's own colour. */
+  /** Chip fill, from the chain's own color. */
   bg: string;
-  /** Text/mark colour, picked for contrast against `bg`. */
+  /** Text/mark color, picked for contrast against `bg`. */
   fg: string;
 };
 

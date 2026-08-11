@@ -521,7 +521,7 @@ export default function QuickStopConfigurator({
                         so a screen reader hears a warning appear as the numbers
                         change, rather than only on save.
 
-                        Colour is the LAST thing carrying severity here: the
+                        Color is the LAST thing carrying severity here: the
                         leading word says which it is, and the two levels keep
                         their bar weight and their type weight apart, so the list
                         still sorts itself in greyscale. */}

@@ -104,7 +104,7 @@ export function quickStopState(input: QuickStopStateInput): QuickStopState {
   return { kind: 'on', maxPerDay: input.maxPerDay };
 }
 
-/** The word on the pill. Reads without colour, which is why the colour only agrees with it. */
+/** The word on the pill. Reads without color, which is why the color only agrees with it. */
 export function quickStopStateLabel(state: QuickStopState): string {
   switch (state.kind) {
     case 'paused': return 'PAUSED';

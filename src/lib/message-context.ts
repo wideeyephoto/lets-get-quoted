@@ -197,7 +197,7 @@ export function conversationPreview(body: string | null | undefined): string {
   text = text.replace(OPT_OUT_TAIL, '');
   text = text.replace(URL_PATTERN, (match) => {
     try {
-      // The host is the recognisable part — "your quote" links and "pay this"
+      // The host is the recognizable part — "your quote" links and "pay this"
       // links differ by a path segment nobody reads at this size.
       return `${new URL(match).host.replace(/^www\./, '')}/…`;
     } catch {

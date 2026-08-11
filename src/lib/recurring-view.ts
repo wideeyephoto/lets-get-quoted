@@ -85,7 +85,7 @@ export async function buildRecurringView(
   const plans = await listRecurringPlans(supabase, accountId);
   const services = (await listServices(supabase, accountId, { activeOnly: true }))
     .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0 }));
-  // The customer book, so the composer can recognise somebody already in it
+  // The customer book, so the composer can recognize somebody already in it
   // rather than creating a second copy of them.
   const clients = (await listClientsWithStats(supabase, accountId)).map((client) => ({
     id: client.id,

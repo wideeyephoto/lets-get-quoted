@@ -216,7 +216,7 @@ export default function BlogWorkspace({
                         {words > 0 ? ` · ${words} words` : ''}
                       </small>
                     </span>
-                    {/* The word itself carries the state — the colour only
+                    {/* The word itself carries the state — the color only
                         repeats it, so this reads the same in greyscale. */}
                     <span className={`mkt-state mkt-state-${state}`}>{POST_STATE_LABEL[state]}</span>
                   </Link>

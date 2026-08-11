@@ -2154,7 +2154,7 @@ export const IMAGE_SLOT_LABELS: Record<string, string> = {
 };
 
 // A template's photo for a given slot: the owner's explicit override if set,
-// otherwise the template's auto-derived fallback (unchanged legacy behaviour).
+// otherwise the template's auto-derived fallback (unchanged legacy behavior).
 export function getSlotImage(content: Record<string, unknown> | null | undefined, slot: string, fallback: string): string {
   return getSiteContent(content).images[slot] || fallback;
 }
@@ -2219,7 +2219,7 @@ export function getSectionOrder(content: Record<string, unknown> | null | undefi
 }
 
 // The full ordered hero image set (primary hero + extras), deduped. Used by the
-// hero cross-fade; a single image means no cycling (unchanged behaviour).
+// hero cross-fade; a single image means no cycling (unchanged behavior).
 export function getHeroImages(content: Record<string, unknown> | null | undefined, primary: string | null | undefined): string[] {
   const set: string[] = [];
   for (const url of [primary, ...getSiteContent(content).heroImages]) {

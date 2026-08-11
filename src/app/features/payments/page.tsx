@@ -22,14 +22,14 @@ export const metadata: Metadata = {
     siteName: "Let's Get Quoted",
     title: 'Get paid on the job, not thirty days after it.',
     description:
-      'Deposits, balances and 0%-interest instalments through Stripe, into your account. No subscription — you pay only when a homeowner pays you.',
+      'Deposits, balances and 0%-interest installments through Stripe, into your account. No subscription — you pay only when a homeowner pays you.',
     images: [{ url: '/features/og-payments.jpg', width: 1200, height: 630, alt: 'Contractor payments, deposits and payment plans' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Get paid on the job, not thirty days after it.',
     description:
-      'Deposits, balances and 0%-interest instalments through Stripe, into your account. No subscription — you pay only when a homeowner pays you.',
+      'Deposits, balances and 0%-interest installments through Stripe, into your account. No subscription — you pay only when a homeowner pays you.',
     images: ['/features/og-payments.jpg'],
   },
 };
@@ -47,11 +47,16 @@ export default function PaymentsFeaturePage() {
       }
       lede="Take a deposit when the quote is approved and the balance when the work is done. The money goes to your Stripe account, and you pay a percentage only when a homeowner actually pays you."
       heroNote={`Card numbers never touch us — Stripe holds them. Bank debit is offered automatically on payments of ${ACH_LABEL} or more, where a flat capped fee beats a card percentage.`}
+      /* No /demo/payments screen exists, so "See the payment flow" would be a
+         button that lands somewhere adjacent — worse than none. The contextual
+         action here is the thing the page is actually selling, pointed at
+         signup; the second action stays on the page rather than repeating it. */
+      primary={{ label: 'Start taking deposits' }}
       secondary={{ label: 'Every way you can be paid', href: '#capabilities' }}
       demo={
         <ExampleFrame
-          label="One approved quote, split into a deposit and instalments."
-          note="Invented job. The mechanism is real: a plan allocates the approved total and can never increase it, and the instalments are 0% — no interest, no fee, no credit check."
+          label="One approved quote, split into a deposit and installments."
+          note="Invented job. The mechanism is real: a plan allocates the approved total and can never increase it, and the installments are 0% — no interest, no fee, no credit check."
         >
           <Panel>
             <PanelHead title="Payment plan · Whitfield" pill="Deposit paid" tone="good" />
@@ -59,12 +64,12 @@ export default function PaymentsFeaturePage() {
               rows={[
                 { label: 'Approved total', value: '$10,880' },
                 { label: `Deposit · ${DEFAULT_PLAN.depositPercent}%, paid Tue`, value: '$5,440' },
-                { label: `${DEFAULT_PLAN.installmentCount} instalments · ${DEFAULT_PLAN.frequency}`, value: '$1,360 each' },
+                { label: `${DEFAULT_PLAN.installmentCount} installments · ${DEFAULT_PLAN.frequency}`, value: '$1,360 each' },
                 { label: 'Interest and fees added', value: '$0', strong: true },
               ]}
             />
             <PanelNote>
-              Instalments run against the card saved when the deposit was taken. A decline is
+              Installments run against the card saved when the deposit was taken. A decline is
               classified and retried, or routed to a card-update link — it does not become a
               phone call you have to remember to make.
             </PanelNote>
@@ -89,8 +94,8 @@ export default function PaymentsFeaturePage() {
           body: 'The approved quote already has a total and a customer, so the deposit request is a link, not an invoice you build afterwards. You can require it to be paid before the job is scheduled or before work starts.',
         },
         {
-          title: 'Offer instalments without financing anybody',
-          body: 'Split an approved total into a deposit and fixed instalments at 0%. It is not lending: no interest, no fees, no credit check and no advance to you. The plan allocates the quote total and can never increase it.',
+          title: 'Offer installments without financing anybody',
+          body: 'Split an approved total into a deposit and fixed installments at 0%. It is not lending: no interest, no fees, no credit check and no advance to you. The plan allocates the quote total and can never increase it.',
         },
         {
           title: 'Keep the books straight either way',
@@ -128,7 +133,7 @@ export default function PaymentsFeaturePage() {
         },
         {
           q: 'Are payment plans a loan?',
-          a: 'No. There is no interest, no fee, no credit check and no advance paid to you. A plan splits a total the customer has already approved into a deposit and fixed instalments, charged to the card saved at deposit time. It allocates the quote total and can never increase it.',
+          a: 'No. There is no interest, no fee, no credit check and no advance paid to you. A plan splits a total the customer has already approved into a deposit and fixed installments, charged to the card saved at deposit time. It allocates the quote total and can never increase it.',
         },
         {
           q: 'Why does bank debit only show up sometimes?',

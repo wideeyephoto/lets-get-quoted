@@ -19,7 +19,7 @@ export const CREW_SKIN_OPTIONS: ViewOption<CrewSkin>[] = [
  * The class lives on <main>, which the page renders above both tab components,
  * so neither can set it through React. The server writes it from the cookie for
  * the first paint; this keeps it in step the moment somebody picks one, instead
- * of making a colour change wait for a round trip.
+ * of making a color change wait for a round trip.
  *
  * Shared rather than written twice: the roster and the pay tab both offer the
  * picker, and two copies of this would eventually disagree about the class

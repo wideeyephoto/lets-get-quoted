@@ -39,7 +39,7 @@ export async function renderSiteAppleIcon(site: Site | null): Promise<Response> 
   const accent = safeAccent(site?.accent_override);
 
   // Their favicon has two looks — a white glyph on an accent tile, or the glyph
-  // in the accent colour on its own. Keep that distinction, but give the
+  // in the accent color on its own. Keep that distinction, but give the
   // transparent style a dark tile: "no tile" isn't something Apple offers, and
   // asking for it is how this ended up white in the first place.
   const transparent = content.logoStyle === 'transparent';
@@ -87,7 +87,7 @@ export async function renderSiteAppleIcon(site: Site | null): Promise<Response> 
       headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600' },
     });
   } catch {
-    // Still a PNG, still opaque, still their colour — just a ring instead of
+    // Still a PNG, still opaque, still their color — just a ring instead of
     // their trade glyph. Better than the white square, and better than a 500,
     // which would leave iOS falling back to the favicon that started this.
     return new Response(new Uint8Array(brandTilePng(background, paint, APPLE_ICON_SIZE.width)), {

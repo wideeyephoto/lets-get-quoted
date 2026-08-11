@@ -131,7 +131,7 @@ export default function DemoSidebar() {
         href={item.href}
         className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${item.preview ? ' preview' : ''}${!item.preview && isActive(item.href) ? ' active' : ''}`}
         // On the row as well as the pill, so the row can carry the state's
-        // colour without CSS reaching into a child with :has().
+        // color without CSS reaching into a child with :has().
         data-state={state ? 'on' : undefined}
         title={item.preview ? 'Available in the full app — create a free account to use it' : undefined}
       >

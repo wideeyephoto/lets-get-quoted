@@ -215,7 +215,7 @@ export default async function MessagesPage({
                     // still read in browse mode; this is what the LINK says.
                     aria-label={conversationLinkLabel({ name, unread: conversation.unread, when })}
                     // Which conversation is open is a fact the list showed only
-                    // in colour. `page` rather than `true`: the thread is in the
+                    // in color. `page` rather than `true`: the thread is in the
                     // URL, so this really is the current page.
                     aria-current={conversation.phone === activePhone ? 'page' : undefined}
                     // Picking a conversation is a navigation, and the router's

@@ -62,7 +62,7 @@ export type DailyDigest = {
    */
   cash: CashWarning | null;
   /**
-   * Jobs held up waiting on a homeowner's colour/material choices, and how many
+   * Jobs held up waiting on a homeowner's color/material choices, and how many
    * of those are past the date the contractor said they needed them.
    *
    * Null when there are none. Jobs rather than selections: "3 jobs waiting on

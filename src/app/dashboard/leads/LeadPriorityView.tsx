@@ -15,7 +15,7 @@ import leadStyles from './leads.module.css';
  * Three things were wrong with the old one and all three were structural.
  * It included won and lost leads, so the list was not a queue. It ranked by
  * heat alone, so a lead nobody had answered in four days sat under a warm one
- * that arrived this morning. And it explained itself with a coloured dot.
+ * that arrived this morning. And it explained itself with a colored dot.
  *
  * Now: closed leads never appear, lib/lead-priority does the ordering, and
  * every card prints the sentence that put it where it is.
@@ -157,7 +157,7 @@ function PriorityCard({
 
         {/* The ranking, in words. This is the whole point: the list is in an
             order, and the order has to be legible without asking anybody to
-            interpret a colour. */}
+            interpret a color. */}
         <p className={styles.reason}>
           <span className={`${leadStyles.heatDot} ${styles.reasonDot}`} data-score={lead.score} aria-hidden="true" />
           {snoozedGroup && lead.snoozedUntilLabel ? `Snoozed until ${lead.snoozedUntilLabel} · ` : ''}

@@ -7,7 +7,7 @@ import './feature-wheel-story.css';
 
 // The wheel-story + command center is a large, self-contained interactive widget
 // with no dynamic data, so the static markup is injected once and all the
-// behaviour (scroll-driven wheel rotation, section swapping, card scroll-reveal
+// behavior (scroll-driven wheel rotation, section swapping, card scroll-reveal
 // and parallax) is wired up here against the mounted DOM. Everything is scoped
 // to this component's root and torn down on unmount.
 export default function FeatureWheelStory() {

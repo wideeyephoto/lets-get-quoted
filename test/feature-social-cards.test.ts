@@ -164,18 +164,20 @@ describe('the feature hero CTAs', () => {
     '',
   );
 
-  const CTAS: [string, string, string][] = [
-    ['back-office', 'Start free', '#back-office-record'],
-    ['client-portal', 'Start free', '#one-job'],
-    ['quick-stops', 'Start free with Quick Stops', '#how-it-works'],
-  ];
+  /**
+   * These three used to open on a signup and point their SECOND button at an
+   * on-page section. They lead with the live thing now — see the hero-template
+   * block in suite-feature-pages.test — so what is checked here is the
+   * remaining on-page anchor, which is the part the scroll-margin rule below
+   * has to keep clear of the fixed header.
+   */
+  const ANCHORS: [string, string][] = [['quick-stops', '#how-it-works']];
 
-  it.each(CTAS)('%s asks for the thing the page is about', (slug, label, href) => {
+  it.each(ANCHORS)('%s points at a section that exists (%s)', (slug, href) => {
     const src = source(slug);
-    expect(src).toContain(`primary={{ label: '${label}' }}`);
     expect(src).toContain(`href: '${href}' }}`);
-    // And the section that button points at exists, with the id on the section
-    // rather than on the heading — that is what carries the scroll-margin.
+    // The id belongs on the section rather than on the heading — that is what
+    // carries the scroll-margin.
     expect(src).toContain(`id="${href.slice(1)}"`);
   });
 
@@ -382,11 +384,16 @@ describe('the ai intake page', () => {
     expect(DEMO).toContain('aria-live="polite"');
   });
 
-  it('asks for the small thing first', () => {
+  it('asks for the small thing first, and asks for nothing else', () => {
     // "Build my free site" was the largest commitment on the page, in front of
-    // somebody who had not yet seen the feature work.
+    // somebody who had not yet seen the feature work. Both hero actions are
+    // "look at it working" now: this page's whole argument is that the intake
+    // does something a form does not, so an account is a thing to open after
+    // watching it, not before. The closing CTA still takes the signup.
     expect(SRC).toContain("primary={{ label: 'Try a sample intake', href: '#sample-intake' }}");
-    expect(SRC).toContain("secondary={{ label: 'Build my free site', href: APP_SIGNUP_URL }}");
+    expect(SRC).toContain("secondary={{ label: 'See scored leads in the demo', href: '/demo/leads' }}");
+    const hero = SRC.slice(SRC.indexOf('primary={{'), SRC.indexOf('demo={'));
+    expect(hero).not.toContain('APP_SIGNUP_URL');
   });
 
   it('reassures in the heading and keeps the wit for the copy', () => {

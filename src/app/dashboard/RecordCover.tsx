@@ -12,13 +12,13 @@ import styles from './focus.module.css';
 //
 // The drawn cover is derived from the record itself: the glyph comes from the
 // same trade-matching the brand mark uses (a "sewer line" job gets a droplet, a
-// "remodel" gets a hammer), and the colour is hashed off the record id so a
+// "remodel" gets a hammer), and the color is hashed off the record id so a
 // given record always looks like itself and two side by side never look alike.
 
 // Exported so the clients pane can draw its monogram cover on the same wash.
 // A customer has no photos and no trade, but it still has to look like it
 // belongs beside a job and a lead — and two records side by side must never
-// come out the same colour.
+// come out the same color.
 export function hueFor(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) % 360;

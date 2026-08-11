@@ -17,7 +17,7 @@ import { createClientAction } from './actions';
 // The customer list, five ways.
 //
 // One dataset, five shapes, because "who are my customers" is several different
-// questions: skim the whole book (List), recognise a face (Cards), compare and
+// questions: skim the whole book (List), recognize a face (Cards), compare and
 // sort (Table), or work one person while keeping the list to hand (Focus).
 //
 // Follow-up is the odd one out and earns its place by not answering that

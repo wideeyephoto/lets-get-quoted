@@ -64,7 +64,7 @@ export type Job = {
    * because it arrives undefined until
    * migrations/2026-08-10-client-message-channel.sql has run; every reader puts
    * that through normalizeClientChannelPreference, which lands on 'auto' —
-   * today's behaviour. See @/lib/client-channel.
+   * today's behavior. See @/lib/client-channel.
    */
   message_channel?: string | null;
   deposit_gate: 'before_schedule' | 'before_work' | null;

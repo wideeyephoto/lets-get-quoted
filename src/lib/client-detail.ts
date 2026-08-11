@@ -63,7 +63,7 @@ export type ClientDetailDto = {
   };
   jobs: ClientDetailJob[];
   payments: ClientDetailPayment[];
-  /** Enquiries from this customer that never became a job. */
+  /** Inquiries from this customer that never became a job. */
   openRequestCount: number;
   lastInvitedLabel: string | null;
 };

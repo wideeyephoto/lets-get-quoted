@@ -48,7 +48,7 @@ export default function DemoRouteMap() {
           <path d="M212 -20 L236 440" /><path d="M386 -20 L406 440" /><path d="M560 -20 L580 440" />
         </g>
 
-        {/* The interstate — wider, warmer, with a centre line, because a map with
+        {/* The interstate — wider, warmer, with a center line, because a map with
             one road weight reads as graph paper. */}
         <path d="M-20 400 C 150 372, 300 300, 400 190 S 560 40, 660 10" stroke="rgba(255,214,150,.13)" strokeWidth="13" fill="none" strokeLinecap="round" />
         <path d="M-20 400 C 150 372, 300 300, 400 190 S 560 40, 660 10" stroke="rgba(255,214,150,.16)" strokeWidth="1.4" fill="none" strokeDasharray="9 11" />

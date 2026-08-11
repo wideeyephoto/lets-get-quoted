@@ -13,7 +13,7 @@ export async function setMapViewAction(view: MapView, surface: MapSurface) {
   cookies().set(mapViewCookie(surface), normalizeMapView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
 
-// Remember the map colour scheme (dark / light).
+// Remember the map color scheme (dark / light).
 export async function setMapThemeAction(theme: MapTheme) {
   await requireOwnerContext();
   cookies().set(MAP_THEME_COOKIE, normalizeMapTheme(theme), { path: '/', maxAge: YEAR, sameSite: 'lax' });

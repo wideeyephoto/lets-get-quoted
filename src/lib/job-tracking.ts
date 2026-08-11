@@ -405,7 +405,7 @@ export async function getTrackingByToken(
   ]);
 
   // The arriving contact. First name and photo only — a homeowner needs to
-  // recognise who's at the door, not to be handed an employee's full identity.
+  // recognize who's at the door, not to be handed an employee's full identity.
   let crewFirstName: string | null = null;
   let crewPhotoUrl: string | null = null;
   let crewRole: string | null = null;

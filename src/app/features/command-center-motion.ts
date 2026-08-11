@@ -2,7 +2,7 @@
  * Scroll-reveal and layered parallax for the command-center deck.
  *
  * Extracted from FeatureWheelStory so the homepage can render the deck on its
- * own without a second copy of this behaviour. Both callers pass their own
+ * own without a second copy of this behavior. Both callers pass their own
  * mounted scope; nothing here touches anything outside it.
  *
  * Returns a teardown function. Callers must call it — the listeners are on
@@ -114,10 +114,10 @@ export function wireCommandCenter(scope: HTMLElement, reduce: boolean): () => vo
         offsets[i] = null;
         return;
       }
-      const centre = r.top + r.height / 2;
-      offsets[i] = (centre - vh / 2) / vh; // ~ -1 (below) .. 1 (above)
-      const dist = Math.abs(centre - vh / 2);
-      if (centre > vh * 0.12 && centre < vh * 0.88 && dist < liveDist) {
+      const center = r.top + r.height / 2;
+      offsets[i] = (center - vh / 2) / vh; // ~ -1 (below) .. 1 (above)
+      const dist = Math.abs(center - vh / 2);
+      if (center > vh * 0.12 && center < vh * 0.88 && dist < liveDist) {
         liveDist = dist;
         live = i;
       }

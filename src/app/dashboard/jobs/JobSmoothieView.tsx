@@ -300,7 +300,7 @@ export default function JobSmoothieView({
                       <span className={styles.rowMain}>
                         <span className={styles.rowTop}>
                           <strong className={styles.rowName}>{job.clientName || 'Untitled job'}</strong>
-                          {/* The stage as a word, never only a colour. */}
+                          {/* The stage as a word, never only a color. */}
                           <span className={styles.rowHeat} data-stage={job.status}>{jobStageLabel(job.status)}</span>
                         </span>
                         <span className={styles.rowDetail}>{job.scope || job.address || 'No description yet'}</span>

@@ -41,7 +41,7 @@ const chapters = [
     body: 'A homeowner describes the problem and the site asks what follows from it — trade-specific questions, photos, timing, and where the work is. What reaches the contractor is a scoped request with the obvious follow-ups already answered.',
     proof: ['Trade-specific follow-up questions', 'Scored on fit, urgency, value and area', 'The same context carries into the quote'],
     from: 'One homeowner request',
-    to: 'A prioritised lead with context',
+    to: 'A prioritized lead with context',
   },
   {
     n: '03',

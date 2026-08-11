@@ -244,14 +244,26 @@ describe('the shell', () => {
  * forecast, and quotes and deposits live on /demo/jobs, which two other pages
  * already point at for what it actually shows.
  */
-describe('every feature hero offers the live demo of its own feature', () => {
-  const DEMOS: Record<string, string> = {
+/**
+ * ONE PRIMARY ACTION, AND IT BELONGS TO THE PAGE IT IS ON.
+ *
+ * Eight of these pages led with "Build my free site" — including the ones
+ * selling payments, scheduling and crew management, where a free website
+ * answers a question the reader did not ask. Eleven of the twelve then offered
+ * a THIRD button, so the hero presented a demo, a signup and a jump link at
+ * once, which is less a choice than an invitation to make none.
+ *
+ * The demo used to be that third button. It is the first one now.
+ */
+describe('every feature hero leads with its own contextual action', () => {
+  /** slug -> the primary's destination. */
+  const PRIMARY: Record<string, string> = {
     'website-builder': '/demo/sites',
-    'ai-intake': '/demo/leads',
+    'ai-intake': '#sample-intake',
     'quick-stops': '/demo/quick-stops',
     'client-portal': '/demo/messages',
-    'back-office': '/demo/jobs',
-    quotes: '/demo/jobs',
+    'back-office': '/demo/jobs/job-1',
+    quotes: '/demo/jobs/job-13',
     scheduling: '/demo/schedule',
     crew: '/demo/crew',
     recurring: '/demo/recurring',
@@ -259,34 +271,55 @@ describe('every feature hero offers the live demo of its own feature', () => {
     reviews: '/demo/reviews',
   };
 
-  it.each(Object.entries(DEMOS))('/features/%s -> %s', (slug, href) => {
+  it.each(Object.entries(PRIMARY))('/features/%s -> %s', (slug, href) => {
     const source = page(slug);
-    const match = source.match(/tertiary=\{\{ label: '([^']+)', href: '([^']+)' \}\}/);
-    expect(match, `${slug} has no tertiary hero action`).toBeTruthy();
+    const match = source.match(/primary=\{\{ label: '([^']+)', href: '([^']+)' \}\}/);
+    expect(match, `${slug} has no contextual primary action`).toBeTruthy();
     expect(match![2]).toBe(href);
     expect(match![1].length).toBeGreaterThan(8);
   });
 
-  it.each(Object.values(DEMOS))('%s is a route that exists', (href) => {
-    expect(existsSync(`src/app${href}/page.tsx`), href).toBe(true);
+  it.each(Object.entries(PRIMARY).filter(([, href]) => href.startsWith('/')))(
+    '%s points at a route that exists (%s)',
+    (_slug, href) => {
+      // A demo link that lands somewhere adjacent is worse than no link, so the
+      // route file has to be there. Dynamic segments resolve to their [id] dir.
+      const direct = `src/app${href}/page.tsx`;
+      const dynamic = `src/app${href.replace(/\/[^/]+$/, '/[id]')}/page.tsx`;
+      expect(existsSync(direct) || existsSync(dynamic), href).toBe(true);
+    },
+  );
+
+  it('never leads with the website offer on a page that is not about websites', () => {
+    for (const slug of Object.keys(PRIMARY)) {
+      if (slug === 'website-builder') continue;
+      const source = page(slug);
+      const match = source.match(/primary=\{\{ label: '([^']+)'/);
+      expect(match?.[1], slug).not.toBe('Build my free site');
+    }
   });
 
-  it('leaves /features/payments without one, on purpose', () => {
-    // If a demo screen ever becomes payments, this is the test to delete.
+  it('offers exactly two actions — the third slot is gone from both shells', () => {
+    const layout = strip(read('src/components/marketing/feature-detail-layout.tsx'));
+    expect(layout).not.toContain('tertiary');
+    expect(SHELL).not.toContain('tertiary');
+    for (const slug of Object.keys(PRIMARY)) {
+      expect(page(slug), slug).not.toContain('tertiary=');
+    }
     expect(page('payments')).not.toContain('tertiary=');
   });
 
-  it('is a slot on the shared layout, not markup copied into twelve pages', () => {
+  it('makes signing up the quiet second option, by default', () => {
     const layout = strip(read('src/components/marketing/feature-detail-layout.tsx'));
-    expect(layout).toContain('tertiary?: { label: string; href: string } | null;');
-    expect(layout).toContain('{tertiary ? (');
-    // Plain <a>: next/link would prefetch a heavy demo route on hover from
-    // every feature page, for a button most visitors never press.
-    expect(layout).toMatch(/\{tertiary \? \(\s*<a className="button secondary"/);
+    expect(layout).toContain('SECONDARY_SIGNUP_LABEL');
+    const links = strip(read('src/components/marketing/links.tsx'));
+    expect(links).toContain("export const SECONDARY_SIGNUP_LABEL = 'Start free'");
   });
 
-  it('passes through the suite shell too', () => {
-    expect(SHELL).toContain('tertiary?: { label: string; href: string } | null;');
+  it('/features/payments leads with the thing it sells, having no demo screen', () => {
+    // If a /demo/payments screen ever ships, this is the test to change.
+    expect(existsSync('src/app/demo/payments/page.tsx')).toBe(false);
+    expect(page('payments')).toContain("primary={{ label: 'Start taking deposits' }}");
   });
 });
 
@@ -353,7 +386,9 @@ describe('the video studio is in the catalog and on the page', () => {
   it('reaches the builder from the nav and the hero', () => {
     const chrome = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
     expect(chrome).toMatch(/\['\/features\/website-builder', '[^']*[Ww]ebsite[^']*'\]/);
-    expect(WEBSITE).toMatch(/tertiary=\{\{ label: '[^']+', href: '\/demo\/sites' \}\}/);
+    // The template picker is the hero's primary now, not its third button:
+    // nobody commits to a website they have not looked at.
+    expect(WEBSITE).toMatch(/primary=\{\{ label: '[^']+', href: '\/demo\/sites' \}\}/);
   });
 });
 

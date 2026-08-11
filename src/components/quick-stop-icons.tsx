@@ -2,7 +2,7 @@
  * The Quick Stops icon set, shared by the dashboard explainer and the public
  * feature page.
  *
- * Stroke icons rather than emoji: they take the accent colour, stay crisp at any
+ * Stroke icons rather than emoji: they take the accent color, stay crisp at any
  * size, and don't render as a different picture on every operating system.
  *
  * WHY IT MOVED OUT OF QuickStopExplainer. /features/quick-stops now tells the

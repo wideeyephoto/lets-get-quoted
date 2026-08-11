@@ -527,7 +527,7 @@ export default async function SchedulePage({
       : 'on';
 
   return (
-    /* NOT .wide-shell. That caps every page it is on at 1100px and centres it,
+    /* NOT .wide-shell. That caps every page it is on at 1100px and centers it,
        which on this one meant a seven-column calendar squeezed into 1100px with
        ~400px of dead gutter either side at 1920 — the grid got narrower than the
        rail beside it. This shell is fluid: it takes whatever the app rail leaves
@@ -666,7 +666,7 @@ export default async function SchedulePage({
              that stays: it is already a link to #unscheduled-jobs and it says
              what the number means. */
           /* NO "Plan my day" HERE ANY MORE. It sat in this toolbar at every
-             width, in the accent colour, permanently — the loudest control on a
+             width, in the accent color, permanently — the loudest control on a
              page whose job is booking work, pointed at a route optimiser for
              work that is already booked. It is now secondary (the panel foot,
              below) and contextual (the mobile agenda offers it on a day that
@@ -750,7 +750,7 @@ export default async function SchedulePage({
                 .map((crewId) => crewById.get(crewId))
                 .filter((member): member is typeof crew[number] => Boolean(member));
               return (
-                /* Tinted with the colour this job will BE once it lands on a
+                /* Tinted with the color this job will BE once it lands on a
                    date — the calendar chips key off status, so an unscheduled
                    card and its future chip now agree. Dragging it becomes a
                    thing moving rather than a grey row turning into a gold one. */

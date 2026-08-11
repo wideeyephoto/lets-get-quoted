@@ -163,7 +163,7 @@ type AccountStatus = {
 export type NavState = 'on' | 'off' | 'paused' | 'unknown';
 
 // Nav entries that carry their own on/off state. The WORD is the state and the
-// colour only agrees with it, so it still reads without colour vision.
+// color only agrees with it, so it still reads without color vision.
 const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { label: string; title: string }>> = {
   '/dashboard/quick-stops': {
     on: { label: 'ON', title: 'Quick Stops is ON — nearby customers can pay to be fitted in sooner' },
@@ -862,11 +862,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           href={href}
           key={href}
           className={`sidenav-link${brand ? ' sidenav-link-brand' : ''}${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
-          // Which row you are standing on was said in colour and in nothing
+          // Which row you are standing on was said in color and in nothing
           // else, so a screen reader had no way to know — 18 identical links.
           aria-current={active ? 'page' : undefined}
           // Also on the row, not just the pill inside it, so the row can carry
-          // the state's colour without CSS having to reach into a child with
+          // the state's color without CSS having to reach into a child with
           // :has() — which not every browser this ships to supports.
           data-state={state !== 'unknown' && NAV_STATE_PILL[href] ? state : undefined}
           title={item.hint}
@@ -1459,9 +1459,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               className={`stripe-status-pill topbar-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
               title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
             >
-              {/* A constant "$" mark — the state is carried by the tile colour AND
+              {/* A constant "$" mark — the state is carried by the tile color AND
                   the label wording ("connected" / "Connect" / "checking"), so it
-                  never depends on colour alone. */}
+                  never depends on color alone. */}
               <span className="stripe-status-tile" aria-hidden="true">$</span>
               {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
             </Link>

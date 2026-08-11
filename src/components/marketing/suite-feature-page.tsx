@@ -37,10 +37,11 @@ export type SuiteFeaturePageProps = {
   lede: ReactNode;
   heroNote?: ReactNode;
   demo?: ReactNode;
+  /** The contextual "show me" action — usually this feature's live demo screen.
+   *  See FeatureDetailLayout for why it is not sign-up. */
   primary?: { label: string; href?: string };
+  /** Signing up, quietly. Defaults to "Start free". There is no third action. */
   secondary?: { label: string; href?: string } | null;
-  /** The live demo screen for this feature. See FeatureDetailLayout. */
-  tertiary?: { label: string; href: string } | null;
   proof: FeatureProofPoint[];
   story: { eyebrow: string; title: ReactNode; body: ReactNode };
   benefits: FeatureDetailCard[];

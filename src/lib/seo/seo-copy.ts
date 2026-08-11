@@ -253,7 +253,7 @@ const SERVICE_STOPWORDS = new Set([
 ]);
 
 // The substantive words of a trade phrase, so "Landscaping and Lawns" is
-// recognised in a title that only says "Landscaping".
+// recognized in a title that only says "Landscaping".
 function serviceTokens(service: string): string[] {
   return clean(service)
     .toLowerCase()

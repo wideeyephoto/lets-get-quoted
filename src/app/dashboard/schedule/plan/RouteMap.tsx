@@ -44,7 +44,7 @@ const HOME_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
 // Deliberately smaller and flatter than a stop pin: these are suggestions on the
 // side of the road, not part of the day. But which store it is matters — "the
 // orange one" is how anybody actually navigates to a Home Depot — so each chain
-// gets its own colour and initials rather than one anonymous marker. See
+// gets its own color and initials rather than one anonymous marker. See
 // supply-brands.ts for why those aren't the real logos.
 const supplyIconCache = new Map<string, string>();
 
@@ -77,7 +77,7 @@ function clearLines(lines: google.maps.Polyline[]): void {
 /**
  * Draw the day one leg at a time.
  *
- * Colour says WHICH leg — cool at the start of the day, warm at the end, the
+ * Color says WHICH leg — cool at the start of the day, warm at the end, the
  * same ramp the stop list uses. Arrows say WHICH WAY. Keeping those two jobs on
  * separate channels means a route that doubles back on itself is still readable
  * by anyone who can't tell the hues apart.
@@ -267,7 +267,7 @@ export default function RouteMap({
     linesRef.current = drawLegs(
       map,
       // Straight-line legs until Directions answers: one segment per hop, so
-      // the colours and arrows are right even before the roads arrive.
+      // the colors and arrows are right even before the roads arrive.
       path.slice(0, -1).map((from, index) => [from, path[index + 1]]),
       0.8,
     );
@@ -290,7 +290,7 @@ export default function RouteMap({
           // A newer order started drawing while this was in flight.
           if (drawId !== drawIdRef.current || !mapRef.current) return;
           // Per LEG, not the overview path: the overview is one line for the
-          // whole day and can't be coloured leg by leg.
+          // whole day and can't be colored leg by leg.
           const legs = result.routes[0]?.legs ?? [];
           const legPaths = legs
             .map((leg) => (leg.steps ?? []).flatMap((step) => step.path ?? []))

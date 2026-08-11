@@ -17,7 +17,7 @@ import {
 // here the whole time.
 //
 // Areas are TYPED, not drawn. The previous version asked the owner to tap a
-// centre on the map and then set a radius — which is asking somebody to express
+// center on the map and then set a radius — which is asking somebody to express
 // "Birmingham" as a pin and a number, when Birmingham is a thing they already
 // know the name of. Now they type a city or a ZIP and the place's own boundary
 // supplies the circle (see geocodeArea).
@@ -73,7 +73,7 @@ export default function QuickStopAreas({ radiusMiles, zones, zonesAvailable }: P
                       distance, which is the reading it most invited and the only
                       wrong one. Named as a radius, in those words, with what it
                       is measured from. */}
-                  covers a {zone.radiusMiles}-mile radius around the centre of {zone.label}
+                  covers a {zone.radiusMiles}-mile radius around the center of {zone.label}
                 </small>
               </div>
               <div className="cash-bill-actions qs-area-actions">

@@ -241,7 +241,7 @@ const CAPABILITY_GROUPS: {
       {
         term: 'Optional upgrades the customer chooses',
         detail:
-          'Colours, materials and fixtures with what the quote already allows for and what an upgrade adds. The choice is recorded with the name, the moment and a snapshot of the option, so editing the option later never rewrites what somebody agreed to.',
+          'Colors, materials and fixtures with what the quote already allows for and what an upgrade adds. The choice is recorded with the name, the moment and a snapshot of the option, so editing the option later never rewrites what somebody agreed to.',
       },
       {
         term: 'E-signature approval',
@@ -307,7 +307,7 @@ const CAPABILITY_GROUPS: {
       {
         term: 'Payment plans without financing anybody',
         detail:
-          'Split the approved total into a deposit and fixed instalments at 0% — no interest, no credit check, no advance. The plan allocates the quote total and can never increase it, and instalments run against the card saved when the deposit was taken.',
+          'Split the approved total into a deposit and fixed installments at 0% — no interest, no credit check, no advance. The plan allocates the quote total and can never increase it, and installments run against the card saved when the deposit was taken.',
       },
       {
         term: 'Cash flow you can see coming',
@@ -406,7 +406,7 @@ const PLAN_REMAINDER_CENTS =
 /* ---- the fortnight of cash ----------------------------------------------- */
 
 /* Nine dated movements of the kind the record already holds: material orders,
-   payroll runs, a deposit link nobody has clicked, a payment-plan instalment
+   payroll runs, a deposit link nobody has clicked, a payment-plan installment
    due off a saved card, a final balance, a truck payment, an insurance bill and
    a recurring maintenance visit. Every `kind` is a real CashEventKind and every
    label under it comes from the product's own KIND_LABEL map.
@@ -471,7 +471,7 @@ const CASH_EVENTS: CashEvent[] = [
   {
     id: 'installment-1',
     dateKey: '2026-09-15',
-    label: 'Payment plan — instalment 1 of 4',
+    label: 'Payment plan — installment 1 of 4',
     detail: 'Runs against the card saved at deposit',
     amount: 931.87,
     kind: 'installment',
@@ -568,9 +568,10 @@ export default function BackOfficePage() {
       }
       lede="Quote the work, schedule your crew, collect payment, and follow up—without retyping customer details across five different tools."
       heroNote={HERO_NOTE}
-      primary={{ label: 'Start free' }}
-      secondary={{ label: 'See a job from quote to payment', href: '#back-office-record' }}
-      tertiary={{ label: 'Open a live job record', href: '/demo/jobs' }}
+      /* The page's whole claim is "one job record", so the proof action is
+         opening one. It was the third button, behind a signup and a jump link
+         to a section that describes the record this button lets you use. */
+      primary={{ label: 'Open a live job record', href: '/demo/jobs/job-1' }}
       demo={<ShotSlider shots={HERO_SHOTS} label="Back office screens" />}
       proof={[
         { title: 'Quotes + e-sign', body: 'Professional, itemized and ready for approval.' },
@@ -717,7 +718,7 @@ export default function BackOfficePage() {
 
       {/* B1 — the payment plan, drawn by the module that builds it.
           The capability list says "split the approved total into a deposit and
-          fixed instalments at 0%… the plan allocates the quote total and can
+          fixed installments at 0%… the plan allocates the quote total and can
           never increase it". This is that sentence, executed. */}
       <section className="section-block" aria-labelledby="back-office-plan">
         <div className={styles.showcaseGrid}>
@@ -737,7 +738,7 @@ export default function BackOfficePage() {
               {PLAN_REMAINDER_CENTS > 0 ? (
                 <>
                   {' '}
-                  — here the final instalment carries {money(PLAN_REMAINDER_CENTS)} more than the
+                  — here the final installment carries {money(PLAN_REMAINDER_CENTS)} more than the
                   three before it
                 </>
               ) : null}
@@ -771,7 +772,7 @@ export default function BackOfficePage() {
                   <li key={row.seq} className={styles.planRow}>
                     <span className={styles.planWhen}>{formatPlanDate(row.dueDate)}</span>
                     <span className={styles.planWhat}>
-                      Instalment {row.seq} of {PLAN_ROWS.length}
+                      Installment {row.seq} of {PLAN_ROWS.length}
                       <span className={styles.planSub}>
                         {row.seq === PLAN_ROWS.length && PLAN_REMAINDER_CENTS > 0
                           ? 'Carries the rounding remainder'
@@ -784,7 +785,7 @@ export default function BackOfficePage() {
               </ol>
 
               <div className={`${styles.planHead} ${styles.planTotal}`}>
-                <span className={styles.planHeadLabel}>Deposit + instalments</span>
+                <span className={styles.planHeadLabel}>Deposit + installments</span>
                 <b className={styles.planHeadValue}>{money(PLAN_SUM_CENTS)}</b>
               </div>
             </div>
@@ -803,7 +804,7 @@ export default function BackOfficePage() {
             <p className="eyebrow">Cash flow you can see coming</p>
             <h2 id="back-office-cash">The payroll you cannot make, {CASH_DAYS} days early.</h2>
             <p>
-              Deposits, balances, plan instalments and recurring visits are already dated on the
+              Deposits, balances, plan installments and recurring visits are already dated on the
               record, and so are payroll, materials, the truck payment and the bills. Lined up in
               order, they answer the only question that matters on a Friday: what is the balance
               going to be when the next payroll clears?

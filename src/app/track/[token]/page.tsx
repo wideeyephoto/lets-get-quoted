@@ -19,7 +19,7 @@ export const metadata = {
 // The homeowner's arrival page.
 //
 // No account, no app, one screenful. It carries the CONTRACTOR's name and
-// colour, because this is the moment the customer is judging them and not us.
+// color, because this is the moment the customer is judging them and not us.
 // Everything on it is reachable by anyone holding the link, so it holds only
 // what a person waiting at home needs: when, who, and how to reach them.
 

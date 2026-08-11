@@ -128,7 +128,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
 
   // What the tech is told after an arrival action. The delivery outcome is
   // spelled out rather than reduced to a tick, because "sent" and "we tried to
-  // send" lead to different behaviour at the door.
+  // send" lead to different behavior at the door.
   const arrivalFlash = describeArrivalOutcome(searchParams.arrival, searchParams.sms);
 
   const isComplete = job.status === 'complete';

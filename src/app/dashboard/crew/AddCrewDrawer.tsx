@@ -37,7 +37,7 @@ import styles from './crew.module.css';
 // Closing therefore means REMOVING the parameter, which is the one thing to
 // remember when reading this: `close()` is a navigation, not a setState.
 //
-// One behaviour was dropped on the way: the form used to force itself open
+// One behavior was dropped on the way: the form used to force itself open
 // whenever the roster was empty. As URL-derived state that becomes a modal that
 // reopens itself after every revalidation for as long as the roster stays empty
 // — which is precisely the state a REFUSED save leaves you in. The empty roster

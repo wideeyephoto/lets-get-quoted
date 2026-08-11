@@ -14,13 +14,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * builder with a transparent monitor render. Cropping the second to 16:10
  * takes the corners off the monitor.
  *
- * So every shot is CONTAINED here, not covered, on a ground the colour of the
+ * So every shot is CONTAINED here, not covered, on a ground the color of the
  * app's own chrome. Nothing is cut off, the two agree on a frame without
  * agreeing on a shape, and a transparent PNG sits on a surface rather than on
  * whatever the section behind it happens to be.
  *
  * Everything else follows the homepage slider on purpose, because it is the
- * behaviour people have already met once on this site: five-second dwell, dots
+ * behavior people have already met once on this site: five-second dwell, dots
  * over the frame rather than a second row of controls under it, arrow keys,
  * pause on hover or on any manual choice, nothing rotating while the frame is
  * off screen or the tab is hidden, and no rotation at all under

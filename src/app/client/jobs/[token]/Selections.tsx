@@ -15,7 +15,7 @@ function formatChosenAt(value: string | null): string {
 }
 
 /**
- * Choices the homeowner has to make: colours, materials, fixtures.
+ * Choices the homeowner has to make: colors, materials, fixtures.
  *
  * A made choice is shown BACK to them, permanently, with the product reference
  * and the date. That readback is the feature — "Accessible Beige SW7036, chosen

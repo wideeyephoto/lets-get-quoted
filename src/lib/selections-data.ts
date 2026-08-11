@@ -646,7 +646,7 @@ export async function saveBoardAsTemplate(
   name: string,
 ): Promise<{ ok: boolean; message?: string }> {
   const clean = name.trim().slice(0, 80);
-  if (!clean) return { ok: false, message: 'Give the template a name you will recognise later.' };
+  if (!clean) return { ok: false, message: 'Give the template a name you will recognize later.' };
 
   const selections = await listSelections(supabase, accountId, jobId);
   const body = boardToTemplate(selections);

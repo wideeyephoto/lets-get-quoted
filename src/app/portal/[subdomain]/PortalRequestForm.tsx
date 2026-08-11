@@ -8,7 +8,7 @@ import { requestPortalLinkAction } from './actions';
  *
  * The acknowledgement is identical whether or not the address matched — and the
  * form is REPLACED by it rather than staying open. Leaving the field there
- * invites a second attempt with a variant address, which is the behaviour a
+ * invites a second attempt with a variant address, which is the behavior a
  * page that leaks would reward.
  *
  * Its own classes rather than the dashboard's `.btn primary`: this renders on

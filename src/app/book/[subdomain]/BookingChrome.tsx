@@ -64,7 +64,7 @@ export default function BookingChrome({ site, children }: { site: Site; children
   const call = site.phone ? phoneLink(site.phone) : null;
 
   // Every control on the page reads these. `--accent` is the app's own token,
-  // so re-declaring it here re-colours the buttons, focus rings and selected
+  // so re-declaring it here re-colors the buttons, focus rings and selected
   // slots that were already written against it — no per-component overrides.
   const scope = {
     '--book-accent': accent,

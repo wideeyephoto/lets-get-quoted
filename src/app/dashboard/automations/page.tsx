@@ -119,7 +119,7 @@ function AutomationCard({
   // Cards sharing a group name behave as one accordion — opening any of them
   // closes the rest. Native <details name>, the same mechanism the schedule
   // popovers use; browsers without support simply allow several open, which is
-  // the old behaviour rather than a broken one.
+  // the old behavior rather than a broken one.
   group: string;
   children: ReactNode;
 }) {
@@ -277,7 +277,7 @@ export default async function AutomationsPage() {
     .maybeSingle();
   const appointmentRemindersEnabled = Boolean(reminderSettings?.appointment_reminders_enabled);
   // Normalised on the way in, so a database built before the timing migration —
-  // where both columns read as undefined — renders the old behaviour's defaults
+  // where both columns read as undefined — renders the old behavior's defaults
   // rather than "0 days before at 12:00 AM".
   const reminderLeadDays = normalizeReminderLeadDays(reminderSettings?.appointment_reminder_lead_days);
   const reminderHour = normalizeReminderHour(reminderSettings?.appointment_reminder_hour);
@@ -321,7 +321,7 @@ export default async function AutomationsPage() {
   // Two reads, because the settings columns arrived in a later migration than
   // the switch did: a database with the switch but not the schedule must still
   // render the card rather than 500. The normaliser turns "column absent" into
-  // the defaults, which are the behaviour that shipped.
+  // the defaults, which are the behavior that shipped.
   const { data: selectionSettings } = await supabase
     .from('accounts')
     .select('selection_reminders_enabled')
@@ -531,7 +531,7 @@ export default async function AutomationsPage() {
         <AutomationCard group="follow-through" id="followups" title="Automatic quote follow-ups" subtitle="Chase quotes nobody has answered" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups'), offLabel: 'Turn on' }}>
           <div className={`followup-card${quoteFollowupsEnabled ? '' : ' is-paused'}`}>
             {/* NOT A WARNING. Off used to render in alarm orange, which
-                is the colour this app uses for something going wrong —
+                is the color this app uses for something going wrong —
                 and an automation you have not switched on is not a
                 fault. It states what happens instead, and what would
                 happen if you turned it on. */}
@@ -656,7 +656,7 @@ export default async function AutomationsPage() {
 
                 <div className="followup-fact">
                   <strong>A missed day is skipped, not stacked</strong>
-                  {/* Worth stating: it is the behaviour people expect
+                  {/* Worth stating: it is the behavior people expect
                       least and fear most about turning an automation on
                       over old data. */}
                   <span>
@@ -875,7 +875,7 @@ export default async function AutomationsPage() {
             two-column shape the other three follow-through cards use.
             The old card could only describe the cadence in prose because
             there was no cadence to read — the schedule was two hardcoded
-            stamps keyed off a constant that exists to colour a label. */}
+            stamps keyed off a constant that exists to color a label. */}
         <AutomationCard
           group="follow-through"
           id="selections"

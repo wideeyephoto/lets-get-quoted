@@ -20,7 +20,7 @@ type AddressAutocompleteProps = {
    * What the field is for.
    *
    * 'address' (default) puts the formatted address in the input — the existing
-   * behaviour everywhere. 'place' puts the BUSINESS NAME in it instead, which
+   * behavior everywhere. 'place' puts the BUSINESS NAME in it instead, which
    * is what you want on a field labelled Name: typing "Home Dep" and picking
    * the Rochester Rd branch should leave "The Home Depot" in the box, not a
    * street address, while the address goes wherever the caller wants it.

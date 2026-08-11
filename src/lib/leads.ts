@@ -37,7 +37,7 @@ export type LeadTriage = {
   // 'text_only' = the homeowner asked not to be called — text first.
   //
   // A VOICE preference, and only that: it is about picking up the phone, and it
-  // is the homeowner's own answer on the enquiry form. Not to be confused with
+  // is the homeowner's own answer on the inquiry form. Not to be confused with
   // messageChannel below, which is the contractor's decision about automatic
   // messages. Someone can be "don't call me" and still be on email-only.
   contactPreference?: 'any' | 'text_only';
@@ -548,7 +548,7 @@ export function normalizeLeadLostAfterDays(value: unknown): number {
  *
  * The fallback is doing real work: the column arrives in a migration that is run
  * by hand, so between deploy and SQL every read here fails. Catching it keeps
- * the previous behaviour exactly rather than throwing on four different pages.
+ * the previous behavior exactly rather than throwing on four different pages.
  */
 export async function getLeadLostAfterDays(supabase: SupabaseClient, accountId: string): Promise<number> {
   try {

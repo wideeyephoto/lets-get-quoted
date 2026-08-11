@@ -65,9 +65,9 @@ export function relativeDayLabel(key: string, todayKey: string): string | null {
 }
 
 /**
- * The five-day strip, centred on the day you are looking at.
+ * The five-day strip, centerd on the day you are looking at.
  *
- * Centred rather than starting at the selection so the strip is a way to move
+ * Centerd rather than starting at the selection so the strip is a way to move
  * BACKWARDS as well as forwards — a forward-only strip is a preview, not a
  * control, and the day you are on would sit permanently against its left edge.
  */
@@ -84,7 +84,7 @@ export type AgendaCapacity = {
   /** Clamped to 100 for the bar. `state` is what says you are past it. */
   pct: number;
   state: AgendaCapacityState;
-  /** "Nearly full" — the status in words, so it is never colour alone. */
+  /** "Nearly full" — the status in words, so it is never color alone. */
   word: string;
   /** "6.5h of 8h booked" */
   detail: string;

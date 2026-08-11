@@ -13,7 +13,7 @@ import styles from '../leads.module.css';
  * so it read "📱 A text to 248-555-0117" whether the box was ticked or not, and
  * whether the customer was reachable by text or not. Unticking the only consent
  * control on the page changed nothing on screen, which is the worst possible
- * behaviour for a control whose entire job is to stop a message going out.
+ * behavior for a control whose entire job is to stop a message going out.
  *
  * Now the same call decides both — resolveClientChannel, the one that
  * convertLeadAction uses to actually send. The preview cannot describe a send

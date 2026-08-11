@@ -31,7 +31,7 @@ import './command-center-deck.css';
  *
  *   fw-scope  declares the palette (--panel, --ink, --orange, --mono ...) that
  *             every rule in the deck reads. Without it the cards render with no
- *             colours and the wrong typeface.
+ *             colors and the wrong typeface.
  *   cc-root   is what the generated stylesheet prefixes every selector with, so
  *             its rules outrank the flagship homepage's preflight reset. See
  *             scripts/generate-command-center-css.mjs for the full reasoning.

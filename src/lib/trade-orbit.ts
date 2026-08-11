@@ -10,7 +10,7 @@
  * Three earlier attempts and what each one taught:
  *
  *   1. An ellipse drawn AROUND the copy, missing it entirely. Impossible.
- *      Containing a rectangle means clearing its corners, so centred on the
+ *      Containing a rectangle means clearing its corners, so centerd on the
  *      copy at 1440 the semi-axes come to 374 x 326 — which then has to shift
  *      right to stay on screen, which pushes the far corner out, which needs a
  *      wider ellipse: 374 -> 413 -> 443 -> ... it diverges.
@@ -104,7 +104,7 @@ export type OrbitLayout = {
  *     screenshot. Down a stacked hero there is no gutter, so it sits just past
  *     the copy's right edge instead — the same relationship, minus the column.
  *
- * Vertically it is as tall as the visible section allows: centred on the copy,
+ * Vertically it is as tall as the visible section allows: centerd on the copy,
  * with the top arc clearing the fixed header and the bottom arc inside the
  * section. Nothing here is clamped to a band, because nothing fades any more —
  * an object over the headline is simply behind it.
@@ -151,9 +151,9 @@ export function orbitPoint(theta: number, geo: OrbitGeometry): { x: number; y: n
   };
 }
 
-/** The object's box, centred on a point. */
-export function iconBox(centre: { x: number; y: number }, icon: { w: number; h: number }, scale = 1): Rect {
+/** The object's box, centerd on a point. */
+export function iconBox(center: { x: number; y: number }, icon: { w: number; h: number }, scale = 1): Rect {
   const width = icon.w * scale;
   const height = icon.h * scale;
-  return { x: centre.x - width / 2, y: centre.y - height / 2, width, height };
+  return { x: center.x - width / 2, y: center.y - height / 2, width, height };
 }

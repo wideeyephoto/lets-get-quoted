@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 // the thing you actually came for.
 //
 // Native <details> on purpose: it works in a server component, survives with
-// JavaScript disabled, and gets find-in-page and keyboard behaviour for free.
+// JavaScript disabled, and gets find-in-page and keyboard behavior for free.
 // Passing the same `group` to several panels makes them mutually exclusive, so
 // opening one folds its neighbours.
 export default function WorkspaceDisclosure({

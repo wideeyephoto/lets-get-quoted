@@ -186,7 +186,7 @@ export default function QuickStopExplainer({
           </Step>
           <Step n={4} icon="check" title="They pay the visit fee">
             The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and
-            carry on as a normal enquiry. Either way you keep the lead.
+            carry on as a normal inquiry. Either way you keep the lead.
           </Step>
         </ol>
       </section>
@@ -200,7 +200,7 @@ export default function QuickStopExplainer({
               {businessName}
             </p>
             <p className="es-phone-bubble">We&apos;re in your area today. Want us out sooner?</p>
-            <p className="es-phone-sub">Pay a priority visit fee for faster service, or carry on as a normal enquiry.</p>
+            <p className="es-phone-sub">Pay a priority visit fee for faster service, or carry on as a normal inquiry.</p>
             <p className="es-phone-choice primary">
               Pay for faster service <span aria-hidden="true">→</span>
               <small>booked once payment clears</small>
@@ -226,7 +226,7 @@ export default function QuickStopExplainer({
               <p className="es-example-offer">6:30 – 7:15 PM</p>
               <p className="es-example-fee">${typicalFee}<span>Priority visit fee</span></p>
             </div>
-            <p className="es-example-note">If they pass, the lead stays yours as a normal enquiry.</p>
+            <p className="es-example-note">If they pass, the lead stays yours as a normal inquiry.</p>
           </div>
         </section>
       </div>
@@ -247,7 +247,7 @@ export default function QuickStopExplainer({
             Nothing is booked until the payment clears.
           </Benefit>
           <Benefit icon="users" tone="lead" title="You keep the lead either way">
-            Decline, or the customer passes — it simply stays a normal enquiry.
+            Decline, or the customer passes — it simply stays a normal inquiry.
           </Benefit>
         </ul>
       </section>

@@ -4,7 +4,7 @@ import SaveButton from '@/components/save-button';
 import { updateArrivalExtrasAction } from './actions';
 
 /**
- * The two optional arrival behaviours, kept off the main card.
+ * The two optional arrival behaviors, kept off the main card.
  *
  * Neither is part of "tell the customer when you're coming". A morning text to
  * today's customers is a scheduled send with its own timing; clocking drive

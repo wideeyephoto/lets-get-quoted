@@ -8,7 +8,7 @@ import type { RevenueByService, RevenueServiceSlice } from '@/lib/insights-metri
 // construction: there is no service catalog joined to revenue, so items are
 // grouped by their free-text description (top few by value, the long tail folded
 // into "Other"). The card says so plainly rather than implying a clean
-// service→revenue split the data can't back. The donut centre shows a rounded
+// service→revenue split the data can't back. The donut center shows a rounded
 // total for glancing; every legend row carries the exact dollar figure, so
 // nothing anyone acts on is the rounded number. Server-only.
 

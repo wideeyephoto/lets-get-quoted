@@ -29,7 +29,7 @@ export default async function WelcomePage() {
   // Already done — nothing to ask. Reachable by typing the URL or by going Back.
   if (!needsFirstRun(account)) redirect('/dashboard');
 
-  // The name an existing owner actually recognises — see initialBusinessName.
+  // The name an existing owner actually recognizes — see initialBusinessName.
   // Read separately (not joined) so a site that doesn't exist yet, which is the
   // normal case at first run, is simply an empty field rather than an error.
   const { data: site } = await supabase

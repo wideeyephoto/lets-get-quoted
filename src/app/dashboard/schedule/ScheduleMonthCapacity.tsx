@@ -77,7 +77,7 @@ export default function ScheduleMonthCapacity({
           // Over capacity is its own state, not a bar that stops at full: a day
           // booked to 11 of 8 hours is a promise somebody is going to break.
           const over = booked > capacityHours + 0.01;
-          /* HOW FULL, IN COLOUR, ACROSS THE WHOLE MONTH AT ONCE.
+          /* HOW FULL, IN COLOR, ACROSS THE WHOLE MONTH AT ONCE.
              Every cell used to draw the same orange bar whatever was in it, so
              "where is there room in August" meant reading thirty-one cells one
              at a time and comparing two small numbers in each. The ramp answers
@@ -103,7 +103,7 @@ export default function ScheduleMonthCapacity({
             `${cell.day}: ${dayJobs.length === 0 ? 'nothing booked' : `${dayJobs.length} job${dayJobs.length === 1 ? '' : 's'}`}`,
             dayJobs.length > 0 ? `${booked.toFixed(booked % 1 ? 1 : 0)} of ${capacityHours} hours booked` : null,
             block ? (block.reason ? `Blocked off — ${block.reason}` : 'Blocked off') : null,
-            // The colour band, in words, so the ramp is not the only place it
+            // The color band, in words, so the ramp is not the only place it
             // is said. 'open' is already covered by "nothing booked" above.
             level && level !== 'open' ? CAPACITY_LABEL[level] : null,
             conflicts.length > 0 ? `${conflicts.length} crew double-booked` : null,
@@ -116,7 +116,7 @@ export default function ScheduleMonthCapacity({
               type="button"
               key={cell.dateKey}
               data-date-key={cell.dateKey}
-              /* The band drives every colour on the cell — border, bar, tint —
+              /* The band drives every color on the cell — border, bar, tint —
                  from one attribute, so they cannot disagree with each other or
                  with the summary above. */
               data-load={level ?? undefined}

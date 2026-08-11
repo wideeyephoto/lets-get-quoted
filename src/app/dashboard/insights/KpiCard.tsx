@@ -5,7 +5,7 @@
 // CSS (:hover/:focus on a real <button>, so it's keyboard-reachable without JS).
 // The delta only renders when the header's comparison toggle is on; a null delta
 // (a point-in-time balance like Outstanding) never shows one and says why in its
-// note instead. Direction is the arrow; good-vs-bad is the colour, and they are
+// note instead. Direction is the arrow; good-vs-bad is the color, and they are
 // not the same question — an Outstanding balance going UP is an up-arrow and bad
 // news, which is exactly what `upIsGood` on the metric encodes.
 

@@ -132,7 +132,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   });
 
   /**
-   * The contractor's colour, on the page and not only on the bar above it.
+   * The contractor's color, on the page and not only on the bar above it.
    * Only the button's own label is a contrast decision, and brandPaint computes
    * it rather than hoping. Null for an unreadable hex, and the CSS falls back to
    * the platform palette — see the var() defaults in globals.

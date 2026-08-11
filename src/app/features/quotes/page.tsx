@@ -119,8 +119,10 @@ export default function QuotesFeaturePage() {
       }
       lede="Build an itemized quote from your own price book, offer the upgrades you actually want to sell, and let the homeowner approve it from the link — no printer, no PDF, no third follow-up call."
       heroNote="The draft is priced from the services you set up. Anything priced outside your book is flagged before it goes out, and the approval is recorded with the name and the moment."
-      secondary={{ label: 'What the record keeps', href: '#capabilities' }}
-      tertiary={{ label: 'See a job record in the demo', href: '/demo/jobs' }}
+      /* A specific job, not the job list. job-13 is the demo record sitting at
+         the quote stage — "open a sample quote" that lands on an index of jobs
+         is the disappointment the third button used to cause. */
+      primary={{ label: 'Open a sample quote', href: '/demo/jobs/job-13' }}
       demo={
         <ExampleFrame
           label="A quote as the homeowner sees it, with one upgrade taken."
@@ -164,7 +166,7 @@ export default function QuotesFeaturePage() {
         },
         {
           title: 'Sell the upgrade without the sales call',
-          body: 'Offer colours, materials and fixtures with what the quote already allows for and what an upgrade adds. The choice is recorded with the name, the moment and a snapshot of the option as it was.',
+          body: 'Offer colors, materials and fixtures with what the quote already allows for and what an upgrade adds. The choice is recorded with the name, the moment and a snapshot of the option as it was.',
         },
         {
           title: 'Get the yes in writing, from a phone',

@@ -90,7 +90,7 @@ export default function SelectionBoard({
 
       {selections.length === 0 ? (
         <p className="empty-state">
-          No choices on this job yet. Add the colours, materials and fixtures the customer has to pick, with what the
+          No choices on this job yet. Add the colors, materials and fixtures the customer has to pick, with what the
           quote allows for — then it&apos;s their decision on the record, with a date and a product code.
         </p>
       ) : (
@@ -137,7 +137,7 @@ export default function SelectionBoard({
                   {selection.description ? <p className="selection-desc">{selection.description}</p> : null}
 
                   {/* Every decision they made and then changed. Kept in front of
-                      the contractor, not buried: if the first colour is already
+                      the contractor, not buried: if the first color is already
                       on the wall, this is the sentence that settles who pays. */}
                   {selection.reopened.length > 0 ? (
                     <ul className="selection-history">
@@ -263,7 +263,7 @@ export default function SelectionBoard({
         <div className="selection-new-row">
           <div className="field">
             <label htmlFor="sel-title">What they have to choose</label>
-            <input id="sel-title" name="title" required placeholder="Living-room wall colour" />
+            <input id="sel-title" name="title" required placeholder="Living-room wall color" />
           </div>
           <div className="field">
             <label htmlFor="sel-allowance">Allowed for in the quote</label>

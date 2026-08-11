@@ -135,15 +135,15 @@ function initials(name: string): string {
 }
 
 /**
- * The colour a block is, and what it means.
+ * The color a block is, and what it means.
  *
- * IT USED TO MEAN NOTHING. Blocks took their colour from a six-way hash of the
+ * IT USED TO MEAN NOTHING. Blocks took their color from a six-way hash of the
  * job's id, inherited from the month chips: a day showed blue, yellow, purple
  * and green and none of it encoded anything a dispatcher could act on. Asked
  * for a legend, the honest answer was that there was nothing to put in one.
  *
  * Status is the thing the calendar already knows and the thing that changes
- * what you do next, so it is what the colour carries now. CalendarLegend names
+ * what you do next, so it is what the color carries now. CalendarLegend names
  * all four. The hash's one real job — telling two abutting blocks apart — is
  * done by the hairline box-shadow on .sched-tl-job.
  */

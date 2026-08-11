@@ -32,7 +32,7 @@ import leadStyles from './leads.module.css';
 // The tabs, the panels behind them and the detail-loading model all live in
 // their own modules now (LeadDetailTabs / use-lead-detail) so the Smoothie view
 // shares them instead of carrying a second copy. Nothing about this view's
-// behaviour changed in that move.
+// behavior changed in that move.
 
 export default function LeadFocusView({
   leads,
@@ -94,7 +94,7 @@ export default function LeadFocusView({
   selectRef.current = select;
 
   // Opened from the map. Goes through the same path as a click on the list, so
-  // the pane scrolls into view and the row centres itself exactly as it would.
+  // the pane scrolls into view and the row centers itself exactly as it would.
   useEffect(() => {
     if (!openRequest) return;
     if (!leads.some((l) => l.id === openRequest.id)) return; // filtered out
@@ -109,7 +109,7 @@ export default function LeadFocusView({
     onSelect?.(selectedId);
   }, [selectedId, onSelect]);
 
-  // Centre the selected row in the list. The list scrolls independently of the
+  // Center the selected row in the list. The list scrolls independently of the
   // page, so a lead picked from the map, from the keyboard, or one further down
   // than the rows on screen would otherwise stay highlighted somewhere you
   // can't see. Only when it isn't already fully visible.

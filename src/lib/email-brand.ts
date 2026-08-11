@@ -4,7 +4,7 @@ import { createAdminClient } from './auth';
 
 // Assembling a contractor's email brand from what they've already set up.
 //
-// Nothing new to fill in: the name, colour and logo come from the website they
+// Nothing new to fill in: the name, color and logo come from the website they
 // built, and the reply address is the login they already have. A contractor who
 // has never opened the site builder still gets their business name and a working
 // reply-to, which is most of the benefit.

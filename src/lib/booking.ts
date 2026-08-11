@@ -169,7 +169,7 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
 
   // Fold the pending requests in beside the real bookings. If the columns are
   // missing (migration not run yet) PostgREST errors rather than returning rows,
-  // and the right behaviour is to carry on offering slots as before rather than
+  // and the right behavior is to carry on offering slots as before rather than
   // to take the whole booking page down.
   if (pendingError) {
     console.error(`Pending booking lookup failed for account ${accountId}:`, pendingError.message);
@@ -386,7 +386,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
   // This used to write scheduled_for straight away, which meant a stranger could
   // put work on a contractor's calendar with nobody agreeing to it. The customer
   // email has always said "this time isn't locked in until they confirm"; the
-  // behaviour was the part that disagreed.
+  // behavior was the part that disagreed.
   //
   // scheduled_for stays NULL and the chosen slot is parked on booking_requested_*
   // instead. That is deliberate and load-bearing: every calendar, capacity count,

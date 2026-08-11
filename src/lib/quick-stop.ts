@@ -144,7 +144,7 @@ export const DEFAULT_QUICK_STOP_RESPONSE_DEADLINE_MINS = 30;
 export const DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS = 15;
 export const DEFAULT_QUICK_STOP_REQUIRED_PHOTOS = 1;
 // Days BEYOND today a request may reach. 0 is same-day-only — the original
-// behaviour, and a real choice rather than a disabled state.
+// behavior, and a real choice rather than a disabled state.
 export const DEFAULT_QUICK_STOP_DAYS_AHEAD = 1;
 /**
  * The furthest the picker goes, and the ceiling both the clamp and the day

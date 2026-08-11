@@ -37,7 +37,7 @@ export default function UnscheduledQueue({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  // Whether this width shows the queue as an overlay at all. Behaviour only —
+  // Whether this width shows the queue as an overlay at all. Behavior only —
   // the markup is identical either way, so there is nothing to mismatch on
   // hydration and CSS remains the single source of the breakpoint.
   const [isOverlay, setIsOverlay] = useState(false);

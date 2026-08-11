@@ -120,12 +120,12 @@ export default function ClientPortalPage() {
           </div>
         </ExampleFrame>
       }
-      /* The page promises a portal; the button promised a website. Same free
-         account, named for the thing the reader came about — the free site is
-         supporting value, and the note under the buttons still says so. */
-      primary={{ label: 'Start free' }}
-      secondary={{ label: 'See the contractor and customer views', href: '#one-job' }}
-      tertiary={{ label: 'See the live message thread', href: '/demo/messages' }}
+      /* TWO DEMOS OF THE SAME THING, MERGED. "See the contractor and customer
+         views" and "See the live message thread" were two buttons offering one
+         idea — both sides of one conversation — and splitting them made the
+         reader choose between halves of an argument. The live thread wins,
+         because it shows both sides rather than describing them. */
+      primary={{ label: 'See both sides of a customer conversation', href: '/demo/messages' }}
       proof={[
         { title: 'Two-way texting', body: 'Replies stay connected to the right job.' },
         { title: 'A unique job portal', body: 'One customer view for every project.' },

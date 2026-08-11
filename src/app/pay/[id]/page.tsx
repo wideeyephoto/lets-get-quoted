@@ -106,7 +106,7 @@ export default async function PublicPaymentPage({
           : 'payment-banner';
 
   // Whose page this is. A card form under a brand the homeowner does not
-  // recognise is the moment they stop and ring somebody — and until now the mark
+  // recognize is the moment they stop and ring somebody — and until now the mark
   // above this button was ours, not the contractor's they actually hired.
   const brand = await loadContractorBrand(createAdminClient(), payment.account_id);
 

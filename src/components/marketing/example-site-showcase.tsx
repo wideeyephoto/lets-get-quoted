@@ -8,7 +8,7 @@ import styles from './example-site-showcase.module.css';
  * A real published site, shown scrolling, in the frame it was captured in.
  *
  * WHY A COMPONENT AND NOT MARKUP ON THE PAGE. Everything hard here is
- * behavioural, not visual: exactly one video may exist at a time, it must stop
+ * behavioral, not visual: exactly one video may exist at a time, it must stop
  * downloading when it stops being the selected one, it must not start at all
  * for somebody who has asked their browser for less motion or less data, and it
  * must stop when it scrolls out of view. That is a state machine, and it wants
@@ -23,7 +23,7 @@ import styles from './example-site-showcase.module.css';
  * empty. A `hidden` <video> still holds its src, and a browser is entitled to
  * keep pulling on it; the only way to be sure the visitor pays for one clip is
  * for one clip to exist. The cost is that switching restarts playback, which is
- * the behaviour the brief asks for anyway.
+ * the behavior the brief asks for anyway.
  */
 
 export type ExampleSiteMode = 'desktop' | 'mobile';

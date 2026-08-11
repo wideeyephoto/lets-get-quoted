@@ -122,7 +122,7 @@ export default async function PortalViewPage({ params }: { params: { token: stri
                   </div>
                   <span className="client-attention-pay-block">
                     <span className="cost-item-amount">{formatMoney(invoice.due)}</span>
-                    {/* The word carries the state, not just the colour: a
+                    {/* The word carries the state, not just the color: a
                         processing bank transfer must not read as "Pay now". */}
                     <span className="client-attention-action">{invoice.processing ? 'Processing' : 'Pay now'}</span>
                   </span>

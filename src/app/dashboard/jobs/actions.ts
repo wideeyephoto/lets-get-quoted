@@ -466,7 +466,7 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
   // `has` rather than a truthy check: the scheduling card always submits this
   // field, and an EMPTY one means "one day", which has to be able to clear an
   // end date that is already there. The schedule board's own form does not
-  // submit it at all, and gets the carry-the-span behaviour instead.
+  // submit it at all, and gets the carry-the-span behavior instead.
   const scheduledUntil = formData.has('scheduledUntil') ? optionalText(formData.get('scheduledUntil')) : undefined;
 
   const scheduledJob = await updateJobSchedule(

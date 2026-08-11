@@ -116,7 +116,7 @@ export default function MarketingOverviewScreen({
                 <li key={rec.beatId} className="mkt-rec">
                   <p className="mkt-rec-head">
                     <span className="mkt-rec-window">{rec.windowLabel}</span>
-                    {/* Text, not a colour — the badge says what state it is in. */}
+                    {/* Text, not a color — the badge says what state it is in. */}
                     {rec.badge ? <span className="mkt-rec-badge">{rec.badge}</span> : null}
                     <span className="mkt-rec-title">{rec.title}</span>
                   </p>

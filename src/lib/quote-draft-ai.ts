@@ -149,7 +149,7 @@ export async function draftQuote(context: DraftContext): Promise<QuoteDraft | nu
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: 'gpt-4o',
-        // Low but not zero: quoting benefits from recognising that a job needs a
+        // Low but not zero: quoting benefits from recognizing that a job needs a
         // line nobody wrote down, which greedy decoding tends to skip.
         temperature: 0.2,
         instructions: buildDraftInstructions(context),

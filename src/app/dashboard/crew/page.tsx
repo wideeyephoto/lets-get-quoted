@@ -137,7 +137,7 @@ export default async function CrewLaborPage({
   // for these reads and no other one does. `available` is a separate question
   // from the mode: getTimeClockMode answers 'off' both when the migration has
   // not run and when the owner genuinely turned it off, which is right for
-  // behaviour and useless for explaining. Open shifts are only worth a query
+  // behavior and useless for explaining. Open shifts are only worth a query
   // when there is a clock that could have left one running.
   const timeClockMode = tab === 'crew' ? await getTimeClockMode(supabase, accountId) : 'off';
   const timeClockAvailable = tab === 'crew' ? await isTimeClockAvailable(supabase, accountId) : false;

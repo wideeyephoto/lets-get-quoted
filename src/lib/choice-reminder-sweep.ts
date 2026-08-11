@@ -163,7 +163,7 @@ export async function runChoiceReminderSweep(
  *
  * Tolerant of a pre-migration database in both directions: if the settings
  * columns are missing the select is retried without them and every account gets
- * the defaults, which is exactly the behaviour that shipped before.
+ * the defaults, which is exactly the behavior that shipped before.
  */
 async function readEnabledAccounts(admin: SupabaseClient): Promise<AccountRow[]> {
   const columns =

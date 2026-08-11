@@ -6,7 +6,7 @@
 // so the missing piece isn't the feature, it's that nobody was told.
 //
 // PURE, and written from the customer's side: they don't know or care what an
-// "Quick Stop" is. What they recognise is "something broke and I'd rather not
+// "Quick Stop" is. What they recognize is "something broke and I'd rather not
 // wait until next week."
 //
 // The fee is stated. Burying it would get more clicks and fewer bookings, and

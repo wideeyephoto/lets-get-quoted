@@ -116,7 +116,7 @@ export const DEMO_SMS_CONSENT_ROWS: DemoRow[] = DEMO_CLIENT_ROWS
 
 const LEAD_SOURCES = ['website_form', 'referral', 'missed_call', 'manual'] as const;
 
-// Approximate town centres in Evergreen's patch. Jobs are scattered around the
+// Approximate town centers in Evergreen's patch. Jobs are scattered around the
 // one their address names, deterministically, so the client map and the route
 // maps have something real to draw — a book of customers with no coordinates
 // renders an empty map, which reads as broken rather than as unseeded.
@@ -139,11 +139,11 @@ function coordsFor(address: string | null, seed: string): { lat: number; lng: nu
   const haystack = (address ?? '').toLowerCase();
   const town = Object.keys(TOWN_CENTRES).find((name) => haystack.includes(name));
   if (!town) return null;
-  const centre = TOWN_CENTRES[town]!;
+  const center = TOWN_CENTRES[town]!;
   // ±~1.2km, stable per job.
   return {
-    lat: Number((centre.lat + (seeded(`lat${seed}`) - 0.5) * 0.022).toFixed(6)),
-    lng: Number((centre.lng + (seeded(`lng${seed}`) - 0.5) * 0.028).toFixed(6)),
+    lat: Number((center.lat + (seeded(`lat${seed}`) - 0.5) * 0.022).toFixed(6)),
+    lng: Number((center.lng + (seeded(`lng${seed}`) - 0.5) * 0.028).toFixed(6)),
   };
 }
 

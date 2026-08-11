@@ -6,7 +6,7 @@ import type { JobDetailDto } from '@/lib/job-detail';
 /**
  * Loading a job's deep detail for a master-detail pane.
  *
- * Lifted verbatim out of FocusView so Smoothie can have the same behaviour
+ * Lifted verbatim out of FocusView so Smoothie can have the same behavior
  * rather than a second copy of it that drifts. Nothing here changed in the
  * move — the cache limits, the debounce, the abort, the stale-response guard
  * and the visibility drop are the originals, and Focus now calls this.

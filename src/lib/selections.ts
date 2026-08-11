@@ -1,6 +1,6 @@
 // The homeowner selection board.
 //
-// Colours, materials and fixtures the customer has to choose, with what the
+// Colors, materials and fixtures the customer has to choose, with what the
 // quote allows for and what an upgrade costs. It exists to settle one argument
 // in advance: "that is absolutely not the beige I picked."
 //
@@ -422,7 +422,7 @@ export function describeTemplate(body: SelectionTemplateBody): string {
 //   fired the moment a choice came within DECISION_CHASE_DAYS — seven days — of
 //   its date, and the needed-by date itself then passed in silence because the
 //   stamp was already set. Nobody chose seven; it is the constant three lines
-//   above, which exists to colour a label on the board and was reused as a send
+//   above, which exists to color a label on the board and was reused as a send
 //   rule. Scheduling now lives in lib/choice-reminders, keyed on the date the
 //   contractor actually typed.
 //
@@ -431,7 +431,7 @@ export function describeTemplate(body: SelectionTemplateBody): string {
 //   rest of them.
 //
 // DECISION_CHASE_DAYS stays. It is still exactly what it always was: how close a
-// deadline has to be before the board colours it. It no longer sends anything.
+// deadline has to be before the board colors it. It no longer sends anything.
 
 // -- Changing your mind -------------------------------------------------------
 

@@ -223,7 +223,7 @@ const FLOW = [
   {
     icon: 'check',
     title: 'They pay the visit fee',
-    body: 'The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and carry on as a normal enquiry. Either way you keep the lead.',
+    body: 'The fee reserves the window and nothing else — the work is quoted and invoiced as usual. Or they skip it and carry on as a normal inquiry. Either way you keep the lead.',
   },
 ] as const;
 
@@ -291,16 +291,14 @@ export default function QuickStopsPage() {
           </strong>
         </>
       }
-      /* "Build my free site" is the cluster's default and it is the wrong ask
-         here: somebody reading about paid priority visits is evaluating a
-         revenue idea, not a website. Same free account either way; the words
-         are the ones they came for. */
-      primary={{ label: 'Start free with Quick Stops' }}
-      /* It said "See the 3-step flow" and landed on a six-rung lifecycle ladder
-         headed "Two gates, and both of them are people." Now it lands on the
-         flow, which is four beats and says so. */
+      /* THE DEMO LEADS, BECAUSE THE CONCEPT IS UNFAMILIAR. Every other page
+         here sells something a contractor already does by hand; this one sells
+         an idea most of them have never had — a paid priority visit slotted
+         into a route that is already running. Asking somebody to open an
+         account before they understand what they are opening it for is asking
+         in the wrong order. */
+      primary={{ label: 'See Quick Stops in the demo', href: '/demo/quick-stops' }}
       secondary={{ label: 'See how the fee works', href: '#how-it-works' }}
-      tertiary={{ label: 'See Quick Stops in the demo', href: '/demo/quick-stops' }}
       demo={
         <ExampleFrame
           label="An offer you have sent, waiting on the visit fee"

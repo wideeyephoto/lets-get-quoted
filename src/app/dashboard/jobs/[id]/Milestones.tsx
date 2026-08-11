@@ -8,7 +8,7 @@ import {
 
 // Proof-to-Pay, owner side.
 //
-// The organising idea: a payment request is not a form you fill in, it's a
+// The organizing idea: a payment request is not a form you fill in, it's a
 // thing that becomes possible. So each milestone shows what's still missing —
 // specifically, by name — and the Request payment button simply appears when
 // nothing is. Nobody has to learn a workflow; they just watch the list close.

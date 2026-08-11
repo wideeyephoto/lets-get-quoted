@@ -26,7 +26,7 @@ export async function getTimeClockMode(supabase: SupabaseClient, accountId: stri
  * Whether the time clock exists in this database yet.
  *
  * getTimeClockMode answers 'off' both when the migration hasn't run AND when
- * the owner has genuinely switched it off, which is right for behaviour and
+ * the owner has genuinely switched it off, which is right for behavior and
  * useless for explaining. This separates the two so the settings control can
  * say "run the migration" instead of silently refusing to save.
  */

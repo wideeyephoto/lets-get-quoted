@@ -15,7 +15,7 @@ export function normalizeMapView(value: unknown): MapView {
   return value === 'off' ? 'off' : 'large';
 }
 
-// Map colour scheme (the app is dark, so the map defaults dark too).
+// Map color scheme (the app is dark, so the map defaults dark too).
 export const MAP_THEME_COOKIE = 'lgq_map_theme';
 export type MapTheme = 'dark' | 'light';
 export function normalizeMapTheme(value: unknown): MapTheme {
@@ -175,7 +175,7 @@ export function normalizeLeadsView(value: unknown): LeadsView {
 // them fit on a screen instead of four.
 //
 // One cookie rather than two, because nothing here composes: Operations is not
-// Cards with a different colour, it is a different amount of page.
+// Cards with a different color, it is a different amount of page.
 export const RECURRING_VIEW_COOKIE = 'lgq_recurring_view';
 export type RecurringView = 'cards' | 'ops';
 export const RECURRING_VIEWS: RecurringView[] = ['cards', 'ops'];
@@ -231,13 +231,13 @@ export function normalizeCrewTheme(value: unknown): CrewTheme {
   return CREW_THEMES.includes(value as CrewTheme) ? (value as CrewTheme) : 'overview';
 }
 
-// The page's SKIN — its colours and surfaces — kept in its own cookie rather
+// The page's SKIN — its colors and surfaces — kept in its own cookie rather
 // than folded into CrewTheme above.
 //
 // CrewTheme decides the SHAPE of the page: 'focus' switches Hours & pay to
 // master-detail and widens the shell. A skin decides nothing about layout. Put
 // them in one enum and picking Blueprint would silently throw away somebody's
-// master-detail, which is not what choosing a colour should do. Separate, they
+// master-detail, which is not what choosing a color should do. Separate, they
 // compose: Focus in Blueprint is a real combination.
 export const CREW_SKIN_COOKIE = 'lgq_crew_skin';
 export type CrewSkin = 'standard' | 'daylight' | 'blueprint';

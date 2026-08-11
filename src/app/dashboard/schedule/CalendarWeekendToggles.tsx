@@ -12,7 +12,7 @@ import type { WeekendDays } from '@/lib/dashboard-views';
 //
 // Modelled on the map legend rather than sharing its classes. Same idea (a pill
 // you click to show or hide a slice of what is drawn, carrying its own count),
-// but the legend's rules are the map's and carry its pin colours, which would
+// but the legend's rules are the map's and carry its pin colors, which would
 // mean nothing here.
 
 export default function CalendarWeekendToggles({
@@ -36,7 +36,7 @@ export default function CalendarWeekendToggles({
   return (
     <div className="calendar-days-chips" role="group" aria-label="Weekend columns">
       {items.map((item) => {
-        // A hidden day with work on it is the only state worth a warning colour.
+        // A hidden day with work on it is the only state worth a warning color.
         // Hidden and empty is just a shorter week, which is what was asked for.
         const hiding = !item.on && item.count > 0;
         return (
