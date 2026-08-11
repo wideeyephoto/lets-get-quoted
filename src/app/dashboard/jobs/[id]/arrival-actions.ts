@@ -16,12 +16,39 @@ import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
 
 const OWNER_PERMISSIONS = { send: true, shareLocation: true, viewContact: true, reschedule: true };
 
+/**
+ * Where to land afterwards.
+ *
+ * The job screen is not the only place an owner sends one of these from any
+ * more — "Plan my day" has the same button on every stop, and redirecting that
+ * to the job page would take somebody out of the route they were working
+ * through to look at a page they did not ask for. The bound path is validated
+ * rather than trusted: it comes from our own code, but it ends up in a Location
+ * header, and an open redirect is not worth the convenience.
+ */
+function safeReturn(path: string | null | undefined, fallback: string): string {
+  if (!path) return fallback;
+  // One leading slash and no second one — "//evil.com" and "/\evil.com" are
+  // both protocol-relative URLs that leave the site.
+  return /^\/[^/\\]/.test(path) ? path : fallback;
+}
+
 export async function sendArrivalOwnerAction(jobId: string, formData: FormData) {
+  return sendArrivalOwnerTo(null, jobId, formData);
+}
+
+export async function setArrivalStatusOwnerAction(jobId: string, formData: FormData) {
+  return setArrivalStatusOwnerTo(null, jobId, formData);
+}
+
+export async function sendArrivalOwnerTo(returnTo: string | null, jobId: string, formData: FormData) {
   const { accountId, businessName } = await ownerActor();
+  const home = safeReturn(returnTo, `/dashboard/jobs/${jobId}`);
+  const join = home.includes('?') ? '&' : '?';
 
   const etaMinutes = Math.round(Number(formData.get('eta')));
   if (!Number.isFinite(etaMinutes) || etaMinutes < MIN_ETA_MINUTES || etaMinutes > MAX_ETA_MINUTES) {
-    redirect(`/dashboard/jobs/${jobId}?arrival=bad-eta`);
+    redirect(`${home}${join}arrival=bad-eta`);
   }
 
   // No location: this is being sent from a desk, and attaching the OFFICE's
@@ -40,16 +67,19 @@ export async function sendArrivalOwnerAction(jobId: string, formData: FormData) 
   });
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
-  if (!result.ok) redirect(`/dashboard/jobs/${jobId}?arrival=${result.reason}`);
-  redirect(`/dashboard/jobs/${jobId}?arrival=${result.mode}&sms=${result.sms.status}`);
+  if (home !== `/dashboard/jobs/${jobId}`) revalidatePath(home.split('?')[0]);
+  if (!result.ok) redirect(`${home}${join}arrival=${result.reason}`);
+  redirect(`${home}${join}arrival=${result.mode}&sms=${result.sms.status}`);
 }
 
-export async function setArrivalStatusOwnerAction(jobId: string, formData: FormData) {
+export async function setArrivalStatusOwnerTo(returnTo: string | null, jobId: string, formData: FormData) {
   const { accountId, businessName } = await ownerActor();
+  const home = safeReturn(returnTo, `/dashboard/jobs/${jobId}`);
+  const join = home.includes('?') ? '&' : '?';
 
   const status = String(formData.get('status') ?? '') as ArrivalStatus;
   if (!['arrived', 'no_access', 'rescheduled', 'cancelled'].includes(status)) {
-    redirect(`/dashboard/jobs/${jobId}`);
+    redirect(home);
   }
 
   const result = await applyArrivalStatus(createAdminClient(), {
@@ -65,8 +95,9 @@ export async function setArrivalStatusOwnerAction(jobId: string, formData: FormD
   });
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
-  if (!result.ok) redirect(`/dashboard/jobs/${jobId}?arrival=${result.reason}`);
-  redirect(`/dashboard/jobs/${jobId}?arrival=${status}`);
+  if (home !== `/dashboard/jobs/${jobId}`) revalidatePath(home.split('?')[0]);
+  if (!result.ok) redirect(`${home}${join}arrival=${result.reason}`);
+  redirect(`${home}${join}arrival=${status}`);
 }
 
 async function ownerActor(): Promise<{ accountId: string; businessName: string }> {

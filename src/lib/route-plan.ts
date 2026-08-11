@@ -24,10 +24,22 @@ export type PlanStop = {
   lng: number | null;
   // Current committed time, "HH:MM" or "HH:MM:SS". Null = "anytime" that day.
   scheduledTime: string | null;
-  // How long the visit itself takes, before the travel buffer.
+  // How long the visit itself takes TODAY, before the travel buffer. On a job
+  // running several days this is that day's share, not the whole estimate —
+  // see toPlanStop in route-plan-day, which is where the two used to be
+  // confused.
   visitMinutes: number;
   // Customer confirmed this appointment → pin it to `scheduledTime`.
   locked: boolean;
+  /**
+   * Set only on a job that runs more than one day: which day of it this is.
+   *
+   * The router does not read it — visitMinutes already carries today's share.
+   * It exists so the row can say "Day 2 of 4", because a four-hour stop on a
+   * job the contractor knows is a two-day job otherwise looks like the app has
+   * halved their work.
+   */
+  span?: { day: number; of: number; totalHours: number | null } | null;
 };
 
 export type PlannedStop = {
@@ -117,6 +129,24 @@ export function formatTimeLabel(total: number): string {
   const hour12 = hours % 12 === 0 ? 12 : hours % 12;
   return `${hour12}:${String(clamped % 60).padStart(2, '0')} ${period}`;
 }
+
+/**
+ * The same clock, but it admits when the day has run out.
+ *
+ * formatTimeLabel clamps at 23:59, which is right for a stored time — those
+ * cannot be past midnight — and wrong for a COMPUTED one, which can be. A plan
+ * that overran printed "11:59 PM" against three different stops and read as a
+ * bug rather than as an overloaded day. The overrun is the thing worth seeing,
+ * so it is on the label instead of being flattened out of it.
+ */
+export function formatClockLabel(total: number): string {
+  const rounded = Math.round(total);
+  if (rounded < DAY_MINUTES) return formatTimeLabel(rounded);
+  const days = Math.floor(rounded / DAY_MINUTES);
+  return `${formatTimeLabel(rounded % DAY_MINUTES)} +${days}d`;
+}
+
+const DAY_MINUTES = 24 * 60;
 
 // -- Arrival windows ---------------------------------------------------------
 

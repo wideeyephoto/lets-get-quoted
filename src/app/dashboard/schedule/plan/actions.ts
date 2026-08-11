@@ -52,7 +52,14 @@ export async function applyDayPlanAction(formData: FormData) {
   const jobEntries = entries.filter((entry) => !isRouteStopId(entry));
   const stopEntries = entries.filter((entry) => isRouteStopId(entry));
 
-  const { jobs } = await listDayJobs(supabase, accountId, dateKey, crewId);
+  // Same span settings as the page that built this form, or a job the page put
+  // on the route as day 3 of 5 would not be found here and its new time would
+  // be silently dropped.
+  const settings = await getPlanAccountSettings(supabase, accountId);
+  const { jobs } = await listDayJobs(supabase, accountId, dateKey, crewId, {
+    workDayHours: settings.scheduleDayHours,
+    workingWeekdays: settings.workingWeekdays,
+  });
   const { changes, keptConfirmed } = buildScheduleChangeset(jobs, jobEntries);
 
   // Supply stops are written first and separately. They're not appointments, so
@@ -224,12 +231,15 @@ export async function notifyMovedClientsAction(formData: FormData) {
     .filter(Boolean);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || jobIds.length === 0) redirect('/dashboard/schedule');
 
-  const [{ jobs }, { data: account }, settings] = await Promise.all([
-    listDayJobs(supabase, accountId, dateKey, crewId),
+  // Settings first, because the day's job list depends on them: a multi-day job
+  // is on this day's route by the same span rule the page used.
+  const settings = await getPlanAccountSettings(supabase, accountId);
+  const [{ jobs }, { data: account }] = await Promise.all([
+    listDayJobs(supabase, accountId, dateKey, crewId, {
+      workDayHours: settings.scheduleDayHours,
+      workingWeekdays: settings.workingWeekdays,
+    }),
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    // For the floor under the window: the first customer of the day must not be
-    // told an hour that starts before the crew does.
-    getPlanAccountSettings(supabase, accountId),
   ]);
   const businessName = (account?.business_name as string) || "Let's Get Quoted contractor";
   const dayStart = parseTimeMinutes(settings.workdayStart);

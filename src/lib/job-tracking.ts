@@ -91,6 +91,38 @@ export async function getActiveTracking(
   return data as unknown as TrackingRow;
 }
 
+/**
+ * The live trip on each of several jobs, in one query.
+ *
+ * getActiveTracking is per job, which is right on a job screen and wrong on a
+ * day's route: ten stops would be ten round trips before the page could draw.
+ * Same filter, same "no rows on error" defensiveness — the only difference is
+ * that the newest row per job is picked here rather than by LIMIT 1.
+ */
+export async function getActiveTrackingByJob(
+  admin: SupabaseClient,
+  accountId: string,
+  jobIds: string[],
+): Promise<Map<string, TrackingRow>> {
+  const found = new Map<string, TrackingRow>();
+  if (jobIds.length === 0) return found;
+
+  const { data, error } = await admin
+    .from('job_tracking')
+    .select(ROW_FIELDS)
+    .eq('account_id', accountId)
+    .in('job_id', jobIds)
+    .not('status', 'in', '(done,cancelled,rescheduled,no_access)')
+    .order('created_at', { ascending: false });
+  if (error || !data) return found;
+
+  // Newest first, so the first row seen for a job is the one to keep.
+  for (const row of data as unknown as TrackingRow[]) {
+    if (!found.has(row.job_id)) found.set(row.job_id, row);
+  }
+  return found;
+}
+
 export type StartArrivalInput = {
   accountId: string;
   jobId: string;

@@ -16374,6 +16374,16 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .plan-badge.flexible { background: rgba(var(--tint), 0.07); color: var(--mute-t58); }
 .plan-badge.flexible::before { content: '↕'; font-weight: 800; }
 
+/* "Day 2 of 4 · ~4 hrs today" — a job the contractor is on site for part of,
+   several days running. Orange rather than one of the state colours because it
+   is not a state: the stop is as flexible or as locked as any other, and this
+   only says the four hours on the row are today's share of a bigger job. */
+/* --ink-orange-1 and not --cedge-orange-2: the "cedge" oranges are 38%-alpha
+   EDGE colours for borders, and one of them used as text on the quick-stops
+   page rendered brown. */
+.plan-badge.span { background: rgba(255, 122, 41, 0.16); color: var(--ink-orange-1); }
+.plan-badge.span::before { content: '⧉'; font-weight: 800; }
+
 /* Where the day is meant to end. Violet because it's neither a lock (green)
    nor a warning (amber) — it's an intention, and it can be out of date. */
 .plan-badge.last { background: rgba(167, 139, 250, 0.18); color: var(--ink-neutral-14); }
@@ -16402,6 +16412,33 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   gap: 0.4rem;
 }
 .plan-stop-actions .btn { padding: 0.3rem 0.7rem; font-size: 0.79rem; white-space: nowrap; }
+
+/* "I'm on my way", per stop.
+   Reads its own state rather than sitting there as a fixed label: a list of ten
+   stops is exactly where somebody texts the same customer twice, so a row that
+   has already gone out says so and takes the emphasis off. */
+.plan-stop-otw { font-weight: 700; }
+.plan-stop-otw.is-live {
+  border-color: rgba(255, 122, 41, 0.55);
+  background: rgba(255, 122, 41, 0.14);
+  color: var(--ink-orange-1);
+}
+.plan-stop-otw.is-done {
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--good);
+}
+/* The send sheet inside the row's popover. It carries the panel the job screen
+   uses, whose own card chrome would be a second border inside this one. */
+.plan-stop-arrival .panel,
+.plan-stop-arrival .workspace-section-card {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+}
+.plan-stop-arrival .arrival-card-title { font-size: 0.9rem; margin: 0 0 0.6rem; }
+.plan-stop-arrival .arrival-message { width: 100%; }
 .plan-stop-menu-btn {
   width: 1.9rem;
   height: 1.9rem;

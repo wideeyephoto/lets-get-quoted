@@ -24,9 +24,15 @@ import { loadOfferContext, offerDisplay } from '@/lib/estimate-offers-data';
 import { loadRescheduleContext } from '@/lib/reschedule-offers-data';
 import { DEFAULT_ESTIMATE_MINUTES, draftOfferBody, rankOfferSuggestions, timeFromMinutes } from '@/lib/estimate-offers';
 import DayPlanner from './DayPlanner';
+import type { StopArrivalProps } from './StopArrival';
 import PlanDayControls from './PlanDayControls';
 import EstimateOffers, { type OfferSuggestionView, type OfferView } from './EstimateOffers';
 import { geocodeDayAction, notifyMovedClientsAction } from './actions';
+import { sendArrivalOwnerTo, setArrivalStatusOwnerTo } from '@/app/dashboard/jobs/[id]/arrival-actions';
+import { createAdminClient } from '@/lib/auth';
+import { arrivalSettingsFromAccount, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
+import { getActiveTrackingByJob } from '@/lib/job-tracking';
+import { formatJobSchedule } from '@/lib/jobs';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,8 +96,11 @@ export default async function PlanDayPage({
   const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? (searchParams.date as string) : null;
   const dateKey = requestedDate ?? accountToday(settings.timezone);
 
-  const [{ jobs, filteredOutCount }, dayRouteStops, savedPlaces, anchor] = await Promise.all([
-    listDayJobs(supabase, accountId, dateKey, crewId),
+  const [{ jobs, filteredOutCount, placement }, dayRouteStops, savedPlaces, anchor] = await Promise.all([
+    listDayJobs(supabase, accountId, dateKey, crewId, {
+      workDayHours: settings.scheduleDayHours,
+      workingWeekdays: settings.workingWeekdays,
+    }),
     listDayRouteStops(supabase, accountId, dateKey, crewId),
     listSavedPlaces(supabase, accountId),
     resolveDayAnchor(supabase, accountId, crewId, settings),
@@ -100,7 +109,12 @@ export default async function PlanDayPage({
   // Supply stops route exactly like jobs — same coordinates, same minutes, same
   // proposed arrival — so from here down there's no distinction to make.
   const stops = [
-    ...jobs.map((job) => toPlanStop(job, settings.defaultVisitMinutes)),
+    ...jobs.map((job) =>
+      toPlanStop(job, settings.defaultVisitMinutes, {
+        placement: placement.get(job.id),
+        capacityHours: settings.scheduleDayHours,
+      }),
+    ),
     ...dayRouteStops.map(routeStopToPlanStop),
   ];
   const routable = stops.filter((stop) => stop.lat != null && stop.lng != null);
@@ -288,6 +302,72 @@ export default async function PlanDayPage({
     pendingRescheduleJobIds: [...rescheduleContext.pendingJobIds],
   };
 
+  /* "I'm on my way", per job, on the row of the day being worked through.
+   *
+   * READ WITH THE ADMIN CLIENT because job_tracking is owner-scoped by RLS and
+   * this page is already inside requireOwnerContext — the same pair of reasons
+   * the job screen gives. One query for the whole day rather than the job
+   * screen's one-per-job: ten stops would otherwise be ten round trips before
+   * anything could draw.
+   *
+   * Only jobs get an entry. A supply stop has no customer, and the row simply
+   * shows no button rather than one that explains itself away when pressed.
+   *
+   * The actions are bound to THIS page's URL so sending lands back on the route
+   * with the day and the crew filter intact. Sending an arrival should not cost
+   * somebody their place in a list they are working down. */
+  const planReturnTo = `/dashboard/schedule/plan?date=${dateKey}${crewId ? `&crew=${crewId}` : ''}`;
+  const arrivalAdmin = createAdminClient();
+  const [{ data: arrivalAccount }, tripByJob] = await Promise.all([
+    arrivalAdmin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
+    getActiveTrackingByJob(arrivalAdmin, accountId, jobs.map((job) => job.id)),
+  ]);
+  const arrivalSettings = arrivalSettingsFromAccount(arrivalAccount as Record<string, unknown> | null);
+  const arrivalByJobId: Record<string, StopArrivalProps> = {};
+  for (const job of jobs) {
+    const trip = tripByJob.get(job.id);
+    arrivalByJobId[job.id] = {
+      job: {
+        id: job.id,
+        clientName: job.client_name,
+        address: job.address,
+        scheduleLabel: formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until ?? null),
+        jobType: null,
+        hasPhone: Boolean(job.client_phone),
+        // Sent from the plan screen, which is not the driveway — there is no
+        // "here" to measure an ETA from or to draw on a map.
+        lat: null,
+        lng: null,
+      },
+      trip: trip
+        ? {
+            status: trip.status,
+            windowLabel: trip.arrival_start
+              ? formatArrivalWindow(
+                  { start: new Date(trip.arrival_start), end: new Date(trip.arrival_end ?? trip.arrival_start) },
+                  arrivalSettings.timeZone,
+                )
+              : null,
+            sentAgoMinutes: trip.last_sent_at
+              ? Math.max(0, Math.round((Date.now() - new Date(trip.last_sent_at).getTime()) / 60000))
+              : null,
+            smsStatus: trip.sms_status,
+            shareLocation: Boolean(trip.share_location),
+            sentBy: trip.sent_by,
+            homeownerNote: trip.homeowner_note,
+          }
+        : null,
+      business: businessName,
+      template: arrivalSettings.messageTemplate || DEFAULT_ARRIVAL_TEMPLATE,
+      timeZone: arrivalSettings.timeZone,
+      windowStyle: arrivalSettings.windowStyle,
+      windowMinutes: arrivalSettings.windowMinutes,
+      defaultMinutes: arrivalSettings.defaultMinutes,
+      sendAction: sendArrivalOwnerTo.bind(null, planReturnTo, job.id),
+      statusAction: setArrivalStatusOwnerTo.bind(null, planReturnTo, job.id),
+    };
+  }
+
   const crewQuery = crewId ? `&crew=${crewId}` : '';
   const appliedCount = Number(searchParams.applied);
   const keptCount = Number(searchParams.kept);
@@ -415,7 +495,11 @@ export default async function PlanDayPage({
           </p>
         </section>
       ) : (
-        <DayPlanner payload={payload} mapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null} />
+        <DayPlanner
+          payload={payload}
+          mapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
+          arrivalByJobId={arrivalByJobId}
+        />
       )}
 
       {/* Right under the route, because it's about the holes in it. */}

@@ -8,10 +8,12 @@ import ServiceIcon from '@/lib/templates/ServiceIcon';
 import { isRouteStopId, KIND_GLYPH, KIND_LABEL, routeStopUuid, type RouteStop } from '@/lib/route-stops';
 import RouteMap, { type MapStop, type NearbyPlace } from './RouteMap';
 import AddRouteStop from './AddRouteStop';
+import StopArrival, { type StopArrivalProps } from './StopArrival';
 import RescheduleOffer from './RescheduleOffer';
 import { applyDayPlanAction, deleteRouteStopAction, setPreferredLastAction } from './actions';
-import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
+import { formatClockLabel, formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
 import { coordOf } from '@/lib/distance';
+import { formatHours } from '@/lib/job-day-load';
 import { isWorthMoving, savingFromRemoving } from '@/lib/reschedule-offers';
 import {
   costOrder,
@@ -40,11 +42,20 @@ import {
 type Props = {
   payload: DayPlanPayload;
   mapsApiKey: string | null;
+  /**
+   * Everything an "I'm on my way" needs, per job, built on the server.
+   *
+   * Keyed rather than folded into the payload because two of the values are
+   * bound server actions: they cross the boundary as action references, not as
+   * data, and DayPlanPayload is a plain object the page also reasons about.
+   * A supply stop has no customer to text, so it simply has no entry.
+   */
+  arrivalByJobId: Record<string, StopArrivalProps>;
 };
 
 const MENU_WIDTH = 232;
 
-export default function DayPlanner({ payload, mapsApiKey }: Props) {
+export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Props) {
   const byId = useMemo(() => new Map(payload.stops.map((stop) => [stop.id, stop])), [payload.stops]);
   // Supply stops keep their own record so the row can show what kind of stop it
   // is and offer to remove it — a job is never removed from a day here.
@@ -396,7 +407,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               </div>
               <div className={`plan-stat${overtime ? ' is-over' : ''}`}>
                 <dt>Finish around</dt>
-                <dd>{formatTimeLabel(plan.finishMinutes)}</dd>
+                <dd>{formatClockLabel(plan.finishMinutes)}</dd>
               </div>
             </dl>
 
@@ -417,7 +428,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
             <span className="plan-overtime-icon" aria-hidden="true">!</span>
             <div>
               <strong>Schedule runs {minutesLabel(plan.overflowMinutes)} past your {workdayEndLabel} finish</strong>
-              <p>The last stop is expected to finish around {formatTimeLabel(plan.finishMinutes)}.</p>
+              <p>The last stop is expected to finish around {formatClockLabel(plan.finishMinutes)}.</p>
             </div>
           </div>
           <div className="plan-overtime-actions">
@@ -492,6 +503,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 routeStop={isRouteStopId(entry.stop.id) ? routeStopById.get(routeStopUuid(entry.stop.id)) ?? null : null}
                 dateKey={payload.dateKey}
                 crewId={payload.crewId}
+                onMyWay={arrivalByJobId[entry.stop.id] ?? null}
                 menuOpen={menuFor === entry.stop.id}
                 onMenu={(open) => setMenuFor(open ? entry.stop.id : null)}
                 onTogglePin={() => togglePin(entry.stop.id)}
@@ -546,7 +558,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               <div className={overtime ? 'is-over' : undefined}>
                 <dt>Estimated finish</dt>
                 <dd>
-                  {formatTimeLabel(plan.finishMinutes)}
+                  {formatClockLabel(plan.finishMinutes)}
                   {overtime ? <span className="plan-over-flag" title={`${minutesLabel(plan.overflowMinutes)} past ${workdayEndLabel}`}> ⚠</span> : null}
                 </dd>
               </div>
@@ -840,6 +852,7 @@ function StopRow({
   routeStop,
   dateKey,
   crewId,
+  onMyWay,
   menuOpen,
   onMenu,
   onTogglePin,
@@ -872,6 +885,8 @@ function StopRow({
   routeStop: RouteStop | null;
   dateKey: string;
   crewId: string | null;
+  /** Null on a supply stop, which has no customer to tell. */
+  onMyWay: StopArrivalProps | null;
   menuOpen: boolean;
   onMenu: (open: boolean) => void;
   onTogglePin: () => void;
@@ -950,11 +965,11 @@ function StopRow({
       <div className="plan-stop-when">
         <span className="plan-stop-time">
           <small>Arrive</small>
-          <strong>{formatTimeLabel(arrival)}</strong>
+          <strong>{formatClockLabel(arrival)}</strong>
         </span>
         <span className="plan-stop-time">
           <small>Finish around</small>
-          <strong>{formatTimeLabel(finish)}</strong>
+          <strong>{formatClockLabel(finish)}</strong>
         </span>
       </div>
 
@@ -972,6 +987,22 @@ function StopRow({
         {routeStop ? (
           <span className="plan-badge errand" title="Not a job — a stop on the way. It costs time and miles but bills nobody.">
             {KIND_LABEL[routeStop.kind]}
+          </span>
+        ) : null}
+        {/* A job the contractor is on site for part of, on several days. Without
+            this the row shows a four-hour visit for work they know is a two-day
+            job, which reads as the app having halved it. */}
+        {stop.span ? (
+          <span
+            className="plan-badge span"
+            title={
+              stop.span.totalHours
+                ? `${stop.span.totalHours} hrs over ${stop.span.of} days — about ${formatHours(stop.span.totalHours / stop.span.of)} hrs on site today. Change the dates or the hours on the job.`
+                : `Runs across ${stop.span.of} days. Add estimated hours to the job and this will say how much of each day that is.`
+            }
+          >
+            Day {stop.span.day} of {stop.span.of}
+            {stop.span.totalHours ? ` · ~${formatHours(stop.span.totalHours / stop.span.of)} hrs today` : ''}
           </span>
         ) : null}
         {/* A preference, so it can be wrong — and when it is, saying so is the
@@ -1016,6 +1047,9 @@ function StopRow({
       </div>
 
       <div className="plan-stop-actions">
+        {/* First in the row because it is first in the day: you tell them you
+            are coming, then you drive. */}
+        {onMyWay ? <StopArrival {...onMyWay} /> : null}
         {target ? (
           <a
             className="btn secondary"
