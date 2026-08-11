@@ -43,6 +43,10 @@ export default function CashFlowFeaturePage() {
         </>
       }
       lede="Deposits and balances you are owed, payroll and bills you owe — dated and projected forward from today’s balance. The week you cannot cover payroll becomes a warning rather than a Friday morning discovery."
+      /* The two things somebody needs before they will read a forecast: that
+         it wants no bank credentials, and that it is not pretending to be
+         accounting. Both were answered in the FAQ, 4,000px down. */
+      heroChips={['No bank connection', 'Forecasting, not bookkeeping', 'Confirmed and expected, marked apart']}
       heroNote="Built from money the product already knows about: approved quotes, deposits, installments, recurring visits, logged hours and the bills you enter. Nothing here is a guess about your industry."
       primary={{ label: 'Open the live forecast', href: '/demo/cash-flow' }}
       demo={

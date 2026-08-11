@@ -36,12 +36,24 @@ export default function RecurringFeaturePage() {
   return (
     <SuiteFeaturePage
       eyebrow="Recurring work + auto-billing"
+      /* "It books and bills itself" was one word too strong. Each cycle does
+         create its own scheduled job and its own charge with nobody touching
+         it — but the job lands on the calendar to be ASSIGNED like any other
+         work, and a contractor who reads "books itself" and then finds an
+         unassigned job on Tuesday has been told something slightly untrue by a
+         page that is otherwise careful. "Schedules and bills itself" is the
+         part that is fully automatic. */
       title={
         <>
-          Set the plan once. <em>It books and bills itself.</em>
+          Set the plan once. <em>It schedules and bills itself.</em>
         </>
       }
       lede="A maintenance customer should be a schedule, not a reminder to invoice. Set the cadence and every cycle creates its own scheduled job and its own itemized charge, against a card the customer already saved."
+      /* The three things somebody wants to know before automating a charge
+         against a customer's card, all of which were in the FAQ at the bottom
+         of the page: that they can stop it, that a decline is handled, and
+         that the crew still gets assigned by a person. */
+      heroChips={['Pause or cancel any time', 'Declines retried and chased', 'You still assign the crew']}
       heroNote="Weekly, every other week or monthly. Cap a plan at a set number of visits, or leave it running until somebody stops it."
       primary={{ label: 'See live recurring plans', href: '/demo/recurring' }}
       demo={
@@ -133,6 +145,14 @@ export default function RecurringFeaturePage() {
         {
           q: 'Can I pause or cancel a plan?',
           a: 'Yes, and the visits it has already produced stay as they are — real jobs with real invoices and real history. Stopping the plan stops the next cycle; it does not rewrite the work you have already done.',
+        },
+        {
+          /* Asked because contractors raise prices, and a page about automatic
+             charging that never mentions it invites the assumption that the
+             price is frozen — or worse, that we would change it without
+             telling anybody. */
+          q: 'What if I need to raise the price?',
+          a: 'Change the per-visit price on the plan and the next cycle bills at the new one. Visits already run and already invoiced are not touched — an invoice the customer has paid is a record, not a setting. Telling them before the new price lands is on you, and it is the part worth doing properly: an unexplained increase on a saved card is how a good maintenance customer becomes a chargeback.',
         },
         {
           q: 'Do recurring charges cost more than one-off ones?',

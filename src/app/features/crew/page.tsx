@@ -119,8 +119,31 @@ export default function CrewFeaturePage() {
       catalogNote="All of it hangs off the same job the quote and the schedule are on, which is why the field app already knows the scope and the invoice already knows the cost."
       faq={[
         {
+          /* The four questions a contractor asks before putting an app on
+             somebody else's phone, and they were all unanswered. Every answer
+             here is checked against the code: crew sign-in is a magic link
+             (field/login), the service worker deliberately passes fetches
+             through untouched, location is per-trip and expires
+             (job-tracking.share_location / location_expires_at), and the four
+             permissions are the ones lib/crew.ts actually stores. */
+          q: 'How do crew members sign in — do they need accounts?',
+          a: 'You add their email, and they get a sign-in link. There is no password to set or reset and no per-seat charge; the link expires after an hour and they tap it again next time. Nothing to install to get started.',
+        },
+        {
+          q: 'What device do they need, and does it work without signal?',
+          a: 'Any phone with a browser. It installs to the home screen like an app if they want that. It does need a connection — there is no offline mode, so a basement with no bars means logging the hours when they are back outside rather than losing them.',
+        },
+        {
+          q: 'Does it track where my crew are?',
+          a: 'No. There is no background location and nothing runs while they work. Location is shared only when somebody sends an “on my way” message and only if they turn it on for that trip, and the link the homeowner gets expires on its own. It is a delivery-style tracker for one journey, not a record of anybody’s day.',
+        },
+        {
+          q: 'Can I control what each person can do?',
+          a: 'Yes — per crew member. Whether they can send arrival messages, whether they can share their location when they do, whether they can see customer contact details, and whether they can move a job. Costing and margin are the owner’s view either way.',
+        },
+        {
           q: 'Is this payroll?',
-          a: 'No, and it deliberately does not claim to be. It rolls hours and pay up by crew member and pay period, and marking somebody paid records that you paid them. It does not move money, calculate tax or withhold anything — you or your payroll provider still do that part.',
+          a: 'It is job costing and pay records, not payroll processing. Hours and pay roll up by crew member and pay period, and marking somebody paid records that you paid them — so the labor cost on every job is real. Moving the money, calculating tax and withholding stay with you or your payroll provider, and the product does not pretend otherwise.',
         },
         {
           q: 'Do I have to make the crew use a time clock?',

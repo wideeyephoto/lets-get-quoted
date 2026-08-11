@@ -211,10 +211,28 @@ describe('what these pages promise', () => {
 
 describe('the shell', () => {
   it('gives every page the same questions treatment as the flagship pages', () => {
-    expect(SHELL).toContain('<details key={item.q} open={index === 0}>');
+    // The markup moved into FaqList so a bespoke page could have one too —
+    // /features/client-portal had no questions at all, on the one subject
+    // (who can open a link with no login) where a contractor has the most.
+    expect(SHELL).toContain('<FaqList items={faq} />');
+    const faqList = strip(read('src/components/marketing/faq-list.tsx'));
+    expect(faqList).toContain('<details key={item.q} open={index === 0}>');
     // No `name`: an exclusive accordion hides every other answer from the
     // browser's own find-in-page.
-    expect(SHELL).not.toMatch(/<details[^>]*name=/);
+    expect(faqList).not.toMatch(/<details[^>]*name=/);
+    // And it is the same stylesheet, so the two cannot drift apart visually.
+    expect(faqList).toContain("from './suite-feature-page.module.css'");
+  });
+
+  it('the portal page now answers the question its own pitch raises', () => {
+    const portal = strip(read('src/app/features/client-portal/page.tsx'));
+    expect(portal).toContain('FaqList');
+    // The five it has to answer before a contractor will send one.
+    expect(portal).toMatch(/who can open it/i);
+    expect(portal).toMatch(/turn a link off/i);
+    expect(portal).toMatch(/sign up, or install anything/i);
+    expect(portal).toMatch(/crew and office staff/i);
+    expect(portal).toMatch(/replies STOP/i);
   });
 
   it('sets the capability copy at reading size, not caption size', () => {

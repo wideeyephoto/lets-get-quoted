@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
+import FaqList from '@/components/marketing/faq-list';
 import ExampleFrame from '@/components/marketing/example-frame';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './client-portal.module.css';
@@ -66,6 +67,32 @@ function JobStrip() {
     </div>
   );
 }
+
+/* What a contractor wants to know before texting a customer a link to their own
+   job. Answered from the code, not from the pitch — see the note above the
+   section that renders these. */
+const PORTAL_FAQ: { q: string; a: string }[] = [
+  {
+    q: 'If it is a link and not a login, who can open it?',
+    a: 'Whoever has the link — which is why each one is 32 random characters, unique to a single job, and impossible to guess or to walk from one job to the next. We store only a hash of it, so it cannot be read back out of the database. It behaves like a private document link rather than a password, and it shows one job: not the customer’s other work, not your other customers.',
+  },
+  {
+    q: 'Can I turn a link off once I have sent it?',
+    a: 'Yes, at any time, and it stops working immediately — every page load checks. That covers the two cases that actually happen: a job that ended badly, and a link forwarded somewhere you did not intend.',
+  },
+  {
+    q: 'Does the customer have to sign up, or install anything?',
+    a: 'No. No app, no account, no password, nothing to download. They tap the link in your text and the page opens. That is the point of the design: adoption is the thing that kills customer portals, and the only way to win it is to ask for nothing.',
+  },
+  {
+    q: 'Can my crew and office staff see the same conversation?',
+    a: 'Yes — the thread is attached to the job, not to whoever’s phone the reply landed on, so anybody on your team looking at that job sees it. Which of them can see customer contact details is a per-person setting.',
+  },
+  {
+    q: 'What happens when a customer replies STOP?',
+    a: 'They stop receiving texts from you, immediately and permanently, until they text START. It is enforced before anything sends rather than checked afterwards, and it is per phone number and per business — your opt-out list is yours. Their job page keeps working; STOP ends the texting, not their access to what they paid for.',
+  },
+];
 
 export default function ClientPortalPage() {
   return (
@@ -456,6 +483,18 @@ export default function ClientPortalPage() {
           </ExampleFrame>
         </div>
       </section>
+
+      {/* THE PAGE HAD NO QUESTIONS AT ALL, on the one subject where a
+          contractor has the most of them. "A link, not a login" is the whole
+          pitch, and the immediate reaction to it is "so anyone with the link
+          can see my customer's address and what they paid?"
+
+          Every answer below is checked against the code rather than the pitch:
+          the token is 32 random bytes stored only as a SHA-256 hash
+          (createClientJobAccessToken), revoking sets revoked_at and every read
+          checks it, and STOP is enforced per account and phone before any send
+          (lib/sms). Nothing here promises a capability the product lacks. */}
+      <FaqList items={PORTAL_FAQ} eyebrow="Before you send one" title="The questions a link raises." id="portal-faq" />
     </FeatureDetailLayout>
   );
 }

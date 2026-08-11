@@ -46,6 +46,15 @@ export default function PaymentsFeaturePage() {
         </>
       }
       lede="Take a deposit when the quote is approved and the balance when the work is done. The money goes to your Stripe account, and you pay a percentage only when a homeowner actually pays you."
+      /* The three facts that decide it, above the button. The exact rate was
+         4,000px down the page in the closing band, which is the wrong place for
+         the number somebody is trying to find. Read from FEE_TIERS, so it
+         cannot drift from /pricing. */
+      heroChips={[
+        `${FEE_TIERS[0].rate}–${FEE_TIERS[FEE_TIERS.length - 1].rate} platform fee`,
+        `Stripe's ${STRIPE_PROCESSING_NOTE}`,
+        'Only when a homeowner pays you',
+      ]}
       heroNote={`Card numbers never touch us — Stripe holds them. Bank debit is offered automatically on payments of ${ACH_LABEL} or more, where a flat capped fee beats a card percentage.`}
       /* No /demo/payments screen exists, so "See the payment flow" would be a
          button that lands somewhere adjacent — worse than none. The contextual
@@ -132,8 +141,14 @@ export default function PaymentsFeaturePage() {
           a: 'Yours, into your own Stripe account, on Stripe’s payout schedule. We do not hold your funds and we never see card numbers — Stripe does that part, which is also why the compliance burden is not yours.',
         },
         {
-          q: 'Are payment plans a loan?',
-          a: 'No. There is no interest, no fee, no credit check and no advance paid to you. A plan splits a total the customer has already approved into a deposit and fixed installments, charged to the card saved at deposit time. It allocates the quote total and can never increase it.',
+          /* The half of this that a contractor reads past. "No advance paid to
+             you" is doing enormous work in one clause: the obvious assumption
+             about a payment plan is that somebody fronts the money and collects
+             from the customer afterwards, which is what every consumer
+             financing product does. Nothing here does. Said plainly, because
+             finding it out in month two is a very expensive surprise. */
+          q: 'Do payment plans pay me up front?',
+          a: 'No — and this is the thing to be clear about before you offer one. Nobody advances you the money. You receive the deposit when it is paid and each installment as it is charged, on the schedule the customer agreed to, so a plan spreads your income exactly as much as it spreads their payments. It is not financing: no interest, no fee, no credit check, no third party buying the receivable. It splits a total the customer already approved and can never increase it.',
         },
         {
           q: 'Why does bank debit only show up sometimes?',

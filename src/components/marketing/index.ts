@@ -28,6 +28,9 @@ export type { ExampleSiteShowcaseProps, ExampleSiteMode } from './example-site-s
 export { default as PriceZeroDial } from './price-zero-dial';
 export type { PriceZeroDialProps } from './price-zero-dial';
 
+export { default as FaqList } from './faq-list';
+export type { FaqItem } from './faq-list';
+
 export { default as RealProof, CustomerProof } from './real-proof';
 export type { RealProofProps, CustomerStory } from './real-proof';
 

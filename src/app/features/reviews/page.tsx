@@ -42,6 +42,11 @@ export default function ReviewsFeaturePage() {
         </>
       }
       lede="The request goes out when the job is actually finished, and every customer is offered the same two things: post a public review, or tell you privately. Then the customers you already have become the ones you book next."
+      /* The two rules this page lives by, above the button rather than in the
+         sentence under it. Both are enforced in code, not policy: the routing
+         function is never given the rating, and STOP is checked before any
+         send. */
+      heroChips={['No star-rating gating', 'STOP and consent enforced', 'Sent when the job is finished']}
       heroNote="No review gating. The routes offered do not depend on how happy somebody is, because screening by star rating breaks Google’s rules and puts your profile at risk."
       primary={{ label: 'Open the live reviews screen', href: '/demo/reviews' }}
       demo={
@@ -118,7 +123,27 @@ export default function ReviewsFeaturePage() {
       faq={[
         {
           q: 'Can I only ask happy customers for a public review?',
-          a: 'No, and the product will not let you. Every customer is offered a public review and a private word, in the same order, regardless of rating — the routing function is not even given the rating. Screening by star rating breaks Google’s policies and risks your profile, so it is not a setting you can turn on.',
+          /* The policy is named and linked rather than alluded to, because
+             "breaks Google's rules" is the kind of claim a contractor is right
+             to want to check for themselves — it is their Business Profile at
+             risk, not ours. Named as well as linked, so the answer survives
+             Google reorganizing its help center. */
+          a: (
+            <>
+              No, and the product will not let you. Every customer is offered a public review and a private
+              word, in the same order, regardless of rating — the routing function is not even given the
+              rating. Selectively soliciting positive reviews is prohibited under Google&rsquo;s{' '}
+              <a
+                href="https://support.google.com/business/answer/7091"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Prohibited &amp; restricted content
+              </a>{' '}
+              policy for Business Profiles, and it is your profile that gets restricted for it, so it is not
+              a setting you can turn on here.
+            </>
+          ),
         },
         {
           q: 'What happens to a bad review before it is public?',

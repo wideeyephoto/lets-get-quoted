@@ -122,14 +122,28 @@ export default function SchedulingFeaturePage() {
       catalogEyebrow="What the calendar handles"
       catalogTitle="Getting jobs on the calendar, and keeping them there."
       catalogNote="Every one of these writes to the same job record, which is why the crew, the customer and the invoice all already know the date."
+      /* THE FIRST ONE IS OPEN, so it wants to be the question most people
+         arrive with. That was "will it move a job because of the weather?" — a
+         good answer to a question almost nobody asks first. Booking and
+         calendar sync are the two that decide whether this fits somebody's
+         business at all. */
       faq={[
-        {
-          q: 'Will it move a job because of the weather?',
-          a: 'No, and that is deliberate. Weather risk is scored against the kind of work and flagged for you, but a system that reschedules on a forecast will eventually move a job on a day that turns out fine — and the customer who took the morning off will never trust a date from you again. It flags, it suggests, a person decides.',
-        },
         {
           q: 'Can customers book straight from my website?',
           a: 'Yes. The online booking page offers arrival windows you have room for, and the request arrives with the job details attached. Nothing goes on your calendar until you confirm it.',
+        },
+        {
+          /* Asked and answered honestly, because the honest answer is no. There
+             is no Google or Outlook integration anywhere in this product, and a
+             page that stays quiet about it is a page that gets found out on day
+             two. Verified: nothing in the codebase emits an .ics file or talks
+             to the Google Calendar or Microsoft Graph APIs. */
+          q: 'Does it sync with Google Calendar or Outlook?',
+          a: 'Not today — there is no two-way sync and no calendar feed to subscribe to, and we would rather say so than let you find out after you have moved your jobs across. The schedule here is the one the booking page, the reminders, the arrival texts and the crew’s phones all read from, so it is built to be the calendar rather than a copy of one.',
+        },
+        {
+          q: 'Will it move a job because of the weather?',
+          a: 'No, and that is deliberate. Weather risk is scored against the kind of work and flagged for you, but a system that reschedules on a forecast will eventually move a job on a day that turns out fine — and the customer who took the morning off will never trust a date from you again. It flags, it suggests, a person decides.',
         },
         {
           q: 'What is an arrival window, exactly?',

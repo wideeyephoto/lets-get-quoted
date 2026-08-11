@@ -3,6 +3,7 @@ import FeatureDetailLayout, {
   type FeatureDetailCard,
   type FeatureProofPoint,
 } from './feature-detail-layout';
+import FaqList from './faq-list';
 import { FEATURE_CATEGORIES } from '@/lib/features';
 import styles from './suite-feature-page.module.css';
 
@@ -165,27 +166,9 @@ export default function SuiteFeaturePage({
 
       {children}
 
-      {/* <details>, not a script: it works before hydration, is in the tab order
-          for free, and the browser's own find-in-page opens it. No `name` — an
-          exclusive accordion closes the answer you were reading and hides every
-          other one from find-in-page. */}
-      <section className="section-block" aria-labelledby="faq-title">
-        <div className={styles.head}>
-          <p className="eyebrow">Before you start</p>
-          <h2 id="faq-title">The practical questions.</h2>
-        </div>
-        <div className={styles.faq}>
-          {faq.map((item, index) => (
-            <details key={item.q} open={index === 0}>
-              <summary>
-                <span>{item.q}</span>
-                <i aria-hidden="true" />
-              </summary>
-              <p>{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+      {/* Shared with the bespoke pages, which had no way to render one — see
+          FaqList for why that mattered on /features/client-portal. */}
+      <FaqList items={faq} />
     </FeatureDetailLayout>
   );
 }
