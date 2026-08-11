@@ -13,7 +13,7 @@ import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 export const metadata: Metadata = {
   title: 'Cash Flow Forecasting for Contractors',
   description:
-    'See customer money, payroll and bills before they move. A dated forecast of your balance, so the week you cannot make payroll is a week you find out about in advance.',
+    'See customer money, payroll and bills before they move. A dated forecast of your balance, so the week you cannot make payroll is one you hear about in advance.',
   alternates: { canonical: 'https://letsgetquoted.com/features/cash-flow' },
   openGraph: {
     type: 'website',

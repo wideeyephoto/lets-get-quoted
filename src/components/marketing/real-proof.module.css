@@ -1,0 +1,117 @@
+/* A screen from the running product. See real-proof.tsx for why this exists
+   and why the customer variant renders nothing without a story.
+
+   Deliberately NOT a card. The drawn examples on these pages all sit inside an
+   ExampleFrame with its "Example" marker, which is the right treatment for a
+   thing that is illustrative. This is the opposite claim — that what you are
+   looking at is the product — so it is presented flat, at size, with the
+   caption doing the labelling. */
+
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+}
+
+.compact {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.copy {
+  min-width: 0;
+}
+
+.title {
+  margin: 10px 0 14px;
+  font-size: clamp(26px, 3.2vw, 40px);
+  line-height: 1.06;
+  letter-spacing: -1.6px;
+  text-wrap: balance;
+}
+
+.caption {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #afc0c9;
+}
+
+.caption a {
+  color: var(--orange, #ff6a24);
+  text-underline-offset: 3px;
+}
+
+.shot {
+  margin: 0;
+  min-width: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 0.7);
+}
+
+.img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* --- the customer slot ---------------------------------------------------- */
+
+.customer {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.6fr);
+  align-items: start;
+}
+
+.quote {
+  margin: 10px 0 12px;
+  padding: 0;
+  border: 0;
+  font-size: clamp(20px, 2.4vw, 28px);
+  line-height: 1.35;
+  letter-spacing: -0.8px;
+  text-wrap: balance;
+}
+
+.attribution {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #cfdde4;
+}
+
+.result {
+  display: grid;
+  gap: 4px;
+  padding: 20px 22px;
+  border: 1px solid rgba(174, 199, 211, 0.18);
+  border-radius: 14px;
+}
+
+.result strong {
+  font-size: clamp(30px, 4vw, 46px);
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.result span {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #afc0c9;
+}
+
+@media (max-width: 900px) {
+  .wrap,
+  .compact,
+  .customer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  /* The screen first on a phone: it is the evidence, and the copy above it is
+     the caption for something the reader cannot see yet. */
+  .shot {
+    order: -1;
+  }
+}

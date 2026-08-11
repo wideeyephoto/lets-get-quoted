@@ -10,9 +10,9 @@ import SuiteFeaturePage, {
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
-  title: 'Review Requests and Customer Marketing for Contractors',
+  title: 'Review Requests and Rebooking',
   description:
-    'Ask every customer for a review the honest way — public or private, never screened by star rating — then bring past customers back with campaigns, rebook invites and two-way texting.',
+    'Ask every customer for a review the honest way — public or private, never screened by star rating — then bring past customers back with rebook invites.',
   alternates: { canonical: 'https://letsgetquoted.com/features/reviews' },
   openGraph: {
     type: 'website',

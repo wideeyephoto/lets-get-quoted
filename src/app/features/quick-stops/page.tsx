@@ -23,9 +23,12 @@ export const metadata: Metadata = {
   // Named for the search it should win rather than for the button in our own
   // nav: "Quick Stops" alone means nothing to somebody who has never heard of
   // us, and the title is the strongest signal Google uses to write the result.
-  title: 'Quick Stops for Contractors: Paid Priority Visits Nearby',
+  // 56 chars became 75 with the layout's " · Let's Get Quoted" suffix, so
+  // Google cut it mid-phrase. The words that had to survive are the ones
+  // somebody would search — "paid priority visits" — not our product name.
+  title: 'Paid Priority Visits for Contractors',
   description:
-    'Get paid to fit nearby customers into today’s route. You set a priority visit fee and the arrival window; they pay that fee to reserve the visit. Service, labor and parts are charged separately.',
+    'Get paid to fit nearby customers into today’s route. You set the fee and the arrival window; they pay it to reserve the visit. Service is billed separately.',
   alternates: { canonical: 'https://letsgetquoted.com/features/quick-stops' },
   /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
      Next replaces the parent metadata's `openGraph` object wholesale rather

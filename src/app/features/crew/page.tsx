@@ -10,9 +10,9 @@ import SuiteFeaturePage, {
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
-  title: 'Crew Management, Field App and Labor Costs',
+  title: 'Crew Management and Field App',
   description:
-    'Assign the crew, give them the job on their phone, log hours and materials on site, and see real margin before you invoice. Hours and pay roll up by person and pay period.',
+    'Assign the crew, put the job on their phone, log hours and materials on site, and see real margin before you invoice. Hours roll up by person and pay period.',
   alternates: { canonical: 'https://letsgetquoted.com/features/crew' },
   openGraph: {
     type: 'website',

@@ -28,5 +28,8 @@ export type { ExampleSiteShowcaseProps, ExampleSiteMode } from './example-site-s
 export { default as PriceZeroDial } from './price-zero-dial';
 export type { PriceZeroDialProps } from './price-zero-dial';
 
-export { CtaLink, APP_SIGNUP_URL, DEMO_URL, FEATURES_URL } from './links';
+export { default as RealProof, CustomerProof } from './real-proof';
+export type { RealProofProps, CustomerStory } from './real-proof';
+
+export { CtaLink, APP_SIGNUP_URL, DEMO_URL, FEATURES_URL, SECONDARY_SIGNUP_LABEL } from './links';
 export type { CtaLinkSpec } from './links';

@@ -10,9 +10,9 @@ import SuiteFeaturePage, {
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
-  title: 'Recurring Work and Auto-Billing for Contractors',
+  title: 'Recurring Work and Auto-Billing',
   description:
-    'Set repeating work once and it schedules and charges itself — weekly, every other week or monthly, with a real itemized invoice for every visit and declines handled for you.',
+    'Set repeating work once and every cycle schedules and bills itself — weekly, biweekly or monthly, with an itemized invoice per visit and declines handled.',
   alternates: { canonical: 'https://letsgetquoted.com/features/recurring' },
   openGraph: {
     type: 'website',

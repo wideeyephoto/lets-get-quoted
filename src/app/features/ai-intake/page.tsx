@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   // bare title — this one and quick-stops were the two that drifted.
   title: 'AI Intake for Contractors',
   description:
-    'Qualify, score and prioritize contractor leads before the first call. Smart Intake asks trade-specific follow-ups, collects photos and timing, and surfaces the work worth answering first.',
+    'Score contractor leads before the first call. Smart Intake asks trade-specific follow-ups, collects photos and timing, and ranks what to answer first.',
   alternates: { canonical: 'https://letsgetquoted.com/features/ai-intake' },
   /* THE SOCIAL CARD IS THIS PAGE'S, NOT THE HOMEPAGE'S.
      Next replaces the parent metadata's `openGraph` object wholesale rather

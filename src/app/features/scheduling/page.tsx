@@ -11,9 +11,9 @@ import { CAPACITY_LEVELS } from '@/lib/schedule-capacity';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
-  title: 'Scheduling and Online Booking for Contractors',
+  title: 'Contractor Scheduling and Booking',
   description:
-    'Put jobs on the calendar without the phone tag — text arrival windows the customer picks from, take booking requests from your site, and see how full a day is before you promise it.',
+    'Text arrival windows the customer picks from, take booking requests off your site, and see how full a day is before you promise it. No phone tag.',
   alternates: { canonical: 'https://letsgetquoted.com/features/scheduling' },
   openGraph: {
     type: 'website',

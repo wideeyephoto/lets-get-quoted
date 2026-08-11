@@ -12,9 +12,9 @@ import { DEFAULT_PLAN } from '@/lib/payment-plan-math';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
-  title: 'Contractor Payments, Deposits and Payment Plans',
+  title: 'Contractor Payments and Deposits',
   description:
-    'Take deposits, balances and 0%-interest payment plans through Stripe, straight into your own account. No subscription — you pay a small percentage only when a homeowner pays you.',
+    'Take deposits, balances and 0%-interest payment plans through Stripe, into your own account. No subscription — you pay only when a homeowner pays you.',
   alternates: { canonical: 'https://letsgetquoted.com/features/payments' },
   openGraph: {
     type: 'website',
