@@ -7176,3 +7176,242 @@
   .root :global(.detail-hero) ~ :global(.page-cta),
   .root :global(.detail-hero) ~ :global(.final-cta) { padding-bottom: 78px; }
 }
+
+/* ===========================================================================
+   §109 — /features SAYS THE PRICE WHERE THE DECISION IS MADE
+
+   "No monthly subscription" was the loudest promise in the hero and the
+   platform fee that pays for it was 4,900px below it on a phone, in the
+   closing band. Everything on both ends was true; the ORDER was the problem,
+   because a visitor who learns the price after deciding reads it as a catch.
+
+   THE SPECIFICITY IS THE WHOLE TRICK HERE. The hero's lede rule is
+   `.root :global(.index-hero-beside > p:not(.eyebrow))` — .root, the band,
+   :not(.eyebrow) and the element p, which is (0,3,1). A tidy
+   `.index-hero-beside > .index-hero-fee` is (0,3,0) and LOSES, so the fee note
+   would have come out at 16px with the lede's margins and sat in grid row 4 on
+   top of the lede itself. Written with the element in the selector, it is
+   (0,4,1) and wins.
+   =========================================================================== */
+
+/* The hero grid gains a row. It was 1fr auto auto auto auto 1fr — six rows
+   with the last a spacer — and the note needs a real one of its own before
+   that spacer, or it lands in the implicit row under the thread. */
+.root :global(.index-hero-beside) { grid-template-rows: 1fr auto auto auto auto auto 1fr; }
+
+.root :global(.index-hero-beside > p.index-hero-fee) {
+  grid-column: 1;
+  grid-row: 6;
+  max-width: 52ch;
+  margin: 18px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  /* Quieter than the lede and still over 7:1 on the hero's ground: this is the
+     fine print being legible, not the fine print shouting. */
+  color: #9db0bd;
+}
+.root :global(.index-hero-fee a) {
+  color: #ffb37a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.root :global(.index-hero-fee a:hover) { color: var(--orange); }
+
+/* ---- the proof strip ----------------------------------------------------
+
+   Four facts about the product, directly under the hero. Deliberately the same
+   shape as .detail-proof on the feature pages — a visitor moving between them
+   should recognise the row rather than meet a new component. */
+.root :global(.index-proof) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  padding: 0 clamp(24px, 6vw, 104px);
+  background: transparent;
+}
+.root :global(.index-proof > span) {
+  display: block;
+  padding: 22px 24px;
+  border-top: 1px solid rgba(174, 199, 211, .16);
+  border-bottom: 1px solid rgba(174, 199, 211, .16);
+  border-left: 1px solid rgba(174, 199, 211, .16);
+}
+.root :global(.index-proof > span:last-child) { border-right: 1px solid rgba(174, 199, 211, .16); }
+.root :global(.index-proof b) {
+  display: block;
+  color: #f7f3ec;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+.root :global(.index-proof small) {
+  display: block;
+  margin-top: 7px;
+  /* Not #9db0bd. At 12.5px on this ground that measured under the bar; this is
+     the same correction §108 made to .detail-proof small. */
+  color: #c2d1da;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .root :global(.index-proof) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .root :global(.index-proof > span:nth-child(2n)) { border-right: 1px solid rgba(174, 199, 211, .16); }
+  .root :global(.index-proof > span:nth-child(n+3)) { border-top: 0; }
+}
+@media (max-width: 560px) {
+  .root :global(.index-proof) { padding-inline: 20px; }
+  .root :global(.index-proof > span) { padding: 17px 18px; }
+  .root :global(.index-proof b) { font-size: 18px; }
+}
+
+/* ---- Quick Stops, as the extra it is ------------------------------------
+
+   Not a sixth card. The five above are one job moving from a click to a
+   payment; this is a second, smaller job sold into the gap between two of
+   them, so it gets a band of its own with a quieter ground than the cards.
+   Copy left, the three limits right — the three things a contractor asks
+   before letting strangers buy their time. */
+.root :global(.route-band) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  align-items: center;
+  gap: clamp(28px, 4vw, 64px);
+  margin: 0 clamp(24px, 6vw, 104px) clamp(64px, 7vw, 104px);
+  padding: clamp(28px, 3.4vw, 46px);
+  border: 1px solid rgba(255, 122, 33, .28);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 6% 0%, rgba(255, 106, 36, .10), transparent 46%),
+    rgba(255, 255, 255, .025);
+}
+.root :global(.route-band h2) {
+  margin: 12px 0 0;
+  color: #f7f3ec;
+  font-size: clamp(25px, 2.5vw, 36px);
+  font-weight: 700;
+  letter-spacing: -.028em;
+  line-height: 1.1;
+}
+.root :global(.route-band h2 em) { font-style: normal; color: var(--orange); }
+.root :global(.route-copy > p) {
+  margin: 16px 0 0;
+  max-width: 54ch;
+  color: #b7c6cf;
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+.root :global(.route-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: .45em;
+  min-height: 44px;
+  margin-top: 18px;
+  padding: 0 1.05rem;
+  border: 1px solid rgba(255, 122, 33, .45);
+  border-radius: 999px;
+  color: #ffb37a;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .18s ease, border-color .18s ease;
+}
+.root :global(.route-link:hover) { border-color: var(--orange); background: rgba(255, 106, 36, .1); }
+
+.root :global(.route-points) {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.root :global(.route-points li) {
+  margin: 0;
+  padding: 15px 17px;
+  border: 1px solid rgba(174, 199, 211, .15);
+  border-radius: 14px;
+  background: rgba(6, 17, 27, .5);
+}
+.root :global(.route-points b) { display: block; color: #f2ede5; font-size: 15px; font-weight: 700; }
+.root :global(.route-points small) { display: block; margin-top: 5px; color: #a9bac4; font-size: 13px; line-height: 1.55; }
+
+@media (max-width: 900px) {
+  .root :global(.route-band) { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .root :global(.route-band) { margin-inline: 20px; padding: 22px 18px; }
+}
+
+/* ---- the cream section's explanatory copy stops being unreadable ---------
+
+   MEASURED AT 1.97:1 on #f5f0e7, against the 4.5:1 body text needs, and the
+   fix for it already existed: the base sheet writes
+   `.everything-index .index-heading > p:last-child { color: #747873 }`
+   precisely because the dark-band grey (#9db0bd) is unreadable here.
+
+   Then a second paragraph — the "Included from day one" pill — was appended
+   after the lede, and :last-child moved to it. The pill got a correction
+   written for a paragraph above it, and the paragraph that needed it fell back
+   to the dark-band grey. A positional selector is a correction that any later
+   sibling can steal, silently, with nothing failing.
+
+   So it is written for every paragraph in that block, and the pill, which is
+   not body copy, keeps its own colour by being more specific than this. */
+.root :global(.everything-index .index-heading > p) { color: #4a5a63; }
+.root :global(.everything-index .index-heading > p.everything-note) { color: #6b4a38; }
+
+/* The one link out of that section, now that the back office has no card. */
+.root :global(.everything-more) { margin: clamp(28px, 3vw, 40px) 0 0; }
+.root :global(.everything-more a) {
+  display: inline-flex;
+  align-items: center;
+  gap: .45em;
+  min-height: 44px;
+  padding: 0 1.05rem;
+  border: 1px solid rgba(184, 67, 15, .42);
+  border-radius: 999px;
+  color: #b8430f;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.root :global(.everything-more a:hover) { background: rgba(184, 67, 15, .07); border-color: #b8430f; }
+
+/* ---- the phone stops spending a screen on a heading ---------------------
+
+   Measured at 390x844: the "Five connected advantages" block was 254px tall
+   with a 42px headline, so better than a quarter of the screen went to the
+   label on the section before the first card of it appeared. The desktop size
+   is untouched — there the same block is 251px of a 900px viewport, which is
+   the proportion it was designed at. */
+@media (max-width: 560px) {
+  .root :global(.flagship-index .index-heading) { margin-bottom: 30px; }
+  .root :global(.flagship-index .index-heading h2) { font-size: 29px; letter-spacing: -1.1px; }
+  /* The <br> is a desktop line break; at 29px it splits the sentence in the
+     wrong place, so it stops being a break and the text wraps on its own. */
+  .root :global(.flagship-index .index-heading h2 br) { display: none; }
+}
+
+/* ---- the fixed bar stops reading over the thing you are reading ---------
+
+   It is 66px of the bottom of a 844px screen, fixed, for the whole 4,000px
+   between the hero and the closing band — and measured at 390x844 it was
+   sitting on a feature card's "Explore feature →" and on a job-record stage
+   tab. data-redundant already stands it down where a duplicate offer is on
+   screen; that does nothing in the middle of the page, where there is no
+   duplicate and the bar is genuinely useful.
+
+   So it yields to the direction of travel: gone while you are reading DOWN,
+   back the instant you look for it by scrolling up. The trade is deliberate —
+   somebody who scrolls to the bottom in one motion never sees it, and they do
+   not need to, because the closing CTA band is what they arrive at. */
+.root :global(.mobile-cta) { transition: transform .22s ease, opacity .22s ease; }
+.root :global(.mobile-cta[data-scroll="down"]) {
+  transform: translateY(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still gets out of the way; it just does not slide. */
+  .root :global(.mobile-cta) { transition: none; }
+}

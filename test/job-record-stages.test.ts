@@ -204,15 +204,16 @@ describe('the section around it', () => {
   });
 
   it('leaves the rest of the page alone', () => {
-    for (const kept of [
-      'THE FULL CONTRACTOR SUITE',
-      'flagship-index',
-      'index-hero-beside',
-      '<PageCTA',
-      '<SiteFooter />',
-    ]) {
+    // Matched on STRUCTURE, not on the hero's words. This listed the eyebrow
+    // "THE FULL CONTRACTOR SUITE" until the hero was rewritten around the
+    // workflow, and a copy change is not what this test is for — the thing it
+    // guards is that swapping the capability bands for the job record did not
+    // take a section of the page with it.
+    for (const kept of ['flagship-index', 'index-hero-beside', '<PageCTA', '<SiteFooter />']) {
       expect(PAGE).toContain(kept);
     }
+    // The hero still opens with an eyebrow, a headline and a lede.
+    expect(PAGE).toMatch(/<p className="eyebrow">[\s\S]{0,120}<\/p>\s*<h1>/);
   });
 });
 

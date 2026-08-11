@@ -283,6 +283,42 @@ function useMobileBarVisibility() {
     return () => io.disconnect();
   }, []);
 
+  /* AND IT YIELDS TO THE DIRECTION OF TRAVEL.
+     data-redundant answers "is this offer already on screen", which is the
+     right question at both ends of the page and no question at all in the
+     middle — where the bar is 66px of a 844px phone, fixed, for the whole
+     4,000px between them. Measured on /features at 390x844 it was sitting on a
+     feature card's "Explore feature →" and on a job-record stage tab.
+
+     So: gone while the reader is moving DOWN, back the moment they scroll up,
+     which is when somebody is looking for a control rather than reading. The
+     8px threshold is there because momentum scrolling reports tiny negative
+     deltas on the way down and the bar would otherwise flicker. */
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    let last = window.scrollY;
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const y = window.scrollY;
+        const delta = y - last;
+        if (Math.abs(delta) < 8) return;
+        last = y;
+        // Near the top there is nothing to hide from, and the hero's own CTA
+        // has usually already stood the bar down anyway.
+        bar.setAttribute('data-scroll', delta > 0 && y > 240 ? 'down' : 'up');
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [barRef]);
+
   return barRef;
 }
 

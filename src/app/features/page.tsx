@@ -8,7 +8,9 @@ import {
   SIGNUP_LABEL,
   SIGNUP_URL,
 } from '@/components/flagship/site-chrome';
-import { FEE_TIERS } from '@/lib/pricing';
+import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_COUNT } from '@/lib/features';
+import { TRADES } from '@/lib/trades';
 import {
   HERO_THREAD,
   HERO_THREAD_CLIENT,
@@ -55,6 +57,65 @@ const HIGHEST_FEE = FEE_TIERS[0].rate;
 const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate;
 
 /**
+ * THE PROOF STRIP, AND WHY IT IS FOUR FACTS RATHER THAN FOUR NUMBERS.
+ *
+ * A page that says "turn more leads into paid jobs" and then shows nothing but
+ * more of its own claims is asking to be taken on faith. The obvious fix is a
+ * strip of outcomes — leads won, revenue added, stars — and we do not have one
+ * of those we could stand behind: no testimonial we have permission to quote,
+ * no cohort, no measured conversion lift. An invented one is the fastest way to
+ * lose everything else on the page.
+ *
+ * So every cell here is a fact about the PRODUCT, and every one is read out of
+ * the code rather than typed here: the trade count is TRADES, the feature count
+ * is lib/features.ts, and the rates are FEE_TIERS. They cannot drift, and none
+ * of them claims anything about anybody's business but ours.
+ */
+const PROOF: { stat: string; label: string }[] = [
+  { stat: `${TRADES.length} trades`, label: 'Pages, FAQs and intake questions written for yours' },
+  { stat: '$0 a month', label: 'No card and no setup fee to open an account' },
+  { stat: `${LOWEST_FEE}–${HIGHEST_FEE}`, label: 'Charged only when a homeowner actually pays you' },
+  { stat: `${FEATURE_COUNT} features`, label: 'Every account opens with all of them — there is no upgrade tier' },
+];
+
+/**
+ * The objections, answered where they are raised.
+ *
+ * Every answer here is checkable against the product rather than against the
+ * pitch: the fee model is FEE_TIERS and it is marginal across brackets, Stripe
+ * pays the contractor's own connected account, the free subdomain publishes
+ * without waiting on DNS, and the custom domain is registered in the
+ * contractor's name (lib/domains.ts). Nothing below promises a capability the
+ * rest of the page has not already shown.
+ */
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'What exactly does the platform fee cost me?',
+    a: `It starts at ${HIGHEST_FEE} of a payment and falls to ${LOWEST_FEE} as your yearly volume grows — charged in brackets, like tax, so only the part of your volume inside a bracket pays that bracket's rate. It applies to payments a homeowner makes through the platform, and to nothing else: no subscription, no setup fee, no per-user charge, and nothing at all in a month you collect nothing. Card processing (${STRIPE_PROCESSING_NOTE}) is separate and goes to Stripe.`,
+  },
+  {
+    q: 'Can I use the domain I already own?',
+    a: 'Yes. You publish immediately on the included letsgetquoted.com subdomain, then point your own domain at the site with one CNAME whenever you are ready — publishing never waits on DNS. You buy and hold the registration yourself, in your own name; we never own the address your trucks and invoices carry.',
+  },
+  {
+    q: 'How long does setup actually take?',
+    a: 'Your business name, your trade and the towns you cover are enough to generate the whole site — pages, services, FAQs and the instant estimate — in one sitting. Everything it writes stays editable, before it goes live and afterwards.',
+  },
+  {
+    q: 'Who owns my customers and my job history?',
+    a: 'You do. There is no contract and no lock-in period. Your clients, quotes, jobs, messages and payment history are your records, your custom domain stays registered to you, and leaving does not cost you the address your customers already know.',
+  },
+  {
+    q: 'How do payments work — do you hold my money?',
+    a: 'No. Payments run on Stripe into your own connected account, so the money goes from the homeowner to you and settles on Stripe’s normal payout schedule. We never see card numbers and never hold your balance; the platform fee comes out of the payment as it clears.',
+  },
+  {
+    q: 'Can I start with just the website and add the rest later?',
+    a: 'Yes, and most people do. The site and the instant estimate are useful on their own from the first day. Quotes, scheduling, crew, texting and payments are already in the same account waiting — you turn to them when you need them, not when a plan says you have to.',
+  },
+];
+
+/**
  * THE `id` IS PART OF THE CONTRACT, NOT DECORATION.
  *
  * The homepage's four-cell strip under the hero links straight at these cards
@@ -86,51 +147,73 @@ type Flagship = {
   produces: [string, string, string];
 };
 
+/* THE FIVE ARE THE JOURNEY NOW, IN THE ORDER A JOB ACTUALLY MOVES.
+ *
+ * The heading over them has always promised "win better leads, quote faster,
+ * keep the crew moving, and get paid" — and quoting, scheduling and getting
+ * paid had no card of their own. Three of the four things the heading sells
+ * were inside a card called "Connected back office", while position 03, in the
+ * middle of the run, was Quick Stops: a real feature, and one that happens
+ * BETWEEN jobs rather than during one. A visitor reading down for "how do I
+ * send a quote" found the sales pitch for a route add-on instead.
+ *
+ * So the five are the five stages, Quick Stops has its own band underneath
+ * (where being a different KIND of thing is the point rather than a break in
+ * the sequence), and the back office is the cream section below — which is
+ * what that section already shows.
+ *
+ * THE IDS DID NOT ALL SURVIVE, and that is deliberate rather than careless:
+ * `back-office` and `quick-stops` are no longer FLAGSHIPS entries. The homepage
+ * links at BOTH by path (/features/back-office, /features/quick-stops), never
+ * by fragment, so nothing breaks; the one fragment the homepage uses is
+ * #website-builder, which is still here. The Quick Stops band still carries
+ * id="quick-stops" so an old link lands somewhere true.
+ */
 const FLAGSHIPS: Flagship[] = [
   {
     number: '01',
     id: 'website-builder',
-    title: 'One-click website',
-    body: 'Launch a complete, editable contractor site with Smart Intake connected from day one.',
+    title: 'Website',
+    body: 'Launch a complete, editable contractor site with the instant estimate wired in from day one.',
     href: '/features/website-builder',
     kicker: 'BUILD THE FRONT DOOR',
-    produces: ['Trade-matched pages', 'Intake form wired in', 'Your own domain'],
+    produces: ['Trade-matched pages', 'Instant estimate form', 'Your own domain'],
   },
   {
     number: '02',
     id: 'smart-intake',
-    title: 'AI Smart Intake',
-    body: 'Ask better questions, build a useful project summary and surface the leads that deserve attention first.',
+    title: 'AI intake',
+    body: 'Ask the follow-up questions your trade needs, write the job summary, and surface the leads worth answering first.',
     href: '/features/ai-intake',
     kicker: 'QUALIFY THE OPPORTUNITY',
     produces: ['A written job summary', 'Budget and urgency read', 'Leads ranked by value'],
   },
   {
     number: '03',
-    id: 'quick-stops',
-    title: 'Quick Stops',
-    body: 'Sell a nearby homeowner a priority visit at a fee you set — paid before you go, and on top of whatever the work itself comes to.',
-    href: '/features/quick-stops',
-    kicker: 'EARN BETWEEN JOBS',
-    produces: ['Openings in today’s route', 'Paid before you arrive', 'Your price, your radius'],
+    id: 'quotes',
+    title: 'Quotes and approvals',
+    body: 'Send an itemized quote with optional add-ons, take the signature on a phone, and collect the deposit before the truck moves.',
+    href: '/features/quotes',
+    kicker: 'PRICE IT AND GET IT SIGNED',
+    produces: ['Itemized quote with add-ons', 'E-signature on a phone', 'Deposit before scheduling'],
   },
   {
     number: '04',
-    id: 'client-portal',
-    title: 'Texts + client portal',
-    body: 'Keep every conversation, approval, update and payment connected to the right job.',
-    href: '/features/client-portal',
-    kicker: 'KEEP CUSTOMERS INFORMED',
-    produces: ['Two-way texting', 'Approvals and e-signature', 'Live job status'],
+    id: 'scheduling',
+    title: 'Scheduling and crew',
+    body: 'Turn an approved quote into a booked day, assign who is going, and plan the route without retyping the job.',
+    href: '/features/scheduling',
+    kicker: 'PUT IT ON THE CALENDAR',
+    produces: ['Approved quote → booked day', 'Crew assigned and tracked', 'Today’s route, planned'],
   },
   {
     number: '05',
-    id: 'back-office',
-    title: 'Connected back office',
-    body: 'Move from quote to schedule, crew, payment, review and recurring work without rebuilding the record.',
-    href: '/features/back-office',
-    kicker: 'RUN THE WORK',
-    produces: ['Quote → schedule → crew', 'Deposits and balances', 'Reviews and repeat visits'],
+    id: 'client-portal',
+    title: 'Customer texts and payments',
+    body: 'Two-way texting, on-my-way alerts, and one link where the homeowner approves, follows and pays.',
+    href: '/features/client-portal',
+    kicker: 'KEEP THEM INFORMED AND GET PAID',
+    produces: ['Two-way texting', 'On-my-way alerts', 'Deposits, balances and plans'],
   },
 ];
 
@@ -158,14 +241,14 @@ export default function FeaturesPage() {
           generated sheet and a wrapper would silently drop both. */}
       <section className="index-hero index-hero-beside" id="main-content">
         <p className="eyebrow">
-          <span aria-hidden="true">✦</span> THE FULL CONTRACTOR SUITE
+          <span aria-hidden="true">✦</span> THE COMPLETE CONTRACTOR WORKFLOW
         </p>
         <h1>
-          One system for the first click, <em>the final payment and everything between.</em>
+          Turn more website leads into <em>paid jobs</em>—without switching tools.
         </h1>
         <p>
-          Your website, leads, quotes, schedule, crew, customer communication and money share one
-          connected workflow—with no monthly subscription.
+          Your website, AI intake, quotes, scheduling, crew, customer texts and payments stay
+          connected in one job record.
         </p>
         <div className="hero-actions">
           {/* Was the app ROOT, which is the sign-in screen — the biggest button
@@ -174,9 +257,21 @@ export default function FeaturesPage() {
             {SIGNUP_LABEL} <span aria-hidden="true">→</span>
           </a>
           <a className="button secondary" href="#flagship-index">
-            Explore the suite
+            See the workflow
           </a>
         </div>
+
+        {/* THE FEE, WHERE THE DECISION IS MADE.
+            "No monthly subscription" was the loudest promise on the page and
+            the platform fee that pays for it was 4,900px below, in the closing
+            band — so a visitor learned the price after deciding, which reads as
+            a bait and switch even when every number is true. The rates come
+            from FEE_TIERS, so this line cannot drift from /pricing. */}
+        <p className="index-hero-fee">
+          No card, setup fee, or monthly subscription. A {LOWEST_FEE}–{HIGHEST_FEE} platform fee
+          applies only when a homeowner pays you.{' '}
+          <Link href="/pricing">See exactly how the fee works</Link>
+        </p>
 
         {/* One job, running past the reader. The bubbles marked `out` are built
             by the same functions that send the real texts — see hero-thread.ts
@@ -237,6 +332,18 @@ export default function FeaturesPage() {
         </div>
       </section>
 
+      {/* Four facts about the product, immediately after the claims that need
+          them. Not outcomes, not customers, not stars — see PROOF above for
+          why, and for where each number is read from. */}
+      <section className="index-proof" aria-label="What an account costs and covers">
+        {PROOF.map((cell) => (
+          <span key={cell.stat}>
+            <b>{cell.stat}</b>
+            <small>{cell.label}</small>
+          </span>
+        ))}
+      </section>
+
       <section className="flagship-index" id="flagship-index">
         <div className="index-heading">
           <p className="eyebrow">
@@ -277,6 +384,46 @@ export default function FeaturesPage() {
         </div>
       </section>
 
+      {/* QUICK STOPS, ON ITS OWN, BECAUSE IT IS A DIFFERENT KIND OF THING.
+          It used to be card 03 of five, between intake and the client portal —
+          in the middle of a sequence describing one job moving from a click to
+          a payment, on a page whose heading promises quoting. But a Quick Stop
+          is not a stage of a job; it is a second, smaller job sold into the gap
+          between two others. Below the sequence it reads as the extra it is,
+          and the id stays so an old /features#quick-stops link still lands. */}
+      <section className="route-band" id="quick-stops" aria-labelledby="route-title">
+        <div className="route-copy">
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> EARN MORE FROM EVERY ROUTE
+          </p>
+          <h2 id="route-title">
+            Sell a priority visit to the customer you were <em>already driving past.</em>
+          </h2>
+          <p>
+            A homeowner near today&rsquo;s route asks to be seen sooner. You approve the request,
+            set the fee and the window, and they pay for the visit before you go. The work itself is
+            quoted and invoiced exactly like any other job.
+          </p>
+          <Link className="route-link" href="/features/quick-stops">
+            Explore Quick Stops <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+        <ul className="route-points">
+          <li>
+            <b>You approve every request</b>
+            <small>Nothing lands on your calendar because somebody paid for it.</small>
+          </li>
+          <li>
+            <b>You set the priority visit fee</b>
+            <small>And the radius, the window and how many you will take.</small>
+          </li>
+          <li>
+            <b>Paid before you arrive</b>
+            <small>The window is confirmed when the visit fee clears, not before.</small>
+          </li>
+        </ul>
+      </section>
+
       {/* The light chapter. This is the break the page was missing: it reads as
           a separate chapter on cream instead of as one more dark band.
 
@@ -305,6 +452,41 @@ export default function FeaturesPage() {
         </div>
 
         <JobRecordStages />
+
+        {/* The back office had a card in the five until this pass, and this is
+            the section that actually shows it — so the link belongs here rather
+            than in a sixth card restating the four stages above it. */}
+        <p className="everything-more">
+          <Link href="/features/back-office">
+            See everything the back office runs <span aria-hidden="true">→</span>
+          </Link>
+        </p>
+      </section>
+
+      {/* THE OBJECTIONS, ANSWERED WHERE THEY ARE RAISED.
+          The page's own argument raises all six: "no monthly subscription"
+          raises the fee, "your own domain" raises the one you already own,
+          "in minutes" raises how long it really takes, and a system that holds
+          your customers and takes your money raises who owns what. Reuses the
+          homepage's <details> pattern, which works before hydration and is in
+          the tab order for free. */}
+      <section className="home-faq home-faq-dark" id="faq" aria-labelledby="features-faq-title">
+        <div className="home-faq-head">
+          <p className="eyebrow">
+            <span aria-hidden="true">✦</span> BEFORE YOU START
+          </p>
+          <h2 id="features-faq-title">The questions worth asking first.</h2>
+        </div>
+        {/* No `name` on the details: an exclusive accordion closes the answer
+            you were reading and hides every other one from find-in-page. */}
+        <div className="home-faq-list">
+          {FAQ.map((item) => (
+            <details key={item.q}>
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
+        </div>
       </section>
 
       <PageCTA
