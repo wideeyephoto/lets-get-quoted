@@ -364,17 +364,25 @@
    content — nobody wins a job they were never asked about — and the connecting
    rule is drawn in CSS rather than being four arrows in the document. */
 
-.journey {
+/* :global(.section-block)-SCOPED, because it had to be and was not: the shell
+   resets `.root ul, .root ol { margin: 0; padding: 0 }` at (0,1,1), which beat
+   a bare `.journey` at (0,1,0) — so the 2.2rem this rule has always asked for
+   was being dropped and the cards sat flush against the heading above them.
+   Measured at 390: margin-top 0px. The li margin is the other half of the same
+   reset (`.root li { margin-top: .45rem }`), which was adding 7px on top of the
+   grid's own 1rem gap between every pair of cards. */
+:global(.section-block) .journey {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
-  margin: 2.2rem 0 0;
+  margin: 1.5rem 0 0;
   padding: 0;
   list-style: none;
 }
 
-.journey li {
+:global(.section-block) .journey li {
   position: relative;
+  margin: 0;
   padding: 1.35rem 1.2rem 1.4rem;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -481,6 +489,75 @@
   font-weight: 700;
 }
 
+/* ---- where the trail goes next -------------------------------------------
+
+   Four names and nothing else, in place of the twelve-entry capability catalog
+   that used to close this page. Bodies were deliberately left off: a sentence
+   under each would restate the four beats directly above it.
+
+   :global(.section-block)-SCOPED, and that is load-bearing rather than tidy.
+   The flagship shell resets the elements themselves — `.root p { margin: 0 }`
+   and `.root ul, .root ol { margin: 0; padding: 0; list-style: none }`, both
+   at (0,1,1) — which outranks a lone module class at (0,1,0). The same is true
+   of `.root :global(a) { color: inherit }`, which a bare `.nextLinks a` only
+   ties with and then loses to on source order. The descendant form is (0,2,0)
+   and (0,2,1) and wins honestly, without !important. */
+
+:global(.section-block) .next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 1.1rem;
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+:global(.section-block) .nextLabel {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute-t55, var(--mute));
+}
+
+:global(.section-block) .nextLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:global(.section-block) .nextLinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  /* 44px of target including the padding, not 44px of words. */
+  min-height: 44px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+:global(.section-block) .nextLinks a:hover {
+  border-color: rgba(255, 122, 33, 0.45);
+  color: var(--flare, #ff7a21);
+}
+
+:global(.section-block) .nextLinks a span {
+  color: var(--flare, #ff7a21);
+}
+
 /* ---- the practical questions --------------------------------------------
 
    <details>, so it works before hydration, is in the tab order for free, and
@@ -563,10 +640,18 @@
   .faq summary i::after {
     transition: none;
   }
+  /* A media query adds no specificity, so this has to carry the same
+     :global(.section-block) prefix as the base rule or it never applies. */
+  :global(.section-block) .nextLinks a {
+    transition: none;
+  }
 }
 
 @media (max-width: 900px) {
-  .journey {
+  /* Scoped like the base rule. A media query adds no specificity, so a bare
+     .journey here would lose to :global(.section-block) .journey above and the
+     grid would simply never stack. */
+  :global(.section-block) .journey {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   /* The rule joins a row, and at two across the third card starts a new one —
@@ -584,7 +669,7 @@
 }
 
 @media (max-width: 560px) {
-  .journey {
+  :global(.section-block) .journey {
     grid-template-columns: minmax(0, 1fr);
   }
   .journey li::before {

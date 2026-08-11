@@ -7,11 +7,15 @@
 // component and stopped rendering the catalog at all. Today:
 //
 //   the COUNT      /pricing, /for/[trade], /founder
-//   the ENTRIES    the seven suite pages under /features, and
-//                  /features/website-builder — both via CapabilitySection
+//   the ENTRIES    the seven suite pages under /features, via CapabilitySection
 //
 // That matters when adding a category: entries in a category no page names are
-// entries nobody will ever see, however correct they are.
+// entries nobody will ever see, however correct they are. Four categories are
+// in that position today — clients, getting-found, leads and website — and
+// suite-feature-pages.test.ts asserts exactly which, so the list is a decision
+// rather than a discovery. 'website' joined it when /features/website-builder
+// dropped the capability band: twelve entries and 1,837px of phone screen,
+// restating claims the page had already made.
 //
 // Flip `favorite` to promote/demote a feature into the headline set.
 

@@ -87,11 +87,12 @@ function useSignedIn(): boolean {
    reads before the specific offer. */
 const NAV = [
   ['/features', 'Features'],
-  /* "Website + video" and not "Website": the video studio is the part of this
-     builder a contractor cannot get from the other ones, and the nav is where
-     somebody scanning for it would look. The "+" is the house pattern already
-     used by Quotes + e-sign, Crew + labor and Reviews + growth. */
-  ['/features/website-builder', 'Website + video'],
+  /* "Website" and not "Website + video", which it was for one release. The
+     video studio is real and worth selling, but a nav label names the
+     destination, and the destination is a website builder — the page behind it
+     sells video in a benefit and an answer, which is the right weight for a
+     feature of the thing rather than the thing. */
+  ['/features/website-builder', 'Website'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],
   ['/pricing', 'Pricing'],

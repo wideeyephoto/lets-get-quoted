@@ -125,6 +125,22 @@ describe('tap targets in the shared chrome', () => {
     expect(CSS).toMatch(/\.detail-back\)\s*\{[^}]*padding-block: 16px/);
   });
 
+  it('makes the wordmark yield, not the button', () => {
+    // A 44px minimum stops the button being SHORT. Nothing stopped it being
+    // NARROW: the header is a flex row, every item defaults to flex-shrink: 1,
+    // and the browser took the missing width from the widest item that would
+    // give. Measured at 390x844: "Build my free site →" was 144px of content
+    // in a 121px box, so the arrow and the right-hand padding were gone; at
+    // 320 the pill was a circle reading "Build m". The label is nowrap by
+    // design, so a narrower box does not reflow it, it truncates it.
+    expect(CSS).toMatch(/\.header-cta\)\s*\{[^}]*flex: 0 0 auto/);
+    // And something has to give instead. The logo is the only item in the row
+    // that can lose width without losing meaning, so below 430 it is sized by
+    // width and scales — the base rule is height: 40px, width: auto, which
+    // cannot shrink at all.
+    expect(CSS).toMatch(/\.site-header \.brand-logo\)\s*\{[^}]*width: clamp\(88px, 30vw, 147px\)/);
+  });
+
   it('keeps the fixed bar out of the home-indicator area', () => {
     expect(CSS).toContain('env(safe-area-inset-bottom, 0px)');
   });
@@ -192,12 +208,24 @@ describe('the website builder page', () => {
     expect(SRC).not.toContain('Go from no website to');
   });
 
-  it('asks for three answers, not eight steps', () => {
+  it('asks for three answers, and shows three', () => {
+    // It said "Three answers. One complete site." above a list of four for two
+    // releases — the fourth being "review, personalize and publish", which is
+    // the section immediately below it rather than an answer you supply.
     const steps = SRC.slice(SRC.indexOf('steps={['), SRC.indexOf('cta={{'));
-    expect([...steps.matchAll(/title: '/g)].length).toBe(4);
+    expect([...steps.matchAll(/title: '/g)].length).toBe(3);
     for (const s of ['Your business name', 'Your trade', 'Your service area']) {
       expect(steps).toContain(s);
     }
+    expect(SRC).toContain('stepsEyebrow="Three answers. One complete site."');
+  });
+
+  it('carries no step number in prose that a list somewhere else owns', () => {
+    // "Step seven and step eight" survived the eight-to-four compression and
+    // "entered in step four" survived the four-to-three one. A number written
+    // into a sentence about a list on the same page is a number nobody
+    // renumbers, so the page names what happens instead of where it sits.
+    expect(SRC).not.toMatch(/step (one|two|three|four|five|six|seven|eight|\d)/i);
   });
 
   it('compresses six benefits into the three things that happen to a visitor', () => {

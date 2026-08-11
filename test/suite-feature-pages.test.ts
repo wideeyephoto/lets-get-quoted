@@ -313,13 +313,23 @@ describe('the video studio is in the catalog and on the page', () => {
     }
   });
 
-  it('the builder page says video in its eyebrow, lede and a benefit', () => {
-    expect(WEBSITE).toMatch(/eyebrow="[^"]*video/i);
-    expect(WEBSITE).toMatch(/lede="[^"]*video/i);
+  it('sells video as a feature of the site, not as the page', () => {
+    // IT WAS THE PAGE FOR ONE RELEASE, and that was the overcorrection: the
+    // eyebrow, the lede, the hero button and the nav label all named video at
+    // once, on the page a contractor arrives at because they have no website.
+    // A feature of the thing must not outrank the thing. So it lives in a
+    // benefit and an answer, and the four places above are pinned CLEAR of it.
+    expect(WEBSITE).toMatch(/eyebrow="AI website builder for contractors"/);
+    expect(WEBSITE).not.toMatch(/eyebrow="[^"]*video/i);
+    expect(WEBSITE).not.toMatch(/lede="[^"]*video/i);
+    expect(WEBSITE).not.toMatch(/tertiary=\{\{ label: '[^']*video/i);
+
     const benefits = WEBSITE.slice(WEBSITE.indexOf('benefits={['), WEBSITE.indexOf('storyId='));
     expect(benefits).toMatch(/video/i);
     // Still three. The compression this page was rebuilt for stands.
     expect([...benefits.matchAll(/title: '/g)]).toHaveLength(3);
+    // And the answer, which is where the detail belongs.
+    expect(WEBSITE).toContain('What kind of video can I put on it?');
   });
 
   it('counts the six layouts the product actually has', () => {
@@ -342,8 +352,8 @@ describe('the video studio is in the catalog and on the page', () => {
 
   it('reaches the builder from the nav and the hero', () => {
     const chrome = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
-    expect(chrome).toMatch(/\['\/features\/website-builder', '[^']*video[^']*'\]/i);
-    expect(WEBSITE).toMatch(/tertiary=\{\{ label: '[^']*video[^']*', href: '\/demo\/sites' \}\}/i);
+    expect(chrome).toMatch(/\['\/features\/website-builder', '[^']*[Ww]ebsite[^']*'\]/);
+    expect(WEBSITE).toMatch(/tertiary=\{\{ label: '[^']+', href: '\/demo\/sites' \}\}/);
   });
 });
 
@@ -357,15 +367,21 @@ describe('the video studio is in the catalog and on the page', () => {
  * started rendering its category.
  */
 describe('every catalog category is rendered by some page', () => {
-  const RENDERED = [
-    ...SUITE.flatMap((entry) => entry.catalog),
-    'website', // /features/website-builder
-  ];
+  const RENDERED = SUITE.flatMap((entry) => entry.catalog);
 
-  it('the website category is on the builder page', () => {
+  it('the builder page links on instead of listing', () => {
+    // THE CATALOG CAME OFF THAT PAGE. Twelve entries, 1,837px of a phone
+    // screen, and every claim in them already made further up — measured at
+    // 390x844. What a visitor wants at the end of that page is not a longer
+    // list of what the site has; it is the page for whatever happens after the
+    // request lands. So four links replaced it, and the thing worth protecting
+    // is that they REACH somewhere: a chip pointing at a 404 would be worse
+    // than the list it replaced.
     const source = page('website-builder');
-    expect(source).toContain('<CapabilitySection');
-    expect(source).toContain("catalog={['website']}");
+    expect(source).not.toContain('<CapabilitySection');
+    const hrefs = [...source.matchAll(/href: '(\/features\/[a-z-]+)'/g)].map((m) => m[1]);
+    expect(hrefs.length).toBeGreaterThanOrEqual(3);
+    for (const href of hrefs) expect(existsSync(`src/app${href}/page.tsx`), href).toBe(true);
   });
 
   it('names only categories that exist', () => {
@@ -378,7 +394,14 @@ describe('every catalog category is rendered by some page', () => {
     // Not a failure — several are genuinely covered by the flagship pages in
     // prose rather than as a list. It is here so the gap is VISIBLE when a
     // category is added, instead of being discovered by a count that moved.
+    //
+    // 'website' joined this list when the builder page dropped its catalog, and
+    // that is the cost of the change, stated rather than hidden: the twelve
+    // website entries — video-sections, video-upload and video-checks among
+    // them — now raise the count on /pricing, /for/<trade> and /founder and
+    // appear as entries on no page. The builder page still SELLS video, in a
+    // benefit and an answer; what it no longer does is enumerate the category.
     const missing = FEATURE_CATEGORIES.map((c) => c.slug).filter((slug) => !RENDERED.includes(slug));
-    expect(missing.sort()).toEqual(['clients', 'getting-found', 'leads']);
+    expect(missing.sort()).toEqual(['clients', 'getting-found', 'leads', 'website']);
   });
 });

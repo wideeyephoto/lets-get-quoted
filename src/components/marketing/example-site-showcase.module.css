@@ -340,11 +340,16 @@
 
 /* ---- the still that does not move ---------------------------------------- */
 
-/* Capped at the frame's own width and given the smaller share of it. The still
-   is the supporting evidence, not a second headline act — at full band width it
-   came out larger than the walkthrough above it and swapped the two over. Which
-   is why it shares --frame rather than carrying a number of its own: any width
-   the video cannot reach is a width this must not reach either.
+/* A PROOF CARD, NOT A SECOND SCREENSHOT.
+   It was a 1fr/0.68fr split of the whole media column, which put a 640px-wide
+   still under a 1123px-wide video and cost the band 512 of its 1,832px at
+   1440x900 — a supporting image taking a third of the section it supports. The
+   image column is now a hard 300px ceiling and the whole thing is a bordered
+   card, so it reads as evidence attached to the walkthrough rather than as a
+   second act after it. Measured saving: ~240px at 1440.
+
+   Still capped by --frame, because any width the video cannot reach is a width
+   this must not reach either.
 
    .band-SCOPED, and that is the third time this shell has caught this file out.
    `.root p, .root figure, .root blockquote, .root dl, .root dd { margin: 0 }`
@@ -354,20 +359,22 @@
    video moved away from it. Measured at 1920: figure at x=105, video at x=390. */
 .band .support {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.68fr);
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(24px, 3.5vw, 48px);
+  gap: clamp(20px, 2.4vw, 32px);
   max-width: var(--frame);
-  margin: clamp(40px, 5vw, 64px) auto 0;
-  padding-top: clamp(32px, 4vw, 48px);
-  border-top: 1px solid #d1c9bd;
+  margin: clamp(28px, 3vw, 40px) auto 0;
+  padding: clamp(18px, 2vw, 24px);
+  border: 1px solid #d1c9bd;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .supportImg {
   width: 100%;
   height: auto;
   border: 1px solid #cfc7ba;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #07131d;
 }
 
@@ -398,9 +405,20 @@
   .band .support {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* Stacked, the image would take the whole card width and undo the point of
+     capping it — 750px of still on a tablet under a 700px video. */
+  .band .supportImg {
+    max-width: 340px;
+  }
 }
 
 @media (max-width: 720px) {
+  /* The band's own rhythm, on a screen where it is the whole width anyway.
+     clamp's 72px floor is tuned for the daylight a wide band needs beside a
+     centred column; a phone has no daylight to lose. */
+  .band {
+    padding-block: 52px;
+  }
   .stageMobile {
     width: min(292px, 68vw);
   }

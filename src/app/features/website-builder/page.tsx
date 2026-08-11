@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
-import { CapabilitySection } from '@/components/marketing/suite-feature-page';
 import { TRADES } from '@/lib/trades';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './website-builder.module.css';
@@ -52,6 +52,19 @@ const SITE = {
   high: '$13,200',
 };
 
+/* WHERE THE TRAIL GOES, in four links rather than in a twelve-entry catalog.
+   The page used to end its argument with the whole "Your website" category read
+   out of lib/features.ts — 1,837px on a phone, and every claim in it already
+   made further up. What a visitor actually wants at this point is not a longer
+   list of what the site has; it is the page for whatever happens after the
+   request lands. These are those pages, and nothing else. */
+const NEXT: { href: string; label: string }[] = [
+  { href: '/features/ai-intake', label: 'Smart Intake' },
+  { href: '/features/quotes', label: 'Quotes + e-sign' },
+  { href: '/features/scheduling', label: 'Scheduling' },
+  { href: '/features/payments', label: 'Payments' },
+];
+
 /* The four beats a visitor moves through, which is the page's whole argument
    about why a contractor site is not the same thing as a website. */
 const JOURNEY: { n: string; title: string; body: string }[] = [
@@ -95,13 +108,16 @@ const FAQ: { q: string; a: string }[] = [
 export default function WebsiteBuilderPage() {
   return (
     <FeatureDetailLayout
-      /* VIDEO IS IN THE EYEBROW because it is the part of this builder a
-         contractor cannot get from the other ones, and it was previously
-         mentioned nowhere on the page that sells the builder. What is claimed
-         is only what ships: six layouts, your own footage, and checks that tell
-         you when a clip will show a blank player. Not "we script your videos"
-         — nothing here writes a shot list. */
-      eyebrow="AI website builder, with video"
+      /* VIDEO IS NOT THE HEADLINE, and it was for one release.
+         The studio is real and worth selling — six layouts, your own footage,
+         checks that tell you when a clip will show a blank player — so it had
+         been pushed into the eyebrow, the lede, the hero button and the nav
+         label all at once. That is four places for a feature of the site to
+         outrank the site, on the page a contractor arrives at because they do
+         not have a website. It now lives where a capability belongs: in a
+         benefit and in an answer. What is claimed there is still only what
+         ships — nothing here writes a shot list. */
+      eyebrow="AI website builder for contractors"
       /* The old headline described the transition ("from no website to ready
          for business") and left the reader to work out what the site DOES. The
          outcome is the differentiator: other builders end at a contact form,
@@ -111,7 +127,7 @@ export default function WebsiteBuilderPage() {
           A contractor website that turns visits into <em>ready-to-quote jobs.</em>
         </>
       }
-      lede="Tell us your business name, trade and service area. We build the complete site — with video sections for the work you want seen, an instant estimate on the front page, and a request you can act on."
+      lede="Tell us your business name, trade and service area. We build the complete site — then connect every visitor to an instant estimate and a request you can act on."
       // Not the fee — the closing band states it in full, with the rate range
       // and Stripe's cut. What belongs here is what a contractor about to
       // generate a site wants to know: that it is theirs. Custom domains are
@@ -180,7 +196,7 @@ export default function WebsiteBuilderPage() {
          preview redraw — and it loads the real /themes route in its frame,
          so "preview templates" is what it does rather than a single
          example labelled as a gallery. */
-      tertiary={{ label: 'Preview templates and video', href: '/demo/sites' }}
+      tertiary={{ label: 'Preview site templates', href: '/demo/sites' }}
       proof={[
         {
           title: 'Minutes, not weeks',
@@ -192,7 +208,7 @@ export default function WebsiteBuilderPage() {
         },
         {
           title: 'Edit absolutely everything',
-          body: 'Your words, services, colours and areas.',
+          body: 'Your words, services, colors and areas.',
         },
         {
           title: 'Your domain stays yours',
@@ -215,7 +231,7 @@ export default function WebsiteBuilderPage() {
       benefits={[
         {
           title: 'Look established from click one',
-          body: 'Launch with polished service pages, local pages, trust content and FAQs — without starting from a blank screen. Put your own footage on them too: six video layouts, from a hero loop to a project story to a customer on camera.',
+          body: 'Launch with polished service pages, local pages, trust content and FAQs — without starting from a blank screen. Put your own footage on them too, in six video layouts.',
         },
         {
           title: 'Answer “how much?” while interest is high',
@@ -259,12 +275,17 @@ export default function WebsiteBuilderPage() {
       storyId="how-it-works"
       stepsEyebrow="Three answers. One complete site."
       stepsTitle="Go from “we need a website” to ready for business."
-      /* EIGHT STEPS BECAME FOUR.
+      /* EIGHT STEPS BECAME FOUR, AND THEN THREE.
          Steps one to four were "add business basics" followed by the three
          things business basics turns out to mean, so the list opened by
          counting the same action twice; seven and eight were publishing and
          what happens after it, which is a section of its own further down.
-         What a contractor actually has to supply is three answers. */
+
+         The fourth — review, personalize and publish — went the same way: the
+         eyebrow above it says "Three answers", the section immediately below
+         it is publishing with a panel of it, and reviewing your own draft is
+         not an answer you have to have ready. What a contractor supplies is
+         three things, and this now says three and shows three. */
       steps={[
         {
           title: 'Your business name',
@@ -276,11 +297,7 @@ export default function WebsiteBuilderPage() {
         },
         {
           title: 'Your service area',
-          body: 'Name the towns you cover. They become your local pages, and they are what tells a later request whether it is in your area or outside it.',
-        },
-        {
-          title: 'Review, personalise and publish',
-          body: 'Every word stays editable. Go live on the free subdomain now and connect your own domain whenever you are ready — publishing never waits on DNS.',
+          body: 'Name the towns you cover. They become your local pages, and they are what tells a later request whether it is in your area or outside it. Every word we generate stays editable before anything goes live.',
         },
       ]}
       cta={{
@@ -304,9 +321,9 @@ export default function WebsiteBuilderPage() {
             Other builders stop at &ldquo;submit.&rdquo; Yours keeps the job moving.
           </h2>
           <p>
-            A visitor should not fall into a disconnected inbox. The context they gave the
-            site &mdash; what the job is, where it is, when they want it, what it might cost
-            &mdash; travels with the request instead of being retyped by you.
+            The context a visitor gives the site &mdash; what the job is, where it is, when
+            they want it, what it might cost &mdash; travels with the request instead of
+            being retyped by you.
           </p>
         </div>
 
@@ -333,17 +350,37 @@ export default function WebsiteBuilderPage() {
             <small>The job context arrives with it.</small>
           </div>
         </div>
+
+        {/* Names only, deliberately. A sentence under each would be the same
+            claim the beats above have just made, one row lower. */}
+        <div className={styles.next}>
+          <p className={styles.nextLabel} id="next-label">
+            What happens to that request
+          </p>
+          <ul className={styles.nextLinks} aria-labelledby="next-label">
+            {NEXT.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href}>
+                  {item.label} <span aria-hidden="true">&rarr;</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       <section className="section-block" id="publish" aria-labelledby="publish-title">
         <div className={styles.sectionHead}>
-          <p className="eyebrow">Step seven and step eight</p>
+          {/* Not "step seven and step eight". It said that for one release
+              after the eight steps became four, which is the failure mode of
+              writing a number into prose that describes a list somewhere else
+              on the page. Named by what happens instead. */}
+          <p className="eyebrow">The last answer, and the first request</p>
           <h2 id="publish-title">Publishing is one action. What arrives after it is the point.</h2>
           <p>
-            Both panels below are {SITE.company} &mdash; the same invented business as the
-            site preview above, a few minutes later. Publishing puts the site live on the
-            free subdomain immediately; the custom domain is a separate switch you can throw
-            whenever the registrar paperwork is done, and it never blocks going live.
+            Both panels are {SITE.company} &mdash; the same invented business as the preview
+            above, a few minutes later. Publishing goes live on the free subdomain at once;
+            a custom domain is a separate switch that never blocks it.
           </p>
         </div>
 
@@ -398,7 +435,7 @@ export default function WebsiteBuilderPage() {
 
           <ExampleFrame
             label={`The first request the published site sends you — the same job the visitor priced in the preview above.`}
-            note="Invented request. The service-area line is derived from the towns you entered in step four; no per-request mileage is calculated."
+            note="Invented request. The service-area line is derived from the towns you named as your service area; no per-request mileage is calculated."
           >
             <div className={styles.panelStack}>
               <div className={styles.rowTop}>
@@ -437,20 +474,6 @@ export default function WebsiteBuilderPage() {
           </ExampleFrame>
         </div>
       </section>
-
-      {/* WHAT THE SITE ACTUALLY SHIPS WITH, read out of lib/features.ts rather
-          than restated here — the same catalog /pricing counts and the suite
-          pages list. It is on this page because the video studio's entries had
-          nowhere else to appear: /features stopped rendering the catalog when
-          its "everything" band became the job-record component, so three real
-          features were raising a number on /pricing and showing up in no list
-          anywhere. A catalog nothing renders is a catalog nobody maintains. */}
-      <CapabilitySection
-        catalog={['website']}
-        eyebrow="Everything the site ships with"
-        title="The whole front door, including the video."
-        note="Read from the product's own feature catalog rather than written here, so this page cannot describe a website builder that no longer exists."
-      />
 
       {/* ------------------------------------------------------------------
           THE PRACTICAL QUESTIONS.

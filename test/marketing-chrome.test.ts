@@ -144,14 +144,15 @@ describe('the marketing nav', () => {
     expect(CHROME.match(/NAV\.map\(/g)?.length).toBe(3);
   });
 
-  it('carries a website link, and says video in the label', () => {
+  it('carries a website link, and names the destination', () => {
     // Matched on the DESTINATION, not the exact words: the label is marketing
-    // copy and has already changed once ("Website" -> "Website + video"). What
-    // must not change silently is that the nav reaches the builder at all, and
-    // that the label still names the thing the page was repositioned around.
+    // copy and has now changed twice ("Website" -> "Website + video" ->
+    // "Website"). What must not change silently is that the nav reaches the
+    // builder at all, and that the label says what is at the end of it — a nav
+    // label names a page, not the feature of it we happen to be pushing.
     const website = entries.find((entry) => entry.href === '/features/website-builder');
     expect(website, 'nothing in NAV reaches the website builder').toBeDefined();
-    expect(website?.label).toMatch(/video/i);
+    expect(website?.label).toMatch(/website/i);
   });
 
   it('points every entry at a route that exists on disk', () => {

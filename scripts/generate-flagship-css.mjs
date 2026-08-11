@@ -5008,11 +5008,45 @@ const TWEAKS = `
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  /* AND IT IS NOT THE THING THAT SHRINKS.
+     The header is a flex row and every item in it defaults to flex-shrink: 1,
+     so when the row ran out of room the browser took it from the widest item
+     that would give — which was the button. Measured at 390x844: content 144px
+     inside a 121px box, so the arrow was gone and the right-hand padding with
+     it; at 320 the pill was a circle reading "Build m". The label is
+     white-space: nowrap by design, so shrinking the box does not reflow it, it
+     just hides the end of it. */
+  flex: 0 0 auto;
 }
 
 /* min-width as well as width: the width was already 44 and lost to something
    narrower, and a minimum cannot be outbid by a smaller length. */
 .root :global(.nav-toggle) { min-width: 44px; min-height: 44px; flex: 0 0 auto; }
+
+/* WHAT GIVES INSTEAD, on a phone: the wordmark.
+   With the button pinned, something else has to yield or the row overflows —
+   at 320 the three items and their gutters want 409px. The logo is the only
+   item that can lose width without losing meaning, so below 430 it is sized by
+   WIDTH rather than by height and scales with the viewport (the base rule is
+   height: 40px, width: auto, which cannot shrink at all). Its floor is 88px,
+   which still reads as the wordmark.
+
+   Measured after: 335px of content at 390 and 314px at 320, both inside the
+   viewport, with the arrow present at every width above 430 and the label
+   whole at every width. */
+@media (max-width: 430px) {
+  .root :global(.site-header) { gap: 10px; padding-inline: 14px; }
+  .root :global(.site-header .brand-logo) {
+    height: auto;
+    width: clamp(88px, 30vw, 147px);
+  }
+  .root :global(.site-header .brand-logo img) { height: auto; width: 100%; }
+  .root :global(.header-cta) { padding-inline: 10px; }
+  /* The arrow is the least informative pixel in the row and the first thing to
+     go when the row is genuinely out of room. The button still says what it
+     does. */
+  .root :global(.header-cta > span) { display: none; }
+}
 
 /* THE PADDING IS THE TARGET, NOT THE TYPE.
    The label stays 10px and the row stays where it was: the extra height is

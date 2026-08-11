@@ -279,6 +279,16 @@ describe('the frame fills the band without outgrowing the screen', () => {
     expect(CSS).toMatch(/--frame:[^;]*1425px/);
   });
 
+  it('keeps the still a proof card rather than a second act', () => {
+    // It was a 1fr/0.68fr split of the whole media column: a 640px still under
+    // a 1123px video, 512px of the band's 1,832px at 1440x900. The image column
+    // is now a hard ceiling, and it has to stay one when the card stacks —
+    // otherwise a tablet gets 750px of screenshot under a 700px video.
+    expect(CSS).toMatch(/grid-template-columns:\s*minmax\(0,\s*300px\)/);
+    const narrow = CSS.slice(CSS.indexOf('@media (max-width: 900px)'));
+    expect(narrow).toMatch(/\.band \.supportImg\s*\{[^}]*max-width:\s*340px/);
+  });
+
   it('scopes the still under .band, or the shell eats both its margins', () => {
     // `.root p, .root figure, ... { margin: 0 }` is (0,1,1) and a bare .support
     // is (0,1,0). This is the third rule in this file to lose that fight.
