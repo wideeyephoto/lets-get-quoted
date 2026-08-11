@@ -33,3 +33,6 @@ build/
 _*.txt
 _*.mjs
 _e2e-*
+
+# Seed manifests — ids of rows a seeder wrote, so --undo can delete exactly those.
+scripts/.seed-*.json
