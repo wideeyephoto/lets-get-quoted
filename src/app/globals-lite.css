@@ -7032,23 +7032,66 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 
 /* ── Taking the quote away with you ──────────────────────────────────────────
    Print is also "save as PDF" everywhere that matters. What prints is the
-   quote: the chrome, the forms and the rest of the record are not paperwork. */
+   quote: the chrome, the forms and the rest of the record are not paperwork.
+
+   INK ON PAPER, STATED EXPLICITLY. This page renders on a dark ground, and no
+   browser prints background colours by default — so stripping the panel
+   backgrounds without also setting a text colour produced a page of white type
+   on white paper. Every colour below is forced, because inheriting from a dark
+   theme is the whole failure mode. */
 @media print {
+  /* The app's ground is a dark gradient. It is never printed, which is exactly
+     why the type on top of it has to be re-coloured rather than left to
+     inherit. */
+  body { background: #fff !important; }
+  .client-job-dashboard,
+  .cbrand {
+    color-scheme: light;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .client-job-dashboard *,
+  .cbrand * {
+    color: #111 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  /* The letterhead stays: a quote with no contractor on it is not a document. */
+  .cbrand { border-bottom: 1px solid #999 !important; }
+
   .client-job-dashboard .client-attention-card,
   .client-job-dashboard .detail-grid,
   .client-job-dashboard .client-ask,
   .client-job-dashboard .quote-doc-print,
   .client-job-dashboard .quote-doc-sign,
-  .cbrand-actions {
+  .client-job-dashboard .client-secure-note,
+  .cbrand-actions,
+  .cbrand-foot {
     display: none !important;
   }
   .client-job-dashboard .panel,
   .client-job-dashboard .workspace-hero {
-    border: none;
-    box-shadow: none;
-    background: none;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 0 1.2rem !important;
   }
-  .quote-doc-addon-btn { display: none !important; }
+  .client-job-dashboard .quote-doc-line,
+  .client-job-dashboard .quote-doc-addon,
+  .client-job-dashboard .quote-doc-group { break-inside: avoid; }
+  .client-job-dashboard .quote-doc-total {
+    border-top: 2px solid #111 !important;
+    padding-top: 0.5rem;
+  }
+  /* Rules the eye needs once the fills are gone. */
+  .client-job-dashboard .quote-doc-line,
+  .client-job-dashboard .quote-doc-addon { border-bottom: 1px solid #ccc !important; }
+  .client-job-dashboard .quote-doc-head { border-bottom: 1px solid #999 !important; }
+  .quote-doc-addon-btn,
+  .quote-doc-addon-input { display: none !important; }
+  /* An unticked add-on is not part of what was quoted, so it should not print
+     as though it might be. */
+  .quote-doc-addon:not(.is-selected) { opacity: 0.55; }
 }
 
 .client-attention-card {
@@ -8618,23 +8661,6 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 }
 .client-selection-ask .btn { justify-self: start; }
 .client-selection-asked { margin: 0.7rem 0 0; font-size: 0.85rem; color: var(--ink-lime-1); }
-
-/* The order sheet. Printing the job page gives the supplier the decisions and
-   their product codes, and nothing else on the page. */
-@media print {
-  body * { visibility: hidden; }
-  .selection-board, .selection-board * { visibility: visible; }
-  .selection-board { position: absolute; inset: 0; color: #000; }
-  .selection-send,
-  .selection-templates,
-  .selection-new-form,
-  .selection-option-form,
-  .selection-option-edit,
-  .selection-move,
-  .selection-chosen .btn,
-  .selection-option-cost .icon-btn { display: none !important; }
-  .selection-card { break-inside: avoid; border: 1px solid #ccc; margin-bottom: 0.5rem; }
-}
 
 /* Selection board — homeowner side. Options as cards, because choosing a tap
    from a table of rows is not how anybody chooses a tap. */
