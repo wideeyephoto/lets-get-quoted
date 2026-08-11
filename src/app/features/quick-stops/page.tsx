@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import QuickStopPanel from '@/components/quick-stop-panel';
+import { QuickStopIcon } from '@/components/quick-stop-icons';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   QUICK_STOP_STATUS_LABEL,
@@ -165,6 +166,60 @@ const NEVER = [
 const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS);
 const maxFee = centsToDollars(DEFAULT_QUICK_STOP_MAX_FEE_CENTS);
 
+/* THE MIDDLE OF THE BAND, NOT THE TOP.
+ *
+ * The dashboard explainer computes this from the account's own configured fee
+ * range and says why: using the highest fee available would produce the most
+ * flattering number on the page, which is the wrong instinct for a figure
+ * somebody might plan around. A logged-out visitor has no configured range, so
+ * this is the middle of the SHIPPED default band — the same two constants the
+ * rules grid and the first FAQ answer already print, which is what stops this
+ * number and those ones drifting apart.
+ *
+ * Both are derived, not typed: at $50–$250 they read $150 and $7,800, and if
+ * the band ever moves they move with it. */
+const typicalFee = Math.round((minFee + maxFee) / 2);
+const yearlyFee = typicalFee * 52;
+
+/* The four things a contractor is promised, and the four beats of the flow.
+ *
+ * Lifted from the explainer on /dashboard/quick-stops, which is the version a
+ * contractor sees once they are inside. A visitor deciding whether to sign up
+ * and an owner deciding whether to switch it on are asking the same question,
+ * and there is no honest reason for the answer to be two different documents.
+ *
+ * The wording is theirs. "Priority area you've drawn" and "texted and emailed
+ * the moment it lands" are both facts this page did not previously carry. */
+const PROMISES = [
+  'You approve every request',
+  'You set the time',
+  'You set the fee',
+  'Nothing books until payment clears',
+] as const;
+
+const FLOW = [
+  {
+    icon: 'route',
+    title: 'We find the right jobs',
+    body: 'Customers near your route that day are offered it — plus anyone inside a priority area you have drawn, which is how you say “this neighbourhood is worth the extra drive”.',
+  },
+  {
+    icon: 'bell',
+    title: 'You get the request',
+    body: 'The job, the address, the customer’s details and how far off your route they are — texted and emailed to you the moment it lands.',
+  },
+  {
+    icon: 'tag',
+    title: 'You make an offer',
+    body: 'Pick the arrival window and the fee that makes it worth doing. Or decline, and it stays an ordinary lead.',
+  },
+  {
+    icon: 'check',
+    title: 'The customer chooses',
+    body: 'They pay the fee and it is confirmed, or they skip it and carry on as a normal enquiry. Either way you keep the lead.',
+  },
+] as const;
+
 /* Answers checked against the product: the fee band, the detour limit, the
    visit ceiling and the daily cap are the same constants the rules list reads,
    the payment deadline is DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS, and the
@@ -217,7 +272,10 @@ export default function QuickStopsPage() {
          revenue idea, not a website. Same free account either way; the words
          are the ones they came for. */
       primary={{ label: 'Start free with Quick Stops' }}
-      secondary={{ label: 'See the 3-step flow', href: '#how-it-works' }}
+      /* It said "See the 3-step flow" and landed on a six-rung lifecycle ladder
+         headed "Two gates, and both of them are people." Now it lands on the
+         flow, which is four beats and says so. */
+      secondary={{ label: 'See the flow, start to finish', href: '#how-it-works' }}
       tertiary={{ label: 'See Quick Stops in the demo', href: '/demo/quick-stops' }}
       demo={
         <ExampleFrame
@@ -268,37 +326,95 @@ export default function QuickStopsPage() {
           body: 'Somebody two streets away gets a real arrival window and a price instead of an open-ended promise to call them back.',
         },
       ]}
-      stepsTitle="You approve the job, the price and the detour. The homeowner confirms with payment."
-      /* SEVEN BECAME THREE.
-         "Spot an opening", "a nearby request is screened in", "review nearby
-         demand", "set the offer", "the offer goes to the homeowner", "they pay
-         or it expires", "go only when paid" is one flow described at the
-         resolution of a spec. Three of those seven are the screening rules,
-         which have their own section; two more are halves of the same beat.
-         What a contractor needs to picture is: something nearby matches, you
-         name your terms, they pay. */
-      steps={[
-        {
-          title: 'A nearby request matches your rules',
-          body: 'A request close to your route is checked against the location and time limits you set, and against a fixed list of unsafe and out-of-scope work. Only what passes both is put in front of you — with the job, the photos, roughly how long it should take and how far off your route it sits.',
-        },
-        {
-          title: 'You choose the price and the window',
-          body: `Set the service price and the arrival window, then send the offer. Sending it commits you to nothing: until they pay, your day is unchanged, and the offer lapses on its own after ${DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes if they do not take it.`,
-        },
-        {
-          title: 'They pay, and the stop is booked',
-          body: 'The visit reaches your calendar after the homeowner has completed payment — never before it.',
-        },
-      ]}
+      /* THE STEPS SECTION IS GONE, AND THE FLOW BELOW REPLACED IT.
+         It held the same sequence in three beats. Keeping both would have put
+         two flows and a six-rung lifecycle ladder on one page — the third
+         telling of one story. What the four-beat version adds is where the
+         work comes from (route plus a priority area you drew) and that the
+         request is texted and emailed the moment it lands, neither of which
+         this page carried. What the three said and it does not — the screening
+         list, and an offer lapsing on its own — is the lifecycle ladder's
+         subject a section further down, said there at full length. */
+      afterBenefits={
+        <section className={styles.pitch} id="how-it-works" aria-labelledby="quick-stops-pitch-title">
+          <div className={styles.pitchGrid}>
+            <div>
+              <p className={styles.kicker}>
+                <QuickStopIcon name="spark" /> Matched to the route you&rsquo;re already driving
+              </p>
+              <h2 id="quick-stops-pitch-title" className={styles.pitchTitle}>
+                Earn more from customers willing to <span className={styles.accent}>pay for speed</span>
+              </h2>
+              <p className={styles.pitchLede}>
+                Quick Stops lets nearby customers pay to be fitted in sooner than your normal
+                schedule. You review the request, choose the arrival window, set the fee, and accept
+                only when it suits you.
+              </p>
+
+              <ul className={styles.promises}>
+                {PROMISES.map((promise) => (
+                  <li key={promise}>
+                    <QuickStopIcon name="check" /> {promise}
+                  </li>
+                ))}
+              </ul>
+
+              {/* No button. The hero is two sections up with the same ask on it,
+                  and the closing band carries it again — a third identical
+                  offer between them is not a third chance, it is noise. This
+                  line is the part that was doing work: it answers "what am I
+                  committing to", which is the question the promises raise. */}
+              <p className={styles.pitchNote}>Pause or change it whenever you like.</p>
+            </div>
+
+            {/* DELIBERATELY THE SMALLEST TYPE IN THE BLOCK. The dashboard drew
+                this as a glowing card with the year figure as the largest number
+                on the page, and everything about that said forecast. It is one
+                multiplication — a fee times fifty-two — so it is drawn as a
+                caption and the conditional is in the sentence rather than in a
+                footnote under it. */}
+            <aside className={styles.math} aria-label="What a Quick Stop is worth">
+              <p className={styles.mathLabel}>The arithmetic</p>
+              <p className={styles.mathLine}>
+                <strong>${typicalFee}</strong> a visit. One a week for a year would be{' '}
+                <strong>${yearlyFee.toLocaleString('en-US')}</strong>.
+              </p>
+              <p className={styles.mathNote}>
+                That is a multiplication, not a projection — nothing here says anyone will ask. $
+                {typicalFee} is the middle of the ${minFee}&ndash;${maxFee} band, and you name the fee
+                on every single request.
+              </p>
+            </aside>
+          </div>
+
+          <h3 className={styles.flowTitle}>The flow, start to finish</h3>
+          <ol className={styles.flow}>
+            {FLOW.map((step, index) => (
+              <li key={step.title} className={styles.flowStep}>
+                <span className={styles.flowBadge}>
+                  <QuickStopIcon name={step.icon} className={styles.flowIcon} />
+                  {/* Rhythm, not information — the heading carries the meaning
+                      and "1 We find the right jobs" read aloud is noise. */}
+                  <span className={styles.flowNum} aria-hidden="true">
+                    {index + 1}
+                  </span>
+                </span>
+                <strong>{step.title}</strong>
+                <p>{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      }
       cta={{
         title: 'Make the route you already drive earn more.',
         note: `No monthly fee. You pay a small platform fee only on money you actually collect, plus Stripe’s ${STRIPE_PROCESSING_NOTE}.`,
       }}
     >
-      {/* The hero's second button lands here, so the section needs a name a
-          fragment can address. */}
-      <section className="section-block" id="how-it-works" aria-labelledby="quick-stops-lifecycle-title">
+      {/* #how-it-works moved up to the flow, which is what that fragment
+          promises. This keeps an addressable name of its own — the ladder is
+          the page's answer to "where can it stop", not to "how does it work". */}
+      <section className="section-block" id="two-gates" aria-labelledby="quick-stops-lifecycle-title">
         <div>
           <p className="eyebrow">Where a request can stop</p>
           <h2 id="quick-stops-lifecycle-title">Two gates, and both of them are people.</h2>

@@ -308,7 +308,10 @@ describe('the shared layout gained two optional slots', () => {
   });
 
   it('leaves the pages that still use those sections alone', () => {
-    for (const slug of ['ai-intake', 'quick-stops', 'client-portal', 'website-builder']) {
+    // quick-stops dropped out of this list when its flow moved into
+    // afterBenefits — four beats with icons, in place of the three the layout
+    // was drawing. See the quick stops describe block below.
+    for (const slug of ['ai-intake', 'client-portal', 'website-builder']) {
       expect(source(slug), slug).toContain('steps={[');
     }
   });
@@ -484,11 +487,62 @@ describe('the quick stops page', () => {
     );
   });
 
-  it('describes the flow in three beats rather than seven', () => {
-    const steps = SRC.slice(SRC.indexOf('steps={['), SRC.indexOf('cta={{'));
-    expect([...steps.matchAll(/title: '/g)].length).toBe(3);
-    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('stepsTitle='));
+  it('describes the flow once, in the four beats the dashboard uses', () => {
+    // It was seven, then three in the layout's own steps band. It is now the
+    // same four a signed-in contractor reads on /dashboard/quick-stops — and
+    // the layout's band is gone, because two flows and a six-rung lifecycle
+    // ladder is one story told three times.
+    expect(SRC).not.toContain('stepsTitle=');
+    expect(SRC).not.toContain('steps={[');
+    const flow = SRC.slice(SRC.indexOf('const FLOW = ['), SRC.indexOf('export default'));
+    expect([...flow.matchAll(/title: '/g)].length).toBe(4);
+    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('afterBenefits={'));
     expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
+  });
+
+  it('carries the two facts the old three beats did not', () => {
+    // The reason the four are worth the swap rather than a restyle of the three.
+    expect(SRC).toContain('priority area you have drawn');
+    expect(SRC).toContain('texted and emailed to you the moment it lands');
+  });
+
+  it('states the earnings as arithmetic, and derives every digit of it', () => {
+    // The dashboard explainer's rule, which this inherits: the middle of the
+    // band and not the top, because the top is the most flattering number
+    // available and somebody might plan around it.
+    expect(SRC).toContain('const typicalFee = Math.round((minFee + maxFee) / 2)');
+    expect(SRC).toContain('const yearlyFee = typicalFee * 52');
+    // $150 and $7,800 are what those constants currently produce. Neither may
+    // appear as a literal, or the day the fee band moves the page keeps
+    // quoting the old one.
+    expect(SRC).not.toMatch(/\$150\b/);
+    expect(SRC).not.toMatch(/7,?800/);
+    // And it is labelled as the multiplication it is.
+    expect(SRC).toContain('That is a multiplication, not a projection');
+    expect(SRC).not.toMatch(/\b(forecast|projected|earn up to|on average|typically earn)\b/i);
+  });
+
+  it('sends the hero button somewhere that matches its label', () => {
+    // It read "See the 3-step flow" and landed on a six-rung ladder headed
+    // "Two gates, and both of them are people."
+    expect(SRC).not.toContain('See the 3-step flow');
+    expect(SRC).toContain("label: 'See the flow, start to finish', href: '#how-it-works'");
+    expect(SRC).toContain('id="how-it-works" aria-labelledby="quick-stops-pitch-title"');
+    // The ladder kept an addressable name of its own.
+    expect(SRC).toContain('id="two-gates"');
+  });
+
+  it('draws the icons from the set the dashboard draws from', () => {
+    const ICONS = readFileSync('src/components/quick-stop-icons.tsx', 'utf8');
+    const DASH = readFileSync('src/app/dashboard/quick-stops/QuickStopExplainer.tsx', 'utf8');
+    expect(SRC).toContain("from '@/components/quick-stop-icons'");
+    expect(DASH).toContain("from '@/components/quick-stop-icons'");
+    // No second copy of the path data anywhere.
+    expect(DASH).not.toContain('const ICONS: Record<string, string>');
+    expect(SRC).not.toContain('<path d=');
+    for (const name of ['route', 'bell', 'tag', 'check', 'spark']) {
+      expect(ICONS, name).toContain(`${name}: '<`);
+    }
   });
 
   it('makes the denials and the limits one section about control', () => {
