@@ -13,6 +13,7 @@ import { loadClientMilestones } from '@/lib/milestones-data';
 import type { MilestoneStatus } from '@/lib/milestones';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 import { pickBusinessName } from '@/lib/business-name';
+import { toClientFeed, clientSafeText, type ClientFeedItem } from '@/lib/client-feed';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -76,8 +77,16 @@ export type ClientJobDashboard = {
     scheduled_time: string | null;
     schedule_label: string;
     quote_items: QuoteItem[];
+    /**
+     * What the work is, in words the customer can be shown. Already put through
+     * clientSafeText — the raw column carries the intake form's triage notes
+     * (AI estimate range, contact preference, lead timing) appended to whatever
+     * the homeowner actually typed. See lib/client-feed.
+     */
+    scope: string | null;
   };
-  feed: JobFeedEvent[];
+  /** Curated, not filtered. See toClientFeed — unknown event kinds render nothing. */
+  feed: ClientFeedItem[];
   payments: Payment[];
   invoices: Invoice[];
   tasks: { title: string; done: boolean }[];
@@ -91,6 +100,12 @@ export type ClientJobDashboard = {
     client_notes: string | null;
   } | null;
   quoteApproved: boolean;
+  /**
+   * Narrower than quoteApproved, which is also true once the owner moves the job
+   * along themselves. Only this one means "you pressed approve", so only this
+   * one may render "Thanks — you're all set" at the customer.
+   */
+  quoteApprovedByClient: boolean;
   depositBlocksScheduling: boolean;
   // Present when the job was quoted on Payment Plan terms. All money in dollars
   // except the *Cents fields; balances derive only from webhook-confirmed paid
@@ -328,7 +343,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     admin.from('sites').select(CONTRACTOR_BRAND_COLUMNS).eq('account_id', access.account_id).maybeSingle(),
     admin
       .from('jobs')
-      .select('id, ref, client_name, address, status, scheduled_for, scheduled_time')
+      .select('id, ref, client_name, address, status, scheduled_for, scheduled_time, scope')
       .eq('account_id', access.account_id)
       .eq('id', access.job_id)
       .maybeSingle(),
@@ -392,12 +407,18 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   // how they intend to invoice, and an untouched stage is exactly that.
   const milestones = await loadClientMilestones(admin, access.account_id, access.job_id);
 
-  const feed = sortJobFeed([
+  const visibleEvents = sortJobFeed([
     ...feedResult,
     ...createLinkedFeedItems(feedResult, (payments ?? []) as Payment[], (invoices ?? []) as Invoice[], access.account_id, access.job_id),
   ]).filter((event) => event.visibility === 'client' || event.visibility === 'client_financial');
 
-  const quoteApproved = feed.some((event) => event.kind === 'quote_approved') || job.status !== 'new_lead';
+  const quoteApprovedByClient = visibleEvents.some((event) => event.kind === 'quote_approved');
+  const quoteApproved = quoteApprovedByClient || job.status !== 'new_lead';
+
+  // Rewritten for the reader, not filtered for them: the visibility flag says a
+  // row MAY be shown, and toClientFeed decides what of it actually is. See
+  // lib/client-feed for what was leaking before this.
+  const feed = toClientFeed(visibleEvents);
 
   // Payment plan (if this job was quoted on installment terms). Defensive: an
   // un-migrated DB (no payment_plans table) simply shows no plan.
@@ -461,6 +482,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),
       quote_items: quoteItems,
+      scope: clientSafeText(job.scope as string | null),
     },
     feed,
     payments: (payments ?? []) as Payment[],
@@ -469,6 +491,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     milestones,
     scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
     quoteApproved,
+    quoteApprovedByClient,
     depositBlocksScheduling,
     paymentPlan,
   };
@@ -573,7 +596,17 @@ export async function applyQuoteAcceptance(
 
 // Records approval idempotently, promotes the job out of the quote stage,
 // advances the originating lead to won, and alerts the owner (best-effort).
-export async function approveClientJobQuote(clientToken: string, selectedAddonIds: string[] = []): Promise<void> {
+export async function approveClientJobQuote(
+  clientToken: string,
+  selectedAddonIds: string[] = [],
+  /**
+   * The name they typed to accept. Optional so every existing caller (and a
+   * legacy single-amount quote with no signature field) behaves exactly as
+   * before — an unsigned acceptance is still an acceptance, it just has no
+   * evidence attached.
+   */
+  signerName?: string | null,
+): Promise<void> {
   const admin = createAdminClient();
   const tokenHash = hashToken(clientToken);
   const now = new Date().toISOString();
@@ -626,6 +659,24 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
 
   const acceptedAddons = items.filter((item) => item.kind === 'addon' && selectedAddonIds.includes(item.id));
   const addonNote = acceptedAddons.length > 0 ? ` Added: ${acceptedAddons.map((item) => item.label).join(', ')}.` : '';
+
+  // The signature on the QUOTE, which is a different agreement from the payment
+  // plan's authorization and used to have nowhere to live. Best-effort and
+  // separate from the acceptance itself: this ships ahead of its migration, and
+  // an acceptance must never fail because a column isn't there yet.
+  const signature = (signerName ?? '').toString().trim().slice(0, 120);
+  if (signature) {
+    try {
+      await admin
+        .from('jobs')
+        .update({ quote_signer_name: signature, quote_signed_at: now })
+        .eq('account_id', accountId)
+        .eq('id', jobId)
+        .is('quote_signed_at', null);
+    } catch (error) {
+      console.error(`Could not record the quote signature for job ${jobId}:`, error instanceof Error ? error.message : error);
+    }
+  }
 
   // The three things acceptance always means, whoever triggered it.
   await applyQuoteAcceptance(admin, accountId, jobId, {

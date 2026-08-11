@@ -8442,6 +8442,12 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .client-plan-authorize label { font-size: 0.82rem; font-weight: 700; }
 .client-plan-fineprint { margin: 0; font-size: 0.74rem; line-height: 1.45; opacity: 0.62; }
 .client-plan-cta { justify-self: start; }
+/* The schedule's own sum, so "this splits the same total, nothing more" can be
+   checked by reading rather than by adding. */
+.client-plan-sum { border-color: var(--edge-t18); background: rgba(var(--tint), 0.06); font-weight: 700; }
+/* Shown INSTEAD of the authorize form while the quote is unapproved: the
+   schedule is information at that point, not a form to sign. */
+.client-plan-later { margin: 0; font-size: 0.84rem; line-height: 1.55; color: var(--muted); }
 @media (max-width: 560px) { .client-plan-stats { grid-template-columns: 1fr; } .client-plan-row { grid-template-columns: 1fr auto; } .client-plan-status { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .quote-builder-subpop-row { grid-template-columns: 1fr; } }
 
@@ -8552,6 +8558,60 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font-size: 0.8rem;
   opacity: 0.7;
 }
+
+/* ── The quote as a document ─────────────────────────────────────────────────
+   It was a price list with a button. A quote names the job it is for, and can
+   be taken away and read on paper next to somebody else's. */
+.quote-doc-head {
+  display: grid;
+  gap: 0.3rem;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.95rem;
+  border-bottom: 1px solid var(--edge-t12);
+}
+.quote-doc-head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.quote-doc-ref {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+.quote-doc-print { font-size: 0.78rem; font-weight: 700; }
+.quote-doc-where { margin: 0; font-size: 0.86rem; color: var(--muted); }
+.quote-doc-scope { margin: 0.25rem 0 0; font-size: 0.9rem; line-height: 1.55; white-space: pre-line; }
+
+/* The signature that belongs to the quote, as opposed to the one that belongs
+   to a card authorization. Boxed so the two are visibly separate agreements. */
+.quote-doc-sign {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1.1rem 0 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.quote-doc-sign label { font-size: 0.82rem; font-weight: 700; }
+.quote-doc-fineprint { margin: 0; font-size: 0.76rem; line-height: 1.5; color: var(--muted); }
+
+/* Not ready to approve. Deliberately quiet — it is a door, not an offer. */
+.client-ask { margin-top: 1rem; }
+.client-ask > summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.client-ask > summary:hover { color: var(--text); }
+.client-ask-form { display: grid; gap: 0.5rem; margin-top: 0.75rem; justify-items: start; }
+.client-ask-form label { font-size: 0.82rem; font-weight: 700; }
+.client-ask-form textarea { width: 100%; }
+.client-ask-note { margin: 0; font-size: 0.76rem; color: var(--muted); }
 
 /* ── Insured, on the quote ───────────────────────────────────────────────────
    Green rather than the accent: this is a fact being confirmed, not an action
@@ -11019,13 +11079,76 @@ button.inbox-thread-item {
   margin: 0.35rem 0 0;
 }
 .client-job-dashboard .workspace-hero {
-  border-color: var(--cedge-orange-36);
+  border-color: var(--cbrand-edge, var(--cedge-orange-36));
+}
+
+/* ── The homeowner's own page, in their contractor's colour ──────────────────
+   Every --cbrand-* below falls back to the platform orange, so an account with
+   an unreadable accent renders exactly as it always did. Only the button's
+   label is a contrast decision and brandPaint computes it — see
+   lib/contractor-brand. */
+.client-hero-title {
+  /* Their name is not a headline and was being set in display caps. */
+  text-transform: none;
+  max-width: 18ch;
+}
+.client-hero-for {
+  margin: 0.15rem 0 0.65rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.client-status { font-weight: 800; }
+.client-status-awaiting {
+  border-color: var(--cbrand-edge, var(--cedge-orange-36));
+  background: var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
+.client-status-progress { border-color: var(--edge-t18); background: rgba(var(--tint), 0.05); }
+.client-status-done { border-color: var(--cedge-green-40); background: rgba(74, 222, 128, 0.1); }
+
+.client-job-dashboard .btn.primary {
+  background: var(--cbrand, rgba(255, 122, 33, 0.1));
+  border-color: var(--cbrand, var(--cedge-orange-2));
+  color: var(--cbrand-on, var(--ink-orange-8));
+}
+.client-job-dashboard .btn.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: var(--cbrand, rgba(255, 122, 33, 0.18));
+  border-color: var(--cbrand, var(--cedge-orange-3));
+}
+
+/* Who is holding the card, said where the card is asked for. */
+.client-secure-note {
+  margin: 0.85rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ── Taking the quote away with you ──────────────────────────────────────────
+   Print is also "save as PDF" everywhere that matters. What prints is the
+   quote: the chrome, the forms and the rest of the record are not paperwork. */
+@media print {
+  .client-job-dashboard .client-attention-card,
+  .client-job-dashboard .detail-grid,
+  .client-job-dashboard .client-ask,
+  .client-job-dashboard .quote-doc-print,
+  .client-job-dashboard .quote-doc-sign,
+  .cbrand-actions {
+    display: none !important;
+  }
+  .client-job-dashboard .panel,
+  .client-job-dashboard .workspace-hero {
+    border: none;
+    box-shadow: none;
+    background: none;
+  }
+  .quote-doc-addon-btn { display: none !important; }
 }
 
 .client-attention-card {
-  border-color: var(--cedge-orange-29);
-  background: linear-gradient(135deg, rgba(255, 138, 61, 0.16), rgba(var(--panel-rgb), 0.9) 46%);
-  box-shadow: inset 4px 0 0 #ff8a3d, 0 18px 45px rgba(255, 122, 33, 0.12);
+  border-color: var(--cbrand-edge, var(--cedge-orange-29));
+  background: linear-gradient(135deg, var(--cbrand-soft, rgba(255, 138, 61, 0.16)), rgba(var(--panel-rgb), 0.9) 46%);
+  box-shadow: inset 4px 0 0 var(--cbrand, #ff8a3d), 0 18px 45px rgba(255, 122, 33, 0.12);
 }
 
 .client-attention-card .workspace-card-copy {

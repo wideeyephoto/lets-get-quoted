@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuote } from '@/lib/job-feed';
+import { askQuoteQuestion } from '@/lib/client-question';
 import { startSubscriptionSignup, type SubscriptionSignupMode } from '@/lib/subscription-signup';
 import { authorizePlanAndGetDepositUrl, startPlanPayoff } from '@/lib/payment-plans';
 
@@ -61,7 +62,16 @@ export async function approveClientJobQuoteAction(token: string, formData: FormD
   // Checkbox values for accepted optional add-ons (name="addon"); empty on a
   // legacy single-amount quote, which approves exactly as before.
   const selectedAddonIds = formData.getAll('addon').map((value) => value.toString());
-  await approveClientJobQuote(token, selectedAddonIds);
+  // Their name, typed against the QUOTE — not against a card authorization.
+  const signerName = optionalText(formData.get('signerName'));
+  await approveClientJobQuote(token, selectedAddonIds, signerName);
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?approved=1`);
+}
+
+// The other thing a person can want to do with a quote. See lib/client-question.
+export async function askQuoteQuestionAction(token: string, formData: FormData) {
+  const result = await askQuoteQuestion(token, (formData.get('question') ?? '').toString());
+  revalidatePath(`/client/jobs/${token}`);
+  redirect(`/client/jobs/${token}?${result.ok ? 'asked=1' : 'ask-failed=1'}`);
 }

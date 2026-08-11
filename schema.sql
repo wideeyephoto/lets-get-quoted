@@ -542,6 +542,12 @@ alter table jobs add column if not exists client_email text;
 -- Deposit gate: 'before_schedule' blocks the client from picking a start date
 -- until a deposit payment is paid; 'before_work' is a reminder only. Null = none.
 alter table jobs add column if not exists deposit_gate text;
+-- Who accepted the quote, and when. The same pair invoices have carried since
+-- the beginning. Accepting the work and the price is a SEPARATE agreement from
+-- authorizing recurring card charges on a payment plan, and only the second one
+-- was ever being signed. See migrations/2026-08-11-quote-acceptance-signature.
+alter table jobs add column if not exists quote_signer_name text;
+alter table jobs add column if not exists quote_signed_at timestamptz;
 -- Geocoded coordinates of the job address — the anchors for instant-booking
 -- route-density ("we'll already be near you that day"). Populated best-effort at
 -- job create (see src/lib/geocode.ts); only precise (rooftop/interpolated)

@@ -14,6 +14,16 @@ function formatUsdRounded(amount: number): string {
 
 const FREQ_SUFFIX: Record<'weekly' | 'biweekly' | 'monthly', string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
 
+// type="button" matters: this sits inside the approval form, and a bare button
+// in a form submits it. Printing a quote must never approve it.
+function PrintButton() {
+  return (
+    <button type="button" className="linklike quote-doc-print" onClick={() => window.print()}>
+      Print or save as PDF
+    </button>
+  );
+}
+
 // Term + pay-in-full line under a subscription.
 function subCaption(item: QuoteItem): string {
   const parts: string[] = [];
@@ -34,9 +44,19 @@ export default function QuoteDocument({
   items,
   approveAction,
   insurance = null,
+  header,
+  businessName,
 }: {
   items: QuoteItem[];
   approveAction: (formData: FormData) => void;
+  /**
+   * What the quote is FOR. A page of prices with no job attached is a bill, not
+   * a quote — the reference, the address and the scope have to be on the
+   * document being signed, not scattered up the page above it.
+   */
+  header?: { ref: string; address: string | null; scope: string | null };
+  /** Named in the acceptance line, because that is who is being agreed with. */
+  businessName?: string;
   /**
    * The contractor's certificate, already vetted for whether it may be shown —
    * null covers "none uploaded", "switched off" and "expired" alike, and this
@@ -87,6 +107,20 @@ export default function QuoteDocument({
 
   return (
     <form action={approveAction} className="quote-document">
+      {header ? (
+        <div className="quote-doc-head">
+          <div className="quote-doc-head-row">
+            <span className="quote-doc-ref">Quote {header.ref}</span>
+            {/* Print, which is also Save as PDF on every platform that matters.
+                Somebody comparing two contractors wants this on paper, and
+                "no invoices have been shared yet" is not an answer to that. */}
+            <PrintButton />
+          </div>
+          {header.address ? <p className="quote-doc-where">{header.address}</p> : null}
+          {header.scope ? <p className="quote-doc-scope">{header.scope}</p> : null}
+        </div>
+      ) : null}
+
       {baseItems.length > 0 ? (
         <div className="quote-doc-group">
           <p className="quote-doc-group-label">Included in your quote</p>
@@ -150,6 +184,21 @@ export default function QuoteDocument({
       <div className="quote-doc-total">
         <span>Your total{subscriptionItems.length > 0 ? ' today' : ''}</span>
         <strong>{totalLabel}</strong>
+      </div>
+
+      {/* THE SIGNATURE THAT BELONGS TO THIS AGREEMENT.
+          A typed name was already being collected on this page — under
+          "authorize automatic installment payments", which accepts a card
+          schedule and says nothing about the work or the price. Accepting the
+          quote is the other agreement, and it had no signature at all. Two
+          agreements, two signatures, in the order they are made. */}
+      <div className="quote-doc-sign">
+        <label htmlFor="quote-signer">Type your full name to accept this quote</label>
+        <input id="quote-signer" name="signerName" type="text" placeholder="Your full name" autoComplete="name" required />
+        <p className="quote-doc-fineprint">
+          Accepting confirms the work and the price above{businessName ? `, with ${businessName}` : ''}. It is not a payment
+          and no card is charged — anything owed is asked for separately, after this.
+        </p>
       </div>
 
       <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>

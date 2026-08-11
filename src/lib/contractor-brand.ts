@@ -99,6 +99,79 @@ function normalizeAccent(value: string | null | undefined): string {
   return value && /^#[0-9a-fA-F]{3,8}$/.test(value.trim()) ? value.trim() : DEFAULT_BRAND_ACCENT;
 }
 
+/* --- painting a page in somebody else's colour -----------------------------
+   The brand bar re-points --accent on ITSELF and deliberately stopped there,
+   because handing an arbitrary contractor hex to .btn.primary is how you get a
+   navy Pay button with a label nobody can read. That reasoning was right and it
+   was never a reason to leave the customer's quote page painted in OUR orange —
+   a homeowner opens a green-branded email from their landscaper and lands on an
+   orange page belonging to a company they have never heard of.
+
+   What was missing is the derivation. A solid button only has one contrast
+   obligation: its own label against its own fill. That is computable, so it is
+   computed here rather than guessed. */
+
+type Rgb = [number, number, number];
+
+function parseHex(value: string): Rgb | null {
+  const hex = value.trim().replace('#', '');
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex.slice(0, 6);
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
+}
+
+// WCAG relative luminance.
+function luminance([r, g, b]: Rgb): number {
+  const channel = (value: number) => {
+    const s = value / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+export function contrastRatio(a: Rgb, b: Rgb): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Near-black rather than pure black — it reads as ink, not as a hole. */
+const BRAND_DARK_INK: Rgb = [18, 16, 14];
+const BRAND_LIGHT_INK: Rgb = [255, 255, 255];
+
+export type BrandPaint = {
+  /** The contractor's colour, for fills and stripes. */
+  accent: string;
+  /** Black or white — whichever is legible ON that fill. Computed, not chosen. */
+  onAccent: string;
+  /** A low-alpha wash of the same colour, for card grounds. Carries no text. */
+  soft: string;
+  /** A mid-alpha edge, for borders. Carries no text either. */
+  edge: string;
+};
+
+/**
+ * The four values a page needs to wear a contractor's colour safely.
+ *
+ * Only `onAccent` is a contrast decision, and it is the only one that has to be:
+ * `soft` and `edge` are washes behind and around content that keeps its own
+ * colour, so nothing legible is ever placed on an unknown hex.
+ *
+ * Returns null for an unparseable colour, and the caller keeps the platform
+ * palette — a page in the wrong brand is better than a page in no brand.
+ */
+export function brandPaint(hex: string | null | undefined): BrandPaint | null {
+  const rgb = hex ? parseHex(hex) : null;
+  if (!rgb) return null;
+  const onAccent = contrastRatio(rgb, BRAND_LIGHT_INK) >= contrastRatio(rgb, BRAND_DARK_INK) ? '#ffffff' : '#12100e';
+  const [r, g, b] = rgb;
+  return {
+    accent: `rgb(${r}, ${g}, ${b})`,
+    onAccent,
+    soft: `rgba(${r}, ${g}, ${b}, 0.16)`,
+    edge: `rgba(${r}, ${g}, ${b}, 0.38)`,
+  };
+}
+
 /**
  * Load the brand for one account. Admin client on purpose: nobody on these
  * pages is a signed-in user, so there is no session to read it with.
