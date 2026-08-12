@@ -31549,3 +31549,34 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   line-height: 1.5;
 }
 .quote-changes-rules .field-hint { margin: 0; }
+
+/* ── Editing an update you already posted ───────────────────────────────────
+   The control sits in the badge row beside Undo, and takes the whole row when
+   it opens — that row already wraps, so the form gets full width without being
+   lifted out of the header it belongs to. A <details>, so a feed of forty
+   events costs nothing until one of them is being fixed. */
+.feed-edit > summary {
+  list-style: none;
+  display: inline-block;
+}
+.feed-edit > summary::-webkit-details-marker { display: none; }
+.feed-edit > summary::marker { content: ''; }
+.feed-edit[open] { flex: 1 0 100%; }
+.feed-edit[open] > summary { margin-bottom: 0.5rem; border-color: var(--cedge-amber-8); color: var(--gold-ink); }
+.feed-edit-form {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  text-align: left;
+}
+.feed-edit-form label { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.03em; opacity: 0.72; }
+.feed-edit-form input[type='text'],
+.feed-edit-form input:not([type]),
+.feed-edit-form textarea { width: 100%; }
+.feed-edit-form .sms-consent-check { margin-top: 0.2rem; }
+.feed-edit-form button { justify-self: start; }
+.feed-edit-note { margin: 0; font-size: 0.72rem; line-height: 1.5; color: var(--muted); }
+.feed-edited { opacity: 0.72; font-style: italic; }

@@ -860,6 +860,80 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
+/**
+ * Fixing an update you already posted.
+ *
+ * ONLY job_update ROWS, and the `.eq('kind', 'job_update')` below is the reason
+ * rather than the UI only offering the button on those. Everything else in this
+ * feed is a record of something that happened — a payment taken, a quote
+ * approved, work started, an invoice sent — and a record you can rewrite is not
+ * a record. If a system event is wrong the answer is to undo the thing, which
+ * is what the Undo controls beside this one do.
+ *
+ * WHAT IT CANNOT UNDO. If the update was texted when it was posted, that text
+ * has gone. Editing changes what is on this page and on the customer's, not
+ * what arrived on their phone — and the form says so, because the alternative
+ * is a contractor believing they have corrected something they have not.
+ *
+ * The edit is stamped and shown, on the customer's page as well as this one. An
+ * update that quietly changes after somebody has read it is the same fault as a
+ * quote whose total moves underneath them.
+ */
+export async function editJobFeedUpdateAction(jobId: string, eventId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const title = (formData.get('title') ?? '').toString().trim().slice(0, 120);
+  if (!title) throw new Error('An update needs a title.');
+  const body = optionalText(formData.get('body'));
+  const visibility = formData.get('clientVisible') === 'on' ? 'client' : 'internal';
+
+  const patch: Record<string, unknown> = {
+    title,
+    body,
+    visibility,
+    // published_at is what a client-visible row is dated by. A note switched on
+    // for the first time needs one, and a row that already had one keeps it —
+    // re-dating an update somebody read last week would reorder their page.
+    edited_at: new Date().toISOString(),
+  };
+
+  const scoped = () =>
+    supabase
+      .from('job_feed')
+      .update(patch)
+      .eq('account_id', accountId)
+      .eq('job_id', jobId)
+      .eq('id', eventId)
+      // The boundary. Not a UI convention — a where clause.
+      .eq('kind', 'job_update');
+
+  const { error } = await scoped();
+  // A database without the stamp column still saves the correction. Losing the
+  // "edited" marker for a deploy window is a shame; refusing to fix a typo the
+  // customer is reading is worse.
+  if (error) {
+    delete patch.edited_at;
+    const { error: retryError } = await scoped();
+    if (retryError) throw retryError;
+  }
+
+  // A row that has never been published and is now client-visible needs a date
+  // to appear under. Conditional, so an already-published update keeps its
+  // original position in the customer's feed.
+  if (visibility === 'client') {
+    await supabase
+      .from('job_feed')
+      .update({ published_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('job_id', jobId)
+      .eq('id', eventId)
+      .eq('kind', 'job_update')
+      .is('published_at', null);
+  }
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
 export async function createClientJobLinkAction(jobId: string) {
   const { supabase, accountId } = await requireOwnerContext();
   const job = await getJob(supabase, accountId, jobId);

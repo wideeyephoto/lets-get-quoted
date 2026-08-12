@@ -37,6 +37,13 @@ export type JobFeedEvent = {
   source_id: string | null;
   action_url: string | null;
   published_at: string | null;
+  /**
+   * When a manually-posted update was last rewritten. Null on every other kind,
+   * because nothing else in this feed may be edited — see
+   * editJobFeedUpdateAction. Optional on the type, not just nullable, because
+   * it arrives undefined until migrations/2026-08-14-job-feed-edited.sql runs.
+   */
+  edited_at?: string | null;
   created_at: string;
 };
 

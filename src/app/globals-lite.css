@@ -15200,3 +15200,4 @@ select optgroup {
   line-height: 1.5;
   color: var(--muted);
 }
+.feed-edited { opacity: 0.72; font-style: italic; }

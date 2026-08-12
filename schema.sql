@@ -851,6 +851,13 @@ alter table job_feed add column if not exists amount numeric(12,2);
 alter table job_feed add column if not exists source_table text;
 alter table job_feed add column if not exists source_id uuid;
 alter table job_feed add column if not exists action_url text;
+-- When a manually-posted update was last rewritten. Only job_update rows are
+-- ever editable — everything else in this feed is a record of something that
+-- happened, and a record you can rewrite is not a record. The boundary is a
+-- where clause in editJobFeedUpdateAction, not a UI convention. Shown on the
+-- customer's page too: an update that quietly changes after they have read it
+-- is the same fault as a quote whose total moves underneath them.
+alter table job_feed add column if not exists edited_at timestamptz;
 alter table job_feed add column if not exists published_at timestamptz;
 
 do $$

@@ -64,6 +64,7 @@ import {
   scheduleJobAction,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
+  editJobFeedUpdateAction,
   undoJobStartedAction,
   updateJobAction,
   updateJobCrewAction,
@@ -856,6 +857,46 @@ export default async function JobDetailPage({
                                 Cancel
                               </ConfirmActionButton>
                             ) : null}
+                            {/* EDIT, BESIDE UNDO — and only on an update
+                                somebody typed. Everything else in this feed is
+                                a record of something that happened, and the
+                                action enforces that with a where clause rather
+                                than trusting this condition. A <details> so it
+                                costs nothing until it is wanted, and it takes
+                                the full row when open (the badge row wraps). */}
+                            {event.kind === 'job_update' ? (
+                              <details className="feed-edit">
+                                <summary className="feed-undo-btn">Edit</summary>
+                                <form
+                                  action={editJobFeedUpdateAction.bind(null, job.id, event.id)}
+                                  className="feed-edit-form"
+                                >
+                                  <label htmlFor={`feed-title-${event.id}`}>Update</label>
+                                  <input
+                                    id={`feed-title-${event.id}`}
+                                    name="title"
+                                    defaultValue={event.title ?? ''}
+                                    maxLength={120}
+                                    required
+                                  />
+                                  <label htmlFor={`feed-body-${event.id}`}>Details</label>
+                                  <textarea id={`feed-body-${event.id}`} name="body" rows={3} defaultValue={event.body ?? ''} />
+                                  <label className="sms-consent-check">
+                                    <input name="clientVisible" type="checkbox" defaultChecked={event.visibility !== 'internal'} />
+                                    <span>
+                                      <strong>{job.client_name} can see this</strong>
+                                      <small>Untick to keep it in your own record only.</small>
+                                    </span>
+                                  </label>
+                                  <SaveButton pendingLabel="Saving…" savedLabel="Saved ✓">Save changes</SaveButton>
+                                  <p className="feed-edit-note">
+                                    If you texted this update when you posted it, that text has already gone. Editing changes
+                                    this page and {job.client_name}&rsquo;s, not the message on their phone — and it is marked
+                                    as edited on both.
+                                  </p>
+                                </form>
+                              </details>
+                            ) : null}
                             {canCancelInvoice && linkedInvoice ? (
                               <ConfirmActionButton
                                 action={cancelInvoiceAction.bind(null, job.id, linkedInvoice.id)}
@@ -875,6 +916,7 @@ export default async function JobDetailPage({
                         {getFeedDisplayBody(event) ? <p className="workspace-card-copy">{getFeedDisplayBody(event)}</p> : null}
                         <p className="job-meta">
                           {formatFeedTime(event.created_at)}
+                          {event.edited_at ? <span className="feed-edited"> · edited {formatFeedTime(event.edited_at)}</span> : null}
                           {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
                           {event.action_url ? (
                             <>

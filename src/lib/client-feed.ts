@@ -40,6 +40,7 @@ export type FeedEventLike = {
   amount: number | null;
   action_url: string | null;
   created_at: string;
+  edited_at?: string | null;
 };
 
 export type ClientFeedItem = {
@@ -49,6 +50,14 @@ export type ClientFeedItem = {
   amount: number | null;
   actionUrl: string | null;
   at: string;
+  /**
+   * When the contractor rewrote this update, if they did.
+   *
+   * Shown to the customer, not only to the person who changed it. If somebody
+   * read "we'll be there Tuesday" and it now says Thursday, the person who
+   * needs to know it moved is the one who planned their week around it.
+   */
+  editedAt: string | null;
 };
 
 type Rendering = {
@@ -185,6 +194,7 @@ export function toClientFeed(events: FeedEventLike[]): ClientFeedItem[] {
       amount: event.amount,
       actionUrl: rendering.keepAction ? event.action_url : null,
       at: event.created_at,
+      editedAt: event.edited_at ?? null,
     });
   }
   return items;

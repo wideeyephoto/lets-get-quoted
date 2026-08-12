@@ -773,6 +773,11 @@ export default async function ClientJobDashboardPage({
                           {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
                           <p className="job-meta">
                             {formatFeedTime(event.at)}
+                            {/* Shown to the customer, not only to the person
+                                who changed it. Somebody who read "we'll be
+                                there Tuesday" and now sees Thursday is the one
+                                who planned their week around it. */}
+                            {event.editedAt ? <span className="feed-edited"> · edited {formatFeedTime(event.editedAt)}</span> : null}
                             {event.actionUrl ? (
                               <>
                                 {' · '}
