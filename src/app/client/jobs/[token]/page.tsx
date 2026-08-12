@@ -5,6 +5,7 @@ import { getClientJobDashboard } from '@/lib/job-feed';
 // Every number on this page is one the homeowner is asked to pay, authorize, or
 // add up against the total they were quoted. To the cent, all of it.
 import { formatMoneyExact as formatMoney, computeQuoteTotal } from '@/lib/jobs';
+import { clientNextStep } from '@/lib/client-next-step';
 import { clientJobStatus } from '@/lib/client-feed';
 import { brandPaint } from '@/lib/contractor-brand';
 import { quoteStyleClass } from '@/lib/quote-style';
@@ -262,28 +263,22 @@ export default async function ClientJobDashboardPage({
   const firstName = firstNameOf(dashboard.job.client_name);
   const headline = quoteHeadline({ firstName, projectType, approved: !awaitingApproval });
 
-  /* --- what happens next, once the answer is yes ---------------------------- */
-  const nextStep = depositPayment
-    ? 'Your deposit is the last step before the work is booked in.'
-    : plan?.status === 'pending_deposit'
-      ? 'Set up how you would like to pay, and the job is booked in.'
-      : scheduleOpen
-        ? 'Choose the start date that suits you.'
-        : scheduledLabel
-          ? `See you on ${scheduledLabel}.`
-          : openPayments.length > 0
-            ? 'There is one payment waiting below.'
-            : `${dashboard.businessName} will be in touch about scheduling.`;
-  const nextHref = depositPayment ? `/pay/${depositPayment.id}` : scheduleOpen ? '#dates' : openPayments[0] ? `/pay/${openPayments[0].id}` : plan?.status === 'pending_deposit' ? '#plan' : null;
-  const nextLabel = depositPayment
-    ? `Pay ${formatMoney(Number(depositPayment.amount))} deposit`
-    : scheduleOpen
-      ? 'Choose a start date'
-      : openPayments[0]
-        ? `Pay ${formatMoney(Number(openPayments[0].amount))}`
-        : plan?.status === 'pending_deposit'
-          ? 'Set up payment'
-          : null;
+  /* --- what happens next, once the answer is yes ----------------------------
+     The sentence, the link and the button's words come from ONE ordered list
+     now (see lib/client-next-step). They were three ternaries over the same
+     conditions in two different orders, which is how the rail came to say "set
+     up how you would like to pay" above a button labelled "Choose a start date"
+     pointing at #dates — a section this page renders as null in exactly that
+     state, so the button did nothing when it was pressed. */
+  const next = clientNextStep({
+    businessName: dashboard.businessName,
+    depositPayment: depositPayment ? { id: depositPayment.id, amount: Number(depositPayment.amount) } : null,
+    planStatus: plan?.status ?? null,
+    scheduleOpen,
+    scheduledLabel,
+    openPayment: openPayments[0] ? { id: openPayments[0].id, amount: Number(openPayments[0].amount) } : null,
+  });
+  const { copy: nextStep, href: nextHref, label: nextLabel } = next;
 
   /* --- how they will pay, in one line for the rail -------------------------- */
   const planInstallmentLabel = plan
