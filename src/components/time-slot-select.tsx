@@ -10,6 +10,17 @@ type TimeSlotSelectProps = {
   // Accepted for API compatibility; no longer needed now that the panel floats
   // in a portal and is never clipped by a scrolling ancestor.
   scrollIntoViewOnOpen?: boolean;
+  /**
+   * Controlled value, matching ScheduledDatePicker's API.
+   *
+   * Uncontrolled was fine while every caller was a form you filled in and
+   * submitted. The scheduling panel needs the OPPOSITE direction too: pressing
+   * a suggested slot sets the time, and a picker that only ever reads its own
+   * state would go on showing "No set time" beside a chosen 8:00 AM.
+   */
+  value?: string;
+  /** Reported on every change, so a parent can drive a dependent field. */
+  onChange?: (value: string) => void;
 };
 
 const QUICK_TIME_SLOTS = [
@@ -43,15 +54,21 @@ function buildTimeSlots() {
   return slots;
 }
 
-export default function TimeSlotSelect({ id, name, defaultValue = '' }: TimeSlotSelectProps) {
-  const [selectedTime, setSelectedTime] = useState(defaultValue);
+export default function TimeSlotSelect({ id, name, defaultValue = '', value, onChange }: TimeSlotSelectProps) {
+  const [innerTime, setInnerTime] = useState(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const timeSlots = buildTimeSlots();
+  // Controlled when a `value` prop is present, uncontrolled otherwise — the
+  // same rule ScheduledDatePicker follows, so the pair behave alike wherever
+  // they are used together.
+  const controlled = value !== undefined;
+  const selectedTime = controlled ? value : innerTime;
   const selectedLabel = selectedTime ? formatTimeLabel(selectedTime) : 'No set time';
 
-  function selectTime(value: string) {
-    setSelectedTime(value);
+  function selectTime(next: string) {
+    if (!controlled) setInnerTime(next);
+    onChange?.(next);
     setIsOpen(false);
   }
 

@@ -5855,9 +5855,7 @@ li + li { margin-top: 0.45rem; }
 .sign-in-method-row .method-name { display: block; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.01em; }
 /* The account itself — an email address, a phone number — set at .78rem, which
    is 12.5px. That is the size of a footnote, and it is the line that answers
-   "which account is this?". Up to 14px. The schedule rail keeps its own smaller
-   value (see .schedule-rail .method-detail) — those cards are a dense list, not
-   a page about one account. */
+   "which account is this?". Up to 14px. */
 .sign-in-method-row .method-detail { display: block; color: var(--mute-t55); font-size: .875rem; margin-top: .2rem; }
 .schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; align-items: flex-start; }
 /* Nudged up by the difference between the grip's box and the name's cap height,
@@ -18455,191 +18453,345 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 /* Single column by default — this is the phone, and three surfaces cannot share
    a phone screen. Two columns only once there is genuinely room for a 7-column
    grid AND a readable rail beside it. */
-.schedule-workbench {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.9rem;
-  align-items: start;
-}
+/* QUEUE, CALENDAR, OPEN JOB — left to right.
+   The page put the calendar first with the queue in a rail beside it, and every
+   card in that rail carried its own inline scheduling form. Most of the CSS
+   that used to live here existed to make that form survive a 21rem column:
+   unfloating its popovers so an overflow ancestor could not clip them,
+   collapsing its three-column grid to one, un-capping the rail's height while a
+   picker was open so the Save button was reachable, and stopping the rows being
+   flattened to 57px by the flex container they were trapped in. All of it goes
+   with the form. The list is a list again.
 
-@media (min-width: 1024px) {
-  .schedule-workbench {
-    grid-template-columns: minmax(0, 1fr) minmax(21rem, 24rem);
-  }
-
-  /* Sticky, so the jobs stay level with the grid however far down the month you
-     scroll.
-     THE HEIGHT CAP IS WHAT MAKES STICKY WORK. Measured without it, the rail came
-     out 1155px against a 950px viewport, and an element taller than the screen
-     cannot stick — it just scrolls until its bottom arrives. Capped to the
-     viewport, the jobs list takes the slack and scrolls inside itself while the
-     map stays pinned beneath it, so both are on screen at every scroll position.
-     Safe to scroll internally only because the rail's popovers are laid out
-     inline (below) rather than floating — an overflow ancestor would have
-     clipped an absolutely positioned panel. */
-  .schedule-rail {
+   THREE COLUMNS ONLY WHERE THERE IS ROOM FOR THREE. Below 1440 the detail is an
+   overlay instead — see .sched-detail.is-sheet — because a third column carved
+   out of 1280px leaves a calendar narrower than the rail beside it, which is
+   the shape this layout exists to avoid. */
+/* Sticky, so the jobs stay level with the grid however far down the month you
+   scroll. THE HEIGHT CAP IS WHAT MAKES STICKY WORK: an element taller than the
+   screen cannot stick, it just scrolls until its bottom arrives. Capped to the
+   viewport, the list takes the slack and scrolls inside itself. */
+@media (min-width: 1280px) {
+  .sched-queue-col {
     position: sticky;
     top: 1rem;
     max-height: calc(100vh - 2rem);
-  }
-
-  /* THE FLEX ITEM IS .sched-queue-body, NOT the section inside it.
-     The jobs section is wrapped twice: .sched-queue and .sched-queue-panel are
-     both `display: contents` up here, so the BODY is what becomes a flex item
-     of the rail — the section is its child and has no say in the rail's layout
-     at all.
-     This rule used to read `.schedule-rail > #unscheduled-jobs`, which matched
-     nothing twice over: wrong element, and a child combinator that cannot cross
-     a display:contents wrapper anyway (selectors match the DOM tree, the box
-     tree is a separate thing).
-     So nothing in the rail could shrink and its max-height was a lie. Measured:
-     1229px of content inside an 868px box, 361px of it the map and its legend,
-     spilling out under `overflow: visible` with the setup link and Working
-     hours panel painting straight over the top. */
-  .schedule-rail .sched-queue-body {
-    flex: 1 1 auto;
-    /* Both halves matter. A flex item defaults to min-height:auto, which refuses
-       to shrink below its content — that alone reintroduces the whole bug. */
-    min-height: 8rem;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    padding: 0.9rem 0.85rem;
   }
+  .sched-queue-col .workspace-section-heading { margin-bottom: 0.6rem; }
+  .sched-queue-col .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
+  .sched-queue-col .schedule-drag-hint { font-size: 0.76rem; line-height: 1.4; }
 
-  .schedule-rail #unscheduled-jobs {
+  /* The list is the part that scrolls; the heading and the foot link stay put.
+     min-height:0 is what lets a flex child shrink below its content at all. */
+  .sched-queue-col .sched-rows {
     flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .schedule-rail #unscheduled-jobs .sign-in-methods-list {
+    min-height: 6rem;
     overflow-y: auto;
-    min-height: 0;
     padding-right: 0.3rem;
   }
-
-  /* THE ROWS MUST NOT SHRINK, or the scrolling above is decorative.
-     The list is a column flex container, so its children inherit
-     flex-shrink: 1. Capped by the rail's height they FLATTENED instead of
-     overflowing: measured at 1366x768 a job card whose natural height is 218px
-     was squeezed to 57px, with 151px of its own content hanging outside its
-     box. Squeezed at every desktop size tested — even 1920x1080 lost 50px a row.
-     And because the rows technically "fitted", the list's scrollHeight equalled
-     its clientHeight, so `overflow-y: auto` had nothing to scroll and never drew
-     a scrollbar. The jobs were cut in half with no way to reach the rest of
-     them, which is the one thing this panel exists to let you do. */
-  .schedule-rail #unscheduled-jobs .sign-in-methods-list > * { flex: 0 0 auto; }
-
-  /* The map is the one thing that must never be the item that gets squeezed
-     out — its legend is how you filter the pins, and a legend below the fold of
-     an overflowing rail is a control nobody can reach. Explicit rather than
-     relying on the jobs list above always yielding enough. */
-  .schedule-rail .schedule-map { flex: 0 0 auto; }
+  /* The rows must not shrink, or the scrolling above is decorative — a column
+     flex container makes its children shrinkable by default, and capped by the
+     rail's height they flatten instead of overflowing. */
+  .sched-queue-col .sched-rows > * { flex: 0 0 auto; }
 }
 
-.schedule-rail {
+/* ---- one job per row, and one action on it -------------------------------
+   The card was a name that linked AWAY to the job page, a detail line, a crew
+   picker, two <details> popovers and their forms — about 480px each once
+   opened. Six facts, one target, one primary. */
+.sched-rows { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+
+.sched-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--edge-t10);
+  border-left: 3px solid var(--cap-open);
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.03);
+}
+/* Approval state is a word on the row as well — see .sched-row-flag. The edge
+   is the same hue the calendar gives an unapproved chip, so a row and its
+   future chip agree, but a hue is not a sentence. */
+.sched-row.is-unapproved { border-left-color: var(--cap-busy); }
+.sched-row.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.1); }
+
+/* The whole row is the control. */
+.sched-row-open {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.1rem 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sched-row-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+
+.sched-row-top { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.sched-row-top strong { font-size: 0.9rem; font-weight: 750; }
+.sched-row-flag {
+  padding: 0.05rem 0.36rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.12);
+  color: var(--mute-i62);
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.sched-row-what {
+  color: var(--mute-i56);
+  font-size: 0.76rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sched-row-facts { display: flex; flex-wrap: wrap; gap: 0.15rem 0.5rem; font-size: 0.72rem; color: var(--mute-i62); }
+.sched-row-facts > span + span::before { content: '\00b7 '; }
+/* A missing duration is why a day can read as empty when it is not, and a job
+   with no crew is a job nobody has been told about. Both are named rather than
+   left blank, and dimmer than the facts that ARE known. */
+.sched-row-missing { color: var(--mute-i42); font-style: italic; }
+.sched-row-state { color: var(--gold-ink); font-size: 0.7rem; font-weight: 700; }
+
+.sched-row-go { min-height: 44px; padding: 0 0.75rem; font-size: 0.82rem; white-space: nowrap; }
+
+.sched-rows-foot { margin: 0.6rem 0 0; font-size: 0.8rem; }
+.sched-rows-foot a { color: var(--dim-orange-3-6); text-decoration: none; }
+.sched-rows-foot a:hover { text-decoration: underline; }
+
+/* ---- the job you have open ----------------------------------------------- */
+.sched-detail {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.9rem 0.85rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 16px;
+  background: var(--panel);
 }
+@media (min-width: 1600px) {
+  .sched-detail { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+}
+/* The docked column keeps its place rather than collapsing — a third of the
+   width appearing and disappearing as you click around the queue is worse than
+   a column that says what it is for. */
+.sched-detail.is-empty { justify-content: center; min-height: 12rem; }
+.sched-detail-hint { display: grid; gap: 0.25rem; margin: 0; text-align: center; }
+.sched-detail-hint strong { font-size: 0.95rem; }
+.sched-detail-hint span { color: var(--mute-i56); font-size: 0.8rem; line-height: 1.45; }
 
-.schedule-rail > * { flex: 0 0 auto; min-width: 0; }
-
-/* --- rail-only dressing ---------------------------------------------------
-   ALL of this is inside the breakpoint on purpose. Below 1100px there is no
-   rail — .schedule-rail is just a wrapper around the same stacked sections the
-   page always had — so compacting cards or unfloating popovers there would be
-   restyling the mobile page for no reason. (It did, briefly: the inline
-   popover rule leaked to every width and put a date picker on top of the
-   calendar on a phone.) */
-@media (min-width: 1024px) {
-  /* The heading was sized for a full-width panel: at 21rem "Unscheduled jobs" ran
-     to two lines and ate the space the jobs themselves need. */
-  .schedule-rail .workspace-section-card { padding: 0.9rem 0.85rem; }
-  .schedule-rail .workspace-section-heading { margin-bottom: 0.6rem; }
-  .schedule-rail .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
-  .schedule-rail .schedule-drag-hint { font-size: 0.76rem; line-height: 1.4; }
-
-  /* --- the rail's compact job card ---
-     Same markup as the full-width list; only the shape changes. At 21rem the
-     row's name-beside-buttons layout has nowhere to go, so it stacks. */
-  .schedule-rail .sign-in-method-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.6rem;
-    padding: 0.7rem 0.75rem;
-  }
-
-  .schedule-rail .schedule-method-row .method-info {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .schedule-rail .method-detail { font-size: 0.74rem; line-height: 1.35; }
-
-  .schedule-rail .schedule-action-buttons {
-    justify-content: stretch;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .schedule-rail .schedule-action-buttons > * { flex: 1 1 8rem; }
-  .schedule-rail .schedule-action-buttons .btn { min-width: 0; width: 100%; font-size: 0.8rem; }
-  .schedule-rail .schedule-drag-handle { justify-content: center; width: 44px; }
-
-  /* In the rail the popovers open INLINE rather than floating. A 720px floating
-     panel anchored to a 21rem column would hang across the calendar and cover the
-     dates you are trying to read. */
-  .schedule-rail .schedule-popover-panel {
-    position: static;
-    width: auto;
+/* Below 1440 it is an overlay: a right-hand drawer where there is room, a
+   bottom sheet on a phone. Fixed, so it escapes the sticky column's overflow. */
+.sched-detail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+}
+.sched-detail.is-sheet {
+  position: fixed;
+  z-index: 61;
+  inset: auto 0 0 0;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.42);
+}
+@media (min-width: 720px) {
+  .sched-detail.is-sheet {
+    inset: 0 0 0 auto;
+    width: min(26rem, 92vw);
     max-height: none;
-    margin-top: 0.5rem;
-    box-shadow: none;
+    border-radius: 18px 0 0 18px;
+    box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42);
   }
-
-  .schedule-rail .schedule-popover-panel::before { display: none; }
-
-  /* ONE COLUMN IN THE RAIL. The inline form is a three-column grid — date,
-     time, save — with `min-width: min(100%, 620px)`. The rail column is about
-     220px, so that floor is not a layout, it is an overflow: the time field and
-     the Save button sat outside the card, which is why "No set time" was cut
-     off mid-word. */
-  .schedule-rail .schedule-inline-form {
-    grid-template-columns: minmax(0, 1fr);
-    min-width: 0;
-    flex: initial;
-  }
-
-  /* AN OPEN PICKER MUST NOT BE TRAPPED IN THE SCROLL BOX.
-     The rail's popovers are laid out inline (above) precisely because the jobs
-     list scrolls — an absolutely positioned panel would be clipped by the
-     overflow ancestor. But inline is only half the answer: the panel expands
-     the card INSIDE a box a few hundred pixels tall, so opening one showed a
-     slice of a date picker with its own scrollbar and no way to reach the Save
-     button.
-     While one is open the whole chain stops clipping and the rail stops
-     capping. It loses stickiness for as long as the form is open, which is the
-     right trade: you are filling in a date, not looking at the month. Closing
-     it puts everything back. */
-  .schedule-rail:has(.schedule-popover[open]) { max-height: none; }
-  .schedule-rail:has(.schedule-popover[open]) .sched-queue-body,
-  .schedule-rail:has(.schedule-popover[open]) #unscheduled-jobs,
-  .schedule-rail:has(.schedule-popover[open]) #unscheduled-jobs .sign-in-methods-list {
-    overflow: visible;
-  }
-
-  /* The map is context here, not a work surface, so it takes a fixed slice of the
-     rail rather than the 46vh it claims full-width — at that height it alone
-     would fill the rail and push the jobs off screen, which is the exact problem
-     this layout exists to solve. */
-  .schedule-rail .pin-map { height: 15rem; }
-  .schedule-rail .pin-map-shell { margin-top: 0.6rem; }
-  .schedule-rail .pin-map-legend { gap: 0.35rem 0.6rem; font-size: 0.78rem; }
 }
+
+.sched-detail-head { display: flex; align-items: flex-start; gap: 0.6rem; }
+.sched-detail-head h2 { margin: 0.1rem 0 0; font-size: 1.15rem; letter-spacing: -0.01em; }
+.sched-detail-sub { margin: 0.15rem 0 0; color: var(--mute-i56); font-size: 0.8rem; line-height: 1.35; }
+.sched-detail-close {
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.sched-detail-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sched-detail-facts { display: grid; gap: 0.4rem; margin: 0; }
+.sched-detail-facts > div { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.5rem; }
+.sched-detail-facts dt { color: var(--mute-i62); font-size: 0.75rem; }
+.sched-detail-facts dd { margin: 0; font-size: 0.8rem; line-height: 1.35; }
+
+/* ---- the three steps ------------------------------------------------------ */
+.sched-step { display: grid; gap: 0.5rem; padding-top: 0.65rem; border-top: 1px solid var(--edge-t10); }
+.sched-step h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--mute-i62);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sched-step h3 i {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: rgba(var(--tint), 0.12);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 850;
+}
+.sched-step-note { margin: 0; color: var(--mute-i56); font-size: 0.74rem; line-height: 1.4; }
+.sched-step-empty { margin: 0; color: var(--mute-i56); font-size: 0.8rem; }
+
+/* Which of you picks the time — the question that used to be two buttons of
+   equal weight on every card in the list. */
+.sched-mode {
+  display: inline-flex;
+  padding: 0.2rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+}
+.sched-mode-btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--mute-t60);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.sched-mode-btn.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
+.sched-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Days that actually have room, with the reason attached. */
+.sched-slots { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.sched-slot {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sched-slot.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
+.sched-slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-slot-when { display: flex; align-items: baseline; gap: 0.4rem; }
+.sched-slot-when strong { font-size: 0.86rem; font-weight: 750; }
+.sched-slot-when em { color: var(--accent-ink); font-style: normal; font-size: 0.82rem; font-weight: 700; }
+.sched-slot-why { color: var(--mute-i56); font-size: 0.72rem; line-height: 1.3; }
+.sched-slots-none { margin: 0; color: var(--mute-i56); font-size: 0.78rem; line-height: 1.45; }
+
+.sched-manual > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--dim-orange-3-6);
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.sched-manual-grid { display: grid; gap: 0.45rem; margin-top: 0.3rem; }
+
+.sched-crew-list { display: grid; gap: 0.25rem; }
+.sched-crew-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.25rem 0.4rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.sched-crew-option:hover { background: rgba(var(--tint), 0.05); }
+.sched-crew-option input { position: absolute; opacity: 0; pointer-events: none; }
+.sched-crew-check {
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 1px solid var(--edge-t22);
+  border-radius: 6px;
+  color: transparent;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+.sched-crew-option input:checked ~ .sched-crew-check { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.sched-crew-option input:focus-visible ~ .sched-crew-check { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-crew-copy { display: grid; gap: 0.02rem; }
+.sched-crew-copy strong { font-size: 0.82rem; font-weight: 700; }
+.sched-crew-copy small { color: var(--mute-i56); font-size: 0.7rem; }
+
+/* Assigning somebody texts them, so it is a choice and not a side effect.
+   Shown only when there is somebody to notify. */
+.sched-notify {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.25rem 0.4rem;
+  border-radius: 10px;
+  color: var(--mute-i62);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.sched-notify input { position: absolute; opacity: 0; pointer-events: none; }
+.sched-notify input:checked ~ .sched-crew-check { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.sched-notify input:focus-visible ~ .sched-crew-check { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sched-step-confirm { padding-bottom: 0.3rem; }
+.sched-confirm-line { display: grid; gap: 0.12rem; margin: 0; }
+.sched-confirm-line strong { font-size: 0.88rem; }
+.sched-confirm-line span { color: var(--mute-i56); font-size: 0.76rem; line-height: 1.4; }
+.sched-confirm-go { width: 100%; min-height: 46px; margin-top: 0.15rem; }
+.sched-confirm-go:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.sched-ask-form { display: grid; gap: 0.6rem; }
+
+/* THE AVAILABILITY STRIP WAS BUILT FOR A FULL-WIDTH CARD, and this panel is
+   340-400px. Measured docked at 1920: four day-cards side by side at ~90px
+   each, their city pills and "+ Add" buttons clipped, and the three option
+   slots below them squeezed to nothing.
+   One column here — the strip is a list of days you scroll, which is what it
+   is on a phone too, so this is the shape it already knows how to be. */
+.sched-detail .client-schedule-calendar-grid { grid-template-columns: minmax(0, 1fr); }
+.sched-detail .client-schedule-selected-list { grid-template-columns: minmax(0, 1fr); }
 
 
 .schedule-map { margin-bottom: 0; }
@@ -28697,9 +28849,32 @@ select optgroup {
    page sideways. */
 .schedule-shell > * { min-width: 0; }
 
-/* --- the workbench --------------------------------------------------------
+/* --- the workbench: queue, calendar, open job ------------------------------
    Single column is the default (phone and portrait tablet); columns arrive only
-   once there is room for a readable grid AND a usable rail. */
+   once there is room for a readable grid beside them.
+
+   NO TWO-COLUMN LANDSCAPE TABLET, AND THE MEASUREMENT IS WHY.
+   The docked app nav is 244px plus its gutter, so a 1024x768 landscape tablet
+   has ~738px for this entire page. Splitting that gave the calendar 332px --
+   narrower than the rail beside it, and unusable for either job. Everything
+   below the desktop breakpoint gets the full width for the calendar and reaches
+   the queue through the bar. Measured one-column at 1024: 690px of calendar.
+
+   THE QUEUE IS SIZED AGAINST WHAT IS LEFT, NOT AGAINST THE SCREEN.
+   A 1366x768 laptop has ~1054px for this whole page. A flat 420px column there
+   left the calendar 595px -- seven columns of 85px, which measured 36 clipped
+   labels. It starts at 300px and only widens once the screen can pay for it.
+
+   1280 IS THE QUEUE'S OWN BREAKPOINT, not a new one: below it UnscheduledQueue
+   is a full-screen overlay, so a column reserved for it would be an empty gap.
+
+   THE THIRD COLUMN STARTS AT 1600, AND THAT NUMBER IS MEASURED.
+   It was 1440 first. The nav is 244px plus its gutter, so a 1440 laptop has
+   ~1150px here; two 320px rails and two gaps leave the calendar ~494px, which
+   is 70px per weekday -- narrower than the ~82px this whole pass exists to fix,
+   and arrived at by fixing something else. At 1600 the calendar gets ~668px,
+   and at 1920 ~868px. Below 1600 the detail is an overlay instead; see
+   .sched-detail.is-sheet. */
 .schedule-workbench {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -28707,27 +28882,9 @@ select optgroup {
   align-items: start;
 }
 
-/* NO TWO-COLUMN LANDSCAPE TABLET, AND THE MEASUREMENT IS WHY.
-   The docked app nav is 244px plus its gutter, so a 1024x768 landscape tablet
-   has ~738px for this entire page. Splitting that gave the calendar 332px --
-   narrower than the rail beside it, and unusable for either job. The brief's
-   own fallback applies ("for portrait tablets OR widths where two columns
-   become cramped: switch to one column"), so everything below the desktop
-   breakpoint gets the full width for the calendar and reaches the queue through
-   the banner. Measured one-column at 1024: 690px of calendar. */
-
-/* Desktop: the rail stops growing and the calendar takes every extra pixel. A
-   fractional rail kept widening with the screen, so at 1920 it was ~560px of
-   job cards next to a calendar that did not need to be any narrower. */
-/* THE RAIL IS SIZED AGAINST WHAT IS LEFT, NOT AGAINST THE SCREEN.
-   The docked app nav is 244px plus its gutter, so a 1366x768 laptop has ~1054px
-   for this whole page. A flat 420px rail there left the calendar 595px -- seven
-   columns of 85px, which measured 36 clipped labels and is exactly the density
-   this pass exists to remove. The rail therefore starts at 320px and only
-   reaches the full 360-420px once the screen can pay for it. */
 @media (min-width: 1280px) {
   .schedule-workbench {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
     gap: 1.15rem;
   }
 
@@ -28736,8 +28893,12 @@ select optgroup {
   .schedule-calendar-panel { min-height: calc(100vh - 12rem); }
 }
 
-@media (min-width: 1520px) {
-  .schedule-workbench { grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); }
+@media (min-width: 1600px) {
+  .schedule-workbench { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px); }
+}
+
+@media (min-width: 1860px) {
+  .schedule-workbench { grid-template-columns: minmax(320px, 360px) minmax(0, 1fr) minmax(340px, 400px); }
 }
 
 /* --- the header row -------------------------------------------------------- */
@@ -29094,9 +29255,6 @@ body[data-schedule-overlay="job"] .sched-queue {
 /* --- tablet ---------------------------------------------------------------- */
 
 @media (min-width: 768px) and (max-width: 1279.98px) {
-  /* The rail's contents are in the overlay at these widths, so the aside itself
-     has nothing to occupy -- without this it still claims a grid row. */
-  .schedule-rail { display: contents; }
 }
 
 /* --- phone ----------------------------------------------------------------- */
@@ -29127,8 +29285,6 @@ body[data-schedule-overlay="job"] .sched-queue {
   .sched-queue-bar-line { flex: 1 1 100%; }
   .sched-queue-bar-actions { flex: 1 1 100%; margin-left: 0; }
   .sched-queue-bar-go { flex: 1 1 8rem; justify-content: center; }
-
-  .schedule-rail { display: contents; }
 
   .schedule-calendar-panel { padding: 0.9rem 0.8rem 1rem; }
 }

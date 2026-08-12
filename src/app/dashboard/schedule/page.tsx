@@ -12,30 +12,17 @@ import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
 import type { Payment } from '@/lib/payments';
 import ActionIcon from '@/components/action-icon';
-import ScheduledDatePicker from '@/components/scheduled-date-picker';
-import TimeSlotSelect from '@/components/time-slot-select';
-import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
-import { updateCrewAction } from '../crew/actions';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
-import UnscheduledQueue from './UnscheduledQueue';
+import ScheduleWorkbench from './ScheduleWorkbench';
 import { ScheduleQueueBar } from './QueueTriggers';
 import ScheduleMap from './ScheduleMap';
-import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
-import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import BookingRequests from './BookingRequests';
 import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
-
-const STATUS_LABEL: Record<Job['status'], string> = {
-  new_lead: 'New request',
-  in_progress: 'In progress',
-  complete: 'Complete',
-  archived: 'Archived',
-};
 
 function parseMonthParam(month?: string): { year: number; monthIndex: number } {
   if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -48,19 +35,6 @@ function parseMonthParam(month?: string): { year: number; monthIndex: number } {
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function addDaysToKey(date: Date, days: number): string {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return toDateKey(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
-}
-
-function nextWeekdayKey(date: Date, weekday: number): string {
-  const nextDate = new Date(date);
-  const distance = (weekday + 7 - nextDate.getDay()) % 7 || 7;
-  nextDate.setDate(nextDate.getDate() + distance);
-  return toDateKey(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
 }
 
 // "Nina Delacroix" -> "Nina D." — a month cell is ~110px wide, and the full
@@ -235,7 +209,6 @@ export default async function SchedulePage({
     activeJobs.map((job) => job.id)
   );
   const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
-  const crewById = new Map(crew.map((member) => [member.id, member]));
   const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledJobs.map((job) => job.id));
 
   // Self-serve bookings that have not been answered. These are NOT in
@@ -343,12 +316,11 @@ export default async function SchedulePage({
   // "Today" is dead weight while you're looking at this month — which is most
   // visits, since that's where the page lands.
   const viewingThisMonth = monthParam(year, monthIndex) === currentMonth;
-  const quickSchedulePresets = [
-    { label: 'Today 8 AM', date: todayKey, time: '08:00' },
-    { label: 'Tomorrow 8 AM', date: addDaysToKey(now, 1), time: '08:00' },
-    { label: 'Next Mon 8 AM', date: nextWeekdayKey(now, 1), time: '08:00' },
-    { label: 'Next Fri 9 AM', date: nextWeekdayKey(now, 5), time: '09:00' },
-  ];
+  /* THE FOUR QUICK PRESETS ARE GONE. "Today 8 AM", "Tomorrow 8 AM", "Next Mon
+     8 AM", "Next Fri 9 AM" — the same four guesses on every card, on a page
+     that knew exactly which days were full, which were blocked, which are not
+     worked at all and how many hours were left on each. The scheduling panel
+     proposes days that actually have room; see lib/schedule-suggestions. */
 
   const clientScheduleAvailability = Array.from({ length: 30 }, (_, index) => {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
@@ -501,6 +473,58 @@ export default async function SchedulePage({
     role_label: member.role_label,
   }));
 
+  /* --- what the queue and the scheduling panel need ------------------------
+     The rows used to be server-rendered, each carrying two bound actions and a
+     crew form of its own — nine jobs waiting meant eighteen buttons and
+     eighteen inline panels in the markup. Selecting a job has to be client
+     state, so the rows cross as plain data and the actions are called once,
+     for the job actually chosen. */
+  const queueJobs = unscheduledJobs.map((job) => ({
+    id: job.id,
+    clientName: job.client_name,
+    clientPhone: job.client_phone ?? null,
+    scope: job.scope?.trim() || null,
+    address: job.address ?? null,
+    cityLabel: extractCity(job.address),
+    estimatedHours: Number.isFinite(Number(job.estimated_hours)) && Number(job.estimated_hours) > 0
+      ? Number(job.estimated_hours)
+      : null,
+    approved: job.status === 'in_progress',
+    crewIds: assignmentsByJob[job.id] ?? [],
+    requestState: (() => {
+      const request = scheduleRequestByJob[job.id];
+      if (!request || request.status === 'selected') return 'none' as const;
+      return request.status === 'needs_more_options' ? ('needs_more_options' as const) : ('sent' as const);
+    })(),
+    lat: job.lat != null ? Number(job.lat) : null,
+    lng: job.lng != null ? Number(job.lng) : null,
+  }));
+
+  // How many jobs sit on each day, and where they are. Both feed the slot
+  // suggestions: the count is what tells a day with work but no stated hours
+  // from an empty one, and the places are what let a suggestion say whether the
+  // job is near that day's route.
+  const jobCountByDate: Record<string, number> = {};
+  const placesByDate: Record<string, Array<{ lat: number; lng: number }>> = {};
+  for (const occurrence of scheduledJobOccurrences) {
+    const key = occurrence.scheduled_for as string;
+    jobCountByDate[key] = (jobCountByDate[key] ?? 0) + 1;
+    if (occurrence.lat != null && occurrence.lng != null) {
+      (placesByDate[key] ??= []).push({ lat: Number(occurrence.lat), lng: Number(occurrence.lng) });
+    }
+  }
+
+  // Days deliberately taken off — NOT `unavailableDays`, which also holds every
+  // day that is merely full. See the note where this is passed down.
+  const blockedOnlyDays: Record<string, string> = {};
+  for (const block of availabilityBlocks) {
+    for (let i = 0; i < 400; i++) {
+      const key = addDaysToDateKey(block.start_date, i);
+      if (key > block.end_date) break;
+      blockedOnlyDays[key] = block.reason ? `Blocked off — ${block.reason}.` : 'This day is blocked off.';
+    }
+  }
+
   /* CLOSED UNLESS ASKED FOR, ON THIS PAGE ONLY.
      normalizeMapView's absent-cookie default is 'large', which is right for
      Leads and Customers where the map IS the screen. Here the calendar is the
@@ -553,7 +577,37 @@ export default async function SchedulePage({
         }
       />
 
-      <div className="schedule-workbench">
+      {/* QUEUE, CALENDAR, OPEN JOB — left to right.
+          The page used to put the calendar first with the queue in a rail
+          beside it, and every card in that rail carried its own inline
+          scheduling form: opening one pushed the card to ~480px and shoved the
+          rest of the list off screen, and at tablet widths the expanded form
+          left a column of dead space next to it. The list you choose from and
+          the form you fill in were the same column, fighting for it.
+
+          The calendar stays server-rendered and is passed through as children —
+          it is the most expensive thing on this page and has no business
+          re-rendering because a row was selected. */}
+      <ScheduleWorkbench
+        jobs={queueJobs}
+        crew={crewOptions}
+        context={{
+          todayKey,
+          hoursByDate: Object.fromEntries(hoursByDateForCalendar),
+          jobsByDate: jobCountByDate,
+          placesByDate: placesByDate,
+          capacityHours: scheduleDayHours,
+          /* Availability blocks ONLY. `unavailableDays` below also holds every
+             day that is merely FULL, and a full day is one the ranking should
+             put last rather than never mention — passing that map would have
+             hidden every busy day from the suggestions instead of ordering
+             them. */
+          blockedDays: blockedOnlyDays,
+          workingWeekdays,
+          workdayStart: (account as { workday_start?: string } | null)?.workday_start ?? null,
+        }}
+        clientAvailability={clientScheduleAvailability}
+      >
       <section className="panel workspace-section-card schedule-calendar-panel">
         {/* Two rows, not six. The page used to spend ~470px on desktop and
             ~640px on mobile introducing itself — an eyebrow, a title, a lead
@@ -704,213 +758,7 @@ export default async function SchedulePage({
           </div>
         </div>
       </section>
-
-      {/* The rail. Jobs first because that is the drag source and it wants to
-          be level with the top of the grid; the map sits under it as context
-          for the month rather than a working surface — the real map work is
-          Plan my day. */}
-      <aside className="schedule-rail">
-      {unscheduledJobs.length > 0 ? (
-        <UnscheduledQueue count={unscheduledJobs.length}>
-        <section className="panel workspace-section-card" id="unscheduled-jobs">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Needs a date</p>
-            <h2>Unscheduled jobs</h2>
-            {/* TAP FIRST, DRAG SECOND. Dragging was the headline instruction on
-                every device, including the ones with no pointer to drag with and
-                no keyboard to do it another way. "Choose date & time" is on every
-                card and always was; it just read as the fallback. */}
-            {/* THE MOUSE SENTENCE IS HIDDEN WHERE THERE IS NO MOUSE.
-                It was a second instruction on every device, and on a phone it
-                described something the reader cannot do — the calendar it
-                refers to is not even on screen, and the queue is a full-height
-                overlay covering it. `(hover: hover)` in globals.css is what
-                shows it; a width query would guess wrong on a touchscreen
-                laptop in either direction. */}
-            <p className="schedule-drag-hint">
-              Use <strong>Choose date &amp; time</strong> on any job below.
-              <span className="schedule-drag-hint-mouse">
-                {' '}On a mouse you can also drag a job straight onto a calendar date.
-              </span>
-            </p>
-          </div>
-          <div className="sign-in-methods-list">
-            {unscheduledJobs.map((job) => {
-              const boundSchedule = scheduleJobAction.bind(null, job.id);
-              const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
-              const boundUpdateCrew = updateJobCrewAction.bind(null, job.id, true);
-              const scheduleRequest = scheduleRequestByJob[job.id];
-              const assignedCrewIds = assignmentsByJob[job.id] ?? [];
-              const assignedCrewIdSet = new Set(assignedCrewIds);
-              const assignedCrewInitials = (assignmentsByJob[job.id] ?? [])
-                .map((crewId) => crewInitialsById.get(crewId))
-                .filter((initials): initials is string => Boolean(initials));
-              const assignedCrewMembers = assignedCrewIds
-                .map((crewId) => crewById.get(crewId))
-                .filter((member): member is typeof crew[number] => Boolean(member));
-              return (
-                /* Tinted with the color this job will BE once it lands on a
-                   date — the calendar chips key off status, so an unscheduled
-                   card and its future chip now agree. Dragging it becomes a
-                   thing moving rather than a grey row turning into a gold one. */
-                <div className={`sign-in-method-row schedule-method-row status-${job.status}`} key={job.id}>
-                  <div className="method-info">
-                    {/* The grip leads the card, level with the name. It was a
-                        labelled button at the foot, below the crew row — the
-                        furthest point on the card from the thing you are about
-                        to drag, and the last place anybody looks. */}
-                    <JobDragHandle jobId={job.id} jobName={job.client_name} />
-                    <div>
-                      <Link className="method-name" href={`/dashboard/jobs/${job.id}`}>{job.client_name}</Link>
-                      <span className="method-detail">
-                        {STATUS_LABEL[job.status]} · {job.address || 'No address on file'} · Est. hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
-                      </span>
-                      {scheduleRequest && scheduleRequest.status !== 'selected' ? (
-                        <div>
-                          <span className={`schedule-request-flag ${scheduleRequest.status === 'needs_more_options' ? 'warn' : 'pending'}`}>
-                            {scheduleRequest.status === 'needs_more_options'
-                              ? '● Client asked for different dates — send new ones'
-                              : '● Dates sent — waiting on the client'}
-                          </span>
-                        </div>
-                      ) : null}
-                      {job.status === 'new_lead' ? (
-                        <div>
-                          <span className="schedule-request-flag muted">○ Quote not approved yet</span>
-                        </div>
-                      ) : null}
-                      <div className="schedule-crew-initials" aria-label={assignedCrewInitials.length > 0 ? `Assigned crew: ${assignedCrewInitials.join(', ')}` : 'No crew assigned'}>
-                        <details className="schedule-crew-picker" name={`schedule-crew-picker-${job.id}`}>
-                          <summary>Crew</summary>
-                          <form action={boundUpdateCrew} className="schedule-crew-picker-panel">
-                            <div className="schedule-crew-picker-heading">
-                              <strong>Active crew</strong>
-                              <span>Add or remove crew for this job.</span>
-                            </div>
-                            {crew.length === 0 ? (
-                              <p className="crew-assign-empty">No active crew yet. <Link href="/dashboard/crew">Add your team →</Link></p>
-                            ) : (
-                              <div className="schedule-crew-picker-list">
-                                {crew.map((member) => (
-                                  <label className="schedule-crew-picker-option" key={member.id}>
-                                    <input name="crewIds" type="checkbox" value={member.id} defaultChecked={assignedCrewIdSet.has(member.id)} />
-                                    <span className="schedule-crew-picker-check" aria-hidden="true">✓</span>
-                                    <span className="schedule-crew-picker-copy">
-                                      <strong>{member.name}</strong>
-                                      <small>{member.role_label}</small>
-                                    </span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                            <div className="schedule-crew-picker-actions">
-                              <button type="submit" formAction={updateJobCrewAction.bind(null, job.id, true)} className="btn primary schedule-crew-picker-save" aria-label={`Save crew for ${job.client_name} and text newly added crew`}>Save &amp; text</button>
-                              <button type="submit" formAction={updateJobCrewAction.bind(null, job.id, false)} className="btn secondary schedule-crew-picker-save" aria-label={`Save crew for ${job.client_name} without texting`}>Save without texting</button>
-                            </div>
-                          </form>
-                        </details>
-                        {assignedCrewMembers.length > 0 ? assignedCrewMembers.map((member) => (
-                          <details className="schedule-crew-card" key={member.id} name={`schedule-crew-${job.id}`}>
-                            <summary className="schedule-crew-badge" title={member.name}>
-                              <strong>{crewInitials(member.name)}</strong>
-                            </summary>
-                            <div className="schedule-crew-card-panel">
-                              <div className="schedule-crew-card-header">
-                                <div>
-                                  <strong>{member.name}</strong>
-                                  <span>{member.role_label}</span>
-                                </div>
-                                <Link href="/dashboard/crew" className="btn secondary">Crew page</Link>
-                              </div>
-                              <dl className="schedule-crew-card-details">
-                                <div>
-                                  <dt>Phone</dt>
-                                  <dd>{member.phone}</dd>
-                                </div>
-                                <div>
-                                  <dt>Rate</dt>
-                                  <dd>{member.hourly_rate > 0 ? `${formatMoney(member.hourly_rate)}/hr` : 'Not set'}</dd>
-                                </div>
-                              </dl>
-                              <details className="schedule-crew-edit">
-                                <summary className="btn secondary">Edit Crew Member</summary>
-                                <form action={updateCrewAction.bind(null, member.id)} className="schedule-crew-edit-form">
-                                  <label htmlFor={`scheduleCrewName-${job.id}-${member.id}`}>Name</label>
-                                  <input id={`scheduleCrewName-${job.id}-${member.id}`} name="name" required defaultValue={member.name} />
-                                  <label htmlFor={`scheduleCrewPhone-${job.id}-${member.id}`}>Phone</label>
-                                  <input id={`scheduleCrewPhone-${job.id}-${member.id}`} name="phone" type="tel" required defaultValue={member.phone} />
-                                  <label htmlFor={`scheduleCrewRole-${job.id}-${member.id}`}>Role</label>
-                                  <input id={`scheduleCrewRole-${job.id}-${member.id}`} name="roleLabel" defaultValue={member.role_label} />
-                                  <label htmlFor={`scheduleCrewRate-${job.id}-${member.id}`}>Hourly rate ($)</label>
-                                  <input id={`scheduleCrewRate-${job.id}-${member.id}`} name="hourlyRate" type="number" min="0" step="0.01" defaultValue={member.hourly_rate} />
-                                  <button type="submit" className="btn primary">Save crew member</button>
-                                </form>
-                              </details>
-                            </div>
-                          </details>
-                        )) : <em>None</em>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="schedule-action-buttons">
-                    <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      {/* The primary action on the card, named for what it does.
-                          "Add start date" undersold it — it takes a date AND a
-                          time, and it is the tap-based path that replaces the
-                          drag. */}
-                      <summary className="btn primary schedule-choose-when">Choose date &amp; time</summary>
-                      <div className="schedule-popover-panel schedule-start-panel">
-                        <form action={boundSchedule} className="schedule-inline-form schedule-start-form">
-                          <div className="schedule-inline-field schedule-inline-date">
-                            <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
-                          </div>
-                          <div className="schedule-inline-field schedule-inline-time">
-                            <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
-                          </div>
-                          <button type="submit" className="btn primary schedule-save-button">Save Start Date</button>
-                        </form>
-                        <div className="schedule-preset-grid" aria-label={`Quick schedule presets for ${job.client_name}`}>
-                          {quickSchedulePresets.map((preset) => (
-                            <form action={boundSchedule} key={`${job.id}-${preset.label}`}>
-                              <input type="hidden" name="scheduledFor" value={preset.date} />
-                              <input type="hidden" name="scheduledTime" value={preset.time} />
-                              <button type="submit" className="schedule-preset-button">{preset.label}</button>
-                            </form>
-                          ))}
-                        </div>
-                      </div>
-                    </details>
-                    <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Offer customer times</summary>
-                      <div className="schedule-popover-panel">
-                        <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
-                          <div className="schedule-client-options-intro">
-                            <strong>Send up to 3 dates that you&apos;re available to your client.</strong>
-                            <span>We&apos;ll email you and flag it on your dashboard the moment they respond.</span>
-                          </div>
-                          <div className="schedule-inline-field schedule-inline-date">
-                            <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>
-                            <input id={`scheduleClientPhone-${job.id}`} name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
-                          </div>
-                          <ClientScheduleOptionsCalendar availability={clientScheduleAvailability} />
-                          <label className="sms-consent-check">
-                            <input name="scheduleSmsConsent" type="checkbox" required />
-                            <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
-                          </label>
-                          <button type="submit" className="btn primary schedule-save-button">Send Dates to Client</button>
-                        </form>
-                      </div>
-                    </details>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-        </UnscheduledQueue>
-      ) : null}
-      </aside>
-      </div>
+      </ScheduleWorkbench>
       </ScheduleDragProvider>
 
       {/* THE MAP IS THE ONLY THING LEFT DOWN HERE, and it stays because it is
