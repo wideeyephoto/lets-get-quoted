@@ -2543,6 +2543,29 @@ h3 {
 .sidenav-foot > .stripe-status-pill.sidenav-stripe,
 .sidenav-foot > .sidenav-account { min-height: 40px; }
 
+/* CENTRED, because these two stopped being rows. Left-aligned content is what
+   a nav list wants — every label starting on the same x, so the eye can run
+   down it — and both of these inherited that from the stack they used to be in.
+   Side by side they are a pair of buttons, and a button's content belongs in
+   the middle of it: left-aligned, the words sat against the left edge with the
+   slack pooled on the right, which reads as a row that failed to fill rather
+   than a button.
+
+   The name has to give up flex-grow for this to mean anything. It was set to
+   take all the free space (so the old dropdown's caret would sit hard right),
+   which centres the text inside a box that is already the full width — i.e.
+   changes nothing. */
+.sidenav-foot > .sidenav-account,
+.sidenav-foot > .stripe-status-pill.sidenav-stripe {
+  justify-content: center;
+  text-align: center;
+}
+.sidenav-foot > .sidenav-account .sidenav-account-name { flex: 0 1 auto; }
+/* The pill's own padding is asymmetric — 0.4rem left, 0.8rem right — from when
+   the round "$" tile sat at the start of a left-aligned row and needed less
+   room than the text did. Centred, that asymmetry IS an off-centre. */
+.sidenav-foot > .stripe-status-pill.sidenav-stripe { padding-left: 0.6rem; padding-right: 0.6rem; }
+
 /* ===== Account, foot of the rail ============================================
    One link to the Account page. This was a dropdown — Settings, Help, the theme
    switch, a Stripe row and Sign out behind the business name — and the menu is
