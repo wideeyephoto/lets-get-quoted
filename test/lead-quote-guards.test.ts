@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { formatElapsedTime, leadOverdueLabel } from '@/lib/leads';
-import { quoteShape } from '@/app/dashboard/leads/[leadId]/LeadQuoteFields';
+// Not from LeadQuoteFields, which is a 'use client' module. The lead page is a
+// server component and calls this to seed the gate; a plain function imported
+// out of a client module by a server one arrives as a client reference and
+// throws "quoteShape is not a function" in the browser. See quote-shape.ts.
+import { quoteShape } from '@/app/dashboard/leads/[leadId]/quote-shape';
 import { starterRepliesFor, STARTER_REPLIES, firstNameOf } from '@/lib/starter-replies';
 import type { QuoteItem } from '@/lib/jobs';
 
@@ -216,5 +220,41 @@ describe('anchors clear the fixed bar', () => {
 
   it('ships to the sheet the app actually loads', () => {
     expect(LITE).toContain('--appbar-h');
+  });
+});
+
+/**
+ * A PLAIN FUNCTION CANNOT CROSS THE CLIENT BOUNDARY.
+ *
+ * quoteShape lived in LeadQuoteFields.tsx, which carries 'use client'. The lead
+ * page is a server component and calls it to seed the send gate's opening
+ * state — and a non-component export imported out of a client module by a
+ * server one does not arrive as a function. It arrives as a client reference,
+ * and calling it threw "quoteShape is not a function" on every load of the lead
+ * detail page, in the browser, after the server render had already succeeded.
+ */
+describe('the send gate is wired across the client boundary correctly', () => {
+  const shapeModule = read('src', 'app', 'dashboard', 'leads', '[leadId]', 'quote-shape.ts');
+  const fields = read('src', 'app', 'dashboard', 'leads', '[leadId]', 'LeadQuoteFields.tsx');
+
+  it('keeps quoteShape in a module with no directive', () => {
+    // The first statement, which is where a directive has to be to count —
+    // the file's own comment explains what 'use client' did to it.
+    expect(shapeModule.split('\r\n').join('\n').split('\n')[0].trim()).toBe("import type { QuoteItem } from '@/lib/jobs';");
+    expect(shapeModule).toContain('export function quoteShape');
+    expect(shapeModule).toContain("export const QUOTE_ITEMS_EVENT");
+  });
+
+  it('has the server component import it from there', () => {
+    expect(LEAD_PAGE).toContain("import { quoteShape } from './quote-shape';");
+    expect(LEAD_PAGE).not.toContain("import { quoteShape } from './LeadQuoteFields';");
+  });
+
+  it('leaves the client side importing the same one', () => {
+    expect(fields).toContain("from './quote-shape'");
+    expect(GATE).toContain("from './quote-shape'");
+    // One definition, so the builder and the button cannot disagree about what
+    // counts as a quote.
+    expect(fields).not.toContain('export function quoteShape');
   });
 });

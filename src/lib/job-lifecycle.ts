@@ -134,6 +134,47 @@ export function primaryJobAction(
   }
 }
 
+/**
+ * WHAT THE JOB IS WAITING ON, when the answer is "not you".
+ *
+ * primaryJobAction returns null in three states, and a hero with no bright
+ * control and no sentence reads as a page that has run out of things to say.
+ * It hasn't — it is waiting on the customer, on the calendar, or on nothing at
+ * all, and those are different enough to be worth naming.
+ *
+ * Deliberately not an action. Manufacturing a button here is how "Request
+ * payment" ended up beside "Mark Job Completed" on a job three days from its
+ * start date: every stage got offered every control because no stage was
+ * allowed to say "nothing yet".
+ */
+export function jobWaitNote(
+  stage: JobStage,
+  input: {
+    clientName: string;
+    /** The booked day, already formatted for reading. */
+    scheduledLabel: string | null;
+    reviewAlreadyRequested: boolean;
+  },
+): string | null {
+  const who = input.clientName?.trim() || 'the customer';
+  switch (stage) {
+    case 'quote_sent':
+      return `Waiting on ${who} to approve the quote.`;
+    case 'scheduled':
+      // Reached only when primaryJobAction declined to offer "Job started",
+      // which is exactly when the booked day has not arrived.
+      return input.scheduledLabel
+        ? `Booked for ${input.scheduledLabel}. The start button turns on that morning.`
+        : null;
+    case 'settled':
+      return input.reviewAlreadyRequested
+        ? `Nothing outstanding — ${who} has already been asked for a review.`
+        : 'Nothing outstanding on this job.';
+    default:
+      return null;
+  }
+}
+
 /* --- the money, subtracted ------------------------------------------------- */
 
 export type PaymentLike = { amount: number | string; status: string };

@@ -14,7 +14,7 @@ import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, sendQuoteAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
 import QuoteSendGate from './QuoteSendGate';
-import { quoteShape } from './LeadQuoteFields';
+import { quoteShape } from './quote-shape';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
 import QuoteDeliveryPreview from './QuoteDeliveryPreview';
@@ -510,6 +510,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               className={styles.primaryActionCard}
               availability={availabilityCards}
               leadPhone={lead.phone ?? ''}
+              leadAddress={lead.address ?? ''}
+              leadName={lead.name ?? ''}
               previousHref={availabilityHref(previousAvailabilityStart)}
               nextHref={availabilityHref(nextAvailabilityStart)}
               canViewPrevious={canViewPreviousAvailability}

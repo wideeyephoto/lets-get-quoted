@@ -5168,6 +5168,25 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .job-money-strip.is-over { border-color: var(--cedge-red-6); }
 .job-money-strip.is-over > div:last-child dd { color: var(--bad); }
+.job-actions-menu.is-open .job-actions-trigger svg { transform: rotate(180deg); }
+/* The entries that are whole controls rather than links — the expense modal,
+   start, complete. They bring their own button, so this only spaces them. */
+.job-actions-item.is-control { padding: 0.35rem 0.6rem; }
+.job-actions-item.is-control > * { width: 100%; }
+.job-actions-item.is-control .btn { width: 100%; justify-content: center; }
+.job-preflight-review.is-on { border-color: var(--cedge-orange-51); background: rgba(255, 122, 33, 0.1); }
+.job-preflight-switch.is-on {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+/* Quiet while the quote still matches what was agreed; it only has something
+   to warn about once an edit exists. */
+.quote-approved-lock:not(.is-dirty) {
+  border-color: var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+}
+.quote-agreed-lines li.is-addon > span { color: var(--muted); }
 
 /* An anchor landing under the sticky bar is an anchor that missed — and on a
    phone there are TWO bars to clear, the app's fixed one and this subnav

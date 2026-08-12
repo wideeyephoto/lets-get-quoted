@@ -185,10 +185,33 @@ describe('the job page uses the one ladder', () => {
     }
   });
 
-  it('gives exactly one control the primary class, chosen by stage', () => {
-    expect(page).toMatch(/isPrimary\('request_payment'\) \? 'primary' : 'secondary'/);
+  /**
+   * ONE BRIGHT CONTROL, AND THE ALTERNATIVES IN A DRAWER.
+   *
+   * Every control used to render in the hero row at once, each deciding its own
+   * emphasis from isPrimary — which meant a job at the pricing stage led with
+   * "Request payment" and offered no way to price it. Now the stage picks the
+   * control and everything else moves into JobActionMenu.
+   */
+  it('renders one control for the stage rather than all of them', () => {
+    const row = page.slice(page.indexOf('<div className="actions workspace-actions">'), page.indexOf('</JobActionMenu>'));
+    expect(row).toContain('{primaryControl}');
+    expect(row).toContain('<JobActionMenu');
+    // Exactly one `btn primary` can reach the row, and it is primaryControl's.
+    expect(row).not.toContain('btn primary');
     expect(page).toContain("primary={isPrimary('start')}");
     expect(page).toContain("muted={!isPrimary('complete')}");
+  });
+
+  it('covers every key primaryJobAction can return', () => {
+    for (const key of ['price', 'send_quote', 'schedule', 'start', 'complete', 'request_payment', 'request_review']) {
+      expect(page, key).toContain(`'${key}'`);
+    }
+  });
+
+  it('says whose move it is when the answer is not the contractor’s', () => {
+    expect(page).toContain('const waitNote = jobWaitNote(stage, {');
+    expect(page).toContain('{!primaryControl && waitNote ? <p className="job-wait-note">{waitNote}</p> : null}');
   });
 
   it('leads with the job rather than the customer', () => {

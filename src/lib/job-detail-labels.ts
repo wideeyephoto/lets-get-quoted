@@ -37,10 +37,18 @@ export const COST_TYPE_ICON: Record<Cost['type'], string> = {
   other: '📦',
 };
 
+/**
+ * Where a feed row goes, not what the customer can currently see.
+ *
+ * "Client visible" was a claim, and on a job with no client_job_access row it
+ * was a false one — the row is marked for a feed nobody has been given a link
+ * to. Naming the destination is true in both cases, and the share strip under
+ * the feed is where the question of access actually gets answered.
+ */
 export const FEED_VISIBILITY_LABEL: Record<JobFeedEvent['visibility'], string> = {
   internal: 'Internal',
-  client: 'Client visible',
-  client_financial: 'Client financial',
+  client: 'In Job Feed',
+  client_financial: 'In Job Feed · money',
 };
 
 export const FEED_KIND_LABEL: Record<string, string> = {
@@ -258,14 +266,8 @@ export function completeJobNeedsConfirm(input: CompleteJobWarningInput): boolean
     || (input.blockers?.length ?? 0) > 0;
 }
 
-/** "$4,200 is still unpaid and 2 checklist items are unticked" */
-function joinBlockers(blockers: string[]): string {
-  if (blockers.length === 1) return blockers[0];
-  return `${blockers.slice(0, -1).join(', ')} and ${blockers[blockers.length - 1]}`;
-}
-
 /**
- * What marking a job complete is actually going to do, as a confirm dialog.
+ * WHETHER A TEXT IS ABOUT TO LEAVE, in one sentence.
  *
  * Completing is undoable from the feed. The review request it can trigger is
  * NOT — it's a text to a customer, and the contractor should know it's about to
@@ -277,58 +279,37 @@ function joinBlockers(blockers: string[]): string {
  * Every branch below is a real state the send path can be in — see
  * deliverJobReviewRequest, which bails on a missing review URL and is gated on
  * both the account toggle and a once-per-job check.
+ *
+ * It lives here, apart from the preflight that renders it, because it is the
+ * one paragraph on that screen whose wording is load-bearing: six states, three
+ * of which look identical from the outside and send nothing.
  */
-export function completeJobConfirmMessage(input: CompleteJobWarningInput): string {
+export function completeJobReviewSentence(input: CompleteJobWarningInput): string {
   const who = input.clientName?.trim() || 'the customer';
-  const base = `Mark this job complete?\n\n${who} sees it close out on their job feed. You can undo it from the feed if you press it early.`;
-
-  // Said first, because it is the one that answers "am I on the right job?".
-  // The date stays on the calendar: completing does not un-book the work, and a
-  // dialog that implied it did would be describing a thing that does not happen.
-  const early = isEarlyCompletion(input)
-    ? `\n\n📅 This job is booked for ${formatBookedDay(input.scheduledFor as string)}, so you're closing it early. The date stays on the calendar.`
-    : '';
-
-  // What is still open, named rather than refused. A completed job drops out of
-  // every "what's left" list in the app, so anything unfinished on it goes quiet
-  // at exactly the moment it stops being visible — this is the last place to say
-  // it out loud. Completing is still one press away; see completionBlockers.
-  const outstanding = input.blockers?.length
-    ? `\n\n⚠ Still open: ${joinBlockers(input.blockers)}. Completing doesn't cancel any of it — it just stops the job reminding you.`
-    : '';
-
-  // Finishing work nobody approved is a contradiction, so completing resolves it
-  // the only way that is true: by recording that they did approve. Said out loud
-  // because the feed entry it writes is one the customer can see.
-  const unapproved = input.quoteUnapproved
-    ? `\n\n✍ This quote was never approved, so completing it also records that ${who} accepted it — on their job feed, and on your conversion rate.`
-    : '';
-
-  const head = `${base}${early}${unapproved}${outstanding}`;
 
   // The pill, when the owner has set it. Said in its own words rather than the
   // account setting's, because "automatic review asks are off" is the wrong
   // explanation for a switch they just turned off themselves.
   if (input.sendReview === false) {
-    return `${head}\n\nReview is switched off for this one, so no review request goes out.`;
+    return 'Review is switched off for this one, so no review request goes out.';
   }
   if (input.sendReview === true && !input.autoReviewRequest && input.reviewUrlConfigured && !input.alreadyRequested && input.channel) {
-    return `${head}\n\n⭐ Review is switched on for this one, so ${who} will be ${input.channel === 'text' ? 'texted' : 'emailed'} a review request straight away — even though automatic asks are off. That send can't be recalled.`;
+    return `Review is switched on for this one, so ${who} will be ${input.channel === 'text' ? 'texted' : 'emailed'} a review request straight away — even though automatic asks are off. That send can't be recalled.`;
   }
 
   if (!input.autoReviewRequest) {
-    return `${head}\n\nNo review request goes out — automatic review asks are off, so that stays a button you press yourself.`;
+    return 'No review request goes out — automatic review asks are off, so that stays a button you press yourself.';
   }
   if (!input.reviewUrlConfigured) {
-    return `${head}\n\nAutomatic review asks are on, but there's no Google review link saved yet, so nothing will be sent.`;
+    return "Automatic review asks are on, but there's no Google review link saved yet, so nothing will be sent.";
   }
   if (input.alreadyRequested) {
-    return `${head}\n\n${who} has already been asked for a review on this job, so another one won't be sent.`;
+    return `${who} has already been asked for a review on this job, so another one won't be sent.`;
   }
   if (!input.channel) {
-    return `${head}\n\nAutomatic review asks are on, but ${who} has no mobile or email on file, so the review request can't be sent.`;
+    return `Automatic review asks are on, but ${who} has no mobile or email on file, so the review request can't be sent.`;
   }
-  return `${head}\n\n⭐ ${who} will be ${input.channel === 'text' ? 'texted' : 'emailed'} a review request straight away. That send can't be recalled.`;
+  return `${who} will be ${input.channel === 'text' ? 'texted' : 'emailed'} a review request straight away. That send can't be recalled.`;
 }
 
 export function getFeedDisplayTitle(event: Pick<JobFeedEvent, 'kind' | 'title'>): string {

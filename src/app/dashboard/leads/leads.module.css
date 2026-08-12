@@ -160,6 +160,23 @@
 .modalCloseButton { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid var(--edge-t12); border-radius: 999px; background: rgba(var(--tint), .05); color: var(--gold-ink); font-weight: 900; text-decoration: none; }
 .modalCloseButton:hover, .modalCloseButton:focus-visible { border-color: var(--cedge-amber-49); background: rgba(255,209,102,.1); outline: none; }
 .editModalActions { display: flex !important; justify-content: flex-end; gap: .55rem; }
+
+/* ---- What you are about to put in your diary, before it goes in ----
+   One click on a calendar square used to be a confirmed visit: duration
+   hardcoded to 60 minutes, the note hardcoded to a sentence about the UI it
+   came from, and the address neither asked for nor shown. */
+.bookingReview { display: grid; gap: .85rem; width: min(520px, 100%); max-height: min(88vh, 760px); overflow: auto; padding: 1.1rem; border: 1px solid var(--cedge-amber-12); border-radius: 14px; background: var(--bg-3); box-shadow: 0 24px 80px rgba(var(--shade), .45); }
+.bookingReviewHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: .7rem; border-bottom: 1px solid var(--rule-t08); }
+.bookingReviewHead h2 { margin: .15rem 0 0; font-size: 1.25rem; color: var(--text); }
+.bookingReviewBusy { margin: 0; padding: .55rem .75rem; border-left: 3px solid var(--warn); border-radius: 0 9px 9px 0; background: rgba(255,122,33,.08); font-size: .82rem; line-height: 1.5; }
+.bookingReviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
+.bookingReviewGrid label, .bookingReviewField { display: grid; gap: .3rem; min-width: 0; }
+.bookingReviewGrid span, .bookingReviewField > span { font-size: .74rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--mute-t45); }
+.bookingReviewGrid select, .bookingReviewField input { width: 100%; min-height: 42px; }
+.bookingReviewField small { font-size: .76rem; line-height: 1.45; color: var(--mute-t45); }
+.bookingReviewNotify { margin: 0; }
+.bookingReviewActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+@media (max-width: 520px) { .bookingReviewGrid { grid-template-columns: minmax(0, 1fr); } }
 /* ---- Send the quote: the hero form on the page ---- */
 .sendQuoteSection { position: relative; overflow: hidden; border: 1px solid var(--cedge-orange-69) !important; background: linear-gradient(180deg, rgba(255,122,33,.10), rgba(var(--tint), .015) 42%), var(--ground-2) !important; box-shadow: 0 30px 70px -34px rgba(255,122,33,.55), inset 0 1px 0 rgba(255,209,102,.12) !important; }
 .sendQuoteSection::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ff5a1f, #ffd166 50%, #ff5a1f); background-size: 200% 100%; animation: sendQuoteBar 6s linear infinite; }

@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   FEED_KIND_ICON,
+  formatBookedDay,
   FEED_KIND_LABEL,
   INVOICE_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
-  completeJobConfirmMessage,
+  completeJobReviewSentence,
   completeJobNeedsConfirm,
   isEarlyCompletion,
   reviewPillState,
@@ -79,11 +82,16 @@ describe('scheduled time formatting', () => {
   });
 });
 
-describe('the "Mark Job Completed" confirmation', () => {
+describe('the review sentence on the completion preflight', () => {
   // Completing a job is undoable from the feed. The review request it can
-  // trigger is a text to a customer, and is not. So the dialog has to describe
-  // what THIS account's settings will actually do — a warning that fires when
-  // nothing will happen teaches people to click straight through warnings.
+  // trigger is a text to a customer, and is not. So the preflight has to
+  // describe what THIS account's settings will actually do — a warning that
+  // fires when nothing will happen teaches people to click straight through
+  // warnings.
+  //
+  // It is a lib function rather than prose in the component because six states
+  // reach it and three of them look identical from the outside while sending
+  // nothing at all.
   const base = {
     clientName: 'Dana Whitfield',
     autoReviewRequest: true,
@@ -92,53 +100,45 @@ describe('the "Mark Job Completed" confirmation', () => {
     channel: 'text' as const,
   };
 
-  it('always names the job closing out and the way back', () => {
-    for (const over of [{}, { autoReviewRequest: false }, { reviewUrlConfigured: false }, { alreadyRequested: true }]) {
-      const message = completeJobConfirmMessage({ ...base, ...over });
-      expect(message).toContain('Mark this job complete?');
-      expect(message.toLowerCase()).toContain('undo');
-    }
-  });
-
   it('warns that a review request goes out, and by which channel', () => {
-    const texted = completeJobConfirmMessage(base);
+    const texted = completeJobReviewSentence(base);
     expect(texted).toContain('Dana Whitfield');
     expect(texted).toContain('texted');
     expect(texted.toLowerCase()).toContain("can't be recalled");
 
-    const emailed = completeJobConfirmMessage({ ...base, channel: 'email' });
+    const emailed = completeJobReviewSentence({ ...base, channel: 'email' });
     expect(emailed).toContain('emailed');
     expect(emailed).not.toContain('texted');
   });
 
   it('does not threaten a text when automatic asks are off', () => {
-    const message = completeJobConfirmMessage({ ...base, autoReviewRequest: false });
+    const message = completeJobReviewSentence({ ...base, autoReviewRequest: false });
     expect(message).toContain('No review request goes out');
     expect(message).not.toMatch(/will be (texted|emailed)/);
   });
 
   it('does not promise a send that the missing review link would swallow', () => {
     // deliverJobReviewRequest bails before sending anything when no Google
-    // review URL is saved, so the dialog must not say a text is coming.
-    const message = completeJobConfirmMessage({ ...base, reviewUrlConfigured: false });
+    // review URL is saved, so the preflight must not say a text is coming.
+    const message = completeJobReviewSentence({ ...base, reviewUrlConfigured: false });
     expect(message).toContain('nothing will be sent');
     expect(message).not.toMatch(/will be (texted|emailed)/);
   });
 
   it('knows the ask only fires once per job', () => {
-    const message = completeJobConfirmMessage({ ...base, alreadyRequested: true });
+    const message = completeJobReviewSentence({ ...base, alreadyRequested: true });
     expect(message).toMatch(/already been asked/);
     expect(message).not.toMatch(/will be (texted|emailed)/);
   });
 
   it('says so when there is nowhere to send it', () => {
-    const message = completeJobConfirmMessage({ ...base, channel: null });
+    const message = completeJobReviewSentence({ ...base, channel: null });
     expect(message).toMatch(/no mobile or email/);
     expect(message).not.toMatch(/will be (texted|emailed)/);
   });
 
   it('does not leave a hole where the name goes', () => {
-    const message = completeJobConfirmMessage({ ...base, clientName: '   ' });
+    const message = completeJobReviewSentence({ ...base, clientName: '   ' });
     expect(message).toContain('the customer');
     expect(message).not.toContain('  will be');
   });
@@ -146,12 +146,12 @@ describe('the "Mark Job Completed" confirmation', () => {
   it('describes the pill in its own words, not the account setting’s', () => {
     // "Automatic review asks are off" is the wrong explanation for a switch the
     // owner just flicked off themselves two seconds ago.
-    const off = completeJobConfirmMessage({ ...base, sendReview: false });
+    const off = completeJobReviewSentence({ ...base, sendReview: false });
     expect(off).toContain('switched off for this one');
     expect(off).not.toContain('automatic review asks are off');
 
     // ...and the pill overrides the account setting the other way too.
-    const on = completeJobConfirmMessage({ ...base, autoReviewRequest: false, sendReview: true });
+    const on = completeJobReviewSentence({ ...base, autoReviewRequest: false, sendReview: true });
     expect(on).toContain('texted');
     expect(on).toContain('even though automatic asks are off');
   });
@@ -159,7 +159,7 @@ describe('the "Mark Job Completed" confirmation', () => {
   it('will not promise a send the pill cannot actually cause', () => {
     // ON cannot conjure a review link, a channel, or a second ask.
     for (const over of [{ reviewUrlConfigured: false }, { alreadyRequested: true }, { channel: null }]) {
-      const message = completeJobConfirmMessage({ ...base, autoReviewRequest: false, sendReview: true, ...over });
+      const message = completeJobReviewSentence({ ...base, autoReviewRequest: false, sendReview: true, ...over });
       expect(message).not.toMatch(/will be (texted|emailed)/);
     }
   });
@@ -301,30 +301,23 @@ describe('completing a job before its booked day', () => {
   });
 
   it('names the day, and says the booking survives', () => {
-    const message = completeJobConfirmMessage({ ...quiet, scheduledFor: '2026-08-10' });
-    expect(message).toContain('Mon, Aug 10');
-    expect(message).toContain('closing it early');
-    // Completing does not un-book the work, and a dialog implying it did would
-    // be describing something that does not happen.
-    expect(message).toContain('The date stays on the calendar');
+    const button = readFileSync(join(process.cwd(), 'src', 'app', 'dashboard', 'jobs', '[id]', 'CompleteJobButton.tsx'), 'utf8');
+    expect(formatBookedDay('2026-08-10')).toBe('Mon, Aug 10');
+    expect(button).toContain('{formatBookedDay(input.scheduledFor)}');
+    expect(button).toContain('closing it early');
+    // Completing does not un-book the work, and a preflight implying it did
+    // would be describing something that does not happen.
+    expect(button).toContain('The date stays on the calendar');
+    // And it is behind isEarlyCompletion, so an on-time completion never sees it.
+    expect(button).toContain('const early = isEarlyCompletion(input);');
+    expect(button).toContain('{early && input.scheduledFor ? (');
   });
 
-  it('says it alongside the review warning rather than instead of it', () => {
-    // Two different irreversible-ish things; the dialog has to mention both or
+  it('says it alongside the review sentence rather than instead of it', () => {
+    // Two different irreversible-ish things; the preflight has to carry both or
     // it is trading one surprise for another.
-    const message = completeJobConfirmMessage({
-      ...quiet,
-      autoReviewRequest: true,
-      reviewUrlConfigured: true,
-      channel: 'text',
-      scheduledFor: '2026-08-10',
-    });
-    expect(message).toContain('closing it early');
-    expect(message).toMatch(/review/i);
-  });
-
-  it("leaves an on-time completion's wording exactly as it was", () => {
-    const onTime = completeJobConfirmMessage({ ...quiet, scheduledFor: '2026-08-09' });
-    expect(onTime).not.toContain('closing it early');
+    const button = readFileSync(join(process.cwd(), 'src', 'app', 'dashboard', 'jobs', '[id]', 'CompleteJobButton.tsx'), 'utf8');
+    expect(button).toContain('completeJobReviewSentence(input)');
+    expect(button.indexOf('closing it early')).toBeLessThan(button.indexOf('completeJobReviewSentence(input)'));
   });
 });

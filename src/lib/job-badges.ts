@@ -63,9 +63,23 @@ export function computeJobMilestones(
   const hasPaidInvoice = invoices.some((invoice) => invoice.status === 'paid');
   const isComplete = job.status === 'complete' || job.status === 'archived';
 
+  // TWO KINDS OF ACCESS, AND THEY ARE NOT THE SAME THING.
+  //
+  // The quote reaches a customer by whatever route sent it — the lead's quote
+  // text, an emailed link. The Job Feed reaches them through a client_job_access
+  // row, which is what activeClientLinkCount counts. Tying step one to the
+  // second of those produced a checklist reading "Send to client" (open) directly
+  // above "Quote approved" (done): a job they had demonstrably seen and said yes
+  // to, still listed as unsent.
+  //
+  // So acceptance implies the quote arrived — nobody approves a quote they never
+  // saw — and the Job Feed link gets said out loud in the detail line instead of
+  // deciding this step on its own.
+  const quoteAccepted = job.status === 'in_progress' || isComplete || Boolean(job.scheduled_for) || hasPaymentRequest || invoices.length > 0;
+
   return {
-    quoteShared: job.quoted_amount > 0 && activeClientLinkCount > 0,
-    quoteAccepted: job.status === 'in_progress' || isComplete || Boolean(job.scheduled_for) || hasPaymentRequest || invoices.length > 0,
+    quoteShared: job.quoted_amount > 0 && (activeClientLinkCount > 0 || quoteAccepted),
+    quoteAccepted,
     scheduled: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
     paymentRequested: hasPaymentRequest,
     paidOrSignedOff: paidTotal > 0 || hasPaidInvoice || hasSignedInvoice || isComplete,
@@ -159,19 +173,67 @@ export type CompletionBlockerInput = {
  * then our own list.
  */
 export function completionBlockers(input: CompletionBlockerInput): string[] {
-  const blockers: string[] = [];
+  return completionPreflight(input).map((item) => item.text);
+}
+
+export type CompletionPreflightItem = {
+  key: 'balance' | 'unbilled' | 'selections' | 'tasks';
+  /** The same sentence completionBlockers returns, unchanged. */
+  text: string;
+  /** Where to go and deal with it, relative to the job page it is shown on. */
+  fix: { href: string; label: string };
+};
+
+/**
+ * The same list, with somewhere to go.
+ *
+ * completionBlockers names what is outstanding; a confirm dialog can do nothing
+ * else, because a dialog built from window.confirm is one string. The preflight
+ * that replaced it can carry a link per item — and "$4,200 is still unpaid" is
+ * a very different sentence when the thing that fixes it is right beside it
+ * rather than somewhere on a page you have to go and find.
+ *
+ * Hrefs are RELATIVE on purpose. Every one of these resolves against the job
+ * page the preflight is open on, so this function needs no job id and cannot be
+ * given the wrong one.
+ */
+export function completionPreflight(input: CompletionBlockerInput): CompletionPreflightItem[] {
+  const items: CompletionPreflightItem[] = [];
   const outstanding = Number(input.outstandingBalance) || 0;
 
-  if (outstanding > 0) blockers.push(`${formatMoney(outstanding)} is still unpaid`);
-  else if (input.nothingBilled) blockers.push('nothing has been invoiced or charged yet');
+  if (outstanding > 0) {
+    items.push({
+      key: 'balance',
+      text: `${formatMoney(outstanding)} is still unpaid`,
+      fix: { href: '?open=payment#request-payment', label: 'Request it' },
+    });
+  } else if (input.nothingBilled) {
+    items.push({
+      key: 'unbilled',
+      text: 'nothing has been invoiced or charged yet',
+      fix: { href: '?open=payment#request-payment', label: 'Send an invoice' },
+    });
+  }
 
   const selections = Math.max(0, Math.trunc(Number(input.openSelections) || 0));
-  if (selections > 0) blockers.push(`${selections} client ${selections === 1 ? 'choice is' : 'choices are'} still waiting`);
+  if (selections > 0) {
+    items.push({
+      key: 'selections',
+      text: `${selections} client ${selections === 1 ? 'choice is' : 'choices are'} still waiting`,
+      fix: { href: '#selections', label: 'Open selections' },
+    });
+  }
 
   const tasks = Math.max(0, Math.trunc(Number(input.openTasks) || 0));
-  if (tasks > 0) blockers.push(`${tasks} checklist ${tasks === 1 ? 'item is' : 'items are'} unticked`);
+  if (tasks > 0) {
+    items.push({
+      key: 'tasks',
+      text: `${tasks} checklist ${tasks === 1 ? 'item is' : 'items are'} unticked`,
+      fix: { href: '#checklist', label: 'Open the punch list' },
+    });
+  }
 
-  return blockers;
+  return items;
 }
 
 export type PipelineChecklistItem = {
@@ -202,15 +264,20 @@ export function buildPipelineChecklist(
   originatingLeadId: string | null
 ): PipelineChecklistItem[] {
   const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
-  const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
+  // Named for the thing it actually is. "Client view" was a phrase that appeared
+  // nowhere else in the product; the customer's running record of the job is the
+  // Job Feed, on the page headed Job Feed, reached by a link this row is about.
+  const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Job Feed not shared yet';
   const startedLabel = formatStartedOn(job.started_at ?? null);
 
   return [
     {
       key: 'quote',
-      // Same split deriveJobListBadge uses, so the badge and this row never
-      // disagree about whether the quote has gone out.
-      label: milestones.quoteShared ? 'Sent to client' : job.quoted_amount > 0 ? 'Send to client' : 'Quote needed',
+      // "Quote shared" rather than "Sent to client", because the step beneath it
+      // is the one about approval and two rows both saying "approved" is a
+      // stutter. Read together they are the sentence the audit asked for: the
+      // quote was shared, and it was approved.
+      label: milestones.quoteShared ? 'Quote shared' : job.quoted_amount > 0 ? 'Send to client' : 'Quote needed',
       detail:
         job.quoted_amount > 0
           ? `${formatMoney(job.quoted_amount)} quoted · ${feedDetail}`

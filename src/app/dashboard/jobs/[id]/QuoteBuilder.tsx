@@ -196,10 +196,32 @@ export default function QuoteBuilder({
      is shown, with its age, and restored by pressing the button.
      --------------------------------------------------------------------- */
   const storageKey = autosaveKey ? `lgq.quote-draft.${autosaveKey}` : null;
-  /** The last state we know the server has. Everything is diffed against it. */
-  const savedRef = useRef(serializeRows(initialItems));
+  /**
+   * The last state we know the server has. Everything is diffed against it.
+   *
+   * State AND a ref: the effects below read it inside timers and callbacks, so
+   * they want the ref; the revision Save button is disabled until the quote
+   * actually differs from it, so that wants a render. The ref is assigned
+   * during render, which is safe because it only ever mirrors the state.
+   */
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeRows(initialItems));
+  const savedRef = useRef(savedSnapshot);
+  savedRef.current = savedSnapshot;
   const [stored, setStored] = useState<{ rows: Row[]; at: number } | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  /**
+   * AN AGREEMENT READS AS A DOCUMENT UNTIL SOMEBODY SAYS OTHERWISE.
+   *
+   * A quote the customer has approved arrived as a full editor: every line a
+   * text box, every price a number input, an AI drafting button on top and a
+   * Save that would rewrite what they agreed to. Nothing about that screen said
+   * "this is settled" — it said "this is a form", which is an invitation, and
+   * the thing it invites is an accidental edit to a live agreement.
+   *
+   * So an approved quote shows what was agreed, and editing it is a decision
+   * with a name. See ApprovedQuoteSummary.
+   */
+  const [revising, setRevising] = useState(false);
 
   // Read once, on mount. Offered rather than applied — see above.
   useEffect(() => {
@@ -245,7 +267,7 @@ export default function QuoteBuilder({
   }, [rows, storageKey]);
 
   function clearStoredDraft() {
-    savedRef.current = serializeRows(rows);
+    setSavedSnapshot(serializeRows(rows));
     setSavedAt(null);
     setStored(null);
     if (storageKey) {
@@ -329,6 +351,8 @@ export default function QuoteBuilder({
   // Nothing itemized, but the job carries a price. The summary reports the
   // job's number in this state, not the empty list's zero.
   const unitemized = rows.length === 0 && quotedAmount > 0;
+  /** Different from what the server holds. The revision Save waits for it. */
+  const dirty = serializeRows(rows) !== savedSnapshot;
 
   // Fetch a draft and hold it for review. Deliberately never writes into `rows`
   // on its own: a quote is a number somebody sends to a customer, and it should
@@ -431,8 +455,59 @@ export default function QuoteBuilder({
     });
   }
 
+  /* THE AGREEMENT, NOT THE FORM.
+     Only on the job page — `action` is what distinguishes it from the lead
+     form, which by definition has nothing approved yet. It renders what the
+     SERVER holds (initialItems), never the live rows, so "Cancel" out of a
+     revision cannot leave the summary quietly showing edits nobody saved. */
+  if (action && approved && !revising) {
+    return (
+      <ApprovedQuoteSummary
+        items={initialItems}
+        quotedAmount={quotedAmount}
+        approvedTotal={approvedTotal}
+        clientLabel={clientLabel}
+        printHref={printHref}
+        changeOrderHref={changeOrderHref}
+        storedAt={stored?.at ?? null}
+        onRevise={() => {
+          setResult(null);
+          setRevising(true);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="quote-builder">
+      {/* Revising a live agreement, said at the top of the thing being revised
+          rather than only in the confirm that fires after you press Save. */}
+      {action && approved ? (
+        <div className="quote-revision-bar">
+          <div>
+            <strong>Revising an approved quote</strong>
+            <span>
+              {clientLabel} agreed to {formatUsd(approvedTotal > 0 ? approvedTotal : quotedAmount)}. Nothing changes for them
+              until you save.
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => {
+              // Honest cancel: the summary shows what the server holds, so the
+              // rows have to go back to it rather than linger unrendered.
+              setRows(initialItems);
+              setResult(null);
+              setRevising(false);
+            }}
+            disabled={pending}
+          >
+            Cancel revision
+          </button>
+        </div>
+      ) : null}
+
       {/* Offered, never applied. See the autosave block above for why. */}
       {stored ? (
         <div className="quote-restore-bar">
@@ -713,14 +788,34 @@ export default function QuoteBuilder({
         ) : null}
       </div>
 
-      {/* AN AGREEMENT, NOT A DRAFT. Said before the buttons, because the whole
-          point is that the person editing knows which of the two they are
-          looking at. */}
+      {/* WHAT SAVING WOULD DO TO THE APPROVAL, in the state it is actually in.
+          A blanket "editing changes what they see" is true of every keystroke
+          and so gets read as decoration. These three are different outcomes:
+          nothing has changed, the breakdown moved but the price didn't, or the
+          number they agreed to is about to become a different number. */}
       {action && approved ? (
-        <div className="quote-approved-lock">
+        <div className={`quote-approved-lock${dirty ? ' is-dirty' : ''}`}>
           <p>
-            <strong>{clientLabel} has approved this quote{approvedTotal > 0 ? ` at ${formatUsd(approvedTotal)}` : ''}.</strong>{' '}
-            Editing it changes what they see, and their approval covered the previous version.
+            {!dirty ? (
+              <>
+                <strong>Nothing has changed yet.</strong> {clientLabel}&apos;s approval still covers this quote exactly as
+                it stands.
+              </>
+            ) : total === (approvedTotal > 0 ? approvedTotal : quotedAmount) ? (
+              <>
+                <strong>The breakdown changed, the total didn&apos;t.</strong> Still{' '}
+                {formatUsd(approvedTotal > 0 ? approvedTotal : quotedAmount)}, so {clientLabel}&apos;s approval still covers
+                the amount — they will see the new line items on their quote page.
+              </>
+            ) : (
+              <>
+                <strong>
+                  This replaces the {formatUsd(approvedTotal > 0 ? approvedTotal : quotedAmount)} {clientLabel} approved
+                  with {formatUsd(total)}.
+                </strong>{' '}
+                Their approval covered the previous version. They get a note on their job page saying the total changed.
+              </>
+            )}
           </p>
           {changeOrderHref ? (
             <a className="btn secondary compact" href={changeOrderHref}>
@@ -732,11 +827,26 @@ export default function QuoteBuilder({
 
       {action ? (
         <div className="quote-builder-save">
-          <button type="button" className="btn primary" onClick={() => save()} disabled={pending}>
+          {/* Dead until there is a revision to save. A live "Save revised quote"
+              over an untouched quote is a button whose only possible effect is
+              to notify a customer that nothing happened. */}
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => save()}
+            disabled={pending || (approved && !dirty)}
+            title={approved && !dirty ? 'Change something first — this quote matches what is saved.' : undefined}
+          >
             {pending ? 'Saving…' : approved ? 'Save revised quote' : 'Save quote'}
           </button>
           {notifyAction ? (
-            <button type="button" className="btn secondary" onClick={saveAndNotify} disabled={pending}>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={saveAndNotify}
+              disabled={pending || (approved && !dirty)}
+              title={approved && !dirty ? 'Change something first — this quote matches what is saved.' : undefined}
+            >
               {pending ? 'Saving…' : 'Save & text the client'}
             </button>
           ) : null}
@@ -757,6 +867,121 @@ export default function QuoteBuilder({
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * AN APPROVED QUOTE, AS THE DOCUMENT IT IS.
+ *
+ * What stood here was the editor: every line a text box, every price a number
+ * input, an AI drafting button on top, add / remove / reorder controls on each
+ * row, and a Save that would rewrite an agreement somebody had already signed
+ * off. Nothing about it said "this is settled" — it said "this is a form", and
+ * a form is an invitation.
+ *
+ * It is deliberately NOT read-only-inputs. Disabled fields still look like
+ * fields, and a screen full of greyed-out boxes reads as broken rather than as
+ * finished. This is the quote written out.
+ *
+ * The route out is named twice, because they are genuinely different jobs: a
+ * change order bills the difference and asks the customer to approve only that;
+ * a revision rewrites the agreement and drops their approval of the old one.
+ */
+function ApprovedQuoteSummary({
+  items,
+  quotedAmount,
+  approvedTotal,
+  clientLabel,
+  printHref,
+  changeOrderHref,
+  storedAt,
+  onRevise,
+}: {
+  items: QuoteItem[];
+  quotedAmount: number;
+  approvedTotal: number;
+  clientLabel: string;
+  printHref?: string;
+  changeOrderHref?: string;
+  /** An unsaved revision is sitting in this browser. Named, not applied. */
+  storedAt: number | null;
+  onRevise: () => void;
+}) {
+  const lines = items.filter((item) => item.label.trim().length > 0);
+  const oneOff = lines.filter((item) => item.kind !== 'subscription');
+  const plans = lines.filter((item) => item.kind === 'subscription');
+  const agreed = approvedTotal > 0 ? approvedTotal : quotedAmount;
+
+  return (
+    <div className="quote-builder quote-agreed">
+      <div className="quote-agreed-head">
+        <div>
+          <p className="quote-agreed-eyebrow">Approved</p>
+          <strong>{clientLabel} agreed to {formatUsd(agreed)}</strong>
+        </div>
+        {printHref ? (
+          <a href={printHref} className="quote-print">
+            <IconPrinter />
+            Print estimate
+          </a>
+        ) : null}
+      </div>
+
+      {oneOff.length > 0 ? (
+        <ul className="quote-agreed-lines">
+          {oneOff.map((item) => (
+            <li key={item.id} className={item.kind === 'addon' ? 'is-addon' : undefined}>
+              <span>
+                {item.label}
+                {item.kind === 'addon' ? (
+                  <em>{item.selected ? 'add-on · accepted' : 'add-on · not taken'}</em>
+                ) : null}
+              </span>
+              <strong>{formatUsd(Number(item.amount) || 0)}</strong>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        /* A price with no lines behind it is a real and common state — set from
+           a lead's estimate, or typed straight onto the job. Saying "no line
+           items" under an approved figure reads as a broken quote. */
+        <p className="quote-agreed-note">
+          One quoted amount, not broken into line items.
+        </p>
+      )}
+
+      {plans.length > 0 ? (
+        <p className="quote-agreed-note">
+          Plus{' '}
+          {plans
+            .map((plan) => `${formatUsd(Number(plan.amount) || 0)}${FREQ_LABEL[plan.frequency ?? 'monthly']} ${plan.label}`)
+            .join(' + ')}
+          , billed separately.
+        </p>
+      ) : null}
+
+      {storedAt ? (
+        <p className="quote-agreed-draft">
+          Unsaved changes from {ago(storedAt)} are still in this browser. Nothing was sent to {clientLabel} — open the
+          revision to see them.
+        </p>
+      ) : null}
+
+      <div className="quote-agreed-actions">
+        {changeOrderHref ? (
+          <a className="btn secondary" href={changeOrderHref}>
+            Raise a change order
+          </a>
+        ) : null}
+        <button type="button" className="btn ghost" onClick={onRevise}>
+          Revise quote
+        </button>
+      </div>
+      <small className="quote-agreed-foot">
+        A change order bills extra work on top and asks {clientLabel} to approve only the difference. Revising rewrites
+        this quote, and their approval covered the version above.
+      </small>
     </div>
   );
 }

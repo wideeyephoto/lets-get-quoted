@@ -13,10 +13,11 @@ import {
 } from './milestone-actions';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { deriveJobListBadge, buildPipelineChecklist, completionBlockers } from '@/lib/job-badges';
+import { deriveJobListBadge, buildPipelineChecklist, completionBlockers, completionPreflight } from '@/lib/job-badges';
 import {
   jobMoney,
   jobStage,
+  jobWaitNote,
   primaryJobAction,
   shouldSuggestStages,
   JOB_STAGE_LABEL,
@@ -106,6 +107,7 @@ import {
   reviewPillState,
 } from '@/lib/job-detail-labels';
 import CompleteJobButton from './CompleteJobButton';
+import JobActionMenu from './JobActionMenu';
 import JobScheduleFields from './JobScheduleFields';
 import StartJobButton from './StartJobButton';
 import ClientChannelField from './ClientChannelField';
@@ -382,6 +384,109 @@ export default async function JobDetailPage({
         } satisfies JobFeedEvent,
       ]),
   ]).filter((event) => event.visibility !== 'internal');
+  // Rows marked for a feed the customer has no way to open. The share strip
+  // below says so rather than leaving "Client visible" badges to imply access
+  // that does not exist — see the strip for the three separate truths involved.
+  const clientVisibleFeedCount = displayedFeed.length;
+
+  /* THE THREE CONTROLS THAT ARE COMPONENTS, built once.
+     Start, complete and review each carry their own confirm dialog and their
+     own pending state, and each can be either the hero's bright control or an
+     entry in the menu beside it. Built here so the two placements cannot drift
+     into offering different warnings for the same press. */
+  const startControl = (
+    <StartJobButton
+      action={boundMarkJobStarted}
+      clientName={job.client_name}
+      quoteUnapproved={job.status === 'new_lead'}
+      primary={isPrimary('start')}
+    />
+  );
+  const completeControl = (
+    /* The end of the job, and the only button on this page that should feel
+       like one — but it is an instruction, not a state, so it says "Mark". It
+       stops for a preflight first, because completing can fire the automatic
+       review request, and a text to a customer is the one thing on this screen
+       that cannot be undone. */
+    <CompleteJobButton
+      action={boundMarkJobComplete}
+      warning={{
+        clientName: job.client_name,
+        autoReviewRequest,
+        reviewUrlConfigured: Boolean(reviewUrl),
+        alreadyRequested: Boolean(lastReviewRequest),
+        channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
+        // The chronology guard. todayKey is the ACCOUNT'S date, not the
+        // server's — a west-coast owner closing a job at 9pm is still on
+        // yesterday, and comparing against UTC would call a normal completion
+        // early and an early one normal.
+        scheduledFor: job.scheduled_for,
+        todayKey,
+        // Everything still open on this job, phrased once in completionBlockers
+        // so the dialog and any future surface cannot describe the same job
+        // differently.
+        quoteUnapproved: job.status === 'new_lead',
+        blockers: completionBlockers({
+          openSelections: selectionStatus.waiting,
+          openTasks: taskStats.total - taskStats.done,
+          outstandingBalance,
+          nothingBilled: payments.length === 0 && invoices.length === 0,
+        }),
+      }}
+      // The same facts again, structured, so the preflight can put a fix link
+      // beside each one instead of naming it and leaving you to go looking.
+      preflight={completionPreflight({
+        openSelections: selectionStatus.waiting,
+        openTasks: taskStats.total - taskStats.done,
+        outstandingBalance,
+        nothingBilled: payments.length === 0 && invoices.length === 0,
+      })}
+      pill={reviewPillState({
+        clientName: job.client_name,
+        autoReviewRequest,
+        reviewUrlConfigured: Boolean(reviewUrl),
+        alreadyRequested: Boolean(lastReviewRequest),
+        channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
+      })}
+      muted={!isPrimary('complete')}
+    />
+  );
+  const reviewControl = (
+    <RequestReviewButton
+      action={boundRequestReview}
+      reviewConfigured={Boolean(reviewUrl)}
+      lastRequestedAt={lastReviewRequest?.created_at ?? null}
+    />
+  );
+
+  /* THE ONE BRIGHT CONTROL, chosen by the stage rather than by the section it
+     happens to live in. Two of the seven keys had no control up here at all,
+     which is why a job at the pricing stage led with "Request payment". */
+  const primaryControl = !primaryAction ? null : primaryAction.key === 'start' ? (
+    startControl
+  ) : primaryAction.key === 'complete' ? (
+    completeControl
+  ) : primaryAction.key === 'request_review' ? (
+    reviewControl
+  ) : (
+    <Link
+      href={
+        primaryAction.key === 'schedule'
+          ? `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`
+          : primaryAction.key === 'request_payment'
+            ? `/dashboard/jobs/${job.id}?open=payment#request-payment`
+            : `/dashboard/jobs/${job.id}#quote-breakdown`
+      }
+      className="btn primary"
+    >
+      {primaryAction.label}
+    </Link>
+  );
+  const waitNote = jobWaitNote(stage, {
+    clientName: job.client_name,
+    scheduledLabel: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until) : null,
+    reviewAlreadyRequested: Boolean(lastReviewRequest),
+  });
 
   return (
     <ScrollTopOnSaveProvider>
@@ -492,84 +597,78 @@ export default async function JobDetailPage({
               offered at once — "Request payment" in primary orange beside "Job
               started" beside a dominant "Mark Job Completed", on a job whose
               service date was three days away. The stage decides which one is
-              bright; the rest stay available and quiet. See primaryJobAction. */}
+              bright; every alternative moves into the menu beside it, two taps
+              away and still named. See primaryJobAction and JobActionMenu. */}
           <div className="actions workspace-actions">
-            <Link
-              href={`/dashboard/jobs/${job.id}?open=payment#request-payment`}
-              className={`btn ${isPrimary('request_payment') ? 'primary' : 'secondary'}`}
+            {primaryControl}
+            <JobActionMenu
+              label={primaryControl ? 'More actions' : 'Job actions'}
+              defaultOpen={searchParams.open === 'costs'}
             >
-              Request payment
-            </Link>
-            <ModalDialog triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
-              <form action={boundCreateCost} className="cost-form">
-                <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
-                <div style={{ marginTop: '0.8rem' }}>
-                  <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
-                </div>
-                <CloseOnSuccess />
-              </form>
-            </ModalDialog>
-            {/* Start and complete are a pair, so they sit together. "Job
-                started" disappears once it has been pressed rather than turning
-                into a disabled button — the feed and the pipeline step carry the
-                fact from then on, and Undo lives with the feed entry it undoes. */}
-            {!job.started_at && job.status !== 'complete' && job.status !== 'archived' ? (
-              <StartJobButton
-                action={boundMarkJobStarted}
-                clientName={job.client_name}
-                quoteUnapproved={job.status === 'new_lead'}
-                primary={isPrimary('start')}
-              />
-            ) : null}
-            {job.status !== 'complete' && job.status !== 'archived' ? (
-              /* The end of the job, and the only button on this page that
-                 should feel like one — but it is an instruction, not a state,
-                 so it says "Mark". It asks first because completing can fire
-                 the automatic review request, and a text to a customer is the
-                 one thing on this screen that cannot be undone. */
-              <CompleteJobButton
-                action={boundMarkJobComplete}
-                warning={{
-                  clientName: job.client_name,
-                  autoReviewRequest,
-                  reviewUrlConfigured: Boolean(reviewUrl),
-                  alreadyRequested: Boolean(lastReviewRequest),
-                  channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
-                  // The chronology guard. todayKey is the ACCOUNT'S date, not
-                  // the server's — a west-coast owner closing a job at 9pm is
-                  // still on yesterday, and comparing against UTC would call a
-                  // normal completion early and an early one normal.
-                  scheduledFor: job.scheduled_for,
-                  todayKey,
-                  // Everything still open on this job, phrased once in
-                  // completionBlockers so the dialog and any future surface
-                  // cannot describe the same job differently.
-                  quoteUnapproved: job.status === 'new_lead',
-                  blockers: completionBlockers({
-                    openSelections: selectionStatus.waiting,
-                    openTasks: taskStats.total - taskStats.done,
-                    outstandingBalance,
-                    nothingBilled: payments.length === 0 && invoices.length === 0,
-                  }),
-                }}
-                pill={reviewPillState({
-                  clientName: job.client_name,
-                  autoReviewRequest,
-                  reviewUrlConfigured: Boolean(reviewUrl),
-                  alreadyRequested: Boolean(lastReviewRequest),
-                  channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
-                })}
-                muted={!isPrimary('complete')}
-              />
-            ) : null}
-            {job.status === 'complete' ? (
-              <RequestReviewButton
-                action={boundRequestReview}
-                reviewConfigured={Boolean(reviewUrl)}
-                lastRequestedAt={lastReviewRequest?.created_at ?? null}
-              />
-            ) : null}
+              {/* Ordered by how often they're wanted, not by the pipeline —
+                  this is the drawer you open when the recommended step is not
+                  the one you came for. Each entry omits itself when it is the
+                  bright control above, so nothing is offered twice. */}
+              {!isPrimary('price') && !isPrimary('send_quote') ? (
+                <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}#quote-breakdown`}>
+                  <strong>{job.quoted_amount > 0 ? 'Edit the quote' : 'Price this job'}</strong>
+                  <small>{job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'No amount on this job yet'}</small>
+                </Link>
+              ) : null}
+              {!isPrimary('schedule') ? (
+                <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`}>
+                  <strong>{job.scheduled_for ? 'Change the date' : 'Schedule the work'}</strong>
+                  <small>
+                    {job.scheduled_for
+                      ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)
+                      : 'Nothing booked yet'}
+                  </small>
+                </Link>
+              ) : null}
+              {!isPrimary('request_payment') ? (
+                <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}?open=payment#request-payment`}>
+                  <strong>Request payment</strong>
+                  <small>
+                    {money.remainingCents > 0
+                      ? `${formatMoneyExact(money.remainingCents / 100)} still to collect`
+                      : 'Send an invoice or a payment link'}
+                  </small>
+                </Link>
+              ) : null}
+              <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}#job-feed`}>
+                <strong>{activeClientLinkCount > 0 ? 'Open the client Job Feed' : 'Share the client Job Feed'}</strong>
+                <small>{activeClientLinkCount > 0 ? 'Shared and live' : 'Not shared yet'}</small>
+              </Link>
+              <div className="job-actions-item is-control">
+                <ModalDialog triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
+                  <form action={boundCreateCost} className="cost-form">
+                    <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
+                    <div style={{ marginTop: '0.8rem' }}>
+                      <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
+                    </div>
+                    <CloseOnSuccess />
+                  </form>
+                </ModalDialog>
+              </div>
+              {/* Start and complete are a pair, so they sit together. "Job
+                  started" disappears once it has been pressed rather than turning
+                  into a disabled button — the feed and the pipeline step carry the
+                  fact from then on, and Undo lives with the feed entry it undoes. */}
+              {!isPrimary('start') && !job.started_at && job.status !== 'complete' && job.status !== 'archived' ? (
+                <div className="job-actions-item is-control">{startControl}</div>
+              ) : null}
+              {!isPrimary('complete') && job.status !== 'complete' && job.status !== 'archived' ? (
+                <div className="job-actions-item is-control">{completeControl}</div>
+              ) : null}
+              {!isPrimary('request_review') && job.status === 'complete' ? (
+                <div className="job-actions-item is-control">{reviewControl}</div>
+              ) : null}
+            </JobActionMenu>
           </div>
+          {/* When nothing is the contractor's move, say whose it is. A hero
+              with no bright control and no sentence reads as a page that has
+              run out of things to say. See jobWaitNote. */}
+          {!primaryControl && waitNote ? <p className="job-wait-note">{waitNote}</p> : null}
         </div>
 
         <aside className="pipeline-checklist" aria-label="Client pipeline checklist">
@@ -963,26 +1062,47 @@ export default async function JobDetailPage({
                 })}
               </div>
             )}
+            {/* TWO KINDS OF ACCESS, NAMED SEPARATELY.
+                This strip said "Client view not shared" on a job whose feed
+                directly above it was full of rows badged "Client visible", for
+                a customer who had been sent a quote and approved it. All three
+                were true and they described different things: the quote reached
+                them by whatever route sent it, the rows are MARKED for a feed,
+                and the feed itself needs a link that had never been made.
+                "Client view" was also a phrase used nowhere else in the
+                product — the thing is the Job Feed. */}
             <div className="job-feed-share-strip">
               <div>
-                <strong>{hasActiveClientView ? 'Client view shared' : 'Client view not shared'}</strong>
-                <p>{hasActiveClientView ? 'The quote, payment links, invoices, and job updates live in one client feed.' : 'Create a client view link before sending job updates or payment links.'}</p>
-                {hasActiveClientView ? (
+                <strong>
+                  {hasActiveClientView ? `Job Feed shared with ${job.client_name}` : 'Job Feed not shared yet'}
+                </strong>
+                <p>
+                  {hasActiveClientView
+                    ? 'Payment links, invoices and every update marked for the feed appear on one page they can open any time.'
+                    : `${job.client_name} can see the quote you sent them. This is the separate running feed of updates, payments and invoices — it needs its own link.`}
+                </p>
+                {/* Only worth saying when there is something waiting behind a
+                    door nobody has been given a key to. */}
+                {!hasActiveClientView && clientVisibleFeedCount > 0 ? (
+                  <span>
+                    {clientVisibleFeedCount} update{clientVisibleFeedCount === 1 ? '' : 's'} on this job {clientVisibleFeedCount === 1 ? 'is' : 'are'} marked for the feed and nobody can reach {clientVisibleFeedCount === 1 ? 'it' : 'them'} yet
+                  </span>
+                ) : hasActiveClientView ? (
                   <span>Shared client access is active</span>
                 ) : (
-                  <span>No active client view link</span>
+                  <span>No Job Feed link has been created</span>
                 )}
               </div>
               <div className="job-feed-share-actions">
                 {clientViewHref ? (
-                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">Client View</a>
+                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">Open their Job Feed</a>
                 ) : hasActiveClientView ? (
                   <form action={boundCreateClientJobLink}>
-                    <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">Client View</SaveButton>
+                    <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">Open their Job Feed</SaveButton>
                   </form>
                 ) : (
                   <form action={boundCreateClientJobLink}>
-                    <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
+                    <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Share client Job Feed</SaveButton>
                   </form>
                 )}
               </div>
@@ -1587,7 +1707,10 @@ export default async function JobDetailPage({
             {/* Open when the job is waiting on the customer. A stalled job is
                 the thing an owner most needs to see, and it's the whole reason
                 "waiting on homeowner" is a status rather than a feeling. */}
-            <details className="panel workspace-section-card workspace-details job-action-details" open={selectionStatus.overdue > 0}>
+            {/* Named, because the completion preflight links here — see
+                completionPreflight. An anchor that lands on nothing is worse
+                than no anchor at all. */}
+            <details id="selections" className="panel workspace-section-card workspace-details job-action-details" open={selectionStatus.overdue > 0}>
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading compact-heading">
                   <p className="eyebrow">Selections</p>

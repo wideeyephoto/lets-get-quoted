@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import SaveButton from '@/components/save-button';
 import styles from '../leads.module.css';
+import { QUOTE_ITEMS_EVENT, type QuoteItemsDetail } from './quote-shape';
 
 /**
  * A $0 QUOTE COULD BE SENT.
@@ -25,16 +26,10 @@ import styles from '../leads.module.css';
  * because a form that has been made harder to submit incorrectly is not a form
  * that cannot be.
  */
-export const QUOTE_ITEMS_EVENT = 'lgq-quote-items';
-
-export type QuoteItemsDetail = {
-  /** Lines with a name AND a positive amount. Either alone is not a quote. */
-  billable: number;
-  total: number;
-  /** A recurring plan is a real quote even at a $0 one-off total. */
-  subscriptions: number;
-};
-
+/* The event name and the shape it carries live in ./quote-shape, which has no
+   'use client' directive — the lead page is a server component and seeds this
+   gate by calling quoteShape, and a plain function imported out of a client
+   module by a server one arrives as a client reference rather than a function. */
 export default function QuoteSendGate({
   stripeConnected,
   recipient,

@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { completionBlockers } from '@/lib/job-badges';
+import { completionBlockers, completionPreflight } from '@/lib/job-badges';
 import {
-  completeJobConfirmMessage,
   completeJobNeedsConfirm,
   type CompleteJobWarningInput,
 } from '@/lib/job-detail-labels';
@@ -94,18 +93,12 @@ describe('and says so before it happens', () => {
     expect(JOB_PAGE).toContain("quoteUnapproved={job.status === 'new_lead'}");
   });
 
-  it('the confirm names what the customer will see', () => {
-    const message = completeJobConfirmMessage({
-      clientName: 'Sarah',
-      autoReviewRequest: false,
-      reviewUrlConfigured: false,
-      alreadyRequested: false,
-      channel: null,
-      quoteUnapproved: true,
-    });
-    expect(message).toContain('never approved');
-    expect(message).toContain('Sarah accepted it');
-    expect(message).toContain('conversion rate');
+  it('the preflight names what the customer will see', () => {
+    const button = read('src', 'app', 'dashboard', 'jobs', '[id]', 'CompleteJobButton.tsx');
+    expect(button).toContain('{input.quoteUnapproved ? (');
+    expect(button).toContain('This quote was never approved.');
+    expect(button).toContain('records that {who} accepted it');
+    expect(button).toContain('conversion rate');
   });
 
   it('and asks at all, which it would not have before', () => {
@@ -161,30 +154,41 @@ describe('what is still open on a job being closed', () => {
     expect(completionBlockers({})).toEqual([]);
   });
 
-  it('reads as one sentence in the dialog', () => {
-    const message = completeJobConfirmMessage({
-      clientName: 'Sarah',
-      autoReviewRequest: false,
-      reviewUrlConfigured: false,
-      alreadyRequested: false,
-      channel: null,
-      blockers: completionBlockers({ outstandingBalance: 4200, openTasks: 2 }),
-    });
-    expect(message).toContain('Still open: $4,200 is still unpaid and 2 checklist items are unticked.');
-    // And is explicit that completing does not resolve any of it.
-    expect(message).toContain("doesn't cancel any of it");
+  /**
+   * A LIST WITH SOMEWHERE TO GO, which is the whole reason the confirm box had
+   * to become a real screen. "$4,200 is still unpaid" is a different sentence
+   * when the thing that fixes it is beside it rather than somewhere on a page
+   * you have to go and find.
+   */
+  it('gives every outstanding item a fix beside it', () => {
+    const items = completionPreflight({ outstandingBalance: 4200, openSelections: 1, openTasks: 2 });
+    expect(items.map((item) => item.key)).toEqual(['balance', 'selections', 'tasks']);
+    expect(items.map((item) => item.text)).toEqual([
+      '$4,200 is still unpaid',
+      '1 client choice is still waiting',
+      '2 checklist items are unticked',
+    ]);
+    for (const item of items) {
+      expect(item.fix.href).toBeTruthy();
+      expect(item.fix.label).toBeTruthy();
+    }
   });
 
-  it('joins three with commas and a final "and"', () => {
-    const message = completeJobConfirmMessage({
-      clientName: 'Sarah',
-      autoReviewRequest: false,
-      reviewUrlConfigured: false,
-      alreadyRequested: false,
-      channel: null,
-      blockers: completionBlockers({ outstandingBalance: 100, openSelections: 1, openTasks: 1 }),
-    });
-    expect(message).toContain('$100 is still unpaid, 1 client choice is still waiting and 1 checklist item is unticked');
+  /** Relative, so they resolve against whichever job page is showing them and
+   *  the function can never be handed the wrong id. */
+  it('points each fix at a section that exists on the job page', () => {
+    const jobPage = read('src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx');
+    for (const item of completionPreflight({ outstandingBalance: 500, openSelections: 1, openTasks: 1, nothingBilled: true })) {
+      expect(item.fix.href.startsWith('#') || item.fix.href.startsWith('?')).toBe(true);
+      const anchor = item.fix.href.slice(item.fix.href.indexOf('#') + 1);
+      expect(jobPage, anchor).toContain(`id="${anchor}"`);
+    }
+  });
+
+  it('is explicit that completing does not resolve any of it', () => {
+    const button = read('src', 'app', 'dashboard', 'jobs', '[id]', 'CompleteJobButton.tsx');
+    expect(button).toContain('Still open on this job');
+    expect(button).toContain('doesn&apos;t cancel any of it');
   });
 
   it('turns the confirm on, and only when there is something to say', () => {

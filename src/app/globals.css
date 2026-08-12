@@ -7796,6 +7796,185 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   color: var(--bad);
 }
 
+/* ── One bright control, and a drawer for the rest ───────────────────────────
+   The hero offered every action a job could ever need, all at once, all the
+   same weight. Four buttons of equal weight is the same as no recommendation.
+   The stage picks one (primaryJobAction); everything else lives in here. */
+.job-actions-menu { position: relative; display: inline-flex; }
+.job-actions-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.job-actions-trigger svg { width: 15px; height: 15px; flex: none; transition: transform 0.15s ease; }
+.job-actions-menu.is-open .job-actions-trigger svg { transform: rotate(180deg); }
+
+.job-actions-pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  min-width: min(20rem, 82vw);
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 14px;
+  background: var(--bg-3);
+  box-shadow: 0 24px 60px rgba(var(--shade), 0.5);
+}
+/* A SHEET ON A PHONE, NOT A DROPDOWN.
+   Below 640px the hero's action row becomes a horizontal scroller
+   (overflow-x: auto), and an absolutely-positioned child of a scroll container
+   is clipped by it — the menu would open into a 40px-tall strip you had to
+   scroll sideways to read. position: fixed leaves the containing block
+   entirely, which is the only reliable way out of an ancestor's overflow. */
+@media (max-width: 640px) {
+  .job-actions-pop {
+    position: fixed;
+    top: auto;
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    min-width: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 60;
+  }
+}
+
+.job-actions-item {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+.job-actions-item strong { font-size: 0.9rem; font-weight: 700; }
+.job-actions-item small { font-size: 0.75rem; color: var(--mute-i58); }
+a.job-actions-item:hover,
+a.job-actions-item:focus-visible { background: rgba(var(--tint), 0.07); }
+/* The entries that are whole controls rather than links — the expense modal,
+   start, complete. They bring their own button, so this only spaces them. */
+.job-actions-item.is-control { padding: 0.35rem 0.6rem; }
+.job-actions-item.is-control > * { width: 100%; }
+.job-actions-item.is-control .btn { width: 100%; justify-content: center; }
+
+/* Whose move it is, when it isn't yours. */
+.job-wait-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--mute-i58);
+}
+
+/* ── The last screen before a job disappears ─────────────────────────────────
+   This was a window.confirm: one string, no links, and on a phone a system
+   sheet that truncates. What it had to say was three separate decisions with
+   three separate fixes, and the only answers available were OK and Cancel. */
+.job-preflight-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(4, 10, 18, 0.66);
+  overflow-y: auto;
+}
+.job-preflight {
+  width: min(34rem, 100%);
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 18px;
+  background: var(--bg-3);
+  box-shadow: 0 30px 70px -18px rgba(var(--shade), 0.7);
+  text-align: left;
+}
+.job-preflight-head h2 { margin: 0.1rem 0 0; font-size: 1.3rem; }
+.job-preflight-lead { margin: 0; font-size: 0.9rem; line-height: 1.55; color: var(--muted); }
+
+/* Facts about THIS press that a contractor would want to catch. */
+.job-preflight-flag {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--warn);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 122, 33, 0.08);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.job-preflight-open {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+}
+.job-preflight-open-head {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i58);
+}
+.job-preflight-open ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; }
+.job-preflight-open li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+.job-preflight-open li a { flex: none; font-size: 0.8rem; font-weight: 700; }
+.job-preflight-open small { font-size: 0.76rem; color: var(--mute-i58); line-height: 1.5; }
+
+/* The irreversible part, decided here rather than described here. */
+.job-preflight-review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+}
+.job-preflight-review.is-on { border-color: var(--cedge-orange-51); background: rgba(255, 122, 33, 0.1); }
+.job-preflight-review > div { display: grid; gap: 0.15rem; min-width: 0; }
+.job-preflight-review strong { font-size: 0.88rem; line-height: 1.5; }
+.job-preflight-review small { font-size: 0.76rem; color: var(--mute-i58); line-height: 1.5; }
+.job-preflight-switch {
+  flex: none;
+  min-width: 3.6rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mute-i58);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.job-preflight-switch.is-on {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.job-preflight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 /* The deal, stated where the ask is typed. */
 .payment-approved-line {
   display: grid;
@@ -7822,6 +8001,89 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   background: rgba(255, 209, 102, 0.08);
 }
 .quote-approved-lock p { margin: 0; font-size: 0.86rem; line-height: 1.5; flex: 1 1 20rem; }
+/* Quiet while the quote still matches what was agreed; it only has something
+   to warn about once an edit exists. */
+.quote-approved-lock:not(.is-dirty) {
+  border-color: var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+}
+
+/* ── An approved quote, as the document it is ────────────────────────────────
+   What stood here was the editor: every line a text box, an AI drafting button
+   on top, and a Save that would rewrite an agreement somebody had signed off.
+   Deliberately not disabled inputs — a screen of greyed-out boxes reads as
+   broken rather than as finished. */
+.quote-agreed { display: grid; gap: 0.7rem; }
+.quote-agreed-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+}
+.quote-agreed-eyebrow {
+  margin: 0;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--good);
+}
+.quote-agreed-head strong { display: block; margin-top: 0.15rem; font-size: 1.15rem; }
+
+.quote-agreed-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.1rem; }
+.quote-agreed-lines li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 9px;
+  font-size: 0.9rem;
+}
+.quote-agreed-lines li:nth-child(odd) { background: rgba(var(--tint), 0.03); }
+.quote-agreed-lines li > span { min-width: 0; }
+.quote-agreed-lines li strong { flex: none; font-variant-numeric: tabular-nums; }
+.quote-agreed-lines li em {
+  display: block;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute-i58);
+}
+.quote-agreed-lines li.is-addon > span { color: var(--muted); }
+
+.quote-agreed-note { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--muted); }
+.quote-agreed-draft {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-left: 3px solid var(--warn);
+  border-radius: 0 9px 9px 0;
+  background: rgba(255, 122, 33, 0.07);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.quote-agreed-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.quote-agreed-foot { font-size: 0.78rem; line-height: 1.5; color: var(--mute-i58); }
+
+/* Revising a live agreement, said at the top of the thing being revised. */
+.quote-revision-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  margin-bottom: 0.9rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--cedge-amber-9);
+  border-radius: 12px;
+  background: rgba(255, 209, 102, 0.08);
+}
+.quote-revision-bar > div { display: grid; gap: 0.1rem; min-width: 0; flex: 1 1 18rem; }
+.quote-revision-bar strong { font-size: 0.9rem; }
+.quote-revision-bar span { font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
 
 /* ── Getting around a long record ────────────────────────────────────────────
    Sticky, and a horizontal scroller before it wraps — six labels wrapping to

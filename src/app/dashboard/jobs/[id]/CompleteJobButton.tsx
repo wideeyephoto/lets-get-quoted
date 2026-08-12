@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
+import type { CompletionPreflightItem } from '@/lib/job-badges';
 import {
-  completeJobConfirmMessage,
   completeJobNeedsConfirm,
+  completeJobReviewSentence,
+  formatBookedDay,
+  isEarlyCompletion,
   type CompleteJobWarningInput,
   type ReviewPillState,
 } from '@/lib/job-detail-labels';
@@ -27,12 +30,19 @@ import {
 export default function CompleteJobButton({
   action,
   warning,
+  preflight = [],
   pill,
   muted = false,
 }: {
   action: (formData: FormData) => Promise<void>;
   /** Everything except the pill, which this component owns. */
   warning: Omit<CompleteJobWarningInput, 'sendReview'>;
+  /**
+   * What is still open on the job, each with somewhere to go and fix it. The
+   * same facts as `warning.blockers`, from the same function — see
+   * completionPreflight.
+   */
+  preflight?: CompletionPreflightItem[];
   pill: ReviewPillState;
   /**
    * True until the job has actually started. This was the loudest control on
@@ -43,16 +53,28 @@ export default function CompleteJobButton({
   muted?: boolean;
 }) {
   const [sendReview, setSendReview] = useState(pill.canAsk ? pill.defaultOn : false);
+  const [checking, setChecking] = useState(false);
   const input: CompleteJobWarningInput = { ...warning, sendReview };
+  const who = warning.clientName?.trim() || 'the customer';
+
+  /**
+   * A ref, not state. The confirm button inside the preflight is a real submit,
+   * so its click and the form's submit happen in one turn — a setState here
+   * would not have landed by the time onSubmit reads it, and the preflight
+   * would reopen forever.
+   */
+  const confirmed = useRef(false);
 
   return (
     <form
       className={`job-done-field${muted ? ' is-muted' : ''}`}
       action={action}
       onSubmit={(event) => {
+        if (confirmed.current) return;
         // Only when something is about to happen that can't be taken back.
-        if (completeJobNeedsConfirm(input) && !window.confirm(completeJobConfirmMessage(input))) {
+        if (completeJobNeedsConfirm(input)) {
           event.preventDefault();
+          setChecking(true);
         }
       }}
     >
@@ -98,7 +120,143 @@ export default function CompleteJobButton({
           </>
         ) : null}
       </p>
+
+      {checking ? (
+        <Preflight
+          who={who}
+          input={input}
+          items={preflight}
+          pill={pill}
+          sendReview={sendReview}
+          onToggleReview={() => setSendReview((current) => !current)}
+          onCancel={() => setChecking(false)}
+          onConfirm={() => {
+            confirmed.current = true;
+          }}
+        />
+      ) : null}
     </form>
+  );
+}
+
+/**
+ * THE LAST SCREEN BEFORE A JOB DISAPPEARS.
+ *
+ * This was a window.confirm — one string, no links, and on a phone a system
+ * sheet that truncates. What it had to say was "$4,200 is still unpaid, 2
+ * checklist items are unticked, and Dana is about to be texted a review
+ * request", which is three separate decisions with three separate fixes, and
+ * the only two answers available were OK and Cancel.
+ *
+ * Still not a block. Every line here is something a contractor can legitimately
+ * close a job over — the cheque arrives Tuesday, the two punch-list items got
+ * done and nobody ticked them. See completionBlockers for why refusing would be
+ * worse than the problem. What changed is that each one now has the thing that
+ * fixes it beside it, and the review send — the only irreversible part — is a
+ * switch on this screen rather than a sentence about a switch somewhere else.
+ */
+function Preflight({
+  who,
+  input,
+  items,
+  pill,
+  sendReview,
+  onToggleReview,
+  onCancel,
+  onConfirm,
+}: {
+  who: string;
+  input: CompleteJobWarningInput;
+  items: CompletionPreflightItem[];
+  pill: ReviewPillState;
+  sendReview: boolean;
+  onToggleReview: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const early = isEarlyCompletion(input);
+  const willSend = pill.canAsk && sendReview;
+
+  return (
+    <div className="job-preflight-backdrop" role="dialog" aria-modal="true" aria-labelledby="job-preflight-title">
+      <div className="job-preflight">
+        <div className="job-preflight-head">
+          <p className="eyebrow">Before you close this out</p>
+          <h2 id="job-preflight-title">Mark this job complete?</h2>
+        </div>
+
+        <p className="job-preflight-lead">
+          {who} sees it close out on their job feed. You can undo it from the feed if you press it early.
+        </p>
+
+        {/* Said first, because it is the one that answers "am I on the right
+            job?". The date stays on the calendar: completing does not un-book
+            the work. */}
+        {early && input.scheduledFor ? (
+          <p className="job-preflight-flag">
+            <strong>This job is booked for {formatBookedDay(input.scheduledFor)}</strong>, so you are closing it early.
+            The date stays on the calendar.
+          </p>
+        ) : null}
+
+        {input.quoteUnapproved ? (
+          <p className="job-preflight-flag">
+            <strong>This quote was never approved.</strong> Completing it also records that {who} accepted it — on their
+            job feed, and on your conversion rate.
+          </p>
+        ) : null}
+
+        {items.length > 0 ? (
+          <div className="job-preflight-open">
+            <p className="job-preflight-open-head">Still open on this job</p>
+            <ul>
+              {items.map((item) => (
+                <li key={item.key}>
+                  {/* Sentence case: these are phrased as clause fragments so
+                      they can be joined into a sentence elsewhere. */}
+                  <span>{item.text.charAt(0).toUpperCase()}{item.text.slice(1)}</span>
+                  <a href={item.fix.href}>{item.fix.label}</a>
+                </li>
+              ))}
+            </ul>
+            <small>Completing doesn&apos;t cancel any of it — it just stops the job reminding you.</small>
+          </div>
+        ) : null}
+
+        {/* The irreversible part, decided here rather than described here. */}
+        <div className={`job-preflight-review${willSend ? ' is-on' : ''}`}>
+          <div>
+            {/* The one paragraph here whose wording is load-bearing, so it
+                comes from the shared function rather than from this file —
+                six states, three of which look identical and send nothing.
+                It reads `input`, which carries the switch below, so it
+                rewrites itself as the switch is thrown. */}
+            <strong>{pill.canAsk ? completeJobReviewSentence(input) : 'No review request will be sent.'}</strong>
+            <small>{pill.canAsk ? 'Completing is undoable from the feed. A review request is not.' : pill.reason}</small>
+          </div>
+          {pill.canAsk ? (
+            <button
+              type="button"
+              className={`job-preflight-switch${sendReview ? ' is-on' : ''}`}
+              onClick={onToggleReview}
+              role="switch"
+              aria-checked={sendReview}
+            >
+              {sendReview ? 'On' : 'Off'}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="job-preflight-actions">
+          <button type="button" className="btn ghost" onClick={onCancel}>
+            Not yet
+          </button>
+          <button type="submit" className="btn primary" onClick={onConfirm}>
+            {willSend ? 'Complete and send the review request' : 'Complete this job'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -54,8 +54,36 @@ describe('the header badge and the pipeline checklist agree', () => {
   it('only says it went out once a client link exists', () => {
     const shared = job({ quoted_amount: 11800 });
     expect(badge(shared, [], [], 1).label).toBe('Awaiting approval');
-    expect(checklist(shared, [], [], 1)[0].label).toBe('Sent to client');
+    expect(checklist(shared, [], [], 1)[0].label).toBe('Quote shared');
     expect(checklist(shared, [], [], 1)[0].complete).toBe(true);
+  });
+
+  /**
+   * TWO KINDS OF ACCESS, AND STEP ONE STOPPED CONFLATING THEM.
+   *
+   * The quote reaches a customer by whatever route sent it; the Job Feed needs
+   * a client_job_access row. Deciding step one on the second of those printed
+   * "Send to client" (open) directly above "Quote approved" (done) — a job they
+   * had demonstrably seen and said yes to, listed as unsent.
+   */
+  it('never leaves the send step open above an approved step', () => {
+    for (const approved of [
+      job({ quoted_amount: 11800, status: 'in_progress' }),
+      job({ quoted_amount: 11800, scheduled_for: '2026-08-20' }),
+      job({ quoted_amount: 11800, status: 'complete' }),
+    ]) {
+      const steps = checklist(approved);
+      expect(steps[1].complete).toBe(true);
+      expect(steps[0].complete, steps[0].label).toBe(true);
+    }
+  });
+
+  /** And the Job Feed link keeps being reported — in the detail line, which is
+   *  where it belongs, rather than by silently deciding the step. */
+  it('says whether the Job Feed link exists, either way', () => {
+    const approvedNoLink = job({ quoted_amount: 11800, status: 'in_progress' });
+    expect(checklist(approvedNoLink)[0].detail).toContain('Job Feed not shared yet');
+    expect(checklist(approvedNoLink, [], [], 1)[0].detail).toContain('Job Feed shared');
   });
 
   // The whole point of the rename: "Add quote" and "Send quote" were three
@@ -146,7 +174,7 @@ describe('no step claims something that has not happened', () => {
       job({ quoted_amount: 11800, status: 'in_progress' }),
       job({ quoted_amount: 11800, scheduled_for: '2026-08-04' }),
     ];
-    const pastTense = ['Sent to client', 'Quote approved', 'Scheduled', 'Invoice / payment requested', 'Paid / signed off'];
+    const pastTense = ['Quote shared', 'Quote approved', 'Scheduled', 'Invoice / payment requested', 'Paid / signed off'];
 
     for (const j of cases) {
       for (const step of checklist(j)) {
@@ -184,7 +212,7 @@ describe('no step claims something that has not happened', () => {
 
 describe('checklist details', () => {
   it('reports the quote amount and whether the feed link is out', () => {
-    expect(checklist(job({ quoted_amount: 11800 }))[0].detail).toBe('$11,800 quoted · Share Job Feed link');
+    expect(checklist(job({ quoted_amount: 11800 }))[0].detail).toBe('$11,800 quoted · Job Feed not shared yet');
     expect(checklist(job({ quoted_amount: 11800 }), [], [], 1)[0].detail).toBe('$11,800 quoted · Job Feed shared');
   });
 

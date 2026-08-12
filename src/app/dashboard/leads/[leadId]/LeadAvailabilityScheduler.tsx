@@ -33,6 +33,15 @@ type SelectedOption = {
   time: string;
 };
 
+/** A booking somebody has pressed for and not yet confirmed. See BookingReview. */
+type PendingBooking = {
+  date: string;
+  label: string;
+  time: string;
+  /** The day already has work on it. Named in the review rather than in a toast. */
+  busy: boolean;
+};
+
 type VisitSummary = {
   label: string;
   detail: string;
@@ -41,6 +50,12 @@ type VisitSummary = {
 type Props = {
   availability: AvailabilityDay[];
   leadPhone: string;
+  /**
+   * Where the visit is. Empty on plenty of real leads — a phone inquiry, a
+   * form somebody abandoned halfway — which is exactly why booking now asks.
+   */
+  leadAddress: string;
+  leadName: string;
   previousHref: string;
   nextHref: string;
   canViewPrevious: boolean;
@@ -52,6 +67,133 @@ type Props = {
   /** Whether this half of the lead accordion starts open. See page.tsx. */
   defaultOpen?: boolean;
 };
+
+/**
+ * WHAT YOU ARE ABOUT TO PUT IN YOUR DIARY, before it goes in.
+ *
+ * One click on a calendar square used to be a confirmed visit. The duration was
+ * hardcoded to 60 minutes, the note was hardcoded to a sentence about the UI it
+ * came from, and the address — the part that decides whether the visit is a
+ * twenty-minute drive or an hour and a half — was neither asked for nor shown.
+ * "Not provided" was an acceptable answer to where a van was being sent.
+ *
+ * So the four things that make a visit real are on one screen, editable, before
+ * anything is written: when, how long, where, and whether the customer is told.
+ * The address defaults to whatever the lead already has and saves back to the
+ * lead when it is changed here — a booking is the moment somebody finally asks,
+ * and making them go to a different form to record the answer is how it stays
+ * blank.
+ */
+function BookingReview({
+  booking,
+  leadName,
+  leadAddress,
+  leadPhone,
+  action,
+  onCancel,
+}: {
+  booking: PendingBooking;
+  leadName: string;
+  leadAddress: string;
+  leadPhone: string;
+  action: FormAction;
+  onCancel: () => void;
+}) {
+  const who = leadName.trim() || 'this lead';
+
+  return (
+    <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="bookingReviewTitle">
+      <form action={action} className={styles.bookingReview}>
+        <input type="hidden" name="quoteVisitDate" value={booking.date} />
+
+        <div className={styles.bookingReviewHead}>
+          <div>
+            <p className="eyebrow">Confirm the estimate visit</p>
+            <h2 id="bookingReviewTitle">{booking.label}</h2>
+          </div>
+          <button type="button" className={styles.modalCloseButton} onClick={onCancel} aria-label="Cancel this booking">
+            x
+          </button>
+        </div>
+
+        {booking.busy ? (
+          <p className={styles.bookingReviewBusy}>
+            You already have work on this day. Booking here adds to it rather than replacing anything.
+          </p>
+        ) : null}
+
+        <div className={styles.bookingReviewGrid}>
+          <label>
+            <span>Start time</span>
+            <TimeSlotSelect id="bookingReviewTime" name="quoteVisitTime" defaultValue={booking.time} />
+          </label>
+          <label>
+            <span>How long</span>
+            {/* Was hardcoded to 60. A roof measure and a tap replacement are not
+                the same appointment, and the diary they land in is shared. */}
+            <select name="quoteVisitDuration" defaultValue="60">
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="90">1½ hours</option>
+              <option value="120">2 hours</option>
+            </select>
+          </label>
+        </div>
+
+        <label className={styles.bookingReviewField}>
+          <span>Where the visit is</span>
+          <input
+            name="quoteVisitAddress"
+            defaultValue={leadAddress}
+            required
+            placeholder="1421 Maple Street, Royal Oak MI"
+            autoComplete="street-address"
+          />
+          <small>
+            {leadAddress
+              ? 'Saved back to the lead if you change it.'
+              : `${who} has no address on file — this saves it to the lead as well.`}
+          </small>
+        </label>
+
+        <label className={styles.bookingReviewField}>
+          <span>Note on the visit (optional)</span>
+          <input name="quoteVisitNotes" placeholder="Gate code, dog in the yard, park on the street…" maxLength={200} />
+        </label>
+
+        {/* Named as what it does, off by default: a text going out is the one
+            part of this dialog that reaches somebody else. */}
+        <label className={`sms-consent-check ${styles.bookingReviewNotify}`}>
+          <input name="quoteVisitSmsConsent" type="checkbox" disabled={!leadPhone.trim()} />
+          <span>
+            <strong>Text {who} a confirmation now</strong>
+            <small>
+              {leadPhone.trim()
+                ? `Sends the day and time to ${leadPhone}. They agreed to transactional scheduling texts. Reply STOP to opt out.`
+                : 'No mobile number on this lead, so there is nowhere to send it.'}
+            </small>
+          </span>
+        </label>
+
+        <div className={styles.bookingReviewActions}>
+          <button type="button" className="btn ghost" onClick={onCancel}>
+            Back to the calendar
+          </button>
+          <BookingConfirmButton />
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function BookingConfirmButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn primary" disabled={pending} aria-busy={pending}>
+      {pending ? 'Booking…' : 'Book this visit'}
+    </button>
+  );
+}
 
 function CalendarSendButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
@@ -67,6 +209,8 @@ function CalendarSendButton({ disabled }: { disabled: boolean }) {
 export default function LeadAvailabilityScheduler({
   availability,
   leadPhone,
+  leadAddress,
+  leadName,
   previousHref,
   nextHref,
   canViewPrevious,
@@ -78,6 +222,22 @@ export default function LeadAvailabilityScheduler({
   defaultOpen = false,
 }: Props) {
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
+  const [pending, setPending] = useState<PendingBooking | null>(null);
+
+  /**
+   * A press on a day is now a proposal, not a booking.
+   *
+   * It used to be one click from a calendar square to a confirmed visit, with
+   * the duration hardcoded to 60 minutes, the notes hardcoded to "Booked from
+   * the lead availability snapshot", and — the expensive one — no address
+   * required or even shown. A quote visit is somebody driving somewhere, and
+   * "Not provided" was a perfectly acceptable answer to where.
+   */
+  function openReview(event: MouseEvent<HTMLButtonElement>, day: AvailabilityDay) {
+    const form = event.currentTarget.form;
+    const time = form ? String(new FormData(form).get('quoteVisitTime') || '09:00') : '09:00';
+    setPending({ date: day.key, label: day.label, time, busy: day.busy });
+  }
 
   function addClientOption(event: MouseEvent<HTMLButtonElement>, day: AvailabilityDay) {
     const form = event.currentTarget.form;
@@ -158,10 +318,10 @@ export default function LeadAvailabilityScheduler({
           const hasSelectionRoom = selectedOptions.length < 3 || isSelected;
 
           return (
-            <form action={scheduleVisitAction} className={styles.availabilityForm} key={day.key}>
-              <input type="hidden" name="quoteVisitDate" value={day.key} />
-              <input type="hidden" name="quoteVisitDuration" value="60" />
-              <input type="hidden" name="quoteVisitNotes" value="Booked from the lead availability snapshot." />
+            /* Still a form, because the time picker inside it is read through
+               FormData when either button is pressed — but nothing submits it
+               any more. Booking goes through the review below. */
+            <form className={styles.availabilityForm} key={day.key} onSubmit={(event) => event.preventDefault()}>
               <div className={`${styles.availabilityDay}${day.busy ? ` ${styles.busyDay}` : ''}${day.isToday ? ` ${styles.todayAvailabilityDay}` : ''}${isSelected ? ` ${styles.selectedAvailabilityDay}` : ''}`}>
                 <strong>{day.label}</strong>
                 <span>{day.summary}</span>
@@ -180,7 +340,9 @@ export default function LeadAvailabilityScheduler({
                 <div className={styles.availabilityBookingControls}>
                   <TimeSlotSelect id={`quoteVisitTime-${day.key}`} name="quoteVisitTime" defaultValue="09:00" />
                   <div className={styles.availabilityActionButtons}>
-                    <button className="btn primary" type="submit">{day.bookingLabel}</button>
+                    <button className="btn primary" type="button" onClick={(event) => openReview(event, day)}>
+                      {day.bookingLabel}
+                    </button>
                     <button type="button" className={`btn secondary ${styles.clientOptionButton}`} disabled={!hasSelectionRoom} onClick={(event) => addClientOption(event, day)}>
                       {isSelected ? '✓ Offered' : 'Offer to client'}
                     </button>
@@ -191,6 +353,17 @@ export default function LeadAvailabilityScheduler({
           );
         })}
       </div>
+
+      {pending ? (
+        <BookingReview
+          booking={pending}
+          leadName={leadName}
+          leadAddress={leadAddress}
+          leadPhone={leadPhone}
+          action={scheduleVisitAction}
+          onCancel={() => setPending(null)}
+        />
+      ) : null}
 
       <form
         action={sendQuoteVisitOptionsAction}

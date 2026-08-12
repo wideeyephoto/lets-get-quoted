@@ -181,6 +181,36 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
   const normalizedPhone = normalizeUsPhone(lead.phone ?? '');
   let confirmationTextSentAt: string | null = null;
 
+  /**
+   * WHERE THE VAN IS GOING, confirmed before the visit exists.
+   *
+   * This action used to book a site visit without ever consulting an address,
+   * so a lead whose form was abandoned halfway got a confirmed appointment at
+   * "Not provided" — and the confirmation text that could go with it named the
+   * same nothing. The review step (see BookingReview) asks; this saves the
+   * answer back to the lead, because a booking is the moment somebody finally
+   * has it and a separate edit form is how it stays blank.
+   *
+   * Falls back to what the lead already has rather than refusing: every caller
+   * before the review step existed sent no address field at all, and a booking
+   * for a lead that has one on file is not the failure this is guarding.
+   */
+  const submittedAddress = optionalText(formData.get('quoteVisitAddress'));
+  const visitAddress = submittedAddress ?? lead.address ?? null;
+  if (!visitAddress) throw new Error('Add the project address before booking the visit.');
+  if (submittedAddress && submittedAddress !== lead.address) {
+    // One column, deliberately. updateLeadDetails writes the WHOLE record from
+    // its input and nulls anything absent — calling it with a name and an
+    // address would silently wipe the phone, email, project type, hours and
+    // message off a lead in the middle of booking a visit to it.
+    const { error } = await supabase
+      .from('leads')
+      .update({ address: submittedAddress, updated_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('id', leadId);
+    if (error) throw error;
+  }
+
   if (formData.get('quoteVisitSmsConsent') === 'on') {
     if (!normalizedPhone) throw new Error('Add a valid client mobile number before sending a confirmation text.');
     const businessName = await loadBusinessName(supabase, accountId);
@@ -189,7 +219,7 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
       phone: normalizedPhone,
       businessName,
       leadName: lead.name || 'there',
-      address: lead.address,
+      address: visitAddress,
       scheduledFor,
       scheduledTime,
       accountId,
