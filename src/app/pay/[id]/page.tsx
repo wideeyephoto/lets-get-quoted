@@ -17,6 +17,30 @@ const KIND_LABEL: Record<string, string> = {
   plan_installment: 'Installment',
 };
 
+/**
+ * The status as a word, not as the value we store it under.
+ *
+ * The card printed `payment.status` straight from the row, so a homeowner
+ * looking at a $3,500 charge was shown a lowercase "requested" — a database
+ * enum, set in the same bold face as the amount beside it, on a page whose
+ * whole job is to look like something you can safely put a card into. Every
+ * other value on this card already comes through a label map (see KIND_LABEL
+ * above); this one had been missed.
+ *
+ * Capitalised, not rewritten: "Requested" is the word that was there. Sentence
+ * case rather than CSS text-transform, because a transform leaves the raw enum
+ * in the DOM — it is what gets read aloud, copied, and pasted into an email to
+ * the contractor asking what "requested" means.
+ */
+const STATUS_LABEL: Record<PaymentStatus, string> = {
+  requested: 'Requested',
+  processing: 'Processing',
+  paid: 'Paid',
+  failed: 'Failed',
+  refunded: 'Refunded',
+  disputed: 'Disputed',
+};
+
 // To the cent. This page's button issues the charge it names — rounding it to
 // "$438" over a $437.50 card charge is the one place a display shortcut becomes
 // a false statement about money. See formatMoneyExact.
@@ -177,7 +201,10 @@ export default async function PublicPaymentPage({
         <div className="workspace-metric-grid compact">
           <article className="workspace-metric-card accent">
             <span className="workspace-metric-label">Payment status</span>
-            <strong className="workspace-metric-value">{payment.status}</strong>
+            {/* A status we have never heard of falls back to the stored value
+                rather than to nothing: on a payment page, a blank where the
+                state should be is worse than an unfamiliar word. */}
+            <strong className="workspace-metric-value">{STATUS_LABEL[payment.status] ?? payment.status}</strong>
             <p className="workspace-metric-note">Live status rendered fresh from the database.</p>
           </article>
           <article className="workspace-metric-card">
