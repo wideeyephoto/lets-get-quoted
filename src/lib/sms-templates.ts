@@ -166,6 +166,22 @@ export function clientJobDashboardText(input: {
 }
 
 /**
+ * The customer asked for their own portal link, by number.
+ *
+ * Sent only in direct answer to somebody typing their mobile into the
+ * contractor's portal page. It leads with the business name because it arrives
+ * unprompted-looking on a lock screen seconds later, and a bare link from an
+ * unknown sender is indistinguishable from a phishing text — the name is the
+ * only thing that makes it legible as the thing they just asked for.
+ *
+ * No job reference: this link is the customer's WHOLE history with the
+ * business, not one job.
+ */
+export function portalLinkText(input: { businessName: string; link: string }): string {
+  return `${input.businessName} here — your jobs, invoices and receipts in one place: ${input.link} The link works for 90 days. Reply STOP to opt out.`;
+}
+
+/**
  * The quote changed after it went out.
  *
  * WHY THIS EXISTS AT ALL. Saving an edit to a quote the homeowner has already

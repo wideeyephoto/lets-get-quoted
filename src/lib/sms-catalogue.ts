@@ -19,6 +19,7 @@ import {
   missedCallTextBack,
   ownerHighValueLeadText,
   paymentText,
+  portalLinkText,
   quickStopConfirmedText,
   quickStopOfferText,
   quoteFollowupText,
@@ -184,6 +185,14 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
   },
 
   // -- the quote -------------------------------------------------------------
+  {
+    id: 'portal-link',
+    title: 'Your customer portal link',
+    trigger: 'The customer asks for it by number on your website',
+    audience: 'customer',
+    control: always('Sent only when a customer requests it'),
+    body: portalLinkText({ businessName: SAMPLE.business, link: SAMPLE.link }),
+  },
   {
     id: 'client-job-dashboard',
     title: 'Your job link',
@@ -508,6 +517,7 @@ export const CATALOGUE_SENDERS = [
   'sendCardSetupSms',
   'sendCardUpdateSms',
   'sendClientJobDashboardSms',
+  'sendClientPortalLinkSms',
   'sendCrewAssignmentSms',
   'sendCrewScheduleSelectedSms',
   'sendEstimateOfferSms',

@@ -178,6 +178,36 @@ export async function sendBookingDecisionSms(input: {
   }
 }
 
+// The customer's own portal link, texted, because they asked for it by number.
+//
+// TRANSACTIONAL AND SOLICITED IN THE STRICTEST SENSE: this is sent only in
+// direct response to somebody typing their own number into the contractor's
+// portal page and pressing a button labelled "send me a link". There is no
+// sweep, no schedule, and no way for a contractor to trigger it.
+//
+// Opt-out is still honoured. Somebody who has replied STOP has said not to text
+// them, and "but they asked" is exactly the argument every unwanted message
+// makes — if the number is opted out this sends nothing, and the page's
+// acknowledgement is the same either way, so a stranger cannot learn from the
+// silence.
+//
+// Best-effort and never throws. The caller must return an identical answer
+// whether or not anything was sent, so an exception escaping here would leak
+// the match through a 500.
+export async function sendClientPortalLinkSms(input: {
+  accountId: string;
+  toPhone: string;
+  message: string;
+}): Promise<void> {
+  try {
+    if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
+    const providerId = await sendTwilioMessage(input.toPhone, withOptOut(input.message));
+    await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
+  } catch (error) {
+    console.error('Portal link SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 // Tells the contractor, on their own mobile, that a lead answered. A self-alert
 // to the number they entered in settings — not a customer conversation, so it
 // skips the inbox and the consent ledger, exactly like the high-value lead

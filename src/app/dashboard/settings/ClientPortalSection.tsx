@@ -13,8 +13,8 @@ import { updatePortalLinkAction } from './actions';
  * website.
  *
  * The preview is a real reproduction of the customer's page rather than a
- * description of it. "Customers enter their email and get a link" is a sentence
- * somebody has to imagine; this is the thing itself.
+ * description of it. "Customers enter their details and get a link" is a
+ * sentence somebody has to imagine; this is the thing itself.
  */
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -125,7 +125,9 @@ export default function ClientPortalSection({
       </p>
 
       <p className="portal-blurb">
-        Customers enter their email and receive a secure link to view their previous jobs — no password required.
+        Customers enter their email address or mobile number and receive a secure link to view their previous jobs — no
+        password required. Whichever they use is where the link is sent, so the ones you only have a number for can get
+        in too.
       </p>
       <p className="portal-callout">
         Their work history, what it cost, and any warranty still running — what it covers, and when it runs out.
@@ -188,7 +190,7 @@ export default function ClientPortalSection({
           </div>
 
           <p className="portal-privacy">
-            🔒 We never reveal whether an email address is in your customer list. Every visitor sees the same
+            🔒 We never reveal whether an email address or number is in your customer list. Every visitor sees the same
             confirmation message. You can cut off any customer’s access from their page under Clients.
           </p>
         </div>
@@ -201,11 +203,11 @@ export default function ClientPortalSection({
             <p className="portal-mock-brand">{businessName}</p>
             <p className="portal-mock-title">Find your past jobs</p>
             <div className="portal-mock-field">
-              <p className="portal-mock-label">Enter your email address</p>
-              <p className="portal-mock-input">customer@email.com</p>
+              <p className="portal-mock-label">Enter your email address or mobile number</p>
+              <p className="portal-mock-input">customer@email.com or (248) 555-0117</p>
               <p className="portal-mock-btn">Send secure lookup link</p>
             </div>
-            <p className="portal-mock-fine">We’ll email you a private link if we find a match.</p>
+            <p className="portal-mock-fine">We’ll send you a private link if we find a match.</p>
           </div>
         </div>
       </div>

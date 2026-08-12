@@ -14836,7 +14836,65 @@ select optgroup {
   font-weight: 800;
 }
 .date-choice-note { display: grid; gap: 0.3rem; width: 100%; font-size: 0.8rem; font-weight: 700; }
-.date-choice-note textarea { width: 100%; }
+/* The note box wears the cards' clothes.
+   ---------------------------------------------------------------------------
+   It had `width: 100%` and nothing else, so it fell all the way through to the
+   browser's default control — a flat grey slab with grey placeholder text,
+   sitting directly under three carefully drawn cards on a page whose whole job
+   is to look like something you can safely sign. It was the one element on the
+   card that had not been designed.
+
+   Same border, radius, fill and focus ring as .date-card above, deliberately:
+   they are the two things you fill in on this form, so they should read as one
+   control and its footnote rather than as our card and the browser's box. */
+.date-choice-note textarea {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: var(--q-border) solid var(--edge-t16);
+  border-radius: var(--q-radius);
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  /* Inherits the page's face; a textarea otherwise renders in the browser's
+     monospace-ish default and reads as a different application. */
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
+  /* Vertical only. Free resizing lets somebody drag it wider than the card it
+     sits under, which breaks the column on a phone. */
+  resize: vertical;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.date-choice-note textarea::placeholder { color: inherit; opacity: 0.42; font-weight: 500; }
+.date-choice-note textarea:hover { border-color: var(--cbrand-edge, var(--cedge-orange-29)); }
+.date-choice-note textarea:focus {
+  outline: none;
+  border-color: var(--cbrand, #ff8a3d);
+  box-shadow: 0 0 0 2px var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
+
+/* The same treatment for the "none of these work" box, which is the same
+   question asked a second way and had the same untouched default. */
+.date-choice-alt .client-ask-form textarea {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: var(--q-border) solid var(--edge-t16);
+  border-radius: var(--q-radius);
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.date-choice-alt .client-ask-form textarea::placeholder { color: inherit; opacity: 0.42; font-weight: 500; }
+.date-choice-alt .client-ask-form textarea:focus {
+  outline: none;
+  border-color: var(--cbrand, #ff8a3d);
+  box-shadow: 0 0 0 2px var(--cbrand-soft, rgba(255, 138, 61, 0.16));
+}
 .date-choice-alt { margin-top: 0.2rem; }
 
 /* ── Two ways to pay, presented as two ways to pay ──────────────────────────

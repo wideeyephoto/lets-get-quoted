@@ -1,12 +1,68 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createPortalToken, hashPortalToken, portalExpiry, summarisePortal, type PortalJob, type PortalView } from '@/lib/client-portal';
+import { createPortalToken, hashPortalToken, portalExpiry, summarisePortal, type PortalIdentifier, type PortalJob, type PortalView } from '@/lib/client-portal';
 import { listClientWarranties } from '@/lib/warranties-data';
 import { toClientWarranties, type ClientWarranty } from '@/lib/warranties';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 import { invoicePayState, paymentsForInvoice, type InvoicePayment } from '@/lib/invoice-pay';
 
 /**
- * Mint a portal link for whoever owns this email, if anybody does.
+ * Find the one client this email belongs to.
+ *
+ * `.limit(1)` and not `.maybeSingle()` alone: a customer list assembled from
+ * imports, web forms and typed entry can hold the same address twice, and
+ * maybeSingle THROWS on a second row — which turned a duplicate in the
+ * contractor's own data into "no such customer" for somebody trying to see
+ * their own jobs.
+ */
+async function findClientByEmail(admin: SupabaseClient, accountId: string, email: string) {
+  const { data } = await admin
+    .from('clients')
+    .select('id')
+    .eq('account_id', accountId)
+    .ilike('email', email)
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
+ * The same, by mobile number.
+ *
+ * TWO PASSES, because the column is not uniformly formatted. New rows go in as
+ * E.164 through normalizeUsPhone (see lib/clients), but rows that arrived by CSV
+ * import were stored exactly as the contractor's spreadsheet had them —
+ * "(248) 555-0117", "248.555.0117", "1-248-555-0117". An exact match finds the
+ * first kind; the fallback compares the last ten digits, which is the part that
+ * identifies a US line no matter how it was typed.
+ *
+ * Both passes are scoped to one account, so the loose match can only ever reach
+ * this contractor's own customers.
+ */
+async function findClientByPhone(admin: SupabaseClient, accountId: string, e164: string) {
+  const exact = await admin
+    .from('clients')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('phone', e164)
+    .limit(1)
+    .maybeSingle();
+  if (exact.data) return exact.data;
+
+  const last10 = e164.replace(/\D/g, '').slice(-10);
+  if (last10.length !== 10) return null;
+  const { data } = await admin
+    .from('clients')
+    .select('id, phone')
+    .eq('account_id', accountId)
+    .not('phone', 'is', null)
+    .limit(500);
+  const match = (data ?? []).find((row) => String(row.phone ?? '').replace(/\D/g, '').slice(-10) === last10);
+  return match ?? null;
+}
+
+/**
+ * Mint a portal link for whoever owns this email or mobile number, if anybody
+ * does.
  *
  * Returns the token ONLY when there's a match — but the caller must send the
  * same acknowledgement either way. A page that says "no account found" tells a
@@ -19,18 +75,13 @@ import { invoicePayState, paymentsForInvoice, type InvoicePayment } from '@/lib/
 export async function issuePortalLink(
   admin: SupabaseClient,
   accountId: string,
-  email: string,
+  identifier: PortalIdentifier,
 ): Promise<{ token: string; clientId: string } | null> {
-  const needle = email.trim().toLowerCase();
-  if (!needle) return null;
-
-  const { data: client } = await admin
-    .from('clients')
-    .select('id, email')
-    .eq('account_id', accountId)
-    .ilike('email', needle)
-    .maybeSingle();
+  const client = identifier.kind === 'email'
+    ? await findClientByEmail(admin, accountId, identifier.value)
+    : await findClientByPhone(admin, accountId, identifier.value);
   if (!client) return null;
+  const needle = identifier.value;
 
   await admin
     .from('client_portal_access')
