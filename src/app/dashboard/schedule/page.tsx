@@ -501,7 +501,15 @@ export default async function SchedulePage({
     role_label: member.role_label,
   }));
 
-  const mapView = normalizeMapView(cookies().get(mapViewCookie('schedule'))?.value);
+  /* CLOSED UNLESS ASKED FOR, ON THIS PAGE ONLY.
+     normalizeMapView's absent-cookie default is 'large', which is right for
+     Leads and Customers where the map IS the screen. Here the calendar is the
+     screen and the map was mounting a Google map, its script, its tiles and its
+     markers under it on every load — the single largest thing left on a phone
+     once the settings moved off. An explicit choice still persists both ways;
+     only the meaning of "never chose" changes. */
+  const mapCookie = cookies().get(mapViewCookie('schedule'))?.value;
+  const mapView = mapCookie ? normalizeMapView(mapCookie) : 'off';
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const weekendDays = normalizeWeekendDays(cookies().get(CALENDAR_WEEKEND_COOKIE)?.value);
   // Read server-side so the calendar renders in the right shape on the first
@@ -914,7 +922,33 @@ export default async function SchedulePage({
           /dashboard/schedule/settings. */}
       <section className="sched-settings" id="schedule-map" aria-labelledby="schedule-map-h">
         <h2 className="sched-settings-h" id="schedule-map-h">Where the work is</h2>
-        <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
+        <ScheduleMap
+          pins={mapPins}
+          mapView={mapView}
+          mapTheme={mapTheme}
+          /* The same occurrences the calendar draws, as the list half. Pins
+             answer "where" and nothing else — you cannot sort a map by value,
+             or scan one for the two jobs in a town, and a screen reader cannot
+             use it at all.
+
+             FILTERED TO THE MONTH ON SCREEN. calendarJobs holds every scheduled
+             occurrence there is, not a month's worth — the grid does the
+             narrowing. Passing it whole put 124 rows under a heading reading
+             "August 2026", opening on three jobs from April, June and October. */
+          jobs={calendarJobs
+            .filter((job) => job.scheduled_for.startsWith(monthPrefix))
+            .map((job) => ({
+              id: job.id,
+              client_name: job.client_name,
+              city_label: job.city_label,
+              scheduled_for: job.scheduled_for,
+              scheduled_time: job.scheduled_time,
+              value_label: job.value_label,
+              hours_label: job.hours_label,
+              crew_initials: job.crew_initials,
+            }))}
+          monthLabel={monthLabel}
+        />
       </section>
     </main>
   );

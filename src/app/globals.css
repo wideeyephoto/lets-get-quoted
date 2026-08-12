@@ -18644,12 +18644,129 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .schedule-map { margin-bottom: 0; }
 
-/* Map switched off: the gear still has to be reachable, or there'd be no way
-   to switch it back on. */
-.schedule-map-off {
+/* ---- the map, on request --------------------------------------------------
+   Open by default it was the single largest thing left on this page once the
+   settings moved off — a Google map, its script, its tiles and its markers,
+   under a calendar somebody came here to read. Closed, nothing is mounted: not
+   hidden with CSS, absent from the tree. The gear stays reachable in both
+   states, or there would be no way back. */
+.sched-map-shut {
   display: flex;
-  justify-content: flex-end;
-  margin-top: -0.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.sched-map-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+}
+
+.sched-map-open-wrap { display: grid; gap: 0.6rem; }
+.sched-map-open-wrap[data-pending] { opacity: 0.6; }
+
+.sched-map-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Map and List are two readings of the same month, so they are tabs rather
+   than a map with a list bolted under it. */
+.sched-map-tabs {
+  display: inline-flex;
+  padding: 0.2rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+}
+.sched-map-tab {
+  min-height: 44px;
+  padding: 0 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--mute-t60);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+/* Selected is a fill AND a weight change, never the fill alone. */
+.sched-map-tab.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
+.sched-map-tab:focus-visible,
+.sched-map-open:focus-visible,
+.sched-map-hide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sched-map-hide {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 0.7rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--mute-i62);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---- the same month as rows ---------------------------------------------- */
+.sched-map-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--mute-i62);
+  font-size: 0.8rem;
+}
+.sched-map-sort select {
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+}
+.sched-map-sort > span { margin-left: auto; }
+
+.sched-map-rows { display: grid; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+.sched-map-row {
+  display: grid;
+  grid-template-columns: 3.6rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 48px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  text-decoration: none;
+}
+.sched-map-row:hover { border-color: var(--cedge-orange-17); }
+.sched-map-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-map-row-when { color: var(--mute-i62); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.sched-map-row-who { display: grid; gap: 0.05rem; min-width: 0; }
+.sched-map-row-who strong { font-size: 0.88rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-map-row-who small { color: var(--mute-i56); font-size: 0.74rem; }
+.sched-map-row-figures { display: flex; gap: 0.5rem; font-size: 0.78rem; }
+.sched-map-row-figures em { font-style: normal; font-weight: 700; }
+.sched-map-row-figures i { font-style: normal; color: var(--mute-i56); }
+.sched-map-row-crew { color: var(--mute-i62); font-size: 0.76rem; font-weight: 700; }
+
+/* A phone has no room for four columns; the figures and the crew drop under
+   the name rather than being squeezed into 40px each. */
+@media (max-width: 560px) {
+  .sched-map-row { grid-template-columns: 3.4rem minmax(0, 1fr); }
+  .sched-map-row-figures,
+  .sched-map-row-crew { grid-column: 2; }
 }
 
 /* ---------------------------------------------------------------------------
