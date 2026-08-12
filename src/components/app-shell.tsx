@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, 
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
+import ThemeFab from './theme-fab';
 import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
@@ -1156,6 +1157,17 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <span aria-hidden="true">?</span>
             </Link>
           ) : null}
+          {/* LIGHT/DARK, ONE TAP, FROM ANYWHERE. ALWAYS.
+              Same argument as the ? above, and rendered by the shell for the
+              same reason — there is no shared page header to hang it on.
+
+              Ungated, unlike the ?, and at every width: this is the only
+              control in the product whose whole job is "I cannot read this
+              screen right now", and a control for that which is missing on
+              some pages, or only under 1080px, has failed on exactly the
+              occasion it exists for. It sits inside the showAppRail branch, so
+              a rail is always present for its desktop offset to clear. */}
+          <ThemeFab />
           {/* INSIDE the page, above its content. Fixed to the bottom-right it
               covered what you were reading and the controls you'd tap next —
               351x98 of it on a phone — and every dashboard page had to reserve

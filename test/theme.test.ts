@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { otherTheme, parseTheme, resolveTheme, themeToggleLabel } from '@/lib/theme';
+import {
+  otherTheme,
+  parseTheme,
+  parseThemeChoice,
+  resolveTheme,
+  THEME_CHOICES,
+  themeChoiceLabel,
+  themeCookieString,
+  themeToggleLabel,
+} from '@/lib/theme';
 
 describe('parseTheme', () => {
   it('accepts only the two real values', () => {
@@ -33,6 +42,45 @@ describe('resolveTheme', () => {
     // toggle writes the cookie, so a light-mode user only meets it once.
     expect(resolveTheme(null)).toBe('dark');
     expect(resolveTheme('nonsense')).toBe('dark');
+  });
+});
+
+describe('parseThemeChoice', () => {
+  it('accepts the three real answers', () => {
+    expect(parseThemeChoice('light')).toBe('light');
+    expect(parseThemeChoice('dark')).toBe('dark');
+    expect(parseThemeChoice('system')).toBe('system');
+  });
+
+  it('still rejects junk, so a hand-edited cookie falls through to the default', () => {
+    for (const raw of [null, undefined, '', 'Auto', 'SYSTEM', 'auto', 'true']) {
+      expect(parseThemeChoice(raw), String(raw)).toBeNull();
+    }
+  });
+});
+
+describe('system as a choice', () => {
+  it('renders whatever the device says, not a colour of its own', () => {
+    // The caller passes null for 'system'; the cookie value itself is never a
+    // theme, which is the whole reason parseTheme keeps rejecting it.
+    expect(parseTheme('system')).toBeNull();
+    expect(resolveTheme(null, true)).toBe('light');
+    expect(resolveTheme(null, false)).toBe('dark');
+  });
+
+  it('is the first option offered, and every option has a label', () => {
+    expect(THEME_CHOICES.map((c) => c.value)).toEqual(['system', 'light', 'dark']);
+    for (const c of THEME_CHOICES) expect(themeChoiceLabel(c.value)).toBe(c.label);
+  });
+});
+
+describe('themeCookieString', () => {
+  it('writes a year-long, path-wide, Lax cookie — the server has to see it on navigation', () => {
+    const cookie = themeCookieString('lgq-theme', 'system');
+    expect(cookie).toContain('lgq-theme=system');
+    expect(cookie).toContain('path=/');
+    expect(cookie).toContain('max-age=31536000');
+    expect(cookie).toContain('samesite=lax');
   });
 });
 

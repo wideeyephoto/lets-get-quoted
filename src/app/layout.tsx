@@ -5,7 +5,8 @@ import { cookies, headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
-import { resolveTheme, THEME_COOKIE } from '@/lib/theme';
+import ThemeSync from '@/components/theme-sync';
+import { parseThemeChoice, resolveTheme, THEME_COOKIE, THEME_SYSTEM_COOKIE } from '@/lib/theme';
 /**
  * THE BASE SHEET, NOT THE WHOLE ONE.
  *
@@ -116,11 +117,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   // A contractor's PUBLIC site renders through this same layout and must not
   // inherit the owner's preference: their homeowners get the palette the site
   // was designed with, not whatever the plumber likes at 6am.
-  const theme = isStandaloneSite ? 'dark' : resolveTheme(cookies().get(THEME_COOKIE)?.value);
+  //
+  // "Auto" is resolved here too, from the mirror cookie the browser writes (see
+  // THEME_SYSTEM_COOKIE) — so following the device costs no flash either, from
+  // the second page load of the first visit onwards.
+  const jar = cookies();
+  const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'system';
+  const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
+  const theme = isStandaloneSite ? 'dark' : resolveTheme(choice === 'system' ? null : choice, systemPrefersLight);
 
   return (
-    <html lang="en" data-theme={theme}>
+    // data-theme is the color being rendered; data-theme-choice is what the
+    // person asked for. They differ exactly when the choice is 'system', and
+    // the controls need the second one to show Auto as selected.
+    <html lang="en" data-theme={theme} data-theme-choice={isStandaloneSite ? 'dark' : choice}>
       <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${GeistSans.variable}`}>
+        {/* A contractor's public site is not themed by the owner's preference,
+            so it must not be corrected towards the visitor's device either. */}
+        {isStandaloneSite ? null : <ThemeSync />}
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>

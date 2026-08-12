@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import DemoBanner from '@/components/demo-banner';
 import DemoSidebar from '@/components/demo-sidebar';
+import ThemeFab from '@/components/theme-fab';
 
 export const metadata: Metadata = {
   title: 'Example dashboard',
@@ -35,6 +36,11 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
         <DemoBanner />
         {children}
       </div>
+      {/* The same always-on switch the real dashboard carries (see its call
+          site in app-shell.tsx). The demo is what a prospect looks at outside
+          on their phone, and the rail's own Appearance row is below the fold of
+          a drawer here exactly as it is in the product. */}
+      <ThemeFab />
     </div>
   );
 }

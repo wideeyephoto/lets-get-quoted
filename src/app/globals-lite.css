@@ -11514,84 +11514,154 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 .cash-bill-check.is-flipped strong { color: var(--good); }
 
-/* --- Light / dark switch, foot of the rail ---------------------------------
-   Shaped like the nav rows it sits under (same height, same padding, same
-   radius) so it reads as part of the list rather than a control dropped on top
-   of it — but it is a <button role="switch">, not a link, and the track on the
-   right says so. */
-/* The theme switch — a physical-looking toggle, not a labelled nav row.
-   ---------------------------------------------------------------------------
-   Both glyphs are always drawn and the knob slides between them, so it says
-   what it is AND what it will become with no word beside it. That is what makes
-   it narrow enough to share the footer line with the Stripe status.
+/* --- Appearance: Auto / Light / Dark, foot of the rail ----------------------
+   A segmented row of three, because there are three answers now and a sliding
+   two-position switch (which this was) cannot show a third. It sits under the
+   nav rows and borrows their type and radius so it reads as part of the menu,
+   but the selected segment is filled — a menu item tells you where it goes, a
+   setting has to tell you where it IS.
 
    The track stays dark in BOTH themes on purpose: under Harbour the rail is
-   canvas, not paper, so this footer is dark either way — and a switch that
-   restyled itself would be the one control on screen that changes shape when
-   you use it. */
+   canvas, not paper, so this footer is dark either way — and a control that
+   restyled itself would be the one thing on screen that changes shape when you
+   use it. */
 .sidenav-footrow { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
 .sidenav-footrow .stripe-status-pill.sidenav-stripe { flex: 1 1 auto; width: auto; min-width: 0; }
 .stripe-status-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.theme-switch {
-  flex: none;
+.theme-choice {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2a313c 0%, #232a34 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.theme-choice-opt {
   display: inline-flex;
-  padding: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 0;
+  /* 32px inside the menu, where the pointer is a mouse and the row above it is
+     the same height. The floating one below is the touch target. */
+  height: 1.85rem;
+  padding: 0 0.35rem;
   border: 0;
   border-radius: 999px;
   background: none;
-  line-height: 0;
+  color: rgba(234, 238, 246, 0.62);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.theme-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.theme-switch-track {
-  position: relative;
-  display: block;
-  width: 3.1rem;
-  height: 1.7rem;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #3b4451 0%, #2a313c 100%);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.theme-switch-knob {
-  position: absolute;
-  top: 0.17rem;
-  left: 0.17rem;
-  width: 1.36rem;
-  height: 1.36rem;
-  border-radius: 50%;
+.theme-choice-opt:hover { color: #eaeef6; }
+.theme-choice-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.theme-choice-opt.is-on {
   background: linear-gradient(180deg, #ffffff 0%, #e4e8ef 100%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.18);
-  /* Dark is the knob on the RIGHT, over the moon. */
-  transform: translateX(1.4rem);
-  transition: transform 0.24s cubic-bezier(0.34, 1.4, 0.64, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  color: #1b2230;
 }
-.theme-switch[aria-checked='true'] .theme-switch-knob { transform: none; }
 
-.theme-switch-glyph {
-  position: absolute;
-  top: 50%;
-  /* Above the knob, so the active glyph reads ON the white disc rather than
-     being covered by it. */
-  z-index: 1;
-  width: 0.92rem;
-  height: 0.92rem;
-  margin-top: -0.46rem;
-  transition: color 0.2s ease;
+/* The demo rail has no account menu (nothing to sign out of), so it keeps this
+   on the footer line beside the Stripe pill — where three words do not fit.
+   Glyphs only there; the accessible names are on the buttons regardless. */
+.sidenav-footrow .theme-choice { flex: 0 0 auto; grid-template-columns: repeat(3, 1.9rem); }
+.sidenav-footrow .theme-choice-word { display: none; }
+
+.theme-choice-glyph { display: block; width: 0.85rem; height: 0.85rem; flex: 0 0 auto; }
+.theme-choice-glyph svg { display: block; width: 100%; height: 100%; }
+/* The sun is gold on the dark track and gold on the white pill — it is the one
+   glyph that needs no state-dependent colour. The other two inherit. */
+.theme-choice-opt[data-choice='light'] .theme-choice-glyph { color: #f5a300; }
+.theme-choice-word { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- The floating switch, bottom-left, EVERY width --------------------------
+   Always on screen, one tap, no menu. See the note at its call site in
+   app-shell.tsx for why it exists and why it lives in this corner.
+
+   It is not hidden on desktop. The row in the account menu is two clicks deep
+   and this is not a settings interaction — someone squinting at a screen in the
+   wrong light needs the fix where their eye already is, not behind their own
+   name. The menu keeps its copy because that is where Auto lives and where
+   somebody LOOKING for the setting will go. */
+.theme-fab {
+  position: fixed;
+  /* Clear of the docked rail, which owns the true bottom-left corner on a wide
+     window (its own footer sits there). Below 1080 the rail is a drawer, so the
+     corner is free and the rule in the media query below takes it. */
+  /* +1.4rem, the same gutter .app-main-sidenav already reserves for the rail,
+     so it lines up with the content's left edge instead of straddling the seam. */
+  left: calc(var(--sidenav-w) + 1.4rem);
+  /* Above the home indicator on an iPhone, and above nothing in particular
+     everywhere else — env() resolves to 0 where there is no inset. */
+  bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  /* Under the nav drawer and its scrim (40/41), over the page. The drawer is
+     modal and carries its own copy of this setting; a switch floating on top of
+     a scrim would be the only live control on a dimmed screen. */
+  z-index: 30;
+  display: inline-grid;
+  place-items: center;
+  /* 52px. Bigger than the 44px touch minimum on purpose: this is the control
+     you reach for when you cannot see the screen properly. */
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: rgba(var(--panel-rgb), 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.34);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.15s ease;
 }
-.theme-switch-glyph svg { display: block; width: 100%; height: 100%; }
-.theme-switch-glyph.is-sun { left: 0.39rem; color: #f5a300; }
-.theme-switch-glyph.is-moon { right: 0.39rem; }
-/* Whichever glyph the knob is parked under has to read on WHITE; the other one
-   is sitting on the dark track and has to read there instead. The sun is gold
-   enough for both — the moon is not, so it flips. */
-.theme-switch[aria-checked='true'] .theme-switch-glyph.is-moon { color: #eaeef6; }
-.theme-switch[aria-checked='false'] .theme-switch-glyph.is-moon { color: #2b3340; }
+.theme-fab:active { transform: scale(0.94); }
+.theme-fab:hover { border-color: var(--cedge-orange-51); }
+.theme-fab:focus-visible { outline: none; border-color: var(--cedge-orange-51); box-shadow: 0 0 0 2px var(--cedge-orange-51); }
+
+.theme-fab-glyph { display: block; width: 24px; height: 24px; }
+.theme-fab-glyph svg { display: block; width: 100%; height: 100%; }
+/* Gold for the sun, because "this makes it brighter" should be legible as a
+   shape at arm's length in glare; the moon rides on the panel colour. */
+.theme-fab-glyph[data-theme-glyph='light'] { color: #f5a300; }
+
+/* On Auto. Small, and it never changes what the tap does — it is there so
+   "why did it go dark on its own?" has an answer on screen. */
+.theme-fab-auto {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid rgba(var(--panel-rgb), 0.94);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #0b1420;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (max-width: 1080px) {
+  /* The rail has become a drawer, so the corner itself is free — and on a phone
+     the true bottom-left is the part of the screen a thumb reaches without
+     regripping, which is the whole point of putting it there. */
+  .theme-fab { left: 0.9rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .theme-switch-knob, .theme-switch-glyph { transition: none; }
+  .theme-choice-opt, .theme-fab { transition: none; }
 }
 
 

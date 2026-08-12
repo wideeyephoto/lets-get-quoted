@@ -1,67 +1,54 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { otherTheme, themeToggleLabel, THEME_COOKIE, THEME_COOKIE_MAX_AGE, type Theme } from '@/lib/theme';
+import { THEME_CHOICES } from '@/lib/theme';
+import { ThemeGlyph } from './theme-glyphs';
+import { useTheme } from './use-theme';
 
-// Light / dark for the dashboard, in the rail's footer beside the Stripe pill.
+// Appearance, in the account menu: Auto / Light / Dark.
 //
-// It writes the cookie and flips data-theme on <html> in the same tick, so the
-// change is instant and the NEXT page load already renders correct from the
-// server — no flash, and no round trip to save a preference.
+// It used to be a two-position switch, and a switch was the honest shape while
+// there were two answers. There are three now — "match my device" is a real
+// third state, not light-with-an-asterisk — and a switch cannot show three. A
+// radio group can, and it also says which one is CURRENT rather than only which
+// one is next, which the floating switch on a phone deliberately does not.
 //
-// The initial value is read off <html> rather than passed in as a prop. The
-// server has already stamped it there, so the switch is in the right position
-// on first paint without the layout having to thread a value down through every
-// component between here and the root.
+// Three radios, not a <select>: the whole point of a settings row you meet by
+// accident is that it shows you the options exist.
 //
-// It is a SWITCH, not a labelled row. Both glyphs are always drawn and the knob
-// slides between them, so the control says what it is and what it will become
-// without a word beside it — which is what buys the room to share a line with
-// the Stripe status instead of taking a row of its own.
+// role="radiogroup" rather than a fieldset of inputs because this lives inside
+// a menu (role="menuitem" wrapper) where a form control's own label and focus
+// behavior would fight the menu's keyboard handling.
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('dark');
-
-  useEffect(() => {
-    const stamped = document.documentElement.dataset.theme;
-    if (stamped === 'light' || stamped === 'dark') setTheme(stamped);
-  }, []);
-
-  const flip = () => {
-    const next = otherTheme(theme);
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    // SameSite=Lax so it rides along on ordinary navigation, which is exactly
-    // when the server needs to read it.
-    document.cookie = `${THEME_COOKIE}=${next}; path=/; max-age=${THEME_COOKIE_MAX_AGE}; samesite=lax`;
-  };
-
-  const isLight = theme === 'light';
+  const { choice, setChoice } = useTheme();
 
   return (
-    <button
-      type="button"
-      className="theme-switch"
-      role="switch"
-      aria-checked={isLight}
-      aria-label={themeToggleLabel(theme)}
-      title={themeToggleLabel(theme)}
-      onClick={flip}
-    >
-      <span className="theme-switch-track" aria-hidden="true">
-        <span className="theme-switch-glyph is-sun">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none" />
-            <path d="M12 1.8v2.4M12 19.8v2.4M4.2 12H1.8M22.2 12h-2.4M6.1 6.1 4.4 4.4M19.6 19.6l-1.7-1.7M17.9 6.1l1.7-1.7M4.4 19.6l1.7-1.7" />
-          </svg>
-        </span>
-        <span className="theme-switch-glyph is-moon">
-          <svg viewBox="0 0 24 24">
-            <path d="M20.7 14.4A8.7 8.7 0 0 1 9.6 3.3a8.7 8.7 0 1 0 11.1 11.1Z" fill="currentColor" />
-          </svg>
-        </span>
-        <span className="theme-switch-knob" />
-      </span>
-    </button>
+    <div className="theme-choice" role="radiogroup" aria-label="Appearance">
+      {THEME_CHOICES.map((option) => {
+        const on = choice === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            className={`theme-choice-opt${on ? ' is-on' : ''}`}
+            data-choice={option.value}
+            // Named explicitly rather than by the word beside the glyph: the
+            // demo rail draws this control glyph-only to share its footer line
+            // with the Stripe pill, and a radio whose only name is a `title`
+            // is a radio some screen readers announce as nothing.
+            aria-label={option.label}
+            title={option.label}
+            onClick={() => setChoice(option.value)}
+          >
+            <span className="theme-choice-glyph" aria-hidden="true">
+              <ThemeGlyph name={option.value} />
+            </span>
+            <span className="theme-choice-word">{option.word}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
