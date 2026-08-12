@@ -23,7 +23,7 @@ export default function ClientJobError({ error, reset }: { error: Error & { dige
   }, [error]);
 
   return (
-    <main className="wide-shell workspace-shell client-job-dashboard qstyle-signature">
+    <main className="wide-shell workspace-shell client-job-dashboard">
       <section className="panel workspace-section-card quote-dead-link">
         <p className="eyebrow">Something went wrong</p>
         <h1 className="workspace-title">We couldn&rsquo;t load your quote</h1>

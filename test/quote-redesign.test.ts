@@ -5,13 +5,6 @@ import { formatUsdExact, formatUsdRounded } from '@/lib/money-format';
 import { formatMoneyExact } from '@/lib/jobs';
 import { isSignature } from '@/app/client/jobs/[token]/QuoteDeck';
 import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
-import {
-  DEFAULT_QUOTE_STYLE,
-  normalizeQuoteStyle,
-  QUOTE_STYLES,
-  QUOTE_STYLE_META,
-  quoteStyleClass,
-} from '@/lib/quote-style';
 import type { QuoteItem } from '@/lib/jobs';
 
 /**
@@ -279,76 +272,48 @@ describe('every end of the road has a page', () => {
   });
 });
 
-/* --- three styles ----------------------------------------------------------- */
+/* --- one style, and only one ----------------------------------------------- */
 
-describe('a contractor picks one of three treatments', () => {
-  it('normalizes anything it does not recognize rather than reaching a className', () => {
-    expect(normalizeQuoteStyle('classic')).toBe('classic');
-    expect(normalizeQuoteStyle('bold')).toBe('bold');
-    expect(normalizeQuoteStyle(null)).toBe(DEFAULT_QUOTE_STYLE);
-    expect(normalizeQuoteStyle(undefined)).toBe(DEFAULT_QUOTE_STYLE);
-    expect(normalizeQuoteStyle('neon')).toBe(DEFAULT_QUOTE_STYLE);
-    expect(normalizeQuoteStyle(7)).toBe(DEFAULT_QUOTE_STYLE);
-  });
-
-  it('every style has a class, a name and a stylesheet that answers to it', () => {
-    for (const style of QUOTE_STYLES) {
-      expect(quoteStyleClass(style)).toBe(`qstyle-${style}`);
-      expect(QUOTE_STYLE_META[style].name.length, style).toBeGreaterThan(0);
-      expect(QUOTE_STYLE_META[style].bestFor.length, style).toBeGreaterThan(20);
+describe('there is one quote treatment, not a choice of three', () => {
+  /**
+   * There were three — Classic, Signature and Bold — behind a picker in
+   * Settings. Nobody had chosen one: every account was on the default, so the
+   * two alternatives were two extra documents to keep correct on the page a
+   * homeowner uses to agree to spend money. They are gone, along with the
+   * column reader, the server action and the picker.
+   */
+  it('keeps no trace of the two treatments nobody used', () => {
+    for (const dead of ['.qstyle-classic', '.qstyle-bold', '.qstyle-picker', '.qstyle-choice', '.qstyle-preview']) {
+      expect(css, dead).not.toContain(dead);
+      expect(lite, dead).not.toContain(dead);
     }
-    // The default needs no overrides — it IS the base — so only the other two
-    // are required to appear as selectors.
-    expect(css).toContain('.qstyle-classic {');
-    expect(css).toContain('.qstyle-bold {');
+    const page = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
+    expect(page).not.toContain('quoteStyleClass');
+    expect(page).not.toContain('qstyle-');
+    expect(read('src', 'lib', 'job-feed.ts')).not.toContain('quote_style');
+    expect(read('src', 'app', 'dashboard', 'settings', 'actions.ts')).not.toContain('quote_style');
+    expect(read('src', 'app', 'dashboard', 'settings', 'page.tsx')).not.toContain('QuoteStyleSection');
   });
 
+  /**
+   * The one that survived is the one every account was already being served, so
+   * removing the choice changed nobody's quote. It lives on the page root
+   * itself now rather than behind a class, which is what makes that true.
+   */
+  it('is the base, so the page needs no style class to wear it', () => {
+    expect(css).toContain('.client-job-dashboard {');
+    const root = css.slice(css.indexOf('.client-job-dashboard {'), css.indexOf('}', css.indexOf('.client-job-dashboard {')));
+    // The --q-* properties are still how the page keeps geometry and type in
+    // one place; that was true before there were styles and still is.
+    for (const prop of ['--q-radius', '--q-title-size', '--q-hero-pad', '--q-card-shadow']) {
+      expect(root, prop).toContain(prop);
+    }
+  });
+
+  /** It has to reach a homeowner, who only ever gets the lite sheet. */
   it('reaches the page a customer opens, not only the sheet the dashboard loads', () => {
-    // The root layout gives every route globals-lite; only /dashboard, /admin
-    // and /demo add the full sheet. A style that landed only in globals.css
-    // would never reach a homeowner.
-    expect(lite).toContain('.qstyle-classic');
-    expect(lite).toContain('.qstyle-bold');
+    expect(lite).toContain('.client-job-dashboard {');
     expect(lite).toContain('.quote-deck');
-  });
-
-  it('changes presentation only — the three differ in type, geometry and hero, never in content', () => {
-    const classic = css.slice(css.indexOf('.qstyle-classic {'), css.indexOf('}', css.indexOf('.qstyle-classic {')));
-    const bold = css.slice(css.indexOf('.qstyle-bold {'), css.indexOf('}', css.indexOf('.qstyle-bold {')));
-    for (const block of [classic, bold]) {
-      // Only --q-* custom properties. A style that could set `display: none` or
-      // `content:` could change what a customer is shown, which is the one
-      // thing a presentation choice must never do.
-      for (const line of block.split('\n').slice(1)) {
-        const declaration = line.trim();
-        if (!declaration || declaration.startsWith('/*') || declaration.startsWith('*')) continue;
-        expect(declaration, declaration).toMatch(/^--q-[a-z-]+:/);
-      }
-    }
-  });
-
-  it('is loaded defensively, so an un-migrated database renders the default rather than nothing', () => {
-    const feed = read('src', 'lib', 'job-feed.ts');
-    // Read with the other customer-facing switch, behind a narrow fallback, so
-    // a database missing either column still renders the page with defaults.
-    expect(feed).toContain("select('quote_style, client_quote_changes, timezone')");
-    expect(feed).toContain("settings.error");
-    expect(feed).toContain("select('timezone')");
-    expect(feed).toContain('normalizeQuoteStyle(');
-    // Not folded into the accounts select above it, which would fail the whole
-    // query — and the whole page — on a database missing the column.
-    expect(feed).not.toContain("select('business_name, quote_style')");
-  });
-
-  it('the contractor picks it by looking at it, in their own color', () => {
-    const picker = read('src', 'app', 'dashboard', 'settings', 'QuoteStyleSection.tsx');
-    expect(picker).toContain('quoteStyleClass(style)');
-    // The preview renders the customer page's real classes, so it cannot drift
-    // from the page it is previewing.
-    expect(picker).toContain('client-job-dashboard');
-    expect(picker).toContain('style={brandStyle}');
-    expect(picker).toContain('role="radiogroup"');
-    expect(read('src', 'app', 'dashboard', 'settings', 'actions.ts')).toContain('normalizeQuoteStyle(style)');
   });
 });
 
@@ -420,7 +385,7 @@ describe('it works on a phone and on paper', () => {
 
   it('asks for no motion from somebody who asked for none', () => {
     expect(deck).toContain("window.matchMedia('(prefers-reduced-motion: reduce)').matches");
-    const reduced = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {', css.indexOf('.qstyle-picker')));
+    const reduced = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {', css.indexOf('.sign-method {')));
     expect(reduced).toContain('.date-card');
     expect(reduced).toContain('.pay-option');
   });

@@ -178,10 +178,10 @@ describe('brandPaint', () => {
 
 describe('the client job page asks in the right order', () => {
   const page = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
-  // The <main> className became a template literal when the page started
-  // wearing one of three style classes, so this anchors on the class rather
-  // than on the whole attribute.
-  const mainAt = page.indexOf('client-job-dashboard ${quoteStyleClass');
+  // Anchored on the class rather than the whole attribute: it was a template
+  // literal while the page wore one of three style classes, and is a plain
+  // string again now there is one treatment.
+  const mainAt = page.indexOf('client-job-dashboard" style={brandStyle}');
   const body = page.slice(mainAt);
 
   it('found the page body, so nothing below is vacuously true', () => {

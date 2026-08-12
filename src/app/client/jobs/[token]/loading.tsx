@@ -14,7 +14,7 @@
  */
 export default function Loading() {
   return (
-    <main className="wide-shell workspace-shell client-job-dashboard qstyle-signature quote-skeleton" aria-busy="true">
+    <main className="wide-shell workspace-shell client-job-dashboard quote-skeleton" aria-busy="true">
       <p className="sr-only" role="status">
         Loading your quote…
       </p>

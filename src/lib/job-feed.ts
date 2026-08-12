@@ -14,7 +14,6 @@ import type { MilestoneStatus } from '@/lib/milestones';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 import { pickBusinessName } from '@/lib/business-name';
 import { toClientFeed, clientSafeText, type ClientFeedItem } from '@/lib/client-feed';
-import { normalizeQuoteStyle, type QuoteStyle } from '@/lib/quote-style';
 import { safeSignaturePath, type SignatureMethod } from '@/lib/signature';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
@@ -76,13 +75,6 @@ export type ClientJobDashboard = {
   /** Logo, color and website — everything the page needs to wear the
    *  contractor's brand rather than ours. See @/lib/contractor-brand. */
   brand: ContractorBrand;
-  /**
-   * Which of the three treatments this contractor hands their customers.
-   * Already normalized, so it is always one of the three — an account that has
-   * never opened the setting, and a database where the column does not exist
-   * yet, both arrive here as the default. See @/lib/quote-style.
-   */
-  quoteStyle: QuoteStyle;
   /**
    * Whether this contractor lets customers change their own optional extras
    * after approving. Off unless they turned it on — see
@@ -512,12 +504,11 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   // Read on its own rather than added to the accounts select above: on a
   // database where a migration has not run, selecting a column that isn't there
-  // fails the whole query, and neither a presentation preference nor a feature
-  // switch may be the reason a homeowner's quote link 404s. Both missing
-  // columns read as their safe default — the middle style, and changes off.
+  // fails the whole query, and a feature switch may not be the reason a
+  // homeowner's quote link 404s. A missing column reads as changes off.
   const settings = await admin
     .from('accounts')
-    .select('quote_style, client_quote_changes, timezone')
+    .select('client_quote_changes, timezone')
     .eq('id', access.account_id)
     .maybeSingle();
   const settingsRow = settings.error
@@ -527,7 +518,6 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   return {
     businessName: brand.businessName,
     brand,
-    quoteStyle: normalizeQuoteStyle((settingsRow as { quote_style?: string | null } | null)?.quote_style),
     allowOptionChanges: (settingsRow as { client_quote_changes?: boolean | null } | null)?.client_quote_changes === true,
     timezone: ((settingsRow as { timezone?: string | null } | null)?.timezone as string | null) ?? null,
     job: {

@@ -14525,14 +14525,20 @@ select optgroup {
    THE CUSTOMER'S QUOTE PAGE
    ══════════════════════════════════════════════════════════════════════════
 
-   Three finished treatments, one set of rules. Every difference between
-   Classic, Signature and Bold is a custom property redefined on the page root
-   — see src/lib/quote-style.ts for what a style is allowed to change, and the
-   short answer is: how it looks, never what it says or the order it says it in.
+   ONE treatment, built out of custom properties on the page root. There were
+   three — Classic, Signature and Bold, with a picker in Settings — and the two
+   alternatives are gone: no account had ever chosen one, and three documents to
+   keep correct is three times the surface for the page a homeowner uses to
+   agree to spend money. What survives is what everybody was already being
+   served, so no customer's quote changed shape.
 
-   The contractor's own colour drives all three through --cbrand, which the
-   page sets from brandPaint. Every reference falls back to the platform orange,
-   so an account with an unreadable accent renders exactly as it always did.  */
+   The --q-* properties stay. They are how this page keeps its geometry and type
+   in one place instead of scattered through two hundred rules, which was true
+   before there were styles and is still true now there is one.
+
+   The contractor's own colour drives it through --cbrand, which the page sets
+   from brandPaint. Every reference falls back to the platform orange, so an
+   account with an unreadable accent renders exactly as it always did.  */
 
 .client-job-dashboard {
   /* Geometry */
@@ -14558,26 +14564,6 @@ select optgroup {
   --q-rail-ground: linear-gradient(180deg, var(--cbrand-soft, rgba(255, 138, 61, 0.16)), transparent 42%);
 
   padding-bottom: 1.5rem;
-}
-
-/* ── Bold ───────────────────────────────────────────────────────────────────
-   Their colour at full strength. --cbrand-on is the computed black-or-white
-   that is legible ON that colour — the one contrast decision on this page that
-   cannot be guessed, so brandPaint computes it. */
-.qstyle-bold {
-  --q-radius: 10px;
-  --q-card-radius: 12px;
-  --q-border: 2px;
-  --q-title-size: clamp(2.2rem, 6vw, 3.6rem);
-  --q-title-weight: 900;
-  --q-title-tracking: -0.035em;
-  --q-title-leading: 1;
-  --q-eyebrow-tracking: 0.2em;
-  --q-hero-pad: 2.6rem 2.2rem 2.3rem;
-  --q-hero-ground: var(--cbrand, #ff8a3d);
-  --q-hero-ink: var(--cbrand-on, #12100e);
-  --q-hero-edge: var(--cbrand, #ff8a3d);
-  --q-card-shadow: 0 20px 46px -38px rgba(0, 0, 0, 0.9);
 }
 
 /* ── The hero ───────────────────────────────────────────────────────────────
@@ -14636,13 +14622,6 @@ select optgroup {
   margin-top: 0.35rem;
 }
 .quote-hero-when { font-size: 0.86rem; opacity: 0.8; }
-/* On Bold the hero is a solid fill of the contractor's colour, so the badge
-   has to stop being a coloured chip on a coloured ground. */
-.qstyle-bold .quote-hero .status-badge {
-  border-color: currentColor;
-  background: rgba(0, 0, 0, 0.14);
-  color: inherit;
-}
 
 /* ── The deck: document on the left, the decision on the right ──────────────
    The Approve button used to sit at the bottom of the itemised list, so the
@@ -15012,7 +14991,6 @@ select optgroup {
 
 @media (max-width: 560px) {
   .client-job-dashboard { --q-hero-pad: 1.6rem 1.25rem 1.5rem; }
-  .qstyle-classic { --q-hero-pad: 1.4rem 0 1.1rem; }
   .quote-rail-card { padding: 1rem; }
   .date-choice-grid,
   .pay-choice-grid { grid-template-columns: minmax(0, 1fr); }
@@ -15029,11 +15007,6 @@ select optgroup {
   .pay-option:hover,
   .quote-doc-addon:hover { transform: none; }
   .skel { animation: none; }
-}
-.qstyle-choice.is-chosen {
-  border-color: var(--cbrand, #ff8a3d);
-  background: rgba(var(--tint), 0.06);
-  box-shadow: 0 0 0 1px var(--cbrand, #ff8a3d);
 }
 
 /* ── Signing with a finger ──────────────────────────────────────────────────

@@ -30699,14 +30699,20 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
    THE CUSTOMER'S QUOTE PAGE
    ══════════════════════════════════════════════════════════════════════════
 
-   Three finished treatments, one set of rules. Every difference between
-   Classic, Signature and Bold is a custom property redefined on the page root
-   — see src/lib/quote-style.ts for what a style is allowed to change, and the
-   short answer is: how it looks, never what it says or the order it says it in.
+   ONE treatment, built out of custom properties on the page root. There were
+   three — Classic, Signature and Bold, with a picker in Settings — and the two
+   alternatives are gone: no account had ever chosen one, and three documents to
+   keep correct is three times the surface for the page a homeowner uses to
+   agree to spend money. What survives is what everybody was already being
+   served, so no customer's quote changed shape.
 
-   The contractor's own colour drives all three through --cbrand, which the
-   page sets from brandPaint. Every reference falls back to the platform orange,
-   so an account with an unreadable accent renders exactly as it always did.  */
+   The --q-* properties stay. They are how this page keeps its geometry and type
+   in one place instead of scattered through two hundred rules, which was true
+   before there were styles and is still true now there is one.
+
+   The contractor's own colour drives it through --cbrand, which the page sets
+   from brandPaint. Every reference falls back to the platform orange, so an
+   account with an unreadable accent renders exactly as it always did.  */
 
 .client-job-dashboard {
   /* Geometry */
@@ -30734,48 +30740,6 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   padding-bottom: 1.5rem;
 }
 
-/* ── Classic ────────────────────────────────────────────────────────────────
-   A printed proposal. The serif is a system stack on purpose: the enforcing
-   CSP blocks font CDNs, and a webfont that silently falls back is a style that
-   silently is not the style the contractor chose. */
-.qstyle-classic {
-  --q-radius: 3px;
-  --q-card-radius: 4px;
-  --q-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
-  --q-title-size: clamp(1.75rem, 3.6vw, 2.4rem);
-  --q-title-weight: 600;
-  --q-title-tracking: -0.005em;
-  --q-title-leading: 1.16;
-  --q-eyebrow-tracking: 0.16em;
-  --q-eyebrow-weight: 700;
-  --q-hero-pad: 2rem 0 1.4rem;
-  --q-hero-ground: none;
-  --q-hero-edge: transparent;
-  --q-hero-rule: 2px solid var(--cbrand, #ff8a3d);
-  --q-card-shadow: none;
-  --q-rail-ground: none;
-}
-
-/* ── Bold ───────────────────────────────────────────────────────────────────
-   Their colour at full strength. --cbrand-on is the computed black-or-white
-   that is legible ON that colour — the one contrast decision on this page that
-   cannot be guessed, so brandPaint computes it. */
-.qstyle-bold {
-  --q-radius: 10px;
-  --q-card-radius: 12px;
-  --q-border: 2px;
-  --q-title-size: clamp(2.2rem, 6vw, 3.6rem);
-  --q-title-weight: 900;
-  --q-title-tracking: -0.035em;
-  --q-title-leading: 1;
-  --q-eyebrow-tracking: 0.2em;
-  --q-hero-pad: 2.6rem 2.2rem 2.3rem;
-  --q-hero-ground: var(--cbrand, #ff8a3d);
-  --q-hero-ink: var(--cbrand-on, #12100e);
-  --q-hero-edge: var(--cbrand, #ff8a3d);
-  --q-card-shadow: 0 20px 46px -38px rgba(0, 0, 0, 0.9);
-}
-
 /* ── The hero ───────────────────────────────────────────────────────────────
    Who it is from, who it is for, what the work is, where it is, where it
    stands. It replaced "Your quote" set over the customer's full name in
@@ -30788,11 +30752,6 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   border-radius: var(--q-card-radius);
   background: var(--q-hero-ground);
   color: var(--q-hero-ink);
-}
-.qstyle-classic .quote-hero {
-  border-width: 0 0 2px;
-  border-bottom-color: var(--cbrand, #ff8a3d);
-  border-radius: 0;
 }
 .quote-hero-eyebrow {
   display: flex;
@@ -30837,13 +30796,6 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   margin-top: 0.35rem;
 }
 .quote-hero-when { font-size: 0.86rem; opacity: 0.8; }
-/* On Bold the hero is a solid fill of the contractor's colour, so the badge
-   has to stop being a coloured chip on a coloured ground. */
-.qstyle-bold .quote-hero .status-badge {
-  border-color: currentColor;
-  background: rgba(0, 0, 0, 0.14);
-  color: inherit;
-}
 
 /* ── The deck: document on the left, the decision on the right ──────────────
    The Approve button used to sit at the bottom of the itemised list, so the
@@ -31169,10 +31121,6 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 }
 .quote-doc-group-note { margin: -0.25rem 0 0.55rem; font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
 .quote-doc-total strong { font-family: var(--q-display); }
-.qstyle-classic .quote-doc-total {
-  border-top: 3px double var(--edge-t18);
-  padding-top: 0.6rem;
-}
 
 /* ── Tablet and phone: the rail drops under the document ─────────────────── */
 @media (max-width: 1023px) {
@@ -31217,7 +31165,6 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 
 @media (max-width: 560px) {
   .client-job-dashboard { --q-hero-pad: 1.6rem 1.25rem 1.5rem; }
-  .qstyle-classic { --q-hero-pad: 1.4rem 0 1.1rem; }
   .quote-rail-card { padding: 1rem; }
   .date-choice-grid,
   .pay-choice-grid { grid-template-columns: minmax(0, 1fr); }
@@ -31234,129 +31181,6 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   .pay-option:hover,
   .quote-doc-addon:hover { transform: none; }
   .skel { animation: none; }
-}
-
-/* ── Picking a quote style, by looking at it ────────────────────────────────
-   Each preview carries the customer page's own class over the same --cbrand
-   variables the live page sets, so this is the real stylesheet at a smaller
-   size and in the contractor's own colour — not a picture of it that drifts
-   the first time the page changes. */
-.qstyle-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 0.85rem;
-}
-.qstyle-choice {
-  display: grid;
-  gap: 0.7rem;
-  padding: 0.7rem;
-  border: 1px solid var(--edge-t16);
-  border-radius: 14px;
-  background: rgba(var(--tint), 0.03);
-  color: inherit;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-}
-.qstyle-choice:hover:not(:disabled) { border-color: var(--edge-t28); transform: translateY(-1px); }
-.qstyle-choice:disabled { cursor: progress; opacity: 0.7; }
-.qstyle-choice.is-chosen {
-  border-color: var(--cbrand, #ff8a3d);
-  background: rgba(var(--tint), 0.06);
-  box-shadow: 0 0 0 1px var(--cbrand, #ff8a3d);
-}
-.qstyle-choice-meta { display: grid; gap: 0.25rem; }
-.qstyle-choice-meta strong { display: flex; align-items: center; gap: 0.4rem; font-size: 0.98rem; }
-.qstyle-choice-tick { color: var(--cbrand, #ff8a3d); font-weight: 800; }
-.qstyle-choice-meta small { font-size: 0.79rem; line-height: 1.45; opacity: 0.8; }
-.qstyle-choice-best { opacity: 0.58 !important; }
-
-/* The preview itself. Deliberately not interactive and hidden from the
-   accessibility tree — the label beside it is what a screen reader needs, and
-   a decorative miniature of a page is noise. */
-.qstyle-preview {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  background: rgba(var(--tint), 0.04);
-  pointer-events: none;
-}
-.qstyle-preview .qstyle-preview-hero {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.75rem 0.8rem 0.7rem;
-}
-.qstyle-classic.qstyle-preview .qstyle-preview-hero { padding: 0.6rem 0.8rem 0.5rem; }
-.qstyle-preview-eyebrow {
-  font-size: 0.55rem;
-  font-weight: var(--q-eyebrow-weight);
-  letter-spacing: var(--q-eyebrow-tracking);
-  text-transform: uppercase;
-  opacity: 0.75;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.qstyle-preview-title {
-  font-family: var(--q-display);
-  font-size: 1.02rem;
-  font-weight: var(--q-title-weight);
-  letter-spacing: var(--q-title-tracking);
-  line-height: 1.1;
-}
-.qstyle-preview-body { display: grid; gap: 0.4rem; padding: 0 0.8rem 0.8rem; }
-.qstyle-preview-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
-.qstyle-preview-row i {
-  flex: 1;
-  height: 0.38rem;
-  border-radius: 999px;
-  background: rgba(var(--tint), 0.18);
-}
-.qstyle-preview-row b {
-  flex: 0 0 2.2rem;
-  height: 0.38rem;
-  border-radius: 999px;
-  background: rgba(var(--tint), 0.12);
-}
-.qstyle-preview-total {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid var(--edge-t16);
-}
-.qstyle-preview-total i {
-  flex: 0 0 2.6rem;
-  height: 0.38rem;
-  border-radius: 999px;
-  background: rgba(var(--tint), 0.18);
-}
-.qstyle-preview-total b {
-  font-family: var(--q-display);
-  font-size: 0.92rem;
-  font-weight: var(--q-title-weight);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--q-title-tracking);
-}
-.qstyle-preview-btn {
-  margin-top: 0.15rem;
-  padding: 0.34rem 0.5rem;
-  border-radius: calc(var(--q-radius) - 4px);
-  background: var(--cbrand, #ff8a3d);
-  color: var(--cbrand-on, #1a0f04);
-  font-size: 0.66rem;
-  font-weight: 800;
-  text-align: center;
-}
-.qstyle-classic .qstyle-preview-total { border-top: 3px double var(--edge-t18); }
-
-@media (prefers-reduced-motion: reduce) {
-  .qstyle-choice { transition: none; }
-  .qstyle-choice:hover:not(:disabled) { transform: none; }
 }
 
 /* ── Signing with a finger ──────────────────────────────────────────────────

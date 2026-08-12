@@ -8,7 +8,6 @@ import { formatMoneyExact as formatMoney, computeQuoteTotal } from '@/lib/jobs';
 import { clientNextStep } from '@/lib/client-next-step';
 import { clientJobStatus } from '@/lib/client-feed';
 import { brandPaint } from '@/lib/contractor-brand';
-import { quoteStyleClass } from '@/lib/quote-style';
 import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
 import { isSignatureMethod, safeSignaturePath } from '@/lib/signature';
 import { optionsClosedCopy, quoteOptionsWindow, todayIn } from '@/lib/quote-options';
@@ -146,7 +145,7 @@ export default async function ClientJobDashboardPage({
      than one sentence and a dead end. */
   if (!dashboard) {
     return (
-      <main className="wide-shell workspace-shell client-job-dashboard qstyle-signature">
+      <main className="wide-shell workspace-shell client-job-dashboard">
         <section className="panel workspace-section-card quote-dead-link">
           <p className="eyebrow">This link has closed</p>
           <h1 className="workspace-title">This quote link is no longer active</h1>
@@ -580,7 +579,7 @@ export default async function ClientJobDashboardPage({
           opens from a text to approve a quote — the one place it matters most
           that the business they hired is the business on the page. */}
       <ContractorBrandBar brand={dashboard.brand} context={`Quote ${dashboard.job.ref ?? ''}`.trim()} />
-      <main className={`wide-shell workspace-shell client-job-dashboard ${quoteStyleClass(dashboard.quoteStyle)}`} style={brandStyle}>
+      <main className="wide-shell workspace-shell client-job-dashboard" style={brandStyle}>
         <QuoteDeckProvider
           addons={deckAddons}
           baseTotal={baseTotal}
