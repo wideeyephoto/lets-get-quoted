@@ -9,6 +9,7 @@ import SettingsTabs from './SettingsTabs';
 import QuickBooksSection from './QuickBooksSection';
 import { connectionStatus } from '@/lib/quickbooks/connection';
 import SaveButton from '@/components/save-button';
+import ThemeToggle from '@/components/theme-toggle';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import TradeAutocomplete from '@/components/trade-autocomplete';
 import ExportData from './ExportData';
@@ -242,6 +243,38 @@ export default async function SettingsPage({
                       <button type="submit" className="btn secondary">Log out</button>
                     </form>
                   </div>
+                </section>
+
+                {/* APPEARANCE AND SUPPORT, THE TWO THINGS THE RAIL MENU HAD
+                    THAT THIS PAGE DID NOT.
+                    The footer dropdown that used to hold them is gone — it was
+                    a menu of one real link plus duplicates — so they land here,
+                    on the page "Account" now opens directly. Both belong to the
+                    PERSON rather than the business: how the tool looks to them,
+                    and who they ask when it breaks. That is this tab. */}
+                <section className="panel workspace-section-card" id="appearance">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Appearance</p>
+                    <h2>Light or dark</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
+                    Auto follows your phone or computer, including its night schedule. There is also a
+                    switch in the bottom-left corner of every page for when the light changes and you
+                    need it now — it sets Light or Dark, so come back here to hand it back to Auto.
+                  </p>
+                  <ThemeToggle />
+                </section>
+
+                <section className="panel workspace-section-card" id="support">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Support</p>
+                    <h2>Help &amp; support</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
+                    Ask us anything and track the answer. The <strong>?</strong> in the corner of every
+                    page opens the same place.
+                  </p>
+                  <Link href="/dashboard/help" className="btn secondary">Open help &amp; support</Link>
                 </section>
 
                 <section className="panel workspace-section-card danger-zone">

@@ -2566,23 +2566,17 @@ h3 {
   gap: 0.5rem;
 }
 
-/* ===== The Account menu ======================================================
-   Settings, Help, theme and Sign out behind one trigger at the foot of the rail.
-   Modelled on .sidenav-new-menu above, with three deliberate differences:
+/* ===== Account, foot of the rail ============================================
+   One link to the Account page. This was a dropdown — Settings, Help, the theme
+   switch, a Stripe row and Sign out behind the business name — and the menu is
+   gone: Stripe was already the pill below it, Sign out and Help and the theme
+   control are all on the page itself, so the trigger was a menu whose only
+   unique item was the link it now is.
 
-   1. It opens UPWARD. This is the last thing in the rail, and on a short window
-      the rail itself scrolls (see the max-height rule further down) — a menu
-      dropping downward from here would open into the fold with no way to reach
-      it.
-   2. Theme tokens, not the literal #0e1c2e and #fff the New menu hardcodes.
-      Those were written when the app was dark-only; this menu is the one that
-      CONTAINS the light/dark switch, so a panel that stayed navy while the
-      product went light would be the worst possible place to get it wrong.
-   3. It carries a submit button as well as links, because signing out is a POST.
-      Buttons do not inherit the anchor reset, so the item rule below sets the
-      font, the width and the alignment itself. */
-.sidenav-account-wrap { position: relative; }
-
+   Everything the menu's own rules did (the upward panel, the item rows, the $
+   and sign-out glyphs) went with it; what stayed is the row, which still has to
+   sit in a rail full of nav links without pretending to be one — hence the
+   card's border and fill rather than a bare row. */
 .sidenav-account {
   display: flex;
   align-items: center;
@@ -2599,12 +2593,15 @@ h3 {
   font-size: 0.92rem;
   font-weight: 650;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .sidenav-account:hover,
 .sidenav-account:focus-visible,
-.sidenav-account.open {
+/* It is a destination now, so it can be the page you are on — which the menu
+   trigger could never be. */
+.sidenav-account.active {
   background: rgba(var(--tint), 0.06);
   border-color: var(--edge-t14);
   color: var(--text);
@@ -2612,82 +2609,7 @@ h3 {
 }
 .sidenav-account:focus-visible { box-shadow: 0 0 0 2px var(--cedge-orange-51); }
 .sidenav-account .sidenav-ic { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; }
-/* The business name can be long. It takes the room that is there and truncates
-   rather than pushing the caret off the end of the rail. */
 .sidenav-account-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidenav-account-caret { flex: 0 0 auto; font-size: 0.62rem; transition: transform 0.15s ease; }
-.sidenav-account-caret.open { transform: rotate(180deg); }
-
-.sidenav-account-menu {
-  position: absolute;
-  /* Upward — see note 1. */
-  bottom: calc(100% + 0.35rem);
-  left: 0;
-  right: 0;
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-  padding: 0.3rem;
-  border-radius: 12px;
-  background: var(--bg-3);
-  border: 1px solid var(--edge-t12);
-  box-shadow: 0 -18px 46px -18px rgba(var(--shade), 0.72);
-}
-
-.sidenav-account-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  min-height: 40px;
-  padding: 0.5rem 0.6rem;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: rgba(var(--ink-rgb), 0.82);
-  font: inherit;
-  font-size: 0.9rem;
-  text-align: left;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.sidenav-account-item:hover,
-.sidenav-account-item:focus-visible {
-  background: rgba(255, 122, 33, 0.14);
-  color: var(--text);
-  outline: none;
-}
-.sidenav-account-item:focus-visible { box-shadow: inset 0 0 0 2px var(--cedge-orange-51); }
-.sidenav-account-item .sidenav-ic { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; color: var(--mute-g470); }
-
-/* The two glyphs that are not NavIcons: a "$" tile for Stripe and the sign-out
-   arrow. Sized to the same 1.05rem box so the menu keeps one column of marks. */
-.sidenav-account-dollar,
-.sidenav-account-out {
-  display: inline-grid;
-  place-items: center;
-  width: 1.05rem;
-  height: 1.05rem;
-  flex: 0 0 auto;
-  color: var(--mute-g470);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-.sidenav-account-out svg { width: 100%; height: 100%; }
-
-.sidenav-account-signout { display: contents; }
-
-/* The theme switch is a control, not a destination, so it gets a row of its own
-   rather than pretending to be a menu item you can activate. */
-.sidenav-account-theme {
-  display: flex;
-  align-items: center;
-  padding: 0.35rem 0.6rem 0.45rem;
-  margin-top: 0.15rem;
-  border-top: 1px solid var(--rule-t06);
-}
 
 /* The ? every dashboard page carries, drawn by the shell because there is no
    shared page header to put it in (see the note at its call site).
@@ -22916,9 +22838,13 @@ a.bset-card { color: inherit; text-decoration: none; }
 
 .theme-choice {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Sized to its own three options, not to whatever contains it — it sits in a
+     264px rail and on a full-width settings card, and a segmented control
+     stretched across a settings panel reads as a toolbar, not a choice. */
+  grid-template-columns: repeat(3, minmax(0, 5.4rem));
+  width: fit-content;
   gap: 2px;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   padding: 2px;
   border-radius: 999px;

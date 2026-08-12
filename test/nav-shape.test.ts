@@ -130,58 +130,72 @@ describe('the old deep links still land', () => {
   });
 });
 
-describe('the Account menu', () => {
-  it('gathers Settings, Help, theme and sign out behind one trigger', () => {
-    expect(SHELL).toContain('sidenav-account-menu');
-    expect(SHELL).toContain('/dashboard/settings');
-    expect(SHELL).toContain('/dashboard/help');
-    expect(SHELL).toContain('<ThemeToggle />');
-  });
+describe('the Account row', () => {
+  const SETTINGS = read('src', 'app', 'dashboard', 'settings', 'page.tsx');
+  // The rail's footer ONLY. Slicing to the end of the file swept in the top
+  // bar's own Stripe link and made "says it once" pass for the wrong reason.
+  const footer = () => {
+    const start = SHELL.indexOf('<div className="sidenav-foot">');
+    return SHELL.slice(start, SHELL.indexOf('</aside>', start));
+  };
 
   /**
-   * Signing out is a state change, so it is a POST. A GET that logs you out is
-   * something any prefetcher or link-scanner can fire. It was previously
-   * reachable only from inside Settings.
+   * It was a dropdown holding Settings, Help, the theme switch, a Stripe row
+   * and Sign out. Every one of those was a duplicate of something already on
+   * screen or a section of the Account page — so the menu is gone and the
+   * trigger is the link it was standing in front of.
    */
-  it('signs out with a real POST', () => {
-    expect(SHELL).toMatch(/<form action="\/auth\/signout" method="post"/);
+  it('is one link to the Account page, not a menu', () => {
+    const foot = footer();
+    expect(foot).toContain('className={`sidenav-account');
+    expect(foot).toContain('/dashboard/settings');
+    expect(SHELL).not.toContain('sidenav-account-menu');
+    expect(SHELL).not.toContain('accountMenuOpen');
   });
 
-  it('opens upward, because the rail scrolls on a short window', () => {
-    const rule = GLOBALS.slice(GLOBALS.indexOf('.sidenav-account-menu {'));
-    const body = rule.slice(0, rule.indexOf('}'));
-    expect(body).toContain('bottom: calc(100% + 0.35rem)');
-    expect(body).not.toContain('top:');
-  });
-
-  /**
-   * The New menu hardcodes #0e1c2e and #fff from when the app was dark-only.
-   * This menu is the one that CONTAINS the light/dark switch, so a panel that
-   * stayed navy while the product went light is the worst possible place to
-   * repeat that.
-   */
-  it('is themed with tokens, not the dark-only literals beside it', () => {
-    const rule = GLOBALS.slice(GLOBALS.indexOf('.sidenav-account-menu {'));
-    const body = rule.slice(0, rule.indexOf('}'));
-    expect(body).toContain('var(--bg-3)');
-    expect(body).not.toContain('#0e1c2e');
-  });
-
-  it('dismisses the same way the other rail menu does', () => {
-    expect(SHELL).toContain('setAccountMenuOpen(false)');
-    expect(SHELL).toContain('onAccountMenuKeyDown');
-    expect(SHELL).toContain("aria-haspopup=\"menu\"");
+  /** The trigger said the business name. Nobody clicks their own company to
+      change their password — the row is labelled with where it goes. */
+  it('is labelled Account, not the business name', () => {
+    const foot = footer();
+    expect(foot).toContain('>Account<');
+    expect(foot).not.toContain('businessName');
   });
 
   /**
    * Not a setting — a live warning about whether money can reach this
-   * contractor. Behind a click it stops being one, seen only by somebody
-   * already on their way to Settings.
+   * contractor. It was listed inside the menu AND drawn as the pill below it,
+   * which is the rail saying the same sentence twice.
    */
-  it('leaves the Stripe pill on the rail, outside the menu', () => {
-    const foot = SHELL.slice(SHELL.indexOf('<div className="sidenav-foot">'));
-    const menuEnd = foot.indexOf('</div>\n            </div>');
-    expect(foot.indexOf('stripe-status-pill sidenav-stripe')).toBeGreaterThan(menuEnd);
+  it('says Stripe once, as the pill under it', () => {
+    const foot = footer();
+    expect(foot.match(/STRIPE_SETUP_HREF/g) ?? []).toHaveLength(1);
+    expect(foot).toContain('stripe-status-pill sidenav-stripe');
+  });
+
+  /**
+   * Signing out is a state change, so it is a POST — a GET that logs you out is
+   * something any prefetcher or link-scanner can fire. That form is now only on
+   * the Account page, beside the sign-in methods it belongs with.
+   */
+  it('signs out with a real POST, from the Account page', () => {
+    expect(SHELL).not.toContain('/auth/signout');
+    expect(SETTINGS).toMatch(/<form action="\/auth\/signout" method="post"/);
+  });
+
+  /** Help and the theme control left the menu; they have to have landed. */
+  it('hands Help and Appearance to the page it opens', () => {
+    expect(SHELL).not.toContain('<ThemeToggle />');
+    expect(SETTINGS).toContain('<ThemeToggle />');
+    expect(SETTINGS).toContain('/dashboard/help');
+    expect(SETTINGS).toContain('id="appearance"');
+    expect(SETTINGS).toContain('id="support"');
+  });
+
+  /** Every rule the menu owned should have gone with the markup. */
+  it('leaves no dead menu CSS behind', () => {
+    for (const dead of ['.sidenav-account-menu', '.sidenav-account-item', '.sidenav-account-caret', '.sidenav-account-theme', '.sidenav-account-signout']) {
+      expect(GLOBALS, dead).not.toContain(dead);
+    }
   });
 });
 
