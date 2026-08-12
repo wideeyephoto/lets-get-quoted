@@ -27,6 +27,7 @@ import QuoteAcceptance, { QuoteApproved, QuoteOptionsUpdate } from './QuoteAccep
 import { QuoteBottomBar, QuoteDeckProvider, type PayMode } from './QuoteDeck';
 import ScheduleChoice from './ScheduleChoice';
 import ScheduleLockedOptions from './ScheduleLockedOptions';
+import JobTimeline from './JobTimeline';
 import PayChoice from './PayChoice';
 import ChangeOrders from './ChangeOrders';
 import { createAdminClient } from '@/lib/auth';
@@ -59,10 +60,6 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
 
 const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
 const FREQ_WORD: Record<string, string> = { weekly: 'weekly', biweekly: 'every two weeks', monthly: 'monthly' };
-
-function formatFeedTime(value: string): string {
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
 
 function formatDay(value: string | null): string {
   if (!value) return '';
@@ -806,41 +803,12 @@ export default async function ClientJobDashboardPage({
                   <p className="eyebrow">Job feed</p>
                   <h2>Updates</h2>
                 </div>
-                {dashboard.feed.length === 0 ? (
-                  <p className="empty-state">Nothing has happened yet. Updates from {dashboard.businessName} will appear here.</p>
-                ) : (
-                  <div className="job-feed-list">
-                    {/* Curated upstream by toClientFeed, not filtered — this used
-                        to print whatever title and body the row held, which is
-                        how the contractor's intake notes ended up here. */}
-                    {dashboard.feed.map((event) => (
-                      <article className="job-feed-item" key={event.id}>
-                        <div className="job-feed-dot" />
-                        <div className="job-feed-content">
-                          <div className="job-row-header">
-                            <span className="cost-item-desc">{event.title}</span>
-                            {event.amount ? <span className="cost-item-amount">{formatMoney(Number(event.amount))}</span> : null}
-                          </div>
-                          {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
-                          <p className="job-meta">
-                            {formatFeedTime(event.at)}
-                            {/* Shown to the customer, not only to the person
-                                who changed it. Somebody who read "we'll be
-                                there Tuesday" and now sees Thursday is the one
-                                who planned their week around it. */}
-                            {event.editedAt ? <span className="feed-edited"> · edited {formatFeedTime(event.editedAt)}</span> : null}
-                            {event.actionUrl ? (
-                              <>
-                                {' · '}
-                                <Link href={event.actionUrl}>Open</Link>
-                              </>
-                            ) : null}
-                          </p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
+                {/* Curated upstream by toClientFeed, not filtered — this used to
+                    print whatever title and body the row held, which is how the
+                    contractor's intake notes ended up here. It now arrives with
+                    its glyph, color, status word and button words already
+                    decided, and JobTimeline only lays them out. */}
+                <JobTimeline items={dashboard.feed} businessName={dashboard.businessName} />
               </section>
 
               <section className="panel workspace-section-card">

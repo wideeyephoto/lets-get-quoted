@@ -1180,7 +1180,12 @@ export async function saveQuoteItemsAndNotifyAction(
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'job_update',
       title: 'Updated quote emailed to client',
-      body: `The quote was updated${totalLabel ? ` to ${totalLabel}` : ''} and the link was emailed to ${email}.`,
+      // The recipient is deliberately NOT in here. This row is client-visible,
+      // and the client-side scrubber removes email addresses — so the sentence
+      // arrived on the homeowner's own page as "the link was emailed to .",
+      // which reads as a page that failed to load rather than as an update.
+      // They know their own address; what they need is the new number.
+      body: `Your quote was updated${totalLabel ? ` to ${totalLabel}` : ''}. The link in your email opens the latest version.`,
       visibility: 'client',
     });
     return { ok: true, total, delivery: 'email', message: `Saved and emailed to ${email}.` };

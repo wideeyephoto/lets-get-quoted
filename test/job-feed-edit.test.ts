@@ -24,7 +24,7 @@ const read = (...parts: string[]) => strip(readFileSync(join(process.cwd(), ...p
 
 const actions = read('src', 'app', 'dashboard', 'jobs', 'actions.ts');
 const jobPage = read('src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx');
-const clientPage = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
+const clientPage = read('src', 'app', 'client', 'jobs', '[token]', 'JobTimeline.tsx');
 const css = readFileSync(join(process.cwd(), 'src', 'app', 'globals.css'), 'utf8').replace(/\r\n/g, '\n');
 const lite = readFileSync(join(process.cwd(), 'src', 'app', 'globals-lite.css'), 'utf8').replace(/\r\n/g, '\n');
 
@@ -126,7 +126,7 @@ describe('an edit is marked, on both pages', () => {
 
   it('is rendered on both pages', () => {
     expect(jobPage).toContain('{event.edited_at ?');
-    expect(clientPage).toContain('{event.editedAt ?');
+    expect(clientPage).toContain('{item.editedAt ?');
     expect(css).toContain('.feed-edited');
     // The client page loads the lite sheet; a marker that landed only in
     // globals.css would never reach a homeowner.

@@ -437,11 +437,6 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   const quoteApprovedByClient = visibleEvents.some((event) => event.kind === 'quote_approved');
   const quoteApproved = quoteApprovedByClient || job.status !== 'new_lead';
 
-  // Rewritten for the reader, not filtered for them: the visibility flag says a
-  // row MAY be shown, and toClientFeed decides what of it actually is. See
-  // lib/client-feed for what was leaking before this.
-  const feed = toClientFeed(visibleEvents);
-
   // Payment plan (if this job was quoted on installment terms). Defensive: an
   // un-migrated DB (no payment_plans table) simply shows no plan.
   let paymentPlan: ClientJobDashboard['paymentPlan'] = null;
@@ -501,6 +496,20 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   // payment page and the portal — rather than four copies of
   // `company_name || business_name || something`, which is how they drift.
   const brand = shapeContractorBrand(account, site);
+
+  // Rewritten for the reader, not filtered for them: the visibility flag says a
+  // row MAY be shown, and toClientFeed decides what of it actually is — and now
+  // how it should look. See lib/client-feed for what was leaking before this.
+  //
+  // Built here rather than beside the events because it needs three things the
+  // rows do not carry: whose business this is, which quote it is, and whether
+  // the date picker is on the page — that last one so the feed's "Choose a
+  // date" button is only offered while there is something to choose.
+  const feed = toClientFeed(visibleEvents, {
+    businessName: brand.businessName,
+    jobRef: (job.ref as string | null) ?? null,
+    scheduleOpen: (scheduleRequest as { status?: string } | null)?.status === 'open',
+  });
 
   // Read on its own rather than added to the accounts select above: on a
   // database where a migration has not run, selecting a column that isn't there

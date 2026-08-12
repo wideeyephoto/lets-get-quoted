@@ -79,7 +79,7 @@ describe('toClientFeed is a whitelist, not a filter', () => {
       event({ kind: 'job_created', title: 'J-1004 created', body: 'Job was added for Dana. Quoted amount: $3,500. AI estimate shown to the customer: $30-$80.' }),
     ]);
     expect(item.title).toBe('Quote prepared');
-    expect(item.body).toBe('Your quote is ready to review above.');
+    expect(item.body).toBe('Your personalized quote is ready to review.');
   });
 
   it('retitles events written from the contractor’s chair', () => {
