@@ -1156,13 +1156,8 @@ export async function saveQuoteItemsAndNotifyAction(
   // because it changed. A STOP reply therefore takes the phone out of
   // consideration and an emailed copy still goes; it does not cancel the
   // message outright the way it does for something we send on our own.
-  const route = resolveClientChannel({
-    phone,
-    email,
-    preference: await jobMessageChannel(supabase, accountId, jobId),
-    optedOut,
-    kind: 'requested',
-  });
+  const preference = await jobMessageChannel(supabase, accountId, jobId);
+  const route = resolveClientChannel({ phone, email, preference, optedOut, kind: 'requested' });
 
   if (route.channel === 'none') {
     return {
@@ -1182,6 +1177,34 @@ export async function saveQuoteItemsAndNotifyAction(
     clientEmail: job.client_email,
   });
 
+  /* The emailed copy, as a function, because two things need it: the email
+     route, and a text that bounced. Sending the updated quote is the one place
+     where a wrong phone number costs the customer the news that their price
+     changed. */
+  const emailTheUpdate = async (to: string) => {
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+    await sendClientQuoteEmail({
+      recipientEmail: to,
+      businessName,
+      clientName: job.client_name,
+      jobRef: job.ref,
+      quotedAmount: total,
+      quoteUrl: `${origin}/client/jobs/${token}`,
+      accountId,
+    });
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'job_update',
+      title: 'Updated quote emailed to client',
+      // The recipient is deliberately NOT in here. This row is client-visible,
+      // and the client-side scrubber removes email addresses — so the sentence
+      // arrived on the homeowner's own page as "the link was emailed to .",
+      // which reads as a page that failed to load rather than as an update.
+      // They know their own address; what they need is the new number.
+      body: `Your quote was updated${totalLabel ? ` to ${totalLabel}` : ''}. The link in your email opens the latest version.`,
+      visibility: 'client',
+    });
+  };
+
   if (route.channel === 'sms' && phone) {
     try {
       await recordSmsConsent(accountId, phone, 'client_job_dashboard');
@@ -1196,6 +1219,24 @@ export async function saveQuoteItemsAndNotifyAction(
       });
     } catch (error) {
       console.error(`Quote update SMS failed for job ${jobId}:`, error);
+      /* THE THIRD PLACE THIS WAS MISSING. The quote send and the client-link
+         send both fall back now; this one — the quote CHANGING after it went
+         out — did not, and it is the one where silence is worst. The customer
+         is holding a number that is no longer the number. */
+      const second = smsFailureFallback({ phone, email, preference, optedOut, kind: 'requested' });
+      if (second) {
+        try {
+          await emailTheUpdate(second.to);
+          return {
+            ok: true,
+            total,
+            delivery: 'email',
+            message: `Saved. The text didn’t go through, so it was emailed to ${second.to} — worth checking the mobile number.`,
+          };
+        } catch (emailError) {
+          console.error(`Quote update email fallback failed for job ${jobId}:`, emailError);
+        }
+      }
       return {
         ok: true,
         total,
@@ -1214,16 +1255,7 @@ export async function saveQuoteItemsAndNotifyAction(
 
   if (email) {
     try {
-      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-      await sendClientQuoteEmail({
-        recipientEmail: email,
-        businessName,
-        clientName: job.client_name,
-        jobRef: job.ref,
-        quotedAmount: total,
-        quoteUrl: `${origin}/client/jobs/${token}`,
-        accountId,
-      });
+      await emailTheUpdate(email);
     } catch (error) {
       console.error(`Quote update email failed for job ${jobId}:`, error);
       return {
@@ -1233,17 +1265,6 @@ export async function saveQuoteItemsAndNotifyAction(
         message: `Saved — but the email did not go through. Send ${job.client_name} the link yourself.`,
       };
     }
-    await createJobFeedEvent(supabase, accountId, jobId, {
-      kind: 'job_update',
-      title: 'Updated quote emailed to client',
-      // The recipient is deliberately NOT in here. This row is client-visible,
-      // and the client-side scrubber removes email addresses — so the sentence
-      // arrived on the homeowner's own page as "the link was emailed to .",
-      // which reads as a page that failed to load rather than as an update.
-      // They know their own address; what they need is the new number.
-      body: `Your quote was updated${totalLabel ? ` to ${totalLabel}` : ''}. The link in your email opens the latest version.`,
-      visibility: 'client',
-    });
     return { ok: true, total, delivery: 'email', message: `Saved and emailed to ${email}.` };
   }
 

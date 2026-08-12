@@ -573,13 +573,35 @@ export default async function JobDetailPage({
         </div>
 
         <aside className="pipeline-checklist" aria-label="Client pipeline checklist">
+          {/* A HEADED CARD, AND THE HEAD IS A DOOR.
+              It was an unnamed list of ticks floating beside the hero — you had
+              to infer what it was from its contents. It is the job's progress,
+              and the place that says what actually happened is the feed further
+              down, so the title is the link to it rather than a label you read
+              and then go hunting. */}
+          <a className="pipeline-checklist-head" href="#job-feed">
+            <span>Job Feed</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 5.5 15.5 12 9 18.5" />
+            </svg>
+          </a>
           <ol>
             {pipelineChecklist.map((item, index) => {
               const state = item.complete ? 'complete' : index === currentPipelineIndex ? 'current' : 'upcoming';
               return (
                 <li key={item.key}>
                   <Link className={`pipeline-step pipeline-step-${state}`} href={item.href}>
-                    <span className="pipeline-step-marker">{item.complete ? '✓' : ''}</span>
+                    {/* Drawn, not typed. "✓" is a font glyph: it arrives at a
+                        different weight on every platform, sits off-center in
+                        its own box, and cannot be made heavier without making
+                        the whole marker heavier with it. */}
+                    <span className="pipeline-step-marker">
+                      {item.complete ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M5 12.5 10 17.5 19 7" />
+                        </svg>
+                      ) : null}
+                    </span>
                     <span>
                       <strong>{item.label}</strong>
                       <small>{item.detail}</small>

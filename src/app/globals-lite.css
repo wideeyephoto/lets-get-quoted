@@ -1864,6 +1864,31 @@ h3 {
    the row stays exactly as tight as it is at 16px. */
 :root { --sidenav-w: 15.25rem; } /* 244px at a 16px root */
 
+/* HOW MUCH OF THE TOP OF THE SCREEN IS ALREADY SPOKEN FOR.
+   Zero on a desktop, where navigation is the rail down the left and nothing is
+   pinned above the content. 4.4rem below the rail's breakpoint, where
+   .sidenav-mobilebar takes the top of the viewport as `position: fixed`.
+
+   It exists because two different things need the same number and neither of
+   them knew it. `.job-subnav` was `position: sticky; top: 0`, which parks it
+   at the top of the VIEWPORT — underneath a fixed bar with a higher z-index —
+   so on a phone the section navigation scrolled up, went behind the bar, and
+   stayed there: still in the DOM, still focusable, completely invisible. And
+   every in-app anchor lands the same distance too high, which is why "Skip to
+   quote" opened the right section with its heading cut in half.
+
+   One number, declared once, used by both. */
+:root { --appbar-h: 0rem; }
+@media (max-width: 1080px) { :root { --appbar-h: 4.4rem; } }
+
+/* THE FLOOR FOR EVERY ANCHOR IN THE LOGGED-IN APP.
+   Anything with an id may be jumped to — by a subnav link, a #hash in a link
+   somebody pasted, or a redirect — and none of them may land under the bar.
+   Deliberately weak (0,1,1) so the per-section rules below still win where a
+   section needs more room; each of those adds var(--appbar-h) for the same
+   reason. */
+.app-main-sidenav [id] { scroll-margin-top: calc(var(--appbar-h) + 1rem); }
+
 .sidenav {
   position: fixed;
   inset: 0 auto 0 0;
@@ -5144,14 +5169,17 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .job-money-strip.is-over { border-color: var(--cedge-red-6); }
 .job-money-strip.is-over > div:last-child dd { color: var(--bad); }
 
-/* An anchor landing under the sticky bar is an anchor that missed. */
+/* An anchor landing under the sticky bar is an anchor that missed — and on a
+   phone there are TWO bars to clear, the app's fixed one and this subnav
+   sitting under it. 3.75rem is the subnav's own height plus a gap; --appbar-h
+   is whatever is pinned above it. */
 #job-top,
 .job-section-collapsible,
 #quote-breakdown,
 #job-feed,
 #request-payment,
 #job-details {
-  scroll-margin-top: 4.5rem;
+  scroll-margin-top: calc(var(--appbar-h) + 3.75rem);
 }
 
 @media (max-width: 640px) {
@@ -10632,7 +10660,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 /* Both jump targets clear the sticky top bar rather than landing under it. */
 #quick-stop-earn-more,
-#quick-stop-demand { scroll-margin-top: 1.25rem; }
+#quick-stop-demand { scroll-margin-top: calc(var(--appbar-h) + 1.25rem); }
 
 /* Applied for ~1.5s by revealRow() when a map pin points at a record, so the
    row you were sent to identifies itself instead of leaving you to work out

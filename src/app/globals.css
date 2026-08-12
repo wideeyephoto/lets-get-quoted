@@ -1910,6 +1910,31 @@ h3 {
    the row stays exactly as tight as it is at 16px. */
 :root { --sidenav-w: 15.25rem; } /* 244px at a 16px root */
 
+/* HOW MUCH OF THE TOP OF THE SCREEN IS ALREADY SPOKEN FOR.
+   Zero on a desktop, where navigation is the rail down the left and nothing is
+   pinned above the content. 4.4rem below the rail's breakpoint, where
+   .sidenav-mobilebar takes the top of the viewport as `position: fixed`.
+
+   It exists because two different things need the same number and neither of
+   them knew it. `.job-subnav` was `position: sticky; top: 0`, which parks it
+   at the top of the VIEWPORT — underneath a fixed bar with a higher z-index —
+   so on a phone the section navigation scrolled up, went behind the bar, and
+   stayed there: still in the DOM, still focusable, completely invisible. And
+   every in-app anchor lands the same distance too high, which is why "Skip to
+   quote" opened the right section with its heading cut in half.
+
+   One number, declared once, used by both. */
+:root { --appbar-h: 0rem; }
+@media (max-width: 1080px) { :root { --appbar-h: 4.4rem; } }
+
+/* THE FLOOR FOR EVERY ANCHOR IN THE LOGGED-IN APP.
+   Anything with an id may be jumped to — by a subnav link, a #hash in a link
+   somebody pasted, or a redirect — and none of them may land under the bar.
+   Deliberately weak (0,1,1) so the per-section rules below still win where a
+   section needs more room; each of those adds var(--appbar-h) for the same
+   reason. */
+.app-main-sidenav [id] { scroll-margin-top: calc(var(--appbar-h) + 1rem); }
+
 .sidenav {
   position: fixed;
   inset: 0 auto 0 0;
@@ -2937,7 +2962,7 @@ h3 {
    the tab bar — which is sticky at 0.6rem — parks straight on top of its
    heading. The anchor works and looks like it didn't. */
 .settings-tabpanel > section[id],
-.settings-tabpanel > details[id] { scroll-margin-top: 5.2rem; }
+.settings-tabpanel > details[id] { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
 
 .settings-tabnav {
   position: sticky;
@@ -7803,7 +7828,11 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
    two rows on a phone would cost more height than they save. */
 .job-subnav {
   position: sticky;
-  top: 0;
+  /* Docked BELOW the fixed bar, not at the top of the viewport. `top: 0` put
+     it behind .sidenav-mobilebar (z-index 20 against this 6), so on a phone the
+     section navigation scrolled up and vanished — present, tabbable, unseeable.
+     See --appbar-h. */
+  top: var(--appbar-h);
   z-index: 6;
   display: flex;
   gap: 0.3rem;
@@ -7832,14 +7861,17 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .job-subnav a:hover { background: rgba(var(--tint), 0.06); color: var(--text); }
 
-/* An anchor landing under the sticky bar is an anchor that missed. */
+/* An anchor landing under the sticky bar is an anchor that missed — and on a
+   phone there are TWO bars to clear, the app's fixed one and this subnav
+   sitting under it. 3.75rem is the subnav's own height plus a gap; --appbar-h
+   is whatever is pinned above it. */
 #job-top,
 .job-section-collapsible,
 #quote-breakdown,
 #job-feed,
 #request-payment,
 #job-details {
-  scroll-margin-top: 4.5rem;
+  scroll-margin-top: calc(var(--appbar-h) + 3.75rem);
 }
 
 /* Sections that are only worth their height once they hold something. */
@@ -10457,8 +10489,9 @@ button.inbox-thread-item {
 
 .pipeline-checklist {
   align-self: center;
-  display: flex;
-  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  align-content: center;
   padding: 0.72rem;
   border: 1px solid var(--edge-t11);
   border-radius: 16px;
@@ -10475,9 +10508,27 @@ button.inbox-thread-item {
   list-style: none;
 }
 
+/* The card's title, and it is the way to the feed. See the note at its call
+   site: an unnamed list of ticks made you infer what it was. */
+.pipeline-checklist-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.4rem 0.15rem;
+  color: var(--mute-t58, var(--muted));
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.pipeline-checklist-head svg { width: 12px; height: 12px; opacity: 0.75; }
+.pipeline-checklist-head:hover { color: var(--text); }
+.pipeline-checklist-head:hover svg { opacity: 1; transform: translateX(1px); }
+
 .pipeline-step {
   display: grid;
-  grid-template-columns: 1.25rem minmax(0, 1fr);
+  grid-template-columns: 1.6rem minmax(0, 1fr);
   gap: 0.42rem;
   align-items: center;
   padding: 0.32rem 0.4rem;
@@ -10504,23 +10555,27 @@ button.inbox-thread-item {
   outline-offset: 2px;
 }
 
+/* BIGGER, AND THE TICK IS DRAWN. 1.25rem with a 0.64rem font glyph inside it
+   made a mark you had to look for to find; at a glance the done steps and the
+   waiting ones were the same row. 1.6rem, and the check is an SVG stroked at
+   3.4 — it reads as done from across a driveway. */
 .pipeline-step-marker {
   display: grid;
   place-items: center;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 999px;
   background: rgba(var(--tint), 0.08);
   color: rgba(var(--ink-rgb), 0.72);
-  font-size: 0.64rem;
-  font-weight: 900;
   box-shadow: 0 0 0 1px rgba(var(--tint), 0.05), 0 0 14px rgba(255, 209, 102, 0.08);
 }
 
+.pipeline-step-marker svg { width: 0.95rem; height: 0.95rem; }
+
 .pipeline-step-marker:empty::before {
   content: '';
-  width: 0.42rem;
-  height: 0.42rem;
+  width: 0.46rem;
+  height: 0.46rem;
   border-radius: 999px;
   background: currentColor;
   opacity: 0.74;
@@ -10561,11 +10616,12 @@ button.inbox-thread-item {
   color: var(--mute-i34);
 }
 
+/* Solid, not a 28%-alpha wash. A tick that has to compete with the panel
+   behind it is a tick you read twice. */
 .pipeline-step-complete .pipeline-step-marker {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(16, 185, 129, 0.2));
-  color: var(--good);
-  text-shadow: 0 0 10px rgba(187, 247, 208, 0.68);
-  box-shadow: 0 0 0 1px rgba(187, 247, 208, 0.2), 0 0 18px rgba(34, 197, 94, 0.34);
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #05261a;
+  box-shadow: 0 0 0 1px rgba(187, 247, 208, 0.35), 0 0 18px rgba(34, 197, 94, 0.4);
 }
 
 .pipeline-step-current {
@@ -10582,7 +10638,7 @@ button.inbox-thread-item {
 .job-action-details {
   padding: 0;
   overflow: hidden;
-  scroll-margin-top: 1rem;
+  scroll-margin-top: calc(var(--appbar-h) + 3.75rem);
 }
 
 /* THE ARITHMETIC, SAID OUT LOUD.
@@ -10720,7 +10776,7 @@ button.inbox-thread-item {
 }
 
 .job-feed-command-panel {
-  scroll-margin-top: 1rem;
+  scroll-margin-top: calc(var(--appbar-h) + 3.75rem);
 }
 
 .workspace-metric-grid {
@@ -19274,7 +19330,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 /* Both jump targets clear the sticky top bar rather than landing under it. */
 #quick-stop-earn-more,
-#quick-stop-demand { scroll-margin-top: 1.25rem; }
+#quick-stop-demand { scroll-margin-top: calc(var(--appbar-h) + 1.25rem); }
 
 /* --- summary cards --- */
 .bset-cards {
@@ -30557,7 +30613,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
    is fixed — so `#quick-stop-setup` scrolled the section's own "SETUP" heading
    up underneath it and landed on the first field instead. Same offset the
    settings tabs use, for the same reason. */
-.qs-tabpanel [id] { scroll-margin-top: 5.2rem; }
+.qs-tabpanel [id] { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
 
 @media (max-width: 640px) {
   /* THREE EQUAL THIRDS, NOT A ROW THAT SCROLLS.
