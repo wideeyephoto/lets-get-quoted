@@ -12618,12 +12618,30 @@ button.inbox-thread-item {
 .schedule-request-flag.pending { background: rgba(96,165,250,.14); color: var(--ink-sky-5); border: 1px solid var(--cedge-sky-8); }
 .schedule-request-flag.warn { background: rgba(251,146,60,.16); color: var(--ink-orange-14); border: 1px solid var(--cedge-orange-40); }
 .schedule-request-flag.muted { background: rgba(var(--tint), .06); color: var(--mute-t55); border: 1px solid var(--edge-t16); }
-.job-feed-share-strip { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .85rem; margin: 1rem 0 0; border: 1px solid var(--cedge-amber-18); border-radius: 14px; background: rgba(255,209,102,.045); }
-.job-feed-share-strip strong { color: var(--text); }
-.job-feed-share-strip p { margin: .15rem 0 .25rem; color: var(--mute-i60); font-size: .86rem; }
-.job-feed-share-strip span,
-.job-feed-share-strip a { color: var(--gold-ink); font-size: .82rem; font-weight: 800; }
-.job-feed-share-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+/* THE DOOR, BESIDE THE THING IT OPENS.
+   A whole card stood at the foot of the feed — a heading, a paragraph
+   explaining that the client page exists, and a line about whether it had been
+   shared — under a feed whose every row already carries an "In Job Feed"
+   badge. What it was for is one link. */
+.job-feed-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
+.job-feed-title-row h2 { margin: 0; }
+/* A link, not a button, whichever element it happens to be: the no-token case
+   has to mint, and minting is a submit. */
+.job-feed-live-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.job-feed-live-link:hover,
+.job-feed-live-link:focus-visible { text-decoration: underline; }
+.job-feed-live-link[disabled] { opacity: 0.6; cursor: default; }
 
 .cost-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .cost-item {
@@ -12687,8 +12705,7 @@ button.inbox-thread-item {
   .schedule-choice-grid,
   .schedule-option-grid { grid-template-columns: 1fr; }
   .client-schedule-calendar-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .job-feed-share-strip { align-items: stretch; flex-direction: column; }
-  .job-feed-share-actions { justify-content: flex-start; }
+
 
   .workspace-title {
     max-width: none;

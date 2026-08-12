@@ -7674,8 +7674,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   .schedule-choice-grid,
   .schedule-option-grid { grid-template-columns: 1fr; }
   .client-schedule-calendar-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .job-feed-share-strip { align-items: stretch; flex-direction: column; }
-  .job-feed-share-actions { justify-content: flex-start; }
+
 
   .workspace-title {
     max-width: none;

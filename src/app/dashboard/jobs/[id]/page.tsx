@@ -384,10 +384,6 @@ export default async function JobDetailPage({
         } satisfies JobFeedEvent,
       ]),
   ]).filter((event) => event.visibility !== 'internal');
-  // Rows marked for a feed the customer has no way to open. The share strip
-  // below says so rather than leaving "Client visible" badges to imply access
-  // that does not exist — see the strip for the three separate truths involved.
-  const clientVisibleFeedCount = displayedFeed.length;
 
   /* THE THREE CONTROLS THAT ARE COMPONENTS, built once.
      Start, complete and review each carry their own confirm dialog and their
@@ -958,7 +954,32 @@ export default async function JobDetailPage({
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Job feed</p>
-              <h2>Job Feed</h2>
+              {/* THE DOOR, BESIDE THE THING IT OPENS.
+                  This was a card at the foot of the feed with a heading, a
+                  paragraph and a status line, under a feed whose every row
+                  already carries an "In Job Feed" badge. What it was for is one
+                  link: the same feed as the customer sees it. Whether the page
+                  has been shared is still said once, in the pipeline step at
+                  the top — see buildPipelineChecklist.
+
+                  The form sits BESIDE the h2 rather than inside it. Minting is
+                  a write, so it has to be a submit rather than an anchor, and a
+                  <form> is flow content — invalid inside a heading, where the
+                  browser would close the h2 around it. */}
+              <div className="job-feed-title-row">
+                <h2>Job Feed</h2>
+                {clientViewHref ? (
+                  <a className="job-feed-live-link" href={clientViewHref} target="_blank" rel="noreferrer">
+                    (live page)
+                  </a>
+                ) : (
+                  <form action={boundCreateClientJobLink}>
+                    <SaveButton className="job-feed-live-link" pendingLabel="(opening…)" savedLabel="(opening…)">
+                      (live page)
+                    </SaveButton>
+                  </form>
+                )}
+              </div>
             </div>
             <details className="workspace-details job-feed-composer" open={searchParams.open === 'update'}>
               <summary className="workspace-details-summary">
@@ -1107,61 +1128,6 @@ export default async function JobDetailPage({
                 })}
               </div>
             )}
-            {/* TWO KINDS OF ACCESS, NAMED SEPARATELY.
-                This strip said "Client view not shared" on a job whose feed
-                directly above it was full of rows badged "Client visible", for
-                a customer who had been sent a quote and approved it. All three
-                were true and they described different things: the quote reached
-                them by whatever route sent it, the rows are MARKED for a feed,
-                and the feed itself needs a link that had never been made.
-                "Client view" was also a phrase used nowhere else in the
-                product — the thing is the Job Feed. */}
-            <div className="job-feed-share-strip">
-              <div>
-                <strong>
-                  {hasActiveClientView ? `Client page shared with ${job.client_name}` : 'Client page not shared yet'}
-                </strong>
-                <p>
-                  {hasActiveClientView
-                    ? 'Payment links, invoices and every update marked for the feed appear on one page they can open any time.'
-                    : `${job.client_name} can see the quote you sent them. The client page is the separate running record of updates, payments and invoices — it needs its own link.`}
-                </p>
-                {/* Only worth saying when there is something waiting behind a
-                    door nobody has been given a key to. */}
-                {!hasActiveClientView && clientVisibleFeedCount > 0 ? (
-                  <span>
-                    {clientVisibleFeedCount} update{clientVisibleFeedCount === 1 ? '' : 's'} on this job {clientVisibleFeedCount === 1 ? 'is' : 'are'} marked for the feed and nobody can reach {clientVisibleFeedCount === 1 ? 'it' : 'them'} yet
-                  </span>
-                ) : hasActiveClientView ? (
-                  <span>Shared client access is active</span>
-                ) : (
-                  <span>No client page link has been created</span>
-                )}
-              </div>
-              {/* ONE BUTTON, ONE PRESS, AND IT SAYS WHERE IT GOES.
-                  Three labels stood here for one destination — "Client View",
-                  "Open their Job Feed", "Share client Job Feed" — and two of
-                  them took two presses: the first minted a link and came back
-                  to this page, and only then did a real link appear. It is the
-                  customer's page; the button says so and opens it. */}
-              <div className="job-feed-share-actions">
-                {clientViewHref ? (
-                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">
-                    View the live client page
-                  </a>
-                ) : (
-                  <form action={boundCreateClientJobLink}>
-                    <SaveButton
-                      className={hasActiveClientView ? 'btn secondary' : 'btn primary'}
-                      pendingLabel="Opening…"
-                      savedLabel="Opening…"
-                    >
-                      View the live client page
-                    </SaveButton>
-                  </form>
-                )}
-              </div>
-            </div>
 
       </section>
 

@@ -250,9 +250,19 @@ describe('booking an estimate visit reviews it first', () => {
  * it, the rows are MARKED for a feed, and the feed itself needs a link nobody
  * had made.
  */
-describe('quote access and Job Feed access are named separately', () => {
-  it('stops claiming the customer can see a page with no link to it', () => {
-    expect(JOB_PAGE).toContain('Client page not shared yet');
+describe('quote access and client page access are named separately', () => {
+  /**
+   * WHERE THE ANSWER LIVES NOW. A whole card used to say this at the foot of
+   * the feed — a heading, a paragraph, and a status line — under a feed whose
+   * every row already carries an "In Job Feed" badge. It is said once, in the
+   * pipeline step at the top of the page, which is where the rest of "where is
+   * this job" is answered.
+   */
+  it('says whether the page is shared exactly once, in the pipeline', () => {
+    const badges = read('src', 'lib', 'job-badges.ts');
+    expect(badges).toContain("activeClientLinkCount > 0 ? 'Client page shared' : 'Client page not shared yet'");
+    // And not a second time in prose under the feed.
+    expect(code(JOB_PAGE)).not.toContain('Client page not shared yet');
     expect(code(JOB_PAGE)).not.toContain('Client view not shared');
     expect(code(JOB_PAGE)).not.toContain('Create client view link');
   });
@@ -266,17 +276,34 @@ describe('quote access and Job Feed access are named separately', () => {
    * appear.
    */
   it('names the destination and goes there', () => {
-    expect(JOB_PAGE).toContain('View the live client page');
+    expect(JOB_PAGE).toContain('(live page)');
     expect(code(JOB_PAGE)).not.toContain('Open their Job Feed');
     expect(code(JOB_PAGE)).not.toContain('Share client Job Feed');
     expect(read('src', 'app', 'dashboard', 'jobs', 'actions.ts')).toContain('redirect(`/client/jobs/${token}`)');
   });
 
-  it('says the quote already reached them, which is the separate thing', () => {
-    expect(JOB_PAGE).toContain('can see the quote you sent them');
+  /** One link, beside the heading it belongs to — not a card at the foot of
+   *  the feed explaining that the client page exists. */
+  it('is a door and nothing else', () => {
+    const row = JOB_PAGE.slice(
+      JOB_PAGE.indexOf('<div className="job-feed-title-row">'),
+      JOB_PAGE.indexOf('</div>', JOB_PAGE.indexOf('job-feed-title-row')),
+    );
+    expect(row).toContain('(live page)');
+    expect(row).toContain('<h2>Job Feed</h2>');
+    expect(code(JOB_PAGE)).not.toContain('job-feed-share-strip');
+    expect(code(JOB_PAGE)).not.toContain('job-feed-share-foot');
   });
 
-  it('counts what is queued behind a door nobody has a key to', () => {
-    expect(JOB_PAGE).toContain('!hasActiveClientView && clientVisibleFeedCount > 0');
+  /**
+   * The form sits BESIDE the h2, never inside it. Minting is a write, so it
+   * has to be a submit rather than an anchor — and a <form> is flow content,
+   * which a heading may not contain: the browser closes the h2 around it and
+   * the layout comes apart.
+   */
+  it('keeps the form out of the heading', () => {
+    const heading = JOB_PAGE.slice(JOB_PAGE.indexOf('<h2>Job Feed</h2>'));
+    expect(heading.indexOf('<h2>Job Feed</h2>')).toBeLessThan(heading.indexOf('<form'));
+    expect(JOB_PAGE).not.toMatch(/<h2>[^<]*<form/);
   });
 });
