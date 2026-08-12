@@ -317,6 +317,59 @@ describe('there is one quote treatment, not a choice of three', () => {
   });
 });
 
+/* --- extras that can no longer be changed ------------------------------------ */
+
+describe('a closed options window looks closed', () => {
+  const doc = read('src', 'app', 'client', 'jobs', '[token]', 'QuoteDocument.tsx');
+
+  /**
+   * THE BUG. Once the window closed, each row was still a <label> wrapping a
+   * DISABLED checkbox: it kept its pointer cursor, its hover lift and a pill
+   * reading "+ Add". A customer pressed "+ Add" on a $2,500 line and got
+   * nothing back, and concluded the page was broken.
+   */
+  it('renders no input at all once the extras are locked', () => {
+    // The locked branch only, ending at its own closing brace — the editable
+    // branch that follows it legitimately still has an <input>.
+    const start = doc.indexOf('if (!canEditOptions) {');
+    const locked = doc.slice(start, doc.indexOf('\n              }\n', start));
+    expect(locked).not.toContain('<input');
+    expect(locked).not.toContain('<label');
+    expect(locked).toContain('is-locked');
+    // It states what was chosen instead of offering to change it.
+    expect(locked).toContain("'Included'");
+    expect(locked).toContain("'Not added'");
+  });
+
+  it('takes the pointer and the hover off the row', () => {
+    expect(css).toContain('.quote-doc-addon.is-locked .quote-doc-addon-hit { cursor: default; }');
+    expect(css).toMatch(/\.quote-doc-addon\.is-locked:hover \{[^}]*transform: none/);
+  });
+
+  /**
+   * SOURCE ORDER, NOT SPECIFICITY. The contractor-colour block paints the
+   * selected pill at the same weight; a locked rule written earlier in the file
+   * loses to it, which is exactly what happened first time — the pill kept its
+   * filled button look while claiming to be a tag.
+   */
+  it('states the locked pill AFTER the rule that paints it', () => {
+    // lastIndexOf, because there are two of these: the base rule and the
+    // contractor-colour one that overrides it. The later one is what a locked
+    // rule has to be written after.
+    const brand = css.lastIndexOf('.quote-doc-addon.is-selected .quote-doc-addon-btn');
+    const locked = css.indexOf('.quote-doc-addon.is-locked.is-selected .quote-doc-addon-btn');
+    expect(brand).toBeGreaterThan(-1);
+    expect(locked).toBeGreaterThan(brand);
+  });
+
+  /** The reason belongs where the buttons were, not only in the rail. */
+  it('says why, next to the extras', () => {
+    expect(doc).toContain('quote-doc-addons-closed');
+    expect(doc).toContain('closedNote');
+    expect(read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx')).toContain('closedNote={optionsClosedNote}');
+  });
+});
+
 /* --- dates you can see but not yet pick --------------------------------------- */
 
 describe('the offered dates are shown even when they cannot be chosen yet', () => {

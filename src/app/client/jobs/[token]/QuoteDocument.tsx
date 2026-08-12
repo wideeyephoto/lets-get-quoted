@@ -48,6 +48,7 @@ export default function QuoteDocument({
   insurance = null,
   header,
   signature = null,
+  closedNote = null,
 }: {
   items: QuoteItem[];
   /**
@@ -68,6 +69,13 @@ export default function QuoteDocument({
    * second-guess the answer. See lib/insurance-client.
    */
   insurance?: { summary: string; url: string | null; filename: string | null } | null;
+  /**
+   * Why the extras can no longer be changed, in the customer's terms — or null
+   * when they still can be, or when there is nothing to say. Shown WITH the
+   * add-ons rather than only in the rail, because the rail is not where
+   * somebody is when they press a button that does not respond.
+   */
+  closedNote?: string | null;
 }) {
   const { addons, selected, setAddon, awaitingApproval, canEditOptions, optionsOpen } = useQuoteDeck();
   const baseItems = items.filter((item) => item.kind === 'base');
@@ -119,6 +127,40 @@ export default function QuoteDocument({
           <ul className="quote-doc-list quote-doc-addons">
             {addons.map((item) => {
               const isOn = Boolean(selected[item.id]);
+              const name = (
+                <>
+                  <span className="quote-doc-addon-name">
+                    {item.label}
+                    {item.recommended ? <span className="quote-doc-badge">★ Recommended</span> : null}
+                  </span>
+                  <span className="quote-doc-addon-price">+{formatUsd(item.amount)}</span>
+                </>
+              );
+
+              /* LOCKED IS A DIFFERENT THING, NOT A GREYER VERSION OF THE SAME
+                 THING. Once the window has closed these rows were still a
+                 <label> wrapping a disabled checkbox: the card kept its pointer
+                 cursor, its hover lift and a pill reading "+ Add", and pressing
+                 it did nothing whatsoever. A control that looks live and
+                 answers to nothing is worse than no control — the customer
+                 concludes the page is broken, which is the one thing a quote
+                 must never look like.
+
+                 So the checkbox goes entirely (a disabled input is still an
+                 input a screen reader announces), the <label> becomes a plain
+                 row, and the pill stops pretending: it states what was chosen
+                 rather than offering to change it. */
+              if (!canEditOptions) {
+                return (
+                  <li className={`quote-doc-addon is-locked${isOn ? ' is-selected' : ''}`} key={item.id}>
+                    <div className="quote-doc-addon-hit">
+                      {name}
+                      <span className="quote-doc-addon-btn">{isOn ? 'Included' : 'Not added'}</span>
+                    </div>
+                  </li>
+                );
+              }
+
               return (
                 <li className={`quote-doc-addon${isOn ? ' is-selected' : ''}`} key={item.id}>
                   <label className="quote-doc-addon-hit">
@@ -132,20 +174,17 @@ export default function QuoteDocument({
                          submits. */
                       form={QUOTE_FORM_ID}
                       checked={isOn}
-                      disabled={!canEditOptions}
                       onChange={(event) => setAddon(item.id, event.target.checked)}
                     />
-                    <span className="quote-doc-addon-name">
-                      {item.label}
-                      {item.recommended ? <span className="quote-doc-badge">★ Recommended</span> : null}
-                    </span>
-                    <span className="quote-doc-addon-price">+{formatUsd(item.amount)}</span>
+                    {name}
                     <span className="quote-doc-addon-btn" aria-hidden="true">{isOn ? '✓ Added' : '+ Add'}</span>
                   </label>
                 </li>
               );
             })}
           </ul>
+          {/* The reason, where the buttons used to be. */}
+          {!canEditOptions && closedNote ? <p className="quote-doc-addons-closed">{closedNote}</p> : null}
         </div>
       ) : null}
 

@@ -333,6 +333,7 @@ export default async function ClientJobDashboardPage({
           insurance={clientInsurance}
           header={{ ref: dashboard.job.ref, address: dashboard.job.address, scope: dashboard.job.scope }}
           signature={awaitingApproval ? null : { name: signedName, at: signedOn, path: signedPath, method: signedMethod }}
+          closedNote={optionsClosedNote}
         />
       ) : (
         /* A quote with no lines and no scope is not a bug on this page — it is

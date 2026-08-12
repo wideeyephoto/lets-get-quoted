@@ -5653,6 +5653,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   background: linear-gradient(135deg, #ff8a3d, #ffab5e);
 }
 
+
 .quote-doc-badge {
   font-size: 0.66rem;
   letter-spacing: 0.05em;
@@ -15035,6 +15036,48 @@ select optgroup {
   border-color: transparent;
   background: var(--cbrand, #ff8a3d);
   color: var(--cbrand-on, #1a0f04);
+}
+
+/* --- extras that can no longer be changed ---------------------------------
+   Everything that says "press me" comes off. These rows kept their pointer
+   cursor and their hover lift while the checkbox inside was disabled, so a
+   customer pressed "+ Add" on a $2,500 line and got nothing back — and
+   concluded the page was broken, which is the last thing a quote may look like.
+
+   DOWN HERE, not up with the base add-on rules, and that is the whole reason
+   this block sits in the contractor-colour section: the two rules directly
+   above paint the selected pill in the contractor's own colour, at the same
+   specificity, and anything written earlier loses to them on source order. The
+   locked state has to be stated after the state it overrides.
+
+   The chosen one stays legible in their colour: what somebody agreed to is
+   still the important fact on this list, and flattening it to match the ones
+   they declined would throw that away to make a point about interactivity. */
+.quote-doc-addon.is-locked { transition: none; }
+.quote-doc-addon.is-locked:hover { border-color: var(--cbrand-edge, var(--cedge-orange-34)); transform: none; }
+.quote-doc-addon.is-locked.is-selected:hover { border-color: var(--cbrand, #ff8a3d); }
+.quote-doc-addon.is-locked .quote-doc-addon-hit { cursor: default; }
+/* A tag, not a button: no border, no fill, nothing with an edge to press. */
+.quote-doc-addon.is-locked .quote-doc-addon-btn,
+.quote-doc-addon.is-locked.is-selected .quote-doc-addon-btn {
+  border-color: transparent;
+  background: none;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding-left: 0;
+  padding-right: 0;
+}
+.quote-doc-addon.is-locked .quote-doc-addon-btn { color: var(--muted); }
+.quote-doc-addon.is-locked.is-selected .quote-doc-addon-btn { color: var(--cbrand, #ff8a3d); font-weight: 700; }
+.quote-doc-addon.is-locked:not(.is-selected) { opacity: 0.72; }
+
+/* Said where the buttons were, not only in the rail — the rail is not where
+   somebody is standing when they press something that does not answer. */
+.quote-doc-addons-closed {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted);
 }
 .quote-doc-group-note { margin: -0.25rem 0 0.55rem; font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
 .quote-doc-total strong { font-family: var(--q-display); }

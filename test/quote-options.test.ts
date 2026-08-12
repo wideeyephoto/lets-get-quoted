@@ -298,7 +298,20 @@ describe('the page offers it only where it is open', () => {
 
   it('reuses the one form id, so the add-on boxes never have to know which form is live', () => {
     expect(accept).toMatch(/QuoteOptionsUpdate[\s\S]{0,900}id=\{QUOTE_FORM_ID\}/);
-    expect(read('src', 'app', 'client', 'jobs', '[token]', 'QuoteDocument.tsx')).toContain('disabled={!canEditOptions}');
+    expect(read('src', 'app', 'client', 'jobs', '[token]', 'QuoteDocument.tsx')).toContain('form={QUOTE_FORM_ID}');
+  });
+
+  /**
+   * This used to be `disabled={!canEditOptions}` on a checkbox that stayed in
+   * the markup. A disabled input inside a <label> that keeps its pointer cursor
+   * and its hover lift is a control that looks live and answers to nothing —
+   * customers pressed "+ Add" on a closed quote and concluded the page was
+   * broken. The row is not a control at all now when the window has shut.
+   */
+  it('removes the checkbox outright when the window has closed, rather than disabling it', () => {
+    const doc = read('src', 'app', 'client', 'jobs', '[token]', 'QuoteDocument.tsx');
+    expect(doc).not.toContain('disabled={!canEditOptions}');
+    expect(doc).toContain('if (!canEditOptions) {');
   });
 
   it('says what happened, either way', () => {
