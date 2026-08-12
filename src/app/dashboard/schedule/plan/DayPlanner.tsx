@@ -181,6 +181,25 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
 
   const movableCount = plan.planned.filter((entry) => !entry.stop.locked && !pinned.has(entry.stop.id)).length;
 
+  /**
+   * LOOKING AT A DAY IS NOT EDITING IT.
+   *
+   * scheduleOrder lays every day out from the workday start, back to back, and
+   * never consults the time a stop is actually booked at. So on a day nobody
+   * has planned yet, the plan differs from the calendar the moment it renders -
+   * and the save bar announced that as "1 arrival time will change", with a
+   * Save button, before the contractor had touched anything. Opening next
+   * Thursday looked like it had already moved next Thursday.
+   *
+   * `history` is the record of real edits: a drag, a pin, a reset. Empty means
+   * this is the planner's opening offer, and the bar says so instead.
+   */
+  const untouched = history.length === 0;
+  /** Whole days from the account's today to the day on screen. */
+  const daysAhead = Math.round(
+    (Date.parse(`${payload.dateKey}T00:00:00`) - Date.parse(`${payload.todayKey}T00:00:00`)) / 86_400_000,
+  );
+
   // -- Offering a customer a discount to take a different day -----------------
   //
   // What today gets back is computed HERE, off the order on screen, not on the
@@ -646,7 +665,7 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
       </div>
 
       {pendingChanges.length > 0 || history.length > 0 ? (
-        <form action={applyDayPlanAction} className="plan-savebar">
+        <form action={applyDayPlanAction} className={`plan-savebar${untouched ? ' is-offer' : ''}`}>
           <input type="hidden" name="dateKey" value={payload.dateKey} />
           <input type="hidden" name="crewId" value={payload.crewId ?? ''} />
           {/* Confirmed appointments are deliberately not submitted. The server
@@ -661,22 +680,36 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
             <strong>
               {pendingChanges.length === 0
                 ? 'No time changes to save'
-                : `${pendingChanges.length} arrival time${pendingChanges.length === 1 ? '' : 's'} will change`}
+                : untouched
+                  ? // Not "will change" - nothing has been decided. These are
+                    // the planner's times sitting beside the calendar's.
+                    `${pendingChanges.length === 1 ? 'This time is' : 'These times are'} the plan’s, not your calendar’s`
+                  : `${pendingChanges.length} arrival time${pendingChanges.length === 1 ? '' : 's'} will change`}
             </strong>
-            {/* The second line used to fall back to "Nothing on your calendar
-                has changed yet" whenever the owner hadn't dragged anything —
-                directly under "2 arrival times will change", which reads as a
-                flat contradiction. Both statements were true of different
-                things (Save would write 2 times; the owner had edited nothing)
-                and neither line said which. The plan proposes times on arrival,
-                so "you haven't touched it" and "there is something to save" are
-                the NORMAL state here, not a corner case. */}
+            {/* WHY IT DIFFERS, not just THAT it differs.
+                These two lines have been wrong twice. First they contradicted
+                each other — "Nothing on your calendar has changed yet" printed
+                directly under "2 arrival times will change". Then they agreed,
+                and were both alarming: a day nobody had touched announced a
+                pending change, because the plan lays every day out from the
+                workday start and a day that has never been planned always
+                reads differently from what is booked.
+                So the untouched case explains the mechanism, and names how far
+                out the day is when that is the reason nobody has planned it. */}
             <span>
               {history.length > 0 && manualDeltaMiles !== 0
                 ? `Your order drives ${manualDeltaMiles > 0 ? '+' : ''}${manualDeltaMiles} mi (${manualDeltaMinutes > 0 ? '+' : ''}${minutesLabel(manualDeltaMinutes)}) versus the optimized one.`
-                : pendingChanges.length > 0
-                  ? 'These are the times this plan works out. Your calendar keeps its current times until you save.'
-                  : 'Nothing on your calendar has changed yet.'}
+                : pendingChanges.length === 0
+                  ? 'Nothing on your calendar has changed yet.'
+                  : untouched && daysAhead > 1
+                    ? // Said out loud, because it is the whole explanation: the
+                      // plan runs the day from your start time, and a day this
+                      // far out has not been planned against that yet. Nothing
+                      // here is a change until you make one.
+                      `You’re ${daysAhead} days ahead of today, and this day hasn’t been planned yet — the plan runs it from your start time, so it reads differently from what’s booked. Nothing moves unless you save.`
+                    : untouched
+                      ? 'The plan runs the day from your start time, so it reads differently from what’s booked. Nothing moves unless you save.'
+                      : 'These are the times this plan works out. Your calendar keeps its current times until you save.'}
             </span>
           </div>
 

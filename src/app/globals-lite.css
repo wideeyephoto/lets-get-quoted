@@ -10187,6 +10187,14 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   color: var(--good);
 }
 .plan-summary dl > div.is-over dd { color: var(--ink-orange-3); }
+/* AN OFFER, NOT AN ALARM.
+   Until something is dragged, this bar is the planner's opening proposal on a
+   day the contractor has only just opened - so it drops the orange edge and the
+   glow it wears when there are real edits waiting to be written. */
+.plan-savebar.is-offer {
+  border-color: var(--edge-t14);
+  box-shadow: 0 22px 50px -20px rgba(0, 0, 0, 0.9);
+}
 
 /* --- Supply stops ------------------------------------------------------ */
 /* A stop that isn't a job reads differently: cooler, quieter, and marked with

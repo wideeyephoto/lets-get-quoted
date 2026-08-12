@@ -276,6 +276,7 @@ export default async function PlanDayPage({
   const matrixPayload: DriveMatrixPayload = matrix ? Object.fromEntries(matrix) : {};
   const payload: DayPlanPayload = {
     dateKey,
+    todayKey: accountToday(settings.timezone),
     crewId,
     crewName,
     stops: routable,

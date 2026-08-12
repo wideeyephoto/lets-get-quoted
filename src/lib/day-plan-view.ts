@@ -19,6 +19,14 @@ export type DriveMatrixPayload = Record<string, DrivePair>;
 
 export type DayPlanPayload = {
   dateKey: string;
+  /**
+   * The account's own today, so the save bar can tell "you are looking at
+   * Thursday" from "you are looking at now". The plan lays every day out from
+   * the workday start, so a day you have not planned yet always differs from
+   * the times on the calendar - and reading that as a pending change on arrival
+   * is what made simply looking at next week feel like an edit.
+   */
+  todayKey: string;
   crewId: string | null;
   stops: PlanStop[];
   // The order the optimizer proposed, and the order the calendar is in today.

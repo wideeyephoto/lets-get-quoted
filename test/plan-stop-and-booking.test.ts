@@ -130,3 +130,48 @@ describe('the minimum job value is whole dollars, and says so', () => {
     expect(read('src', 'app', 'dashboard', 'settings', 'actions.ts')).toContain('instant_book_min_amount: instantBookMinAmount,');
   });
 });
+
+/**
+ * LOOKING AT A DAY IS NOT EDITING IT.
+ *
+ * scheduleOrder lays every day out from the workday start, back to back, and
+ * never consults the time a stop is actually booked at. So on a day nobody has
+ * planned yet the plan differs from the calendar the moment it renders — and
+ * the save bar announced that as "1 arrival time will change", with a Save
+ * button, before anything had been touched. Opening next Thursday looked like
+ * it had already moved next Thursday.
+ */
+describe('the save bar tells an offer from an edit', () => {
+  it('knows what day it is, not just which day is on screen', () => {
+    expect(read('src', 'lib', 'day-plan-view.ts')).toContain('todayKey: string;');
+    expect(PLAN_PAGE).toContain('todayKey: accountToday(settings.timezone),');
+    expect(PLANNER).toContain('const untouched = history.length === 0;');
+    expect(PLANNER).toContain('const daysAhead = Math.round(');
+  });
+
+  /** `history` is the record of real edits — a drag, a pin, a reset. */
+  it('stops calling an untouched plan a change', () => {
+    expect(PLANNER).toContain("the plan\u2019s, not your calendar\u2019s");
+    // The change wording survives, for when there IS one.
+    expect(PLANNER).toContain('arrival time${pendingChanges.length === 1 ?');
+    expect(PLANNER).toContain(': untouched');
+  });
+
+  it('says out loud how far ahead the day is', () => {
+    expect(PLANNER).toContain('untouched && daysAhead > 1');
+    expect(PLANNER).toContain('days ahead of today, and this day hasn\u2019t been planned yet');
+    expect(PLANNER).toContain('Nothing moves unless you save.');
+  });
+
+  /** Tomorrow gets the mechanism without the day count — "1 days ahead" is
+   *  worse than not saying it. */
+  it('drops the count when the day is not more than one out', () => {
+    const span = PLANNER.slice(PLANNER.indexOf('untouched && daysAhead > 1'), PLANNER.indexOf('</span>', PLANNER.indexOf('untouched && daysAhead > 1')));
+    expect(span).toContain(": untouched\n                      ? 'The plan runs the day from your start time");
+  });
+
+  it('drops the alarm styling until something is actually edited', () => {
+    expect(PLANNER).toContain("className={`plan-savebar${untouched ? ' is-offer' : ''}`}");
+    expect(CSS).toContain('.plan-savebar.is-offer {');
+  });
+});
