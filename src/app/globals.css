@@ -27769,6 +27769,29 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 
 .sched-mini-day.is-blocked { background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.09) 0 5px, transparent 5px 10px); }
 
+/* HOW FULL, ON THE PICKER. The same [data-load] ramp the Capacity view uses, at
+   the only size a 46px cell can spare: a hairline under the date. `open` draws
+   nothing — a wall of green under three empty weeks is noise, and the absence
+   of a band already says it. The count above and the button's own label carry
+   the fact in numbers and words, so this is never the only signal. */
+.sched-mini-day { position: relative; }
+.sched-mini-band {
+  position: absolute;
+  inset: auto 20% 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--load-ink, var(--accent));
+}
+.sched-mini-day[data-load='light'] { --load-ink: var(--cap-light); }
+.sched-mini-day[data-load='busy']  { --load-ink: var(--cap-busy); }
+.sched-mini-day[data-load='full']  { --load-ink: var(--cap-full); }
+.sched-mini-day[data-load='over']  { --load-ink: var(--cap-over); }
+/* Off the ramp here too — the hatch is what says "not a level of full". */
+.sched-mini-day[data-load='unknown'] { --load-ink: var(--cap-unknown); }
+.sched-mini-day[data-load='unknown'] .sched-mini-band {
+  background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.4) 0 2px, transparent 2px 4px);
+}
+
 .sched-mini-foot {
   display: flex;
   justify-content: space-between;
@@ -30380,6 +30403,37 @@ body[data-schedule-overlay="job"] .sched-queue {
 :root[data-theme='light'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
 :root[data-theme='light'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
 :root[data-theme='light'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+
+/* THE VIEW YOU ASKED FOR IS NOT THE VIEW YOU GOT, AND HERE IS WHY.
+   Capacity below 1280 is seven cells at ~80px sharing the row with the rail, so
+   it stands down to the job list. That was happening in silence, which reads as
+   a broken control rather than a narrow window — and left no way back. Quiet
+   (it is an explanation, not an alarm) but it carries the override. */
+.calendar-view-swapped {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 0 0 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px dashed var(--edge-t16);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--mute-i62);
+  font-size: 0.76rem;
+}
+.calendar-view-swapped button {
+  min-height: 44px;
+  padding: 0 0.55rem;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.calendar-view-swapped button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
 .calendar-legend {
   display: flex;

@@ -17,6 +17,7 @@ import {
   shortDateLabel,
   weekdayShort,
 } from '@/lib/schedule-agenda';
+import { CAPACITY_LABEL, capacityLevel } from '@/lib/schedule-capacity';
 import type { CalendarCell, CalendarJob, CrewOption, PlannedVisit } from './schedule-calendar';
 
 /**
@@ -54,10 +55,37 @@ type Props = {
   /** Jobs per date those hours could not count, for want of an estimate. */
   unknownDurationByDate: Record<string, number>;
   capacityHours: number;
+  /**
+   * Date key -> why the day cannot take more work. NOT the same thing as "the
+   * day is closed": the page fills this from availability blocks AND from days
+   * already at capacity, so most of a busy month is in here.
+   */
   blockedDays: Record<string, string>;
+  /**
+   * The availability blocks themselves — days deliberately taken off.
+   *
+   * Needed separately from blockedDays above, and the difference is the whole
+   * point. A day OFF has no capacity to be a fraction of, so it stays off the
+   * ramp. A day that is merely FULL is the most important thing the ramp has to
+   * say, and reading blockedDays as "closed" suppressed the band on every one
+   * of them — leaving the color on the four quiet days and off the twenty
+   * busy ones, which is the ramp exactly backwards.
+   */
+  blocks: Array<{ start_date: string; end_date: string; reason: string | null }>;
   onOpenJob: (occurrenceKey: string) => void;
 };
 
+/**
+ * `agenda` is the day you are standing on; `month` is the picker you go to a
+ * date with and come straight back from.
+ *
+ * THE INTERNAL NAMES STAYED, THE VISIBLE ONES DID NOT. On screen these are
+ * "Day" and "Dates", because "Agenda" on a phone meant a single day while
+ * "Agenda" on a desktop meant a month-long list, and "Month" on a phone was a
+ * grid of counts while "Month" on a desktop was a capacity heatmap. Two words,
+ * four meanings, no way to carry anything you learned from one screen to the
+ * other.
+ */
 type MobileView = 'agenda' | 'month';
 
 function compareJobs(first: CalendarJob, second: CalendarJob): number {
@@ -76,6 +104,7 @@ export default function ScheduleMobileAgenda({
   unknownDurationByDate,
   capacityHours,
   blockedDays,
+  blocks,
   onOpenJob,
 }: Props) {
   const router = useRouter();
@@ -152,7 +181,7 @@ export default function ScheduleMobileAgenda({
             className={`sched-tab sched-tab-agenda${view === 'agenda' ? ' is-on' : ''}`}
             onClick={() => setView('agenda')}
           >
-            Agenda
+            Day
           </button>
           <button
             type="button"
@@ -163,7 +192,7 @@ export default function ScheduleMobileAgenda({
             className={`sched-tab sched-tab-month${view === 'month' ? ' is-on' : ''}`}
             onClick={() => setView('month')}
           >
-            Month
+            Dates
           </button>
         </div>
         <button
@@ -203,7 +232,12 @@ export default function ScheduleMobileAgenda({
         </button>
       </div>
 
-      {/* Five days around the one you are on, with how much is booked on each. */}
+      {/* Five days around the one you are on, with how much is booked on each.
+          ONLY IN THE DAY VIEW. The Dates panel below is a month of the same
+          buttons doing the same job, and having both on screen at once put two
+          date pickers on a 390px phone, one directly above the other — the
+          strip also being the thing that pushed the actual schedule down. */}
+      {view === 'agenda' ? (
       <ol className="sched-strip" aria-label="Nearby days">
         {strip.map((dateKey) => {
           const count = countFor(dateKey);
@@ -227,6 +261,7 @@ export default function ScheduleMobileAgenda({
           );
         })}
       </ol>
+      ) : null}
 
       {view === 'agenda' ? (
         <div className="sched-mobile-panel" data-view="agenda" id="sched-panel" role="tabpanel" aria-labelledby="sched-tab-agenda">
@@ -324,6 +359,13 @@ export default function ScheduleMobileAgenda({
       ) : (
         <div className="sched-mobile-panel" data-view="month" id="sched-panel" role="tabpanel" aria-labelledby="sched-tab-month">
           <p className="sched-mini-hint">Pick a day to see what is on it.</p>
+          {/* THE SAME RAMP THE DESKTOP DRAWS, at the size a picker can carry.
+              This grid used to show a bare count, so the phone could tell you a
+              day had four jobs on it and not whether that was a full day or an
+              hour of work — the number that decides whether you can fit
+              anything else in. One hairline of band under each date is as much
+              capacity as 44px of cell will hold, and it means the same thing
+              here as it does in the Capacity view. */}
           {/* A DATE SELECTOR, NOT A SHRUNKEN CALENDAR. Numbers and a count of
               what is booked — the moment a client's name goes in a cell this
               becomes the 33px column the agenda exists to replace. */}
@@ -337,19 +379,38 @@ export default function ScheduleMobileAgenda({
               if (!cell) return <span className="sched-mini-pad" key={`pad-${index}`} />;
               const count = countFor(cell.dateKey);
               const isSelected = cell.dateKey === selected;
+              // Deliberately taken off, as opposed to merely unbookable. Only
+              // the first has no capacity to be a fraction of; a full day IS a
+              // fraction, and it is the one the ramp exists to show.
+              const closed = blocks.some((block) => cell.dateKey >= block.start_date && cell.dateKey <= block.end_date);
+              const unavailable = Boolean(blockedDays[cell.dateKey]);
+              const level = closed
+                ? null
+                : capacityLevel({
+                  bookedHours: hoursByDate[cell.dateKey] ?? 0,
+                  capacityHours,
+                  jobCount: jobsByDate.get(cell.dateKey)?.length ?? 0,
+                  unknownJobs: unknownDurationByDate[cell.dateKey] ?? 0,
+                });
               return (
                 <button
                   type="button"
                   key={cell.dateKey}
-                  className={`sched-mini-day${isSelected ? ' is-on' : ''}${cell.dateKey === todayKey ? ' is-today' : ''}${blockedDays[cell.dateKey] ? ' is-blocked' : ''}`}
+                  data-load={level ?? undefined}
+                  className={`sched-mini-day${isSelected ? ' is-on' : ''}${cell.dateKey === todayKey ? ' is-today' : ''}${unavailable ? ' is-blocked' : ''}`}
                   aria-current={isSelected ? 'date' : undefined}
-                  aria-label={`${shortDateLabel(cell.dateKey)}, ${jobCountLabel(count)}`}
+                  // The band in words, so the hairline is never the only place
+                  // it is said — and the count alone never was enough. "Blocked
+                  // off" is reserved for a day that IS blocked off; a day that
+                  // is simply full already gets that word from the band.
+                  aria-label={`${shortDateLabel(cell.dateKey)}, ${jobCountLabel(count)}${level && level !== 'open' ? `, ${CAPACITY_LABEL[level].toLowerCase()}` : ''}${closed ? ', blocked off' : ''}`}
                   onClick={() => goToDay(cell.dateKey)}
                 >
                   <strong>{cell.day}</strong>
                   <span className={`sched-mini-count${count > 0 ? '' : ' is-empty'}`} aria-hidden="true">
                     {count > 0 ? count : ''}
                   </span>
+                  {level && level !== 'open' ? <span className="sched-mini-band" aria-hidden="true" /> : null}
                 </button>
               );
             })}

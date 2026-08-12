@@ -33,22 +33,40 @@ const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  * each view is actually for.
  *
  * ORDER IS BY ZOOM: one day, a few days, a month, then the specialist views.
- * "Job spans" is the old view that used to be called Timeline — renamed, not
- * changed, because Week and Day are now literally timelines and two things in
- * one menu called the same word is a bug in the menu.
+ *
+ * EVERY NAME HERE DESCRIBES ONE CONCEPT ON EVERY SCREEN. That was not true and
+ * it was the most expensive thing about this page:
+ *
+ *   "Agenda" meant a month-long list on a desktop and a single day on a phone
+ *   "Month"  meant a capacity heatmap on a desktop and a grid of counts on a phone
+ *   "Week"   meant three days on a tablet without saying so
+ *
+ * so a word learned in one place taught the wrong thing in the other. The names
+ * now say what you get: Capacity is a capacity view, Job list is a list of jobs,
+ * Crew day is one day of crew, Projects is the multi-day work, Year is a year.
+ *
+ * THE IDS ARE UNCHANGED ON PURPOSE. They are cookie values (CALENDAR_VIEW_COOKIE)
+ * and renaming them would silently reset the view for everybody who has ever
+ * chosen one. `timeline` is still the id of the view now called Projects.
  */
 const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon: string }> = [
   { id: 'day', label: 'Day', hint: 'One day against the clock', icon: 'M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5ZM4.5 9h15M8 12.5h8M8 16h5' },
   { id: 'week', label: 'Week', hint: 'The week against the clock — sized by how long each job takes', icon: 'M3.5 5.5h17v13h-17zM3.5 9h17M8 9v9.5M12.5 9v9.5M17 9v9.5' },
-  { id: 'month', label: 'Month', hint: 'How full each day is — click a date to open it', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
-  { id: 'crew', label: 'Crew', hint: 'One lane per person, for a single day', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
-  { id: 'agenda', label: 'Agenda', hint: 'Just the days with work on them', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
-  { id: 'timeline', label: 'Job spans', hint: 'One bar per job across the month', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
-  { id: 'year', label: '12 months', hint: 'The year at a glance', icon: 'M4.5 5h6v6h-6zM13.5 5h6v6h-6zM4.5 13h6v6h-6zM13.5 13h6v6h-6z' },
+  { id: 'month', label: 'Capacity', hint: 'How full each day of the month is — click a date to open it', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
+  { id: 'crew', label: 'Crew day', hint: 'One lane per person, for a single day', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
+  { id: 'agenda', label: 'Job list', hint: 'Every job this month as rows you can read', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
+  { id: 'timeline', label: 'Projects', hint: 'Multi-day work as one bar per job', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
+  { id: 'year', label: 'Year', hint: 'Twelve months of jobs, hours and value', icon: 'M4.5 5h6v6h-6zM13.5 5h6v6h-6zM4.5 13h6v6h-6zM13.5 13h6v6h-6z' },
 ];
 
 /** The views laid out against a clock, which are the ones that step by day. */
 const TIME_VIEWS = new Set<CalendarView>(['day', 'week', 'crew']);
+
+/**
+ * The views built out of day COLUMNS — the only ones the weekend toggles can
+ * do anything to. See the note at their render site.
+ */
+const COLUMN_VIEWS = new Set<CalendarView>(['week', 'month']);
 
 /**
  * The three you actually switch between, promoted out of the menu.
@@ -63,7 +81,23 @@ const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month']);
 const QUICK_VIEW_OPTIONS = VIEW_OPTIONS.filter((option) => QUICK_VIEWS.has(option.id));
 const MENU_VIEW_OPTIONS = VIEW_OPTIONS.filter((option) => !QUICK_VIEWS.has(option.id));
 
-function CalendarViewMenu({ value, onChange }: { value: CalendarView; onChange: (next: CalendarView) => void }) {
+function CalendarViewMenu({
+  value,
+  onChange,
+  columns,
+}: {
+  value: CalendarView;
+  onChange: (next: CalendarView) => void;
+  /**
+   * How many day columns this width can carry.
+   *
+   * A tablet has always shown three days when Week is picked, and has always
+   * gone on calling it Week — so the control said one thing and the grid did
+   * another, and there was no way to tell a deliberate three-day view from a
+   * broken seven-day one. The button now says what it will actually give you.
+   */
+  columns: 7 | 3 | 1 | null;
+}) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const current = VIEW_OPTIONS.find((option) => option.id === value) ?? VIEW_OPTIONS[0];
@@ -76,21 +110,27 @@ function CalendarViewMenu({ value, onChange }: { value: CalendarView; onChange: 
       {/* One press each, and the pressed one is the view you are in. Same
           onChange the menu rows call, so there is one path through the state. */}
       <div className="calendar-view-quick" role="group" aria-label="Calendar view">
-        {QUICK_VIEW_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={`calendar-view-quick-btn${option.id === value ? ' active' : ''}`}
-            aria-pressed={option.id === value}
-            title={option.hint}
-            onClick={() => onChange(option.id)}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d={option.icon} />
-            </svg>
-            {option.label}
-          </button>
-        ))}
+        {QUICK_VIEW_OPTIONS.map((option) => {
+          // Week on a three-column tablet is three days. Saying "Week" there is
+          // the naming bug this whole pass is about, one screen size down.
+          const narrowWeek = option.id === 'week' && columns === 3;
+          const label = narrowWeek ? '3 days' : option.label;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={`calendar-view-quick-btn${option.id === value ? ' active' : ''}`}
+              aria-pressed={option.id === value}
+              title={narrowWeek ? 'Three days against the clock — this window is too narrow for seven columns' : option.hint}
+              onClick={() => onChange(option.id)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d={option.icon} />
+              </svg>
+              {label}
+            </button>
+          );
+        })}
       </div>
       <button
         ref={buttonRef}
@@ -854,13 +894,22 @@ export default function ScheduleCalendar({
               thing you want while looking at a cramped week — and it lived
               below the entire calendar, so you had to scroll past the problem
               to reach the control for it. Same component, same counts; only
-              the address changed. Still hidden under Day and Crew, where there
-              is one column and it is the one you chose. */}
-          {effectiveView === 'day' || effectiveView === 'crew' ? null : (
+              the address changed.
+
+              ONLY WHERE THERE ARE COLUMNS TO HIDE. These toggles do exactly one
+              thing: drop a day COLUMN from a grid. Week and Capacity are the
+              two views built out of day columns. Day and Crew day have a single
+              column and it is the one you picked; the Job list is days that
+              have work on them; Projects lays out every day of the month
+              regardless; Year has no days at all. In all five the control was
+              on screen, pressable, and inert — which is worse than absent,
+              because pressing it and watching nothing happen teaches you the
+              control is broken everywhere. */}
+          {COLUMN_VIEWS.has(effectiveView) ? (
             <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
-          )}
+          ) : null}
           {toolbarActions}
-          <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
+          <CalendarViewMenu value={calendarView} onChange={setCalendarView} columns={span} />
         </div>
       </div>
 
@@ -880,6 +929,9 @@ export default function ScheduleCalendar({
         unknownDurationByDate={unknownDurationByDate}
         capacityHours={capacityHours}
         blockedDays={blockedDays}
+        /* Separately from blockedDays, which also holds days that are merely
+           full — see the note on the prop. */
+        blocks={blocks}
         onOpenJob={openJobActions}
       />
 
@@ -894,6 +946,21 @@ export default function ScheduleCalendar({
           status key over Month was a legend for colors that were not on the
           screen. */}
       <div className="calendar-desktop-views">
+        {/* A VIEW SWAPPED UNDER YOU SHOULD SAY SO. Capacity below 1280 is seven
+            cells at ~80px sharing the row with the rail, so it stands down to
+            the job list — but it did that in silence, which reads as the
+            control being broken rather than as the window being narrow. Naming
+            it also names the way out: choosing Capacity deliberately is
+            respected, and the sentence disappears the moment you do. */}
+        {effectiveView !== calendarView ? (
+          <p className="calendar-view-swapped">
+            This window is too narrow for {VIEW_OPTIONS.find((option) => option.id === calendarView)?.label},
+            so you are seeing {VIEW_OPTIONS.find((option) => option.id === effectiveView)?.label}.{' '}
+            <button type="button" onClick={() => setCalendarView(calendarView)}>
+              Show {VIEW_OPTIONS.find((option) => option.id === calendarView)?.label} anyway
+            </button>
+          </p>
+        ) : null}
         <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} showUnknown={hasUnknownDuration} />
       {effectiveView === 'day' || effectiveView === 'week' ? (
         <ScheduleTimeline
