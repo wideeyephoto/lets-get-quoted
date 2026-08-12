@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ChannelToggles from '@/components/channel-toggles';
 import { clientChannelPreview, type ClientChannelPreference } from '@/lib/client-channel';
 import { formatPhoneDashes } from '@/lib/phone';
 import styles from '../leads.module.css';
@@ -20,10 +21,16 @@ import styles from '../leads.module.css';
  * that will not happen, because it is not a description of the send; it is the
  * decision, rendered.
  *
- * The checkbox also stopped being a per-request whim. Unticking it stores "no
- * automatic messages" against this client and carries it to the job, so the
- * appointment reminder three weeks later honours the same instruction. That is
- * the difference between a consent control and a checkbox.
+ * THE CHOICE IS ON THIS FORM NOW, NOT ONLY ON THE JOB AFTERWARDS.
+ * It used to be a single tick-box that could say only "send" or "don't", and
+ * 'auto' means text-first — so a contractor who had just typed a customer's
+ * email address in, and wanted the quote to go there, had no way to say so.
+ * The setting existed; it lived on the job page, which is the page you reach
+ * AFTER the quote has already gone out by text. Two toggles, here, before.
+ *
+ * The choice is still stored against the client rather than spent on this one
+ * send, so the appointment reminder three weeks later honours the same
+ * instruction. That is the difference between a consent control and a checkbox.
  */
 export default function QuoteDeliveryPreview({
   phone,
@@ -32,16 +39,13 @@ export default function QuoteDeliveryPreview({
 }: {
   phone: string | null;
   email: string | null;
-  /** What is already stored for this lead. 'off' starts the box unticked. */
+  /** What is already stored for this lead. 'off' starts both toggles off. */
   preference: ClientChannelPreference;
 }) {
-  const [send, setSend] = useState(preference !== 'off');
+  const [channel, setChannel] = useState<ClientChannelPreference>(preference);
 
-  // Ticking the box on a client previously set to 'off' returns them to 'auto'
-  // rather than resurrecting a channel choice they never made.
-  const effective: ClientChannelPreference = send ? (preference === 'off' ? 'auto' : preference) : 'off';
   const preview = clientChannelPreview(
-    { phone, email, preference: effective },
+    { phone, email, preference: channel },
     {
       what: 'It carries a secure link to view and approve the quote.',
       fallbackAction: 'You’ll get a link on the next screen to copy and send yourself.',
@@ -50,27 +54,16 @@ export default function QuoteDeliveryPreview({
   );
 
   return (
-    <>
-      <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
-        <input
-          id="sendClientTextCheckbox"
-          name="sendClientText"
-          type="checkbox"
-          checked={send}
-          onChange={(event) => setSend(event.target.checked)}
-        />
-        <span>
-          <strong>Send this client their quote</strong>
-          <small>
-            Leave it unticked and nothing goes out automatically — not this quote, and not the reminders after it.
-            You can change that any time on the job.
-          </small>
-        </span>
-      </label>
-
-      {/* Submitted alongside the box so the server stores a preference rather
-          than inferring one from a checkbox it cannot see the history of. */}
-      <input type="hidden" name="messageChannel" value={effective} />
+    <div className={styles.quoteDelivery}>
+      <ChannelToggles
+        value={channel}
+        onChange={setChannel}
+        phone={phone}
+        email={email}
+        formatPhone={formatPhoneDashes}
+        legacyCheckboxId="sendClientTextCheckbox"
+        legacyCheckboxName="sendClientText"
+      />
 
       {/* aria-live, because this is the one thing on the form that answers
           "what happens when I press send" and it changes without navigating. */}
@@ -80,7 +73,13 @@ export default function QuoteDeliveryPreview({
           <strong>{preview.icon} {preview.headline}</strong>
           {preview.detail ? ` — ${preview.detail}` : ''}
         </p>
+        {/* Only worth saying when it can actually happen. Both switches on and
+            both details present is the only shape where a failed text has
+            somewhere to go — see smsFailureFallback. */}
+        {channel === 'auto' && phone && email ? (
+          <p className={styles.quotePreviewFallback}>If the text doesn’t go through, we email it instead.</p>
+        ) : null}
       </div>
-    </>
+    </div>
   );
 }

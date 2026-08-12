@@ -45,7 +45,7 @@ import {
   getActiveClientAccessCount,
   revokeClientJobAccess,
 } from '@/lib/job-feed';
-import { normalizeClientChannelPreference, resolveClientChannel } from '@/lib/client-channel';
+import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { jobMessageChannel } from '@/lib/client-channel-data';
 import { acceptSubscriptionForClient } from '@/lib/subscription-signup';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
@@ -133,20 +133,76 @@ export async function createJobAction(formData: FormData) {
 
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
 
-  if (sendClientText && normalizedClientPhone) {
-    const businessName = await loadBusinessName(supabase, accountId);
-    await recordSmsConsent(accountId, normalizedClientPhone, 'client_job_dashboard');
-    await sendClientJobDashboardSms({
+  /* IT COULD ONLY EVER TEXT.
+     This was `if (sendClientText && phone) { …sms… }` with no else, so a job
+     created for a customer who has an email address and no mobile sent nothing
+     at all and said nothing about it. The control was even named for the
+     channel — "Send Client Text" — which made a routing bug read as a feature.
+
+     It routes like everything else now. kind: 'requested' because this link is
+     the thing the customer is waiting for, so a STOP reply moves it to email
+     rather than cancelling it. */
+  let delivery: string | null = null;
+  if (sendClientText) {
+    const clientEmail = job.client_email?.trim() || null;
+    const optedOut = normalizedClientPhone ? await isPhoneOptedOut(accountId, normalizedClientPhone) : false;
+    const route = resolveClientChannel({
       phone: normalizedClientPhone,
-      businessName,
-      jobRef: job.ref,
-      token,
-      accountId,
+      email: clientEmail,
+      preference: 'auto',
+      optedOut,
+      kind: 'requested',
     });
+    const businessName = await loadBusinessName(supabase, accountId);
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+    const emailIt = async (to: string) => {
+      await sendClientQuoteEmail({
+        recipientEmail: to,
+        businessName,
+        clientName: job.client_name,
+        jobRef: job.ref,
+        quotedAmount: Number(job.quoted_amount) || 0,
+        quoteUrl: `${origin}/client/jobs/${token}`,
+        accountId,
+      });
+    };
+
+    delivery = route.reason;
+    if (route.channel === 'sms' && normalizedClientPhone) {
+      try {
+        await recordSmsConsent(accountId, normalizedClientPhone, 'client_job_dashboard');
+        await sendClientJobDashboardSms({ phone: normalizedClientPhone, businessName, jobRef: job.ref, token, accountId });
+        delivery = 'sms';
+      } catch (err) {
+        console.error(`Client link SMS failed for job ${job.id}:`, err);
+        delivery = 'failed';
+        // Same second chance the quote path gets — see smsFailureFallback.
+        const second = smsFailureFallback({ phone: normalizedClientPhone, email: clientEmail, preference: 'auto', optedOut, kind: 'requested' });
+        if (second) {
+          try {
+            await emailIt(second.to);
+            delivery = 'sms_failed_emailed';
+          } catch (emailErr) {
+            console.error(`Client link email fallback failed for job ${job.id}:`, emailErr);
+          }
+        }
+      }
+    } else if (route.channel === 'email' && clientEmail) {
+      try {
+        await emailIt(clientEmail);
+        delivery = 'email';
+      } catch (err) {
+        console.error(`Client link email failed for job ${job.id}:`, err);
+        delivery = 'failed';
+      }
+    }
   }
 
   revalidatePath('/dashboard/jobs');
-  redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
+  // The outcome travels to the job page, which already knows how to say each
+  // one — a send that quietly did nothing is the thing being fixed here, so it
+  // must not arrive silently either.
+  redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}${delivery ? `&delivery=${delivery}` : ''}`);
 }
 
 export async function updateJobAction(jobId: string, formData: FormData) {

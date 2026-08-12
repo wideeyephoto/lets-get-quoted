@@ -136,7 +136,11 @@
 .callLink { padding: .28rem .6rem; border-radius: 6px; font-size: .76rem; font-weight: 800; color: var(--ink-sky-1); background: rgba(56,189,248,.12); border: 1px solid var(--cedge-teal-21); text-decoration: none; }
 .callLink:hover { background: rgba(56,189,248,.2); }
 .contactWarn { color: var(--bad); font-size: .74rem; }
+/* The two channel switches and the sentence they produce, as one block — they
+   are one decision and were drifting apart when they were two. */
+.quoteDelivery { display: grid; gap: .5rem; padding: .75rem; border: 1px solid var(--cedge-teal-22); border-radius: 12px; background: rgba(25,214,174,.05); }
 .quotePreview { margin-top: .4rem; padding: .6rem .75rem; border-radius: 8px; background: rgba(var(--tint), .04); border: 1px solid var(--edge-t09); }
+.quotePreviewFallback { margin: .3rem 0 0; font-size: .78rem; color: var(--mute-t50); }
 .quotePreview > span { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--mute-t42); font-weight: 800; }
 .quotePreview p { margin: .25rem 0 0; font-size: .86rem; color: var(--ink-mod-grey-19); }
 /* The preview now follows the checkbox instead of describing the phone number

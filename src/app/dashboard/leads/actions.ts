@@ -11,7 +11,7 @@ import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteIte
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
-import { normalizeClientChannelPreference, resolveClientChannel } from '@/lib/client-channel';
+import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -464,6 +464,24 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   // email-only, with a mobile on file, that "this lead has no mobile number or
   // email", which sends them looking for a missing detail that is not missing.
   let delivery: string | null = willDeliver ? 'no_contact' : route.reason;
+  /** Whose address it landed at, for the banner and the feed row. */
+  let emailedTo: string | null = null;
+
+  const emailTheQuote = async (recipientEmail: string) => {
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+    await sendClientQuoteEmail({
+      recipientEmail,
+      businessName,
+      clientName: job.client_name,
+      jobRef: job.ref,
+      quotedAmount,
+      quoteUrl: `${origin}/client/jobs/${token}`,
+      includesScheduleOptions: quickBooking.hasInput,
+      accountId,
+    });
+    emailedTo = recipientEmail;
+  };
+
   if (clientPhone) {
     try {
       await recordSmsConsent(accountId, clientPhone, 'client_job_dashboard');
@@ -479,20 +497,30 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     } catch (err) {
       console.error(`Quote SMS failed for job ${job.id}:`, err);
       delivery = 'failed';
+      /* A DEAD NUMBER USED TO MEAN A DEAD QUOTE.
+         The channel is chosen once, up front, so a carrier rejection after
+         that point left the send recorded as "failed" with a perfectly good
+         email address sitting unused on the same row. The customer never
+         learned a quote existed, and the only signal was a banner the
+         contractor had to notice and act on.
+
+         Fires once, only after a real attempt failed, and only when the
+         contractor left email switched on — somebody set to text-only said
+         never email this customer, and a failure is not permission. See
+         smsFailureFallback. */
+      const second = smsFailureFallback({ phone: leadPhone, email: leadEmail, preference: messageChannel, optedOut, kind: 'requested' });
+      if (second) {
+        try {
+          await emailTheQuote(second.to);
+          delivery = 'sms_failed_emailed';
+        } catch (emailErr) {
+          console.error(`Quote email fallback failed for job ${job.id}:`, emailErr);
+        }
+      }
     }
   } else if (clientEmail) {
     try {
-      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-      await sendClientQuoteEmail({
-        recipientEmail: clientEmail,
-        businessName,
-        clientName: job.client_name,
-        jobRef: job.ref,
-        quotedAmount,
-        quoteUrl: `${origin}/client/jobs/${token}`,
-        includesScheduleOptions: quickBooking.hasInput,
-        accountId,
-      });
+      await emailTheQuote(clientEmail);
       delivery = 'email';
     } catch (err) {
       console.error(`Quote email failed for job ${job.id}:`, err);
@@ -500,13 +528,17 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     }
   }
 
-  if (delivery === 'sms' || delivery === 'email') {
+  if (delivery === 'sms' || delivery === 'email' || delivery === 'sms_failed_emailed') {
     await createJobFeedEvent(supabase, accountId, job.id, {
       kind: 'job_update',
       title: delivery === 'sms' ? 'Quote texted to client' : 'Quote emailed to client',
+      // The recipient is deliberately NOT named on the emailed branches. This
+      // row is client-visible and the client-side scrubber removes email
+      // addresses, so "emailed to dana@x.com" reached the homeowner's own page
+      // as "emailed to ." — see lib/client-feed.
       body: delivery === 'sms'
         ? `The quote and sign-off link were texted to ${job.client_name}.`
-        : `The quote and sign-off link were emailed to ${clientEmail}.`,
+        : 'Your quote and sign-off link were emailed to you.',
       visibility: 'client',
     });
   }
@@ -526,8 +558,8 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
         clientName: job.client_name,
         jobRef: job.ref,
         quotedAmount,
-        channel: delivery === 'sms' ? 'sms' : delivery === 'email' ? 'email' : 'none',
-        sentTo: delivery === 'sms' ? job.client_phone : delivery === 'email' ? clientEmail : null,
+        channel: delivery === 'sms' ? 'sms' : emailedTo ? 'email' : 'none',
+        sentTo: delivery === 'sms' ? job.client_phone : emailedTo,
         jobUrl: `${origin}/dashboard/jobs/${job.id}`,
       });
     }

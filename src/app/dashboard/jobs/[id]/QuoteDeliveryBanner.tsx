@@ -52,6 +52,21 @@ export default function QuoteDeliveryBanner({ delivery, clientLink, clientName, 
     );
   }
 
+  /* The text bounced and the email caught it. Told plainly rather than dressed
+     up as a clean send: the number on file is wrong and that is worth knowing
+     before the appointment reminder goes to the same place. */
+  if (delivery === 'sms_failed_emailed') {
+    return (
+      <div className="payment-banner success quote-delivery-banner">
+        <p>
+          <strong>Quote emailed to {clientEmail ?? clientName}.</strong> The text didn&apos;t go through, so it went by
+          email instead — worth checking the mobile number on file.
+        </p>
+        {clientLink ? <CopyLinkRow clientLink={clientLink} /> : null}
+      </div>
+    );
+  }
+
   if (delivery === 'failed') {
     return (
       <div className="payment-banner warning quote-delivery-banner">

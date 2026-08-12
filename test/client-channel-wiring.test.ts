@@ -10,6 +10,7 @@ const LEADS = read('src', 'lib', 'leads.ts');
 const LEAD_ACTIONS = read('src', 'app', 'dashboard', 'leads', 'actions.ts');
 const LEAD_PAGE = read('src', 'app', 'dashboard', 'leads', '[leadId]', 'page.tsx');
 const PREVIEW = read('src', 'app', 'dashboard', 'leads', '[leadId]', 'QuoteDeliveryPreview.tsx');
+const TOGGLES = read('src', 'components', 'channel-toggles.tsx');
 const JOB_PAGE = read('src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx');
 const JOB_ACTIONS = read('src', 'app', 'dashboard', 'jobs', 'actions.ts');
 const CHOICE_SWEEP = read('src', 'lib', 'choice-reminder-sweep.ts');
@@ -131,15 +132,29 @@ describe('the preview on the lead page', () => {
     expect(CHANNEL).toContain('export function clientChannelPreview(');
   });
 
-  it('follows the checkbox, because it owns it', () => {
-    expect(PREVIEW).toContain("name=\"sendClientText\"");
-    expect(PREVIEW).toContain('checked={send}');
-    expect(PREVIEW).toContain('onChange={(event) => setSend(event.target.checked)}');
+  it('follows the switches, because it owns them', () => {
+    expect(PREVIEW).toContain('<ChannelToggles');
+    expect(PREVIEW).toContain('onChange={setChannel}');
+    expect(PREVIEW).toContain('preference: channel');
     expect(PREVIEW).toContain('aria-live="polite"');
   });
 
+  /**
+   * The one thing that must survive the switch from a tick-box to two toggles:
+   * QuoteStartDateCalendar watches #sendClientTextCheckbox by id and listens
+   * for 'change'. Deleting it would have left its scheduling-consent box
+   * rendering on the path where the quote text already carries consent.
+   */
+  it('keeps the element the start-date calendar watches', () => {
+    expect(PREVIEW).toContain('legacyCheckboxId="sendClientTextCheckbox"');
+    expect(PREVIEW).toContain('legacyCheckboxName="sendClientText"');
+    expect(TOGGLES).toContain("dispatchEvent(new Event('change'");
+    expect(read('src', 'app', 'dashboard', 'leads', '[leadId]', 'QuoteStartDateCalendar.tsx'))
+      .toContain("getElementById('sendClientTextCheckbox')");
+  });
+
   it('submits a stored preference alongside it', () => {
-    expect(PREVIEW).toContain('name="messageChannel"');
+    expect(TOGGLES).toContain('<input type="hidden" name={name} value={value} />');
     expect(LEAD_ACTIONS).toContain("formData.get('messageChannel')");
   });
 
@@ -152,7 +167,8 @@ describe('the preview on the lead page', () => {
 
 describe('the job page', () => {
   it('offers the setting where the automations will read it', () => {
-    expect(JOB_PAGE).toContain('id="messageChannel" name="messageChannel"');
+    expect(JOB_PAGE).toContain('<ClientChannelField');
+    expect(read('src', 'app', 'dashboard', 'jobs', '[id]', 'ClientChannelField.tsx')).toContain('<ChannelToggles');
     expect(JOB_ACTIONS).toContain("const rawChannel = formData.get('messageChannel');");
     // Absent field never resets somebody's choice.
     expect(JOB_ACTIONS).toContain('if (rawChannel !== null) {');

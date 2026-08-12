@@ -178,6 +178,65 @@ export function canTextClient(contact: ClientContact): boolean {
   return resolveClientChannel(contact).channel === 'sms';
 }
 
+/* --- the same four values, as two switches --------------------------------- */
+
+/**
+ * TWO BUTTONS, NOT A DROPDOWN.
+ *
+ * The four preferences are really two independent yes/nos — may we text them,
+ * may we email them — and a <select> reading "Text, or email if there's no
+ * mobile" makes somebody parse a sentence to answer a question they already
+ * know the answer to. Two toggles say it at a glance and set it in one tap.
+ *
+ * The mapping is exact and lossless, so nothing about the stored value, the
+ * column, or resolveClientChannel changes:
+ *
+ *   Text ✓  Email ✓  →  'auto'   text first, email if the text can't reach them
+ *   Text ✓  Email ✗  →  'sms'    never email this customer
+ *   Text ✗  Email ✓  →  'email'  never text this customer
+ *   Text ✗  Email ✗  →  'off'    nothing automatic at all
+ */
+export type ChannelToggles = { sms: boolean; email: boolean };
+
+export function togglesForPreference(preference: ClientChannelPreference): ChannelToggles {
+  if (preference === 'off') return { sms: false, email: false };
+  if (preference === 'sms') return { sms: true, email: false };
+  if (preference === 'email') return { sms: false, email: true };
+  return { sms: true, email: true };
+}
+
+export function preferenceForToggles(toggles: ChannelToggles): ClientChannelPreference {
+  if (toggles.sms && toggles.email) return 'auto';
+  if (toggles.sms) return 'sms';
+  if (toggles.email) return 'email';
+  return 'off';
+}
+
+/**
+ * THE TEXT WENT OUT AND BOUNCED. NOW WHAT?
+ *
+ * A dead number used to mean a dead quote. resolveClientChannel picks ONE
+ * channel up front, and a carrier rejection after that point left the send
+ * recorded as "failed" with a perfectly good email address sitting unused on
+ * the same row — the customer never learned a quote existed, and the only
+ * signal was a banner the contractor had to notice and act on.
+ *
+ * So the decision has a second half. This answers "the SMS we chose has just
+ * thrown — is there anywhere else this may go?", and the answer is no unless
+ * the contractor left email switched on. Somebody set to text-only said never
+ * email this customer, and a failure is not permission.
+ *
+ * Deliberately NOT a general retry ladder: it fires once, only after a real
+ * send attempt failed, and only for the channel that failed. Everything else
+ * still resolves exactly once.
+ */
+export function smsFailureFallback(contact: ClientContact): { channel: 'email'; to: string } | null {
+  const preference = normalizeClientChannelPreference(contact.preference ?? undefined);
+  if (preference === 'off' || preference === 'sms') return null;
+  const email = clean(contact.email);
+  return email ? { channel: 'email', to: email } : null;
+}
+
 export type ClientChannelPreview = {
   /** '📱' | '📧' | '⚠' — the shape of the line, for styling and for screen order. */
   icon: string;

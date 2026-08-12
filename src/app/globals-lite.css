@@ -5188,6 +5188,87 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .job-command-hero .workspace-actions .job-done-field.is-muted { order: 1; }
 }
 
+/* ── May we text them? May we email them? ────────────────────────────────────
+   Two switches replacing a <select> whose options were sentences. Each names
+   its own destination, because "Text" on its own is a promise the form cannot
+   keep — this customer may have no mobile. See components/channel-toggles. */
+.chan-toggles { display: grid; gap: 0.4rem; }
+.chan-toggles-label {
+  margin: 0;
+  color: var(--mute-t58, var(--muted));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chan-toggles-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+@media (max-width: 520px) { .chan-toggles-row { grid-template-columns: minmax(0, 1fr); } }
+
+.chan-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 52px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.chan-toggle:hover:not(:disabled) { border-color: var(--cedge-orange-51); }
+.chan-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--cedge-orange-51); }
+.chan-toggle-text { display: grid; gap: 0.1rem; min-width: 0; }
+.chan-toggle-text strong { color: var(--text); font-size: 0.86rem; font-weight: 800; }
+/* The number or the address, and it must not push the button wider than its
+   track — an address is arbitrarily long and this sits in a 1fr column. */
+.chan-toggle-text small {
+  font-size: 0.74rem;
+  color: var(--mute-t50, var(--muted));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chan-toggle-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--edge-t16);
+  border-radius: 6px;
+  background: rgba(var(--tint), 0.05);
+  color: transparent;
+}
+.chan-toggle-mark svg { width: 13px; height: 13px; }
+
+.chan-toggle.is-on { border-color: var(--cedge-orange-25); background: rgba(255, 122, 33, 0.09); }
+.chan-toggle.is-on .chan-toggle-mark { border-color: transparent; background: var(--accent); color: #101010; }
+.chan-toggle.is-on .chan-toggle-text strong { color: var(--text); }
+
+/* OFF AND CANNOT BE ON ARE DIFFERENT THINGS. A channel with nothing to send to
+   says which detail is missing rather than sitting there looking switchable. */
+.chan-toggle.is-missing { cursor: not-allowed; opacity: 0.55; }
+.chan-toggle.is-missing .chan-toggle-text small { color: var(--warn); }
+
+/* The mirror QuoteStartDateCalendar watches. Present and checkable, never
+   seen — display:none would still work for its listener, but a hidden input
+   that can never be focused by accident is the safer shape. */
+.chan-toggles-mirror {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .workspace-hero-copy {
   display: flex;
   flex-direction: column;

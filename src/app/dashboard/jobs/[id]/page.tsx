@@ -108,8 +108,8 @@ import {
 import CompleteJobButton from './CompleteJobButton';
 import JobScheduleFields from './JobScheduleFields';
 import StartJobButton from './StartJobButton';
+import ClientChannelField from './ClientChannelField';
 import {
-  CLIENT_CHANNEL_HINT,
   CLIENT_CHANNEL_LABEL,
   canTextClient,
   clientChannelChip,
@@ -1212,19 +1212,16 @@ export default async function JobDetailPage({
                   number. Set here it governs every automatic message on this job:
                   choice reminders, the morning-of confirmation, the review ask.
                   The customer's own STOP reply is separate and still outranks it. */}
-              <div className="field">
-                <label htmlFor="messageChannel">Automatic messages</label>
-                <select id="messageChannel" name="messageChannel" defaultValue={clientChannelPreference}>
-                  <option value="auto">{CLIENT_CHANNEL_LABEL.auto}</option>
-                  <option value="sms">{CLIENT_CHANNEL_LABEL.sms}</option>
-                  <option value="email">{CLIENT_CHANNEL_LABEL.email}</option>
-                  <option value="off">{CLIENT_CHANNEL_LABEL.off}</option>
-                </select>
-                <p className="job-meta">
-                  {CLIENT_CHANNEL_HINT[clientChannelPreference]}
-                  {clientOptedOut ? ' This number has replied STOP, so no text can reach it whatever you pick.' : ''}
-                </p>
-              </div>
+              {/* Two switches, the same ones the quote form uses. It was a
+                  <select> whose options were sentences — "Text, or email if
+                  there's no mobile" — for a setting that is really two
+                  independent yes/nos. See components/channel-toggles. */}
+              <ClientChannelField
+                initial={clientChannelPreference}
+                phone={job.client_phone}
+                email={job.client_email}
+                optedOut={clientOptedOut}
+              />
               <div className="field full">
                 <label htmlFor="address">Address</label>
                 <AddressAutocomplete id="address" name="address" defaultValue={job.address ?? ''} />
