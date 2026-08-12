@@ -102,6 +102,11 @@
   --cap-busy: #f5c542;
   --cap-full: #ff8a3d;
   --cap-over: #ff6b57;
+  /* OFF the ramp, deliberately. A day carrying work of unstated length is not a
+     sixth level of "how full" — it is the one day the ramp cannot answer for —
+     so it takes a neutral rather than a hue, and the cell wears a hatch and a
+     "?" as well. See capacityLevel in lib/schedule-capacity. */
+  --cap-unknown: #9aa4b2;
   /* The gold used as a label/eyebrow. --accent-2 stays hue for gradients and
      washes; this is the same idea when it has to be read as words. */
   --gold-ink: #ffd166;
@@ -184,6 +189,7 @@
   --cap-busy: #f5c542;
   --cap-full: #ff8a3d;
   --cap-over: #ff6b57;
+  --cap-unknown: #9aa4b2;
   --gold-ink: #ffd166;
   --accent-ink: #ff9d5c;
   /* White, exactly as in dark. The active row's wash is still the brand orange
@@ -933,6 +939,9 @@
   --cap-busy: #9a6600;
   --cap-full: #c2410c;
   --cap-over: #a8331f;
+  /* Darker than the dark theme's, for the same reason every colour in this
+     block is: it has to hold its edge against a sheet rather than a slab. */
+  --cap-unknown: #55606e;
   --gold-ink: #7a5200;
   /* Harbour's blue, in its deep value — the accent has to change value between
      the canvas and a sheet for the same reason --good does. The HUE is the
@@ -27531,6 +27540,13 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .sched-cap[data-state='over'] .sched-cap-bar > span { background: #ff6b6b; }
 .sched-cap[data-state='over'] .sched-cap-text strong,
 .sched-cap[data-state='full'] .sched-cap-text strong { color: var(--ink-orange-2); }
+/* The bar is measuring something it cannot finish measuring, so it says so:
+   the filled part is the hours that ARE known, and the rest of the track is
+   hatched rather than empty. An empty track reads as "room". */
+.sched-cap[data-state='unknown'] .sched-cap-bar {
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--cap-unknown) 34%, transparent) 0 4px, transparent 4px 8px);
+}
+.sched-cap[data-state='unknown'] .sched-cap-bar > span { background: var(--cap-unknown); }
 
 .sched-blocked {
   margin: 0.5rem 0 0;
@@ -29801,6 +29817,16 @@ body[data-schedule-overlay="job"] .sched-queue {
 .sched-month-cell[data-load='busy']  { --load-ink: var(--cap-busy); }
 .sched-month-cell[data-load='full']  { --load-ink: var(--cap-full); }
 .sched-month-cell[data-load='over']  { --load-ink: var(--cap-over); }
+/* NOT A SIXTH STEP ON THE RAMP. Every other band is a claim about how full the
+   day is; this one is the admission that the claim cannot be made, because
+   something on the day has no stated length. A hue would file it between two
+   levels of certainty it does not belong between — so it takes the neutral and
+   the diagonal, and the cell carries a "?" and a "+" on the hours besides. */
+.sched-month-cell[data-load='unknown'] {
+  --load-ink: var(--cap-unknown);
+  border-color: color-mix(in srgb, var(--load-ink) 40%, transparent);
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--load-ink) 9%, transparent) 0 5px, transparent 5px 10px);
+}
 
 .sched-month-cell[data-load='busy'],
 .sched-month-cell[data-load='full'] { border-color: color-mix(in srgb, var(--load-ink) 45%, transparent); }
@@ -29833,6 +29859,7 @@ body[data-schedule-overlay="job"] .sched-queue {
 }
 .sched-month-flag.clash { background: var(--bad); color: #fff; }
 .sched-month-flag.crewless { background: rgba(var(--tint), 0.12); color: var(--mute-i60); }
+.sched-month-flag.unknown { background: color-mix(in srgb, var(--cap-unknown) 30%, transparent); color: var(--ink); }
 .sched-month-state {
   padding: 0.05rem 0.32rem;
   border-radius: 999px;
@@ -29853,6 +29880,10 @@ body[data-schedule-overlay="job"] .sched-queue {
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
 }
+/* The one character that turns a total into a floor. Given its own weight and
+   colour because at 0.68rem a "+" between two figures is otherwise read as
+   punctuation rather than as "and more than this". */
+.sched-month-atleast { color: var(--ink); font-weight: 800; }
 .sched-month-open { margin-top: auto; color: var(--mute-i60); font-size: 0.7rem; }
 .sched-month-bar {
   margin-top: auto;
@@ -29883,6 +29914,12 @@ body[data-schedule-overlay="job"] .sched-queue {
 .calendar-legend-dot[data-load='busy']  { --load-ink: var(--cap-busy); }
 .calendar-legend-dot[data-load='full']  { --load-ink: var(--cap-full); }
 .calendar-legend-dot[data-load='over']  { --load-ink: var(--cap-over); }
+/* The dot wears the hatch too, so the key matches the cell rather than
+   describing it. Only rendered when a day on screen actually has one. */
+.calendar-legend-dot[data-load='unknown'] {
+  --load-ink: var(--cap-unknown);
+  background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.34) 0 2px, transparent 2px 4px);
+}
 
 /* ---- widths -------------------------------------------------------------- */
 

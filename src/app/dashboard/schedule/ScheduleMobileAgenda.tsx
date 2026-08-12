@@ -51,6 +51,8 @@ type Props = {
   assignments: Record<string, string[]>;
   /** Booked hours per date, already including the job buffer. */
   hoursByDate: Record<string, number>;
+  /** Jobs per date those hours could not count, for want of an estimate. */
+  unknownDurationByDate: Record<string, number>;
   capacityHours: number;
   blockedDays: Record<string, string>;
   onOpenJob: (occurrenceKey: string) => void;
@@ -71,6 +73,7 @@ export default function ScheduleMobileAgenda({
   crew,
   assignments,
   hoursByDate,
+  unknownDurationByDate,
   capacityHours,
   blockedDays,
   onOpenJob,
@@ -131,7 +134,7 @@ export default function ScheduleMobileAgenda({
   const dayJobs = jobsByDate.get(selected) ?? [];
   const dayPlanned = plannedByDate.get(selected) ?? [];
   const dayCount = dayJobs.length + dayPlanned.length;
-  const capacity = capacityStatus(hoursByDate[selected] ?? 0, capacityHours);
+  const capacity = capacityStatus(hoursByDate[selected] ?? 0, capacityHours, unknownDurationByDate[selected] ?? 0);
   const relative = relativeDayLabel(selected, todayKey);
   const blockedReason = blockedDays[selected] ?? null;
   const strip = dayStrip(selected, 5);

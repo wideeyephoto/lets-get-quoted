@@ -5,6 +5,7 @@ import { getMapPins } from '@/lib/map-pins';
 import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeCalendarView, normalizeMapTheme, normalizeMapView, normalizeWeekendDays } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
 import { computeHoursByDate } from '@/lib/booking';
+import { countUnknownDurationByDate } from '@/lib/schedule-capacity';
 import { bookingAvailabilityFromAccount, normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -303,6 +304,15 @@ export default async function SchedulePage({
     jobBufferMinutes,
     workingWeekdays,
   );
+  // WORK THAT CANNOT BE COUNTED, COUNTED SEPARATELY.
+  //
+  // computeHoursByDate above skips a job whose estimated hours come to nothing,
+  // and it is right to: the same function decides which slots the public
+  // booking page offers, and inventing a duration there would close days that
+  // are genuinely free. But the calendar was then drawing a Tuesday with three
+  // unestimated jobs on it as "0 / 8 hrs" under a lime "up to half full" band —
+  // emptier-looking than a day with nothing on it at all.
+  const unknownDurationByDate = countUnknownDurationByDate(scheduledJobOccurrences);
   const fullDates: string[] = [];
   for (const [key, hrs] of hoursByDateForCalendar) if (hrs >= scheduleDayHours) fullDates.push(key);
   const unavailableDays: Record<string, string> = {};
@@ -683,6 +693,11 @@ export default async function SchedulePage({
              "Full" chip already use, so a day cannot read as full in one place
              and open in another. */
           hoursByDate={Object.fromEntries(hoursByDateForCalendar)}
+          /* Jobs those hours could not include, because nobody has said how
+             long they take. Passed alongside rather than folded in — a count of
+             unmeasured jobs is a different fact from a number of hours, and
+             adding a guess would put the lie somewhere harder to find. */
+          unknownDurationByDate={unknownDurationByDate}
           capacityHours={scheduleDayHours}
           blockedDays={unavailableDays}
           initialDayKey={initialDayKey}

@@ -42,7 +42,18 @@ const CAPACITY = [
   { key: 'over', label: 'Overbooked' },
 ] as const;
 
-export default function CalendarLegend({ variant = 'status' }: { variant?: 'status' | 'capacity' }) {
+export default function CalendarLegend({
+  variant = 'status',
+  showUnknown = false,
+}: {
+  variant?: 'status' | 'capacity';
+  /**
+   * Whether any day on screen has work of unstated length. Off the ramp and
+   * only captioned when it is actually drawn, for the reason above: a legend
+   * entry for a color that is not in the grid is furniture.
+   */
+  showUnknown?: boolean;
+}) {
   if (variant === 'capacity') {
     return (
       <div className="calendar-legend" role="group" aria-label="What the day colors mean">
@@ -52,6 +63,12 @@ export default function CalendarLegend({ variant = 'status' }: { variant?: 'stat
             {band.label}
           </span>
         ))}
+        {showUnknown ? (
+          <span className="calendar-legend-item" key="unknown">
+            <span className="calendar-legend-dot" data-load="unknown" aria-hidden="true" />
+            Duration needed
+          </span>
+        ) : null}
       </div>
     );
   }

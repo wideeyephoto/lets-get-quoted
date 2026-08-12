@@ -33,6 +33,7 @@ export default function ScheduleMonthCapacity({
   assignments,
   metaByOccurrence,
   hoursByDate,
+  unknownDurationByDate,
   capacityHours,
   fullDates,
   blocks,
@@ -47,6 +48,8 @@ export default function ScheduleMonthCapacity({
   assignments: Record<string, string[]>;
   metaByOccurrence: Map<string, TimelineDayMeta>;
   hoursByDate: Record<string, number>;
+  /** Jobs per date with no estimated duration — none of them are in hoursByDate. */
+  unknownDurationByDate: Record<string, number>;
   capacityHours: number;
   fullDates: Set<string>;
   blocks: Array<{ start_date: string; end_date: string; reason: string | null }>;
@@ -71,6 +74,8 @@ export default function ScheduleMonthCapacity({
           const dayJobs = jobsByDate.get(cell.dateKey) ?? [];
           const planned = plannedByDate.get(cell.dateKey) ?? [];
           const booked = hoursByDate[cell.dateKey] ?? 0;
+          // Work on this day that `booked` does not include and cannot.
+          const unknown = unknownDurationByDate[cell.dateKey] ?? 0;
           const block = blocks.find((b) => cell.dateKey >= b.start_date && cell.dateKey <= b.end_date);
           const isFull = !block && fullDates.has(cell.dateKey);
           const pct = capacityHours > 0 ? Math.min(100, (booked / capacityHours) * 100) : 0;
@@ -86,7 +91,7 @@ export default function ScheduleMonthCapacity({
              of, and tinting it green would offer a day that is closed. */
           const level = block
             ? null
-            : capacityLevel({ bookedHours: booked, capacityHours, jobCount: dayJobs.length, markedFull: isFull });
+            : capacityLevel({ bookedHours: booked, capacityHours, jobCount: dayJobs.length, markedFull: isFull, unknownJobs: unknown });
 
           const unassigned = dayJobs.filter((job) => (assignments[job.id] ?? []).length === 0).length;
           const conflicts = findCrewConflicts(dayJobs.map((job) => ({
@@ -102,6 +107,12 @@ export default function ScheduleMonthCapacity({
           const summary = [
             `${cell.day}: ${dayJobs.length === 0 ? 'nothing booked' : `${dayJobs.length} job${dayJobs.length === 1 ? '' : 's'}`}`,
             dayJobs.length > 0 ? `${booked.toFixed(booked % 1 ? 1 : 0)} of ${capacityHours} hours booked` : null,
+            // Said before the band, because it is the reason the band reads the
+            // way it does — and because "0 of 8 hours booked" on its own is the
+            // sentence that made this day look free.
+            unknown > 0
+              ? `${unknown} of them ${unknown === 1 ? 'has' : 'have'} no duration set, so the hours above are not the whole day`
+              : null,
             block ? (block.reason ? `Blocked off — ${block.reason}` : 'Blocked off') : null,
             // The color band, in words, so the ramp is not the only place it
             // is said. 'open' is already covered by "nothing booked" above.
@@ -142,6 +153,13 @@ export default function ScheduleMonthCapacity({
                   {unassigned > 0 ? (
                     <i className="sched-month-flag crewless" aria-hidden="true">◇</i>
                   ) : null}
+                  {/* A shape, not just a shade. The band for this state is a
+                      neutral hatch precisely so it is not a sixth hue on a ramp
+                      that is already the pattern red/green blindness flattens,
+                      and this mark is the second way of saying it. */}
+                  {unknown > 0 ? (
+                    <i className="sched-month-flag unknown" aria-hidden="true">?</i>
+                  ) : null}
                   {block ? (
                     <em className="sched-month-state off">Off</em>
                   ) : over ? (
@@ -161,7 +179,13 @@ export default function ScheduleMonthCapacity({
                   <span className="sched-month-hours">
                     {/* Trailing ".0" on every whole number is four cells of
                         noise across a month. */}
-                    {booked % 1 ? booked.toFixed(1) : booked} / {capacityHours} hrs
+                    {booked % 1 ? booked.toFixed(1) : booked}
+                    {/* "2+ / 8" rather than "2 / 8". The figure is a floor, not
+                        a total, whenever something on the day has no length —
+                        and one character is the difference between reporting
+                        what is known and claiming it is everything. */}
+                    {unknown > 0 ? <b className="sched-month-atleast" title={`Plus ${unknown} job${unknown === 1 ? '' : 's'} of unknown length`}>+</b> : null}
+                    {' '}/ {capacityHours} hrs
                   </span>
                   <span className="sched-month-bar" aria-hidden="true">
                     <i style={{ width: `${Math.max(pct, 3)}%` }} />

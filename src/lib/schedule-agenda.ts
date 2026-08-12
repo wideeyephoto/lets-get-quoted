@@ -76,7 +76,7 @@ export function dayStrip(selectedKey: string, count = 5): string[] {
   return Array.from({ length: count }, (_, index) => shiftDateKey(selectedKey, index - before));
 }
 
-export type AgendaCapacityState = 'empty' | 'open' | 'nearly' | 'full' | 'over';
+export type AgendaCapacityState = 'empty' | 'open' | 'nearly' | 'full' | 'over' | 'unknown';
 
 export type AgendaCapacity = {
   booked: number;
@@ -102,19 +102,33 @@ const CAPACITY_WORD: Record<AgendaCapacityState, string> = {
   nearly: 'Nearly full',
   full: 'Full',
   over: 'Over capacity',
+  unknown: 'Length not known',
 };
 
-export function capacityStatus(bookedHours: number, capacityHours: number): AgendaCapacity {
+/**
+ * @param unknownJobs jobs on the day nobody has estimated. They add nothing to
+ *   `bookedHours` by design (see countUnknownDurationByDate), which is why
+ *   "Room to spare — 0h of 8h booked" was appearing over a day with three jobs
+ *   on it. A count that cannot be added is still a count that has to be said.
+ */
+export function capacityStatus(bookedHours: number, capacityHours: number, unknownJobs = 0): AgendaCapacity {
   const capacity = capacityHours > 0 ? capacityHours : 8;
   const booked = Math.max(0, Math.round(bookedHours * 10) / 10);
+  const unknown = Math.max(0, Math.trunc(Number(unknownJobs) || 0));
+  // Over and full are measured facts and keep their word. Below them, anything
+  // unmeasured means no honest fraction exists — "room to spare" is a promise.
   const state: AgendaCapacityState =
-    booked <= 0 ? 'empty'
-      : booked > capacity ? 'over'
-        : booked >= capacity ? 'full'
-          : booked / capacity >= 0.75 ? 'nearly'
-            : 'open';
+    booked > capacity ? 'over'
+      : booked >= capacity && booked > 0 ? 'full'
+        : unknown > 0 ? 'unknown'
+          : booked <= 0 ? 'empty'
+            : booked / capacity >= 0.75 ? 'nearly'
+              : 'open';
   const word = CAPACITY_WORD[state];
-  const detail = `${hoursText(booked)} of ${hoursText(capacity)} booked`;
+  const measured = `${hoursText(booked)} of ${hoursText(capacity)} booked`;
+  const detail = unknown > 0
+    ? `${measured} · ${unknown} job${unknown === 1 ? '' : 's'} with no duration set`
+    : measured;
   return { booked, capacity, pct: Math.min(100, Math.round((booked / capacity) * 100)), state, word, detail, label: `${word} — ${detail}` };
 }
 

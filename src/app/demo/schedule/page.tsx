@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { computeHoursByDate } from '@/lib/booking';
+import { countUnknownDurationByDate } from '@/lib/schedule-capacity';
 import { expandScheduledJobs, formatMoney, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -150,6 +151,7 @@ export default async function DemoSchedulePage({ searchParams }: { searchParams:
             assignmentsByJob={assignmentsByJob}
             initialDayKey={toDateKey(now.getFullYear(), now.getMonth(), now.getDate())}
             hoursByDate={Object.fromEntries(hoursByDate)}
+            unknownDurationByDate={countUnknownDurationByDate(scheduledJobs)}
             capacityHours={DEMO_DAY_HOURS}
             fullDates={fullDates}
             /* The demo account's own working hours — see demo-rows. */

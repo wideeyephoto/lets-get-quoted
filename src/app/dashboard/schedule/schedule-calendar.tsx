@@ -266,6 +266,7 @@ export default function ScheduleCalendar({
      demo) must not open on a different one from a real account with no cookie. */
   initialView = 'week',
   hoursByDate = {},
+  unknownDurationByDate = {},
   capacityHours = 8,
   blockedDays = {},
   initialDayKey,
@@ -305,6 +306,13 @@ export default function ScheduleCalendar({
      calendar reads none of them. --- */
   /** Booked hours per date, buffer included. Drives the capacity line. */
   hoursByDate?: Record<string, number>;
+  /**
+   * Jobs per date that contributed NOTHING to hoursByDate because nobody has
+   * estimated them. Absent keys mean none. Without this the capacity views
+   * cannot tell a quiet day from an unmeasured one, and they were calling every
+   * unmeasured day quiet.
+   */
+  unknownDurationByDate?: Record<string, number>;
   capacityHours?: number;
   /** Date key -> why the day is unavailable. Same map the drag guard uses. */
   blockedDays?: Record<string, string>;
@@ -524,6 +532,15 @@ export default function ScheduleCalendar({
   const monthDays = useMemo(
     () => weeks.flat().filter((cell): cell is Exclude<CalendarCell, null> => Boolean(cell)),
     [weeks],
+  );
+
+  // Whether the band is on screen at all. The legend's own note argues against
+  // captioning colors the grid is not using, and "Duration needed" is absent
+  // from most months — it should not become permanent furniture on the strength
+  // of one job from March.
+  const hasUnknownDuration = useMemo(
+    () => monthDays.some((cell) => (unknownDurationByDate[cell.dateKey] ?? 0) > 0),
+    [monthDays, unknownDurationByDate],
   );
 
   // Agenda: only the days that have work on them. A month of empty rows is the
@@ -860,6 +877,7 @@ export default function ScheduleCalendar({
         crew={crew}
         assignments={assignments}
         hoursByDate={hoursByDate}
+        unknownDurationByDate={unknownDurationByDate}
         capacityHours={capacityHours}
         blockedDays={blockedDays}
         onOpenJob={openJobActions}
@@ -876,7 +894,7 @@ export default function ScheduleCalendar({
           status key over Month was a legend for colors that were not on the
           screen. */}
       <div className="calendar-desktop-views">
-        <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} />
+        <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} showUnknown={hasUnknownDuration} />
       {effectiveView === 'day' || effectiveView === 'week' ? (
         <ScheduleTimeline
           dayKeys={timelineDayKeys}
@@ -916,6 +934,7 @@ export default function ScheduleCalendar({
           assignments={assignments}
           metaByOccurrence={metaByOccurrence}
           hoursByDate={hoursByDate}
+          unknownDurationByDate={unknownDurationByDate}
           capacityHours={capacityHours}
           fullDates={fullSet}
           blocks={blocks}
