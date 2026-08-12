@@ -11,6 +11,8 @@ const input = (over: Partial<NextStepInput> = {}): NextStepInput => ({
   planStatus: null,
   scheduleOpen: false,
   scheduledLabel: null,
+  scheduledPast: false,
+  jobStatus: null,
   openPayment: null,
   ...over,
 });
@@ -86,6 +88,37 @@ describe('the customer\'s next step', () => {
     expect(step.label).toBe('Pay $500.00');
   });
 
+  /**
+   * THE COMMONEST ARRANGEMENT THERE IS: no deposit, no plan, invoice when the
+   * work is done. Its END state was the broken one — the page kept saying "See
+   * you on Jul 28" to somebody whose job had been finished for a fortnight,
+   * because a confirmed date was the last thing in the list that matched.
+   */
+  it('stops promising a visit once the job is finished', () => {
+    const step = clientNextStep(input({ jobStatus: 'complete', scheduledLabel: 'Jul 28', scheduledPast: true }));
+    expect(step.copy).toBe('This job is complete. Your invoices and receipts are below.');
+    expect(step.href).toBeNull();
+  });
+
+  it('still asks for the money on a finished job that owes some', () => {
+    const step = clientNextStep(
+      input({ jobStatus: 'complete', scheduledLabel: 'Jul 28', scheduledPast: true, openPayment: { id: 'pay_9', amount: 4480 } }),
+    );
+    expect(step.label).toBe('Pay $4,480.00');
+    expect(step.href).toBe('/pay/pay_9');
+  });
+
+  it('says the work is under way once the date has passed and it has started', () => {
+    const step = clientNextStep(input({ jobStatus: 'in_progress', scheduledLabel: 'Jul 16', scheduledPast: true }));
+    expect(step.copy).toBe('Your job is under way.');
+  });
+
+  it('still counts down to a date that is genuinely ahead', () => {
+    // An in-progress job booked for next week is still expecting them.
+    const step = clientNextStep(input({ jobStatus: 'in_progress', scheduledLabel: 'Sep 2', scheduledPast: false }));
+    expect(step.copy).toBe('See you on Sep 2.');
+  });
+
   it('says who will be in touch when there is nothing to do', () => {
     const step = clientNextStep(input());
     expect(step.href).toBeNull();
@@ -94,7 +127,7 @@ describe('the customer\'s next step', () => {
   });
 
   it('reports a confirmed date with no button on it', () => {
-    const step = clientNextStep(input({ scheduledLabel: 'Mon 6 Oct' }));
+    const step = clientNextStep(input({ scheduledLabel: 'Mon 6 Oct', scheduledPast: false }));
     expect(step.copy).toBe('See you on Mon 6 Oct.');
     expect(step.href).toBeNull();
   });

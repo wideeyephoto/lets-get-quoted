@@ -189,6 +189,18 @@ export default async function ClientJobDashboardPage({
     : dashboard.job.scheduled_for
       ? dashboard.job.schedule_label
       : null;
+  /**
+   * Has that date been and gone?
+   *
+   * Compared on the DAY, not the instant: a job booked for 9am today is still
+   * "today" at 3pm to the person whose driveway it is, and "your start date has
+   * passed" at lunchtime on the day itself would be both alarming and wrong.
+   * The date column is a plain YYYY-MM-DD, so this is a string comparison and
+   * carries no timezone of its own to be wrong about.
+   */
+  const scheduledPast = Boolean(
+    dashboard.job.scheduled_for && String(dashboard.job.scheduled_for).slice(0, 10) < todayIn(dashboard.timezone),
+  );
 
   /**
    * ONE STATUS, AND IT AGREES WITH THE PAGE.
@@ -276,6 +288,8 @@ export default async function ClientJobDashboardPage({
     planStatus: plan?.status ?? null,
     scheduleOpen,
     scheduledLabel,
+    scheduledPast,
+    jobStatus: dashboard.job.status ?? null,
     openPayment: openPayments[0] ? { id: openPayments[0].id, amount: Number(openPayments[0].amount) } : null,
   });
   const { copy: nextStep, href: nextHref, label: nextLabel } = next;

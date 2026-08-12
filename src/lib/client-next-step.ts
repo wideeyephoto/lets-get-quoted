@@ -34,8 +34,11 @@ import { formatUsdExact } from './money-format';
  *      this state, so scheduling MUST NOT be offered above it.
  *   3. An open scheduling request.
  *   4. A payment waiting.
- *   5. A start date already confirmed, which is news rather than a task, so it
- *      sits below anything that still needs doing.
+ *   5. The job being finished, or a start date still ahead, or the work being
+ *      under way — news rather than tasks, so they sit below anything that
+ *      still needs doing. A date that has PASSED is none of the three: "see you
+ *      on Jul 28" to somebody whose job finished a fortnight ago is the page
+ *      telling them something they know is untrue.
  */
 export type NextStep = {
   /** The sentence in the rail. */
@@ -56,12 +59,16 @@ export type NextStepInput = {
   scheduleOpen: boolean;
   /** The confirmed start date, already formatted, or null. */
   scheduledLabel: string | null;
+  /** Whether that date has already been and gone. */
+  scheduledPast: boolean;
+  /** The job's own status, so a finished job is not still promising a visit. */
+  jobStatus: string | null;
   /** The first still-open payment request, if any. */
   openPayment: { id: string; amount: number } | null;
 };
 
 export function clientNextStep(input: NextStepInput): NextStep {
-  const { businessName, depositPayment, planStatus, scheduleOpen, scheduledLabel, openPayment } = input;
+  const { businessName, depositPayment, planStatus, scheduleOpen, scheduledLabel, scheduledPast, jobStatus, openPayment } = input;
 
   const candidates: (NextStep | null)[] = [
     depositPayment
@@ -90,7 +97,20 @@ export function clientNextStep(input: NextStepInput): NextStep {
           label: `Pay ${formatUsdExact(openPayment.amount)}`,
         }
       : null,
-    scheduledLabel ? { copy: `See you on ${scheduledLabel}.`, href: null, label: null } : null,
+    // A FINISHED JOB IS NOT STILL EXPECTING YOU.
+    //
+    // This is the ordinary end of the commonest arrangement there is: no
+    // deposit, no plan, invoice when the work is done. Once that invoice is
+    // settled there is nothing left to do — and the page went on saying "See
+    // you on Jul 28" to somebody whose job had been finished for two weeks,
+    // because a confirmed date was the last thing in this list that matched.
+    jobStatus === 'complete'
+      ? { copy: 'This job is complete. Your invoices and receipts are below.', href: null, label: null }
+      : null,
+    // Only while it is still ahead of them. Behind, it is not news, it is a
+    // date they already lived through.
+    scheduledLabel && !scheduledPast ? { copy: `See you on ${scheduledLabel}.`, href: null, label: null } : null,
+    jobStatus === 'in_progress' ? { copy: 'Your job is under way.', href: null, label: null } : null,
   ];
 
   return (
