@@ -158,6 +158,9 @@ function hasFeedAction(feed: JobFeedEvent[], sourceTable: string, sourceId: stri
 
 export function createLinkedFeedItems(feed: JobFeedEvent[], payments: Payment[], invoices: Invoice[], accountId: string, jobId: string): JobFeedEvent[] {
   const paymentItems = payments
+    // A withdrawn ask has no link worth offering. This could not arise while
+    // cancelling deleted the row; now that it marks one, it can.
+    .filter((payment) => payment.status !== 'canceled')
     .filter((payment) => !hasFeedAction(feed, 'payments', payment.id, `/pay/${payment.id}`))
     .map((payment): JobFeedEvent => ({
       id: `payment-link-${payment.id}`,

@@ -16,6 +16,9 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   failed: 'Failed',
   refunded: 'Refunded',
   disputed: 'Disputed',
+  // Withdrawn before it reached checkout. Kept on the job as history rather
+  // than deleted — see cancelPaymentRequest.
+  canceled: 'Cancelled',
 };
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {

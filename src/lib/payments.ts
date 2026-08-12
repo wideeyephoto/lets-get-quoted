@@ -13,7 +13,7 @@ import { sendPaymentSmsEvent } from '@/lib/sms';
 export const ACH_MIN_AMOUNT = 1000;
 
 export type PaymentKind = 'deposit' | 'stage' | 'final' | 'plan_installment';
-export type PaymentStatus = 'requested' | 'processing' | 'paid' | 'failed' | 'refunded' | 'disputed';
+export type PaymentStatus = 'requested' | 'processing' | 'paid' | 'failed' | 'refunded' | 'disputed' | 'canceled';
 
 export type Payment = {
   id: string;
@@ -635,8 +635,44 @@ export async function markPaymentPaidManually(
 // hands — this is for "I asked for the wrong amount/link by mistake" cases,
 // distinct from markPaymentFailed (which is for requests that DID reach
 // Stripe checkout but didn't complete).
+/**
+ * MARKED, NOT DELETED.
+ *
+ * This used to DELETE the row. The job feed then carried "Payment request sent
+ * — $250" with nothing behind it, the payment section said "No payment requests
+ * yet", and the money strip said Requested $0.00 — three statements about three
+ * different sets of rows, on one screen, about money.
+ *
+ * It also erased the difference between a job nobody has billed and one where a
+ * deposit was raised and pulled twice. A record you can make disappear is not a
+ * record, and the one operation that removed a payment outright was the one
+ * somebody reaches for when something has already gone wrong.
+ *
+ * Still only from 'requested': once Stripe holds a processing intent against
+ * it, withdrawing is a refund question rather than a status change.
+ *
+ * Falls back to the old delete on a database where the enum value is not there
+ * yet — this ships ahead of migrations/2026-08-15-payment-canceled.sql, and an
+ * update naming a value the type does not have fails outright. Losing the row
+ * during a deploy window is the behaviour we already had; failing a
+ * contractor's cancel is not.
+ */
 export async function cancelPaymentRequest(supabase: SupabaseClient, accountId: string, paymentId: string): Promise<void> {
   const { data, error } = await supabase
+    .from('payments')
+    .update({ status: 'canceled' })
+    .eq('account_id', accountId)
+    .eq('id', paymentId)
+    .eq('status', 'requested')
+    .select('id')
+    .maybeSingle();
+
+  if (!error) {
+    if (!data) throw new Error('Only payment requests that have not started processing can be cancelled.');
+    return;
+  }
+
+  const fallback = await supabase
     .from('payments')
     .delete()
     .eq('account_id', accountId)
@@ -644,9 +680,8 @@ export async function cancelPaymentRequest(supabase: SupabaseClient, accountId: 
     .eq('status', 'requested')
     .select('id')
     .maybeSingle();
-
-  if (error) throw error;
-  if (!data) throw new Error('Only payment requests that have not started processing can be cancelled.');
+  if (fallback.error) throw fallback.error;
+  if (!fallback.data) throw new Error('Only payment requests that have not started processing can be cancelled.');
 }
 
 // Retry a failed/processing payment by creating a fresh checkout session

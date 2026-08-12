@@ -1259,8 +1259,17 @@ export default async function JobDetailPage({
                 <label htmlFor="scope">Job Description</label>
                 <textarea id="scope" name="scope" defaultValue={job.scope ?? ''} />
               </div>
+              {/* NOT "STATUS". The badge at the top of this page says
+                  "Scheduled", this select said "In progress", and the button
+                  beside them said "Job started" — three vocabularies over the
+                  same job, none of them wrong on its own terms, and no way to
+                  tell which one was lying.
+                  There is one status, it is derived, and it is the badge in the
+                  hero (JOB_STAGE_LABEL). This field is the stored record state
+                  the derivation reads FROM, so it says so and names what the
+                  job currently resolves to. */}
               <div className="field">
-                <label htmlFor="status">Status</label>
+                <label htmlFor="status">Record state</label>
                 <select id="status" name="status" defaultValue={job.status}>
                   <option value="new_lead">New request</option>
                   <option value="in_progress">In progress</option>
@@ -1277,6 +1286,10 @@ export default async function JobDetailPage({
                     { label: 'Archived', value: 'archived' },
                   ]}
                 />
+                <p className="job-meta">
+                  With the date, the payments and the client link, this job currently reads as{' '}
+                  <strong>{JOB_STAGE_LABEL[stage]}</strong> — the status shown at the top of the page.
+                </p>
               </div>
               <JobDateRange
                 startName="scheduledFor"

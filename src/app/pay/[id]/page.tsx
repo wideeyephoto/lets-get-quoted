@@ -39,6 +39,9 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
   failed: 'Failed',
   refunded: 'Refunded',
   disputed: 'Disputed',
+  // Withdrawn before it reached checkout. Kept as history rather than
+  // deleted — see cancelPaymentRequest.
+  canceled: 'Cancelled',
 };
 
 // To the cent. This page's button issues the charge it names — rounding it to
@@ -97,6 +100,9 @@ export default async function PublicPaymentPage({
     failed: 'The last payment attempt failed. You can try again below.',
     refunded: 'This payment has been refunded.',
     disputed: 'This payment is under dispute with your bank and cannot be paid here.',
+    // The contractor withdrew it. Said plainly rather than left as a working
+    // card form for money nobody is asking for any more.
+    canceled: 'This payment request was cancelled by your contractor, so there is nothing to pay here. Get in touch if that looks wrong.',
   };
 
   // ACH is offered on large one-off payments (not on a plan deposit, which stays

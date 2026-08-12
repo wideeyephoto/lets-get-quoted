@@ -182,14 +182,11 @@ export async function cancelPaymentRequestAction(jobId: string, paymentId: strin
 
   await cancelPaymentRequest(supabase, accountId, paymentId);
 
-  await supabase
-    .from('job_feed')
-    .delete()
-    .eq('account_id', accountId)
-    .eq('job_id', jobId)
-    .eq('source_table', 'payments')
-    .eq('source_id', paymentId);
-
+  /* THE "SENT" ROW STAYS. It used to be deleted here, alongside a hard delete
+     of the payment itself — so a request that had genuinely been made existed
+     nowhere afterwards, and a job nobody had billed looked identical to one
+     where a $250 deposit had been raised and pulled twice. Sent, then
+     cancelled, in order, IS the history. */
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'payment_cancelled',
     title: 'Payment request cancelled',

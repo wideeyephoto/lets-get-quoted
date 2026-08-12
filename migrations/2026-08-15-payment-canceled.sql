@@ -1,0 +1,30 @@
+-- A CANCELLED PAYMENT REQUEST IS A FACT, NOT AN ABSENCE.
+--
+-- payment_status had no value for "asked, then withdrawn", so cancelling a
+-- request DELETED the row (see cancelPaymentRequest). Three things followed
+-- from that, and a contractor reported all three on the same screen:
+--
+--   * The job feed still carried "Payment request sent — $250", twice, because
+--     those rows are the only surviving record of an ask that no longer exists
+--     anywhere else. Alongside them the payment section said "No payment
+--     requests yet" and the money strip said Requested $0.00. Every one of
+--     those statements was true of a different set of rows.
+--
+--   * "Never asked" and "asked and withdrawn" became the same state, so there
+--     is no way to tell a job nobody has billed from one where a $250 deposit
+--     was raised and pulled twice.
+--
+--   * It is money. A record you can make disappear is not a record, and the
+--     one operation that removed a payment row outright was the one a person
+--     reaches for when something has gone wrong.
+--
+-- Adding the value is safe for every existing reader: the outstanding-money
+-- queries name their statuses explicitly (`.in('status', ['requested',
+-- 'processing', 'paid'])`, `=== 'requested'`), and every `!== 'paid'` in the
+-- codebase is a guard that REQUIRES paid rather than one that treats not-paid
+-- as owing. A cancelled row therefore counts as neither asked nor collected
+-- without any of them being touched — see jobMoney in lib/job-lifecycle.
+--
+-- US spelling to match the rest of the enum and the column values already in
+-- the table.
+alter type payment_status add value if not exists 'canceled';
