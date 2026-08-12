@@ -6,7 +6,7 @@ import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapVie
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
 import { computeHoursByDate } from '@/lib/booking';
 import { countUnknownDurationByDate } from '@/lib/schedule-capacity';
-import { bookingAvailabilityFromAccount, normalizeBookingWeekdays } from '@/lib/booking-availability';
+import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
@@ -26,13 +26,9 @@ import ScheduleMap from './ScheduleMap';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
-import AutomationLink from '@/components/automation-link';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
-import WorkingHoursPanel from '@/components/working-hours-panel';
 import BookingRequests from './BookingRequests';
 import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
-import WeatherPanel from './WeatherPanel';
-import { weatherSettings } from '@/lib/weather-data';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -196,15 +192,17 @@ export default async function SchedulePage({
   // The working week, reused from booking: a span guessed from estimated hours
   // shouldn't spill onto days nobody works.
   const workingWeekdays = normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays);
-  const remindersOn = Boolean((account as { appointment_reminders_enabled?: boolean } | null)?.appointment_reminders_enabled);
 
   // Self-serve booking link — the same public page customers use, built from the
   // site's subdomain. Only offered when the site is live with a subdomain.
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
   const bookingUrl = bookingSubdomain ? `${appOrigin}/book/${bookingSubdomain}` : null;
+  /* Still read here, and ONLY for the booking-requests panel below: it needs to
+     know whether a customer's second choice is still free. The folded "N open
+     windows" header this also fed has moved to /dashboard/schedule/settings,
+     which computes its own. */
   const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];
-  const openWindowCount = bookingDays.reduce((sum, day) => sum + day.slots.length, 0);
 
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
@@ -244,9 +242,6 @@ export default async function SchedulePage({
   // unscheduledJobs above and must never be: they are not work waiting for a
   // date, they are a customer waiting for a yes.
   const pendingBookingRows = await listPendingBookings(supabase, accountId);
-  // Settings only. The forecast itself is fetched on demand — two requests to a
-  // free public service per location is not something to spend on every page load.
-  const weather = await weatherSettings(supabase, accountId);
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -514,31 +509,10 @@ export default async function SchedulePage({
   const calendarView = normalizeCalendarView(cookies().get(CALENDAR_VIEW_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
-  const { data: bookingSettings } = await supabase
-    .from('accounts')
-    .select('timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
-    .eq('id', accountId)
-    .maybeSingle();
-
-  const blockCount = availabilityBlocks.length;
-  // booking_weekdays is a stored string, not an array — read it through the same
-  // normalizer the form uses so the folded header can't drift from the form.
-  const bookingAvailability = bookingAvailabilityFromAccount(
-    bookingSettings as Parameters<typeof bookingAvailabilityFromAccount>[0],
-  );
-  const bookingWeekdayCount = bookingAvailability.weekdays.length;
-
-  // One header for the whole feature, so the folded row says whether customers
-  // can actually book right now — not just that the setting exists. Clearing
-  // every weekday is how you pause online booking, so it counts as paused even
-  // though booking_enabled is still true.
-  const bookingPaused = !bookingAvailability.enabled || bookingWeekdayCount === 0;
-  const bookingStatus = !bookingUrl ? 'Not live' : bookingPaused ? 'Paused' : `${openWindowCount} open`;
-  const bookingTone: 'neutral' | 'on' | 'warn' = !bookingUrl
-    ? 'neutral'
-    : bookingPaused || openWindowCount === 0
-      ? 'warn'
-      : 'on';
+  /* A SECOND accounts SELECT USED TO SIT HERE. Eleven booking columns, fetched
+     on every load of the calendar, feeding one folded status pill at the very
+     bottom of the page. The pill is on the settings route now and reads them
+     there, so this page makes one fewer round trip per visit than it did. */
 
   return (
     /* NOT .wide-shell. That caps every page it is on at 1100px and centers it,
@@ -711,7 +685,14 @@ export default async function SchedulePage({
               <ActionIcon name="plan" />
               Plan today&apos;s route
             </Link>
-            <a href="#schedule-settings">Schedule settings &darr;</a>
+            {/* A LINK OUT, NOT A JUMP DOWN. The arrow used to be honest — the
+                settings were 1,500px below this line on the same page. They are
+                a route now, and this is a real target rather than the 17px of
+                text it measured on a phone. */}
+            <Link href="/dashboard/schedule/settings" className="schedule-foot-settings">
+              Schedule settings
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </div>
       </section>
@@ -924,57 +905,16 @@ export default async function SchedulePage({
       </div>
       </ScheduleDragProvider>
 
-      {/* ONE SETTINGS GROUP, BELOW ALL THE OPERATIONAL CONTENT.
-          These were four unrelated surfaces stacked down the page with nothing
-          saying they belonged together — a booking link, a working-hours panel,
-          a weather panel, and a map that had been sitting up in the rail
-          competing with the queue for the space beside the calendar. What is
-          scheduled comes first; what configures scheduling comes last. */}
-      <section className="sched-settings" id="schedule-settings" aria-labelledby="schedule-settings-h">
-        <h2 className="sched-settings-h" id="schedule-settings-h">Map &amp; schedule settings</h2>
-
-        {/* The map is context for the month, not a work surface — the real map
-            work is Plan today's route. Below the queue on desktop, after the
-            calendar on a tablet, inside this collapsed group on a phone. */}
+      {/* THE MAP IS THE ONLY THING LEFT DOWN HERE, and it stays because it is
+          about work that is already booked rather than about how booking is
+          configured. A booking link, a working-hours panel, a weather panel and
+          a reminders switch used to be stacked beside it under a heading trying
+          to explain what the five had in common — and they are the reason this
+          page ran ~2,700px on a desktop. They are now their own route; see
+          /dashboard/schedule/settings. */}
+      <section className="sched-settings" id="schedule-map" aria-labelledby="schedule-map-h">
+        <h2 className="sched-settings-h" id="schedule-map-h">Where the work is</h2>
         <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
-
-      <Link className="schedule-setup-link" href="/dashboard/schedule/booking" id="booking-availability">
-        <span className="schedule-setup-link-copy">
-          <span className="eyebrow">Setup</span>
-          <strong>Online booking</strong>
-          <span>
-            {bookingStatus === 'Not live'
-              ? 'Publish your website to let customers book themselves.'
-              : bookingPaused
-                ? 'Online booking is paused — no days are open.'
-                : `${bookingWeekdayCount} day${bookingWeekdayCount === 1 ? '' : 's'} a week · ${openWindowCount} open window${openWindowCount === 1 ? '' : 's'} · ${blockCount} day${blockCount === 1 ? '' : 's'} blocked off`}
-          </span>
-        </span>
-        <span className={`schedule-setup-pill tone-${bookingTone}`}>{bookingStatus}</span>
-        <span className="schedule-setup-go" aria-hidden="true">→</span>
-      </Link>
-
-        {/* The settings that decide when a day is full, under the calendar that
-            shows it. Condensed — the summary states them; opening is only for
-            changing them. */}
-        <WorkingHoursPanel
-          scheduleDayHours={scheduleDayHours}
-          jobBufferMinutes={jobBufferMinutes}
-          workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
-          workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
-        />
-
-        {/* Switched on it is a short list of days in trouble; switched OFF it is
-            a pitch with a form attached, and that was the first thing between
-            the booking requests and the month — a page about what is scheduled
-            opening with an ad for a feature you have not turned on. */}
-        <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
-
-        {/* Was a link in the calendar's footer, where it read as a caption to
-            the month. It is a setting, so it lives with the settings. */}
-        <div className="sched-settings-row">
-          <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
-        </div>
       </section>
     </main>
   );

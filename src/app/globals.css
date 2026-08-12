@@ -19470,6 +19470,14 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .schedule-panel-foot-links > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* 44px. Measured at 17px on a phone, which is a link you hit by luck. Both of
+     these are navigations off this page, and they are the only two controls at
+     the foot of a 700px calendar — being small did not make them unobtrusive,
+     it made them unusable. */
+  min-height: 44px;
   font-size: 0.82rem;
   font-weight: 650;
   color: var(--dim-orange-3-6);
@@ -19477,6 +19485,23 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .schedule-panel-foot-links > a:hover { text-decoration: underline; }
+.schedule-panel-foot-links > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+
+/* The way back off the settings route. A control, not the browser button —
+   somebody who arrived here from the calendar is mid-task on the calendar. */
+.sched-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  margin-bottom: 0.15rem;
+  color: var(--dim-orange-3-6);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.sched-settings-back:hover { text-decoration: underline; }
+.sched-settings-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
 
 @media (max-width: 780px) {
   .schedule-bar { gap: 0.7rem; }
