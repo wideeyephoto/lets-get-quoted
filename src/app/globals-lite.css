@@ -2513,12 +2513,35 @@ h3 {
   padding-top: 0.8rem;
   border-top: 1px solid var(--rule-t06);
   display: flex;
-  flex-direction: column;
-  /* Two children now — the Account trigger and the Stripe pill — where there
-     were three (two cards plus a theme/Stripe row). The gap was tuned for the
-     denser stack; at 0.45rem two items read as one control with a seam in it. */
+  /* SIDE BY SIDE, one line. Stacked, these two full-width cards were a third
+     block of chrome under a rail that already ends in a rule — and neither is
+     a nav row, so the stack read as two more destinations rather than the strip
+     of things that are not the day's work. On one line they read as that strip.
+     Account takes the width of its own label and Stripe takes the rest. */
+  align-items: stretch;
+  /* IT WRAPS, and that is the whole trick. The rail is 244px and there are two
+     labelled pills to fit in it. Side by side works while Stripe is connected —
+     its label is one word then, because the green tile and the green underline
+     are already saying "connected" — and does NOT while it reads "Connect
+     Stripe", which is an instruction and must never become "Connect Str…".
+     Wrapping, rather than shrinking, is what guarantees that: a wrapped flex
+     line never squeezes an item below its own text, so the pill takes a line of
+     its own and every word survives. The good state is compact; the state that
+     needs a contractor to DO something gets the full width of the rail. */
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* Both take min-width: 0 because a flex item's default min-width: auto refuses
+   to shrink below its own text, which would push the pair past the rail's edge
+   rather than wrapping or ellipsing. */
+.sidenav-foot > .sidenav-account { flex: 0 1 auto; width: auto; min-width: 0; }
+.sidenav-foot > .stripe-status-pill.sidenav-stripe { flex: 1 1 auto; width: auto; min-width: 0; }
+/* One line, one height. The pill is a smaller control than the Account card and
+   centring them left a 4px step that read as a misalignment rather than two
+   different things. */
+.sidenav-foot > .stripe-status-pill.sidenav-stripe,
+.sidenav-foot > .sidenav-account { min-height: 40px; }
 
 /* ===== Account, foot of the rail ============================================
    One link to the Account page. This was a dropdown — Settings, Help, the theme
@@ -11436,20 +11459,21 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 .cash-bill-check.is-flipped strong { color: var(--good); }
 
-/* --- Appearance: Auto / Light / Dark, foot of the rail ----------------------
-   A segmented row of three, because there are three answers now and a sliding
-   two-position switch (which this was) cannot show a third. It sits under the
-   nav rows and borrows their type and radius so it reads as part of the menu,
-   but the selected segment is filled — a menu item tells you where it goes, a
-   setting has to tell you where it IS.
-
-   The track stays dark in BOTH themes on purpose: under Harbour the rail is
-   canvas, not paper, so this footer is dark either way — and a control that
-   restyled itself would be the one thing on screen that changes shape when you
-   use it. */
-.sidenav-footrow { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
-.sidenav-footrow .stripe-status-pill.sidenav-stripe { flex: 1 1 auto; width: auto; min-width: 0; }
+/* The Stripe pill shares a line with Account at the foot of the rail, so its
+   label is the part that gives way — the coloured "$" tile carries the state on
+   its own, and a truncated word beats a pair that overflows the rail. */
 .stripe-status-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- Appearance: Auto / Light / Dark ----------------------------------------
+   A segmented row of three, because there are three answers and a sliding
+   two-position switch (which this was) cannot show a third. It lives on the
+   Account page now, not in the rail, and the selected segment is filled: a menu
+   item tells you where it goes, a setting has to tell you where it IS — which
+   is the one thing the floating corner switch deliberately does not say.
+
+   The track stays dark in BOTH themes on purpose: a control that restyled
+   itself would be the one thing on screen that changes shape when you use it,
+   and this is the control you are looking at while the page changes shape. */
 
 .theme-choice {
   display: grid;
@@ -11495,12 +11519,6 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
   color: #1b2230;
 }
-
-/* The demo rail has no account menu (nothing to sign out of), so it keeps this
-   on the footer line beside the Stripe pill — where three words do not fit.
-   Glyphs only there; the accessible names are on the buttons regardless. */
-.sidenav-footrow .theme-choice { flex: 0 0 auto; grid-template-columns: repeat(3, 1.9rem); }
-.sidenav-footrow .theme-choice-word { display: none; }
 
 .theme-choice-glyph { display: block; width: 0.85rem; height: 0.85rem; flex: 0 0 auto; }
 .theme-choice-glyph svg { display: block; width: 100%; height: 100%; }

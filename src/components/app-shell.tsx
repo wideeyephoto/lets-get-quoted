@@ -1022,8 +1022,17 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <span className="sidenav-account-name">Account</span>
             </Link>
 
-            {/* Whether money can actually reach this contractor. Its own row
-                rather than a line inside a menu — see the note above. */}
+            {/* Whether money can actually reach this contractor. Beside Account
+                rather than under it — see the note above.
+
+                THE LABEL IS SHORTER WHEN THE NEWS IS GOOD. Sharing a 244px line
+                means one of these two labels gives way, and "Stripe connected"
+                is the one that can: the pill is green, the "$" tile is green and
+                it carries a green underline, so the word "connected" was the
+                fourth thing saying so. "Connect Stripe" keeps every word — it is
+                an instruction, not a status — and the CSS lets the pill take a
+                line of its own rather than truncate that. The title says the
+                whole sentence in both states. */}
             <Link
               href={STRIPE_SETUP_HREF}
               className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
@@ -1031,7 +1040,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             >
               <span className="stripe-status-tile" aria-hidden="true">$</span>
               <span className="stripe-status-label">
-                {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
+                {stripeOnboarded === null ? 'Checking…' : stripeOnboarded ? 'Stripe' : 'Connect Stripe'}
               </span>
             </Link>
           </div>

@@ -4,7 +4,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ActionIcon from './action-icon';
-import ThemeToggle from './theme-toggle';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
@@ -225,29 +224,24 @@ export default function DemoSidebar() {
         </nav>
 
         {/* Same footer as the real rail — a prospect should not be shown a
-            layout the product does not have. The live one collapses Account,
-            Help, theme and sign-out into a single menu; the demo has no session
-            to sign out of and no support queue, so it shows the trigger's
-            resting state and keeps the Stripe pill beside it, which is where
-            the real rail keeps it too. */}
+            layout the product does not have. Account and Stripe, one line, and
+            nothing else: the live rail's menu is gone and its theme control
+            moved to the Account page and the floating switch, which the demo
+            renders too (see /demo/layout.tsx). It says "Account", not "Sample
+            account": the two pills share a 244px line and the word "Sample" is
+            what pushed them onto two — and a page that opens with "You're
+            viewing a live demo" does not need the rail to say it again. */}
         <div className="sidenav-foot">
-          <div className="sidenav-account-wrap">
-            <Link href="/demo/settings" className="sidenav-account">
-              <NavIcon href="/dashboard/settings" />
-              <span className="sidenav-account-name">Sample account</span>
-            </Link>
-          </div>
-          {/* The theme switch stays OUT here, where the live rail tucks it into
-              the menu. A demo visitor has no account and nothing to sign out
-              of, so there is no menu to open — and this is the one control
-              somebody reading the demo outdoors actually reaches for. */}
-          <div className="sidenav-footrow">
-            <ThemeToggle />
-            <span className="stripe-status-pill sidenav-stripe connected" title="Payouts connected in this sample account">
-              <span className="stripe-status-tile" aria-hidden="true">$</span>
-              <span className="stripe-status-label">Stripe connected</span>
-            </span>
-          </div>
+          <Link href="/demo/settings" className="sidenav-account">
+            <NavIcon href="/dashboard/settings" />
+            <span className="sidenav-account-name">Account</span>
+          </Link>
+          <span className="stripe-status-pill sidenav-stripe connected" title="Payouts connected in this sample account">
+            <span className="stripe-status-tile" aria-hidden="true">$</span>
+            {/* One word, like the live rail — the green tile and underline are
+                already saying "connected" twice. */}
+            <span className="stripe-status-label">Stripe</span>
+          </span>
         </div>
       </aside>
     </>
