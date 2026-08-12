@@ -26,6 +26,7 @@ import QuoteDocument from './QuoteDocument';
 import QuoteAcceptance, { QuoteApproved, QuoteOptionsUpdate } from './QuoteAcceptance';
 import { QuoteBottomBar, QuoteDeckProvider, type PayMode } from './QuoteDeck';
 import ScheduleChoice from './ScheduleChoice';
+import ScheduleLockedOptions from './ScheduleLockedOptions';
 import PayChoice from './PayChoice';
 import ChangeOrders from './ChangeOrders';
 import { createAdminClient } from '@/lib/auth';
@@ -347,13 +348,54 @@ export default async function ClientJobDashboardPage({
     </section>
   );
 
-  const scheduleSection = plan?.status === 'pending_deposit' ? null : scheduleOpen && dashboard.depositBlocksScheduling ? (
+  // The dates the contractor offered, whether or not they can be picked yet.
+  const scheduleOptions = (dashboard.scheduleRequest?.options ?? []).map((option, index) => ({
+    label: formatScheduleOption(option),
+    index,
+  }));
+
+  /* THE DATES ARE ALWAYS SHOWN. WHETHER THEY CAN BE PICKED IS A SEPARATE THING.
+     ------------------------------------------------------------------------
+     Two states stand between a customer and a start date: a deposit their
+     contractor requires before scheduling, and a payment plan still waiting on
+     its first payment. The second used to render NOTHING AT ALL — a homeowner
+     who had been texted "here are three dates" opened the page, found no dates
+     and no explanation, and had no way to tell whether the offer was real.
+
+     Both now show the offer and name the one thing in the way. Seeing "Aug 18"
+     behind a lock is what makes "set up payment" worth doing; an empty space
+     where dates should be just reads as broken.
+
+     Selection before approval is NOT one of these states, deliberately: picking
+     a date on an unapproved quote approves it and books it in one step, which
+     is a step saved, not a gate skipped. */
+  const scheduleSection = scheduleOpen && plan?.status === 'pending_deposit' ? (
+    <section className="panel workspace-section-card client-attention-card" id="dates">
+      <div className="section-heading workspace-section-heading">
+        <p className="eyebrow">Your start dates</p>
+        <h2>Set up payment to pick your date</h2>
+      </div>
+      <p className="workspace-card-copy">
+        {dashboard.businessName} has offered these start times. Choose how you&apos;d like to pay and they unlock —
+        nothing is booked until you pick one.
+      </p>
+      <ScheduleLockedOptions options={scheduleOptions} />
+      <Link href="#plan" className="btn primary client-attention-cta">Set up payment</Link>
+    </section>
+  ) : plan?.status === 'pending_deposit' ? null : scheduleOpen && dashboard.depositBlocksScheduling ? (
     <section className="panel workspace-section-card client-attention-card" id="dates">
       <div className="section-heading workspace-section-heading">
         <p className="eyebrow">One step first</p>
         <h2>Pay your deposit to unlock scheduling</h2>
       </div>
-      <p className="workspace-card-copy">Your contractor requires a deposit before you can choose a start date. Once it&apos;s paid, your scheduling options appear here.</p>
+      <p className="workspace-card-copy">
+        Your contractor requires a deposit before you can choose a start date. These are the times they&apos;ve
+        offered — once the deposit is paid, you can pick one.
+      </p>
+      {/* Shown here too. The old copy promised the options "appear here" once
+          paid, which meant the page was describing something it could have been
+          showing all along. */}
+      <ScheduleLockedOptions options={scheduleOptions} />
       {depositPayment ? (
         <div className="cost-list">
           <Link href={`/pay/${depositPayment.id}`} className="cost-item client-attention-link">
@@ -381,7 +423,7 @@ export default async function ClientJobDashboardPage({
           : 'Pick the start time that works best. Your contractor will see your choice immediately.'}
       </p>
       <ScheduleChoice
-        options={dashboard.scheduleRequest!.options.map((option, index) => ({ label: formatScheduleOption(option), index }))}
+        options={scheduleOptions}
         selectAction={selectClientJobScheduleOptionAction.bind(null, params.token)}
         differentAction={requestDifferentClientJobScheduleOptionsAction.bind(null, params.token)}
         awaitingApproval={awaitingApproval}

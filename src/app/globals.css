@@ -31009,6 +31009,39 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   color: var(--cbrand, #ff8a3d);
   font-weight: 800;
 }
+/* Dates that are on offer but not yet pickable.
+   ---------------------------------------------------------------------------
+   Same cards, dimmed, with a padlock where the tick goes. They are a <ul> of
+   <li>, not a disabled fieldset — see ScheduleLockedOptions for why — so all of
+   the interactive styling has to be turned off by hand rather than inherited
+   from :disabled.
+
+   Dimmed, NOT hidden and not greyed to illegibility: the whole point is that a
+   customer can read "Aug 18, 8:00 AM" and decide the payment step is worth
+   doing. 0.62 keeps the date above 4.5:1 on this card in both themes. */
+.date-choice-locked { list-style: none; margin: 0 0 0.9rem; padding: 0; }
+.date-card.is-locked {
+  cursor: default;
+  opacity: 0.62;
+}
+/* The card rule sets these for a control; a list item is not one. */
+.date-card.is-locked:hover {
+  border-color: var(--edge-t16);
+  transform: none;
+}
+.date-card.is-locked .date-card-tick {
+  display: grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  color: inherit;
+}
+.date-card.is-locked .date-card-tick svg { width: 100%; height: 100%; }
+
+/* The way out of the locked state, under the dates it unlocks. */
+.client-attention-cta { margin-top: 0.2rem; }
+
 .date-choice-note { display: grid; gap: 0.3rem; width: 100%; font-size: 0.8rem; font-weight: 700; }
 /* The note box wears the cards' clothes.
    ---------------------------------------------------------------------------

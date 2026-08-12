@@ -317,6 +317,70 @@ describe('there is one quote treatment, not a choice of three', () => {
   });
 });
 
+/* --- dates you can see but not yet pick --------------------------------------- */
+
+describe('the offered dates are shown even when they cannot be chosen yet', () => {
+  const page = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
+  const locked = read('src', 'app', 'client', 'jobs', '[token]', 'ScheduleLockedOptions.tsx');
+
+  /**
+   * A payment plan awaiting its deposit used to render the whole dates section
+   * as null. A homeowner who had been texted "here are three dates" opened the
+   * page, found no dates and no explanation, and could not tell whether the
+   * offer was real.
+   */
+  it('renders #dates while a plan is awaiting its deposit', () => {
+    expect(page).toContain("scheduleOpen && plan?.status === 'pending_deposit'");
+    const block = page.slice(page.indexOf("scheduleOpen && plan?.status === 'pending_deposit'"));
+    expect(block.slice(0, 1200)).toContain('id="dates"');
+    expect(block.slice(0, 1200)).toContain('<ScheduleLockedOptions');
+  });
+
+  /** The deposit-gate state showed a card that PROMISED the options would
+   *  appear once paid — while holding them the whole time. */
+  it('shows them behind a deposit gate too', () => {
+    const block = page.slice(page.indexOf('depositBlocksScheduling ? ('));
+    expect(block.slice(0, 1600)).toContain('<ScheduleLockedOptions');
+  });
+
+  /**
+   * Not a disabled form. A radio a screen reader announces and then refuses to
+   * operate is worse than a list that never claimed to be a control.
+   */
+  it('is a list, with no input to tab onto', () => {
+    expect(locked).toContain('<ul');
+    expect(locked).not.toContain('<input');
+    expect(locked).not.toContain('disabled');
+    expect(locked).toContain('aria-hidden');
+  });
+
+  /** Readable, not greyed into decoration — the date is the reason to act. */
+  it('dims the card without hiding the date', () => {
+    const rule = css.slice(css.indexOf('.date-card.is-locked {'), css.indexOf('}', css.indexOf('.date-card.is-locked {')));
+    const opacity = Number(rule.match(/opacity:\s*([\d.]+)/)?.[1] ?? 0);
+    expect(opacity).toBeGreaterThanOrEqual(0.6);
+    expect(css).toContain('.date-choice-locked');
+    expect(lite).toContain('.date-card.is-locked');
+  });
+
+  /**
+   * Selecting a date on an UNAPPROVED quote still approves and books it in one
+   * step. That is a step saved, not a gate skipped, and locking it would have
+   * added a round trip to every booking.
+   */
+  it('leaves the one-step approve-and-book path alone', () => {
+    const choice = read('src', 'app', 'client', 'jobs', '[token]', 'ScheduleChoice.tsx');
+    expect(choice).toContain('Approve quote and book this date');
+    // The pickable branch is reached on `scheduleOpen` alone. Approval is not
+    // one of the conditions in the chain, so an unapproved quote still gets a
+    // real picker rather than the locked list.
+    const section = page.slice(page.indexOf('const scheduleSection'), page.indexOf('const scheduledSection'));
+    expect(section).toContain(') : scheduleOpen ? (');
+    expect(section).toContain('<ScheduleChoice');
+    expect(section).not.toContain('!awaitingApproval');
+  });
+});
+
 /* --- the page wears the contractor, not us ---------------------------------- */
 
 describe('the whole page is painted in the contractor’s color', () => {
