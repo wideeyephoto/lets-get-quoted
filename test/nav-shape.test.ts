@@ -12,6 +12,7 @@ const SETTINGS = read('src', 'app', 'dashboard', 'settings', 'page.tsx');
 const TABS = read('src', 'app', 'dashboard', 'settings', 'SettingsTabs.tsx');
 const AUTOMATIONS = read('src', 'app', 'dashboard', 'automations', 'page.tsx');
 const GLOBALS = read('src', 'app', 'globals.css');
+const LITE = read('src', 'app', 'globals-lite.css');
 
 /**
  * The shape of the rail, which nothing pinned before this.
@@ -199,25 +200,32 @@ describe('the Account row', () => {
   });
 });
 
-describe('the ? on every dashboard page', () => {
-  it('is drawn by the shell, because there is no shared page header', () => {
-    expect(SHELL).toContain('page-help-fab');
-    expect(SHELL).toContain('href="/dashboard/help"');
+/**
+ * THE ? IS GONE, AND SUPPORT IS UNDER ACCOUNT.
+ *
+ * A permanent overlay has to earn its square inch on every screen it covers,
+ * not only the one where somebody is stuck — and this one covered all ~35
+ * dashboard pages, bottom-right on a phone, where the thumb rests.
+ */
+describe('support does not float over the product', () => {
+  it('draws no help button on any page', () => {
+    expect(SHELL).not.toContain('page-help-fab');
+    expect(GLOBALS).not.toContain('page-help-fab');
+    expect(LITE).not.toContain('page-help-fab');
+  });
+
+  /** Removing the shortcut is only safe because the destination is reachable. */
+  it('leaves support reachable from Account in one step', () => {
+    expect(SETTINGS).toContain('id="support"');
+    expect(SETTINGS).toContain('/dashboard/help');
+    expect(SHELL).toContain('className={`sidenav-account');
   });
 
   /**
-   * showAppRail is true for a signed-in owner on the marketing site and the
-   * homepage too, so gating on it would float a support button over the
-   * pricing page.
+   * The theme switch stays floating, and the difference is the point: "I cannot
+   * read this screen" is about THIS page at THIS moment. Wanting help is not.
    */
-  it('is gated on isDashboard, not on showAppRail', () => {
-    const fab = SHELL.slice(SHELL.indexOf('page-help-fab') - 400, SHELL.indexOf('page-help-fab'));
-    expect(fab).toContain('{isDashboard ?');
-  });
-
-  it('keeps clear of the mobile top bar', () => {
-    expect(GLOBALS).toContain('.page-help-fab {');
-    const mobile = GLOBALS.slice(GLOBALS.indexOf('.page-help-fab {'));
-    expect(mobile).toMatch(/@media \(max-width: 900px\) \{[\s\S]*?\.page-help-fab \{[\s\S]*?bottom: 0\.9rem/);
+  it('does not take the theme switch with it', () => {
+    expect(SHELL).toContain('<ThemeFab />');
   });
 });

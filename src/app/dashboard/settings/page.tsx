@@ -257,8 +257,8 @@ export default async function SettingsPage({
                     <h2>Help &amp; support</h2>
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.9rem' }}>
-                    Ask us anything and track the answer. The <strong>?</strong> in the corner of every
-                    page opens the same place.
+                    Ask us anything and track the answer. This is where support lives — there is no
+                    longer a <strong>?</strong> floating over every page.
                   </p>
                   <Link href="/dashboard/help" className="btn secondary">Open help &amp; support</Link>
                 </section>

@@ -158,33 +158,6 @@ export default function LeadActionDeck({
 
   return (
     <div className={styles.actionDeck} data-layout={layout} ref={gearRef}>
-      <div className={styles.deckGear}>
-        <button
-          type="button"
-          className={styles.deckGearBtn}
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          title="Switch layout"
-          onClick={() => setMenuOpen((value) => !value)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
-        {menuOpen ? (
-          <div className={styles.deckGearPop} role="menu">
-            <p>Action layout</p>
-            <button type="button" role="menuitemradio" aria-checked={layout === 'guided'} className={styles.deckGearOpt} onClick={() => choose('guided')}>
-              Guided next step <small>Default</small>
-            </button>
-            <button type="button" role="menuitemradio" aria-checked={layout === 'primary'} className={styles.deckGearOpt} onClick={() => choose('primary')}>
-              One primary + actions
-            </button>
-          </div>
-        ) : null}
-      </div>
-
       {layout === 'guided' ? (
         <div className={styles.deckGuided}>
           <div className={styles.nba} data-tone={stage === 'lost' ? 'muted' : stage === 'won' ? 'win' : undefined}>
@@ -225,6 +198,43 @@ export default function LeadActionDeck({
           {triage}
         </div>
       )}
+
+      {/* THE LAYOUT SWITCH, AT THE FOOT — AND IT SAYS SO.
+          It was an unlabelled gear floating at the top-right of this card, which
+          on a phone put it directly under the lead's name and its "(edit)" link:
+          two small controls, stacked, one of which edits the customer. It read
+          as "edit this lead" and it is nothing of the kind — it changes how YOUR
+          actions are arranged, on every lead, for you. So it sits below the
+          thing it arranges, after the work rather than over it, and it names
+          both what it does and which layout is on. */}
+      <div className={styles.deckGear}>
+        <button
+          type="button"
+          className={styles.deckGearBtn}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          onClick={() => setMenuOpen((value) => !value)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>
+            Action layout<span className={styles.deckGearNow}>{layout === 'guided' ? 'Guided next step' : 'One primary + actions'}</span>
+          </span>
+        </button>
+        {menuOpen ? (
+          <div className={styles.deckGearPop} role="menu">
+            <p>Action layout</p>
+            <button type="button" role="menuitemradio" aria-checked={layout === 'guided'} className={styles.deckGearOpt} onClick={() => choose('guided')}>
+              Guided next step <small>Default</small>
+            </button>
+            <button type="button" role="menuitemradio" aria-checked={layout === 'primary'} className={styles.deckGearOpt} onClick={() => choose('primary')}>
+              One primary + actions
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

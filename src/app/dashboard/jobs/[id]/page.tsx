@@ -394,8 +394,11 @@ export default async function JobDetailPage({
           <div className="job-title-row">
             <h1 className="workspace-title job-hero-title">{jobTitle}</h1>
             <span className="job-hero-ref">{job.ref}</span>
+            {/* Names the noun. This opens Job details — the client's name and
+                phone, the schedule, the crew — and sits one link away from
+                "Client profile", which opens somebody else's record entirely. */}
             <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`} className="job-title-edit-link">
-              (edit)
+              Edit job
             </Link>
             {job.client_id ? (
               <Link href={`/dashboard/clients/${job.client_id}`} className="job-title-edit-link">Client profile ↗</Link>

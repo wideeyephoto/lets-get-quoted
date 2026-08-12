@@ -197,18 +197,29 @@
 
 /* ---- Lead action deck: switchable layout + gear ---- */
 .actionDeck { position: relative; display: grid; gap: .85rem; padding: 1rem 1rem .95rem; border: 1px solid var(--edge-t08); border-radius: 14px; background: rgba(var(--tint), .02); }
-.deckGear { position: absolute; top: .7rem; right: .7rem; z-index: 5; }
-.deckGearBtn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--edge-t14); background: rgba(var(--tint), .05); color: rgba(var(--tint), .7); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-.deckGearBtn svg { width: 17px; height: 17px; }
+/* A FOOTER ROW, NOT A FLOATING GEAR. It used to be absolutely positioned at the
+   card's top-right, which on a phone landed it under the lead's name beside the
+   "(edit)" link — an unlabelled 34px square next to the control that edits the
+   customer. Now it sits at the foot, in flow, above a hairline, with words. */
+.deckGear { position: relative; z-index: 5; margin-top: .15rem; padding-top: .7rem; border-top: 1px solid var(--rule-t08); display: flex; justify-content: flex-end; }
+.deckGearBtn { display: inline-flex; align-items: center; gap: .5rem; min-height: 34px; padding: .3rem .7rem; border-radius: 9px; border: 1px solid var(--edge-t14); background: rgba(var(--tint), .05); color: rgba(var(--tint), .7); font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; text-align: left; }
+.deckGearBtn svg { width: 15px; height: 15px; flex: 0 0 auto; }
+/* The layout that is ON, named. A switch that shows neither what it controls
+   nor where it currently stands is a switch you have to press to find out. */
+.deckGearNow { display: block; font-size: .68rem; font-weight: 600; color: var(--mute-t45); }
 .deckGearBtn:hover { color: var(--text); border-color: var(--cedge-orange-71); }
 .deckGearBtn[aria-expanded="true"] { color: var(--accent); border-color: var(--cedge-orange-25); background: rgba(255,122,33,.1); }
-.deckGearPop { position: absolute; top: 42px; right: 0; width: 250px; z-index: 45; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--edge-t12); border-radius: 12px; background: var(--bg-3); box-shadow: 0 24px 60px rgba(var(--shade), .5); }
+/* Opens UPWARD now that the button is at the bottom of the card. */
+.deckGearPop { position: absolute; bottom: calc(100% - .4rem); right: 0; width: 250px; z-index: 45; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--edge-t12); border-radius: 12px; background: var(--bg-3); box-shadow: 0 24px 60px rgba(var(--shade), .5); }
 .deckGearPop > p { margin: 0; padding: 8px 10px 4px; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mute-t45); }
 .deckGearOpt { display: flex; align-items: center; gap: .5rem; width: 100%; text-align: left; font: inherit; font-size: .85rem; font-weight: 600; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 8px; padding: .55rem .6rem; cursor: pointer; }
 .deckGearOpt:hover { background: rgba(var(--tint), .05); }
 .deckGearOpt[aria-checked="true"] { background: rgba(255,122,33,.12); border-color: var(--cedge-orange-51); }
 .deckGearOpt small { margin-left: auto; font-size: .58rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--cedge-orange-51); border-radius: 5px; padding: 1px 5px; }
-.deckGuided, .deckPrimary { display: grid; gap: .8rem; padding-right: 2.4rem; }
+/* The 2.4rem gutter that used to keep this clear of the floating gear went with
+   it. On a phone that reserved space was a tenth of the card's width, held open
+   for a button that is no longer up there. */
+.deckGuided, .deckPrimary { display: grid; gap: .8rem; }
 .nba { display: flex; align-items: center; gap: .8rem; padding: .85rem; border: 1px solid var(--cedge-orange-51); border-radius: 12px; background: rgba(255,122,33,.1); flex-wrap: wrap; }
 .nbaIcon { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 11px; background: linear-gradient(135deg, #ff5a1f, #ff8a3d); display: flex; align-items: center; justify-content: center; font-size: 19px; }
 .nbaText { flex: 1; min-width: 140px; display: grid; gap: 2px; }

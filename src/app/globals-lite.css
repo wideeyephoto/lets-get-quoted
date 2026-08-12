@@ -2611,59 +2611,6 @@ h3 {
 .sidenav-account .sidenav-ic { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; }
 .sidenav-account-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* The ? every dashboard page carries, drawn by the shell because there is no
-   shared page header to put it in (see the note at its call site).
-
-   TOP-RIGHT, NOT BOTTOM-RIGHT. The bottom-right corner on a phone is where the
-   thumb rests and where this product's own action bars sit; a floating button
-   there covers the control you were about to press. Up here it sits in the dead
-   space beside a page title, which every one of these pages has whether or not
-   it wears a .workspace-hero.
-
-   Deliberately quiet: it is a way out when something has gone wrong, not a
-   call to action, and it must never out-shout the page's own primary button. */
-.page-help-fab {
-  position: fixed;
-  top: 0.9rem;
-  right: 0.9rem;
-  z-index: 30;
-  display: inline-grid;
-  place-items: center;
-  /* 40px, and 44 on touch below. */
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--edge-t10);
-  border-radius: 999px;
-  background: rgba(var(--panel-rgb), 0.82);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  color: var(--mute-t62);
-  font-size: 1.05rem;
-  font-weight: 800;
-  line-height: 1;
-  text-decoration: none;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-.page-help-fab:hover,
-.page-help-fab:focus-visible {
-  color: var(--text);
-  border-color: var(--cedge-orange-51);
-  background: rgba(255, 122, 33, 0.12);
-  outline: none;
-}
-.page-help-fab:focus-visible { box-shadow: 0 0 0 2px var(--cedge-orange-51); }
-
-@media (max-width: 900px) {
-  /* Clear of the mobile top bar, which is fixed and owns the top of the screen.
-     Sitting under it would put the ? behind the Menu button. */
-  .page-help-fab {
-    top: auto;
-    bottom: 0.9rem;
-    right: 0.9rem;
-    width: 44px;
-    height: 44px;
-  }
-}
 .stripe-status-pill.sidenav-stripe {
   order: 0;
   width: 100%;

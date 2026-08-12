@@ -230,8 +230,12 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <p className="eyebrow">Lead details</p>
           <div className={styles.leadTitleRow}>
             <h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1>
+            {/* "(edit)" — of what? It sat under a person's name on three
+                different pages meaning three different things, and on the lead
+                page it sat beside the layout gear as well. Naming the noun is
+                what tells you this opens the LEAD, not the customer's record. */}
             <Link href={editLeadHref} className="job-title-edit-link">
-              (edit)
+              Edit lead
             </Link>
           </div>
           <div className={styles.detailBadges}>

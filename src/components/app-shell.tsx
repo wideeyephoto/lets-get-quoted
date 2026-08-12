@@ -1047,36 +1047,29 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         </aside>
 
         <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`} ref={mainRef}>
-          {/* HELP, FROM ANY PAGE, WITHOUT HUNTING FOR IT.
-              Help moved into the Account menu, which is right — it belongs with
-              the things you look for under your own name — but a menu is one
-              click of indirection, and the moment somebody needs support is the
-              moment they have least patience for indirection. So the shell
-              draws a small ? as well.
+          {/* THE ? IS GONE. Support lives under Account.
 
-              IT IS RENDERED HERE, BY THE SHELL, AND IT HAS TO BE. There is no
-              shared page header in this app: 20 of the ~35 dashboard pages draw
-              their own .workspace-hero, Help draws a different one from its own
-              CSS module, and the rest — Leads, Jobs, Schedule, Messages, Crew,
-              Insights, Quick Stops — have neither. "Put a ? in the page header"
-              would have meant editing twenty files and inventing a header for
-              fifteen more. This is a sibling of {children}, exactly like the
-              lead alert below it, which the shell already injects into the page
-              for the same reason.
+              It floated over all ~35 dashboard pages — top-right on desktop,
+              bottom-right on a phone — and a permanent overlay has to earn its
+              square inch on every screen it covers, not just the one where
+              somebody is stuck. Support is not a per-page action: it is a thing
+              you go and find, once, and Account is where you look for the
+              things that belong to you rather than to the job in front of you.
+              See dashboard/settings#support.
 
-              Gated on isDashboard, NOT on showAppRail. showAppRail is true for a
-              signed-in owner on the marketing site and the homepage too, so an
-              ungated ? would float over the pricing page. */}
-          {isDashboard ? (
-            <Link href="/dashboard/help" className="page-help-fab" title="Ask us a question" aria-label="Help and support">
-              <span aria-hidden="true">?</span>
-            </Link>
-          ) : null}
+              The theme switch below stays floating, and the difference is the
+              point: "I cannot read this screen" is a statement about THIS page
+              at THIS moment, and a control for it that lives two taps away in a
+              settings page has failed on the occasion it exists for. Wanting
+              help is not like that. */}
           {/* LIGHT/DARK, ONE TAP, FROM ANYWHERE. ALWAYS.
-              Same argument as the ? above, and rendered by the shell for the
-              same reason — there is no shared page header to hang it on.
+              Rendered by the shell because there is no shared page header in
+              this app to hang it on: 20 of the ~35 dashboard pages draw their
+              own .workspace-hero and the rest — Leads, Jobs, Schedule,
+              Messages, Crew, Insights, Quick Stops — have none at all. It is a
+              sibling of {children}, exactly like the lead alert below it.
 
-              Ungated, unlike the ?, and at every width: this is the only
+              At every width and on every page: this is the only
               control in the product whose whole job is "I cannot read this
               screen right now", and a control for that which is missing on
               some pages, or only under 1080px, has failed on exactly the

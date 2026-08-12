@@ -62,7 +62,16 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Client</p>
-          <h1 className="workspace-title">{client.name}</h1>
+          {/* The lead and job pages both carry an edit link beside the name and
+              this one never did — so the page with the MOST about a person was
+              the one where changing their details meant scrolling to find the
+              form. Named for the same reason the other two now are. */}
+          <div className="job-title-row">
+            <h1 className="workspace-title">{client.name}</h1>
+            <Link href="#client-profile" className="job-title-edit-link">
+              Edit client
+            </Link>
+          </div>
           <div className="workspace-inline-row">
             {jobs.length > 1 ? <span className="status-badge status-complete">Repeat customer</span> : null}
             <span className="workspace-inline-note">
@@ -186,7 +195,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             </div>
           ) : null}
 
-          <div className="panel workspace-section-card sticky-card">
+          <div id="client-profile" className="panel workspace-section-card sticky-card">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Profile</p>
               <h2>Contact &amp; notes</h2>
