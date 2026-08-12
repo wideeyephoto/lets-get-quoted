@@ -289,7 +289,24 @@
 .actionPanel :global(.schedule-option-grid) { grid-template-columns: 1fr; }
 .actionForm { display: grid; gap: .65rem; padding-top: .5rem; }
 .actionForm label { color: var(--mute-t58); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
-.actionForm input, .actionForm select, .actionForm textarea { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid var(--edge-t15); border-radius: 6px; background: rgba(var(--tint), .06); color: var(--text); }
+/* TEXT BOXES ONLY. `width: 100%; min-height: 42px` on every descendant input
+   sized CHECKBOXES too: the "Also let them pay in full" box came out 952px
+   wide and 42px tall, which pushed its own label clean outside the card and
+   left it wrapping one word per line down the right-hand margin.
+
+   Two other blocks in this file already had to undo this by hand
+   (.sms-consent-check and .termsOption both restate a 16-17px size), which is
+   the tell — the rule was wrong, not the three places that patched around it.
+   The next checkbox added to this form would have broken the same way.
+
+   THE :not() IS INSIDE A :where(), and that is the whole trick. A bare
+   :not([type='checkbox']) adds specificity, which lifts this rule above the
+   narrower ones written to override it — `.planInline input { width: 4.5rem }`
+   is (0,1,1), and raising this to (0,2,1) silently blew the "50 % now" box out
+   to half the row. :where() contributes ZERO, so the selector still weighs
+   exactly what it always did and every existing override lands where it always
+   landed. The only thing that changed is what it matches. */
+.actionForm input:where(:not([type='checkbox'], [type='radio'])), .actionForm select, .actionForm textarea { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid var(--edge-t15); border-radius: 6px; background: rgba(var(--tint), .06); color: var(--text); }
 .actionForm textarea { resize: vertical; }
 .actionForm :global(.sms-consent-check) { display: grid; grid-template-columns: 17px minmax(0, 1fr); align-items: start; }
 .actionForm :global(.sms-consent-check input) { width: 17px; min-height: 17px; height: 17px; padding: 0; }
@@ -331,10 +348,16 @@
 .planInline input { width: 4.5rem; }
 .planInline em { color: var(--mute-t62); font-style: normal; font-size: .82rem; }
 .planHint { margin: 0; color: var(--mute-t60); font-size: .76rem; line-height: 1.45; }
-/* Whether the plan is an offer or the only route. See DepositField. */
-.planAllowFull { display: flex; align-items: flex-start; gap: .5rem; cursor: pointer; }
-.planAllowFull input { margin-top: .2rem; flex: none; }
-.planAllowFull span { display: grid; gap: .12rem; }
+/* Whether the plan is an offer or the only route. See DepositField.
+
+   A two-column grid with a fixed first track rather than flex, matching
+   .sms-consent-check above: the width of the box is stated once, by the
+   layout, so nothing it inherits can decide it instead. It also sits in the
+   card like the fields above it now — it was flush against the left edge while
+   everything else was inside .planRow's padding. */
+.planAllowFull { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: .55rem; margin-top: .15rem; padding-top: .6rem; border-top: 1px solid var(--cedge-amber-12); cursor: pointer; }
+.planAllowFull input { width: 16px; height: 16px; min-height: 0; margin: .18rem 0 0; padding: 0; accent-color: var(--gold-ink); }
+.planAllowFull span { display: grid; gap: .12rem; min-width: 0; }
 .planAllowFull strong { font-size: .84rem; }
 .planAllowFull small { color: var(--mute-t60); font-size: .74rem; line-height: 1.45; }
 @media (max-width: 560px) { .planRow { grid-template-columns: 1fr; } }
