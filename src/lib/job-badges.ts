@@ -266,8 +266,8 @@ export function buildPipelineChecklist(
   const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
   // Named for the thing it actually is. "Client view" was a phrase that appeared
   // nowhere else in the product; the customer's running record of the job is the
-  // Job Feed, on the page headed Job Feed, reached by a link this row is about.
-  const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Job Feed not shared yet';
+  // page they open from the link this row is about.
+  const feedDetail = activeClientLinkCount > 0 ? 'Client page shared' : 'Client page not shared yet';
   const startedLabel = formatStartedOn(job.started_at ?? null);
 
   return [

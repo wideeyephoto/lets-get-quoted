@@ -5187,6 +5187,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   background: rgba(var(--tint), 0.03);
 }
 .quote-agreed-lines li.is-addon > span { color: var(--muted); }
+/* Past the date the customer was given. The one state worth a color. */
+.job-subnav-count.is-overdue { background: var(--accent); color: var(--on-accent); }
 
 /* An anchor landing under the sticky bar is an anchor that missed — and on a
    phone there are TWO bars to clear, the app's fixed one and this subnav
@@ -5197,6 +5199,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 #quote-breakdown,
 #job-feed,
 #request-payment,
+#selections,
 #job-details {
   scroll-margin-top: calc(var(--appbar-h) + 3.75rem);
 }

@@ -78,12 +78,12 @@ describe('the header badge and the pipeline checklist agree', () => {
     }
   });
 
-  /** And the Job Feed link keeps being reported — in the detail line, which is
-   *  where it belongs, rather than by silently deciding the step. */
-  it('says whether the Job Feed link exists, either way', () => {
+  /** And the client page link keeps being reported — in the detail line, which
+   *  is where it belongs, rather than by silently deciding the step. */
+  it('says whether the client page link exists, either way', () => {
     const approvedNoLink = job({ quoted_amount: 11800, status: 'in_progress' });
-    expect(checklist(approvedNoLink)[0].detail).toContain('Job Feed not shared yet');
-    expect(checklist(approvedNoLink, [], [], 1)[0].detail).toContain('Job Feed shared');
+    expect(checklist(approvedNoLink)[0].detail).toContain('Client page not shared yet');
+    expect(checklist(approvedNoLink, [], [], 1)[0].detail).toContain('Client page shared');
   });
 
   // The whole point of the rename: "Add quote" and "Send quote" were three
@@ -212,8 +212,8 @@ describe('no step claims something that has not happened', () => {
 
 describe('checklist details', () => {
   it('reports the quote amount and whether the feed link is out', () => {
-    expect(checklist(job({ quoted_amount: 11800 }))[0].detail).toBe('$11,800 quoted · Job Feed not shared yet');
-    expect(checklist(job({ quoted_amount: 11800 }), [], [], 1)[0].detail).toBe('$11,800 quoted · Job Feed shared');
+    expect(checklist(job({ quoted_amount: 11800 }))[0].detail).toBe('$11,800 quoted · Client page not shared yet');
+    expect(checklist(job({ quoted_amount: 11800 }), [], [], 1)[0].detail).toBe('$11,800 quoted · Client page shared');
   });
 
   it('does not talk about sharing a link for a job with no price', () => {

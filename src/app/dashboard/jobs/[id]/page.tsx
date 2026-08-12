@@ -636,7 +636,7 @@ export default async function JobDetailPage({
                 </Link>
               ) : null}
               <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}#job-feed`}>
-                <strong>{activeClientLinkCount > 0 ? 'Open the client Job Feed' : 'Share the client Job Feed'}</strong>
+                <strong>View the live client page</strong>
                 <small>{activeClientLinkCount > 0 ? 'Shared and live' : 'Not shared yet'}</small>
               </Link>
               <div className="job-actions-item is-control">
@@ -723,6 +723,14 @@ export default async function JobDetailPage({
       <nav className="job-subnav" aria-label="Jump to a section">
         <a href="#job-top">Overview</a>
         <a href="#checklist">Work</a>
+        {/* Only ever a link, never a badge that exists to be decorative: the
+            count appears when the job is actually stopped on somebody else. */}
+        <a href="#selections">
+          Choices
+          {selectionStatus.waiting > 0 ? (
+            <span className={`job-subnav-count${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>{selectionStatus.waiting}</span>
+          ) : null}
+        </a>
         <a href="#quote-breakdown">Quote</a>
         <a href="#job-feed">Feed</a>
         <a href="#request-payment">Money</a>
@@ -910,6 +918,43 @@ export default async function JobDetailPage({
         <TaskAddForm action={addJobTaskAction.bind(null, job.id)} />
       </details>
 
+      {/* THE CUSTOMER'S HALF OF THE WORK, out of the bottom of the page.
+          This sat inside #job-costs — the grid of expenses, margin and ROI —
+          below the scheduling panel, three screens past anything anybody opens
+          this page for. Selections are not a cost record: they are the list of
+          decisions the JOB is stopped on, and a job stalled on a tile choice
+          looks exactly like a job that is going fine until you scroll to the
+          end of it.
+
+          So it sits with the punch list, which is the other answer to "what is
+          outstanding", and above the feed, because a choice nobody has made is
+          the thing the next feed entry is waiting for.
+
+          Open whenever anything is waiting, not only when something is late —
+          the point of asking early is to stop it becoming late. And it keeps
+          its id, because the completion preflight links here. */}
+      <details
+        id="selections"
+        className="panel workspace-section-card workspace-details job-action-details"
+        open={selectionStatus.waiting > 0}
+      >
+        <summary className="workspace-details-summary job-action-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Selections</p>
+            <h2>
+              Colors, materials &amp; fixtures
+              {/* The same shape the punch list uses two sections up, so two
+                  lists of outstanding work read the same way. */}
+              {selections.length > 0 ? ` · ${selections.length - selectionStatus.waiting}/${selections.length} chosen` : ''}
+            </h2>
+          </div>
+          <span className={`workspace-details-copy${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>
+            {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
+          </span>
+        </summary>
+        <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} lastSentAt={lastSelectionSent} />
+      </details>
+
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Job feed</p>
@@ -1074,12 +1119,12 @@ export default async function JobDetailPage({
             <div className="job-feed-share-strip">
               <div>
                 <strong>
-                  {hasActiveClientView ? `Job Feed shared with ${job.client_name}` : 'Job Feed not shared yet'}
+                  {hasActiveClientView ? `Client page shared with ${job.client_name}` : 'Client page not shared yet'}
                 </strong>
                 <p>
                   {hasActiveClientView
                     ? 'Payment links, invoices and every update marked for the feed appear on one page they can open any time.'
-                    : `${job.client_name} can see the quote you sent them. This is the separate running feed of updates, payments and invoices — it needs its own link.`}
+                    : `${job.client_name} can see the quote you sent them. The client page is the separate running record of updates, payments and invoices — it needs its own link.`}
                 </p>
                 {/* Only worth saying when there is something waiting behind a
                     door nobody has been given a key to. */}
@@ -1090,19 +1135,29 @@ export default async function JobDetailPage({
                 ) : hasActiveClientView ? (
                   <span>Shared client access is active</span>
                 ) : (
-                  <span>No Job Feed link has been created</span>
+                  <span>No client page link has been created</span>
                 )}
               </div>
+              {/* ONE BUTTON, ONE PRESS, AND IT SAYS WHERE IT GOES.
+                  Three labels stood here for one destination — "Client View",
+                  "Open their Job Feed", "Share client Job Feed" — and two of
+                  them took two presses: the first minted a link and came back
+                  to this page, and only then did a real link appear. It is the
+                  customer's page; the button says so and opens it. */}
               <div className="job-feed-share-actions">
                 {clientViewHref ? (
-                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">Open their Job Feed</a>
-                ) : hasActiveClientView ? (
-                  <form action={boundCreateClientJobLink}>
-                    <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">Open their Job Feed</SaveButton>
-                  </form>
+                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">
+                    View the live client page
+                  </a>
                 ) : (
                   <form action={boundCreateClientJobLink}>
-                    <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Share client Job Feed</SaveButton>
+                    <SaveButton
+                      className={hasActiveClientView ? 'btn secondary' : 'btn primary'}
+                      pendingLabel="Opening…"
+                      savedLabel="Opening…"
+                    >
+                      View the live client page
+                    </SaveButton>
                   </form>
                 )}
               </div>
@@ -1702,25 +1757,6 @@ export default async function JobDetailPage({
                   ))}
                 </div>
               )}
-            </details>
-
-            {/* Open when the job is waiting on the customer. A stalled job is
-                the thing an owner most needs to see, and it's the whole reason
-                "waiting on homeowner" is a status rather than a feeling. */}
-            {/* Named, because the completion preflight links here — see
-                completionPreflight. An anchor that lands on nothing is worse
-                than no anchor at all. */}
-            <details id="selections" className="panel workspace-section-card workspace-details job-action-details" open={selectionStatus.overdue > 0}>
-              <summary className="workspace-details-summary job-action-summary">
-                <div className="section-heading workspace-section-heading compact-heading">
-                  <p className="eyebrow">Selections</p>
-                  <h2>Colors, materials &amp; fixtures</h2>
-                </div>
-                <span className={`workspace-details-copy${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>
-                  {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
-                </span>
-              </summary>
-              <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} lastSentAt={lastSelectionSent} />
             </details>
 
             {/* Open by default once the work is done: that is the moment a

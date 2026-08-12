@@ -251,11 +251,25 @@ describe('booking an estimate visit reviews it first', () => {
  * had made.
  */
 describe('quote access and Job Feed access are named separately', () => {
-  it('stops claiming the customer can see a feed with no link to it', () => {
-    expect(JOB_PAGE).toContain('Job Feed not shared yet');
-    expect(JOB_PAGE).toContain('Share client Job Feed');
+  it('stops claiming the customer can see a page with no link to it', () => {
+    expect(JOB_PAGE).toContain('Client page not shared yet');
     expect(code(JOB_PAGE)).not.toContain('Client view not shared');
     expect(code(JOB_PAGE)).not.toContain('Create client view link');
+  });
+
+  /**
+   * ONE DESTINATION, ONE NAME, ONE PRESS.
+   *
+   * Three labels stood on one button — "Client View", "Open their Job Feed",
+   * "Share client Job Feed" — and two of them took two presses: the first
+   * minted a link and came back to the job page, and only then did a real link
+   * appear.
+   */
+  it('names the destination and goes there', () => {
+    expect(JOB_PAGE).toContain('View the live client page');
+    expect(code(JOB_PAGE)).not.toContain('Open their Job Feed');
+    expect(code(JOB_PAGE)).not.toContain('Share client Job Feed');
+    expect(read('src', 'app', 'dashboard', 'jobs', 'actions.ts')).toContain('redirect(`/client/jobs/${token}`)');
   });
 
   it('says the quote already reached them, which is the separate thing', () => {

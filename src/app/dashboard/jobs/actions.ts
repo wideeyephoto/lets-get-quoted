@@ -1003,7 +1003,22 @@ export async function createClientJobLinkAction(jobId: string) {
     visibility: 'internal',
   });
 
-  redirect(`/dashboard/jobs/${jobId}?tab=feed&clientToken=${token}`);
+  /**
+   * STRAIGHT TO THE PAGE, not back to this one with a token in the URL.
+   *
+   * The old redirect landed on the job page again and turned the button into a
+   * link, so seeing what the customer sees took two presses — mint, then open.
+   * One press now: "View the live client page" opens the live client page.
+   *
+   * IT DOES MINT A LINK, every time, and that is a consequence rather than a
+   * choice: client_job_access stores only the token's HASH, so an existing
+   * link cannot be read back and reused — there is nothing to open but a new
+   * one. Every link stays valid until revoked, so the customer's own keeps
+   * working; the cost is that an owner who checks the page three times leaves
+   * three live ways in. Worth knowing before this grows an owner-side preview
+   * route, which is the real fix.
+   */
+  redirect(`/client/jobs/${token}`);
 }
 
 export async function revokeClientJobLinkAction(jobId: string) {
