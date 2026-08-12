@@ -183,16 +183,22 @@ describe('queue, calendar, open job — three columns', () => {
   });
 
   /**
-   * 1600, NOT 1440, AND THE MEASUREMENT IS WHY. The nav is 244px plus its
-   * gutter, so a 1440 laptop has ~1150px here; two 320px rails and two gaps
-   * leave the calendar ~494px — 70px per weekday, narrower than the ~82px this
-   * pass exists to fix, and arrived at by fixing something else.
+   * 1760, AND THE MEASUREMENT IS WHY — the two earlier numbers were estimates
+   * and both were wrong in the same direction.
+   *
+   * This grid measures viewport minus 338px (the docked nav plus the page
+   * gutters) at 1440, 1600 and 1920 alike. The rails then take their GROWTH
+   * LIMITS, not their minimums — an fr track only sees free space after a
+   * minmax() track has filled to its max — so the pair costs 340 + 380 + 36 of
+   * gap, not the 620 the 1600 guess assumed. At 1600 that left the calendar
+   * 506px: 68px per weekday, worse than the ~82px this pass exists to fix.
+   * 1760 leaves 666px, which is 95px per weekday.
    */
   it('adds the third column only where it is affordable', () => {
-    expect(CSS).toContain('@media (min-width: 1600px) {\n  .schedule-workbench { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px); }');
+    expect(CSS).toContain('@media (min-width: 1760px) {\n  .schedule-workbench { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px); }');
     // The component's own breakpoint has to agree, or the panel announces
     // itself as a modal dialog while sitting in a docked column.
-    expect(BENCH).toContain("window.matchMedia('(min-width: 1600px)')");
+    expect(BENCH).toContain("window.matchMedia('(min-width: 1760px)')");
   });
 
   /** 1280 is UnscheduledQueue's own breakpoint: below it the queue is a

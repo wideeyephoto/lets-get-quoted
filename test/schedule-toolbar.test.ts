@@ -52,6 +52,56 @@ describe('the calendar view switcher', () => {
 });
 
 /**
+ * ONE ROW, AND IT TOOK MOVING TWO THINGS OUT OF IT TO GET THERE.
+ *
+ * Measured before: 85px tall — two rows — at 1920, 1440, 1366 and 1024 alike,
+ * because the nav (304px) and the controls (600px) could not both fit a calendar
+ * column that is 728px at its widest. Measured after: 46px at every one of them,
+ * plus 1760, 768 and 640.
+ */
+describe('the calendar toolbar is one row', () => {
+  /**
+   * The compaction rules used to be @media queries, written when the calendar
+   * WAS the page. It is a column in a three-column workbench now, so at 1920 the
+   * window says "huge" and the calendar has 728px — the labels stayed on at
+   * exactly the widths where the row was breaking.
+   */
+  it('measures itself against the column, not the window', () => {
+    expect(GLOBALS).toContain('.calendar-toolbar-wrap { container: caltoolbar / inline-size; }');
+    expect(GLOBALS).toContain('@container caltoolbar (max-width: 720px)');
+    expect(CALENDAR).toContain('<div className="calendar-toolbar-wrap">');
+    // The old window-width version has to be gone, or it fires as well and the
+    // labels vanish on a wide window with a wide calendar.
+    expect(GLOBALS).not.toContain('@media (max-width: 900px) {\n  .calendar-view-quick-btn');
+  });
+
+  /**
+   * The container is the toolbar's own box and NOT the panel: `container-type`
+   * implies `contain: layout`, which makes the element a containing block for
+   * fixed-position descendants — on the panel that would re-anchor the job
+   * dialog and the drag ghost onto the calendar.
+   */
+  it('scopes the container to the toolbar rather than the panel', () => {
+    expect(GLOBALS).not.toMatch(/\.schedule-calendar-panel \{[^}]*container-type/);
+  });
+
+  /** Nothing in it belongs to a phone: the agenda has its own day nav, its own
+   *  Day/Dates tabs and its own Today. Hiding three of its four children and
+   *  leaving the row was how the phone ended up showing two weekend chips and
+   *  nothing else — measured 308px wide at 390. */
+  it('does not render on a phone at all', () => {
+    expect(GLOBALS).toContain('.calendar-toolbar-wrap { display: none; }');
+    expect(GLOBALS).not.toContain('.calendar-toolbar .calendar-view-menu { display: none; }');
+  });
+
+  /** It existed for one caller passing one control, which moved out — and then
+   *  nobody passed it, so it rendered `undefined` into the row at every width. */
+  it('has no leftover slot for controls nobody passes', () => {
+    expect(stripJs(CALENDAR)).not.toContain('toolbarActions');
+  });
+});
+
+/**
  * The rail toggle is gone. It read "Show jobs (10)" one row under a stat that
  * read "10 · Ready to book" and linked to the same rail — the same number and
  * the same destination, twice.

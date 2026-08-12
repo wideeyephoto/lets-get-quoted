@@ -6925,6 +6925,20 @@ li + li { margin-top: 0.45rem; }
   .calendar-year-grid { grid-template-columns: 1fr; }
 }
 
+/* THE TOOLBAR MEASURES ITSELF AGAINST THE COLUMN, NOT THE WINDOW.
+   Every rule that used to compact this row was a @media query, written when the
+   calendar WAS the page. It is a column in a three-column workbench now, so at
+   1920 the window says "huge" and the calendar has 728px — which is how a
+   toolbar built to fit ended up 85px tall at every width measured. A container
+   query asks the only question that matters: how much room is there HERE.
+
+   The wrapper exists because an element cannot query itself. It is deliberately
+   the toolbar's own box and not the panel: `container-type` implies
+   `contain: layout`, which makes the element a containing block for fixed
+   descendants — on the panel that would re-anchor the job dialog and the drag
+   ghost. The views menu is a portal to <body>, so it is outside this. */
+.calendar-toolbar-wrap { container: caltoolbar / inline-size; }
+
 .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin: 0 0 .75rem; }
 .calendar-hint { margin: 0; color: var(--mute-t50); font-size: .82rem; }
 /* The group is ringed in cool light; the segment you're on is filled with the
@@ -6969,10 +6983,12 @@ li + li { margin-top: 0.45rem; }
    separate pills do not. */
 .calendar-view-menu { display: flex; align-items: center; gap: 0.45rem; margin-left: auto; }
 
+/* No inner padding, so the buttons themselves are the full height of the group
+   and a 44px target is a 44px target. With 2px of padding the group measured
+   33px and the pressable part of it 27px. */
 .calendar-view-quick {
   display: inline-flex;
   align-items: stretch;
-  padding: 2px;
   border: 1px solid var(--cedge-sky-6);
   border-radius: 12px;
   background: rgba(58, 160, 255, 0.05);
@@ -6982,9 +6998,10 @@ li + li { margin-top: 0.45rem; }
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.32rem 0.62rem;
+  min-height: 44px;
+  padding: 0 0.7rem;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 11px;
   background: transparent;
   color: var(--mute-t62);
   font: inherit;
@@ -7014,33 +7031,51 @@ li + li { margin-top: 0.45rem; }
 
 .calendar-view-quick-btn:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.8); outline-offset: 2px; }
 
-/* Below the tablet breakpoint the toolbar is already wrapping; the labels go
-   and the icons carry the three, which keeps them one press rather than
-   pushing them back into the menu. */
-@media (max-width: 900px) {
-  .calendar-view-quick-btn { padding: 0.32rem 0.5rem; font-size: 0; gap: 0; }
-  .calendar-view-quick-btn svg { width: 1.05rem; height: 1.05rem; }
+/* WHEN THE COLUMN GETS TIGHT, THE WORDS GO AND THE ICONS STAY.
+   Measured against the toolbar's own width, so it fires on a 690px calendar
+   inside an 1440px window — which the old `@media (max-width: 900px)` version
+   never did, and that is the width where the row was breaking. Icons keep the
+   three one press away rather than pushing them back into the menu.
+
+   720px is the number because it is what the row needs with the labels on:
+   nav 328 + views 246 + menu 109 + gaps 24 = 707. */
+@container caltoolbar (max-width: 720px) {
+  .calendar-view-quick-btn { padding: 0 0.62rem; font-size: 0; gap: 0; }
+  .calendar-view-quick-btn svg { width: 1.15rem; height: 1.15rem; }
 }
 
+/* Tighter still: the menu button drops to its icon. A safety net rather than a
+   width anything reaches on a desktop — below 640px this whole toolbar is
+   replaced by the mobile agenda's own controls. */
+@container caltoolbar (max-width: 560px) {
+  .calendar-view-trigger { padding: 0 0.55rem; }
+  .calendar-view-trigger-text { display: none; }
+}
+
+/* QUIETER THAN THE GROUP BESIDE IT, NOT LOUDER.
+   This carried two glows — a blue outer and a blue inset — which made the way
+   to the four views you rarely visit the brightest object in the row, beside a
+   segmented control for the three you live in that has neither. Same border,
+   same background, no glow: they read as one family of view controls. */
 .calendar-view-trigger {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.4rem 0.7rem;
+  min-height: 46px;
+  padding: 0 0.7rem;
   border: 1px solid var(--cedge-sky-6);
   border-radius: 12px;
   background: rgba(58, 160, 255, 0.05);
-  box-shadow: 0 0 14px rgba(58, 160, 255, 0.16), inset 0 0 12px rgba(58, 160, 255, 0.05);
   color: var(--text);
   font: inherit;
   cursor: pointer;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
 .calendar-view-trigger:hover,
 .calendar-view-trigger.open {
   border-color: var(--cedge-orange-27);
-  box-shadow: 0 0 18px rgba(255, 122, 33, 0.32), inset 0 0 12px rgba(255, 122, 33, 0.06);
+  background: rgba(255, 122, 33, 0.08);
 }
 
 .calendar-view-trigger:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.8); outline-offset: 2px; }
@@ -7066,6 +7101,7 @@ li + li { margin-top: 0.45rem; }
   align-items: center;
   gap: 0.6rem;
   width: 100%;
+  min-height: 44px;
   padding: 0.5rem 0.55rem;
   border: 0;
   border-radius: 10px;
@@ -7084,6 +7120,87 @@ li + li { margin-top: 0.45rem; }
 .calendar-view-option-text strong { font-size: 0.82rem; font-weight: 800; }
 .calendar-view-option-text small { font-size: 0.7rem; color: var(--mute-t50); }
 .calendar-view-option-tick { flex: none; color: var(--accent); font-weight: 900; font-size: 0.8rem; }
+
+/* ---- Day columns, in the same menu -------------------------------------
+   Saturday and Sunday used to be two chips in the toolbar. They are switches
+   for what the grid draws, which is what this menu is for, and as chips they
+   cost the row 224px in every month — see CalendarDayColumns for the whole
+   argument. Separated by a rule and a heading so a checkbox is never mistaken
+   for one of the views above it. */
+.calendar-col-group { margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--edge-t10); }
+
+.calendar-col-heading {
+  margin: 0 0 0.15rem;
+  padding: 0 0.55rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--mute-t45);
+}
+
+/* Filled or empty, never colour alone: the state has to survive a monochrome
+   screen and a red-green eye. */
+.calendar-col-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  border: 1.5px solid var(--edge-t22);
+  border-radius: 5px;
+  color: var(--on-accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendar-col-box[data-on] { border-color: var(--cedge-orange-38); background: var(--accent); }
+
+/* Hidden AND holding work — the one state that is not a preference. Amber, and
+   the same amber the toolbar's notice uses, so the two are obviously the same
+   fact said in two places. */
+.calendar-col-option[data-hiding] .calendar-col-box { border-color: var(--cedge-orange-54); }
+.calendar-col-option[data-hiding] .calendar-view-option-text small { color: var(--ink-amber-1); }
+
+/* ---- "3 jobs are booked on a day the calendar is not showing" -----------
+   The same shape as .calendar-view-swapped above it, deliberately: both say
+   what is missing from the grid and both carry the way to get it back. Amber
+   rather than that one's dashed grey, because a view standing down at a narrow
+   window is an explanation and work you cannot see is not. */
+.calendar-hidden-days {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.45rem;
+  margin: 0 0 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--cedge-orange-54);
+  border-radius: 10px;
+  background: rgba(255, 176, 32, 0.1);
+  color: var(--ink-amber-1);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.calendar-hidden-days svg { width: 1rem; height: 1rem; flex: none; }
+.calendar-hidden-days > span { min-width: 0; }
+
+.calendar-hidden-days button {
+  min-height: 44px;
+  padding: 0 0.55rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.calendar-hidden-days button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
 .calendar-view-empty {
   margin: 1.5rem 0;
@@ -19386,22 +19503,25 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   transition: border-color 0.16s ease, background 0.16s ease;
 }
 
+/* 44px, not the 32px these measured. They are the most-pressed controls on the
+   calendar and two of them are circles the size of a fingertip's error. The row
+   does not get taller for it: the view controls beside them are 46px. */
 .month-nav-arrow {
-  width: 2rem;
-  height: 2rem;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   font-size: 0.95rem;
 }
 
 .month-nav-today {
-  height: 2rem;
-  padding: 0 0.75rem;
+  min-height: 44px;
+  padding: 0 0.85rem;
   border-radius: 999px;
   font-size: 0.78rem;
 }
 
 .month-nav-arrow:hover,
-.month-nav-today:hover {
+.month-nav-today:not([aria-disabled='true']):hover {
   border-color: var(--cedge-orange-38);
   background: rgba(255, 122, 41, 0.1);
 }
@@ -19599,118 +19719,21 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 /* ---------------------------------------------------------------------------
-   Weekend-column chips, bottom-right of the calendar
+   THE WEEKEND CHIPS ARE GONE FROM HERE.
 
-   Replaced a gear + popover holding two switches. Modelled on the map legend —
-   a pill you click to show or hide a slice of what is drawn, carrying its own
-   count — but written here rather than sharing .pin-map-legend-item, whose
-   rules belong to the map and carry its pin colours.
+   Two pills reading "Saturday 0 / Sunday 0", 224px of a 728px toolbar, in every
+   month with no weekend work — and the reason that row measured 85px tall at
+   1920, 1440, 1366 and 1024 alike. The switches are rows in the views menu now
+   (.calendar-col-*) and the one fact worth interrupting for has its own object
+   (.calendar-hidden-days). See CalendarDayColumns.tsx for the argument.
+
+   The row itself stays: it holds the recurring-visits note.
 --------------------------------------------------------------------------- */
 
 .calendar-days-row {
   display: flex;
   justify-content: flex-end;
   margin-top: 0.45rem;
-}
-
-.calendar-days-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-
-.calendar-days-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.42rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid var(--edge-g20);
-  background: rgba(var(--tint), 0.05);
-  color: rgba(var(--grey-6), 0.9);
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 650;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-}
-.calendar-days-chip:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.85); outline-offset: 2px; }
-
-/* The count is the reason the chip exists, so it stays legible when the rest
-   of the chip dims — tabular so the two line up at any width. */
-.calendar-days-chip b {
-  font-size: 0.82rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
-}
-
-.calendar-days-chip-dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.85;
-  flex: none;
-}
-
-/* Two steps on one light-blue ramp: same family, so they read as a pair of
-   weekend days rather than two unrelated states, but far enough apart to tell
-   which is which without reading the word. Blue and not the page's orange
-   because these switch a column on and off — they are not an alert, and the
-   amber below is, so that state has to stay the only warm thing here. */
-.calendar-days-chip[data-day='sat'] {
-  border-color: var(--cedge-teal-16);
-  background: rgba(56, 189, 248, 0.14);
-  color: var(--ink-sky-8);
-}
-/* :not([data-hiding]) is load-bearing. A bare :hover here is (0,3,0) and the
-   amber warning below is (0,2,0), so hovering a chip that was warning "there
-   are jobs on a day you can't see" repainted it back to the ordinary day blue
-   — while its text stayed amber. Hover is also the moment right before the
-   click, so the warning was disappearing exactly when it was being read. */
-.calendar-days-chip[data-day='sat']:not([data-hiding]):hover {
-  border-color: var(--cedge-teal-17);
-  background: rgba(56, 189, 248, 0.22);
-}
-.calendar-days-chip[data-day='sun'] {
-  border-color: var(--cedge-sky-11);
-  background: rgba(147, 197, 253, 0.11);
-  color: var(--ink-blue);
-}
-.calendar-days-chip[data-day='sun']:not([data-hiding]):hover {
-  border-color: var(--cedge-sky-12);
-  background: rgba(147, 197, 253, 0.19);
-}
-
-/* Off: dimmed, with the DAY NAME struck through — the same shape the map legend
-   uses, so "this is switched off" reads the same way in both places. The dot
-   goes hollow so the state survives without colour vision.
-
-   The strike is on the label, not the button. A text-decoration set on an
-   ancestor is painted across every descendant inline box and a child CANNOT
-   remove it — `.calendar-days-chip[data-off] b { text-decoration: none }` sat
-   here doing nothing, and the count was struck through with the word. The count
-   is the whole reason the chip exists ("8 Saturday jobs you can't see"), so it
-   is the one thing that must stay readable when the day is switched off. */
-.calendar-days-chip[data-off] { opacity: 0.45; }
-.calendar-days-chip[data-off] .calendar-days-chip-label { text-decoration: line-through; text-decoration-thickness: 1px; }
-.calendar-days-chip[data-off] .calendar-days-chip-dot { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
-
-/* Off AND holding work. This is the state the old gear buried behind a click:
-   jobs are booked on a day that is not on screen. Amber rather than dimmed —
-   it is not "off", it is "off and you are missing something". */
-.calendar-days-chip[data-hiding] {
-  opacity: 1;
-  border-color: var(--cedge-orange-54);
-  background: rgba(255, 176, 32, 0.12);
-  color: var(--ink-amber-1);
-}
-.calendar-days-chip[data-hiding] b { opacity: 1; }
-.calendar-days-chip[data-hiding]:hover {
-  border-color: var(--cedge-orange-55);
-  background: rgba(255, 176, 32, 0.2);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .calendar-days-chip { transition: none; }
 }
 
 /* Hint + setup shortcuts, under the grid */
@@ -21971,14 +21994,13 @@ a.bset-card { color: inherit; text-decoration: none; }
 .es-how-body > * { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { .es-how-chev { transition: none; } }
 
-/* Plan my day sits with the view switcher; they wrap together on narrow. */
+/* The right-hand end of the toolbar: the hidden-days warning when there is one,
+   and the view menu. `nowrap` is deliberate — these two have to stay on the
+   nav's line, and the container queries above are what makes room for them
+   rather than a second row. Below 640px the whole toolbar is gone. */
 .calendar-toolbar-actions {
   display: flex; align-items: center; gap: 0.6rem;
-  flex-wrap: wrap; margin-left: auto;
-}
-@media (max-width: 620px) {
-  .calendar-toolbar-actions { width: 100%; margin-left: 0; }
-  .calendar-toolbar-actions > * { flex: 1 1 10rem; }
+  flex-wrap: nowrap; min-width: 0; margin-left: auto;
 }
 
 /* ---------------------------------------------------------------------------
@@ -27587,14 +27609,14 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   .calendar-desktop-views { display: none; }
   .sched-mobile { display: block; }
 
-  /* The month arrows and the five-view menu belong to the grid that is no
-     longer on screen; the agenda has its own day nav and its own Agenda/Month
-     control. "Plan my day" stays — it is about the day you are looking at. */
-  .calendar-toolbar .month-nav,
-  .calendar-toolbar .calendar-view-menu { display: none; }
-  .calendar-toolbar { margin-bottom: 0.6rem; }
-  .calendar-toolbar-actions { flex: 1 1 100%; }
-  .calendar-toolbar-actions > * { width: 100%; justify-content: center; }
+  /* THE WHOLE TOOLBAR GOES, not three of its four children.
+     Every control in it belongs to the desktop grid, which is not on the screen
+     here: the agenda has its own day nav, its own Day/Dates tabs and its own
+     Today. Hiding the month nav and the view menu but leaving the row was how
+     the phone ended up showing two weekend chips and nothing else — "Saturday
+     0 / Sunday 0", 308px wide, switching columns off a grid that is not there.
+     (Measured at 390: those two chips were the only thing left in it.) */
+  .calendar-toolbar-wrap { display: none; }
 
   /* Reclaimed for the date grid below. Seven columns need every pixel the
      panel is prepared to give up, and the agenda's cards supply their own
@@ -27881,6 +27903,7 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   min-height: 44px;
   padding: 0 0.85rem;
   border: 1px solid var(--edge-t16);
@@ -27892,6 +27915,10 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   font-weight: 700;
   cursor: pointer;
 }
+
+/* The count had no rules at all, so a <small> at inherited size and weight sat
+   flush against the label: "Plan this day's route3 stops". */
+.sched-cta-secondary small { font-size: 0.76rem; font-weight: 650; color: var(--mute-t55); }
 
 .sched-empty {
   margin: 0;
@@ -28868,13 +28895,19 @@ select optgroup {
    1280 IS THE QUEUE'S OWN BREAKPOINT, not a new one: below it UnscheduledQueue
    is a full-screen overlay, so a column reserved for it would be an empty gap.
 
-   THE THIRD COLUMN STARTS AT 1600, AND THAT NUMBER IS MEASURED.
-   It was 1440 first. The nav is 244px plus its gutter, so a 1440 laptop has
-   ~1150px here; two 320px rails and two gaps leave the calendar ~494px, which
-   is 70px per weekday -- narrower than the ~82px this whole pass exists to fix,
-   and arrived at by fixing something else. At 1600 the calendar gets ~668px,
-   and at 1920 ~868px. Below 1600 the detail is an overlay instead; see
-   .sched-detail.is-sheet. */
+   THE THIRD COLUMN STARTS AT 1760, AND THAT NUMBER IS MEASURED RATHER THAN
+   ESTIMATED -- twice, because the estimate was wrong both times.
+   It was 1440 first, then 1600 on an arithmetic guess that the nav and page
+   gutters cost 268px. They cost 338px: this grid measures viewport minus 338 at
+   1440, 1600 and 1920 alike. So 1600 was really 1262px of grid, and two rails
+   at their 340/380 growth limits plus two gaps left the calendar 506px --
+   68px per weekday, WORSE than the ~82px this whole pass exists to fix.
+   1760 gives 1422px of grid and a 666px calendar (95px per weekday); 1920 gives
+   786px. Below 1760 the detail is an overlay instead; see .sched-detail.is-sheet.
+
+   The rails take their MAX, not their min: a minmax() track fills to its growth
+   limit before an fr track sees any free space, which is why sizing this off
+   the 300px/320px minimums under-counted them by 100px. */
 .schedule-workbench {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -28893,7 +28926,7 @@ select optgroup {
   .schedule-calendar-panel { min-height: calc(100vh - 12rem); }
 }
 
-@media (min-width: 1600px) {
+@media (min-width: 1760px) {
   .schedule-workbench { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(320px, 380px); }
 }
 
@@ -30302,7 +30335,7 @@ body[data-schedule-overlay="job"] .sched-queue {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  min-height: 36px;
+  min-height: 44px;
   margin-right: 0.4rem;
   padding: 0.3rem 0.7rem;
   border: 1px solid var(--line);
@@ -30868,7 +30901,8 @@ body[data-schedule-overlay="job"] .sched-queue {
 @media (prefers-reduced-motion: reduce) {
   .schedule-drag-handle[data-just-focused] { animation: none; outline: 2px solid var(--accent); }
 }
-.month-nav-today:disabled { opacity: 0.45; cursor: default; }
+.month-nav-today:disabled,
+.month-nav-today[aria-disabled='true'] { opacity: 0.45; cursor: default; }
 
 /* ===========================================================================
    THE PUBLIC PAGES GET THEIR WIDTH BACK

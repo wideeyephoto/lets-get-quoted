@@ -66,7 +66,12 @@ export default function ScheduleMonthCapacity({
         <div className="calendar-weekday" key={day}>{WEEKDAY_LABELS[day]}</div>
       ))}
 
-      {weeks.map((week, weekIndex) =>
+      {/* A WEEK WITH NOTHING LEFT IN IT IS NOT A ROW.
+          August 2026 begins on a Saturday, so with the weekend columns switched
+          off its first week is Aug 1 and Aug 2 — both hidden — and the grid drew
+          a full-height band of empty cells above the 3rd. The row only exists to
+          hold days; when the days are all hidden there is nothing to hold. */}
+      {weeks.filter((week) => visibleDays.some((dayIndex) => week[dayIndex])).map((week, weekIndex) =>
         visibleDays.map((dayIndex) => {
           const cell = week[dayIndex];
           if (!cell) return <div className="sched-month-cell empty" key={`${weekIndex}-${dayIndex}`} />;

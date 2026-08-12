@@ -59,11 +59,11 @@ export default function ScheduleWorkbench({
    * hydration to disagree about, and CSS stays the single source of the
    * breakpoint. It has to MATCH the stylesheet's third-column query or the
    * panel announces itself as a modal dialog while sitting in a docked column,
-   * or the reverse — see the note on .schedule-workbench for why 1600.
+   * or the reverse — see the note on .schedule-workbench for why 1760.
    */
   const [docked, setDocked] = useState(false);
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 1600px)');
+    const query = window.matchMedia('(min-width: 1760px)');
     const sync = () => setDocked(query.matches);
     sync();
     query.addEventListener('change', sync);

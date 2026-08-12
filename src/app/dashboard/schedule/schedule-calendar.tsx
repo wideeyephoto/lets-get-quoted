@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import FloatingPanel from '@/components/floating-panel';
-import CalendarWeekendToggles from './CalendarWeekendToggles';
+import { DayColumnMenuRows, HiddenDaysNotice } from './CalendarDayColumns';
 import ScheduleMobileAgenda from './ScheduleMobileAgenda';
 import ScheduleTimeline, { type TimelineDayMeta } from './ScheduleTimeline';
 import ScheduleCrewLanes from './ScheduleCrewLanes';
@@ -85,6 +85,10 @@ function CalendarViewMenu({
   value,
   onChange,
   columns,
+  days,
+  onDaysChange,
+  weekendCounts,
+  showDayColumns,
 }: {
   value: CalendarView;
   onChange: (next: CalendarView) => void;
@@ -97,6 +101,12 @@ function CalendarViewMenu({
    * broken seven-day one. The button now says what it will actually give you.
    */
   columns: 7 | 3 | 1 | null;
+  /** The weekend switches, which are in here rather than on the row — see the
+      note at the top of CalendarDayColumns. */
+  days: WeekendDays;
+  onDaysChange: (next: WeekendDays) => void;
+  weekendCounts: { sat: number; sun: number };
+  showDayColumns: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -138,7 +148,9 @@ function CalendarViewMenu({
         className={`calendar-view-trigger${open ? ' open' : ''}${inMenu ? ' is-current' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={inMenu ? `Calendar view: ${current.label}. More views` : 'More calendar views'}
+        aria-label={
+          `${inMenu ? `Calendar view: ${current.label}. More views` : 'More calendar views'}${showDayColumns ? ' and day columns' : ''}`
+        }
       onClick={() => setOpen((current) => !current)}
       >
         <svg className="calendar-view-trigger-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -176,6 +188,12 @@ function CalendarViewMenu({
               {option.id === value ? <span className="calendar-view-option-tick" aria-hidden="true">✓</span> : null}
             </button>
           ))}
+          {/* Underneath the views, not instead of them: this menu is now
+              everything about what the grid draws, which is what stopped the
+              toolbar needing a second row of controls. */}
+          {showDayColumns ? (
+            <DayColumnMenuRows days={days} onChange={onDaysChange} counts={weekendCounts} />
+          ) : null}
         </div>
       </FloatingPanel>
     </div>
@@ -300,7 +318,6 @@ export default function ScheduleCalendar({
   blocks = [],
   fullDates = [],
   monthNav,
-  toolbarActions,
   weekendDays = { sat: true, sun: true },
   /* Matches normalizeCalendarView's default. A caller that passes no view (the
      demo) must not open on a different one from a real account with no cookie. */
@@ -335,9 +352,10 @@ export default function ScheduleCalendar({
   fullDates?: string[];
   /** Server-rendered month arrows + label, so they share the toolbar row. */
   monthNav?: ReactNode;
-  /** Sits beside the view switcher — Plan my day belongs with the controls that
-      decide what you're looking at, not floating under the stats. */
-  toolbarActions?: ReactNode;
+  /* NO `toolbarActions` SLOT ANY MORE. It existed for one caller passing one
+     control ("Plan my day"), which moved out of this toolbar when it stopped
+     being the loudest thing on a page about booking work — and then nobody
+     passed it, so it rendered `undefined` into the row at every width. */
   /** Seeded from the cookie server-side so the grid never flashes 7 columns. */
   weekendDays?: WeekendDays;
   /** Ditto for the shape of the calendar — see CALENDAR_VIEW_COOKIE. */
@@ -833,15 +851,21 @@ export default function ScheduleCalendar({
 
   return (
     <>
-      {/* Month nav and view switcher share one row. They were two separate
-          blocks stacked above each other, both about which dates you're
-          looking at.
+      {/* Month nav and view switcher share one row — and now they FIT on one,
+          which they did not before. Measured on this account at 1920, 1440,
+          1366 and 1024: 85px tall at every one of them, because the nav (304px)
+          and the controls (600px) could not both fit a calendar column that is
+          728px at its widest. Two of those controls have moved (the weekend
+          switches, into the menu; "Plan my day", out of here entirely) and the
+          rest compact against the COLUMN rather than the window — see
+          .calendar-toolbar-wrap. One row, 46px.
 
           WHICH NAV depends on the view, because they step different things. The
           month views are server-navigated (`?month=`) and the arrows are links,
           rendered upstream. The time views step by day in local state, so a
           month arrow there would jump you a month for no reason and reload the
           page to do it. */}
+      <div className="calendar-toolbar-wrap">
       <div className="calendar-toolbar">
         {TIME_VIEWS.has(effectiveView) ? (
           <div className="month-nav sched-range-nav">
@@ -889,28 +913,23 @@ export default function ScheduleCalendar({
           monthNav
         )}
         <div className="calendar-toolbar-actions">
-          {/* UP HERE, NOT UNDER THE MONTH.
-              "Show Saturday / show Sunday" widens the weekdays, which is a
-              thing you want while looking at a cramped week — and it lived
-              below the entire calendar, so you had to scroll past the problem
-              to reach the control for it. Same component, same counts; only
-              the address changed.
-
-              ONLY WHERE THERE ARE COLUMNS TO HIDE. These toggles do exactly one
-              thing: drop a day COLUMN from a grid. Week and Capacity are the
-              two views built out of day columns. Day and Crew day have a single
-              column and it is the one you picked; the Job list is days that
-              have work on them; Projects lays out every day of the month
-              regardless; Year has no days at all. In all five the control was
-              on screen, pressable, and inert — which is worse than absent,
-              because pressing it and watching nothing happen teaches you the
-              control is broken everywhere. */}
-          {COLUMN_VIEWS.has(effectiveView) ? (
-            <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
-          ) : null}
-          {toolbarActions}
-          <CalendarViewMenu value={calendarView} onChange={setCalendarView} columns={span} />
+          <CalendarViewMenu
+            value={calendarView}
+            onChange={setCalendarView}
+            columns={span}
+            days={days}
+            onDaysChange={updateDays}
+            weekendCounts={weekendJobCounts}
+            /* ONLY WHERE THERE ARE COLUMNS TO HIDE. Week and Capacity are the
+               two views built out of day columns. Day and Crew day show the
+               single day you picked; the Job list shows days that have work;
+               Projects lays out the whole month regardless; Year has no days at
+               all. Listing the switches there would be listing a control that
+               does nothing. */
+            showDayColumns={COLUMN_VIEWS.has(effectiveView)}
+          />
         </div>
+      </div>
       </div>
 
       {/* PHONES GET A DIFFERENT PAGE, NOT A NARROWER ONE. Both trees render and
@@ -960,6 +979,15 @@ export default function ScheduleCalendar({
               Show {VIEW_OPTIONS.find((option) => option.id === calendarView)?.label} anyway
             </button>
           </p>
+        ) : null}
+        {/* THE SECOND SENTENCE OF THE SAME KIND, and it belongs beside the
+            first: "what is on the grid is not everything" is a caption, not a
+            control. It started life in the toolbar and would not fit there — at
+            1920 the row is 728px and nav + notice + views wanted 1,021, so it
+            put the toolbar straight back onto the two rows this pass removed.
+            The switches it reports on are in the views menu. */}
+        {COLUMN_VIEWS.has(effectiveView) ? (
+          <HiddenDaysNotice days={days} onChange={updateDays} counts={weekendJobCounts} />
         ) : null}
         <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} showUnknown={hasUnknownDuration} />
       {effectiveView === 'day' || effectiveView === 'week' ? (

@@ -694,7 +694,16 @@ export default async function SchedulePage({
               <Link href={`/dashboard/schedule?month=${prevMonth}`} className="month-nav-arrow" aria-label="Previous month">←</Link>
               <h2 className="month-nav-label">{monthLabel}</h2>
               <Link href={`/dashboard/schedule?month=${nextMonth}`} className="month-nav-arrow" aria-label="Next month">→</Link>
-              {!viewingThisMonth && (
+              {/* ALWAYS ON THE ROW, disabled while you are already looking at
+                  this month — the same rule the Day/Week stepper follows. It
+                  used to appear only once you had navigated away, so the one
+                  month you never saw the control was the month you started in,
+                  and it never became a thing you knew was there. A span rather
+                  than a disabled link because there is no disabled state for an
+                  anchor; it keeps the shape and stops being a target. */}
+              {viewingThisMonth ? (
+                <span className="month-nav-today" aria-disabled="true" title="You are looking at this month">Today</span>
+              ) : (
                 <Link href={`/dashboard/schedule?month=${currentMonth}`} className="month-nav-today">Today</Link>
               )}
             </div>
