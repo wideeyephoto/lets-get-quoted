@@ -77,6 +77,7 @@ export default function QuoteBuilder({
   approvedTotal = 0,
   clientLabel = 'the customer',
   changeOrderHref,
+  printHref,
 }: {
   // Job page: persists on its own Save button. Lead form: omit action and pass
   // onItemsChange to feed a parent <form> (the form's submit does the saving).
@@ -92,6 +93,13 @@ export default function QuoteBuilder({
   clientLabel?: string;
   /** The cleaner route for extra work: bill the difference, not the whole job. */
   changeOrderHref?: string;
+  /**
+   * The printable estimate. Passed IN rather than left in the page's section
+   * heading so that the three things you can do to a quote sit on one row
+   * instead of one being up in the title bar and two buried below. Absent on
+   * the lead form, which has no job to print yet.
+   */
+  printHref?: string;
   // AI drafting, where a job's scope exists to draft from. Absent on the lead
   // form, which has no saved job yet.
   draftAction?: () => Promise<
@@ -464,32 +472,65 @@ export default function QuoteBuilder({
         </div>
       ) : null}
 
-      {draftAction ? (
-        <div className="quote-draft-bar">
-          <button type="button" className="btn secondary" onClick={runDraft} disabled={drafting}>
-            {drafting ? 'Drafting…' : '✨ Draft from the scope'}
-          </button>
-          <small>
-            Builds line items from this job&rsquo;s scope, priced from your price book. You review everything
-            before it goes anywhere.
-          </small>
+      {/* ONE ROW UNDER THE HEADING, NOT TWO STACKED BARS.
+          These were two full-width blocks, each a button beside a two-line
+          explanation of what it did — a hundred words of instruction above a
+          quote that had not been written yet, and the first thing on the
+          screen every time the page loaded. They are tools, and tools belong on
+          a toolbar: quiet, on one line, with the print button that was already
+          up in the heading.
+
+          The explanations move onto the buttons as titles rather than
+          disappearing. What they were mostly doing was reassuring somebody that
+          the AI would not send anything — and that promise is now kept
+          structurally rather than claimed: nothing an action produces is
+          applied until it is reviewed and accepted in the panel below. */}
+      {draftAction || reviewAction || printHref ? (
+        <div className="quote-head-actions">
+          <div className="quote-head-tools">
+            {draftAction ? (
+              <button
+                type="button"
+                className="quote-tool"
+                onClick={runDraft}
+                disabled={drafting}
+                title="Builds line items from this job’s scope, priced from your price book. You review everything before it goes anywhere."
+              >
+                <IconSpark />
+                {drafting ? 'Drafting…' : 'Draft from scope'}
+              </button>
+            ) : null}
+            {reviewAction ? (
+              /* Present but disabled with nothing to check, rather than
+                 appearing out of nowhere when the first line is typed. A
+                 control that materialises is one you have to notice; one that
+                 wakes up is one you were already looking at. */
+              <button
+                type="button"
+                className="quote-tool"
+                onClick={runReview}
+                disabled={reviewing || rows.length === 0}
+                title={
+                  rows.length === 0
+                    ? 'Add a line item first — there is nothing to check yet.'
+                    : 'Checks the margin against your floor, compares it to similar jobs you’ve done, and looks for work the description mentions that isn’t priced here.'
+                }
+              >
+                <IconLens />
+                {reviewing ? 'Checking…' : 'Check before sending'}
+              </button>
+            ) : null}
+          </div>
+          {printHref ? (
+            <a href={printHref} className="quote-print">
+              <IconPrinter />
+              Print estimate
+            </a>
+          ) : null}
         </div>
       ) : null}
 
       {draftError ? <p className="quote-draft-error">{draftError}</p> : null}
-
-      {reviewAction && rows.length > 0 ? (
-        <div className="quote-draft-bar">
-          <button type="button" className="btn secondary" onClick={runReview} disabled={reviewing}>
-            {reviewing ? 'Checking…' : '🔍 Check before sending'}
-          </button>
-          <small>
-            Checks the margin against your floor, compares it to similar jobs you&rsquo;ve done, and looks for work
-            the description mentions that isn&rsquo;t priced here.
-          </small>
-        </div>
-      ) : null}
-
       {reviewError ? <p className="quote-draft-error">{reviewError}</p> : null}
 
       {review ? <QuoteReview review={review} onDismiss={() => setReview(null)} /> : null}
@@ -945,5 +986,42 @@ function SubscriptionDraft({
         <button type="button" className="btn primary" onClick={onAdd} disabled={!draft.label.trim() || !(Number(draft.amount) > 0)}>Add plan</button>
       </div>
     </div>
+  );
+}
+
+/**
+ * The toolbar's three glyphs.
+ *
+ * Line art rather than the ✨ and 🔍 that were sitting inside the button
+ * labels: an emoji is a font, it renders at a different weight and color on
+ * every platform, and it cannot take the muted grey these buttons are set in.
+ * currentColor throughout, so they dim with the label when a button is
+ * disabled.
+ */
+function IconSpark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3.5 13.6 8 18 9.6 13.6 11.2 12 15.7 10.4 11.2 6 9.6 10.4 8Z" />
+      <path d="M18.5 15.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7ZM5.5 15.5l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4L3.6 17.4l1.4-.5Z" />
+    </svg>
+  );
+}
+
+function IconLens() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m15.5 15.5 4.5 4.5" />
+    </svg>
+  );
+}
+
+function IconPrinter() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 9V3.5h10V9" />
+      <path d="M5 9h14a2 2 0 0 1 2 2v5h-4M6 16H2v-5a2 2 0 0 1 2-2" />
+      <rect x="7" y="13.5" width="10" height="7" rx="1" />
+    </svg>
   );
 }

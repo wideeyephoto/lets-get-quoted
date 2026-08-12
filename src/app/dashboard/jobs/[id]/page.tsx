@@ -689,16 +689,22 @@ export default async function JobDetailPage({
       </details>
 
       <section id="quote-breakdown" className="panel workspace-section-card">
+        {/* The heading is the heading. Print moved down into QuoteBuilder's
+            toolbar to sit with the other two things you can do to a quote —
+            it was the only one of the three up here, which made it look like
+            the section's primary action rather than the one you reach for
+            last. */}
         <div className="section-heading workspace-section-heading">
           <div>
             <p className="eyebrow">Quote</p>
             <h2>Quote breakdown</h2>
           </div>
-          <Link href={`/dashboard/jobs/${job.id}/quote`} className="btn secondary">Print estimate →</Link>
         </div>
-        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-          Itemize the work and offer optional add-ons the client can accept on their quote page. The
-          quote total updates automatically. Leave this empty to keep the single quoted amount.
+        {/* Three sentences became one. The two it lost — that the total updates
+            itself, and what an empty list means — were explaining machinery
+            above a quote nobody had written yet. */}
+        <p className="workspace-details-copy" style={{ marginTop: '0.4rem', marginBottom: '0.9rem' }}>
+          Itemize the work, add optional upgrades, or leave this empty for one quoted amount.
         </p>
         <QuoteBuilder
           action={boundSaveQuoteItems}
@@ -706,6 +712,7 @@ export default async function JobDetailPage({
           autosaveKey={job.id}
           draftAction={draftQuoteAction.bind(null, job.id)}
           reviewAction={reviewQuoteAction.bind(null, job.id)}
+          printHref={`/dashboard/jobs/${job.id}/quote`}
           initialItems={quoteItems}
           quotedAmount={Number(job.quoted_amount) || 0}
           services={priceBook}

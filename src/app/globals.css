@@ -8308,9 +8308,69 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
    The panel answers one question before it asks for trust: whose number is
    this? So provenance is per line, and the lines that AREN'T the owner's
    price are the ones that stand out — never the other way round. */
-.quote-draft-bar { display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap; }
-.quote-draft-bar small { flex: 1; min-width: 240px; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t55); }
-.quote-draft-bar .btn { flex: 0 0 auto; }
+/* ── The quote toolbar ───────────────────────────────────────────────────────
+   Two stacked full-width bars became one row: the tools left, quiet, and Print
+   right as the only thing wearing a border. Each bar used to be a button beside
+   two lines explaining what it did — a hundred words of instruction sitting
+   above a quote that had not been written yet. */
+.quote-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+}
+.quote-head-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.35rem; }
+
+.quote-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 36px;
+  padding: 0 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  color: var(--mute-t62, var(--muted));
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+.quote-tool svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.quote-tool:hover:not(:disabled) { color: var(--text); background: rgba(var(--tint), 0.05); }
+.quote-tool:focus-visible { outline: none; border-color: var(--cedge-orange-51); color: var(--text); }
+/* Present but asleep, rather than absent. "Check before sending" used to appear
+   out of nowhere the moment a first line was typed; a control that materialises
+   is one you have to notice, a control that wakes up is one you were already
+   looking at. */
+.quote-tool:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.quote-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+.quote-print svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.quote-print:hover { color: var(--text); border-color: var(--cedge-orange-51); background: rgba(var(--tint), 0.07); }
+
+/* Phones: the row wraps, and what you press stays thumb-sized. */
+@media (max-width: 560px) {
+  .quote-head-actions { justify-content: flex-start; }
+  .quote-tool, .quote-print { min-height: 42px; }
+}
 
 .quote-draft-error {
   margin: 0;
