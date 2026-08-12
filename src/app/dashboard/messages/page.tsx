@@ -8,6 +8,7 @@ import { linkifyMessage } from '@/lib/message-linkify';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
+import { starterRepliesFor } from '@/lib/starter-replies';
 import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction, addPhoneAsClientAction } from './actions';
 import SavedReplies from './SavedReplies';
 import ComposeMessage from './ComposeMessage';
@@ -346,6 +347,7 @@ export default async function MessagesPage({
               <div className="inbox-reply-area">
                 <SavedReplies
                   templates={templates}
+                  starters={starterRepliesFor(activeName)}
                   targetId="reply-body"
                   createAction={createTemplateAction}
                   deleteAction={deleteTemplateAction}

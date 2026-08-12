@@ -22,12 +22,20 @@ type Template = { id: string; title: string; body: string };
 
 export default function SavedReplies({
   templates,
+  starters = [],
   targetId,
   createAction,
   deleteAction,
   canInsert = true,
 }: {
   templates: Template[];
+  /**
+   * The five every contractor sends, always present and never stored. See
+   * lib/starter-replies — the empty state used to ask somebody to sit down and
+   * write templates, which is work at exactly the moment they wanted less of
+   * it. Pressing one fills the box; it does not send.
+   */
+  starters?: Template[];
   targetId: string;
   createAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (templateId: string) => void | Promise<void>;
@@ -58,6 +66,22 @@ export default function SavedReplies({
   return (
     <div className="inbox-saved">
       <div className="quick-replies" aria-label="Saved replies">
+        {canInsert
+          ? starters.map((starter) => (
+              <button
+                key={starter.id}
+                type="button"
+                className="quick-reply-chip is-starter"
+                onClick={() => apply(starter.body)}
+                title={starter.body}
+              >
+                {starter.title}
+              </button>
+            ))
+          : null}
+        {canInsert && starters.length > 0 && templates.length > 0 ? (
+          <span className="quick-reply-rule" aria-hidden="true" />
+        ) : null}
         {canInsert
           ? templates.map((template) => (
               <button
@@ -102,7 +126,8 @@ export default function SavedReplies({
             </ul>
           ) : (
             <p className="inbox-saved-empty">
-              Nothing saved yet. Add one you send every week — “On my way”, or “Running about 20 min late.”
+              The five above come with the app and are always there. Add your own for the things only
+              you say — a gate code, a parking note, the way you word a deposit.
             </p>
           )}
 

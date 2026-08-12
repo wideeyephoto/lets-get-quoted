@@ -8476,6 +8476,18 @@ a.ropsrow-fact:hover { text-decoration: underline; }
   font-size: 1rem;
 }
 
+/* The five that ship with the app, told apart from the ones this contractor
+   wrote. Same shape, quieter fill: they are suggestions, and the replies
+   somebody took the trouble to save should not have to compete with them. */
+.quick-reply-chip.is-starter {
+  border-style: dashed;
+  border-color: var(--edge-t12);
+  background: none;
+  color: var(--muted);
+  font-weight: 700;
+}
+.quick-reply-chip.is-starter:hover { border-style: solid; border-color: #f59e0b; color: #fff; }
+
 /* The manager, INSIDE the composer.
    It used to be a `<details>` in a panel below the whole inbox, which on a
    1440x900 laptop started past the fold — you scrolled the reply box away to

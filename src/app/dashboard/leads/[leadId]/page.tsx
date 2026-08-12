@@ -5,13 +5,16 @@ import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
-import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
+import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, leadOverdueLabel, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { LEAD_STATUS_LABEL } from '@/lib/lead-detail-labels';
+import { resolveClientChannel } from '@/lib/client-channel';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, sendQuoteAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
+import QuoteSendGate from './QuoteSendGate';
+import { quoteShape } from './LeadQuoteFields';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
 import QuoteDeliveryPreview from './QuoteDeliveryPreview';
@@ -132,6 +135,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
   const triage = getLeadTriage(lead);
+  const overdueLabel = leadOverdueLabel(lead);
   const markLeadContacted = reopenLeadAction.bind(null, lead.id);
   const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
   const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
@@ -143,6 +147,21 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   // malformed number won't actually receive.
   const quotePreviewPhone = normalizeUsPhone(lead.phone ?? '');
   const quotePreviewEmail = lead.email?.trim() || null;
+  /* Who the quote actually reaches, said next to the button that sends it —
+     the same resolution the send makes, so the confirmation cannot describe a
+     delivery that will not happen. See lib/client-channel. */
+  const quoteRoute = resolveClientChannel({
+    phone: quotePreviewPhone,
+    email: quotePreviewEmail,
+    preference: triage.messageChannel ?? 'auto',
+    kind: 'requested',
+  });
+  const quoteRecipientLabel =
+    quoteRoute.channel === 'sms'
+      ? `a text to ${formatPhoneDashes(quotePreviewPhone as string)}`
+      : quoteRoute.channel === 'email'
+        ? `an email to ${quotePreviewEmail}`
+        : null;
   const hasScheduledEstimate = Boolean(lead.quote_visit);
   const workflowState = lead.converted_job ? 'converted' : hasScheduledEstimate ? 'estimateScheduled' : 'newLead';
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
@@ -165,7 +184,11 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
       ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}`
       : 'Open',
     detail: day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs),
-    bookingLabel: day.jobs.length + day.visits.length > 0 ? 'Book anyway' : 'Book visit',
+    /* TWO BUTTONS THAT BOTH SOUNDED LIKE BOOKING. "Book visit" put the visit
+       in the diary there and then; "+ Add" built a list of times to offer the
+       customer. Nothing on either said which. Now one names the commitment and
+       the other names the offer. */
+    bookingLabel: day.jobs.length + day.visits.length > 0 ? 'Book this time anyway' : 'Book this time',
     busy: day.jobs.length + day.visits.length > 0,
     isToday: day.key === dateKey(today),
     jobHints: day.jobs.slice(0, 3).map((job) => ({
@@ -243,7 +266,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span>
             <span className={styles.statusPill}>{LEAD_STATUS_LABEL[lead.status] ?? lead.status}</span>
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
-            {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Hot lead' : triage.score === 'low' ? 'Low priority' : 'Warm'}</span>}
+            {/* URGENCY, NOT FRESHNESS. "🔥 Hot lead" read as "this just came
+                in" and sat beside "Received 265h ago" without either giving
+                way. The score is a claim about the JOB — they said ASAP, the
+                estimate is high — so it says that, and whether anybody has
+                answered them is its own badge below. */}
+            {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Urgent request' : triage.score === 'low' ? 'Low priority' : 'Worth a look'}</span>}
+            {overdueLabel ? <span className={styles.overdueChip}>⏳ {overdueLabel}</span> : null}
             {triage.contactPreference === 'text_only' && <span className={styles.textOnlyChip}>💬 Text only — asked not to be called</span>}
             {triage.flags.filter((flag) => flag !== 'phone_verified').map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
             {triage.flags.includes('phone_verified') && <span className={styles.verifiedChip}>✓ Phone verified</span>}
@@ -263,6 +292,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             declinedReason={triage.declinedReason ?? null}
             leadName={lead.name ?? ''}
             businessName={quoteBusinessName}
+            overdueLabel={overdueLabel}
             markWon={markLeadWon}
             markLost={markLeadLost}
             markContacted={markLeadContacted}
@@ -519,6 +549,22 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <SendQuoteForm action={sendQuote} className={styles.actionForm}>
                 {/* Before the work, not after it. */}
                 <StripeQuoteGate connected={stripeConnected} />
+                {/* WHAT THE CUSTOMER HAS ALREADY BEEN TOLD.
+                    The intake form showed them a range before anybody looked at
+                    the job, and it is the number in their head when your quote
+                    arrives. It was on the page — buried in the triage notes
+                    further up — but not HERE, where the price is being decided.
+                    Stated, not enforced: a range from a form is a guess, and a
+                    quote that lands outside it is often the correct quote. */}
+                {triage.estimate ? (
+                  <p className={styles.quoteAnchor}>
+                    <span>They were shown</span>
+                    <strong>
+                      ${triage.estimate.min.toLocaleString('en-US')}&ndash;${triage.estimate.max.toLocaleString('en-US')}
+                    </strong>
+                    <span>on the intake form, before anyone saw the job.</span>
+                  </p>
+                ) : null}
                 <div className={styles.quoteItemsField}>
                   <label>Quote line items</label>
                   <LeadQuoteFields initialItems={quoteSeedItems} />
@@ -559,14 +605,16 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     businessName={quoteBusinessName}
                     clientName={lead.name ?? ''}
                   />
-                  {/* Disabled rather than swapped for a link. The link navigated
-                      away, which threw the half-built quote out — and the button
-                      moving position between states made the form re-flow the
-                      moment Stripe connected. */}
-                  <SaveButton disabled={!stripeConnected}>
-                    {stripeConnected ? 'Send quote' : '🔒 Connect Stripe to send'}
-                  </SaveButton>
                 </div>
+                {/* The button knows whether there is a quote to send, and the
+                    line above it says what sending means — who it reaches and
+                    for how much. It used to be live on a blank description, a
+                    blank price and a $0.00 total. */}
+                <QuoteSendGate
+                  stripeConnected={stripeConnected}
+                  recipient={quoteRecipientLabel}
+                  initial={quoteShape(quoteSeedItems)}
+                />
                 {!stripeConnected ? (
                   <p className={styles.stripeGateNote}>Nothing is lost while you connect — this stays as you left it.</p>
                 ) : null}

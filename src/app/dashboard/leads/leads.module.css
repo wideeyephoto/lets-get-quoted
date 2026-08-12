@@ -716,3 +716,20 @@
   font-weight: 600;
   line-height: 1.45;
 }
+
+/* WHAT IS ABOUT TO HAPPEN, next to the button that does it. Who the quote
+   reaches and for how much were both off-screen at the moment of sending — the
+   recipient in a card further up, the total inside the builder. */
+.sendQuoteConfirm { margin: .6rem 0 .2rem; font-size: .84rem; color: var(--mute-t62); }
+.sendQuoteConfirm strong { color: var(--text); }
+/* The rule the form used to teach only by breaking it: a $0.00 quote with a
+   blank description was sendable, and the refusal arrived after the press. */
+.sendQuoteHint { margin: .45rem 0 0; font-size: .8rem; line-height: 1.45; color: var(--mute-t55); }
+
+/* Overdue is about US, not about the job — see leadOverdueLabel. Amber rather
+   than red: nobody is in trouble, but the homeowner is still waiting. */
+.overdueChip { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .55rem; border: 1px solid var(--cedge-amber-31); border-radius: 999px; background: rgba(255,209,102,.09); color: var(--gold-ink); font-size: .72rem; font-weight: 800; }
+
+/* The number already in the customer's head, beside the one being decided. */
+.quoteAnchor { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem; margin: 0; padding: .5rem .7rem; border: 1px dashed var(--edge-t14); border-radius: 10px; font-size: .8rem; color: var(--mute-t58); }
+.quoteAnchor strong { color: var(--gold-ink); font-size: .92rem; font-weight: 800; }

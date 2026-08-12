@@ -24,6 +24,8 @@ type LeadActionDeckProps = {
   declinedReason: string | null;
   leadName: string;
   businessName: string;
+  /** "Overdue — no reply logged in 11 days", or null. See leadOverdueLabel. */
+  overdueLabel: string | null;
   markWon: () => Promise<void>;
   markLost: () => Promise<void>;
   markContacted: () => Promise<void>;
@@ -49,6 +51,7 @@ export default function LeadActionDeck({
   declinedReason,
   leadName,
   businessName,
+  overdueLabel,
   markWon,
   markLost,
   markContacted,
@@ -128,9 +131,19 @@ export default function LeadActionDeck({
       <UndoQuoteButton action={undoConvert} />
     ) : null;
 
+  /* "Book the visit before this lead cools off" on a lead that arrived eleven
+     days ago is the app telling somebody to hurry about something it has been
+     sitting on. When nobody has replied yet, say how long it has been — that is
+     the fact that changes what you do next. */
   const guidance =
     stage === 'new'
-      ? { icon: '📅', heading: 'Next step — schedule the estimate', why: 'New request — book the visit before this lead cools off.' }
+      ? {
+          icon: overdueLabel ? '⏳' : '📅',
+          heading: 'Next step — schedule the estimate',
+          why: overdueLabel
+            ? `${overdueLabel}. Book the visit or send a line so they know you're there.`
+            : 'New request — book the visit before this lead cools off.',
+        }
       : stage === 'scheduled'
         ? { icon: '📝', heading: 'Next step — send the quote', why: 'The estimate is on the calendar — send the quote when you are ready.' }
         : stage === 'won'

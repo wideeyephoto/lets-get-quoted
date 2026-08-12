@@ -143,7 +143,7 @@ export default function LeadAvailabilityScheduler({
 
       <div className={styles.availabilityHeader}>
         <div>
-          <p className={styles.calendarHint}>Pick a day and adjust the visit time before booking. Use + Add to build up to 3 options below.</p>
+          <p className={styles.calendarHint}>“Book this time” puts the visit in your diary now. “Offer to client” builds up to 3 times for them to choose from — nothing is booked until they pick one.</p>
           <strong>{availability[0]?.label} - {availability[availability.length - 1]?.label}</strong>
         </div>
         <div className={styles.availabilityControls}>
@@ -182,7 +182,7 @@ export default function LeadAvailabilityScheduler({
                   <div className={styles.availabilityActionButtons}>
                     <button className="btn primary" type="submit">{day.bookingLabel}</button>
                     <button type="button" className={`btn secondary ${styles.clientOptionButton}`} disabled={!hasSelectionRoom} onClick={(event) => addClientOption(event, day)}>
-                      {isSelected ? 'Selected' : '+ Add'}
+                      {isSelected ? '✓ Offered' : 'Offer to client'}
                     </button>
                   </div>
                 </div>

@@ -181,6 +181,14 @@ export function formatLeadSource(source: LeadSource): string {
   return 'Manual';
 }
 
+/**
+ * How long ago, in the largest unit that still means something.
+ *
+ * It stopped at hours and never rolled over, so an eleven-day-old lead was
+ * badged "Received 265h ago" — a number nobody converts in their head, next to
+ * a card urging them to act "before this lead cools off". Nobody reads 265h as
+ * a week and a half; they read it as a big number and move on.
+ */
 export function formatElapsedTime(from: string, to = new Date()): string {
   const start = new Date(from).getTime();
   const end = to.getTime();
@@ -188,7 +196,34 @@ export function formatElapsedTime(from: string, to = new Date()): string {
   const minutes = Math.max(0, Math.round((end - start) / 60000));
   if (minutes < 60) return `${Math.max(1, minutes)}m`;
   const hours = Math.round(minutes / 60);
-  return `${hours}h`;
+  if (hours < 48) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days} days`;
+  const weeks = Math.round(days / 7);
+  return `${weeks} weeks`;
+}
+
+/**
+ * URGENCY AND RECENCY ARE NOT THE SAME FACT, and the page was showing one badge
+ * for both. "🔥 Hot" is a claim about the JOB — the homeowner said ASAP, the
+ * estimate is high, the water is still running. Whether anybody has answered
+ * them is a claim about US. An eleven-day-old lead can be both genuinely urgent
+ * and badly overdue, and reading "Hot" as "fresh" is how it ends up looking
+ * like neither.
+ *
+ * Returns null on the ordinary case: a lead somebody has already replied to, or
+ * one that arrived this morning. A badge on every record for "nothing wrong
+ * here" trains people to stop reading badges.
+ */
+export function leadOverdueLabel(lead: Pick<Lead, 'status' | 'created_at'>, now = new Date()): string | null {
+  // Only 'new' means nobody has logged a reply. Every other status is somebody
+  // having done something about it, whatever the age.
+  if (lead.status !== 'new') return null;
+  const created = new Date(lead.created_at).getTime();
+  if (!Number.isFinite(created)) return null;
+  const hours = (now.getTime() - created) / 3_600_000;
+  if (hours < 24) return null;
+  return `Overdue — no reply logged in ${formatElapsedTime(lead.created_at, now)}`;
 }
 
 export function getRequestResponseMs(lead: Lead): number | null {
