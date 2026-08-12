@@ -25,10 +25,14 @@ export default function JobDragHandle({ jobId, jobName }: { jobId: string; jobNa
   return (
     <button
       type="button"
-      /* The queue's focus target. "Schedule a job" sends focus to the first of
+      /* The queue's focus target. "Schedule N jobs" sends focus to the first of
          these, so pressing it lands on the first job waiting for a date rather
-         than merely revealing a list. */
-      data-queue-job=""
+         than merely revealing a list.
+
+         IT CARRIES THE ID. "Review N unapproved" asks for a particular card,
+         because the queue sorts approved work above unapproved and the first
+         row is the wrong one for that task. */
+      data-queue-job={jobId}
       className={`schedule-drag-handle${armed ? ' armed' : ''}`}
       onPointerDown={onPointerDown}
       // Keyboard users never get a pointerdown, so Enter/Space has to arm it

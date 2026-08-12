@@ -21,7 +21,7 @@ import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
 import UnscheduledQueue from './UnscheduledQueue';
-import { ScheduleJobButton, UnscheduledBanner } from './QueueTriggers';
+import { ScheduleQueueBar } from './QueueTriggers';
 import ScheduleMap from './ScheduleMap';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
@@ -225,6 +225,10 @@ export default async function SchedulePage({
   // of folding it in.
   const approvedUnscheduled = unscheduledJobs.filter((job) => job.status === 'in_progress').length;
   const unapprovedUnscheduled = unscheduledJobs.length - approvedUnscheduled;
+  // So one unapproved quote can be opened directly instead of by opening a list
+  // and hunting through it. `unscheduledJobs` is sorted approved-first, so this
+  // is also the card the queue focuses when there are several.
+  const firstUnapprovedId = unscheduledJobs.find((job) => job.status === 'new_lead')?.id ?? null;
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
   const assignmentsByJob = await listCrewAssignmentsForJobs(
@@ -585,18 +589,15 @@ export default async function SchedulePage({
                 same three numbers and wraps instead of clipping. It is
                 aria-hidden because the cards below say all of it again to a
                 screen reader, with links attached. */}
+            {/* NO LONGER CARRIES "N need dates". That was the fourth control
+                saying it, and it was one of the two that counted every
+                unscheduled job while the other two counted only approved work —
+                so the same page printed 11 and 3 for the same question. The bar
+                below owns that number now, and says which is which. */}
             <p className="sched-sum" aria-hidden="true">
               <span><strong>{scheduledNext30Days}</strong> jobs</span>
               <span><strong>{formatMoney(estimatedRevenue)}</strong> revenue</span>
-              {unscheduledJobs.length > 0 ? (
-                <span className="sched-sum-warn"><strong>{unscheduledJobs.length}</strong> need dates</span>
-              ) : null}
             </p>
-          </div>
-
-          {/* The reason you came to this page, as a button, at every width. */}
-          <div className="schedule-bar-actions">
-            <ScheduleJobButton pending={unscheduledJobs.length} />
           </div>
 
           <div className="schedule-stats">
@@ -630,32 +631,26 @@ export default async function SchedulePage({
                 <small>Costs logged</small>
               </Link>
             )}
-            {/* Counts approved work only, which is what the nav rail's Schedule
-                badge counts. "Ready to book" says so; the banner below carries
-                the quotes that are not approved yet. */}
-            <a
-              className={`sched-stat${approvedUnscheduled > 0 ? ' needs' : ''}`}
-              href="#unscheduled-jobs"
-              aria-label={
-                `${approvedUnscheduled} approved ${approvedUnscheduled === 1 ? 'job is' : 'jobs are'} ready to book` +
-                (unapprovedUnscheduled > 0
-                  ? `, and ${unapprovedUnscheduled} more ${unapprovedUnscheduled === 1 ? 'quote is' : 'quotes are'} still waiting on approval`
-                  : '')
-              }
-            >
-              <StatIcon shape="calendar" />
-              <strong>{approvedUnscheduled}</strong>
-              <small>Ready to book</small>
-            </a>
+            {/* NO "Ready to book" CARD. It was a fourth link to the same queue,
+                a row under a button that already named the same count — and its
+                number disagreed with two of the other three because it counted
+                approved work only and said nothing about the rest. */}
           </div>
 
         </header>
 
-        {/* WHAT NEEDS ATTENTION, IN THE READING ORDER. Only below 1280px: above
-            that the rail is on screen permanently and this would be a second
-            control saying the same thing. It replaces the fixed bottom dock,
-            which said it at every width by sitting on top of the calendar. */}
-        <UnscheduledBanner approved={approvedUnscheduled} unapproved={unapprovedUnscheduled} />
+        {/* THE ONE THING THIS PAGE IS FOR, SAID ONCE. Replaces the primary
+            button, the attention banner, the summary-line counter and the
+            fourth stat card — four controls, two different numbers, one
+            destination. It renders at every width: the banner used to appear
+            only below 1280 on the theory that the desktop rail said it already,
+            which left the desktop with a button that named a count and no
+            statement of what the count was made of. */}
+        <ScheduleQueueBar
+          approved={approvedUnscheduled}
+          unapproved={unapprovedUnscheduled}
+          firstUnapprovedId={firstUnapprovedId}
+        />
 
         <ScheduleCalendar
           monthNav={

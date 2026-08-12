@@ -78,7 +78,11 @@ export default function UnscheduledQueue({
    * the first job waiting, which is the thing you pressed it to reach.
    */
   useEffect(() => {
-    const onOpen = () => {
+    const onOpen = (event: Event) => {
+      // Which card to land on. The bar's "Review N unapproved" asks for one by
+      // name, because the queue sorts approved work above unapproved and
+      // landing on the first row would be landing on the wrong task.
+      const wanted = (event as CustomEvent<{ focusJobId?: string }>).detail?.focusJobId;
       setOpen(true);
       // After paint: on a tablet the panel has only just been un-inerted, and
       // focus cannot land inside an inert subtree.
@@ -86,14 +90,39 @@ export default function UnscheduledQueue({
         const panel = panelRef.current;
         if (!panel) return;
         panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        const first = panel.querySelector<HTMLElement>('[data-queue-job]');
-        if (first) {
-          first.focus({ preventScroll: true });
-          // A pulse, because focus alone on a card in a list of nine is easy to
-          // miss when you were looking at the calendar.
-          first.dataset.justFocused = 'true';
-          window.setTimeout(() => delete first.dataset.justFocused, 1400);
+        const target =
+          (wanted ? panel.querySelector<HTMLElement>(`[data-queue-job="${CSS.escape(wanted)}"]`) : null)
+          ?? panel.querySelector<HTMLElement>('[data-queue-job]');
+        if (!target) return;
+
+        /**
+         * TWO PATHS INTO THE SAME PLACE, and they used to fight.
+         *
+         * On a desktop the queue is a docked region, useModal is not running,
+         * and focusing here is the whole of it. On anything narrower it is a
+         * modal, and useModal focuses `[data-autofocus]` (or the panel) on its
+         * own timeout — which ran AFTER this and took focus straight back off
+         * the card. Measured: desktop landed on the job, tablet and phone
+         * landed on the panel, so "Review the unapproved one" opened a list of
+         * nine and pointed at none of them.
+         *
+         * Stamping the attribute makes the hook's own mechanism aim at the
+         * right card instead of racing it. Cleared from the others first, or a
+         * second press would leave two claims on the page.
+         */
+        for (const previous of panel.querySelectorAll<HTMLElement>('[data-autofocus]')) {
+          delete previous.dataset.autofocus;
         }
+        target.dataset.autofocus = 'true';
+        target.focus({ preventScroll: true });
+        // Scrolled to as well as focused: the asked-for card can be the ninth
+        // in the list, and preventScroll is what keeps the panel from jumping
+        // during the smooth scroll above.
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        // A pulse, because focus alone on a card in a list of nine is easy to
+        // miss when you were looking at the calendar.
+        target.dataset.justFocused = 'true';
+        window.setTimeout(() => delete target.dataset.justFocused, 1400);
       });
     };
     window.addEventListener(OPEN_SCHEDULE_QUEUE_EVENT, onOpen);

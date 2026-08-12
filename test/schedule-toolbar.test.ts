@@ -3,9 +3,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+/** An assertion that something is ABSENT must not be satisfied — or defeated —
+ *  by a comment explaining why it is absent. */
+const stripJs = (source: string) =>
+  source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const CALENDAR = read('src', 'app', 'dashboard', 'schedule', 'schedule-calendar.tsx');
-const PAGE = read('src', 'app', 'dashboard', 'schedule', 'page.tsx');
+const PAGE = stripJs(read('src', 'app', 'dashboard', 'schedule', 'page.tsx'));
 const GLOBALS = read('src', 'app', 'globals.css');
 
 /**
@@ -74,9 +78,20 @@ describe('the schedule toolbar has no rail toggle', () => {
     expect(GLOBALS).not.toContain('.sched-rail-toggle {');
   });
 
-  // The stat that made it redundant is the one that stays, and it is a link.
-  it('keeps "Ready to book" pointing at the queue', () => {
-    expect(PAGE).toMatch(/href="#unscheduled-jobs"/);
-    expect(PAGE).toContain('Ready to book');
+  /**
+   * THE STAT THAT MADE THE TOGGLE REDUNDANT HAS SINCE GONE THE SAME WAY.
+   *
+   * "10 · Ready to book" was kept when RailToggle was deleted, on the grounds
+   * that it was the one control saying that number. It was not — it was the
+   * fourth, alongside the primary button, the attention banner and the
+   * summary-line counter, and it counted a different population from two of
+   * them. One bar replaces all four; the queue is still reachable, from it.
+   */
+  it('says the queue count once, in the bar', () => {
+    expect(PAGE).toContain('<ScheduleQueueBar');
+    expect(PAGE).not.toContain('Ready to book');
+    expect(PAGE).not.toContain('need dates');
+    expect(PAGE).not.toMatch(/<UnscheduledBanner/);
+    expect(PAGE).not.toMatch(/<ScheduleJobButton/);
   });
 });

@@ -28612,57 +28612,57 @@ select optgroup {
 
 .schedule-bar-actions { flex: 0 0 auto; }
 
-/* THE PRIMARY ACTION. Deliberately the only accent-filled control in the
-   header -- "Plan my day" used to hold that slot from the calendar toolbar. */
-.sched-primary {
-  display: inline-flex;
+/* ONE BAR WHERE THERE WERE FOUR CONTROLS.
+   The primary button, the attention banner, the summary-line counter and a
+   fourth stat card all said the same thing about the same jobs and pointed at
+   the same list. On a phone three of them stacked one under the other before
+   the calendar had drawn a date, and two of them counted a different population
+   from the other two — so the page printed 11 and 3 for the same question.
+
+   It renders at every width. The banner used to appear only below 1280 on the
+   theory that the desktop rail said it already, which left the desktop with a
+   button naming a count and nothing saying what the count was made of. */
+.sched-queue-bar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  /* 44px, the floor for a touch target and also just a comfortable button. */
-  min-height: 44px;
-  padding: 0 1.05rem;
-  border: 1px solid var(--cedge-orange-17);
-  border-radius: 12px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 750;
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: filter 0.16s ease, transform 0.16s ease;
-}
-.sched-primary:hover { filter: brightness(1.07); }
-.sched-primary:active { transform: translateY(1px); }
-
-/* The compact summary that replaces four stat cards on a phone. Hidden wherever
-   the cards themselves fit. */
-.sched-sum { display: none; }
-
-/* --- the attention banner --------------------------------------------------
-   Below the header, above the calendar, and only where the rail is not on
-   screen. It is a button because it opens the queue. */
-.sched-banner {
-  display: none;
+  gap: 0.6rem 0.9rem;
   width: 100%;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 52px;
   margin: 0.15rem 0 0.9rem;
   padding: 0.6rem 0.85rem;
   border: 1px solid var(--cedge-amber-7);
   border-radius: 13px;
   background: rgba(255, 209, 102, 0.09);
-  font: inherit;
   color: var(--text);
-  text-align: left;
-  cursor: pointer;
 }
-.sched-banner:hover { background: rgba(255, 209, 102, 0.14); }
+/* Nothing waiting is not an alert. Same bar, no amber — the state is calm and
+   the control on it is "make a job", not "deal with this". */
+.sched-queue-bar.is-clear {
+  border-color: var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+}
+/* Quotes only: this is a sales task, not a scheduling one, and colouring it the
+   same as work-ready-to-book is what let the two get confused in the first
+   place. Kept as a tone rather than a hue change so it is never colour alone —
+   the sentence says "awaiting approval" outright. */
+.sched-queue-bar[data-tone='waiting'] { border-style: dashed; }
 
-.sched-banner-count {
+.sched-queue-bar-line {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+}
+.sched-queue-bar-line strong { font-size: 0.95rem; font-weight: 750; }
+.sched-queue-bar-line span:not(.sched-queue-bar-count) {
+  color: var(--mute-i56);
+  font-size: 0.84rem;
+}
+.sched-queue-bar.is-clear .sched-queue-bar-line { display: grid; gap: 0.1rem; }
+
+.sched-queue-bar-count {
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
@@ -28675,19 +28675,29 @@ select optgroup {
   font-size: 0.95rem;
   font-weight: 850;
 }
-
-.sched-banner-copy { display: grid; gap: 0.1rem; min-width: 0; }
-.sched-banner-copy strong { font-size: 0.95rem; font-weight: 750; }
-.sched-banner-copy small {
-  color: var(--mute-i56);
-  font-size: 0.76rem;
-  line-height: 1.35;
+.sched-queue-bar[data-tone='waiting'] .sched-queue-bar-count {
+  background: rgba(var(--tint), 0.14);
+  color: var(--text);
 }
-.sched-banner-go { margin-left: auto; color: var(--gold-ink); font-size: 1.1rem; }
 
-@media (max-width: 1279.98px) {
-  .sched-banner { display: flex; }
+.sched-queue-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
 }
+/* 44px, the floor for a touch target and also just a comfortable button. */
+.sched-queue-bar-go {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+/* The compact summary that replaces the stat cards on a phone. Hidden wherever
+   the cards themselves fit. */
+.sched-sum { display: none; }
 
 /* --- the unscheduled queue -------------------------------------------------
    Desktop: transparent wrapper, the section flows into the rail. */
@@ -28968,13 +28978,13 @@ body[data-schedule-overlay="job"] .sched-queue {
   }
   .sched-sum span { white-space: nowrap; }
   .sched-sum strong { color: var(--text); font-weight: 800; }
-  .sched-sum-warn strong { color: var(--gold-ink); }
 
-  /* The primary action goes full width under the title rather than squeezing
-     onto the same row as a wrapping heading. */
+  /* The bar's buttons go full width rather than squeezing onto the same row as
+     a wrapping heading, and the count keeps its own line above them. */
   .schedule-bar { gap: 0.6rem; }
-  .schedule-bar-actions { flex: 1 1 100%; }
-  .sched-primary { width: 100%; }
+  .sched-queue-bar-line { flex: 1 1 100%; }
+  .sched-queue-bar-actions { flex: 1 1 100%; margin-left: 0; }
+  .sched-queue-bar-go { flex: 1 1 8rem; justify-content: center; }
 
   .schedule-rail { display: contents; }
 
@@ -29011,8 +29021,7 @@ body[data-schedule-overlay="job"] .sched-queue {
 
 @media (prefers-reduced-motion: reduce) {
   .sched-queue-panel,
-  .sched-queue-scrim,
-  .sched-primary { transition: none; }
+  .sched-queue-scrim { transition: none; }
 }
 
 /* --- KPI cards -------------------------------------------------------------
@@ -30561,7 +30570,6 @@ body[data-schedule-overlay="job"] .sched-queue {
 @media (prefers-reduced-motion: reduce) {
   .schedule-drag-handle[data-just-focused] { animation: none; outline: 2px solid var(--accent); }
 }
-.sched-primary-go { margin-left: 0.35rem; opacity: 0.8; }
 .month-nav-today:disabled { opacity: 0.45; cursor: default; }
 
 /* ===========================================================================
