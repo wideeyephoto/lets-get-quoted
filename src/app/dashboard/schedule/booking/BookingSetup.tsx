@@ -760,8 +760,17 @@ export default function BookingSetup({
 
 // --- money field -----------------------------------------------------------
 
+/**
+ * WHOLE DOLLARS, AND IT LOOKS LIKE IT.
+ *
+ * This printed two decimal places, the input asked for `decimal`, and the
+ * placeholder was "0.00" - so the field invited cents. It then rounded them
+ * away without a word: typing 250.50 left 251.00 sitting in the box, which is
+ * indistinguishable from "my setting did not save". The floor for taking a job
+ * without review is a whole-dollar decision; the field says so now.
+ */
 function formatDollars(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
 // Reads as money at rest ($5,000.00) and as plain digits while you're typing —
@@ -784,18 +793,31 @@ function MoneyInput({ value, onChange }: { value: number; onChange: (next: numbe
       <span aria-hidden="true">$</span>
       <input
         type="text"
-        inputMode="decimal"
-        placeholder="0.00"
+        inputMode="numeric"
+        placeholder="0"
         value={text}
-        aria-label="Minimum job value in dollars"
+        aria-label="Minimum job value in whole dollars"
         onFocus={() => { setEditing(true); setText(value > 0 ? String(value) : ''); }}
         onBlur={() => setEditing(false)}
         onChange={(event) => {
-          const raw = event.target.value;
-          setText(raw);
-          const digits = raw.replace(/[^\d.]/g, '');
-          const parsed = Number(digits);
-          onChange(digits && Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0);
+          /*
+           * THE DOT STAYS WHILE YOU TYPE, and only the whole-dollar part counts.
+           *
+           * Deleting "." from the text of a CONTROLLED input is a trap: "250.50"
+           * becomes "250", and the "5" and "0" still to come land after it —
+           * 25050, a hundredfold larger floor than the one that was typed, on
+           * the number that decides which jobs get taken without review.
+           *
+           * So the text keeps what was typed and the VALUE reads the part before
+           * the point. On blur the box redraws as the whole dollars that were
+           * actually kept, so the truncation is visible the moment it happens
+           * rather than discovered later.
+           */
+          const raw = event.target.value.replace(/[^\d.]/g, '');
+          const [whole = '', ...rest] = raw.split('.');
+          setText(rest.length > 0 ? `${whole}.${rest.join('')}` : whole);
+          const parsed = Number(whole);
+          onChange(whole && Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
         }}
       />
     </div>

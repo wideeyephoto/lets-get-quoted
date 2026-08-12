@@ -3,13 +3,12 @@
 import { useEffect } from 'react';
 
 /**
- * Makes the action deck's buttons still work now that they point at accordions.
+ * Makes an <a href="#..."> pointing at a <details> actually open it.
  *
- * "Schedule estimate", "Skip to quote" and "Review scheduled estimate" are all
- * plain <a href="#..."> links to the two panels below them. Once those panels
- * became a <details> pair, half of those clicks landed on a closed one: the
- * page scrolled to a collapsed header and nothing opened, which reads as a dead
- * button.
+ * A link to a collapsed panel scrolls to its header and stops, which reads as a
+ * dead button. The lead page's action deck hit this first — "Skip to quote"
+ * landing on a closed accordion — and the day planner's route insights hit it
+ * again, linking "Working hours" to a panel further down the same screen.
  *
  * Browsers do expand a closed <details> when you navigate to a fragment INSIDE
  * it, but that is not this case — here the id is on the <details> itself, which

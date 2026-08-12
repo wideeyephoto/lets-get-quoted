@@ -8,6 +8,8 @@ const LEAD_DIR = ['src', 'app', 'dashboard', 'leads', '[leadId]'];
 const PAGE = read(...LEAD_DIR, 'page.tsx');
 const SCHEDULER = read(...LEAD_DIR, 'LeadAvailabilityScheduler.tsx');
 const DECK = read(...LEAD_DIR, 'LeadActionDeck.tsx');
+// Shared with the day planner now, whose route insights link "Working hours"
+// to a <details> on that page and hit exactly the same dead-link problem.
 const ON_HASH = read(...LEAD_DIR, 'OpenActionOnHash.tsx');
 
 /**

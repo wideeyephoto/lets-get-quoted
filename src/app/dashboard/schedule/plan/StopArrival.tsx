@@ -20,6 +20,12 @@ import type { WindowStyle } from '@/lib/arrival';
  * customer has already been told reads "On the way" and opens straight onto the
  * revise-and-arrive controls; sending twice from a list of ten stops is exactly
  * the mistake this screen would otherwise invite.
+ *
+ * AND IT IS NOT CALLED WHAT THE SEND IS CALLED. This read "I'm on my way", and
+ * pressing it opened a panel headed "On my way" whose own button read "I'm on my
+ * way" with a pin on it - the same sentence three times, and the first press
+ * appearing to do nothing except produce a second copy of itself. The trigger
+ * names what the panel is FOR; the button inside it is the one that sends.
  */
 
 export type StopArrivalProps = {
@@ -55,7 +61,7 @@ export default function StopArrival(props: StopArrivalProps) {
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        {arrived ? 'Arrived' : live ? 'On the way' : "I'm on my way"}
+        {arrived ? 'Arrived' : live ? 'On the way' : 'Text an ETA'}
       </button>
 
       <FloatingPanel

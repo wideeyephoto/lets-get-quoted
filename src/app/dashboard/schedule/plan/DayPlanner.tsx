@@ -804,7 +804,15 @@ function RouteInsights({
   manualDeltaMiles: number;
   manualDeltaMinutes: number;
 }) {
-  const notes: Array<{ tone: 'good' | 'info' | 'warn'; text: string }> = [];
+  /**
+   * `fix` is the setting the note is ABOUT, on this same page.
+   *
+   * "Everything fits inside your working hours, finishing by 6:00 PM" is a
+   * statement about two numbers the contractor can change, and the panel that
+   * changes them is a few hundred pixels further down this very screen —
+   * unlinked, so the way to act on the sentence was to know it was there.
+   */
+  const notes: Array<{ tone: 'good' | 'info' | 'warn'; text: string; fix?: { href: string; label: string } }> = [];
 
   if (isOptimized) {
     notes.push({ tone: 'good', text: 'This is the shortest driving order we could find for these stops.' });
@@ -852,6 +860,9 @@ function RouteInsights({
       : overtime
         ? `The day runs ${minutesLabel(overflowMinutes)} past your ${workdayEndLabel} finish.`
         : `Everything fits inside your working hours, finishing by ${workdayEndLabel}.`,
+    // All three sentences are about the working day and the daily capacity, and
+    // both are set in the panel below.
+    fix: { href: '#working-hours', label: 'Working hours' },
   });
 
   if (payload.filteredOutCount > 0) {
@@ -871,6 +882,14 @@ function RouteInsights({
               {note.tone === 'good' ? '✓' : note.tone === 'warn' ? '!' : 'i'}
             </span>
             {note.text}
+            {note.fix ? (
+              <>
+                {' '}
+                <a className="plan-insight-fix" href={note.fix.href}>
+                  {note.fix.label}
+                </a>
+              </>
+            ) : null}
           </li>
         ))}
       </ul>

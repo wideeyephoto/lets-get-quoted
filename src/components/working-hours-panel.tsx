@@ -35,7 +35,10 @@ export default function WorkingHoursPanel({
   const buffer = jobBufferMinutes > 0 ? `${jobBufferMinutes} min between jobs` : 'no buffer between jobs';
 
   return (
-    <details className="panel workhours-panel">
+    /* Named, because the route insights on the day planner link here: the
+       sentence "Everything fits inside your working hours" is about two numbers
+       set in this panel. See OpenDetailsOnHash for what opens it. */
+    <details id="working-hours" className="panel workhours-panel">
       <summary>
         <span className="workhours-summary">
           <strong>Working hours &amp; capacity</strong>

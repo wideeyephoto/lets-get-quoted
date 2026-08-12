@@ -10125,6 +10125,8 @@ a.ropsrow-fact:hover { text-decoration: underline; }
   color: var(--ink-sky-2);
 }
 .plan-stat.is-over dd { color: var(--ink-orange-3); }
+/* Landing on it must not put its summary under the fixed bar. */
+#working-hours { scroll-margin-top: calc(var(--appbar-h) + 1rem); }
 .plan-stop.is-locked { background: rgba(74, 222, 128, 0.045); }
 .plan-stop.is-pinned { background: rgba(125, 211, 252, 0.05); }
 

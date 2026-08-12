@@ -17297,6 +17297,13 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .plan-stops-head h2 { margin: 0.15rem 0 0; font-size: 1.3rem; }
 .plan-drag-hint { margin: 0; font-size: 0.8rem; color: var(--mute-t45); }
 
+/* A route insight that is ABOUT a setting links to it. The panel that changes
+   the working day is on this same screen, a few hundred pixels down. */
+.plan-insight-fix { color: var(--accent); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.plan-insight-fix:hover, .plan-insight-fix:focus-visible { text-decoration: underline; }
+/* Landing on it must not put its summary under the fixed bar. */
+#working-hours { scroll-margin-top: calc(var(--appbar-h) + 1rem); }
+
 .plan-stop-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 
 .plan-stop {
@@ -17802,14 +17809,21 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .plan-control input, .plan-control select { width: 100%; }
 
   /* The name and address get the full width; a Directions button sharing their
-     row turned "4455 Rochester Rd, Troy, MI 48085" into four lines. Actions drop
-     to the bottom row beside the badges. */
+     row turned "4455 Rochester Rd, Troy, MI 48085" into four lines.
+
+     AND THE ACTIONS GET THEIR OWN ROW. They used to share the last row with the
+     drive info and the badges, on an `auto` track that sized itself to three
+     buttons - about 230px of a 390px screen. Grid does not clip an overflowing
+     item, so "1.3 mi - 4 min drive" and the Flexible badge ran on underneath
+     the buttons and the card read as a pile. There is no width at which those
+     five things fit on one line here. */
   .plan-stop {
-    grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+    grid-template-columns: 2.2rem minmax(0, 1fr);
     grid-template-areas:
-      'num who who'
-      'num times times'
-      'num meta actions';
+      'num who'
+      'num times'
+      'num meta'
+      'num actions';
     gap: 0.4rem 0.7rem;
     align-items: start;
   }
@@ -17823,7 +17837,9 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .plan-stop-time:first-child,
   .plan-stop-time:last-child { grid-area: auto; }
   .plan-stop-flags { align-self: center; }
-  .plan-stop-actions { align-self: center; }
+  /* Wraps rather than overflows: a stop with a long badge and three actions
+     still has to stay inside its own card. */
+  .plan-stop-actions { align-self: center; flex-wrap: wrap; }
   .plan-stop-actions .btn { padding: 0.28rem 0.6rem; font-size: 0.76rem; }
   .plan-stop-grip { display: none; }
   .plan-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 0.5rem; }

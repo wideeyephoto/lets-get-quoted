@@ -18,6 +18,7 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import type { DayPlanPayload, DriveMatrixPayload } from '@/lib/day-plan-view';
 import SaveButton from '@/components/save-button';
 import WorkingHoursPanel from '@/components/working-hours-panel';
+import OpenActionOnHash from '@/app/dashboard/leads/[leadId]/OpenActionOnHash';
 import QuickStopPanel from '@/components/quick-stop-panel';
 import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { loadOfferContext, offerDisplay } from '@/lib/estimate-offers-data';
@@ -587,6 +588,9 @@ export default async function PlanDayPage({
         todayCount={quickStopToday ?? 0}
       />
 
+      {/* "Working hours" in the route insights points at the panel below, and a
+          link to a closed <details> scrolls to its header and stops. */}
+      <OpenActionOnHash />
       <WorkingHoursPanel
         scheduleDayHours={settings.scheduleDayHours}
         jobBufferMinutes={settings.bufferMinutes}
