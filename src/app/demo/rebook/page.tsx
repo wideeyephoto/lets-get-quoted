@@ -25,6 +25,10 @@ export default async function DemoRebookPage({ searchParams }: { searchParams: {
       // rather than the "publish your booking page first" notice.
       bookingUrl={`https://${DEMO_SITE_HOST}/book`}
       days={days}
+      // Both set, so a visitor sees the working page rather than the two
+      // "finish setting this up" states a fresh account would see.
+      businessName="Northline Exteriors"
+      mailingAddress="1421 Maple Street, Royal Oak, MI 48067"
       basePath="/demo"
       readOnly
     />

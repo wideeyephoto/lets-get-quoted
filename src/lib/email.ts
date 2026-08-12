@@ -11,6 +11,7 @@ import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/br
 import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
 import { quoteFollowupEmailPreview } from './quote-followups';
+import { rebookInviteEmailContent } from './rebook-message';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -593,17 +594,21 @@ export async function sendRebookInviteEmail(input: {
   const brand = await brandFor(input);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
+  // The words come from rebookInviteEmailContent so the preview on the Win-back
+  // page is the message rather than a description of it. A preview built from a
+  // second copy of the copy tells the truth until the first edit.
+  const content = rebookInviteEmailContent(input);
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
-    subject: `Ready to book ${input.businessName} again?`,
+    subject: content.subject,
     html: renderBrandedEmail({
       brand,
-      preheader: `Book ${input.businessName} again in a couple of taps`,
-      eyebrow: 'We would love to help again',
-      heading: `${input.clientName}, it has been a while!`,
-      paragraphs: [`Thanks again for trusting ${input.businessName}. Whenever you are ready for your next project, you can grab a time online in a couple of taps — no phone tag.`],
-      cta: { label: 'Book us again', url: input.url },
+      preheader: content.preheader,
+      eyebrow: content.eyebrow,
+      heading: content.heading,
+      paragraphs: content.paragraphs,
+      cta: { label: content.ctaLabel, url: input.url },
       footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
     }),
     reply_to: replyAddress(brand),

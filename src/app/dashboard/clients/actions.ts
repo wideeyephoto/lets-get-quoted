@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { updateClient } from '@/lib/clients';
-import { mergedFields } from '@/lib/client-duplicates';
+import { duplicateMemberKey, mergedFields } from '@/lib/client-duplicates';
 import {
   parseTable,
   applyMapping,
@@ -301,4 +301,48 @@ export async function mergeClientsAction(formData: FormData): Promise<void> {
   revalidatePath('/dashboard/clients');
   revalidatePath(`/dashboard/clients/${survivorId}`);
   redirect(`/dashboard/clients/${survivorId}?merged=${loserIds.length}`);
+}
+
+/**
+ * "THESE TWO ARE NOT THE SAME CUSTOMER."
+ *
+ * findDuplicateGroups proposes; nothing merges without being asked. What the
+ * panel had no way to record was the other answer. A landlord and their tenant
+ * on one phone number, a father and son at one address, two crews of the same
+ * franchise sharing an office line — all real, all correctly grouped, and all
+ * reappearing at the top of the customer book on every load, for ever.
+ *
+ * A suggestion you cannot decline stops being a suggestion. The panel gets
+ * collapsed and never opened again, and the real duplicates go unfound with it.
+ *
+ * NOTHING IS DELETED OR ARCHIVED HERE. Both records stay exactly as they are —
+ * this writes one row saying the pairing was rejected, and it is keyed on the
+ * member ids, so a third record arriving on the same number brings the question
+ * back. See duplicateMemberKey.
+ */
+export async function dismissDuplicateGroupAction(formData: FormData): Promise<void> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const memberIds = formData
+    .getAll('duplicateId')
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  if (memberIds.length < 2) return;
+
+  const { error } = await supabase.from('client_duplicate_dismissals').upsert(
+    {
+      account_id: accountId,
+      member_key: duplicateMemberKey(memberIds.map((id) => ({ id }))),
+      reason: String(formData.get('reason') ?? '').trim() || null,
+    },
+    { onConflict: 'account_id,member_key' },
+  );
+
+  // Named rather than swallowed, and named ON THE PAGE rather than thrown. A
+  // dismiss button that appears to work and leaves the group at the top of the
+  // book tomorrow is the worst outcome; the second worst is a thrown error,
+  // which reaches production as a blank boundary with the message redacted.
+  // This ships ahead of its migration, so the failure has to be readable.
+  revalidatePath('/dashboard/clients');
+  redirect(error ? '/dashboard/clients?dismissError=schema' : '/dashboard/clients?dismissed=1');
 }

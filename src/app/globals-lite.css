@@ -8916,6 +8916,10 @@ a.ropsrow-fact:hover { text-decoration: underline; }
   font-size: 1rem;
   resize: vertical;
 }
+.rebook-preview-card.is-blocked { border-color: var(--cedge-orange-43); }
+.rebook-channel-chip.is-sms { border-color: var(--cedge-green-38); background: rgba(127, 224, 178, 0.12); color: var(--good); }
+.rebook-channel-chip.is-email { border-color: var(--cedge-amber-49); background: rgba(255, 209, 102, 0.12); color: var(--warn); }
+.rebook-channel-chip.is-none { border-color: var(--edge-t14); color: var(--mute-t45); }
 .service-row.is-archived { opacity: 0.55; }
 .service-row.is-archived::before { display: none; }
 

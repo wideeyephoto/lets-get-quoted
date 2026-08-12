@@ -23,6 +23,8 @@ export default function ClientsScreen({
   mergedCount = 0,
   duplicateGroups = [],
   mergeAction,
+  dismissDuplicateAction,
+  dismissError = false,
   openAdd = false,
   basePath = '/dashboard',
   readOnly = false,
@@ -38,6 +40,10 @@ export default function ClientsScreen({
   duplicateGroups?: DuplicateGroup<DuplicateMember>[];
   /** Withheld on the demo, where nothing may write. */
   mergeAction?: (formData: FormData) => Promise<void>;
+  /** The other answer: not the same customer. Also withheld on the demo. */
+  dismissDuplicateAction?: (formData: FormData) => Promise<void>;
+  /** The dismissal could not be stored — said on the panel, not thrown. */
+  dismissError?: boolean;
   openAdd?: boolean;
   basePath?: string;
   readOnly?: boolean;
@@ -72,7 +78,12 @@ export default function ClientsScreen({
       {/* Above the book, because it is about the book rather than about any one
           customer in it — and collapsed, because it is a suggestion. Renders
           nothing when there is nothing to suggest. */}
-      <DuplicateClients groups={duplicateGroups} action={readOnly ? undefined : mergeAction} />
+      <DuplicateClients
+        groups={duplicateGroups}
+        action={readOnly ? undefined : mergeAction}
+        dismissAction={readOnly ? undefined : dismissDuplicateAction}
+        dismissError={dismissError}
+      />
 
       <section className="panel workspace-section-card">
         {rows.length === 0 ? (

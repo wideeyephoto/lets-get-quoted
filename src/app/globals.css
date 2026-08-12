@@ -15502,6 +15502,68 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .rebook-ago { font-size: 0.8rem; color: var(--ink-orange-1); }
 .rebook-row-meta { margin: 0; font-size: 0.83rem; color: var(--mute-t55); }
 .rebook-cant { font-size: 0.82rem; color: var(--mute-t45); }
+.rebook-bulk small { color: var(--mute-t55); }
+
+/* ── What they actually get, before anybody presses send ─────────────────────
+   The page offered one button to every past customer and showed neither the
+   message nor which way it leaves. They are two different messages with two
+   different sets of rules. */
+.rebook-preview-lead { margin: 0.35rem 0 0.9rem; }
+.rebook-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+  gap: 0.8rem;
+}
+.rebook-preview-card {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 13px;
+  background: rgba(var(--tint), 0.03);
+}
+.rebook-preview-card.is-blocked { border-color: var(--cedge-orange-43); }
+.rebook-preview-head { display: flex; align-items: center; gap: 0.55rem; }
+.rebook-preview-head strong { font-size: 0.86rem; color: var(--mute-t55); font-weight: 650; }
+.rebook-preview-card > small { font-size: 0.78rem; line-height: 1.5; color: var(--mute-t45); }
+.rebook-preview-block { color: var(--muted) !important; }
+
+/* The text, as a text. A monospace-ish block reads as "this is the literal
+   string that goes out" in a way a paragraph of body copy does not. */
+.rebook-sms-body {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px 12px 12px 3px;
+  background: rgba(var(--tint), 0.06);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.rebook-email-body { display: grid; gap: 0.45rem; margin: 0; }
+.rebook-email-body > div { display: grid; gap: 0.1rem; }
+.rebook-email-body dt {
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mute-t45);
+}
+.rebook-email-body dd { margin: 0; font-size: 0.86rem; line-height: 1.5; }
+
+/* The channel as its own thing, because it decides which message arrives. */
+.rebook-channel-chip {
+  flex: none;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.rebook-channel-chip.is-sms { border-color: var(--cedge-green-38); background: rgba(127, 224, 178, 0.12); color: var(--good); }
+.rebook-channel-chip.is-email { border-color: var(--cedge-amber-49); background: rgba(255, 209, 102, 0.12); color: var(--warn); }
+.rebook-channel-chip.is-none { border-color: var(--edge-t14); color: var(--mute-t45); }
 
 @media (max-width: 640px) {
   .rebook-row { flex-direction: column; align-items: stretch; }
@@ -22876,40 +22938,68 @@ a.bset-card { color: inherit; text-decoration: none; }
    CASH FLOW — step one, and the decision above the picture of it
    ------------------------------------------------------------------------ */
 
-/**
- * THE SETUP PANEL, shown only while there is no balance.
- *
- * The page used to open on a forecast and keep the one number that makes a
- * forecast possible in a settings row below three charts. This is the first
- * thing under the lead when it is missing, and it disappears the moment it is
- * answered — a permanent banner is a permanent nag.
- */
-.cash-setup {
-  margin: 1.1rem 0 0;
-  padding: 0.95rem 1.05rem;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 209, 102, 0.3);
-  background: rgba(255, 209, 102, 0.08);
-}
+/* The setup panel that stood here — a callout headed "Preview — starting
+   balance needed", between the page title and its first number on every load
+   until somebody went and looked up their bank balance — is gone. The forecast
+   starts from $0 and says so in one line under the chart. See
+   .cash-provisional-note and the note on `balance` in CashFlowBoard. */
 
-.cash-setup-eyebrow {
-  margin: 0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--ink-orange-9);
+/* ── Three dials, behind one door ────────────────────────────────────
+   Money in the bank, the safety buffer and the credit line are settings: set
+   once, corrected occasionally, and read past on every other visit. Unrolled
+   they were a configuration screen sitting between the forecast and the list of
+   what actually moves money. The current values stay on the summary, so what
+   the forecast is built on is readable without opening it. */
+.cash-controls-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  cursor: pointer;
+  list-style: none;
 }
-
-.cash-setup-note {
-  margin: 0.4rem 0 0;
-  font-size: 0.88rem;
-  line-height: 1.55;
+.cash-controls-summary::-webkit-details-marker { display: none; }
+.cash-controls-summary-label { display: grid; gap: 0.1rem; }
+.cash-controls-summary-label strong { font-size: 1rem; }
+.cash-controls-summary-label small { font-size: 0.8rem; color: var(--mute-i60); }
+.cash-controls-summary-values { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.cash-controls-summary-values span {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 650;
   color: var(--mute-i60);
-  max-width: 62ch;
+  font-variant-numeric: tabular-nums;
 }
+/* A caret that turns, so the summary reads as a door rather than a header. */
+.cash-controls-summary::after {
+  content: '';
+  order: 99;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--mute-i60);
+  border-bottom: 2px solid var(--mute-i60);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.15s ease;
+}
+.cash-controls[open] > .cash-controls-summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.cash-controls-form { margin-top: 1rem; }
 
-.cash-setup-cta { margin-top: 0.8rem; }
+/* The link inside the provisional note, which opens the drawer and lands the
+   cursor in the balance field. A button, because it does something on this
+   page rather than going somewhere. */
+.cash-inline-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /**
  * THE DECISION BLOCK — status, when, how much room, what it would take.
@@ -25156,6 +25246,22 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   border-radius: 14px;
   background: rgba(var(--tint), 0.025);
 }
+/* Merge, and the other answer. A suggestion you cannot decline stops being a
+   suggestion — see dismissDuplicateGroupAction. */
+.dupe-group-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Said on the panel rather than thrown. A server action that throws reaches
+   production as a blank boundary with the message redacted, and this one ships
+   ahead of its migration. */
+.dupe-dismiss-error {
+  margin: 0 0 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--warn);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 122, 33, 0.08);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+.dupe-dismiss-error code { font-size: 0.8rem; overflow-wrap: anywhere; }
 .dupe-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
 .dupe-group-head strong { font-size: 0.9rem; font-weight: 750; }
 .dupe-group-head span { font-size: 0.82rem; color: var(--mute-i60); overflow-wrap: anywhere; }

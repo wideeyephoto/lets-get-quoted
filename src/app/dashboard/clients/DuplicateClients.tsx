@@ -17,9 +17,19 @@ import DuplicateGroupForm, { type DuplicateMember } from './DuplicateGroupForm';
 export default function DuplicateClients({
   groups,
   action,
+  dismissAction,
+  dismissError = false,
 }: {
   groups: DuplicateGroup<DuplicateMember>[];
   action?: (formData: FormData) => Promise<void>;
+  /** The dismissal could not be stored. See dismissDuplicateGroupAction. */
+  dismissError?: boolean;
+  /**
+   * The other answer, and the one this panel had no way to give. A landlord and
+   * their tenant on one phone number is correctly grouped and permanently
+   * wrong — see dismissDuplicateGroupAction.
+   */
+  dismissAction?: (formData: FormData) => Promise<void>;
 }) {
   if (groups.length === 0) return null;
 
@@ -32,9 +42,16 @@ export default function DuplicateClients({
           <span className="btn secondary">Possible duplicates · {groups.length}</span>
           <span className="workspace-details-copy">
             {total} records look like {groups.length} customer{groups.length === 1 ? '' : 's'}. Nothing
-            merges until you say so.
+            merges until you say so, and anything that isn&rsquo;t a duplicate can be dismissed.
           </span>
         </summary>
+
+        {dismissError ? (
+          <p className="dupe-dismiss-error">
+            <strong>That dismissal wasn&rsquo;t saved.</strong> The table it lives in hasn&rsquo;t been created yet — apply{' '}
+            <code>migrations/2026-08-16-duplicate-dismissals.sql</code> and try again. Both records are untouched.
+          </p>
+        ) : null}
 
         <div className="dupe-groups">
           {groups.map((group) => (
@@ -44,7 +61,9 @@ export default function DuplicateClients({
               suggestedId={suggestSurvivor(group.members).id}
               reasonLabel={DUPLICATE_REASON_LABEL[group.reason]}
               sharedValue={group.sharedValue}
+              reason={group.reason}
               action={action}
+              dismissAction={dismissAction}
             />
           ))}
         </div>

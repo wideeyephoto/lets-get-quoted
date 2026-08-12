@@ -5,9 +5,10 @@ import { join } from 'node:path';
 /**
  * The cash-flow page's two standing promises.
  *
- * 1. It does not present a number it was never given. An unentered bank balance
- *    is unknown, not zero, and every readout built on a starting point has to
- *    say so rather than print a confident figure about a placeholder.
+ * 1. It says which starting point it is using. The forecast opens from $0 when
+ *    no balance has been saved — a number a contractor can read and correct —
+ *    and the page states that in the field and under the chart rather than
+ *    withholding every figure until somebody goes and looks it up.
  * 2. It does not report the edge of its own chart as a fact about the business.
  *    "First warning: None" was true of a 30-day window and false of the
  *    account, which went negative on day 33.
@@ -47,60 +48,101 @@ const mediaAround = (needle: string) => {
   return opens.length ? opens[opens.length - 1][1].trim() : null;
 };
 
-describe('an unentered balance is unknown, not zero', () => {
-  it('keeps the balance nullable instead of defaulting it to 0', () => {
-    // `useState<number>(savedBalance ?? 0)` is the whole bug in one line: it
-    // turns "nobody has told us" into "there is nothing in the account".
-    expect(BOARD).toContain('useState<number | null>(savedBalance)');
-    expect(BOARD).not.toContain('useState<number>(savedBalance ?? 0)');
+/**
+ * THE FORECAST OPENS FROM ZERO NOW.
+ *
+ * What stood here was the opposite rule, and the reasoning was sound: a balance
+ * nobody gave is not a balance of zero, and printing fictions to the dollar
+ * beside the word "Overdrawn" is worse than printing nothing. But the cost of
+ * withholding landed on every visit before the one where somebody finally went
+ * and looked their balance up — a callout between the page title and its first
+ * number, three readouts printing an em-dash, and a chart labelled a preview.
+ * The page it was protecting them from is the page they came to see.
+ *
+ * What survives is the part that can be acted on: the field says nothing has
+ * been saved, and the chart says which zero it is starting from.
+ */
+describe('the forecast starts from a number, and says which', () => {
+  it('defaults the balance to 0 rather than to unknown', () => {
+    expect(BOARD).toContain('useState<number>(savedBalance ?? 0)');
+    expect(BOARD).not.toContain('useState<number | null>(savedBalance)');
   });
 
-  it('derives one flag for "known" and uses it, rather than testing null everywhere', () => {
-    expect(BOARD).toContain('const balanceKnown = balance !== null');
-    expect(BOARD).toContain('const startingBalance = balance ?? 0');
+  it('keeps a separate flag for whether a human ever gave it', () => {
+    // Two different questions. What the forecast starts from is always a
+    // number; whether anybody confirmed it is what the hint and the Save
+    // label are about.
+    expect(BOARD).toContain('const balanceSaved = savedBalance !== null');
+    expect(BOARD).toContain('const startingBalance = balance;');
   });
 
-  it('leaves the balance box empty rather than pre-filling a zero nobody typed', () => {
-    expect(BOARD).toContain("value={balance === null ? '' : balance}");
+  it('drops the setup wall entirely', () => {
+    const markup = BOARD.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(markup).not.toContain('Preview — starting balance needed');
+    expect(markup).not.toContain('cash-setup');
+    expect(CSS).not.toContain('.cash-setup {');
   });
 
-  it('does not submit a balance that was never entered', () => {
-    // Saving a 0 here would write the very fiction the null exists to prevent,
-    // and stamp it with today's date as if it had been checked.
-    expect(BOARD).toContain('{balance === null ? null : <input type="hidden" name="balance"');
+  /** One line under the chart instead. It is worth saying the curve starts
+   *  from a zero nobody confirmed; it is not worth blocking the page to say. */
+  it('says which zero the line starts from, where the line is', () => {
+    expect(BOARD).toContain('{balanceSaved ? null : (');
+    expect(BOARD).toContain('cash-provisional-note');
+    expect(BOARD).toContain('because no bank balance has been saved yet');
   });
 
-  it('withholds the balance-based readouts and says why', () => {
-    // Headroom is a statement about the starting point. Without one it is a
-    // statement about a placeholder.
-    expect(BOARD).toContain("outlook.headroom === null ? '—'");
-    expect(BOARD).toMatch(/Needs today.s bank balance/);
+  it('stops printing an em-dash where a figure belongs', () => {
+    expect(BOARD).not.toContain('Cash movement preview');
+    expect(BOARD).not.toContain('Starting balance needed');
+    expect(BOARD).toContain('<dt>Funding needed</dt>');
   });
 
-  it('still shows what survives the gap — the shape, and the balance it implies', () => {
-    // safeStartingCash falls out of the movements and the buffer, so it is true
-    // whether or not anybody has said what is in the account. Withholding it
-    // would be its own kind of dishonest.
-    expect(BOARD).toContain('Starting balance needed');
-    expect(BOARD).toContain('Cash movement preview');
+  it('leaves the saved value nullable end to end', () => {
+    // The DEFAULT is a display decision. Nothing here turns a fresh account's
+    // null into a stored zero behind their back — saving is still a press.
+    expect(BOARD).toContain('savedBalance: number | null;');
+    expect(BOARD).toContain('{dirty || !balanceSaved ?');
+  });
+});
+
+/**
+ * THREE DIALS, BEHIND ONE DOOR.
+ *
+ * Money in the bank, the safety buffer and the credit line are settings: set
+ * once, corrected occasionally, read past on every other visit. Unrolled they
+ * were a configuration screen between the forecast and the list of what
+ * actually moves money.
+ */
+describe('the settings are a drawer, not a panel', () => {
+  it('is a details, closed, named for what is in it', () => {
+    expect(BOARD).toContain('<details ref={settingsRef} className="panel cash-controls"');
+    expect(BOARD).toContain('<strong>Advanced settings</strong>');
   });
 
-  it('carries the empty-state copy the page was specified with', () => {
-    expect(BOARD).toContain('Preview — starting balance needed');
-    expect(BOARD).toContain('t reflect your actual position until you enter');
+  /** Closed on every load, including a fresh account. The forecast starts
+   *  from $0 and works; opening the settings for somebody who did not ask is
+   *  the same nag the setup callout was. */
+  it('does not open itself', () => {
+    expect(BOARD).not.toContain('open={!balanceSaved}');
+    expect(BOARD).toContain('<details ref={settingsRef} className="panel cash-controls">');
+  });
+
+  it('keeps the three current values readable without opening it', () => {
+    expect(BOARD).toContain('in the bank</span>');
+    expect(BOARD).toContain('buffer</span>');
+    expect(BOARD).toContain("creditLine > 0 ? `${money(creditLine)} credit` : 'No credit line'");
+  });
+
+  /** A <details> does not open because something inside it was focused — the
+   *  browser only does that for find-in-page and fragment navigation. */
+  it('opens the drawer before putting the cursor in the balance field', () => {
+    expect(BOARD).toContain('if (settingsRef.current) settingsRef.current.open = true;');
+    expect(BOARD).toContain('field.focus({ preventScroll: true })');
+    expect(BOARD).toContain('ref={balanceRef}');
   });
 });
 
 describe('the prompt to enter a balance is a control, not a label', () => {
-  it('is a real button wired to the field it asks for', () => {
-    // It used to be a <span> styled as a pill — it looked exactly like the
-    // control it needed to be, and clicking it did nothing.
-    expect(BOARD).toContain('const focusBalance = useCallback');
-    expect(BOARD).toContain('field.focus({ preventScroll: true })');
-    expect(BOARD).toMatch(/<button type="button" className="btn primary cash-setup-cta" onClick=\{focusBalance\}>/);
-    expect(BOARD).toContain('ref={balanceRef}');
-  });
-
   it('gives the pill-as-button a hit target and a pointer', () => {
     const rule = ruleFor('.cash-status-pill.is-action');
     expect(rule).toContain('cursor: pointer');

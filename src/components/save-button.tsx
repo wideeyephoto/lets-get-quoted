@@ -27,6 +27,16 @@ type Props = {
   // shared fields, instead of duplicating the fields into two forms.
   name?: string;
   value?: string;
+  /**
+   * Skip the browser's constraint check for THIS button.
+   *
+   * A form can host two submits that want different fields — the duplicate
+   * panel's "Merge" needs the required survivor radio, "Not duplicates" has no
+   * interest in which record would have survived and must not be blocked by it.
+   */
+  formNoValidate?: boolean;
+  /** Native tooltip, for saying what a second submit does differently. */
+  title?: string;
   // Blocked for a reason other than "already submitting" — e.g. a prerequisite
   // the owner has to go and set up first. Kept separate from `pending` so the
   // label and the busy state don't have to lie about which one it is.
@@ -55,6 +65,8 @@ export default function SaveButton({
   disabled = false,
   name,
   value,
+  formNoValidate = false,
+  title,
   onlyWhenChanged = false,
 }: Props) {
   const { pending } = useFormStatus();
@@ -132,6 +144,8 @@ export default function SaveButton({
       disabled={pending || disabled || !visible}
       aria-busy={pending}
       formAction={formAction}
+      formNoValidate={formNoValidate}
+      title={title}
       aria-label={ariaLabel}
       name={name}
       value={value}

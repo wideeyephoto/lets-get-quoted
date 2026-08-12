@@ -141,6 +141,22 @@ export function findDuplicateGroups<T extends DuplicateCandidate>(clients: T[]):
 }
 
 /**
+ * THE IDENTITY OF A SUGGESTION, for remembering that it was turned down.
+ *
+ * Keyed on the MEMBERS rather than on `group.key`. A group's key is the value
+ * the records share ("phone:+12485550117"), which stays the same while the
+ * membership changes underneath it — so a dismissal stored against it would go
+ * on hiding the group when a THIRD record turned up on that number, and a third
+ * record on a number two people already share is the case most worth seeing.
+ *
+ * Sorted, so the key does not depend on the order findDuplicateGroups happened
+ * to produce.
+ */
+export function duplicateMemberKey(members: { id: string }[]): string {
+  return [...members.map((member) => member.id)].sort().join(':');
+}
+
+/**
  * Which record should survive a merge, if nobody says otherwise.
  *
  * The most complete one, then the oldest. Completeness first because the point

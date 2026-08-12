@@ -18,7 +18,10 @@ export default async function RebookPage({
   const requested = Number(searchParams.days);
   const days = REBOOK_DAY_OPTIONS.includes(requested) ? requested : DEFAULT_REBOOK_DAYS;
 
-  const [{ bookingUrl }, candidates] = await Promise.all([
+  // businessName and mailingAddress come across too: the preview has to be the
+  // message rather than a description of it, and the mailing address decides
+  // whether the email half of this page works at all — see rebookChannelFor.
+  const [{ bookingUrl, businessName, mailingAddress }, candidates] = await Promise.all([
     resolveRebookContext(supabase, accountId),
     listRebookCandidates(supabase, accountId, days),
   ]);
@@ -38,6 +41,8 @@ export default async function RebookPage({
       candidates={candidates}
       bookingUrl={bookingUrl}
       days={days}
+      businessName={businessName}
+      mailingAddress={mailingAddress}
       flashText={flashText}
       flashError={flash === 'error' ? (searchParams.msg ?? 'Could not send.') : null}
     />

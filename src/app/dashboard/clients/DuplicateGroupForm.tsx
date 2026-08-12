@@ -28,14 +28,20 @@ export default function DuplicateGroupForm({
   suggestedId,
   reasonLabel,
   sharedValue,
+  reason,
   action,
+  dismissAction,
 }: {
   members: DuplicateMember[];
   suggestedId: string;
   reasonLabel: string;
   sharedValue: string;
+  /** The rule that grouped them, stored with a dismissal for reading later. */
+  reason?: string;
   /** Absent on the demo, where nothing may write. */
   action?: (formData: FormData) => Promise<void>;
+  /** The other answer: not the same customer. Also absent on the demo. */
+  dismissAction?: (formData: FormData) => Promise<void>;
 }) {
   const others = members.length - 1;
   const confirmMessage =
@@ -48,9 +54,16 @@ export default function DuplicateGroupForm({
       action={action}
       className="dupe-group"
       onSubmit={(event) => {
+        // The dismiss button is a second submit in this same form (it has to
+        // be — the ids it needs are these hidden inputs, and nesting forms is
+        // invalid HTML). It carries its own formAction and gets NO merge
+        // confirm: dismissing deletes nothing.
+        const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        if (submitter?.value === 'dismiss') return;
         if (!action || !window.confirm(confirmMessage)) event.preventDefault();
       }}
     >
+      {reason ? <input type="hidden" name="reason" value={reason} /> : null}
       <div className="dupe-group-head">
         <strong>{reasonLabel}</strong>
         {sharedValue ? <span>{sharedValue}</span> : null}
@@ -88,9 +101,34 @@ export default function DuplicateGroupForm({
       </ul>
 
       {action ? (
-        <SaveButton className="btn secondary" pendingLabel="Merging…" savedLabel="Merged ✓">
-          Merge into the selected record
-        </SaveButton>
+        <div className="dupe-group-actions">
+          <SaveButton className="btn secondary" pendingLabel="Merging…" savedLabel="Merged ✓">
+            Merge into the selected record
+          </SaveButton>
+          {/* THE OTHER ANSWER, and the one this panel never had.
+              A landlord and their tenant on one number, a father and son at one
+              address — correctly grouped, permanently wrong, and back at the top
+              of the customer book on every load. A suggestion you cannot decline
+              stops being a suggestion; the panel gets collapsed and never opened
+              again, and the real duplicates go unfound with it.
+
+              formNoValidate because the survivor radio is `required` and this
+              button has no interest in which record would have survived. */}
+          {dismissAction ? (
+            <SaveButton
+              className="btn ghost"
+              formAction={dismissAction}
+              formNoValidate
+              name="intent"
+              value="dismiss"
+              pendingLabel="Dismissing…"
+              savedLabel="Dismissed ✓"
+              title="Keeps both records exactly as they are and stops suggesting this pairing."
+            >
+              Not duplicates
+            </SaveButton>
+          ) : null}
+        </div>
       ) : (
         <span className="dupe-demo-note">Merging is disabled in the demo.</span>
       )}
