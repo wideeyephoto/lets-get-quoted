@@ -44,6 +44,10 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
         // action revalidating the inbox underneath must not shove the dialog
         // back open after somebody has closed it.
         defaultOpen={openOnLoad}
+        // This dialog opens over the inbox and is the one that gets
+        // screenshotted for a carrier campaign submission. The ordinary scrim
+        // leaves customer names, numbers and message text readable behind it.
+        obscureBackdrop
         triggerLabel={
           <>
             <span className="msg-setup-copy">
@@ -74,21 +78,36 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
         <div className="msg-setup-sections">
           <section className="msg-setup-section">
             <h3>Your Let&rsquo;s Get Quoted notifications</h3>
+            {/* The four traffic types, named, and in the same order as the
+                consent label and the registered campaign. This used to say "a
+                high-value lead landing, a homeowner accepting an estimate",
+                which described two messages rather than the categories the
+                consent covers — and a description narrower than the permission
+                it sits above is the mismatch a carrier reviewer looks for.
+                The last sentence is here for the same reason: the single most
+                common misreading of this dialog is that it turns on texting to
+                customers. */}
             <p className="msg-setup-lead">
-              Texts to <b>you</b> about your own account &mdash; a high-value lead landing, a homeowner
-              accepting an estimate. Nothing here texts your customers.
+              Texts to <b>you</b> about your own Let&rsquo;s Get Quoted account &mdash; account, billing,
+              support, and quote-request notifications, such as a high-value lead landing or a homeowner
+              accepting an estimate. <b>This does not text your customers</b> and does not set up customer
+              texting; that is separate, and it is the section beside this one.
             </p>
             <OwnerAlertsForm
               phone={setup.alerts.kind === 'ok' ? setup.alerts.phone : null}
               enabled={setup.alerts.kind === 'ok' ? setup.alerts.enabled : false}
               consent={setup.alerts.kind === 'ok' ? setup.alerts.consent : 'none'}
               consentedAt={setup.alerts.kind === 'ok' ? setup.alerts.consentedAt : null}
+              consentVersion={setup.alerts.kind === 'ok' ? setup.alerts.consentVersion : null}
               disabled={!canSaveOwnerAlerts(setup.alerts)}
             />
           </section>
 
+          {/* Inactive, and stays inactive. Nothing in this section takes input,
+              writes anything, or shares state with the consent form above it —
+              the two are adjacent on screen and unrelated everywhere else. */}
           <section className="msg-setup-section">
-            <h3>Customer texting</h3>
+            <h3>Customer texting &mdash; coming soon</h3>
             <p className="msg-setup-lead">
               Texting your own customers needs a dedicated two-way number, and a number can only send to
               them once your business is registered with the mobile carriers. That is a legal requirement

@@ -4,11 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
-import { ensureSmsConsentBaseline, isPhoneOptedOut, recordSmsConsent, sendInboxReplySms } from '@/lib/sms';
+import { isPhoneOptedOut, recordOwnerSmsConsent, recordSmsConsent, sendInboxReplySms } from '@/lib/sms';
 import { loadBusinessName } from '@/lib/business-name';
 import { logOutboundMessage, markThreadRead } from '@/lib/messages';
 import { createMessageTemplate, deleteMessageTemplate } from '@/lib/message-templates';
 import { loadOwnerAlerts, validateOwnerAlerts } from '@/lib/owner-sms';
+import { OWNER_SMS_DISCLOSURE_VERSION } from '@/lib/owner-sms-disclosure';
 import type { OwnerAlertsState } from '@/lib/owner-sms-state';
 
 export async function sendReplyAction(phone: string, formData: FormData) {
@@ -100,10 +101,45 @@ export async function saveOwnerAlertsAction(
       .eq('id', accountId);
     if (error) return { status: 'error', errors: [{ field: 'form', message: 'Could not save your notification settings.' }] };
 
-    if (normalized && enabled) await ensureSmsConsentBaseline(accountId, normalized, 'owner_alerts');
+    /**
+     * The tick is what gets recorded, and it is recorded WITH THE WORDING.
+     *
+     * Keyed on the box, not on the alert switch: the switch is a preference
+     * about one kind of text, the box is the permission. Recording the version
+     * is what lets the ledger answer the only question a carrier asks — not
+     * "did they agree" but "did they agree to THIS".
+     *
+     * Consent is never inferred. Typing a number does not do it and neither
+     * does flipping the switch; validateOwnerAlerts refuses the save without
+     * the box, and this line is the only thing in the app that writes an
+     * owner_alerts consent row.
+     */
+    let suppressed = false;
+    if (normalized && consented) {
+      const outcome = await recordOwnerSmsConsent(accountId, normalized, OWNER_SMS_DISCLOSURE_VERSION);
+      // A STOP outranks a tick in our own UI. Say so instead of reporting a
+      // success that did not happen — they would otherwise sit waiting for
+      // texts that are correctly being suppressed.
+      if (outcome === 'suppressed') suppressed = true;
+      if (outcome === 'failed') {
+        return {
+          status: 'error',
+          errors: [{ field: 'consent', message: 'Your settings saved, but we could not record your consent. Try saving again.' }],
+        };
+      }
+    }
 
     revalidatePath('/dashboard/messages');
     revalidatePath('/dashboard/automations');
+    if (suppressed) {
+      return {
+        status: 'error',
+        errors: [{
+          field: 'consent',
+          message: `Saved, but ${normalized} replied STOP to one of our texts. Text START from that phone to start them again — ticking this box cannot.`,
+        }],
+      };
+    }
     return {
       status: 'saved',
       message: enabled && normalized ? `Alerts will text ${normalized}.` : 'Saved. Nothing will be texted to you.',

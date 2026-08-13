@@ -54,11 +54,23 @@ type ModalDialogProps = {
   // Runs after a successful submit closes the dialog — NOT on Escape or a
   // backdrop click. Used to take the owner to whatever they just created.
   onSuccess?: () => void;
+  /**
+   * Hide the page behind the dialog, rather than merely dimming it.
+   *
+   * Opt-in and defaults to the ordinary scrim, because on every other modal in
+   * the app the context behind it is the point — you want to see the job you
+   * are adding a cost to. The one place that inverts is the texting-setup
+   * dialog: it opens over the inbox, it gets screenshotted for a carrier
+   * campaign submission, and a 3px blur over a 66% scrim leaves customer names
+   * and phone numbers legible in the result. That is somebody else's personal
+   * information leaving the building inside our compliance evidence.
+   */
+  obscureBackdrop?: boolean;
   children: ReactNode;
 };
 
 export default function ModalDialog({
-  triggerLabel, triggerClassName, title, defaultOpen = false, onSuccess, children,
+  triggerLabel, triggerClassName, title, defaultOpen = false, onSuccess, obscureBackdrop = false, children,
 }: ModalDialogProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
@@ -120,7 +132,10 @@ export default function ModalDialog({
       {mounted && open
         ? createPortal(
             <div
-              className="app-modal-backdrop"
+              // Still carries app-modal-backdrop, because the inert sweep above
+              // identifies backdrops by that class — a modifier that replaced it
+              // would silence this dialog's own portal.
+              className={`app-modal-backdrop${obscureBackdrop ? ' is-private' : ''}`}
               role="presentation"
               onClick={(event) => {
                 if (event.target === event.currentTarget) setOpen(false);

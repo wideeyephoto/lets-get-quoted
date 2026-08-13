@@ -1092,6 +1092,14 @@ create table if not exists sms_consent (
   source          text not null default 'payment_request',
   consented_at    timestamptz,
   opted_out_at    timestamptz,
+  -- WHICH wording they agreed to, not merely that they agreed. A carrier 10DLC
+  -- review asks exactly that: the evidence screenshot shows one sentence, and
+  -- the ledger has to be able to say this person accepted THAT sentence. See
+  -- src/lib/owner-sms-disclosure.ts for the current identifier. Null marks a
+  -- row written before the wording was versioned — deliberately not
+  -- backfilled, because stamping a version onto a consent nobody gave under it
+  -- is inventing evidence. Null reads as stale and the dialog re-asks.
+  disclosure_version text,
   updated_at      timestamptz not null default now(),
   unique (account_id, phone_number)
 );

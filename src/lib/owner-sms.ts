@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import { needsOwnerSmsConsent } from '@/lib/owner-sms-disclosure';
 import { normalizeUsPhone } from '@/lib/phone';
 
 /**
@@ -76,6 +77,13 @@ export type OwnerAlerts =
        */
       readonly consent: 'opted_in' | 'opted_out' | 'none';
       readonly consentedAt: string | null;
+      /**
+       * WHICH wording they agreed to. Null for a consent recorded before the
+       * disclosure was versioned — which is not the same as no consent, and is
+       * also not good enough to put in front of a carrier. See
+       * lib/owner-sms-disclosure.
+       */
+      readonly consentVersion: string | null;
     }
   | { readonly kind: 'unavailable' };
 
@@ -114,6 +122,34 @@ export function ownerAlertChip(alerts: OwnerAlerts): StatusChip {
   }
   if (!alerts.phone) {
     return { label: 'Setup needed', tone: 'attention', detail: 'No mobile number on file, so nothing can be texted to you.' };
+  }
+  /**
+   * A NUMBER WITHOUT CONSENT IS NOT READY, and this used to say it was.
+   *
+   * Two ways to land here. A legacy account whose number was typed into the old
+   * settings page, which never asked for consent at all — so there is no ledger
+   * row and `consent` is 'none'. Or somebody who agreed to wording we have since
+   * replaced, which is a row with a stale version.
+   *
+   * Both were reported as Ready, because the check was only ever "is there a
+   * number". For the one thing this chip is read for — can we defend texting
+   * this person — that is the wrong answer twice over. It is checked BEFORE the
+   * enabled switch below, since consent is about whether we may text at all,
+   * not about whether they currently want a particular alert.
+   */
+  if (alerts.consent === 'none') {
+    return {
+      label: 'Consent needed',
+      tone: 'attention',
+      detail: 'We have your number but no record of you agreeing to be texted on it.',
+    };
+  }
+  if (needsOwnerSmsConsent(alerts.consentVersion)) {
+    return {
+      label: 'Consent needed',
+      tone: 'attention',
+      detail: 'Our texting disclosure changed. Open setup and agree to the current wording.',
+    };
   }
   if (!alerts.enabled) {
     return { label: 'Off', tone: 'pending', detail: 'Your number is on file and lead alerts are switched off.' };
@@ -252,11 +288,19 @@ export async function loadOwnerAlerts(accountId: string): Promise<OwnerAlerts> {
 
   const phone = normalizeUsPhone(String(account?.alert_phone ?? '')) ?? null;
   const enabled = Boolean(account?.high_value_sms_enabled);
-  if (!phone) return { kind: 'ok', phone: null, enabled, consent: 'none', consentedAt: null };
+  if (!phone) return { kind: 'ok', phone: null, enabled, consent: 'none', consentedAt: null, consentVersion: null };
 
+  /**
+   * Keyed on the NUMBER, which is what makes changing it re-ask for consent.
+   *
+   * Consent rows are (account_id, phone_number), so typing a different mobile
+   * finds no row and reads as 'none' — there is no such thing as consent that
+   * follows somebody to a new handset. The form then requires the box before it
+   * will enable anything for the new number.
+   */
   const { data: consent, error: consentError } = await admin
     .from('sms_consent')
-    .select('status, consented_at')
+    .select('status, consented_at, disclosure_version')
     .eq('account_id', accountId)
     .eq('phone_number', phone)
     .maybeSingle();
@@ -271,6 +315,7 @@ export async function loadOwnerAlerts(accountId: string): Promise<OwnerAlerts> {
     enabled,
     consent: consent?.status === 'opted_out' ? 'opted_out' : consent ? 'opted_in' : 'none',
     consentedAt: consent?.consented_at ?? null,
+    consentVersion: consent?.disclosure_version ?? null,
   };
 }
 

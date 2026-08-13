@@ -375,6 +375,92 @@ export async function ensureSmsConsentBaseline(accountId: string, phone: string,
   }, { onConflict: 'account_id,phone_number', ignoreDuplicates: true });
 }
 
+export type OwnerConsentOutcome = 'recorded' | 'suppressed' | 'failed';
+
+/**
+ * Records an owner ticking the consent box, stamped with the wording they saw.
+ *
+ * WHY NOT ensureSmsConsentBaseline. That one is insert-if-absent — it never
+ * overwrites, which is exactly right for a crew number nobody explicitly
+ * consented for, and exactly wrong here. This has to be able to UPDATE an
+ * existing row, because re-agreeing to new wording is the whole point and the
+ * old row already exists.
+ *
+ * WHY NOT recordSmsConsent. That one throws on an opted-out number and is
+ * keyed to a different story (a contractor attesting on a homeowner's behalf).
+ * Here a STOP is not an error to report as a failure — it is a real state with
+ * its own sentence on screen.
+ *
+ * THE STOP GUARD IS THE UPDATE'S OWN WHERE CLAUSE, not a read-then-write.
+ *
+ *   update ... where account_id = ? and phone_number = ? and status <> 'opted_out'
+ *
+ * A read-then-upsert would have a window: STOP arrives between the two
+ * statements and the upsert cheerfully sets the row back to opted_in. Narrow,
+ * but the thing it would silently undo is somebody telling us to stop texting
+ * them, so it gets closed properly rather than commented as unlikely. Zero rows
+ * updated means either no row (insert one) or an opted-out row (leave it).
+ *
+ * Never throws — the caller is a form action that has to render a result.
+ */
+export async function recordOwnerSmsConsent(
+  accountId: string,
+  phone: string,
+  disclosureVersion: string,
+): Promise<OwnerConsentOutcome> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return 'failed';
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+
+  try {
+    const { data: updated, error: updateError } = await admin
+      .from('sms_consent')
+      .update({
+        status: 'opted_in',
+        source: 'owner_alerts',
+        consented_at: now,
+        opted_out_at: null,
+        disclosure_version: disclosureVersion,
+        updated_at: now,
+      })
+      .eq('account_id', accountId)
+      .eq('phone_number', normalized)
+      .neq('status', 'opted_out')
+      .select('id');
+    if (updateError) throw new Error(updateError.message);
+    if (updated && updated.length > 0) return 'recorded';
+
+    // Nothing updated. Either there is no row, or the row says opted_out.
+    const { data: existing, error: readError } = await admin
+      .from('sms_consent')
+      .select('status')
+      .eq('account_id', accountId)
+      .eq('phone_number', normalized)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (existing) return existing.status === 'opted_out' ? 'suppressed' : 'failed';
+
+    const { error: insertError } = await admin.from('sms_consent').insert({
+      account_id: accountId,
+      phone_number: normalized,
+      status: 'opted_in',
+      source: 'owner_alerts',
+      consented_at: now,
+      disclosure_version: disclosureVersion,
+      updated_at: now,
+    });
+    // 23505 means a row appeared between the update and the insert. The only
+    // thing that writes one mid-flight is the inbound STOP handler, so the
+    // honest answer is suppressed rather than a retry that would race it again.
+    if (insertError) return insertError.code === '23505' ? 'suppressed' : 'failed';
+    return 'recorded';
+  } catch (error) {
+    console.error('Owner SMS consent write failed:', error instanceof Error ? error.message : error);
+    return 'failed';
+  }
+}
+
 // Sends a crew-directed text through the consent ledger: an opted-out number is
 // skipped (and logged as opted_out); otherwise a pending sms_events row is
 // written, the text is sent, and the row is marked sent/failed. The number is

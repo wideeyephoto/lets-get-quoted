@@ -55,12 +55,22 @@ const {
   REGISTRATION_STATUSES,
 } = await import('@/lib/owner-sms');
 
+const {
+  needsOwnerSmsConsent,
+  OWNER_SMS_CONSENT_LABEL,
+  OWNER_SMS_DISCLOSURE,
+  OWNER_SMS_DISCLOSURE_VERSION,
+} = await import('@/lib/owner-sms-disclosure');
+
 beforeEach(() => replies.clear());
 
 describe('reading the owner’s notification settings', () => {
   it('reports the number, the switch and the consent together', async () => {
     replies.set('accounts', { data: { alert_phone: '(248) 555-0100', high_value_sms_enabled: true }, error: null });
-    replies.set('sms_consent', { data: { status: 'opted_in', consented_at: '2026-08-01T00:00:00Z' }, error: null });
+    replies.set('sms_consent', {
+      data: { status: 'opted_in', consented_at: '2026-08-01T00:00:00Z', disclosure_version: OWNER_SMS_DISCLOSURE_VERSION },
+      error: null,
+    });
 
     const alerts = await loadOwnerAlerts('acc-1');
     expect(alerts).toEqual({
@@ -70,7 +80,19 @@ describe('reading the owner’s notification settings', () => {
       enabled: true,
       consent: 'opted_in',
       consentedAt: '2026-08-01T00:00:00Z',
+      consentVersion: OWNER_SMS_DISCLOSURE_VERSION,
     });
+  });
+
+  /* A consent written before the wording was versioned. Not the same as no
+     consent, and not good enough to show a carrier either — so it is carried
+     through as null rather than smoothed into the current version. */
+  it('carries a pre-versioning consent through as null', async () => {
+    replies.set('accounts', { data: { alert_phone: '+12485550100', high_value_sms_enabled: true }, error: null });
+    replies.set('sms_consent', { data: { status: 'opted_in', consented_at: '2026-08-01T00:00:00Z' }, error: null });
+    const alerts = await loadOwnerAlerts('acc-1');
+    expect(alerts.kind === 'ok' && alerts.consent).toBe('opted_in');
+    expect(alerts.kind === 'ok' && alerts.consentVersion).toBeNull();
   });
 
   /* A number with no consent row is what EVERY account looked like before this
@@ -89,7 +111,7 @@ describe('reading the owner’s notification settings', () => {
     // come back unavailable rather than a clean empty state.
     replies.set('sms_consent', { data: null, error: { message: 'boom' } });
     expect(await loadOwnerAlerts('acc-1')).toEqual({
-      kind: 'ok', phone: null, enabled: false, consent: 'none', consentedAt: null,
+      kind: 'ok', phone: null, enabled: false, consent: 'none', consentedAt: null, consentVersion: null,
     });
   });
 
@@ -168,14 +190,55 @@ describe('reading the registration', () => {
    What the strip says
    ---------------------------------------------------------------------- */
 
-const okAlerts = (over: Partial<{ phone: string | null; enabled: boolean; consent: 'opted_in' | 'opted_out' | 'none' }> = {}) =>
-  ({ kind: 'ok' as const, phone: '+12485550100', enabled: true, consent: 'opted_in' as const, consentedAt: null, ...over });
+const okAlerts = (
+  over: Partial<{
+    phone: string | null;
+    enabled: boolean;
+    consent: 'opted_in' | 'opted_out' | 'none';
+    consentVersion: string | null;
+  }> = {},
+) => ({
+  kind: 'ok' as const,
+  phone: '+12485550100',
+  enabled: true,
+  consent: 'opted_in' as const,
+  consentedAt: null,
+  // Current by default, so every other case in this file is testing the thing
+  // it names rather than accidentally testing a stale disclosure.
+  consentVersion: OWNER_SMS_DISCLOSURE_VERSION as string | null,
+  ...over,
+});
 
 describe('the owner-alert chip', () => {
   it('only says Ready when something would actually arrive', () => {
     expect(ownerAlertChip(okAlerts()).label).toBe('Ready');
     expect(ownerAlertChip(okAlerts({ phone: null })).label).toBe('Setup needed');
     expect(ownerAlertChip(okAlerts({ enabled: false })).label).toBe('Off');
+  });
+
+  /**
+   * A NUMBER IS NOT PERMISSION. Both of these reported Ready before, because
+   * the only question asked was whether a number existed — so a legacy account
+   * whose mobile was typed into the old settings page (which never asked for
+   * consent) looked identical to one that had properly agreed.
+   */
+  it('says Consent needed for a number with no consent row', () => {
+    const chip = ownerAlertChip(okAlerts({ consent: 'none' }));
+    expect(chip.label).toBe('Consent needed');
+    expect(chip.tone).toBe('attention');
+  });
+
+  it('says Consent needed when they agreed to superseded wording', () => {
+    const chip = ownerAlertChip(okAlerts({ consentVersion: '2026-01-01-owner-alerts-v1' }));
+    expect(chip.label).toBe('Consent needed');
+    expect(chip.tone).toBe('attention');
+    expect(ownerAlertChip(okAlerts({ consentVersion: null })).label).toBe('Consent needed');
+  });
+
+  /* Consent outranks the switch: whether we MAY text is a different question
+     from whether they currently want a particular alert. */
+  it('reports missing consent even when alerts are switched off', () => {
+    expect(ownerAlertChip(okAlerts({ consent: 'none', enabled: false })).label).toBe('Consent needed');
   });
 
   /* Somebody who replied STOP is not getting their lead alerts, and a page that
@@ -308,6 +371,8 @@ const ACTIONS = stripJs(read('src', 'app', 'dashboard', 'messages', 'actions.ts'
 const AUTOMATIONS = stripJs(read('src', 'app', 'dashboard', 'automations', 'page.tsx'));
 const SETTINGS_ACTIONS = stripJs(read('src', 'app', 'dashboard', 'settings', 'actions.ts'));
 const SMS = stripJs(read('src', 'lib', 'sms.ts'));
+const DISCLOSURE = stripJs(read('src', 'lib', 'owner-sms-disclosure.ts'));
+const MODAL = stripJs(read('src', 'components', 'modal-dialog.tsx'));
 const CSS = read('src', 'app', 'globals.css').replace(/\/\*[\s\S]*?\*\//g, '');
 
 describe('the strip, in the inbox', () => {
@@ -415,52 +480,178 @@ describe('the dialog', () => {
 
 describe('the consent capture', () => {
   /**
-   * ALL FIVE DISCLOSURES, AT THE BOX. This is what "Standard rates apply." was
-   * standing in for on the automations page: frequency, rates, STOP, HELP, and
-   * that agreeing is not a condition of buying anything.
+   * THE WORDING IS EVIDENCE, so it is asserted character for character.
+   *
+   * These two sentences go to the carriers as a 10DLC screenshot. A test that
+   * checked for "contains STOP" would pass against a paraphrase, and the
+   * paraphrase is what a reviewer would compare against the campaign filing.
    */
-  it('says all five things next to the checkbox', () => {
-    const terms = FORM.slice(FORM.indexOf('msg-setup-terms'), FORM.indexOf('</p>', FORM.indexOf('msg-setup-terms')));
-    expect(terms).toContain('Message frequency varies');
-    expect(terms).toContain('rates may apply');
-    expect(terms).toContain('Reply STOP');
-    expect(terms).toContain('HELP');
-    expect(terms).toContain('not a condition of purchase');
-    expect(terms).toContain('/sms-terms');
-    expect(terms).toContain('/privacy');
+  it('uses the exact registered checkbox wording', () => {
+    expect(OWNER_SMS_CONSENT_LABEL).toBe(
+      'I agree to receive recurring transactional account, billing, support, and quote-request alert texts from Let’s Get Quoted at the mobile number above.',
+    );
   });
 
-  /* Consent that arrives pre-ticked is not consent. Only somebody who has
-     already given it gets a checked box — and that row is written by this form
-     and nothing else. */
-  it('is unchecked the first time', () => {
-    expect(FORM).toContain("const alreadyConsented = consent === 'opted_in';");
-    expect(FORM).toContain('defaultChecked={alreadyConsented}');
+  it('uses the exact registered disclosure', () => {
+    expect(OWNER_SMS_DISCLOSURE).toBe(
+      'Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. See our SMS Terms and Privacy Policy.',
+    );
+  });
+
+  /* Rendered from the constants, never retyped — otherwise the assertions above
+     pin a module nobody displays. */
+  it('renders those constants rather than a copy of them', () => {
+    expect(FORM).toContain('{OWNER_SMS_CONSENT_LABEL}');
+    expect(FORM).toContain('{OWNER_SMS_DISCLOSURE_LEAD}');
+    expect(FORM).not.toContain('Message frequency varies');
+  });
+
+  it('keeps both links pointed where they were', () => {
+    const terms = FORM.slice(FORM.indexOf('msg-setup-terms'), FORM.indexOf('</p>', FORM.indexOf('msg-setup-terms')));
+    expect(terms).toContain('OWNER_SMS_TERMS_HREF');
+    expect(terms).toContain('OWNER_SMS_PRIVACY_HREF');
+    expect(DISCLOSURE).toContain("OWNER_SMS_TERMS_HREF = '/sms-terms'");
+    expect(DISCLOSURE).toContain("OWNER_SMS_PRIVACY_HREF = '/privacy'");
   });
 
   /**
-   * THE LEDGER ROW IS THE POINT. The inbound STOP handler only UPDATEs, so a
-   * number with no sms_consent row could not be suppressed — which is why owner
-   * alert texts said "Reply STOP" and then ignored it.
+   * UNCHECKED. ALWAYS. NO "already agreed" EXCEPTION.
+   *
+   * It used to be pre-ticked for anyone with an opted-in row. A pre-ticked box
+   * is the textbook example of what does not count as consent, and this one
+   * gets photographed for a carrier submission.
    */
-  it('writes a consent row the STOP handler can flip', () => {
-    expect(ACTIONS).toContain("ensureSmsConsentBaseline(accountId, normalized, 'owner_alerts')");
+  it('never pre-ticks the box, for anybody', () => {
+    expect(FORM).toContain('defaultChecked={false}');
+    expect(FORM).not.toContain('defaultChecked={alreadyConsented}');
+    // Nothing may reach the checkbox's checked state from stored consent.
+    const checkbox = FORM.slice(FORM.indexOf('id="alertsConsent"'), FORM.indexOf('</label>', FORM.indexOf('id="alertsConsent"')));
+    expect(checkbox).not.toMatch(/defaultChecked=\{(?!false\})/);
   });
 
-  /* ensureSmsConsentBaseline and NOT recordSmsConsent: the former never
-     overwrites, so pressing Save cannot silently opt somebody back in after
-     they texted STOP. Only a START from their own handset can do that. */
+  it('shows stored consent as a sentence instead, so state is still visible', () => {
+    expect(FORM).toContain('consentIsCurrent');
+    expect(FORM).toContain('Consent recorded');
+  });
+
+  /* Neither typing a number nor flipping the alert switch is agreement. */
+  it('will not enable alerts without an affirmative tick', () => {
+    const errors = validateOwnerAlerts({ phone: '(248) 555-0100', enabled: true, consented: false });
+    expect(errors.map((one) => one.field)).toContain('consent');
+  });
+
+  it('will not enable alerts on an unusable number even with the tick', () => {
+    const errors = validateOwnerAlerts({ phone: 'call me', enabled: true, consented: true });
+    expect(errors.map((one) => one.field)).toContain('phone');
+  });
+
+  /**
+   * THE VERSION IS WHAT MAKES THE LEDGER WORTH ANYTHING. "They consented" is
+   * not the question a carrier asks; "they consented to THIS" is.
+   */
+  it('stamps the ledger with the disclosure they were shown', () => {
+    expect(ACTIONS).toContain('recordOwnerSmsConsent(accountId, normalized, OWNER_SMS_DISCLOSURE_VERSION)');
+    expect(SMS).toContain('disclosure_version: disclosureVersion');
+  });
+
+  it('treats any other version, and no version, as needing consent again', () => {
+    expect(needsOwnerSmsConsent(OWNER_SMS_DISCLOSURE_VERSION)).toBe(false);
+    expect(needsOwnerSmsConsent(null)).toBe(true);
+    expect(needsOwnerSmsConsent('2026-01-01-owner-alerts-v1')).toBe(true);
+  });
+
+  /**
+   * STOP STILL WINS, and now it has to survive a function that CAN overwrite.
+   *
+   * The old writer was insert-if-absent, so re-opt-in was impossible by
+   * construction. This one updates, because re-agreeing to new wording is the
+   * point — so the suppression has to be explicit, and it is the update's own
+   * WHERE clause rather than a read followed by a write. A read-then-write
+   * leaves a window in which a STOP arriving between the two statements is
+   * silently undone.
+   */
   it('cannot re-opt-in somebody who stopped, by pressing Save', () => {
-    const action = ACTIONS.slice(ACTIONS.indexOf('saveOwnerAlertsAction'));
-    const body = action.slice(0, action.indexOf('\nexport '));
-    expect(body).not.toContain('recordSmsConsent');
-    const baseline = SMS.slice(SMS.indexOf('export async function ensureSmsConsentBaseline'));
-    expect(baseline.slice(0, baseline.indexOf('\nexport '))).toContain('ignoreDuplicates: true');
+    const writer = SMS.slice(SMS.indexOf('export async function recordOwnerSmsConsent'));
+    const body = writer.slice(0, writer.indexOf('\nexport '));
+    expect(body).toContain(".neq('status', 'opted_out')");
+    // The guard is in the statement, not in a prior branch.
+    expect(body.indexOf(".neq('status', 'opted_out')")).toBeLessThan(body.indexOf('.insert('));
+    // An opted-out row reports back as suppressed rather than as a write.
+    expect(body).toContain("'opted_out' ? 'suppressed'");
+  });
+
+  it('tells the owner when their tick was refused by an earlier STOP', () => {
+    expect(ACTIONS).toContain("outcome === 'suppressed'");
+    expect(ACTIONS).toContain('replied STOP');
   });
 
   it('refuses to save when the settings could not be read', () => {
     expect(ACTIONS).toContain("if (current.kind === 'unavailable')");
     expect(STRIP).toContain('disabled={!canSaveOwnerAlerts(setup.alerts)}');
+  });
+});
+
+describe('the description matches the traffic that is registered', () => {
+  /* A description narrower than the permission above it is the mismatch a
+     carrier reviewer looks for. Same four categories, same order, as the
+     consent label. */
+  it('names account, billing, support and quote-request notifications', () => {
+    const lead = STRIP.slice(STRIP.indexOf('msg-setup-lead'), STRIP.indexOf('</p>', STRIP.indexOf('msg-setup-lead')));
+    for (const category of ['account', 'billing', 'support', 'quote-request']) {
+      expect(lead, `the intro should name ${category}`).toContain(category);
+    }
+  });
+
+  /* The single most common misreading of this dialog. */
+  it('says out loud that this does not text customers', () => {
+    expect(STRIP).toContain('This does not text your customers');
+  });
+
+  it('keeps customer texting labelled as coming soon and inactive', () => {
+    expect(STRIP).toContain('Customer texting &mdash; coming soon');
+    const customerSection = STRIP.slice(STRIP.indexOf('Customer texting &mdash; coming soon'));
+    expect(customerSection).not.toContain('<button');
+    expect(customerSection).not.toContain('<input');
+    expect(customerSection).not.toContain('<form');
+  });
+});
+
+describe('the screenshot must not leak the inbox behind it', () => {
+  /**
+   * This dialog is photographed for a carrier submission, over a page listing
+   * customer names, mobile numbers and message text. The ordinary scrim —
+   * rgba(4,10,18,0.66) with a 3px blur — leaves all three legible.
+   */
+  it('opens with the obscuring backdrop', () => {
+    expect(STRIP).toContain('obscureBackdrop');
+    expect(MODAL).toContain("obscureBackdrop ? ' is-private' : ''");
+  });
+
+  it('leaves the base class on, so the inert sweep still spares the portal', () => {
+    // Identified by class name in the same file; a modifier that REPLACED
+    // app-modal-backdrop would make the dialog inert its own portal.
+    expect(MODAL).toContain('app-modal-backdrop${obscureBackdrop');
+    expect(MODAL).toContain("classList.contains('app-modal-backdrop')");
+  });
+
+  /**
+   * OPACITY CARRIES IT, BLUR ONLY HELPS. backdrop-filter is unsupported or
+   * switched off often enough that a privacy property resting on it would
+   * quietly evaporate on the machines least likely to be checked.
+   */
+  it('is opaque enough on its own, without the filter', () => {
+    const rule = CSS.slice(CSS.indexOf('.app-modal-backdrop.is-private'));
+    const block = rule.slice(0, rule.indexOf('}'));
+    const alpha = Number(/rgba\([^)]*?,\s*([\d.]+)\s*\)/.exec(block)?.[1]);
+    expect(alpha).toBeGreaterThanOrEqual(0.95);
+    expect(block).toContain('backdrop-filter');
+  });
+
+  it('prefixes the filter for Safari, on both backdrops', () => {
+    const privateRule = CSS.slice(CSS.indexOf('.app-modal-backdrop.is-private'));
+    expect(privateRule.slice(0, privateRule.indexOf('}'))).toContain('-webkit-backdrop-filter');
+    const base = CSS.slice(CSS.indexOf('.app-modal-backdrop {'));
+    expect(base.slice(0, base.indexOf('}'))).toContain('-webkit-backdrop-filter');
   });
 });
 

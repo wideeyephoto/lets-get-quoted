@@ -8,6 +8,19 @@ import { saveOwnerAlertsAction } from './actions';
 // 'use server' file may only export async functions, and lib/owner-sms imports
 // the service-role client.
 import { OWNER_ALERTS_IDLE } from '@/lib/owner-sms-state';
+// The wording is imported, never retyped: this exact sentence is what goes to
+// the carriers as evidence and what the ledger stamps a version against.
+import {
+  needsOwnerSmsConsent,
+  OWNER_SMS_CONSENT_LABEL,
+  OWNER_SMS_DISCLOSURE_JOIN,
+  OWNER_SMS_DISCLOSURE_LEAD,
+  OWNER_SMS_DISCLOSURE_TAIL,
+  OWNER_SMS_PRIVACY_HREF,
+  OWNER_SMS_PRIVACY_LABEL,
+  OWNER_SMS_TERMS_HREF,
+  OWNER_SMS_TERMS_LABEL,
+} from '@/lib/owner-sms-disclosure';
 
 /**
  * Section A of the setup dialog: the owner's own number, and their consent.
@@ -28,6 +41,7 @@ export default function OwnerAlertsForm({
   enabled,
   consent,
   consentedAt,
+  consentVersion,
   disabled,
 }: {
   phone: string | null;
@@ -35,6 +49,8 @@ export default function OwnerAlertsForm({
   /** What the consent ledger says for this number, on this account. */
   consent: 'opted_in' | 'opted_out' | 'none';
   consentedAt: string | null;
+  /** Which disclosure they agreed to; null predates versioning. */
+  consentVersion: string | null;
   /** True when the settings could not be read — see the note on the fieldset. */
   disabled: boolean;
 }) {
@@ -43,19 +59,12 @@ export default function OwnerAlertsForm({
   const errorFor = (field: 'phone' | 'consent' | 'form') => errors.find((one) => one.field === field)?.message ?? null;
 
   /**
-   * UNCHECKED THE FIRST TIME, ALWAYS.
+   * Whether the ledger already holds an acceptance of the CURRENT wording.
    *
-   * Consent that arrives pre-ticked is not consent, and this is the one field
-   * on the page where that is a legal statement rather than a preference. It is
-   * only ever checked by default for somebody who has already given it — which
-   * is what `consent === 'opted_in'` means, because that row is written by this
-   * form and nothing else. `none` is a first-time owner and gets an empty box.
-   *
-   * Somebody who replied STOP also gets an empty box, and re-ticking it will
-   * not bring them back: ensureSmsConsentBaseline never overwrites an existing
-   * row. Only a START from their own handset can, which is what an opt-out is.
+   * Used to say so on screen — never to pre-tick the box. See the checkbox.
    */
-  const alreadyConsented = consent === 'opted_in';
+  const consentIsCurrent = consent === 'opted_in' && !needsOwnerSmsConsent(consentVersion);
+  const consentIsStale = consent === 'opted_in' && needsOwnerSmsConsent(consentVersion);
 
   return (
     <form action={action} className="msg-setup-form" noValidate>
@@ -86,28 +95,43 @@ export default function OwnerAlertsForm({
           <span>Text me when a high-value lead comes in</span>
         </label>
 
-        {/* THE DISCLOSURE, IN FULL, WHERE THE BOX IS.
-            Frequency, rates, STOP, HELP, and that agreeing is not a condition of
-            buying anything — all five, next to the checkbox rather than on a
-            public page nobody is looking at. This is what "Standard rates
-            apply." was standing in for. */}
+        {/**
+         * THE CHECKBOX STARTS EMPTY. ALWAYS. NO EXCEPTION FOR "already agreed".
+         *
+         * It used to be pre-ticked for anyone with an existing opted-in row, on
+         * the reasonable-sounding grounds that the box reflects stored state.
+         * It does not: it is the act of agreeing, and a pre-ticked box is the
+         * canonical example of what does not count as consent — to the FCC, to
+         * the carriers reviewing this campaign, and in the screenshot that goes
+         * with the submission. Reflecting the stored state is what the sentence
+         * underneath is for.
+         *
+         * It also means every save is a fresh affirmative act against the
+         * wording currently on screen, which is what makes the version stamp in
+         * the ledger mean anything. Somebody who agreed to the old sentence has
+         * to read this one and tick it again.
+         *
+         * Both strings come from lib/owner-sms-disclosure rather than being
+         * typed here, so what a carrier sees in the screenshot, what the ledger
+         * records a version for, and what the tests assert are one string.
+         */}
         <label className="checkbox-row msg-setup-consent" htmlFor="alertsConsent">
           <input
             id="alertsConsent"
             name="alertsConsent"
             type="checkbox"
-            defaultChecked={alreadyConsented}
+            defaultChecked={false}
             aria-describedby="alertsConsent-terms"
             aria-invalid={errorFor('consent') ? true : undefined}
           />
-          <span>
-            I agree to receive account notification texts from Let&rsquo;s Get Quoted at the number above.
-          </span>
+          <span>{OWNER_SMS_CONSENT_LABEL}</span>
         </label>
         <p className="msg-setup-terms" id="alertsConsent-terms">
-          Message frequency varies with your lead volume. Message and data rates may apply. Reply STOP to
-          stop, HELP for help. Consent is not a condition of purchase. See our{' '}
-          <Link href="/sms-terms">SMS terms</Link> and <Link href="/privacy">privacy policy</Link>.
+          {OWNER_SMS_DISCLOSURE_LEAD}
+          <Link href={OWNER_SMS_TERMS_HREF}>{OWNER_SMS_TERMS_LABEL}</Link>
+          {OWNER_SMS_DISCLOSURE_JOIN}
+          <Link href={OWNER_SMS_PRIVACY_HREF}>{OWNER_SMS_PRIVACY_LABEL}</Link>
+          {OWNER_SMS_DISCLOSURE_TAIL}
         </p>
         {errorFor('consent') ? <p className="field-error" role="alert">{errorFor('consent')}</p> : null}
 
@@ -119,7 +143,14 @@ export default function OwnerAlertsForm({
             You replied STOP from this number, so nothing is being texted to you. Text START to{' '}
             <b>the same number our alerts came from</b> to turn them back on — we cannot do it from here.
           </p>
-        ) : consentedAt ? (
+        ) : consentIsStale ? (
+          // Agreed, but to wording we have replaced. Saying "consent recorded"
+          // would be true and useless — it is the reason the box is empty.
+          <p className="msg-setup-note is-attention" role="status">
+            Our texting disclosure has changed since you last agreed. Read it above and tick the box to keep
+            these texts coming.
+          </p>
+        ) : consentIsCurrent && consentedAt ? (
           <p className="msg-setup-note">
             Consent recorded {new Date(consentedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}.
           </p>

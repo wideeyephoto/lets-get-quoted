@@ -12974,8 +12974,35 @@ button.inbox-thread-item {
   padding: 4vh 1rem 1rem;
   overflow-y: auto;
   background: rgba(4, 10, 18, 0.66);
+  /* Prefixed first, and present at all: Safari and iOS Safari need
+     -webkit-backdrop-filter, and without it every modal in the app was a flat
+     scrim there while looking frosted everywhere else. */
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: app-modal-fade 0.14s ease-out;
+}
+
+/**
+ * The backdrop for a dialog that must not leak the page behind it.
+ *
+ * Opt-in (ModalDialog's obscureBackdrop), because on every other modal the
+ * context behind is the point. Here it is the hazard: the texting-setup dialog
+ * opens over the inbox and gets screenshotted for a carrier 10DLC submission,
+ * and at 0.66 alpha over a 3px blur a customer's name and mobile number are
+ * still readable in the image.
+ *
+ * THE OPACITY IS THE GUARANTEE AND THE BLUR IS THE BELT, in that order — not
+ * the other way round. backdrop-filter is unsupported or disabled often enough
+ * (older Firefox, forced-colors, users who turn off compositing effects) that
+ * relying on the blur would mean the privacy property quietly evaporates on
+ * exactly the machines least likely to be checked. At 0.965 the text underneath
+ * is gone with no filter at all; the blur removes the remaining suggestion of
+ * shape.
+ */
+.app-modal-backdrop.is-private {
+  background: rgba(3, 8, 15, 0.965);
+  -webkit-backdrop-filter: blur(18px) saturate(0.35);
+  backdrop-filter: blur(18px) saturate(0.35);
 }
 
 .app-modal {
