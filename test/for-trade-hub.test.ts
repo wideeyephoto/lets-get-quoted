@@ -28,15 +28,25 @@ const stripCss = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, '');
 
 const PAGE = stripJs(read('src', 'app', 'for', 'page.tsx'));
 const FINDER = stripJs(read('src', 'app', 'for', 'TradeFinder.tsx'));
+const SIM = stripJs(read('src', 'app', 'for', 'HeroIntakeSimulator.tsx'));
 const CSS = stripCss(read('src', 'app', 'for', 'for.module.css'));
+const SIM_CSS = stripCss(read('src', 'app', 'for', 'intake-simulator.module.css'));
 const LAYOUT = read('src', 'app', 'for', 'layout.tsx');
 
-/** The block for one selector, from its opening brace to the first closing one. */
-const ruleFor = (selector: string) => {
-  const at = CSS.indexOf(`\n${selector} {`);
+/**
+ * The block for one selector, from its opening brace to the first closing one.
+ *
+ * Top-level only — the leading newline is what keeps it off the indented copy
+ * of the same selector inside a media query, which is nearly always a partial
+ * override and would answer the wrong question.
+ */
+const rule = (source: string, selector: string) => {
+  const at = source.indexOf(`\n${selector} {`);
   expect(at, `no rule for ${selector}`).toBeGreaterThan(-1);
-  return CSS.slice(at, CSS.indexOf('}', at));
+  return source.slice(at, source.indexOf('}', at));
 };
+const ruleFor = (selector: string) => rule(CSS, selector);
+const simRule = (selector: string) => rule(SIM_CSS, selector);
 
 /* ===========================================================================
    1. Every trade link, in the HTML, whatever the controls say
@@ -139,36 +149,73 @@ describe('/for keeps its place in search', () => {
    3. The hero image
    ======================================================================== */
 describe('the hero graphic', () => {
-  const master = join(process.cwd(), 'assets', 'for-hero', 'hero-quote-devices.png');
-  const shipped = join(process.cwd(), 'public', 'for', 'hero-quote-devices.webp');
+  const master = join(process.cwd(), 'assets', 'for-hero', 'homeowner-estimate.jpeg');
+  const shipped = join(process.cwd(), 'public', 'for', 'homeowner-estimate.webp');
 
-  it('ships a WebP derivative and keeps the PNG master', () => {
-    expect(existsSync(master), 'assets/for-hero/hero-quote-devices.png').toBe(true);
-    expect(existsSync(shipped), 'public/for/hero-quote-devices.webp').toBe(true);
+  it('ships a WebP derivative and keeps the master', () => {
+    expect(existsSync(master), 'assets/for-hero/homeowner-estimate.jpeg').toBe(true);
+    expect(existsSync(shipped), 'public/for/homeowner-estimate.webp').toBe(true);
     // The derivative is the point of having one.
     expect(statSync(shipped).size).toBeLessThan(statSync(master).size);
   });
 
-  /* The intrinsic size is the trimmed master's, printed by
-     scripts/build-for-hero.mjs. If it stops matching, Next reserves the wrong
-     box and the hero shifts as the image lands — which is the layout shift this
-     rebuild is not allowed to introduce. */
-  it('declares the size it actually is, so nothing shifts on load', () => {
-    expect(PAGE).toContain('width={956}');
-    expect(PAGE).toContain('height={642}');
+  /* The cut-out of a laptop and a phone is gone, and so is everything that only
+     ever existed to hold it up: the eight drop-shadows, the drift, the parallax
+     wrapper, and the Chromium script that trimmed the PNG master. If any of
+     these come back it will be by accident. */
+  it('has retired the device shot and everything built for it', () => {
+    for (const gone of [
+      join(process.cwd(), 'public', 'for', 'hero-quote-devices.webp'),
+      join(process.cwd(), 'assets', 'for-hero', 'hero-quote-devices.png'),
+      join(process.cwd(), 'scripts', 'build-for-hero.mjs'),
+      join(process.cwd(), 'src', 'app', 'for', 'HeroParallax.tsx'),
+    ]) {
+      expect(existsSync(gone), gone.replace(process.cwd(), '.')).toBe(false);
+    }
+    expect(PAGE).not.toContain('hero-quote-devices');
+    expect(PAGE).not.toContain('HeroParallax');
+    expect(CSS).not.toContain('.heroShot');
+    expect(CSS).not.toContain('hero-float');
   });
 
-  it('loads eagerly and at high priority — it is the LCP element', () => {
-    const img = PAGE.slice(PAGE.indexOf('<Image'), PAGE.indexOf('/>', PAGE.indexOf('<Image')));
+  it('is the simulator, and it is the only thing in the art column', () => {
+    expect(PAGE).toContain("import HeroIntakeSimulator from './HeroIntakeSimulator'");
+    const art = PAGE.slice(PAGE.indexOf('className={styles.heroArt}'));
+    expect(art.slice(0, art.indexOf('</div>'))).toContain('<HeroIntakeSimulator />');
+  });
+
+  it('loads the photograph eagerly and at high priority — it is the LCP element', () => {
+    const img = SIM.slice(SIM.indexOf('<Image'), SIM.indexOf('/>', SIM.indexOf('<Image')));
+    expect(img).toContain('src="/for/homeowner-estimate.webp"');
     expect(img).toContain('priority');
-    expect(img).not.toContain("loading=\"lazy\"");
+    expect(img).not.toContain('loading="lazy"');
     expect(img).toContain('sizes=');
+    // `fill` rather than intrinsic dimensions: the panel's height is an
+    // aspect-ratio of the column and the photo is cropped to it.
+    expect(img).toContain('fill');
   });
 
   it('says what it shows', () => {
-    expect(PAGE).toContain(
-      'alt="Let’s Get Quoted quote builder displayed on a laptop and phone."',
-    );
+    expect(SIM).toContain('alt="A homeowner in her kitchen, asking for an estimate on her phone."');
+  });
+
+  /* The homeowner stands in the right third of the frame. Anchored right, every
+     crop the panel asks for is taken off the empty wall on the left, so she is
+     never cut into at any width. */
+  it('anchors the crop to the right so the homeowner survives it', () => {
+    expect(simRule('.photo')).toContain('object-position: right center');
+    expect(simRule('.photo')).toContain('object-fit: cover');
+  });
+
+  /* THE CAP IS ON THE PANEL, NOT ON .heroArt. .heroArt is a grid item; capping
+     or auto-margining a grid item cancels its stretch, which leaves the panel
+     resolving `width: 100%` against a fit-content parent whose height is an
+     aspect-ratio of that width. Measured when it was wrong: a 2x2px hero. */
+  it('sizes the panel without collapsing the grid item that holds it', () => {
+    const art = ruleFor('.heroArt');
+    expect(art).not.toContain('max-width');
+    expect(art).not.toContain('margin-left: auto');
+    expect(simRule('.panel')).toContain('max-width: 740px');
   });
 });
 
@@ -426,9 +473,9 @@ describe('nothing scrolls sideways', () => {
    7. The hero has depth, and it moves
    ======================================================================== */
 describe('the glow and the shimmer', () => {
-  const ANIMATIONS = ['ground-drift-a', 'ground-drift-b', 'hero-bloom', 'hero-core', 'hero-float'];
+  const ANIMATIONS = ['ground-drift-a', 'ground-drift-b', 'hero-bloom', 'hero-core'];
 
-  it('runs two layers behind the devices, two on the ground, and the shot itself', () => {
+  it('runs two layers behind the hero panel and two on the ground', () => {
     for (const name of ANIMATIONS) {
       expect(CSS, name).toContain(`@keyframes ${name}`);
       expect(CSS, `${name} is declared but never used`).toContain(`animation: ${name}`);
@@ -468,128 +515,64 @@ describe('the glow and the shimmer', () => {
   });
 
   /**
-   * BIG ENOUGH TO SEE, which is not the same test as "is it running".
+   * THE BLOOMS HAVE TO REACH PAST THE PANEL, and this is the only part of that
+   * a stylesheet can be silently wrong about.
    *
-   * The drift shipped at ±3px over 13s. Measured in a browser that is 0.46px a
-   * second: the animation was running, in the right direction, on a promoted
-   * layer — and completely invisible, which from the outside is
-   * indistinguishable from broken. An amplitude floor is the only part of this
-   * a stylesheet can be wrong about silently.
+   * They were authored to sit INSIDE the hero art (inset 10% 4% 16% 8%), which
+   * was right for a cut-out with transparency all round it and became two
+   * animated gradients rendering underneath an opaque photograph sixty times a
+   * second, visible from nowhere. Every side has to be negative or the layer is
+   * tucked back under the thing it is supposed to be lighting.
    */
-  it('drifts far enough to be seen', () => {
-    const at = CSS.indexOf('@keyframes hero-float');
-    const frames = CSS.slice(at, CSS.indexOf('\n}', at));
-    const offsets = [...frames.matchAll(/translate3d\((-?\d+)px, (-?\d+)px/g)];
-    expect(offsets, 'hero-float has no translate3d endpoints').toHaveLength(2);
-    const travelX = Math.abs(Number(offsets[0][1]) - Number(offsets[1][1]));
-    const travelY = Math.abs(Number(offsets[0][2]) - Number(offsets[1][2]));
-    expect(travelX, 'corner-to-corner X travel').toBeGreaterThanOrEqual(16);
-    expect(travelY, 'corner-to-corner Y travel').toBeGreaterThanOrEqual(12);
+  it('throws the blooms past the edges of the panel they light', () => {
+    for (const selector of ['.heroArt::before', '.heroArt::after']) {
+      // lastIndexOf, not the shared helper: both of these appear FIRST in the
+      // combined `.heroArt::before,\n.heroArt::after {` block that sets content
+      // and position, which carries no inset at all. The rule with the inset in
+      // it is the standalone one below that.
+      const at = CSS.lastIndexOf(`\n${selector} {`);
+      expect(at, `no standalone rule for ${selector}`).toBeGreaterThan(-1);
+      const inset = /inset:\s*([^;]+);/.exec(CSS.slice(at, CSS.indexOf('}', at)));
+      expect(inset, `${selector} has no inset`).not.toBeNull();
+      const sides = inset![1].trim().split(/\s+/);
+      expect(sides, `${selector} inset`).toHaveLength(4);
+      // At least one side reaching out past the panel on each axis; a layer
+      // wholly inside it is the bug this is here for.
+      const negatives = sides.filter((side) => side.startsWith('-')).length;
+      expect(negatives, `${selector} inset ${sides.join(' ')}`).toBeGreaterThanOrEqual(2);
+    }
   });
 });
 
 /* ===========================================================================
-   7b. …and it lags the page it sits on
+   7b. Nothing on the page moves for anybody who asked it not to
    ======================================================================== */
-describe('the hero parallax', () => {
-  const PARALLAX = stripJs(read('src', 'app', 'for', 'HeroParallax.tsx'));
-
-  /**
-   * The load-bearing detail. The drift is a transform on the <img>; a parallax
-   * set on that SAME element would overwrite it, which is the usual way a
-   * hand-rolled parallax silently kills whatever animation was already there.
-   * Nested, the two multiply through the tree and compose.
-   */
-  it('is a wrapper around the shot, never a second transform on it', () => {
-    expect(PAGE).toContain('<HeroParallax className={styles.heroParallax}>');
-    const open = PAGE.indexOf('<HeroParallax');
-    const close = PAGE.indexOf('</HeroParallax>');
-    expect(open).toBeGreaterThan(-1);
-    expect(close).toBeGreaterThan(open);
-    // The image is INSIDE it, which is what makes the transforms compose.
-    expect(PAGE.slice(open, close)).toContain('className={styles.heroShot}');
-    // And the shot's own animation is untouched.
-    expect(CSS).toContain('animation: hero-float');
-  });
-
-  it('writes nothing but a transform', () => {
-    const writes = [...PARALLAX.matchAll(/el\.style\.(\w+)/g)].map((m) => m[1]);
-    expect(writes.length).toBeGreaterThan(0);
-    for (const prop of writes) expect(['transform'], `parallax writes ${prop}`).toContain(prop);
-  });
-
-  it('coalesces scroll events to one frame', () => {
-    // Scroll fires far faster than frames do; without the guard this draws
-    // several times per frame for no extra smoothness.
-    expect(PARALLAX).toContain('if (frame || !onScreen || still.matches) return;');
-    expect(PARALLAX).toContain('requestAnimationFrame(draw)');
-    expect(PARALLAX).toContain("{ passive: true }");
-  });
-
-  it('stops while the hero is off screen', () => {
-    expect(PARALLAX).toContain('new IntersectionObserver');
-    expect(PARALLAX).toContain('onScreen = entry.isIntersecting');
-  });
-
-  it('never starts under reduced motion, and gives the layer back', () => {
-    expect(PARALLAX).toContain("matchMedia('(prefers-reduced-motion: reduce)')");
-    expect(PARALLAX).toContain("el.style.transform = ''");
-    const reduced = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
-    expect(reduced.slice(0, reduced.indexOf('\n}\n'))).toContain('.heroParallax');
-  });
-
-  it('and tears every listener back down', () => {
-    const cleanup = PARALLAX.slice(PARALLAX.lastIndexOf('return () => {'));
-    for (const gone of ['io.disconnect()', "removeEventListener('scroll'", "removeEventListener('resize'", 'cancelAnimationFrame']) {
-      expect(cleanup, gone).toContain(gone);
-    }
-  });
+describe('reduced motion', () => {
+  const reduced = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
+  const simReduced = SIM_CSS.slice(SIM_CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
 
   /* Ambient motion with no trigger — nothing the reader started and nothing
-     they can stop. */
-  it('stops every one of them for anyone who asked for less motion', () => {
-    const reduced = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion: reduce)'));
-    for (const selector of ['.ground::before', '.ground::after', '.heroArt::before', '.heroArt::after', '.heroShot']) {
+     they can stop. That is the exact case this media query exists for. */
+  it('stands the four ambient layers down', () => {
+    for (const selector of ['.ground::before', '.ground::after', '.heroArt::before', '.heroArt::after']) {
       expect(reduced, selector).toContain(selector);
     }
     expect(reduced).toContain('animation: none');
   });
 
-  /**
-   * drop-shadow, never box-shadow. The hero is a cut-out on transparency, and
-   * box-shadow traces the image's RECTANGLE — a hard-edged slab behind two
-   * devices that have no rectangle. drop-shadow follows the alpha.
-   */
-  it('shadows the silhouette rather than the image box', () => {
-    const shot = ruleFor('.heroShot');
-    expect(shot).toContain('drop-shadow(');
-    expect(shot).not.toContain('box-shadow');
-    // Four for the stroke, then contact, mid, ambient, and the warm rim.
-    expect((shot.match(/drop-shadow\(/g) ?? []).length).toBe(8);
-    expect(shot).toContain('drop-shadow(0 0 34px rgba(255, 90, 18, 0.24))');
+  /* Four decorative loops live in the panel — a caret, the thinking dots, a
+     bubble arriving, the estimate landing. The component not autoplaying the
+     transcript does nothing about any of them. */
+  it('stands the panel down too, blink included', () => {
+    expect(simReduced).toContain('.caret');
+    expect(simReduced).toContain('.thinking i');
+    expect(simReduced).toContain('animation: none');
   });
 
-  /**
-   * THE STROKE, which is four shadows because a raster cut-out has no edge to
-   * stroke. Zero blur in every one of them, or it is a shadow again — and all
-   * four ahead of the soft ones, so the shadow is cast from the outlined
-   * silhouette rather than from inside its own outline.
-   */
-  it('outlines the cut-out with a stroke that follows its alpha', () => {
-    const shot = ruleFor('.heroShot');
-    const strokes = [...shot.matchAll(/drop-shadow\((-?\d+(?:px)?) (-?\d+(?:px)?) 0 #000\)/g)];
-    expect(strokes).toHaveLength(4);
-    // One per direction, so nothing is outlined on three sides.
-    expect(strokes.map((m) => `${m[1]} ${m[2]}`).sort()).toEqual(
-      ['-2px 0', '0 -2px', '0 2px', '2px 0'].sort(),
-    );
-    const firstSoft = shot.indexOf('drop-shadow(0 2px 6px');
-    expect(shot.lastIndexOf('0 #000)')).toBeLessThan(firstSoft);
-  });
-
-  /* The drift moves ±4%; a layer that ended at the viewport edge would slide a
-     hard edge into view, and an oversized one would widen the document if the
-     ground did not clip it. */
+  /* The oversized layers, which is a different question: the drift moves ±4%,
+     and a layer that ended at the viewport edge would slide a hard edge into
+     view while an oversized one would widen the document if the ground did not
+     clip it. */
   it('oversizes the drifting layers and clips them', () => {
     expect(ruleFor('.ground::before,\n.ground::after')).toContain('inset: -25%');
     // Past the shared token block, which also ends in "\n.ground {" and is what

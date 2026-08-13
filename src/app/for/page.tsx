@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { TRADES } from '@/lib/trades';
@@ -7,7 +6,7 @@ import { FEE_TIERS } from '@/lib/pricing';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import SiteFooter from '@/components/site-footer';
 import TradeFinder from './TradeFinder';
-import HeroParallax from './HeroParallax';
+import HeroIntakeSimulator from './HeroIntakeSimulator';
 import styles from './for.module.css';
 
 export const metadata: Metadata = {
@@ -209,24 +208,26 @@ export default function TradeIndexPage() {
             </div>
 
             <div className={styles.heroArt}>
-              {/* The parallax is a WRAPPER, not a class on the image, because the
-                  image already carries a transform of its own — the drift. Two
-                  transforms on one element overwrite; nested, they compose. */}
-              <HeroParallax className={styles.heroParallax}>
-                {/* Eager and high-priority: this is the LCP element at every width.
-                    The intrinsic size is the trimmed master's, printed by
-                    scripts/build-for-hero.mjs — if it stops matching, Next reserves
-                    the wrong box and the hero shifts as the image lands. */}
-                <Image
-                  className={styles.heroShot}
-                  src="/for/hero-quote-devices.webp"
-                  alt="Let’s Get Quoted quote builder displayed on a laptop and phone."
-                  width={956}
-                  height={642}
-                  priority
-                  sizes="(max-width: 560px) 92vw, (max-width: 980px) 560px, (max-width: 1360px) 56vw, 703px"
-                />
-              </HeroParallax>
+              {/* WHAT REPLACED THE DEVICE SHOT. This used to be a cut-out of a
+                  laptop and a phone with the quote builder on their screens — a
+                  photograph of software, which every competitor also has and
+                  which nobody can check. It now plays the product instead: a
+                  homeowner types what they want, the estimator asks three
+                  questions, and a range comes back, in eighteen seconds. It
+                  submits nothing and calls nothing, and it says so on the card.
+
+                  AND THE PARALLAX WENT WITH IT. HeroParallax lagged the shot
+                  behind the page as you scrolled, which is depth for a flat
+                  cut-out and a hazard for a panel with three buttons in it: the
+                  controls drifted under the pointer for the whole of every
+                  scroll. Measured rather than argued — Playwright could not
+                  land a click on "Show estimate" at all, retrying for thirty
+                  seconds against a target that kept moving out from under the
+                  coordinates it had just measured. A person aiming at it has
+                  the same problem and no retry loop. The panel has its own
+                  depth now — a photograph, a shadow and a lit card — and does
+                  not need to be moved to look like it is in front of the page. */}
+              <HeroIntakeSimulator />
             </div>
           </section>
 
