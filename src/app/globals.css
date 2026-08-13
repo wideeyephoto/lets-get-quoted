@@ -29498,6 +29498,26 @@ body[data-schedule-overlay="job"] .sched-queue {
 .schedule-job-actions-panel:focus { outline: none; }
 
 /* The facts that no longer fit on a month chip, printed with their labels. */
+/* ---- the open job, in three named sections -------------------------------
+   It was one scroll: facts, a row of four buttons with the crew picker hidden
+   inside it as a fifth, a reschedule form, a remove box. Nothing said where one
+   job ended and the next began. */
+.schedule-job-section {
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--edge-t10);
+}
+.schedule-job-section:first-of-type { padding-top: 0; border-top: 0; }
+
+.schedule-job-section-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute-t55);
+}
+
 .schedule-job-facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
@@ -31207,6 +31227,21 @@ body[data-schedule-overlay="job"] .sched-queue {
   color: var(--mute-i62);
 }
 .calendar-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+/* ---- status as a SHAPE, not only as a color ------------------------------
+   Day, Week and the Job list print the status in words on the chip. Projects,
+   Year and the Crew lanes carried it in the fill alone — unreadable in
+   greyscale, on a projector, and to anyone who cannot separate the amber from
+   the green. The mark takes its color from the chip it is on, so it reads as
+   part of the same object rather than as an annotation stuck to it. */
+.calendar-status-mark {
+  flex: none;
+  font-size: 0.72em;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.calendar-legend-mark { font-size: 0.8em; line-height: 1; opacity: 0.85; }
 .calendar-legend-dot {
   width: 0.7rem;
   height: 0.7rem;

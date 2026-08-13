@@ -101,3 +101,94 @@ describe('text contrast on the schedule', () => {
     expect(GLOBALS).toContain(".sched-tl-head-flag.full { background: rgba(255,138,61,.18); color: var(--ink-amber-1); }");
   });
 });
+
+/**
+ * Day, Week and the Job list print the status in words on the chip. Projects,
+ * Year and the Crew lanes carried it in the fill alone — unreadable in
+ * greyscale, on a projector, and to anyone who cannot separate the amber from
+ * the green.
+ */
+describe('status is a shape as well as a color', () => {
+  const LEGEND = read('src', 'app', 'dashboard', 'schedule', 'CalendarLegend.tsx');
+  const CALENDAR = read('src', 'app', 'dashboard', 'schedule', 'schedule-calendar.tsx');
+  const CREW = read('src', 'app', 'dashboard', 'schedule', 'ScheduleCrewLanes.tsx');
+
+  /** Hollow, filled, tick, dash — a progression at 10px, where "B" and "C"
+   *  would be two capitals of the same weight. */
+  it('gives each status a mark', () => {
+    expect(LEGEND).toContain('export const STATUS_MARK: Record<string, string> = {');
+    for (const status of ['new_lead', 'in_progress', 'complete', 'archived']) {
+      expect(LEGEND).toContain(`${status}:`);
+    }
+  });
+
+  it('marks the three views that had only color', () => {
+    // Projects bars, Year rows, Crew lanes.
+    expect(CALENDAR.match(/calendar-status-mark/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(CREW).toContain('className="calendar-status-mark"');
+  });
+
+  /** In the caption as well as on the chips, or it is a private code. */
+  it('puts the same marks in the legend', () => {
+    expect(LEGEND).toContain('<span className="calendar-legend-mark" aria-hidden="true">{STATUS_MARK[status.key]}</span>');
+  });
+
+  /** The mark is for eyes that see shape but not color; a screen reader gets
+   *  the word, not the glyph. */
+  it('hides the glyphs from screen readers and gives them the word', () => {
+    expect(CALENDAR).toContain('<span className="calendar-status-mark" aria-hidden="true">');
+    expect(CALENDAR).toContain('<span className="sr-only">{STATUS_WORD[job.status] ?? job.status}</span>');
+    expect(CREW).toContain('<span className="sr-only">{STATUS_WORD[job.status] ?? job.status}</span>');
+  });
+});
+
+/**
+ * The markers ARE keyboard reachable and always were: Google gives the marker
+ * layer one tab stop and roves between markers on the arrow keys. Verified end
+ * to end — Tab lands on the first pin, ArrowRight/Down walk the rest, Enter
+ * opens the card. What was missing is that nothing said so.
+ */
+describe('the map tells you how to walk it', () => {
+  const MAP = read('src', 'components', 'pin-map.tsx');
+
+  it('describes the arrow-key path and the list beside it', () => {
+    expect(MAP).toContain('arrow keys to move between them and Enter to open one');
+    expect(MAP).toContain('aria-describedby={`${mapId}-help`}');
+  });
+
+  /** Two maps on a page must not share one id. */
+  it('scopes that description per instance', () => {
+    expect(MAP).toContain('const mapId = useId();');
+  });
+
+  it('names the map and says how much is on it', () => {
+    expect(MAP).toContain("aria-label={`Map of leads and jobs, ${pins.length}");
+  });
+});
+
+/**
+ * The open job was one scroll: facts, a row of four buttons with the crew
+ * picker hidden inside it as a fifth, a reschedule form, a remove box.
+ */
+describe('the open job is three named sections', () => {
+  const CALENDAR = read('src', 'app', 'dashboard', 'schedule', 'schedule-calendar.tsx');
+
+  it('names them Overview, Schedule and Crew', () => {
+    expect(CALENDAR).toContain('id="schedule-job-overview">Overview<');
+    expect(CALENDAR).toContain('id="schedule-job-when">Schedule<');
+    expect(CALENDAR).toContain('id="schedule-job-who">Crew<');
+  });
+
+  /** Landmarks, so the dialog can be walked rather than scrolled. */
+  it('makes each one a labelled region', () => {
+    expect(CALENDAR.match(/<section className="schedule-job-section" aria-labelledby=/g)?.length).toBe(3);
+  });
+
+  /** "Move this job" and "take it off the calendar" are the same decision made
+   *  two different ways, and the crew picker sat between them. */
+  it('keeps the reschedule form and the remove box together', () => {
+    const when = CALENDAR.slice(CALENDAR.indexOf('id="schedule-job-when"'), CALENDAR.indexOf('id="schedule-job-who"'));
+    expect(when).toContain('schedule-job-reschedule-form');
+    expect(when).toContain('schedule-remove-box');
+  });
+});

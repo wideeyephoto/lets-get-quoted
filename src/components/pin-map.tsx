@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 // One shared loader for the whole app — see lib/maps-loader for why a second
 // copy of the module-scoped promise would inject a second <script>.
 import { createAdvancedMarker } from '@/lib/advanced-markers';
@@ -157,6 +157,8 @@ export default function PinMap({
   const pins = useMemo(() => (spreadOverlap ? spreadCoLocated(rawPins) : rawPins), [rawPins, spreadOverlap]);
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
+  // One per instance: two maps on a page must not share an aria-describedby.
+  const mapId = useId();
   const markersRef = useRef<{
     id: string;
     kind: MapPinKind;
@@ -356,7 +358,25 @@ export default function PinMap({
   return (
     <div className="pin-map-shell">
       <div className="pin-map-wrap">
-        <div ref={containerRef} className="pin-map" aria-label="Map of leads and jobs" />
+        {/* HOW TO GET AROUND IT, said once, for the people who need telling.
+            The markers ARE keyboard reachable — Google gives the marker layer a
+            single tab stop and roves between markers on the arrows, which is the
+            right pattern and which we verified end to end: Tab lands on the
+            first pin, ArrowRight/Down walk the rest, Enter opens the card.
+            What was missing is that nothing said so, so a keyboard user tabbed
+            onto one pin out of eighteen and had no reason to think there were
+            seventeen more behind it. */}
+        <p className="sr-only" id={`${mapId}-help`}>
+          {pins.length} {pins.length === 1 ? 'place' : 'places'} on this map. Press Tab to reach the pins, then the
+          arrow keys to move between them and Enter to open one. Every place is also a row in the list beside the map.
+        </p>
+        <div
+          ref={containerRef}
+          className="pin-map"
+          role="application"
+          aria-label={`Map of leads and jobs, ${pins.length} ${pins.length === 1 ? 'place' : 'places'}`}
+          aria-describedby={`${mapId}-help`}
+        />
         {selected ? (
           <div className="pin-card" role="dialog" aria-label={`${selected.label} details`}>
             <button type="button" className="pin-card-close" onClick={() => setSelected(null)} aria-label="Close details">×</button>

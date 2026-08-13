@@ -12,7 +12,7 @@ import ScheduleMobileAgenda from './ScheduleMobileAgenda';
 import ScheduleTimeline, { type TimelineDayMeta } from './ScheduleTimeline';
 import ScheduleCrewLanes from './ScheduleCrewLanes';
 import ScheduleMonthCapacity from './ScheduleMonthCapacity';
-import CalendarLegend from './CalendarLegend';
+import CalendarLegend, { STATUS_MARK, STATUS_WORD } from './CalendarLegend';
 import { occurrenceMinutes } from '@/lib/schedule-timeline';
 import { monthKeyOf, parseDateKey, shiftDateKey } from '@/lib/schedule-agenda';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
@@ -1497,6 +1497,9 @@ export default function ScheduleCalendar({
                           a name it had 190px of room for. The bar knows how wide
                           it is; nothing else here does. */}
                       <span className="calendar-timeline-bar-label">
+                        {/* Shape before words: this bar's status was in its
+                            fill and nowhere else. */}
+                        <span className="calendar-status-mark" aria-hidden="true">{STATUS_MARK[job.status] ?? ''}</span>
                         <b>{span} days</b>
                         <i>{job.short_name}</i>
                         {job.value_label ? <em>{job.value_label}</em> : null}
@@ -1563,9 +1566,17 @@ export default function ScheduleCalendar({
               {month.jobs.length > 0 ? (
                 <div className="calendar-year-jobs">
                   {month.jobs.map((job) => (
-                    <button type="button" className={`calendar-year-job status-${job.status}`} key={job.occurrence_key} onClick={() => openJobActions(job.occurrence_key)}>
+                    <button
+                      type="button"
+                      className={`calendar-year-job status-${job.status}`}
+                      key={job.occurrence_key}
+                      title={`${job.client_name} — ${STATUS_WORD[job.status] ?? job.status}`}
+                      onClick={() => openJobActions(job.occurrence_key)}
+                    >
                       <span>{new Date(`${job.scheduled_for}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                       <strong>{job.client_name}</strong>
+                      <span className="calendar-status-mark" aria-hidden="true">{STATUS_MARK[job.status] ?? ''}</span>
+                      <span className="sr-only">{STATUS_WORD[job.status] ?? job.status}</span>
                     </button>
                   ))}
                   {month.extraJobCount > 0 ? <p className="calendar-year-more">+{month.extraJobCount} more</p> : null}
@@ -1626,6 +1637,18 @@ export default function ScheduleCalendar({
                 S…", "1!". The chip is now time, name and one signal; everything
                 else is here, at a width where it can be read, spelled out and
                 labelled rather than inferred from a color. */}
+            {/* THREE SECTIONS, NAMED. This was one scroll: the facts, then a row
+                of four buttons with the crew picker hidden inside it as a fifth,
+                then a reschedule form, then a remove box — with nothing saying
+                where one job ended and the next began, and the crew control
+                nested inside a row of links that all leave the page.
+
+                Overview is what the job IS and where else to go with it.
+                Schedule is when it happens. Crew is who does it. Each is a
+                <section> with a heading, so the dialog can be walked by landmark
+                rather than by scrolling. */}
+            <section className="schedule-job-section" aria-labelledby="schedule-job-overview">
+              <h3 className="schedule-job-section-title" id="schedule-job-overview">Overview</h3>
             <dl className="schedule-job-facts">
               <div>
                 <dt>Where</dt>
@@ -1655,11 +1678,47 @@ export default function ScheduleCalendar({
               ) : null}
             </dl>
 
-            <div className="schedule-job-actions">
-              <div className="schedule-job-quick-actions">
+            <div className="schedule-job-quick-actions">
                 <Link href={`${basePath}/jobs/${openJob.id}`} className="btn secondary schedule-job-open-link">Open job</Link>
                 <Link href={`${basePath}/jobs/${openJob.id}?open=costs`} className="btn secondary schedule-job-open-link">Add expense</Link>
                 <Link href={`${basePath}/jobs/${openJob.id}?open=payment#request-payment`} className="btn primary schedule-job-open-link">Request payment</Link>
+            </div>
+            </section>
+
+            {/* WHEN. The form and the way to undo it belong together: "move this
+                job" and "take it off the calendar" are the same decision made two
+                different ways, and the crew picker sat between them. */}
+            <section className="schedule-job-section" aria-labelledby="schedule-job-when">
+              <h3 className="schedule-job-section-title" id="schedule-job-when">Schedule</h3>
+              <form action={scheduleJobAction.bind(null, openJob.id)} className="schedule-job-reschedule-form" key={`reschedule-${openJob.occurrence_key}`}>
+                <div className="schedule-job-reschedule-grid">
+                  <ScheduledDatePicker id={`calendarScheduledFor-${openJob.occurrence_key}`} name="scheduledFor" defaultValue={openJob.scheduled_for} required />
+                  <TimeSlotSelect id={`calendarScheduledTime-${openJob.occurrence_key}`} name="scheduledTime" defaultValue={openJob.scheduled_time ?? ''} />
+                </div>
+                <SaveButton className="btn primary schedule-job-submit" pendingLabel="Saving..." savedLabel="Saved">Save new start date</SaveButton>
+              </form>
+
+              <div className="schedule-remove-box">
+                {isConfirmingRemove ? (
+                  <form action={removeJobScheduleAction.bind(null, openJob.id)} className="schedule-remove-confirm">
+                    <strong>Remove this job from the schedule?</strong>
+                    <span>It will move back to unscheduled jobs. Crew assignments and job details stay intact.</span>
+                    <div className="schedule-remove-actions">
+                      <button type="button" className="btn secondary" onClick={() => setIsConfirmingRemove(false)}>Keep scheduled</button>
+                      <button type="submit" className="btn danger">Yes, remove it</button>
+                    </div>
+                  </form>
+                ) : (
+                  <button type="button" className="btn secondary schedule-remove-trigger" onClick={() => setIsConfirmingRemove(true)}>Remove from schedule</button>
+                )}
+              </div>
+            </section>
+
+            {/* WHO. Out of the button row and into a section of its own — it was
+                a <details> disguised as a fourth link, beside three that leave the
+                page entirely. */}
+            <section className="schedule-job-section" aria-labelledby="schedule-job-who">
+              <h3 className="schedule-job-section-title" id="schedule-job-who">Crew</h3>
                 <div className="schedule-crew-action-wrap">
                   <div className="schedule-crew-action-group">
                     <details className="schedule-crew-quick">
@@ -1724,34 +1783,7 @@ export default function ScheduleCalendar({
                       : 'Crew not notified'}
                   </p>
                 </div>
-              </div>
-              <form action={scheduleJobAction.bind(null, openJob.id)} className="schedule-job-reschedule-form" key={`reschedule-${openJob.occurrence_key}`}>
-                <div className="schedule-job-section-heading">
-                  <strong>Reschedule</strong>
-                  <span>Choose a new start date or time for this job.</span>
-                </div>
-                <div className="schedule-job-reschedule-grid">
-                  <ScheduledDatePicker id={`calendarScheduledFor-${openJob.occurrence_key}`} name="scheduledFor" defaultValue={openJob.scheduled_for} required />
-                  <TimeSlotSelect id={`calendarScheduledTime-${openJob.occurrence_key}`} name="scheduledTime" defaultValue={openJob.scheduled_time ?? ''} />
-                </div>
-                <SaveButton className="btn primary schedule-job-submit" pendingLabel="Saving..." savedLabel="Saved">Save new start date</SaveButton>
-              </form>
-
-              <div className="schedule-remove-box">
-                {isConfirmingRemove ? (
-                  <form action={removeJobScheduleAction.bind(null, openJob.id)} className="schedule-remove-confirm">
-                    <strong>Remove this job from the schedule?</strong>
-                    <span>It will move back to unscheduled jobs. Crew assignments and job details stay intact.</span>
-                    <div className="schedule-remove-actions">
-                      <button type="button" className="btn secondary" onClick={() => setIsConfirmingRemove(false)}>Keep scheduled</button>
-                      <button type="submit" className="btn danger">Yes, remove it</button>
-                    </div>
-                  </form>
-                ) : (
-                  <button type="button" className="btn secondary schedule-remove-trigger" onClick={() => setIsConfirmingRemove(true)}>Remove from schedule</button>
-                )}
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       ), document.body) : null}

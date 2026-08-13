@@ -26,6 +26,35 @@ const STATUSES = [
 ] as const;
 
 /**
+ * A SHAPE FOR EACH STATUS, because color on its own is not a status.
+ *
+ * Day, Week and the Job list all print the status in words on the chip, so
+ * they need nothing. Three views did not: the Projects bars, the Year rows and
+ * the Crew lanes carried it in the fill alone, which is unreadable in
+ * greyscale, on a projector, and to the ~8% of men who cannot separate the
+ * amber from the green.
+ *
+ * Marks rather than letters: "B" for booked and "C" for complete are two
+ * capitals of the same weight, and the hollow/filled/tick/dash set reads as a
+ * progression at 10px. They are aria-hidden everywhere — the status is already
+ * a word in each chip's title and in an .sr-only line — so this is for eyes
+ * that can see the shape but not the color.
+ */
+export const STATUS_MARK: Record<string, string> = {
+  new_lead: '◇',      // hollow diamond: nothing is settled yet
+  in_progress: '◆',   // the same shape, filled: committed
+  complete: '✓',
+  archived: '–',
+};
+
+export const STATUS_WORD: Record<string, string> = {
+  new_lead: 'Quote not approved',
+  in_progress: 'Booked',
+  complete: 'Complete',
+  archived: 'Archived',
+};
+
+/**
  * Month is a different question, so it gets a different caption.
  *
  * The status colors above are what a BLOCK is in Day and Week. A month cell
@@ -78,6 +107,9 @@ export default function CalendarLegend({
       {STATUSES.map((status) => (
         <span className="calendar-legend-item" key={status.key}>
           <span className={`calendar-legend-dot calendar-job-status-${status.key}`} aria-hidden="true" />
+          {/* The mark is in the caption as well as on the chips, or it is a
+              private code. */}
+          <span className="calendar-legend-mark" aria-hidden="true">{STATUS_MARK[status.key]}</span>
           {status.label}
         </span>
       ))}
