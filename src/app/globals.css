@@ -33852,3 +33852,98 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
      under a form that is 100% of it reads as an afterthought. */
   .msg-setup-submit { width: 100%; }
 }
+
+/* ============================================================================
+   THE EMPTY HOURS ON THE TIMELINE — see ScheduleTimeline
+   ==========================================================================*/
+
+/**
+ * A free hour, as a target you can point at.
+ *
+ * UNDER THE JOBS, and it is DOM ORDER that puts them there, not the z-index.
+ * Both these and .sched-tl-job are positioned with no stacking context between
+ * them, so they paint in tree order and the slots are rendered first. The
+ * `z-index: 0` below only pins them into that same step so a future rule
+ * lifting some other layer cannot quietly float a booking target over a job.
+ * It matters because these are only ever drawn for hours the column has nothing
+ * in — if that calculation is ever wrong, the failure should look like a job on
+ * top of a slot rather than a slot on top of a job.
+ *
+ * INVISIBLE UNTIL WANTED. A grid with a dotted "+" in every empty hour is a
+ * grid made of "+", and the calendar's job is to show the work rather than the
+ * gaps. So at rest it is nothing at all: it appears on hover of its own hour,
+ * on keyboard focus, and — permanently — while a job is armed, because then the
+ * gaps ARE the thing being chosen between.
+ */
+.sched-tl-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  /* Inset so two adjacent free hours read as two targets rather than one
+     column-height strip, and so the hairline hour rules stay visible. */
+  margin: 1px 2px;
+  padding: 0;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+}
+
+.sched-tl-slot:hover,
+.sched-tl-slot:focus-visible {
+  opacity: 1;
+  border-color: rgba(255, 122, 33, 0.55);
+  background: rgba(255, 122, 33, 0.1);
+}
+
+.sched-tl-slot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Armed: every gap is a candidate, so every gap says so without being asked. */
+.sched-tl-col.armable .sched-tl-slot {
+  opacity: 1;
+  border-color: rgba(255, 122, 33, 0.3);
+}
+.sched-tl-col.armable .sched-tl-slot:hover,
+.sched-tl-col.armable .sched-tl-slot:focus-visible {
+  border-color: rgba(255, 122, 33, 0.7);
+  background: rgba(255, 122, 33, 0.16);
+}
+
+/**
+ * A COARSE POINTER GETS THEM ALL THE TIME.
+ *
+ * Hover is the reveal on a mouse and does not exist on a touchscreen, where the
+ * first tap would be the one that books something. Showing them faintly is the
+ * honest version: the target is visible before it is pressed.
+ */
+@media (hover: none) {
+  .sched-tl-slot { opacity: 0.5; border-color: rgba(var(--tint), 0.14); }
+}
+
+/* The travel mark on the city line — a different town from the job before it. */
+.sched-tl-job-travel {
+  font-style: normal;
+  margin-right: 0.15rem;
+  opacity: 0.9;
+}
+
+/* Beside the crew, same weight as the status chip it sits next to. Only ever
+   rendered on a block tall enough to have a row spare — see [data-size]. */
+.sched-tl-job-hours {
+  color: inherit;
+  opacity: 0.72;
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}

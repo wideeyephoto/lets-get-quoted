@@ -3,11 +3,29 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { removeJobScheduleAction, scheduleJobAction } from '../jobs/actions';
+import { OPEN_SCHEDULE_QUEUE_EVENT } from './dock-events';
 
 // A job being dragged. `sourceDateKey` is null for an unscheduled job, or its
 // current date for a scheduled one (so we can no-op a same-day drop and support
 // undo). `time` seeds the drop modal (keep the existing time or change it).
 export type DragJob = { jobId: string; jobName: string; time: string; sourceDateKey: string | null };
+
+/**
+ * An empty hour on the calendar that somebody has pointed at.
+ *
+ * THE OTHER DIRECTION THROUGH THE SAME DOOR. Every way of booking work on this
+ * page started from the JOB — arm it, or pick it up, then find a date. That is
+ * the right order when you are working through a backlog and the wrong one when
+ * you are looking at Tuesday morning and can see the hole: there, the slot is
+ * the thing you have already chosen, and being made to go and find a job list,
+ * pick something, and then aim back at the hour you were looking at is the
+ * whole task done backwards.
+ *
+ * So an empty hour is now a target you can pick FIRST. It opens the queue, and
+ * the next job tapped there goes straight to the drop prompt with this date and
+ * this hour already filled in — same prompt, same undo, same server action.
+ */
+export type AimedSlot = { dateKey: string; time: string; label: string };
 
 type ScheduleDragContextValue = {
   beginDrag: (job: DragJob, event: ReactPointerEvent, onTap?: () => void) => void;
@@ -17,8 +35,18 @@ type ScheduleDragContextValue = {
   armedJob: DragJob | null;
   armJob: (job: DragJob) => void;
   cancelArm: () => void;
-  /** Called by a calendar cell when something is armed. */
-  placeArmed: (dateKey: string) => void;
+  /**
+   * Called by a calendar cell when something is armed.
+   *
+   * `time` is what an empty HOUR passes and a whole-day cell does not: aiming at
+   * 10am and then being asked "pick a start time" ignores the only thing the
+   * click said.
+   */
+  placeArmed: (dateKey: string, time?: string) => void;
+  /** The empty hour waiting for a job, or null. */
+  aimedSlot: AimedSlot | null;
+  aimSlot: (slot: AimedSlot) => void;
+  cancelAim: () => void;
 };
 
 const ScheduleDragContext = createContext<ScheduleDragContextValue | null>(null);
@@ -69,28 +97,81 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
   // because dragging has never been reachable by keyboard at all. Same drop
   // prompt, same undo, same server action — only the way you aim differs.
   const [armedJob, setArmedJob] = useState<DragJob | null>(null);
-  const armJob = useCallback((job: DragJob) => setArmedJob((current) => (current?.jobId === job.jobId ? null : job)), []);
+  const [aimedSlot, setAimedSlot] = useState<AimedSlot | null>(null);
+
   const cancelArm = useCallback(() => setArmedJob(null), []);
+  const cancelAim = useCallback(() => setAimedSlot(null), []);
+
+  /**
+   * Point at an empty hour, then pick the job.
+   *
+   * Opening the queue is part of the gesture rather than a second step: the
+   * whole reason to start from the slot is that you are already looking at the
+   * hole, and leaving somebody to go and find the job list themselves is the
+   * step this exists to remove.
+   */
+  const aimSlot = useCallback((slot: AimedSlot) => {
+    setArmedJob(null);
+    setAimedSlot(slot);
+    window.dispatchEvent(new CustomEvent(OPEN_SCHEDULE_QUEUE_EVENT));
+  }, []);
+
+  /**
+   * Arming a job — or, if an hour is already aimed at, finishing the job.
+   *
+   * The two flows meet here because they are the same booking with its two
+   * halves chosen in a different order, and giving the slot-first path its own
+   * copy of the drop prompt is how the two would come to disagree about undo.
+   */
+  const armJob = useCallback((job: DragJob) => {
+    if (aimedSlot) {
+      setDropTime(aimedSlot.time);
+      setPendingDrop({
+        jobId: job.jobId,
+        jobName: job.jobName,
+        dateKey: aimedSlot.dateKey,
+        sourceDateKey: job.sourceDateKey,
+        sourceTime: job.time,
+      });
+      setAimedSlot(null);
+      return;
+    }
+    setArmedJob((current) => (current?.jobId === job.jobId ? null : job));
+  }, [aimedSlot]);
+
   // Reads armedJob from state rather than from a setState updater. The updater
   // form looked tidier and was wrong: updaters have to be pure, React
   // double-invokes them in development, and the setPendingDrop tucked inside one
   // was being discarded — tapping a date armed the job and then did nothing.
-  const placeArmed = useCallback((dateKey: string) => {
+  const placeArmed = useCallback((dateKey: string, time?: string) => {
     if (!armedJob) return;
-    if (dateKey !== armedJob.sourceDateKey) {
-      setDropTime(armedJob.time || '');
+    /* SAME DAY IS NOT ALWAYS A NO-OP ANY MORE. It was, because a whole-day cell
+       carries no time and dropping a job back on its own date changes nothing.
+       An HOUR does carry one — so aiming an already-scheduled job at 2pm on the
+       day it is already on is a move, and swallowing it would make the one
+       gesture that says "same day, different time" the one gesture that does
+       nothing. */
+    const movingDay = dateKey !== armedJob.sourceDateKey;
+    const movingTime = Boolean(time) && time !== armedJob.time;
+    if (movingDay || movingTime) {
+      setDropTime(time || armedJob.time || '');
       setPendingDrop({ jobId: armedJob.jobId, jobName: armedJob.jobName, dateKey, sourceDateKey: armedJob.sourceDateKey, sourceTime: armedJob.time });
     }
     setArmedJob(null);
   }, [armedJob]);
 
-  // Escape gets you out of an armed job, the same way it closes the drop prompt.
+  // Escape gets you out of an armed job or an aimed hour, the same way it closes
+  // the drop prompt. Both, in one listener, because they are never both set.
   useEffect(() => {
-    if (!armedJob) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setArmedJob(null); };
+    if (!armedJob && !aimedSlot) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setArmedJob(null);
+      setAimedSlot(null);
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [armedJob]);
+  }, [armedJob, aimedSlot]);
 
   const beginDrag = useCallback((job: DragJob, event: ReactPointerEvent, onTap?: () => void) => {
     if (event.button > 0) return; // ignore right/middle mouse
@@ -197,7 +278,9 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
   }
 
   return (
-    <ScheduleDragContext.Provider value={{ beginDrag, overDateKey, draggingJobId, armedJob, armJob, cancelArm, placeArmed }}>
+    <ScheduleDragContext.Provider
+      value={{ beginDrag, overDateKey, draggingJobId, armedJob, armJob, cancelArm, placeArmed, aimedSlot, aimSlot, cancelAim }}
+    >
       {children}
 
       {pendingDrop ? (
@@ -246,6 +329,16 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
         <div className="schedule-armed-toast" role="status" aria-live="polite">
           <span><strong>{armedJob.jobName}</strong> — pick a date on the calendar</span>
           <button type="button" onClick={cancelArm}>Cancel</button>
+        </div>
+      ) : null}
+
+      {/* The same toast, the other way round. It says the hour back rather than
+          the job, because the hour is the half already chosen and the one a
+          person needs confirming before they go hunting through a list. */}
+      {aimedSlot && !pendingDrop ? (
+        <div className="schedule-armed-toast" role="status" aria-live="polite">
+          <span><strong>{aimedSlot.label}</strong> — pick a job to put here</span>
+          <button type="button" onClick={cancelAim}>Cancel</button>
         </div>
       ) : null}
 

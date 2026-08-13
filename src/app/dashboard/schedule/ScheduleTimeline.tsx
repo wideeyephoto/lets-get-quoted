@@ -192,7 +192,7 @@ export default function ScheduleTimeline({
   onOpenDay?: (dateKey: string) => void;
   readOnly?: boolean;
 }) {
-  const { beginDrag, overDateKey, draggingJobId, armedJob, placeArmed } = useScheduleDrag();
+  const { beginDrag, overDateKey, draggingJobId, armedJob, placeArmed, aimSlot } = useScheduleDrag();
   const scrollRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -273,19 +273,72 @@ export default function ScheduleTimeline({
     const { entries: laid, overflows } = capLanes(packOverlaps(entries), maxLanes);
     const jobByKey = new Map(dayJobs.map((job) => [job.occurrence_key, job]));
 
+    /**
+     * THE HOURS WITH NOTHING IN THEM, which are the ones you can point at.
+     *
+     * Computed from the packed entries rather than from the raw jobs so the
+     * folded-away overlaps count too: an hour hidden behind a "+2" marker is
+     * occupied, and offering it as free would be offering a slot on top of work
+     * the grid has already decided it has no room to draw.
+     *
+     * An hour is free only if NOTHING overlaps it at all — not "mostly free",
+     * not "free in the second half". A calendar that offers 10:00 while a job
+     * runs 10:30–11:30 is a calendar proposing a double-booking.
+     */
+    const busy = [
+      ...laid.map((entry) => [entry.startMinutes, entry.endMinutes] as const),
+      ...overflows.map((overflow) => [overflow.startMinutes, overflow.endMinutes] as const),
+    ];
+    const freeHours = axis.hours
+      .slice(0, -1)
+      .filter((hour) => !busy.some(([start, end]) => start < hour + 60 && end > hour));
+
     return {
       dateKey,
+      freeHours,
       /* A job with no start time cannot be placed on a clock, and guessing one
          would be inventing a commitment. They get a strip above the axis
          instead — the same place an all-day event goes in every calendar. */
       untimed: dayJobs.filter((job) => parseClockMinutes(job.scheduled_time) == null),
-      blocks: laid
-        .map((entry) => {
-          const job = jobByKey.get(entry.key);
-          if (!job) return null;
-          return { job, entry, box: blockPosition(entry, axis) };
-        })
-        .filter((block): block is NonNullable<typeof block> => block !== null),
+      blocks: (() => {
+        const placed = laid
+          .map((entry) => {
+            const job = jobByKey.get(entry.key);
+            if (!job) return null;
+            return { job, entry, box: blockPosition(entry, axis) };
+          })
+          .filter((block): block is NonNullable<typeof block> => block !== null);
+
+        /**
+         * THE JOB BEFORE THIS ONE, IF IT IS SOMEWHERE ELSE.
+         *
+         * The honest travel warning available from data this page already has.
+         * There is no distance here and computing one would be a routing call
+         * per job on a calendar that just gave one up — but "the 9am is in
+         * Fenton and the 11am is in Riverside" is a real fact about a real
+         * drive, and it is the one a dispatcher reads a day for.
+         *
+         * Read in START order and off the previous TIMED job, not the previous
+         * lane: two blocks side by side at the same hour are not a journey.
+         * Silent when either city is missing, because "unknown to Riverside" is
+         * not a warning about anything.
+         */
+        const inOrder = [...placed].sort((a, b) => a.entry.startMinutes - b.entry.startMinutes);
+        const travel = new Map<string, string | null>();
+        let previous: { city: string; endMinutes: number } | null = null;
+        for (const block of inOrder) {
+          const city = block.job.city_label?.trim() || '';
+          travel.set(
+            block.job.occurrence_key,
+            previous && city && previous.city && previous.city !== city && block.entry.startMinutes >= previous.endMinutes
+              ? previous.city
+              : null,
+          );
+          if (city) previous = { city, endMinutes: block.entry.endMinutes };
+        }
+
+        return placed.map((block) => ({ ...block, travelFrom: travel.get(block.job.occurrence_key) ?? null }));
+      })(),
       overflows: overflows.map((overflow) => ({
         ...overflow,
         box: overflowPosition(overflow, axis),
@@ -484,7 +537,73 @@ export default function ScheduleTimeline({
                   <div className="sched-tl-now" style={{ top: `${nowTop}%` }} aria-hidden="true" />
                 ) : null}
 
-                {column.blocks.map(({ job, entry, box }) => {
+                {/**
+                 * THE EMPTY HOURS, AS TARGETS.
+                 *
+                 * An empty column used to be scenery: the only way to book into
+                 * it was to go to the queue, arm a job, and come back — and
+                 * having come back, clicking anywhere in the column placed the
+                 * job with no time at all, so aiming at ten o'clock and being
+                 * asked "pick a start time" threw away the only thing the click
+                 * had said.
+                 *
+                 * REAL BUTTONS, ONE PER FREE HOUR, rather than a click handler
+                 * doing pointer arithmetic on the column. Arithmetic cannot be
+                 * reached by a keyboard, has no accessible name, and has no way
+                 * to know it is over a job — these are laid out under the
+                 * blocks, so an hour that has work in it never renders one.
+                 *
+                 * ONE TAB STOP PER COLUMN. Ten hours across seven days is
+                 * seventy focus stops between the calendar and whatever is after
+                 * it, which would make the grid something to escape rather than
+                 * something to use. The first free hour of each column is the
+                 * stop; Up and Down move within it, which is the same roving
+                 * pattern any date grid uses.
+                 *
+                 * `readOnly` hides them entirely — a demo that offers to book
+                 * work and then cannot is worse than one that offers nothing.
+                 */}
+                {!readOnly && !blocked
+                  ? column.freeHours.map((hour, index) => {
+                      const time = `${String(Math.floor(hour / 60)).padStart(2, '0')}:${String(hour % 60).padStart(2, '0')}`;
+                      const when = `${formatClockMinutes(hour)} on ${new Date(`${column.dateKey}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`;
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          className="sched-tl-slot"
+                          style={{
+                            top: `${((hour - axis.startMinutes) / axis.totalMinutes) * 100}%`,
+                            height: `${(60 / axis.totalMinutes) * 100}%`,
+                          }}
+                          tabIndex={index === 0 ? 0 : -1}
+                          aria-label={armedJob ? `Schedule ${armedJob.jobName} at ${when}` : `Book a job at ${when}`}
+                          onClick={(event) => {
+                            /* The column itself is a drop target while a job is
+                               armed, and its handler carries no time. Without
+                               this the bubble would immediately re-place the
+                               job at the whole day, undoing the hour. */
+                            event.stopPropagation();
+                            if (armedJob) placeArmed(column.dateKey, time);
+                            else aimSlot({ dateKey: column.dateKey, time, label: when });
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                            event.preventDefault();
+                            const slots = Array.from(
+                              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('.sched-tl-slot') ?? [],
+                            );
+                            const at = slots.indexOf(event.currentTarget);
+                            slots[at + (event.key === 'ArrowDown' ? 1 : -1)]?.focus();
+                          }}
+                        >
+                          <span aria-hidden="true">＋</span>
+                        </button>
+                      );
+                    })
+                  : null}
+
+                {column.blocks.map(({ job, entry, box, travelFrom }) => {
                   const assigned = (assignments[job.id] ?? [])
                     .map((id) => crew.find((member) => member.id === id))
                     .filter((member): member is CrewOption => Boolean(member));
@@ -533,7 +652,15 @@ export default function ScheduleTimeline({
                       title={[
                         job.client_name,
                         `${formatClockMinutes(entry.startMinutes)} – ${formatClockMinutes(entry.endMinutes)}`,
+                        // The length, said as a length. The block's height is
+                        // the only place a duration was stated, and a height is
+                        // a comparison rather than a number — you can see that
+                        // one job is longer than another and not that it is
+                        // three hours.
+                        job.hours_label,
+                        job.scope_label,
                         job.city_label,
+                        travelFrom ? `Different town from the job before it, in ${travelFrom}` : null,
                         job.badge_label,
                         job.value_label,
                         assigned.length ? `Crew: ${assigned.map((member) => member.name).join(', ')}` : 'No crew assigned',
@@ -560,7 +687,19 @@ export default function ScheduleTimeline({
                       {/* Everything below is hidden by CSS on a short block —
                           see [data-size] in globals.css. It stays in the DOM so
                           a screen reader still hears the whole job. */}
-                      {job.city_label ? <small className="sched-tl-job-city">{job.city_label}</small> : null}
+                      {job.city_label ? (
+                        <small className="sched-tl-job-city">
+                          {/* THE ONLY NEW MARK ON THE BLOCK, and it is on the
+                              city line because that is what it is about. A
+                              different town from the job before means a drive
+                              between them, which is the thing that makes a day
+                              undeliverable while every job on it looks fine. */}
+                          {travelFrom ? (
+                            <i className="sched-tl-job-travel" title={`Different town from the job before it, in ${travelFrom}`}>↗</i>
+                          ) : null}
+                          {job.city_label}
+                        </small>
+                      ) : null}
                       <span className="sched-tl-job-foot">
                         <span className="sched-tl-job-crew">
                           {assigned.length === 0
@@ -569,6 +708,14 @@ export default function ScheduleTimeline({
                               ? `Crew ${initials(assigned[0]!.name)}`
                               : `Crew ${initials(assigned[0]!.name)}+${assigned.length - 1}`}
                         </span>
+                        {/* Only on the tallest blocks, and only when the job has
+                            one. A duration is what the height already implies,
+                            so it earns its line by being exact rather than by
+                            being new — and on anything shorter the row it would
+                            take belongs to the crew and the status. */}
+                        {size === 'md' && job.hours_label ? (
+                          <span className="sched-tl-job-hours">{job.hours_label}</span>
+                        ) : null}
                         <span className={`sched-tl-job-badge status-${job.badge_tone}`} title={job.badge_title ?? undefined}>
                           {job.badge_label}
                         </span>
