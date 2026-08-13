@@ -163,3 +163,41 @@ export async function jobsAtRisk(
 
   return risks.sort((a, b) => a.job.scheduledFor.localeCompare(b.job.scheduledFor));
 }
+
+/**
+ * The next few days of weather for the account's own patch, assessed.
+ *
+ * WHY NOT PER JOB. jobsAtRisk already answers "which booked work is in
+ * trouble", and it fetches a forecast per grid cell across up to 200 jobs — the
+ * right shape for a digest, the wrong one for a header. The Day view is asking
+ * a smaller question: what is the weather doing on the day I am looking at. One
+ * point (the service center) answers it, and a contractor's days are mostly
+ * within one NWS grid square of each other anyway.
+ *
+ * ONE CACHED READ, USUALLY NO NETWORK. getForecast serves from weather_cache
+ * and only reaches NWS when the row is stale, so the common case is a single
+ * indexed select. Callers still gate on weather_alerts_enabled before calling,
+ * so an account with the feature off pays nothing at all.
+ *
+ * Empty when it cannot answer — no coordinates, no forecast, feature off. The
+ * Day view shows nothing rather than a shrug.
+ */
+export async function outlookByDay(
+  supabase: SupabaseClient,
+  accountId: string,
+  point: { lat: number | null; lng: number | null },
+): Promise<Record<string, Assessment>> {
+  const lat = Number(point.lat);
+  const lng = Number(point.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return {};
+
+  const { enabled, sensitivity } = await weatherSettings(supabase, accountId);
+  if (!enabled) return {};
+
+  const forecasts = await getForecast(createAdminClient(), lat, lng);
+  if (forecasts.length === 0) return {};
+
+  const out: Record<string, Assessment> = {};
+  for (const assessment of assessDays(forecasts, sensitivity)) out[assessment.day] = assessment;
+  return out;
+}

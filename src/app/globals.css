@@ -5860,6 +5860,14 @@ li + li { margin-top: 0.45rem; }
 
 .sign-in-methods-list { display: flex; flex-direction: column; gap: .75rem; margin-top: 1rem; }
 .sign-in-method-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; border: 1px solid var(--edge-t12); border-radius: 10px; background: rgba(var(--tint), .025); transition: border-color .15s ease, background .15s ease; }
+/* "Phone number / Not linked / Link" is a 40px disc, two lines of text and a
+   button, and it was one unbreakable row: measured 288px of content in a 198px
+   box at 320px, which widened the layout viewport to 349 and let the whole page
+   pan sideways. The action drops under the name; nothing is hidden. */
+.sign-in-method-row { flex-wrap: wrap; }
+.sign-in-method-row .method-info { min-width: 0; }
+.sign-in-method-row .method-name,
+.sign-in-method-row .method-detail { overflow-wrap: anywhere; }
 .sign-in-method-row:hover { border-color: var(--edge-t22); background: rgba(var(--tint), .045); }
 .sign-in-method-row .method-info { display: flex; align-items: center; gap: .85rem; }
 /* The mark is the thing you scan the row by — you find the Google row by its
@@ -7967,14 +7975,16 @@ li + li { margin-top: 0.45rem; }
   .feature-grid,
   .template-grid,
   .detail-grid,
-  .form-grid,
+  /* .form-grid is NOT here any more: this block sits above its declaration, so
+     the entry never did anything. The collapse it was meant to be lives beside
+     that declaration now. The others in this list are declared earlier in the
+     file and do still work. */
   .workspace-grid.two-up,
   .workspace-hero,
   .payment-hero {
     grid-template-columns: 1fr;
   }
 
-  .job-intake-schedule-grid { grid-template-columns: 1fr; }
   .hours-metric { grid-column: auto; }
 
   .pricing-tiers {
@@ -12529,6 +12539,30 @@ button.inbox-thread-item {
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 1rem; }
 .form-grid .full { grid-column: 1 / -1; }
 
+/* THE COLLAPSE THAT NEVER FIRED, MOVED TO WHERE IT CAN.
+   `@media (max-width: 900px) { .form-grid { grid-template-columns: 1fr } }` has
+   been in this file for a long time at ~line 7970 — ABOVE the declaration it is
+   meant to override. A media query adds no specificity, so at equal weight the
+   later rule wins and the collapse has never fired for anybody. The booking
+   page found this and repaired it inside .book-scope only, deliberately leaving
+   the shared rule for "its own mobile pass". This is that pass.
+
+   Measured at 320px before: the new-job intake form's fields were 535px inside
+   a 320px viewport, which widened the layout viewport to 342 and let every page
+   carrying a two-column form pan sideways.
+
+   minmax(0, 1fr) and not 1fr, and min-width: 0 on the children: `1fr` is
+   `minmax(auto, 1fr)` so the track cannot go under its content's min-content,
+   and a bare <input> refuses to shrink below its default 20-character size.
+   One column alone would not have been enough. */
+@media (max-width: 720px) {
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .form-grid > * { min-width: 0; }
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea { max-width: 100%; }
+}
+
 /* A job's start and end are one fact. Left to the parent grid's flow they land
    in different columns AND different rows — diagonal from each other, which is
    the last thing a date range should look like. */
@@ -12591,6 +12625,11 @@ button.inbox-thread-item {
 .job-intake-metric label { color: var(--dim-amber-1-15); }
 .job-intake-metric input { border-color: var(--cedge-amber-9); background: rgba(5,12,22,0.46); font-size: 1.05rem; font-weight: 800; }
 .job-intake-schedule-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 0.8rem; align-items: stretch; }
+/* The 900px collapse for this one is written above its own declaration too, so
+   the 280px minimum survived on every phone. Same fix, same reason. */
+@media (max-width: 900px) {
+  .job-intake-schedule-grid { grid-template-columns: minmax(0, 1fr); }
+}
 .job-intake-schedule-stack { display: grid; gap: 0.8rem; min-width: 0; }
 .job-intake-schedule-grid .hours-metric { min-width: 0; }
 .quote-metric { border-color: var(--cedge-amber-32); box-shadow: 0 16px 38px rgba(255,122,33,0.12); }
@@ -25129,7 +25168,9 @@ a.bset-card { color: inherit; text-decoration: none; }
 
    Repaired inside .book-scope rather than at the shared rule, because moving
    that one changes every two-column form in the dashboard at once and deserves
-   its own mobile pass rather than riding along with this page.
+   its own mobile pass rather than riding along with this page. That pass has
+   since happened — see the note beside `.form-grid` itself — so this override is
+   now belt and braces rather than the only thing holding the page together.
 
    min-width:0 belongs with it: a bare <input> refuses to shrink below its
    default 20-character size, so one column alone would not have been enough. */
@@ -31169,6 +31210,34 @@ body[data-schedule-overlay="job"] .sched-queue {
 }
 
 .sched-daysum-crew strong { color: var(--text); font-size: 0.88rem; font-weight: 800; }
+
+/* The forecast, on the day it is about. Amber for a day to watch, red for one
+   nobody should plan on — and absent entirely on the days it would say
+   "fine", which is most of them. */
+.sched-daysum-weather {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--cedge-orange-54);
+  border-radius: 10px;
+  background: rgba(255, 176, 32, 0.1);
+  color: var(--ink-amber-1);
+  font-size: 0.78rem;
+}
+.sched-daysum-weather svg { width: 1rem; height: 1rem; flex: none; }
+.sched-daysum-weather strong { font-weight: 800; }
+.sched-daysum-weather > span { color: inherit; opacity: 0.85; }
+
+/* Not a louder amber: a different signal. "Don't plan on it" is the one state
+   where the answer is to move the work. */
+.sched-daysum-weather[data-level='unworkable'] {
+  border-color: rgba(255, 107, 107, 0.55);
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--ink-red-1);
+}
 .sched-daysum-who { color: var(--mute-t50); }
 .sched-daysum-quiet { color: var(--mute-t45); }
 

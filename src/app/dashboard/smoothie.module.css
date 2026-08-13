@@ -156,7 +156,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gearSlot { flex: none; }
+/* `flex: none` also means "never shrink", and what sits in this slot is a row
+   of automation links whose natural width is 281px. At 320px that is 281 inside
+   a 198px toolbar — the whole page's layout viewport widened to 342 to fit it,
+   on every phone. It keeps its size while there is room and gives way when
+   there is not. */
+.gearSlot { flex: 0 1 auto; min-width: 0; max-width: 100%; }
 
 .addLead {
   display: inline-flex;

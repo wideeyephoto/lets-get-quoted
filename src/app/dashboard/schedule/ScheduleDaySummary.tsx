@@ -1,6 +1,16 @@
 'use client';
 
 import { capacityStatus, crewLabel } from '@/lib/schedule-agenda';
+
+/* The same words the weather digest uses, so a day does not read one way in an
+   email and another on the calendar. Duplicated as a map rather than imported
+   from lib/weather, which pulls the whole assessment engine into a client
+   bundle for four strings. */
+const RISK_WORD: Record<string, string> = {
+  watch: 'Keep an eye on it',
+  risky: 'Risky',
+  unworkable: "Don't plan on it",
+};
 import { openQueue } from './QueueTriggers';
 import type { CalendarJob, CrewOption } from './schedule-calendar';
 
@@ -28,6 +38,7 @@ export default function ScheduleDaySummary({
   capacityHours,
   blockedReason,
   queueCount,
+  weather,
 }: {
   dateKey: string;
   jobs: CalendarJob[];
@@ -40,6 +51,16 @@ export default function ScheduleDaySummary({
   blockedReason: string | null;
   /** Approved work with no date, so the empty state can name what it would do. */
   queueCount: number;
+  /**
+   * What the sky is doing on this day, already judged against this trade's
+   * thresholds — a roofer's "risky" and a painter's are different numbers.
+   *
+   * Null when the account has weather alerts switched off, when it has no
+   * service center to forecast for, or when the day is past the end of the
+   * forecast. Nothing is drawn in any of those cases: a weather line that says
+   * "unknown" is worse than no weather line.
+   */
+  weather: { level: string; reasons: string[]; summary: string } | null;
 }) {
   const capacity = capacityStatus(bookedHours, capacityHours, unknownJobs);
 
@@ -64,6 +85,23 @@ export default function ScheduleDaySummary({
           </div>
         )}
       </div>
+
+      {/* ONLY WHEN IT IS WORTH SAYING. 'clear' is the answer on most days, and
+          a line reading "Looks fine" every day is furniture you stop seeing —
+          which is exactly what makes the one bad Tuesday invisible. */}
+      {weather && weather.level !== 'clear' ? (
+        <p className="sched-daysum-weather" data-level={weather.level}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M7 17.5a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 17.4 10a3.75 3.75 0 0 1-.4 7.5Z" />
+            <path d="M9 20.5l-.7 1.4M13 20.5l-.7 1.4M17 20.5l-.7 1.4" />
+          </svg>
+          <strong>{RISK_WORD[weather.level] ?? 'Check the forecast'}</strong>
+          {/* The reasons, not the poetry: "1.1in of rain" and "gusts to 31mph"
+              are what decides whether the crew goes out. The NWS sentence is
+              kept in the title for anyone who wants it. */}
+          <span title={weather.summary}>{weather.reasons.join(' · ') || weather.summary}</span>
+        </p>
+      ) : null}
 
       {crew.length > 0 ? (
         <p className="sched-daysum-crew">

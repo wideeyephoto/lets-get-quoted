@@ -350,6 +350,7 @@ export default function ScheduleCalendar({
   workdayEnd = null,
   workingWeekdays = [],
   queueCount = 0,
+  weatherByDay = {},
   readOnly = false,
   basePath = '/dashboard',
 }: {
@@ -410,6 +411,9 @@ export default function ScheduleCalendar({
   /** Approved work with no date, so the Day view's empty state can name what
       pressing it would do. Zero on the demo, which has no queue. */
   queueCount?: number;
+  /** The forecast for the days ahead, assessed against this trade's thresholds
+      and keyed by date. Empty when the account has weather alerts off. */
+  weatherByDay?: Record<string, { level: string; reasons: string[]; summary: string }>;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
 
@@ -1213,6 +1217,7 @@ export default function ScheduleCalendar({
             capacityHours={capacityHours}
             blockedReason={blockReasonFor(anchorDayKey)}
             queueCount={queueCount}
+            weather={weatherByDay[anchorDayKey] ?? null}
           />
         ) : null}
       {effectiveView === 'day' || effectiveView === 'week' ? (

@@ -7,6 +7,7 @@ import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDat
 import { computeHoursByDate } from '@/lib/booking';
 import { countUnknownDurationByDate } from '@/lib/schedule-capacity';
 import { daysWithScatter, loadOverWindow } from '@/lib/schedule-load';
+import { outlookByDay } from '@/lib/weather-data';
 /* Local, not UTC: `new Date('2026-08-17')` is midnight UTC and lands on the
    16th everywhere west of Greenwich. See the note at the top of that file. */
 import { parseDateKey } from '@/lib/schedule-agenda';
@@ -165,7 +166,7 @@ export default async function SchedulePage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng').eq('id', accountId).single(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
@@ -574,6 +575,24 @@ export default async function SchedulePage({
      is exactly the day worth looking at. */
   const scatter = daysWithScatter({ fromKey: todayKey, days: 30, placesByDate, thresholdMiles: 15 });
 
+  /* WEATHER, FOR THE DAY VIEW ONLY, AND ONLY IF IT IS SWITCHED ON.
+     The reason this was left out of the header two commits ago still holds — a
+     thirty-day count of "weather conflicts" is not a number anybody acts on,
+     and the forecast belongs on the day you are looking at. This is that day.
+
+     Gated on the account's own switch before a single query runs, so an account
+     with weather off pays nothing; when it is on, getForecast serves from
+     weather_cache and only reaches NWS when the row is stale. One point, not one
+     per job: jobsAtRisk already answers "which booked work is in trouble" and
+     fetches per grid cell across up to 200 jobs, which is a digest's shape. */
+  const weatherAccount = account as { weather_alerts_enabled?: boolean; service_center_lat?: number | null; service_center_lng?: number | null } | null;
+  const weatherByDay = weatherAccount?.weather_alerts_enabled
+    ? await outlookByDay(supabase, accountId, {
+        lat: weatherAccount.service_center_lat ?? null,
+        lng: weatherAccount.service_center_lng ?? null,
+      })
+    : {};
+
   /* CLOSED UNLESS ASKED FOR, ON THIS PAGE ONLY.
      normalizeMapView's absent-cookie default is 'large', which is right for
      Leads and Customers where the map IS the screen. Here the calendar is the
@@ -823,6 +842,9 @@ export default async function SchedulePage({
              a quote nobody has accepted, and "schedule one of those" is the
              wrong offer. */
           queueCount={approvedUnscheduled}
+          /* Keyed by date so stepping the day needs no round trip — the anchor
+             day is client state. Empty when the feature is off. */
+          weatherByDay={weatherByDay}
           /* NO RAIL TOGGLE HERE ANY MORE. It read "Show jobs (10)" one row under
              a stat that read "10 · Ready to book" and pointed at the same rail —
              the same number and the same destination, twice. The stat is the one
