@@ -6908,6 +6908,13 @@ li + li { margin-top: 0.45rem; }
 .calendar-year-month-link { border: 0; padding: 0; background: transparent; color: var(--text); font: inherit; font-size: .95rem; font-weight: 900; text-align: left; cursor: pointer; }
 .calendar-year-month-link:hover { color: var(--gold-ink); text-decoration: underline; text-underline-offset: 4px; }
 .calendar-year-card-header span { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 .45rem; border: 1px solid var(--cedge-amber-12); border-radius: 999px; background: rgba(255,209,102,.08); color: var(--gold-ink); font-size: .78rem; font-weight: 900; }
+/* A month with nothing in it is not news. Eleven gold "0 jobs" pills down a
+   year of empty months made the quiet part the loudest thing on the screen. */
+.calendar-year-card-header span[data-empty] {
+  border-color: var(--edge-t10);
+  background: rgba(var(--tint), 0.03);
+  color: var(--mute-t45);
+}
 .calendar-year-jobs { display: grid; gap: .35rem; }
 .calendar-year-job { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: .45rem; align-items: center; width: 100%; padding: .38rem .45rem; border: 1px solid var(--edge-t08); border-radius: 8px; background: rgba(var(--tint), .045); color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .calendar-year-job:hover { border-color: var(--cedge-orange-26); background: rgba(255,138,61,.11); }
@@ -6918,6 +6925,52 @@ li + li { margin-top: 0.45rem; }
 .calendar-year-job.status-complete { color: var(--ink-green-4); }
 .calendar-year-more,
 .calendar-year-empty { margin: .45rem 0 0; color: var(--mute-i48); font-size: .76rem; }
+
+/* ---- Year: which twelve months, and how full each one is ------------------
+   The toolbar above says "August 2026" — the month the arrows step, not what
+   is on screen — so the one view that is not about a month was captioned with
+   one. And each card carried a bare job count: three 40-hour jobs and three
+   one-hour jobs both printed 3. */
+.calendar-year-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  margin: 0 0 0.7rem;
+}
+.calendar-year-range strong { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; }
+.calendar-year-range span { color: var(--mute-t50); font-size: 0.78rem; }
+
+.calendar-year-load { margin: 0 0 0.6rem; }
+
+.calendar-year-load-bar {
+  height: 6px;
+  margin-bottom: 0.3rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  overflow: hidden;
+}
+.calendar-year-load-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+/* The same ramp Capacity uses, and the figure under it says the same thing in
+   words — so a card still reads correctly with the color stripped out. */
+.calendar-year-load[data-load='none'] .calendar-year-load-bar > span { background: var(--mute-i42); }
+.calendar-year-load[data-load='high'] .calendar-year-load-bar > span { background: var(--gold-ink); }
+.calendar-year-load[data-load='over'] .calendar-year-load-bar > span { background: #ff6b6b; }
+
+.calendar-year-load > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.45rem;
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--mute-i55);
+}
+.calendar-year-load > p b { color: var(--text); font-size: 0.86rem; font-weight: 850; }
+.calendar-year-load > p em { margin-left: auto; font-style: normal; font-weight: 800; color: var(--gold-ink); }
+.calendar-year-load[data-load='over'] > p b { color: var(--ink-orange-2); }
+.calendar-year-unknown { margin: 0.25rem 0 0; color: var(--ink-amber-1); font-size: 0.7rem; font-weight: 700; }
 @media (max-width: 640px) {
   .calendar-grid { grid-template-columns: repeat(7, minmax(32px, 1fr)); }
   .calendar-cell { min-height: 64px; }
@@ -7340,7 +7393,76 @@ li + li { margin-top: 0.45rem; }
   transition: filter 0.14s ease, box-shadow 0.14s ease;
 }
 
+/* THE BAR SAYS WHAT IT IS. It used to be a bare block below three days and a
+   single line above — and with one-day jobs on the grid that made most of them
+   unlabeled rectangles you had to hover one at a time. Three pieces, each
+   appearing only once the bar is wide enough to hold it: the span always, the
+   client from four days, the value from six. */
+.calendar-timeline-bar-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.calendar-timeline-bar-label b { flex: none; font-weight: 850; }
+
+/* The bar measures itself. A day count cannot: three days is 102px across a
+   month and 286px across a week, and the same rule cannot be right for both. */
+/* NAMED. An unnamed @container binds to the nearest ancestor container, which
+   in a stylesheet this size is a promise about everything anyone adds later —
+   and these two thresholds are about a Gantt bar, not about whatever else
+   happens to be a container above one. */
+.calendar-timeline-bar { container: timelinebar / inline-size; }
+@container timelinebar (max-width: 196px) { .calendar-timeline-bar-label em { display: none; } }
+@container timelinebar (max-width: 126px) { .calendar-timeline-bar-label i { display: none; } }
+
+.calendar-timeline-bar-label i,
+.calendar-timeline-bar-label em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  font-weight: 650;
+  opacity: 0.85;
+}
+
 .calendar-timeline-bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- Projects: month or week ---------------------------------------------
+   31 columns plus a 180px name gutter is 986px, and the calendar column is
+   728px at 1920 — so the month arrived pre-scrolled sideways with every bar too
+   narrow to label. A week of the same grid gives each day ~78px. */
+.calendar-timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+}
+
+.calendar-timeline-zoom-btn {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--mute-i62);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.calendar-timeline-zoom-btn:hover { border-color: var(--cedge-orange-38); color: var(--text); }
+.calendar-timeline-zoom-btn.active {
+  border-color: var(--cedge-orange-27);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--accent-ink);
+}
+.calendar-timeline-zoom-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.calendar-timeline-zoom-note { margin-left: auto; color: var(--mute-t50); font-size: 0.76rem; font-weight: 700; }
 .calendar-timeline-bar:hover { filter: brightness(1.18); box-shadow: 0 0 0 1px rgba(var(--tint), 0.28); }
 .calendar-timeline-bar:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.85); outline-offset: 2px; }
 
@@ -11196,6 +11318,27 @@ button.inbox-thread-item {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
+}
+
+/* THREE COLUMNS ON A PHONE IS WHY THE WHOLE APP PANNED SIDEWAYS.
+   This grid had no narrow rule at all, so a 390px phone got three tracks of
+   ~89px holding cards whose contents do not go below ~155px. `minmax(0, 1fr)`
+   lets the TRACK shrink but a grid item still lays out at its own min-content
+   and overflows, and a mobile browser answers content wider than the viewport
+   by widening the layout viewport: measured 534px of layout on a 390px device,
+   497px on a 320px one. That is a whole app you can pan right on, on every page
+   carrying this grid — which is most of them.
+
+   Two columns before one, because these cards are a label and a figure and a
+   pair of them still reads on a phone. The .compact, .condensed, .four-up and
+   .calendar-heading-metrics variants all set their own templates in compound
+   selectors, so they win on specificity and are untouched. */
+@media (max-width: 720px) {
+  .workspace-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .workspace-metric-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .workspace-metric-grid.compact {
@@ -25759,6 +25902,17 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-revtime-prev strong { color: var(--text); font-variant-numeric: tabular-nums; margin-left: 0.3rem; }
 
 .ins-revtime-wrap { width: 100%; margin-top: 0.3rem; }
+/* max-width BREAKS A FEEDBACK LOOP, it is not a layout choice.
+   The SVG carries a width attribute set by a ResizeObserver on its container.
+   Without this guard the first render draws it at its 320px initial state, that
+   overflows a 360px phone, the browser answers by widening the layout viewport
+   to fit — and the observer then measures the WIDENED container, finds 320 fits
+   comfortably, and never corrects it. Measured 372px of layout on a 360px
+   device, stable across seven seconds and a scroll. Capping the element at its
+   container's width means it can never inflate the box it is being measured
+   against, so the observer converges on the first frame. */
+.ins-revtime-svg,
+.cash-chart { max-width: 100%; }
 .ins-revtime-svg { display: block; touch-action: none; }
 .ins-revtime-grid, .ins-revtime-axis-x, .ins-revtime-cursor,
 .ins-revtime-area, .ins-revtime-line, .ins-revtime-dot { pointer-events: none; }
@@ -28817,9 +28971,24 @@ select optgroup {
      uppercase metric labels. */
   text-transform: none;
   white-space: normal;
+  /* NOT `visibility: hidden`, AND THIS IS WHY THE WHOLE APP PANNED SIDEWAYS.
+     A visibility:hidden box is invisible but still laid out, and it still
+     contributes scrollable overflow. This bubble is up to 288px wide, absolutely
+     positioned from a 14px icon, and there is one in most metric cards — so on a
+     390px phone the closed tooltips alone pushed the layout viewport to 534px
+     (497px at 320, 522 at 360). Every dashboard page carrying a metric card
+     could be dragged right into empty space, before anybody had touched a thing.
+
+     The measurement that was supposed to prevent it could not: place() clamps
+     the bubble against window.innerWidth, which is the ALREADY-WIDENED viewport,
+     so it read 534px of room and clamped to a width that fits inside the
+     overflow it caused.
+
+     display:none costs the 0.12s fade on browsers without allow-discrete, which
+     is the whole price. */
+  display: none;
   opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.12s ease, display 0.12s allow-discrete;
   pointer-events: none;
 }
 .infotip[data-align='start'] .infotip-bubble { left: 0; }
@@ -28828,16 +28997,26 @@ select optgroup {
 .infotip:hover .infotip-bubble,
 .infotip:focus-within .infotip-bubble,
 .infotip .infotip-bubble[data-open='true'] {
+  display: block;
   opacity: 1;
-  visibility: visible;
+}
+
+/* The fade survives where the browser can transition a discrete property; where
+   it cannot, the bubble simply appears, which is what a tooltip did for years. */
+@starting-style {
+  .infotip:hover .infotip-bubble,
+  .infotip:focus-within .infotip-bubble,
+  .infotip .infotip-bubble[data-open='true'] {
+    opacity: 0;
+  }
 }
 
 /* Touch has no hover state to leave, and :hover on a touch device sticks after
    a tap — which would leave two bubbles open at once. There, only the latched
    state counts. */
 @media (hover: none) {
-  .infotip:hover .infotip-bubble { opacity: 0; visibility: hidden; }
-  .infotip .infotip-bubble[data-open='true'] { opacity: 1; visibility: visible; }
+  .infotip:hover .infotip-bubble { display: none; opacity: 0; }
+  .infotip .infotip-bubble[data-open='true'] { display: block; opacity: 1; }
 }
 
 /* ===========================================================================
