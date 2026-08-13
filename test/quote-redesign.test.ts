@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { formatUsdExact, formatUsdRounded } from '@/lib/money-format';
 import { formatMoneyExact } from '@/lib/jobs';
 import { isSignature } from '@/app/client/jobs/[token]/QuoteDeck';
-import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
+import { firstNameOf, projectTypeOf, properName, quoteHeadline } from '@/lib/quote-hero';
 import type { QuoteItem } from '@/lib/jobs';
 
 /**
@@ -170,10 +170,67 @@ describe('the hero is personalized without inventing anything', () => {
 
   it('carries all five facts: who from, who for, what, where, and where it stands', () => {
     expect(page).toContain('{dashboard.businessName}');
-    expect(page).toContain('Prepared for {dashboard.job.client_name}');
+    expect(page).toContain('Prepared for {clientName}');
     expect(page).toContain('{headline}');
     expect(page).toContain('{dashboard.job.address}');
     expect(page).toContain('{status.label}');
+  });
+
+  /**
+   * THE NAME IS CASED, AND IT IS CASED ONCE.
+   *
+   * `jobs.client_name` is typed by whoever took the call, so it arrives as
+   * "dana whitfield" as often as "DANA WHITFIELD". Both were printed raw at the
+   * top of a document somebody was about to sign — the headline said "dana,
+   * here's your quote" over a line reading "Prepared for DANA WHITFIELD".
+   */
+  it('cases the name once, so the headline and the line under it agree', () => {
+    expect(page).toContain('const clientName = properName(dashboard.job.client_name)');
+    // The first name is taken FROM the cased name, not separately from the raw
+    // column — two derivations off one field is how they come to disagree.
+    expect(page).toContain('const firstName = firstNameOf(clientName)');
+    expect(page).not.toContain('firstNameOf(dashboard.job.client_name)');
+  });
+
+  it('un-shouts a name and lifts one that was never capitalized', () => {
+    expect(properName('DANA WHITFIELD')).toBe('Dana Whitfield');
+    expect(properName('dana whitfield')).toBe('Dana Whitfield');
+    expect(properName('  dana   whitfield ')).toBe('Dana Whitfield');
+    expect(quoteHeadline({ firstName: firstNameOf(properName('dana whitfield')), projectType: null, approved: false }))
+      .toBe("Dana, here's your quote.");
+  });
+
+  /**
+   * A word that already mixes cases is never touched. Somebody chose that, and
+   * a title-caser that "fixes" it gets a person's own name wrong on a contract
+   * — which is worse than doing nothing at all.
+   */
+  it('never overrules a name that was deliberately cased', () => {
+    for (const name of ['Dana McBride', 'Kim DeLuca', 'JoAnne Parker', 'Seán d’Arcy', 'Dana Whitfield']) {
+      expect(properName(name), name).toBe(name);
+    }
+    // Mixed input: only the shouted half moves.
+    expect(properName('McBride LANDSCAPING')).toBe('McBride Landscaping');
+  });
+
+  /* Apostrophes and hyphens have only one reading, so they are handled. Mc and
+     Mac do not — the rule that gets McBride right turns Machado into MacHado —
+     so they are deliberately left alone. */
+  it('capitalizes across the punctuation inside a name, and not the Scottish prefixes', () => {
+    expect(properName("o'neill")).toBe("O'Neill");
+    expect(properName('MARY-JANE HOLT')).toBe('Mary-Jane Holt');
+    expect(properName('j.r. okafor')).toBe('J.R. Okafor');
+    expect(properName('mcbride')).toBe('Mcbride');
+  });
+
+  it('leaves what it cannot case, and says nothing when there is nothing', () => {
+    expect(properName('JOSÉ')).toBe('José');
+    // No cased letters at all — nothing to be wrong about.
+    expect(properName('林 家豪')).toBe('林 家豪');
+    expect(properName('')).toBeNull();
+    expect(properName('   ')).toBeNull();
+    expect(properName(null)).toBeNull();
+    expect(properName(undefined)).toBeNull();
   });
 });
 

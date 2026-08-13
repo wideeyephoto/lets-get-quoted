@@ -8,7 +8,7 @@ import { formatMoneyExact as formatMoney, computeQuoteTotal } from '@/lib/jobs';
 import { clientNextStep } from '@/lib/client-next-step';
 import { clientJobStatus } from '@/lib/client-feed';
 import { brandPaint } from '@/lib/contractor-brand';
-import { firstNameOf, projectTypeOf, quoteHeadline } from '@/lib/quote-hero';
+import { firstNameOf, projectTypeOf, properName, quoteHeadline } from '@/lib/quote-hero';
 import { isSignatureMethod, safeSignaturePath } from '@/lib/signature';
 import { optionsClosedCopy, quoteOptionsWindow, todayIn } from '@/lib/quote-options';
 import { formatScheduleOption } from '@/lib/scheduling';
@@ -269,7 +269,11 @@ export default async function ClientJobDashboardPage({
   const optionsClosedNote = optionsWindow.open ? null : optionsClosedCopy(optionsWindow.reason, dashboard.businessName);
 
   const projectType = projectTypeOf(items, dashboard.job.scope);
-  const firstName = firstNameOf(dashboard.job.client_name);
+  /* Cased once, here, so the headline and the line under it cannot disagree
+     about how the same person's name is written. See properName for the rule —
+     a name that already mixes cases is never touched. */
+  const clientName = properName(dashboard.job.client_name);
+  const firstName = firstNameOf(clientName);
   const headline = quoteHeadline({ firstName, projectType, approved: !awaitingApproval });
 
   /* --- what happens next, once the answer is yes ----------------------------
@@ -666,8 +670,8 @@ export default async function ClientJobDashboardPage({
             <h1 className="quote-hero-title client-hero-title">{headline}</h1>
             <p className="quote-hero-meta client-hero-for">
               {dashboard.job.address ? <span className="quote-hero-where">{dashboard.job.address}</span> : null}
-              {firstName && dashboard.job.address ? <span className="quote-hero-sep" aria-hidden="true">·</span> : null}
-              {firstName ? <span>Prepared for {dashboard.job.client_name}</span> : null}
+              {clientName && dashboard.job.address ? <span className="quote-hero-sep" aria-hidden="true">·</span> : null}
+              {clientName ? <span>Prepared for {clientName}</span> : null}
             </p>
             <div className="quote-hero-status">
               <span className={`status-badge client-status client-status-${status.tone}`}>{status.label}</span>

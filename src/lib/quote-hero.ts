@@ -45,6 +45,48 @@ function trimType(label: string): string {
 }
 
 /**
+ * The client's name, cased the way a person writes a name.
+ *
+ * `jobs.client_name` is typed by whoever took the call, and it arrives as
+ * "dana whitfield" as often as "DANA WHITFIELD" — a phone keyboard with caps
+ * lock on, or a laptop with none. Neither is what somebody wants to see at the
+ * top of a document they are about to sign, and the page had no formatting on
+ * it at all: the headline said "dana, here's your quote" and the line under it
+ * said "Prepared for DANA WHITFIELD".
+ *
+ * THE ONE RULE: a word that already mixes cases is never touched. If it has an
+ * uppercase letter AND a lowercase one, somebody chose that — McBride, DeLuca,
+ * JoAnne, d'Arcy — and a title-caser that "fixes" those is worse than no
+ * title-caser at all, because it gets somebody's own name wrong on a contract.
+ * Only a word that is entirely one case is recased, because a word that is
+ * entirely one case carries no information about how it should be written.
+ *
+ * WHAT IT DOES NOT DO. "mcbride" comes out "Mcbride", not "McBride". Knowing
+ * which Mc/Mac names take an internal capital means knowing the name, and the
+ * rule that gets McBride right turns Machado into MacHado. Recasing on
+ * apostrophes and hyphens is safe — "o'neill" and "mary-jane" have only one
+ * reading — so those are handled and the Scottish prefixes are not.
+ */
+export function properName(fullName: string | null | undefined): string | null {
+  const words = (fullName ?? '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+
+  return words
+    .map((word) => {
+      const upper = word.toUpperCase();
+      const lower = word.toLowerCase();
+      // No cased letters at all — a number, an ampersand, a Han character.
+      if (upper === lower) return word;
+      // Mixed case: deliberate. Left exactly as it was typed.
+      if (word !== upper && word !== lower) return word;
+      // Every letter that starts a word or follows a name's own punctuation.
+      // Both apostrophes, because a phone keyboard produces the curly one.
+      return lower.replace(/(^|[-'’.])(\p{L})/gu, (_, mark: string, letter: string) => mark + letter.toUpperCase());
+    })
+    .join(' ');
+}
+
+/**
  * Who this is for, said the way a person would say it.
  *
  * First name only, and never a fallback pronoun: "you, here's your quote" is
