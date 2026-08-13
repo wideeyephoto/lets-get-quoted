@@ -1,9 +1,21 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { getAccountOwnerEmail, sendContractorAlertEmail, sendReviewRequestEmail } from '@/lib/email';
+import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { summariseReviewInvites, type ReviewInviteRow, type ReviewsSummary } from '@/lib/review-routing';
 import { loadBusinessName, pickBusinessName } from '@/lib/business-name';
+import { isPhoneOptedOut, recordSmsConsent, sendReviewRequestSms } from '@/lib/sms';
+import { resolveClientChannel } from '@/lib/client-channel';
+import { normalizeUsPhone } from '@/lib/phone';
+import {
+  MAX_REMINDERS,
+  reminderBlock,
+  reminderBlockMessage,
+  requestStatus,
+  type ActivityRow,
+  type ReviewChannel,
+} from '@/lib/review-activity';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -38,6 +50,301 @@ export async function getReviewsSummary(supabase: SupabaseClient, accountId: str
     .order('created_at', { ascending: false });
 
   return summariseReviewInvites(error ? [] : ((data ?? []) as ReviewInviteRow[]));
+}
+
+/* ==========================================================================
+   The Command Center's activity list.
+   ========================================================================== */
+
+/** Every column the activity list reads, including the four this page added. */
+const ACTIVITY_FIELDS =
+  'id, job_id, client_name, rating, feedback, routed_to, google_clicked_at, feedback_at, responded_at, created_at, ' +
+  'resolved_at, reminders_sent, last_reminded_at, reminders_stopped_at';
+
+type ActivityInviteRow = ReviewInviteRow & {
+  created_at: string;
+  resolved_at: string | null;
+  reminders_sent: number | null;
+  last_reminded_at: string | null;
+  reminders_stopped_at: string | null;
+};
+
+/**
+ * The activity list: every review request for the account, with the job and
+ * customer it belongs to and the channel it went out on.
+ *
+ * THREE QUERIES, NOT AN N+1. The invites, then the jobs they name, then the
+ * `review_requested` feed events for those jobs. An account with three hundred
+ * review asks loads in the same three round trips as one with three.
+ *
+ * WHY THE CHANNEL COMES FROM job_feed. `review_invites` has no channel column —
+ * whether the ask went by text or email is recorded once, in the meta of the
+ * `review_requested` feed event written by deliverJobReviewRequest. Reading it
+ * back through job_id means an invite with no job (there is no UI that makes
+ * one today, but the column is nullable) reports 'unknown' rather than guessing
+ * — and 'unknown' renders as "Not recorded", which is true, instead of
+ * defaulting to "Text" and being wrong for every emailed customer.
+ *
+ * Degrades to [] on any error, the same way getReviewsSummary does: an
+ * un-migrated database should show an empty page, not a stack trace.
+ */
+export async function loadReviewActivity(supabase: SupabaseClient, accountId: string): Promise<ActivityRow[]> {
+  const { data, error } = await supabase
+    .from('review_invites')
+    .select(ACTIVITY_FIELDS)
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+
+  const invites = data as unknown as ActivityInviteRow[];
+  const jobIds = [...new Set(invites.map((row) => row.job_id).filter((id): id is string => Boolean(id)))];
+
+  type JobBits = { ref: string | null; clientId: string | null; name: string | null; phone: string | null; email: string | null };
+  const jobs = new Map<string, JobBits>();
+  const channels = new Map<string, ReviewChannel>();
+
+  if (jobIds.length > 0) {
+    const [{ data: jobRows }, { data: feedRows }] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('id, ref, client_id, client_name, client_phone, client_email')
+        .eq('account_id', accountId)
+        .in('id', jobIds),
+      supabase
+        .from('job_feed')
+        .select('job_id, meta, created_at')
+        .eq('account_id', accountId)
+        .eq('kind', 'review_requested')
+        .in('job_id', jobIds)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    for (const row of (jobRows ?? []) as Record<string, unknown>[]) {
+      jobs.set(row.id as string, {
+        ref: (row.ref as string | null) ?? null,
+        clientId: (row.client_id as string | null) ?? null,
+        name: (row.client_name as string | null) ?? null,
+        phone: (row.client_phone as string | null) ?? null,
+        email: (row.client_email as string | null) ?? null,
+      });
+    }
+
+    // Newest first, and the first write wins — a job asked twice reports the
+    // channel of the most recent ask, which is the one an owner is looking at.
+    for (const row of (feedRows ?? []) as Record<string, unknown>[]) {
+      const jobId = row.job_id as string;
+      if (channels.has(jobId)) continue;
+      const meta = (row.meta ?? {}) as Record<string, unknown>;
+      const channel = meta.channel;
+      if (channel === 'sms' || channel === 'email') channels.set(jobId, channel);
+    }
+  }
+
+  return invites.map((row) => {
+    const job = row.job_id ? jobs.get(row.job_id) : undefined;
+    return {
+      id: row.id,
+      jobId: row.job_id,
+      jobRef: job?.ref ?? null,
+      clientId: job?.clientId ?? null,
+      // The invite's own snapshot of the name wins: it is what the customer was
+      // called at the moment they were asked, and the job may have been edited
+      // since. Falls back to the job for pre-snapshot rows.
+      clientName: row.client_name ?? job?.name ?? null,
+      clientPhone: job?.phone ?? null,
+      clientEmail: job?.email ?? null,
+      rating: row.rating !== null && row.rating >= 1 && row.rating <= 5 ? (row.rating as ActivityRow['rating']) : null,
+      feedback: row.feedback,
+      status: requestStatus(row),
+      channel: (row.job_id ? channels.get(row.job_id) : undefined) ?? 'unknown',
+      sentAt: row.created_at,
+      respondedAt: row.responded_at,
+      googleClickedAt: row.google_clicked_at,
+      feedbackAt: row.feedback_at,
+      remindersSent: row.reminders_sent ?? 0,
+      lastRemindedAt: row.last_reminded_at,
+      remindersStoppedAt: row.reminders_stopped_at,
+      resolvedAt: row.resolved_at,
+    };
+  });
+}
+
+/** One row, scoped to the account. Used by the drawer and by every write below. */
+export async function getReviewActivityRow(
+  supabase: SupabaseClient,
+  accountId: string,
+  id: string,
+): Promise<ActivityRow | null> {
+  const rows = await loadReviewActivity(supabase, accountId);
+  return rows.find((row) => row.id === id) ?? null;
+}
+
+/**
+ * "Mark resolved" / "Reopen" on a piece of private feedback.
+ *
+ * Scoped by account_id as well as id — the id comes from a form the browser
+ * posted, so it is not evidence of anything on its own.
+ */
+export async function setReviewResolved(
+  supabase: SupabaseClient,
+  accountId: string,
+  id: string,
+  resolved: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from('review_invites')
+    .update({ resolved_at: resolved ? new Date().toISOString() : null })
+    .eq('id', id)
+    .eq('account_id', accountId);
+  if (error) throw error;
+}
+
+/**
+ * The owner's decision to stop chasing this one.
+ *
+ * Distinct from the customer replying STOP: that lives in sms_consent, covers
+ * every message to that number, and is not the owner's to clear. This only ever
+ * makes us send less.
+ */
+export async function setReviewRemindersStopped(
+  supabase: SupabaseClient,
+  accountId: string,
+  id: string,
+  stopped: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from('review_invites')
+    .update({ reminders_stopped_at: stopped ? new Date().toISOString() : null })
+    .eq('id', id)
+    .eq('account_id', accountId);
+  if (error) throw error;
+}
+
+export type ReminderResult = { ok: boolean; message: string };
+
+/**
+ * Send the SAME review link again.
+ *
+ * The critical difference from the one-tap ask on the job page: that mints a
+ * fresh invite, so asking twice used to leave two rows, two tokens and a
+ * response rate quietly divided by a bigger number than the count of people
+ * actually asked. A reminder reuses this invite's token — one customer, one
+ * row, one link that still works.
+ *
+ * Every guard the first send honours is honoured again, in the same order, by
+ * the same helpers: the client's own automatic-message preference, an SMS STOP,
+ * a marketing unsubscribe, and CAN-SPAM's postal-address requirement. A
+ * reminder is the most unsolicited message this product sends; it gets the
+ * strictest reading, not a shortcut because we already have a token.
+ */
+export async function sendReviewReminder(
+  supabase: SupabaseClient,
+  accountId: string,
+  id: string,
+  nowIso = new Date().toISOString(),
+): Promise<ReminderResult> {
+  const row = await getReviewActivityRow(supabase, accountId, id);
+  if (!row) return { ok: false, message: 'That review request no longer exists.' };
+
+  const block = reminderBlock(row, nowIso);
+  if (block) return { ok: false, message: reminderBlockMessage(block, row) };
+
+  const { data: invite } = await supabase
+    .from('review_invites')
+    .select('token, google_url')
+    .eq('id', id)
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!invite?.token) return { ok: false, message: 'That review request no longer exists.' };
+
+  const origin = APP_ORIGIN;
+  const { data: pref } = await supabase
+    .from('accounts')
+    .select('review_feedback_page_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  // Same rule as the first send: the feedback page when it is on, the raw
+  // Google link when it is off. Never a dead end — if neither exists there is
+  // nowhere to send them and we say so rather than texting a broken link.
+  const linkUrl = pref?.review_feedback_page_enabled
+    ? `${origin}/review/${invite.token as string}`
+    : ((invite.google_url as string | null) ?? null);
+  if (!linkUrl) {
+    return { ok: false, message: 'Link your Google Business Profile in the website builder first — the reminder has nowhere to go.' };
+  }
+
+  const businessName = await loadBusinessName(supabase, accountId);
+  const clientFirstName = (row.clientName || 'there').trim().split(/\s+/)[0] || 'there';
+  const normalizedPhone = row.clientPhone ? normalizeUsPhone(row.clientPhone) : null;
+
+  const route = resolveClientChannel({
+    phone: normalizedPhone,
+    email: row.clientEmail,
+    optedOut: normalizedPhone ? await isPhoneOptedOut(accountId, normalizedPhone) : false,
+    kind: 'automatic',
+  });
+  if (route.reason === 'preference_off') {
+    return { ok: false, message: `Automatic messages are switched off for ${row.clientName ?? 'this customer'}.` };
+  }
+
+  let channel: 'sms' | 'email';
+  try {
+    if (route.channel === 'sms' && normalizedPhone) {
+      await recordSmsConsent(accountId, normalizedPhone, 'review_request');
+      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId });
+      channel = 'sms';
+    } else if (route.channel === 'email' && row.clientEmail) {
+      const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
+      const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
+      if (!mailingAddress) {
+        return { ok: false, message: 'Add your business mailing address in Settings to email review reminders — it’s required by anti-spam law.' };
+      }
+      if (await isEmailSuppressed(supabase, accountId, row.clientEmail)) {
+        return { ok: false, message: `${row.clientName ?? 'This customer'} unsubscribed from emails and has no textable mobile on file.` };
+      }
+      await sendReviewRequestEmail({ recipientEmail: row.clientEmail, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId, mailingAddress });
+      channel = 'email';
+    } else if (route.reason === 'opted_out') {
+      return { ok: false, message: 'They replied STOP, so no reminder can go to that number — and emailing instead would be routing around it.' };
+    } else {
+      return { ok: false, message: 'No textable mobile or email on file for this customer.' };
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'The reminder could not be sent.';
+    console.error(`Review reminder failed for invite ${id}:`, reason);
+    return { ok: false, message: reason };
+  }
+
+  // Counted only after the send actually succeeded. Incrementing first would
+  // burn one of three reminders on a Twilio outage.
+  const sent = row.remindersSent + 1;
+  await supabase
+    .from('review_invites')
+    .update({ reminders_sent: sent, last_reminded_at: nowIso })
+    .eq('id', id)
+    .eq('account_id', accountId);
+
+  if (row.jobId) {
+    try {
+      await createJobFeedEvent(supabase, accountId, row.jobId, {
+        kind: 'review_requested',
+        title: channel === 'sms' ? 'Review reminder texted' : 'Review reminder emailed',
+        body: `Reminder ${sent} of ${MAX_REMINDERS} for the same review link.`,
+        visibility: 'internal',
+        meta: { review_request: true, reminder: true, channel },
+      });
+    } catch (error) {
+      console.error('Review reminder feed event failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  return {
+    ok: true,
+    message:
+      channel === 'sms'
+        ? `Reminder ${sent} of ${MAX_REMINDERS} texted to ${row.clientName ?? 'the customer'}.`
+        : `Reminder ${sent} of ${MAX_REMINDERS} emailed to ${row.clientName ?? 'the customer'}.`,
+  };
 }
 
 // Count of private feedback in the window — for a dashboard "needs attention"
