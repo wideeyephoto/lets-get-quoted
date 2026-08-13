@@ -11,6 +11,7 @@ import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
+import LaunchBanner from '@/components/marketing/launch-banner';
 
 /* The URL and the words both come from site-chrome, which is where the header,
    the phone bar and the closing band already read them. This page used to
@@ -570,6 +571,7 @@ export default function FlagshipHome() {
     <main className={styles.root} ref={rootRef} data-hero-cta="visible">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <SiteHeader />
+      <LaunchBanner offsetHeader />
 
       {/* THE HERO, TO THE MOCKUP.
           Copy left, product right, four pillars along the bottom of the copy.

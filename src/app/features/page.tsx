@@ -20,6 +20,7 @@ import {
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
 import ProductTour from './ProductTour';
+import LaunchBanner from '@/components/marketing/launch-banner';
 
 /**
  * The Product page, in the standalone site's visual language.
@@ -234,6 +235,7 @@ export default function FeaturesPage() {
         Skip to content
       </a>
       <SiteHeader />
+      <LaunchBanner offsetHeader />
 
       {/* Two columns, not one. The copy keeps the left and the thread takes the
           right; every child is placed explicitly in the grid rather than

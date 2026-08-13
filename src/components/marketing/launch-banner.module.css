@@ -1,0 +1,100 @@
+/* The pre-launch notice.
+ *
+ * Amber on navy, which is the palette's own "read this, nothing is broken"
+ * register — the same gold family the eyebrows use. Deliberately NOT the red
+ * warning treatment: nothing has gone wrong, and dressing an honest disclosure
+ * as an error teaches people to dismiss the next one.
+ *
+ * Its own colours rather than var(--text)/var(--muted), because the public site
+ * is the flagship stylesheet's world and those tokens are the dashboard's. These
+ * two hex values are the ones .root already declares for body text and muted
+ * text on this site.
+ */
+
+.banner {
+  position: relative;
+  z-index: 5;
+  border-bottom: 1px solid rgba(255, 209, 102, 0.28);
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.14), rgba(255, 209, 102, 0.06));
+  color: #eef5f6;
+}
+
+/**
+ * The offset variant, and why there are two.
+ *
+ * .site-header is `position: fixed; top: 0; height: 82px` (68px below 760px).
+ * Pages that mount PublicHeaderLayout get a SPACER for it — .root[data-chrome=
+ * 'slot'] is an 82px-tall empty block in normal flow — so a banner placed after
+ * that spacer already clears the header and needs nothing.
+ *
+ * The homepage, /features, /how-it-works and the feature detail pages render
+ * <SiteHeader /> inside their own .root with no spacer; the header floats over
+ * the hero's generous top padding instead. A banner there has to reserve the
+ * height itself, which is what this class does.
+ *
+ * Two classes rather than one clever rule because the difference is real and
+ * invisible: get it wrong and the banner is either hidden behind the header or
+ * sitting under 82px of empty navy, and neither is obvious from the code.
+ */
+.offsetHeader {
+  margin-top: 82px;
+}
+
+@media (max-width: 760px) {
+  /* §101 of the flagship CSS drops the header to 68px here. */
+  .offsetHeader {
+    margin-top: 68px;
+  }
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 0.6rem clamp(22px, 4.5vw, 78px);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.badge {
+  flex: none;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #ffd166;
+  /* Dark ink on the gold. #ffd166 as a background needs a dark foreground to
+     clear AA — the same reason --on-accent exists for the orange. */
+  color: #180c02;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.headline {
+  font-weight: 700;
+  color: #eef5f6;
+}
+
+.detail {
+  color: #9db0bd;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  /* The detail stays. Hiding it here was the first thing tried, and it is the
+     wrong trade: this paragraph is the whole reason the banner is honest rather
+     than a teaser, and `display: none` would take it from screen readers too —
+     so the people most likely to need the plain statement would be the ones who
+     never got it. Two extra lines on a phone is the correct cost. */
+  .detail {
+    flex-basis: 100%;
+  }
+}

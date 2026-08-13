@@ -5,6 +5,7 @@ import { PageCTA, SiteFooter, SiteHeader } from '@/components/flagship/site-chro
 import type { MarketingCtaProps } from './marketing-cta';
 import { APP_SIGNUP_URL, FEATURES_URL, SECONDARY_SIGNUP_LABEL } from './links';
 import styles from '@/components/flagship/flagship.module.css';
+import LaunchBanner from '@/components/marketing/launch-banner';
 
 /** One cell of the proof bar under the hero. */
 export type FeatureProofPoint = {
@@ -178,6 +179,7 @@ export default function FeatureDetailLayout({
         Skip to content
       </a>
       <SiteHeader />
+      <LaunchBanner offsetHeader />
 
       <section className="detail-hero" id="main-content">
         <div className="detail-hero-copy">

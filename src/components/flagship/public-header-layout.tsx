@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import LaunchBanner from '@/components/marketing/launch-banner';
 import { SiteHeaderSlot } from './site-chrome';
 
 /**
@@ -33,6 +34,11 @@ export default function PublicHeaderLayout({ children }: { children: ReactNode }
   return (
     <>
       <SiteHeaderSlot />
+      {/* AFTER the slot, never inside it: .root[data-chrome='slot'] is a fixed
+          82px spacer standing in for the fixed header, and anything put inside
+          it is clipped. Out here the banner is in ordinary flow with the header
+          already accounted for, so it needs no offset of its own. */}
+      <LaunchBanner />
       {children}
     </>
   );

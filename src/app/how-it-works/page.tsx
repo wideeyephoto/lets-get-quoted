@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import LaunchBanner from '@/components/marketing/launch-banner';
 
 // The flagship chrome and stylesheet — the same ones the homepage and
 // /features draw, so this page is the site rather than a document about it.
@@ -220,6 +221,7 @@ export default function HowItWorksPage() {
           above five run-together links. The site's navigation is unchanged; the
           page's own three anchors are the bar underneath it. */}
       <SiteHeader />
+      <LaunchBanner offsetHeader />
       <SectionNav sections={NAV_SECTIONS} />
 
       {/* ------------------------------------------------------------------
