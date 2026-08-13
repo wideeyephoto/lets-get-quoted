@@ -144,10 +144,19 @@ export default function MissedCallSection({
 
           <details className="advanced-settings missed-advanced">
             <summary>Advanced — connecting the number</summary>
+            {/* The origin comes from the environment, not a literal. This
+                printed letsgetquoted.com on every deployment including staging,
+                so anybody following the instruction from a staging dashboard
+                pointed a real phone number at an app they were not using. And
+                the path no longer names a vendor: the handler answers on
+                /api/sms/voice and on the old /api/twilio/voice alias, and the
+                one we tell people to paste should be the one that stays true
+                when the provider changes. */}
             <p className="missed-note">
-              In Twilio, point the number&apos;s <strong>Voice webhook</strong> to{' '}
-              <code>https://letsgetquoted.com/api/twilio/voice</code>. Don&apos;t have a separate number yet? Get in
-              touch and we&apos;ll set one up for you — you shouldn&apos;t have to do this part.
+              Point the number&apos;s <strong>Voice webhook</strong> to{' '}
+              <code>{`${(process.env.NEXT_PUBLIC_APP_URL || 'https://letsgetquoted.com').replace(/\/$/, '')}/api/sms/voice`}</code>.
+              Don&apos;t have a separate number yet? Get in touch and we&apos;ll set one up for you — you
+              shouldn&apos;t have to do this part.
             </p>
           </details>
         </div>

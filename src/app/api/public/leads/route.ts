@@ -6,7 +6,7 @@ import { sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
-import { isLeadVerificationValid } from '@/lib/lead-verification';
+import { isLeadVerificationConfigured, isLeadVerificationValid } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { isSmsConfigured, sendOwnerHighValueLeadSms } from '@/lib/sms';
@@ -211,19 +211,32 @@ export async function POST(request: NextRequest) {
   if (isFullyBookedActive(filters)) flags.push('while_booked');
 
   // Phone verification (AI-intake submissions only, and only when the owner
-  // enabled it AND texting is configured): the HMAC binds phone+code+expiry,
-  // so a valid triple proves the visitor received the code at that number.
-  if (filters.phoneVerification && isSmsConfigured() && text(data, 'wizard', 4) === '1') {
-    const verified = normalizedPhone !== null && isLeadVerificationValid(
-      normalizedPhone,
-      text(data, 'verifyCode', 10),
-      Number(data.get('verifyExpires')),
-      text(data, 'verifyToken', 128),
-    );
-    if (!verified) {
-      return NextResponse.json({ error: 'Phone verification failed — request a new code and try again.' }, { status: 400 });
+  // enabled it): the HMAC binds phone+code+expiry, so a valid triple proves the
+  // visitor received the code at that number.
+  //
+  // The owner asked for this check and it either ran or it didn't. It used to
+  // be gated on isSmsConfigured() alone, so a deployment with no texting — or
+  // mid-way through a provider migration — skipped the whole block and the lead
+  // arrived looking exactly like one that had never needed verifying. "We could
+  // not check" must never render identically to "we checked": the lead still
+  // goes through, because rejecting real customers over our own configuration
+  // is worse, but it is flagged as unchecked rather than silently unflagged.
+  if (filters.phoneVerification && text(data, 'wizard', 4) === '1') {
+    if (!isSmsConfigured() || !isLeadVerificationConfigured()) {
+      console.error('Phone verification is enabled but unavailable — no SMS provider or no verification secret.');
+      flags.push('phone_verification_unavailable');
+    } else {
+      const verified = normalizedPhone !== null && isLeadVerificationValid(
+        normalizedPhone,
+        text(data, 'verifyCode', 10),
+        Number(data.get('verifyExpires')),
+        text(data, 'verifyToken', 128),
+      );
+      if (!verified) {
+        return NextResponse.json({ error: 'Phone verification failed — request a new code and try again.' }, { status: 400 });
+      }
+      flags.push('phone_verified');
     }
-    flags.push('phone_verified');
   }
 
   const hasPruneFlag = flags.some((flag) => LEAD_PRUNE_FLAGS.has(flag));

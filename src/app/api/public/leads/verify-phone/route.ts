@@ -1,7 +1,7 @@
 import { randomInt } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { leadVerificationToken } from '@/lib/lead-verification';
+import { isLeadVerificationConfigured, leadVerificationToken } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 import { isSmsConfigured, sendVerificationCodeSms } from '@/lib/sms';
@@ -47,9 +47,14 @@ export async function POST(request: NextRequest) {
   if (!site) return NextResponse.json({ error: 'Site not found.' }, { status: 404 });
 
   const filters = getSiteContent(site.content as Record<string, unknown>).leadFilters;
-  if (!filters.phoneVerification || !isSmsConfigured()) {
+  // The token secret is checked HERE, before anything is sent. leadVerification
+  // Token() throws when it is missing, and it is called after the text goes out
+  // — so without this the visitor would receive a real code and then a 500,
+  // having been charged a message segment for a token that was never minted.
+  if (!filters.phoneVerification || !isSmsConfigured() || !isLeadVerificationConfigured()) {
     // Verification is off (or texting isn't set up) — tell the client to
-    // proceed without it rather than dead-ending the visitor.
+    // proceed without it rather than dead-ending the visitor. The submission
+    // itself records that the check could not run; see the lead route.
     return NextResponse.json({ skipped: true });
   }
 

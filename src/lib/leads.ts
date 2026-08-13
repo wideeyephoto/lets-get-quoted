@@ -22,6 +22,7 @@ export type LeadTriage = {
   score: LeadScore;
   // 'out_of_area' | 'excluded_work' | 'below_minimum' | 'just_researching'
   // | 'while_booked' | 'repeat' | 'phone_verified'
+  // | 'phone_verification_unavailable'
   flags: string[];
   timeline?: string;
   /**
@@ -93,6 +94,11 @@ export const LEAD_FLAG_LABELS: Record<string, string> = {
   while_booked: 'Came in while booked',
   repeat: 'Repeat request',
   phone_verified: 'Phone verified',
+  // Deliberately NOT filtered out of the chip list the way phone_verified is.
+  // The owner turned verification on; this says it did not run, so the number
+  // on this lead is unproven. An unflagged lead and an unverifiable one looked
+  // identical before, which is the failure this names.
+  phone_verification_unavailable: 'Phone not verified — texting unavailable',
   junk_email: 'Email looks fake',
 };
 

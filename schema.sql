@@ -2175,11 +2175,16 @@ alter table admin_actions enable row level security;
 
 -- Inbound webhook deliveries we could not process: a bad signature, or a throw
 -- inside the handler. Surfaced on the Command Center with a "mark resolved".
+-- The source list is provider-NEUTRAL on purpose. It used to name Twilio
+-- ('twilio_inbound', 'twilio_status'), which made a CHECK constraint the one
+-- place a change of SMS provider fails at the database rather than at a
+-- comment — and it fails invisibly, because logWebhookFailure swallows its own
+-- insert error. The old two are still legal so existing rows stay readable.
 create table if not exists webhook_failures (
   id               uuid primary key default gen_random_uuid(),
-  source           text not null check (source in ('stripe','twilio_inbound','twilio_status','resend')),
-  event_type       text,              -- Stripe event.type / Twilio MessageStatus / Resend event type, when we got far enough to know it
-  reference_id     text,              -- Stripe event id / Twilio MessageSid / Resend email_id, when known
+  source           text not null check (source in ('stripe','resend','twilio_inbound','twilio_status','sms_inbound','sms_status','sms_voice')),
+  event_type       text,              -- Stripe event.type / SMS MessageStatus / Resend event type, when we got far enough to know it
+  reference_id     text,              -- Stripe event id / SMS provider message id / Resend email_id, when known
   error_message    text not null,
   payload_excerpt  text,              -- small truncated snippet for debugging — never the full raw body
   resolved_at      timestamptz,

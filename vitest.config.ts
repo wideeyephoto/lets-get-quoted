@@ -18,6 +18,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['test/**/*.test.ts'],
+    // Blocks the socket to every SMS provider host. See the file for why the
+    // existing in-code gate is not enough on its own.
+    setupFiles: ['./test/setup/no-provider-egress.ts'],
     // Dummy env so importing a lib module never trips a client constructor that
     // reads config at load time. Values are deterministic within a run (the
     // unsubscribe-token HMAC is keyed on SUPABASE_SERVICE_ROLE_KEY, so make/parse
@@ -28,6 +31,11 @@ export default defineConfig({
       NEXT_PUBLIC_APP_URL: 'http://localhost:3010',
       STRIPE_SECRET_KEY: 'sk_test_dummy',
       RESEND_API_KEY: 're_test_dummy',
+      // Deliberately NO sender (no TWILIO_FROM_NUMBER, no messaging service):
+      // the config predicate needs one, so isSmsConfigured() is false and
+      // nothing in the suite can send. test/sms-provider.test.ts pins that, so
+      // adding a sender here to fix an unrelated test fails loudly instead of
+      // quietly arming ~30 send functions.
       TWILIO_ACCOUNT_SID: 'AC00000000000000000000000000000000',
       TWILIO_AUTH_TOKEN: 'test-token',
     },

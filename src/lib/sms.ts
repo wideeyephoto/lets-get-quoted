@@ -28,12 +28,17 @@ import {
   verificationCodeText,
   withOptOut,
 } from '@/lib/sms-templates';
-import { createHmac, timingSafeEqual } from 'crypto';
-
 // The WORDS of every message below live in lib/sms-templates; this file is the
 // sending of them. That split is what lets the outgoing-text catalogue on the
 // messages page show the real string rather than a retyped copy — see the note
 // in that file about the two previews that had already drifted before it existed.
+//
+// And the PROVIDER lives in lib/sms-provider: the endpoint, the credentials,
+// the signature algorithm. This file used to hold all three inline, which meant
+// every consent rule and every ledger write in it was one file away from a
+// vendor's REST URL. What is left here is provider-neutral by construction —
+// who may be texted, what is recorded, and what happens when a send fails.
+import { isSmsProviderConfigured, sendProviderMessage, smsProviderConfig } from '@/lib/sms-provider';
 import type { PaymentSmsEvent } from '@/lib/sms-templates';
 
 export type { PaymentSmsEvent };
@@ -83,37 +88,6 @@ function messageFor(payment: SmsPayment, eventType: PaymentSmsEvent, contractor:
   });
 }
 
-function twilioConfiguration() {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-  const from = process.env.TWILIO_FROM_NUMBER;
-  if (!accountSid || !authToken || (!messagingServiceSid && !from)) return null;
-  return { accountSid, authToken, messagingServiceSid, from };
-}
-
-async function sendTwilioMessage(to: string, body: string) {
-  const configuration = twilioConfiguration();
-  if (!configuration) throw new Error('SMS provider is not configured.');
-  const data = new URLSearchParams({ To: to, Body: body });
-  if (configuration.messagingServiceSid) data.set('MessagingServiceSid', configuration.messagingServiceSid);
-  else data.set('From', configuration.from!);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
-  if (appUrl?.startsWith('https://')) data.set('StatusCallback', `${appUrl}/api/twilio/status`);
-
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${configuration.accountSid}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${configuration.accountSid}:${configuration.authToken}`).toString('base64')}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: data,
-  });
-  const result = await response.json() as { sid?: string; message?: string };
-  if (!response.ok || !result.sid) throw new Error(result.message || 'SMS provider rejected the message.');
-  return result.sid;
-}
-
 /**
  * Urgent alert texted to the OWNER's own mobile when a high-value lead lands.
  *
@@ -148,12 +122,12 @@ export async function sendOwnerHighValueLeadSms(input: {
   dashboardUrl: string;
 }): Promise<void> {
   try {
-    if (!twilioConfiguration()) return;
+    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
     if (await isPhoneOptedOut(input.accountId, to)) return;
     const body = ownerHighValueLeadText(input);
-    await sendTwilioMessage(to, body);
+    await sendProviderMessage(to, body);
   } catch (error) {
     console.error('Owner high-value lead SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -171,7 +145,7 @@ export async function sendEstimateOfferSms(input: {
   toPhone: string;
   message: string;
 }): Promise<string> {
-  const providerId = await sendTwilioMessage(input.toPhone, input.message);
+  const providerId = await sendProviderMessage(input.toPhone, input.message);
   await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
   return providerId;
 }
@@ -194,7 +168,7 @@ export async function sendBookingDecisionSms(input: {
 }): Promise<void> {
   try {
     if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
-    const providerId = await sendTwilioMessage(input.toPhone, withOptOut(input.message));
+    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message));
     await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
   } catch (error) {
     console.error('Booking decision SMS failed:', error instanceof Error ? error.message : error);
@@ -224,7 +198,7 @@ export async function sendClientPortalLinkSms(input: {
 }): Promise<void> {
   try {
     if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
-    const providerId = await sendTwilioMessage(input.toPhone, withOptOut(input.message));
+    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message));
     await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
   } catch (error) {
     console.error('Portal link SMS failed:', error instanceof Error ? error.message : error);
@@ -244,11 +218,11 @@ export async function sendOwnerEstimateAcceptedSms(input: {
   message: string;
 }): Promise<void> {
   try {
-    if (!twilioConfiguration()) return;
+    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
     if (await isPhoneOptedOut(input.accountId, to)) return;
-    await sendTwilioMessage(to, withOptOut(input.message));
+    await sendProviderMessage(to, withOptOut(input.message));
   } catch (error) {
     console.error('Owner estimate-offer alert SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -267,11 +241,11 @@ export async function sendQuickStopOfferSms(input: {
   minutes: number;
 }): Promise<void> {
   try {
-    if (!twilioConfiguration()) return;
+    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = quickStopOfferText(input);
-    const sid = await sendTwilioMessage(to, body);
+    const sid = await sendProviderMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
     console.error('Quick Stop offer SMS failed:', error instanceof Error ? error.message : error);
@@ -287,11 +261,11 @@ export async function sendQuickStopConfirmedSms(input: {
   statusUrl?: string;
 }): Promise<void> {
   try {
-    if (!twilioConfiguration()) return;
+    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = quickStopConfirmedText(input);
-    const sid = await sendTwilioMessage(to, body);
+    const sid = await sendProviderMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
     console.error('Quick Stop confirmed SMS failed:', error instanceof Error ? error.message : error);
@@ -306,11 +280,11 @@ export async function sendQuickStopStatusSms(input: {
   message: string;
 }): Promise<void> {
   try {
-    if (!twilioConfiguration()) return;
+    if (!smsProviderConfig()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = withOptOut(input.message);
-    const sid = await sendTwilioMessage(to, body);
+    const sid = await sendProviderMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
     console.error('Quick Stop status SMS failed:', error instanceof Error ? error.message : error);
@@ -432,7 +406,7 @@ async function deliverCrewSms(params: {
   const { data: event } = await admin.from('sms_events').insert({ ...base, status: 'pending' }).select('id').single();
 
   try {
-    const providerId = await sendTwilioMessage(normalized, params.body);
+    const providerId = await sendProviderMessage(normalized, params.body);
     if (event) await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
     return { status: 'sent' };
   } catch (sendError) {
@@ -453,9 +427,8 @@ export type SubcontractorSmsEvent = 'sub_offer' | 'sub_offer_covered' | 'sub_off
  * FOUR WAYS TO ANSWER NO, and every one of them is a place a real subcontractor
  * has nearly been texted by accident:
  *
- *   1. A test run. Vitest sets dummy Twilio credentials (see vitest.config.ts)
- *      precisely so importing this module works — which means isSmsConfigured()
- *      is TRUE under test and is not, on its own, a safe gate.
+ *   1. A test run. Vitest sets dummy provider credentials (see vitest.config.ts)
+ *      so importing this module works.
  *   2. A preview deploy. Every branch on Vercel gets a full database connection
  *      and a full crew table; a dispatch demo on one would text the real firms.
  *   3. An explicit off switch, for a staging environment that has live-looking
@@ -465,6 +438,26 @@ export type SubcontractorSmsEvent = 'sub_offer' | 'sub_offer_covered' | 'sub_off
  * Anything that returns false here is SIMULATED: the offer, the ledger row and
  * the whole flow still happen, so the feature is demonstrable, and the dashboard
  * says out loud that nothing was delivered. See DispatchSimulationNotice.
+ *
+ * TWO THINGS THIS DOES NOT DO, both worth knowing before you trust it.
+ *
+ * Reason 1 above used to claim isSmsConfigured() is TRUE under vitest and so
+ * cannot be relied on alone. That has never been true: the test env sets an
+ * account sid and a token but no sender, so the config predicate fails and
+ * isSmsConfigured() is already false. The gate is real, the stated reason for
+ * it was not, and a wrong reason is worse than none — it is what stops the next
+ * person noticing that the protection is one `TWILIO_FROM_NUMBER=` away from
+ * evaporating. test/sms-provider.test.ts now pins that, and a setup file blocks
+ * the socket outright.
+ *
+ * And this guards ONE sender. sendSubcontractorSms is the only caller; the
+ * other ~30 send functions in this file check nothing but whether a provider is
+ * configured. So a preview deploy or a staging box holding live credentials
+ * WILL text real customers payment reminders, arrival texts and crew
+ * assignments while dutifully simulating subcontractor offers. That is a real
+ * bug, it predates the provider seam, and fixing it changes send behavior
+ * across the whole application — which is why it is not riding along with a
+ * refactor whose entire claim is that it changes no behavior.
  */
 export function isLiveMessagingEnvironment(): boolean {
   if (process.env.NODE_ENV === 'test' || process.env.VITEST) return false;
@@ -533,7 +526,7 @@ export async function sendSubcontractorSms(params: {
   }
 
   try {
-    const providerId = await sendTwilioMessage(normalized, params.body);
+    const providerId = await sendProviderMessage(normalized, params.body);
     await record({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() });
     return { status: 'sent', providerId };
   } catch (error) {
@@ -578,7 +571,7 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
   }
 
   try {
-    const providerId = await sendTwilioMessage(payment.homeowner_phone, body);
+    const providerId = await sendProviderMessage(payment.homeowner_phone, body);
     await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
     await logOutboundToInbox(payment.account_id, payment.homeowner_phone, body, providerId);
     return { status: 'sent' as const };
@@ -588,26 +581,6 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
     console.error(`SMS ${eventType} failed for payment ${payment.id}:`, reason);
     return { status: 'failed' as const, error: reason };
   }
-}
-
-export function validateTwilioSignature(request: Request, data: FormData) {
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const signature = request.headers.get('x-twilio-signature');
-  if (!authToken || !signature) return false;
-
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const url = new URL(request.url);
-  if (forwardedProto) url.protocol = `${forwardedProto}:`;
-  if (forwardedHost) url.host = forwardedHost;
-  const sortedEntries = [...data.entries()]
-    .map(([key, value]) => [key, String(value)] as const)
-    .sort(([leftKey, leftValue], [rightKey, rightValue]) => leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue));
-  const payload = sortedEntries.reduce((result, [key, value]) => `${result}${key}${value}`, url.toString());
-  const expected = createHmac('sha1', authToken).update(payload).digest('base64');
-  const providedBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
 export async function retryFailedPaymentSmsEvent(paymentId: string, eventType: PaymentSmsEvent) {
@@ -667,7 +640,7 @@ export async function sendJobUpdateSms(params: {
   accountId?: string;
 }) {
   const message = jobUpdateText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -681,7 +654,7 @@ export async function sendClientJobDashboardSms(params: {
   accountId?: string;
 }) {
   const message = clientJobDashboardText({ ...params, link: clientJobLink(params.token) });
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -703,7 +676,7 @@ export async function sendQuoteUpdatedSms(params: {
   accountId?: string;
 }) {
   const message = quoteUpdatedText({ ...params, link: clientJobLink(params.token) });
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -711,13 +684,13 @@ export async function sendQuoteUpdatedSms(params: {
 // Whether an SMS provider is configured — features that depend on texting
 // (phone verification, decline texts) degrade gracefully when it isn't.
 export function isSmsConfigured(): boolean {
-  return twilioConfiguration() !== null;
+  return isSmsProviderConfigured();
 }
 
 // One-time code for verifying a lead's phone number before intake submits.
 export async function sendVerificationCodeSms(params: { phone: string; businessName: string; code: string }) {
   const message = verificationCodeText(params);
-  return sendTwilioMessage(params.phone, message);
+  return sendProviderMessage(params.phone, message);
 }
 
 // One-tap polite decline for a lead that isn't a fit — closing the loop in one
@@ -730,7 +703,7 @@ export async function sendLeadDeclineSms(params: {
   accountId?: string;
 }) {
   const message = leadDeclineText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -745,7 +718,7 @@ export async function sendLeadQuoteVisitSms(params: {
   accountId?: string;
 }) {
   const message = leadQuoteVisitText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -759,7 +732,7 @@ export async function sendLeadQuoteVisitOptionsSms(params: {
   accountId?: string;
 }) {
   const message = leadQuoteVisitOptionsText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -773,7 +746,7 @@ export async function sendSchedulingOptionsSms(params: {
   accountId?: string;
 }) {
   const message = schedulingOptionsText({ ...params, link: scheduleLink(params.token) });
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -782,7 +755,7 @@ export async function sendSchedulingOptionsSms(params: {
 // business name so the client knows who's texting from the shared number.
 // Returns the provider message id for the message log. Caller checks opt-out.
 export async function sendInboxReplySms(params: { phone: string; businessName: string; body: string }): Promise<string> {
-  return sendTwilioMessage(params.phone, inboxReplyText(params));
+  return sendProviderMessage(params.phone, inboxReplyText(params));
 }
 
 // Gentle nudge on a quote the client hasn't approved yet. Sent by the follow-up
@@ -801,7 +774,7 @@ export async function sendQuoteFollowupSms(params: {
     clientName: params.clientName,
     url: params.url,
   });
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -816,7 +789,7 @@ export async function sendRebookInviteSms(params: {
   accountId?: string;
 }) {
   const message = rebookInviteText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -837,7 +810,7 @@ export async function sendAppointmentReminderSms(params: {
   // a hand-typed copy beside it, and it had already drifted: no "Let's Get
   // Quoted:" prefix, no address clause. Now the card renders this exact string.
   const message = appointmentReminderText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -863,10 +836,10 @@ export async function sendArrivalSms(params: {
   if (!params.phone) return { status: 'no_phone' };
   const to = normalizeUsPhone(params.phone);
   if (!to) return { status: 'no_phone' };
-  if (!twilioConfiguration()) return { status: 'not_configured' };
+  if (!smsProviderConfig()) return { status: 'not_configured' };
   if (await isPhoneOptedOut(params.accountId, to)) return { status: 'opted_out' };
   try {
-    const sid = await sendTwilioMessage(to, params.message);
+    const sid = await sendProviderMessage(to, params.message);
     await logOutboundToInbox(params.accountId, to, params.message, sid);
     return { status: 'sent', sid };
   } catch (error) {
@@ -890,7 +863,7 @@ export async function sendArrivalTimeChangedSms(params: {
   // A window rather than a time on purpose: one slow job turns a promised
   // "8:07 AM" into a text that was wrong the moment it was sent.
   const message = arrivalTimeChangedText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -903,7 +876,7 @@ export async function sendMissedCallTextBack(params: { accountId: string; phone:
   // Shared with the settings preview, so the words an owner reads there are the
   // words their caller gets. See lib/missed-call.
   const message = missedCallTextBack(params.businessName);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -923,7 +896,7 @@ export async function sendSelectionRequestSms(params: {
   message: string;
 }): Promise<string | null> {
   if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
-  const providerId = await sendTwilioMessage(params.phone, params.message);
+  const providerId = await sendProviderMessage(params.phone, params.message);
   await logOutboundToInbox(params.accountId, params.phone, params.message, providerId);
   return providerId;
 }
@@ -938,7 +911,7 @@ export async function sendCardSetupSms(params: {
   accountId?: string;
 }) {
   const message = cardSetupText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -952,7 +925,7 @@ export async function sendCardUpdateSms(params: {
   accountId?: string;
 }) {
   const message = cardUpdateText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -969,7 +942,7 @@ export async function sendCampaignSms(params: {
   accountId?: string;
 }) {
   const message = campaignText(params);
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -996,7 +969,7 @@ export async function sendReviewRequestSms(params: {
     clientName: params.clientName,
     reviewUrl: params.reviewUrl,
   });
-  const providerId = await sendTwilioMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }

@@ -16,7 +16,13 @@ import {
   getFailedEmailEvents,
   getFailedSmsEvents,
 } from '@/lib/admin-alerts';
+import { smsProviderSummary, type SmsProviderId } from '@/lib/sms-provider';
 import styles from '../admin.module.css';
+
+const PROVIDER_LABEL: Record<SmsProviderId, string> = {
+  twilio: 'Twilio',
+  signalwire: 'SignalWire',
+};
 
 /**
  * Is anything running?
@@ -93,6 +99,9 @@ export default async function AdminHealthPage() {
     getFailedEmailEvents(admin),
     getFailedSmsEvents(admin),
   ]);
+
+  // Pure env read, no await — the provider is configuration, not state.
+  const messaging = smsProviderSummary();
 
   const rows = CRON_JOBS.map((spec) => {
     const run: CronRunRow | null = last.get(spec.job) ?? null;
@@ -203,6 +212,88 @@ export default async function AdminHealthPage() {
 
       {/* The pre-existing failure logs, gathered beside the heartbeat. These
           answer "did what ran work"; the table above answers "did it run". */}
+      {/* Which provider is sending, and which signatures we will accept.
+          READ-ONLY, DELIBERATELY. Every other integration on this page is
+          reported rather than controlled, and messaging is the one where a
+          control would be actively dangerous: the credentials live in the
+          environment — a sending token in Postgres is a token in every pg_dump
+          and every service-role read, which here means every admin page and
+          every webhook route — so a toggle could only point at secrets it does
+          not hold, and one click could select a provider that cannot send. The
+          flip is LGQ_SMS_PROVIDER plus a deploy: atomic, timestamped and
+          revertible, which is what you want the day a delivery callback signed
+          by the old provider turns up four minutes after the change.
+
+          The line that earns this card is "accepted signatures". During a
+          cutover it is the only place that tells you, in one glance, whether
+          inbound texts from BOTH providers will validate. */}
+      <section className={styles.panel}>
+        <p className={styles.panelTitle}>Messaging provider</p>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <tbody>
+              <tr>
+                <td>Sending through</td>
+                <td>
+                  {messaging.active ? (
+                    <strong>{PROVIDER_LABEL[messaging.active]}</strong>
+                  ) : (
+                    <strong style={{ color: '#fca5a5' }}>Not configured — nothing can be texted</strong>
+                  )}
+                  {messaging.requestedButUnconfigured ? (
+                    <span className={styles.muted} style={{ display: 'block', fontSize: '.72rem' }}>
+                      LGQ_SMS_PROVIDER asks for <code>{messaging.requestedButUnconfigured}</code>, whose credentials are
+                      missing. Nothing falls back to the other provider on purpose: sending under the wrong number and
+                      the wrong registration while you believe you have cut over is worse than sending nothing.
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <td>Sender</td>
+                <td>
+                  {messaging.senderMode === 'pool'
+                    ? 'A number pool (Messaging Service / Number Group)'
+                    : messaging.senderMode === 'single-number'
+                      ? 'One fixed number'
+                      : '—'}
+                </td>
+              </tr>
+              <tr>
+                <td>Credentials present</td>
+                <td>{messaging.configured.length ? messaging.configured.map((id) => PROVIDER_LABEL[id]).join(', ') : 'None'}</td>
+              </tr>
+              <tr>
+                <td>Accepted signatures</td>
+                <td>
+                  {messaging.acceptedSignatureHeaders.length ? (
+                    <code>{messaging.acceptedSignatureHeaders.join(', ')}</code>
+                  ) : (
+                    <span style={{ color: '#fca5a5' }}>None — every inbound webhook will be rejected</span>
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td>Delivery receipts</td>
+                <td>
+                  {messaging.statusCallbacksEnabled ? (
+                    <>Attached to every send.</>
+                  ) : (
+                    // Silent until now: no https origin means no StatusCallback
+                    // is ever sent, so "Failed texts" below can only ever be
+                    // zero and looks like good news.
+                    <span style={{ color: '#ffd166' }}>
+                      Off — NEXT_PUBLIC_APP_URL is not https, so no delivery result is ever reported back and
+                      &ldquo;Failed texts&rdquo; cannot rise above zero.
+                    </span>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className={styles.panel}>
         <p className={styles.panelTitle}>Delivery &amp; integration failures</p>
         <div className={styles.cardGrid}>
