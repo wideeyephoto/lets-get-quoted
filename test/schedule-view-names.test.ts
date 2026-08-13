@@ -120,12 +120,14 @@ describe('the weekend toggles appear where they can do something', () => {
    THE PHONE
    ======================================================================== */
 describe('the phone uses the desktop’s words', () => {
-  it('calls one day Day and the picker Dates', () => {
+  it('calls one day Day and the picker Month', () => {
     expect(MOBILE).toContain('>\n            Day\n          </button>');
-    expect(MOBILE).toContain('>\n            Dates\n          </button>');
-    // The old pair meant something else on every other screen.
+    expect(MOBILE).toContain('>\n            Month\n          </button>');
+    // "Agenda" is the one that has to stay gone: it meant a single day here and
+    // a month-long list on the desktop. "Dates" named the panel after what is
+    // in it rather than the span it covers, which is not how anyone asks for it.
     expect(MOBILE).not.toContain('>\n            Agenda\n          </button>');
-    expect(MOBILE).not.toContain('>\n            Month\n          </button>');
+    expect(MOBILE).not.toContain('>\n            Dates\n          </button>');
   });
 
   /** The internal state names are untouched — they are not on screen, and

@@ -89,7 +89,7 @@ describe('the calendar toolbar is one row', () => {
   });
 
   /** Nothing in it belongs to a phone: the agenda has its own day nav, its own
-   *  Day/Dates tabs and its own Today. Hiding three of its four children and
+   *  Day/Month tabs and its own Today. Hiding three of its four children and
    *  leaving the row was how the phone ended up showing two weekend chips and
    *  nothing else — measured 308px wide at 390. */
   it('does not render on a phone at all', () => {

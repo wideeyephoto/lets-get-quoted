@@ -111,6 +111,11 @@
   --cap-busy: #f5c542;
   --cap-full: #ff8a3d;
   --cap-over: #ff6b57;
+  /* OFF the ramp, deliberately. A day carrying work of unstated length is not a
+     sixth level of "how full" — it is the one day the ramp cannot answer for —
+     so it takes a neutral rather than a hue, and the cell wears a hatch and a
+     "?" as well. See capacityLevel in lib/schedule-capacity. */
+  --cap-unknown: #9aa4b2;
   /* The gold used as a label/eyebrow. --accent-2 stays hue for gradients and
      washes; this is the same idea when it has to be read as words. */
   --gold-ink: #ffd166;
@@ -193,6 +198,7 @@
   --cap-busy: #f5c542;
   --cap-full: #ff8a3d;
   --cap-over: #ff6b57;
+  --cap-unknown: #9aa4b2;
   --gold-ink: #ffd166;
   --accent-ink: #ff9d5c;
   /* White, exactly as in dark. The active row's wash is still the brand orange
@@ -231,6 +237,10 @@
   --ink-amber-8: #ffe0a3;
   /* blue — periwinkle */
   --ink-blue: #cfe0ff;
+  /* Insights' steel blue, which was a bare literal on eleven chips and a
+     priority badge. Different value from --ink-blue, so it needs its own pair
+     rather than borrowing one. */
+  --ink-blue-2: #6aa8ee;
   /* green — go / complete */
   --ink-green-1: #78dc96;
   --ink-green-2: #6fdca4;
@@ -244,6 +254,7 @@
   --ink-green-10: #39e07a;
   --ink-green-11: #4fd39a;
   --ink-green-12: #6fe4b3;
+  --ink-green-13: #4ade80;
   /* lime — margin healthy */
   --ink-lime-1: #bef264;
   --ink-lime-2: #d9f99d;
@@ -307,6 +318,7 @@
   --ink-violet-2: #e9d5ff;
   --ink-violet-3: #c9b5ff;
   --ink-violet-4: #c4b5fd;
+  --ink-violet-5: #a78bfa;
 
   /* RAILS. The calendar bands are the one place colour is the DATA — six hues
      saying whose job this is. A 34%-alpha edge is enough to define a band on
@@ -942,6 +954,9 @@
   --cap-busy: #9a6600;
   --cap-full: #c2410c;
   --cap-over: #a8331f;
+  /* Darker than the dark theme's, for the same reason every colour in this
+     block is: it has to hold its edge against a sheet rather than a slab. */
+  --cap-unknown: #55606e;
   --gold-ink: #7a5200;
   /* Harbour's blue, in its deep value — the accent has to change value between
      the canvas and a sheet for the same reason --good does. The HUE is the
@@ -994,6 +1009,7 @@
   --ink-amber-8: #876116;  /* was #ffe0a3 */
   /* blue — periwinkle */
   --ink-blue: #2361d4;  /* was #cfe0ff */
+  --ink-blue-2: #17518f;  /* was #6aa8ee */
   /* green — go / complete */
   --ink-green-1: #1f7739;  /* was #78dc96 */
   --ink-green-2: #1d7648;  /* was #6fdca4 */
@@ -1007,6 +1023,7 @@
   --ink-green-10: #13773a;  /* was #39e07a */
   --ink-green-11: #1d7650;  /* was #4fd39a */
   --ink-green-12: #16764e;  /* was #6fe4b3 */
+  --ink-green-13: #0f7038;  /* was #4ade80 */
   /* lime — margin healthy */
   --ink-lime-1: #4f7213;  /* was #bef264 */
   --ink-lime-2: #517213;  /* was #d9f99d */
@@ -1075,6 +1092,7 @@
   --ink-violet-2: #893bdf;  /* was #e9d5ff */
   --ink-violet-3: #7249e1;  /* was #c9b5ff */
   --ink-violet-4: #6b4ce2;  /* was #c4b5fd */
+  --ink-violet-5: #6d3fd6;  /* was #a78bfa */
 
   /* Rails go solid and mid-value. Not the ink — an edge as dark as the text
      would box every chip in and the month would read as a grid of buttons; not
@@ -1578,6 +1596,21 @@
 
 }
 
+/* A popover's shadow falls on PAPER, not on the canvas, so it is cast in ink
+   rather than in black — the flip's own shadow is tuned for a sheet lifting off
+   a dark ground and reads as soot on white. The arrow is a separate element
+   with its own background, so the flip cannot reach it. */
+:root[data-theme='light'] .schedule-popover-panel,
+:root[data-theme='light'] .schedule-crew-picker-panel,
+:root[data-theme='light'] .schedule-crew-card-panel,
+:root[data-theme='light'] .schedule-crew-quick-panel,
+:root[data-theme='light'] .calendar-view-panel,
+:root[data-theme='light'] .plan-stop-menu,
+:root[data-theme='light'] .bset-dots-pop {
+  border-color: #1f2a39;
+  box-shadow: 0 2px 6px rgba(17, 27, 41, 0.08), 0 20px 44px -14px rgba(17, 27, 41, 0.34);
+}
+
 /* Modals sit over a scrim on the dark canvas, so they keep a heavier lift. */
 :root[data-theme='light'] .crew-assign-panel,
 :root[data-theme='light'] .client-modal,
@@ -1606,6 +1639,14 @@
 :root[data-theme='light'] .modern-time-button[aria-expanded='true'] {
   background: #ffffff;
   border-color: #ff7a21;
+}
+
+/* A tick is only legible on a fill dark enough to hold white. The dark theme's
+   mint reads as a lit surface there and as a highlighter here. */
+:root[data-theme='light'] .schedule-crew-picker-option:has(input:checked) .schedule-crew-picker-check {
+  background: #0d7a52;
+  border-color: #0d7a52;
+  color: #ffffff;
 }
 
 /* Scroll-reveal — ScrollReveal.tsx toggles data-reveal-state on below-fold
@@ -2005,7 +2046,10 @@ h3 {
   padding: 0 0.35rem;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--mute-g262);
+  /* 0.62 of a light grey measured 4.03:1 on the rail, which stays dark in both
+     palettes — so the light theme's solid override never applies here and the
+     alpha is doing all the work. */
+  color: rgba(var(--grey-2), 0.82);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2052,6 +2096,7 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  min-height: 44px;
   padding: 0.6rem 0.75rem;
   border: 0;
   border-radius: 12px;
@@ -2157,7 +2202,11 @@ h3 {
      don't shrink to match, so the rail's rhythm is identical either way.
      2.3rem is exactly the height these rows already had (0.55rem × 2 padding +
      a 1.2rem badge) — this is a redistribution, not a resize. */
-  min-height: 2.3rem;
+  /* 44px. It was 2.3rem (36.8px measured), which is comfortably above WCAG's
+     24px floor and comfortably below a fingertip — and this rail is the primary
+     navigation on a touch tablet. Seventeen rows grow by 7px each; the rail
+     already scrolls when it has to. */
+  min-height: 44px;
   padding: 0.45rem 0.6rem;
   border-radius: 12px;
   color: rgba(var(--ink-rgb), 0.72);
@@ -2293,8 +2342,10 @@ h3 {
   text-transform: uppercase;
   /* A section eyebrow can be quiet, but 0.5 of a mid grey lands under 3:1 on
      paper. Light gets the alpha back — the same visual weight costs more
-     contrast on a light ground than on a dark one. */
-  color: var(--mute-g350);
+     contrast on a light ground than on a dark one.
+     And 0.5 was not enough on the DARK rail either: measured 3.8:1 at 10px,
+     which is small uppercase text with letter-spacing on top. */
+  color: rgba(var(--grey-3), 0.72);
 }
 :root[data-theme='light'] .sidenav-glabel { color: rgba(var(--grey-3), 0.85); }
 
@@ -2562,11 +2613,14 @@ h3 {
    rather than wrapping or ellipsing. */
 .sidenav-foot > .sidenav-account { flex: 0 1 auto; width: auto; min-width: 0; }
 .sidenav-foot > .stripe-status-pill.sidenav-stripe { flex: 1 1 auto; width: auto; min-width: 0; }
-/* One line, one height. The pill is a smaller control than the Account card and
-   centring them left a 4px step that read as a misalignment rather than two
-   different things. */
+/* One line, one height — 44px, not the 40 this pinned them to. The pill is a
+   smaller control than the Account card and centring them left a 4px step that
+   read as a misalignment rather than two different things, so they share a
+   floor. It just has to be the floor everything else in the rail uses: 40
+   overrode the Account card's own 44 and quietly made it the second-smallest
+   target in the nav. */
 .sidenav-foot > .stripe-status-pill.sidenav-stripe,
-.sidenav-foot > .sidenav-account { min-height: 40px; }
+.sidenav-foot > .sidenav-account { min-height: 44px; }
 
 /* CENTRED, because these two stopped being rows. Left-aligned content is what
    a nav list wants — every label starting on the same x, so the eye can run
@@ -3184,6 +3238,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  min-height: 44px;
   padding: 0.5rem 0.9rem;
   border-radius: 999px;
   font-size: 0.78rem;
@@ -3224,7 +3279,10 @@ h3 {
    the host URL below gets the badge's full width and never gets cut off. */
 .website-nav-live-top { display: inline-flex; align-items: baseline; gap: 0.35rem; }
 .website-nav-live-label { font-size: 0.76rem; font-weight: 700; color: var(--good); }
-.website-nav-live-edit { font-size: 0.62rem; font-weight: 600; color: var(--mute-i40); }
+/* WHITE AT AN ALPHA, not dark ink at one. This sits on the badge's purple fill
+   in both themes, where --mute-i40 measured 3.53:1 and 3.23:1 — the token is
+   for text on a PANEL, and this is text on a color. */
+.website-nav-live-edit { font-size: 0.62rem; font-weight: 600; color: rgba(255, 255, 255, 0.82); }
 .website-nav-badge.live:hover .website-nav-live-edit { color: rgba(var(--ink-rgb), 0.7); }
 
 .website-nav-live-host {
@@ -3285,6 +3343,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  min-height: 44px;
   padding: 0.35rem 0.8rem 0.35rem 0.4rem;
   border-radius: 12px;
   font-size: 0.78rem;
@@ -4647,6 +4706,291 @@ li + li { margin-top: 0.45rem; }
 .auth-oauth-buttons { display: flex; flex-direction: column; gap: .6rem; max-width: 420px; }
 .auth-oauth-buttons .btn { width: 100%; text-align: center; }
 .auth-trust { display: flex; align-items: center; gap: .4rem; max-width: 420px; margin: 1.2rem 0 0; color: var(--mute-t40); font-size: .74rem; }
+.schedule-crew-initials {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+.schedule-crew-initials > span,
+.schedule-crew-picker > summary {
+  color: var(--mute-i48);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.schedule-crew-picker { position: relative; }
+.schedule-crew-picker > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.schedule-crew-picker > summary::-webkit-details-marker { display: none; }
+.schedule-crew-picker[open] > summary { color: var(--gold-ink); }
+.schedule-crew-picker-panel {
+  position: absolute;
+  z-index: 34;
+  bottom: calc(100% + 0.45rem);
+  left: 0;
+  transform: none;
+  width: min(330px, calc(100vw - 2rem));
+  max-height: min(420px, calc(100dvh - 7rem));
+  overflow-y: auto;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--edge-t13);
+  border-radius: 14px;
+  background: #12161f;
+  box-shadow: 0 18px 44px rgba(0,0,0,.42);
+}
+.schedule-crew-picker-heading {
+  display: grid;
+  gap: 0.12rem;
+}
+.schedule-crew-picker-heading strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.schedule-crew-picker-heading span {
+  color: var(--mute-i52);
+  font-size: 0.74rem;
+}
+.schedule-crew-picker-list {
+  display: grid;
+  gap: 0.4rem;
+}
+.schedule-crew-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 10px;
+  background: rgba(var(--tint), .025);
+  cursor: pointer;
+}
+.schedule-crew-picker-option:has(input:checked) {
+  border-color: var(--cedge-green-8);
+  background: rgba(120,220,150,.08);
+}
+.schedule-crew-picker-option input { position: absolute; opacity: 0; pointer-events: none; }
+.schedule-crew-picker-check {
+  flex: none;
+  display: inline-flex;
+  width: 21px;
+  height: 21px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--edge-t28);
+  border-radius: 6px;
+  color: transparent;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+.schedule-crew-picker-option:has(input:checked) .schedule-crew-picker-check {
+  border-color: #78dc96;
+  background: #78dc96;
+  color: var(--bg-2);
+}
+.schedule-crew-picker-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+.schedule-crew-picker-copy strong {
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+.schedule-crew-picker-copy small {
+  color: var(--mute-i50);
+  font-size: 0.72rem;
+}
+.schedule-crew-picker-save { justify-self: flex-start; }
+.schedule-crew-card { position: relative; }
+.schedule-crew-badge {
+  list-style: none;
+  cursor: pointer;
+}
+.schedule-crew-badge::-webkit-details-marker { display: none; }
+.schedule-crew-badge strong,
+.schedule-crew-initials em {
+  display: inline-grid;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--cedge-amber-12);
+  background: rgba(255,209,102,.08);
+  color: var(--gold-ink);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+.schedule-crew-card[open] .schedule-crew-badge strong {
+  border-color: var(--cedge-amber-13);
+  background: rgba(255,209,102,.16);
+  box-shadow: 0 0 0 3px rgba(255,209,102,.08);
+}
+.schedule-crew-card-panel {
+  position: fixed;
+  z-index: 35;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 0.85rem;
+  border: 1px solid var(--edge-t13);
+  border-radius: 14px;
+  background: #12161f;
+  box-shadow: 0 18px 44px rgba(0,0,0,.42);
+}
+.schedule-crew-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.schedule-crew-card-header div {
+  display: grid;
+  gap: 0.12rem;
+}
+.schedule-crew-card-header strong {
+  color: var(--text);
+  font-size: 0.96rem;
+  line-height: 1.2;
+}
+.schedule-crew-card-header span {
+  color: var(--mute-i55);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.schedule-crew-card-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.8rem 0;
+}
+.schedule-crew-card-details div {
+  padding: 0.55rem;
+  border: 1px solid var(--edge-t08);
+  border-radius: 10px;
+  background: rgba(var(--tint), .035);
+}
+.schedule-crew-card-details dt {
+  margin: 0 0 0.18rem;
+  color: var(--mute-i45);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.schedule-crew-card-details dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.schedule-crew-edit { margin-top: 0.15rem; }
+.schedule-crew-edit > summary {
+  width: max-content;
+  list-style: none;
+  cursor: pointer;
+}
+.schedule-crew-edit > summary::-webkit-details-marker { display: none; }
+.schedule-crew-edit-form {
+  display: grid;
+  gap: 0.42rem;
+  margin-top: 0.65rem;
+}
+.schedule-crew-edit-form label {
+  color: var(--mute-i55);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.schedule-crew-edit-form input {
+  min-height: 38px;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 9px;
+  background: rgba(8,15,26,.72);
+  color: var(--text);
+}
+.schedule-crew-initials em {
+  min-width: auto;
+  padding: 0 0.55rem;
+  color: var(--mute-i58);
+  border-color: var(--edge-t14);
+  background: rgba(var(--tint), .04);
+}
+@media (max-width: 640px) {
+  .schedule-crew-picker-panel {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    bottom: auto;
+    transform: none;
+    width: auto;
+    max-height: calc(100dvh - 2rem);
+  }
+  .schedule-crew-card-panel {
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    transform: none;
+    width: auto;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+}
+.schedule-start-panel {
+  max-height: none;
+  overflow: visible;
+}
+.schedule-preset-button {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--cedge-amber-14);
+  border-radius: 12px;
+  background: rgba(255,209,102,.08);
+  color: var(--gold-ink);
+  font: 800 0.8rem/1.15 inherit;
+  cursor: pointer;
+}
+.schedule-preset-button:hover,
+.schedule-preset-button:focus-visible {
+  border-color: var(--cedge-amber-15);
+  background: rgba(255,209,102,.15);
+  outline: none;
+}
+.schedule-client-options-intro {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--cedge-amber-17);
+  border-radius: 12px;
+  background: rgba(255,209,102,.055);
+}
+.schedule-client-options-intro strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+.schedule-client-options-intro span {
+  color: rgba(var(--ink-rgb), .68);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
 .schedule-client-options-heading strong {
   color: var(--text);
   font-family: var(--font-display);
@@ -4883,6 +5227,36 @@ li + li { margin-top: 0.45rem; }
 }
 .calendar-view-toggle button:not(.active):hover { color: #fff; }
 
+/* WHEN THE COLUMN GETS TIGHT, THE WORDS GO AND THE ICONS STAY.
+   Measured against the toolbar's own width, so it fires on a 690px calendar
+   inside an 1440px window — which the old `@media (max-width: 900px)` version
+   never did, and that is the width where the row was breaking. Icons keep the
+   three one press away rather than pushing them back into the menu.
+
+   720px is the number because it is what the row needs with the labels on:
+   nav 328 + views 246 + menu 109 + gaps 24 = 707. */
+@container caltoolbar (max-width: 720px) {
+  .calendar-view-quick-btn { padding: 0 0.62rem; font-size: 0; gap: 0; }
+  .calendar-view-quick-btn svg { width: 1.15rem; height: 1.15rem; }
+}
+
+/* THE MENU BUTTON'S WORDS GO FIRST, before the three views lose theirs.
+   780 and not 560: the calendar column is 728px at 1920 in the three-column
+   layout, and Day's nav is the widest of the three (a date, not a range), so
+   that width has to be paid for out of something. Day / Week / Capacity are
+   the control people press; this is the way to four views they visit
+   occasionally, and it keeps its icon, its caret and its accessible name.
+
+   BELOW THE BASE RULES ON PURPOSE. A container query carries no extra
+   specificity, so written above them `display: flex` won on source order and
+   this block measured as if it were not there. */
+@container caltoolbar (max-width: 780px) {
+  .calendar-view-trigger { padding: 0 0.55rem; }
+  .calendar-view-trigger-text { display: none; }
+}
+@container timelinebar (max-width: 196px) { .calendar-timeline-bar-label em { display: none; } }
+@container timelinebar (max-width: 126px) { .calendar-timeline-bar-label i { display: none; } }
+
 /* The crew button sits OVER the chip's top-right rather than beside it. In a
    117px month cell it was taking 20px of flow — nearly a third of what was
    left for text after padding — which is why the money was being cut off. It
@@ -4962,6 +5336,7 @@ li + li { margin-top: 0.45rem; }
   font-size: .7rem;
   color: transparent;
 }
+.schedule-job-actions { display: grid; gap: .85rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--rule-t08); }
 .btn.danger { border-color: var(--cedge-red-3); background: rgba(255,101,101,.16); color: var(--ink-red-2); }
 .btn.danger:hover { border-color: var(--cedge-red-4); background: rgba(255,101,101,.24); }
 .crew-section-heading { margin-bottom: .55rem; }
@@ -4982,13 +5357,25 @@ li + li { margin-top: 0.45rem; }
 .photo-thumb-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .photo-thumb-open img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s ease; }
 .photo-thumb-open:hover img { transform: scale(1.05); }
+/* THESE PILLS ARE NOT THEMED, AND NEITHER IS THEIR INK.
+   They float on top of a photograph, so the fill is a near-black literal in both
+   themes — the only backdrop that reads over an arbitrary image. The INK was
+   themed, though, so on paper it flipped to paper values and left dark text on a
+   dark pill: "Default image" measured 1.21:1 and "Drag" 1.72:1 in the light
+   theme, against a pill composited over the brightest photo it can sit on.
+
+   Pinned to the values the dark theme was already showing (#ffd166 is what
+   --gold-ink resolves to there). Against that pill they measure 5.80:1 over a
+   white photo and 13.76:1 over a black one — the white case is the floor. */
 .photo-default-badge, .photo-drag-handle, .photo-make-default {
   position: absolute; z-index: 2; border: 1px solid var(--edge-t14); border-radius: 999px;
   background: rgba(5,10,18,.72); backdrop-filter: blur(8px); font-weight: 900;
 }
-.photo-default-badge { top: .5rem; left: .5rem; padding: .24rem .5rem; color: var(--gold-ink); font-size: .64rem; letter-spacing: .07em; text-transform: uppercase; }
-.photo-drag-handle { left: .45rem; bottom: .45rem; padding: .2rem .42rem; color: rgba(var(--tint), .7); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
-.photo-make-default { right: .35rem; bottom: .35rem; min-height: 26px; padding: .24rem .48rem; color: var(--gold-ink); font: inherit; font-size: .62rem; cursor: pointer; opacity: 0; transform: translateY(4px); transition: opacity .16s ease, transform .16s ease, border-color .16s ease; }
+.photo-default-badge { top: .5rem; left: .5rem; padding: .24rem .5rem; color: #ffd166; font-size: .64rem; letter-spacing: .07em; text-transform: uppercase; }
+/* .78 rather than .7: at 9.28px this is the smallest text on the pill, and .7
+   left it at 5.09:1 over a white photo. */
+.photo-drag-handle { left: .45rem; bottom: .45rem; padding: .2rem .42rem; color: rgba(255,255,255,.78); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+.photo-make-default { right: .35rem; bottom: .35rem; min-height: 26px; padding: .24rem .48rem; color: #ffd166; font: inherit; font-size: .62rem; cursor: pointer; opacity: 0; transform: translateY(4px); transition: opacity .16s ease, transform .16s ease, border-color .16s ease; }
 .photo-thumb:hover .photo-make-default, .photo-thumb:focus-within .photo-make-default { opacity: 1; transform: translateY(0); }
 .photo-make-default:hover, .photo-make-default:focus-visible { border-color: var(--cedge-amber-22); outline: none; }
 .photo-thumb-remove {
@@ -5048,14 +5435,16 @@ li + li { margin-top: 0.45rem; }
   .feature-grid,
   .template-grid,
   .detail-grid,
-  .form-grid,
+  /* .form-grid is NOT here any more: this block sits above its declaration, so
+     the entry never did anything. The collapse it was meant to be lives beside
+     that declaration now. The others in this list are declared earlier in the
+     file and do still work. */
   .workspace-grid.two-up,
   .workspace-hero,
   .payment-hero {
     grid-template-columns: 1fr;
   }
 
-  .job-intake-schedule-grid { grid-template-columns: 1fr; }
   .hours-metric { grid-column: auto; }
 
   .pricing-tiers {
@@ -6464,6 +6853,27 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   gap: 0.9rem;
 }
 
+/* THREE COLUMNS ON A PHONE IS WHY THE WHOLE APP PANNED SIDEWAYS.
+   This grid had no narrow rule at all, so a 390px phone got three tracks of
+   ~89px holding cards whose contents do not go below ~155px. `minmax(0, 1fr)`
+   lets the TRACK shrink but a grid item still lays out at its own min-content
+   and overflows, and a mobile browser answers content wider than the viewport
+   by widening the layout viewport: measured 534px of layout on a 390px device,
+   497px on a 320px one. That is a whole app you can pan right on, on every page
+   carrying this grid — which is most of them.
+
+   Two columns before one, because these cards are a label and a figure and a
+   pair of them still reads on a phone. The .compact, .condensed, .four-up and
+   .calendar-heading-metrics variants all set their own templates in compound
+   selectors, so they win on specificity and are untouched. */
+@media (max-width: 720px) {
+  .workspace-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .workspace-metric-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .workspace-metric-grid.compact {
   grid-template-columns: 1fr;
 }
@@ -7259,6 +7669,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   border: 1px solid var(--cedge-green-19); background: rgba(120,220,150,0.1);
   color: var(--ink-green-1); font-size: 0.78rem; font-weight: 800;
 }
+.schedule-crew-picker-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
 .job-meta { color: var(--mute-t60); font-size: 0.9rem; margin-top: 0.15rem; }
 .job-row .actions { margin: 0; align-items: center; justify-content: flex-end; }
 
@@ -7276,6 +7687,30 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 1rem; }
 .form-grid .full { grid-column: 1 / -1; }
+
+/* THE COLLAPSE THAT NEVER FIRED, MOVED TO WHERE IT CAN.
+   `@media (max-width: 900px) { .form-grid { grid-template-columns: 1fr } }` has
+   been in this file for a long time at ~line 7970 — ABOVE the declaration it is
+   meant to override. A media query adds no specificity, so at equal weight the
+   later rule wins and the collapse has never fired for anybody. The booking
+   page found this and repaired it inside .book-scope only, deliberately leaving
+   the shared rule for "its own mobile pass". This is that pass.
+
+   Measured at 320px before: the new-job intake form's fields were 535px inside
+   a 320px viewport, which widened the layout viewport to 342 and let every page
+   carrying a two-column form pan sideways.
+
+   minmax(0, 1fr) and not 1fr, and min-width: 0 on the children: `1fr` is
+   `minmax(auto, 1fr)` so the track cannot go under its content's min-content,
+   and a bare <input> refuses to shrink below its default 20-character size.
+   One column alone would not have been enough. */
+@media (max-width: 720px) {
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .form-grid > * { min-width: 0; }
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea { max-width: 100%; }
+}
 
 /* A job's start and end are one fact. Left to the parent grid's flow they land
    in different columns AND different rows — diagonal from each other, which is
@@ -7621,6 +8056,10 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 .sms-consent-check { display: flex; align-items: flex-start; gap: .65rem; padding: .75rem; border: 1px solid var(--edge-t12); border-radius: 8px; background: rgba(var(--tint), .025); color: rgba(var(--tint), .68); font-size: .76rem; line-height: 1.45; cursor: pointer; }
 .sms-consent-check input { flex: 0 0 auto; width: 17px; height: 17px; margin-top: .1rem; accent-color: #ff8a3d; }
 .sms-consent-check span { min-width: 0; overflow-wrap: anywhere; }
+.schedule-request-flag { display: inline-flex; align-items: center; gap: .32rem; width: fit-content; margin-top: .4rem; padding: .24rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .01em; }
+.schedule-request-flag.pending { background: rgba(96,165,250,.14); color: var(--ink-sky-5); border: 1px solid var(--cedge-sky-8); }
+.schedule-request-flag.warn { background: rgba(251,146,60,.16); color: var(--ink-orange-14); border: 1px solid var(--cedge-orange-40); }
+.schedule-request-flag.muted { background: rgba(var(--tint), .06); color: var(--mute-t55); border: 1px solid var(--edge-t16); }
 
 .cost-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .cost-item {
@@ -10460,6 +10899,37 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .workspace-disclosure,
   .workspace-disclosure-chevron { transition: none; }
 }
+/* Approval state is a word on the row as well — see .sched-row-flag. The edge
+   is the same hue the calendar gives an unapproved chip, so a row and its
+   future chip agree, but a hue is not a sentence. */
+.sched-row.is-unapproved { border-left-color: var(--cap-busy); }
+.sched-row.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.1); }
+/* The docked column keeps its place rather than collapsing — a third of the
+   width appearing and disappearing as you click around the queue is worse than
+   a column that says what it is for. */
+.sched-detail.is-empty { justify-content: center; min-height: 12rem; }
+.sched-detail.is-sheet {
+  position: fixed;
+  z-index: 61;
+  inset: auto 0 0 0;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.42);
+}
+@media (min-width: 720px) {
+  .sched-detail.is-sheet {
+    inset: 0 0 0 auto;
+    width: min(26rem, 92vw);
+    max-height: none;
+    border-radius: 18px 0 0 18px;
+    box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42);
+  }
+}
+.sched-mode-btn.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
+.sched-slot.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
+/* Selected is a fill AND a weight change, never the fill alone. */
+.sched-map-tab.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
 
 .booking-form { display: grid; gap: 1.4rem; }
 
@@ -11199,6 +11669,36 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .unsaved-guard-panel p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
 .unsaved-guard-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.5rem; }
 .unsaved-guard-actions .btn { flex: 1 1 10rem; }
+
+/* ---------------------------------------------------------------------------
+   Unscheduled job cards, coloured by where they're going
+   Same status keys the calendar chips use (.calendar-job-chip.status-*), so a
+   card and the chip it becomes are the same colour. The stripe down the left is
+   the part that reads at a glance in a narrow rail.
+--------------------------------------------------------------------------- */
+.schedule-method-row {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.schedule-method-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--job-tone, rgba(var(--tint), 0.18));
+}
+
+.schedule-method-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -16px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--job-tone);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-method-row { transition: none; }
+  .schedule-method-row:hover { transform: none; }
+}
 /* The client's own signup row, now that it carries a date field too. */
 .client-sub-start { display: grid; gap: 0.25rem; }
 .client-sub-start > span { font-size: 0.76rem; font-weight: 700; }
@@ -11318,7 +11818,10 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .sidenav-actions .sidenav-plan,
 .sidenav-actions .sidenav-new {
   width: auto;
-  min-height: 0;
+  /* `min-height: 0` was releasing the base rule's floor so two buttons could
+     share one row; it also let them measure 37 and 39px. The floor they need is
+     44, not 50 — the row still fits, the type is still the tighter size. */
+  min-height: 44px;
   padding: 0.6rem 0.5rem;
   border-radius: 12px;
   font-size: 0.85rem;
@@ -12639,7 +13142,9 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
    Repaired inside .book-scope rather than at the shared rule, because moving
    that one changes every two-column form in the dashboard at once and deserves
-   its own mobile pass rather than riding along with this page.
+   its own mobile pass rather than riding along with this page. That pass has
+   since happened — see the note beside `.form-grid` itself — so this override is
+   now belt and braces rather than the only thing holding the page together.
 
    min-width:0 belongs with it: a bare <input> refuses to shrink below its
    default 20-character size, so one column alone would not have been enough. */
@@ -12821,7 +13326,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .ins-revtime-key.is-prev { background: none; height: 0; border-top: 2px dashed var(--mute-t45); }
 
 /* Six-stage funnel: a horizontal bar per stage, sized to the widest stage. */
-.ins-chip.is-funnel { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-chip.is-funnel { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
 .ins-funnel6-fill.is-s0 { background: #6aa8ee; }
 .ins-funnel6-fill.is-s1 { background: #8f9bf0; }
 .ins-funnel6-fill.is-s2 { background: #a78bfa; }
@@ -12838,26 +13343,26 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .ins-donut-value { fill: var(--text); font-family: var(--font-display); font-size: 26px; font-variant-numeric: tabular-nums; }
 .ins-donut-label { fill: var(--mute-t50); font-size: 11px; }
 
-.ins-chip.is-sched { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
-.ins-chip.is-quote { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
-.ins-chip.is-pay { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
-.ins-chip.is-cust { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
-.ins-chip.is-opp { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
+.ins-chip.is-sched { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
+.ins-chip.is-quote { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
+.ins-chip.is-pay { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-13); }
+.ins-chip.is-cust { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
+.ins-chip.is-opp { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
 .ins-sched-swatch.is-booked { background: var(--accent); }
 .ins-sched-swatch.is-open { background: rgba(var(--tint), 0.3); }
 .ins-payhealth-stat .ins-mid.is-warn, .ins-cust-stat .ins-mid.is-warn { color: var(--gold-ink); }
-.ins-opp-icon.is-high { color: var(--accent); background: rgba(255, 122, 33, 0.14); }
-.ins-opp-icon.is-medium { color: #6aa8ee; background: rgba(74, 144, 226, 0.16); }
-.ins-opp-icon.is-low { color: #a78bfa; background: rgba(167, 139, 250, 0.16); }
-.ins-opp-pri.is-high { color: var(--accent); background: rgba(255, 122, 33, 0.14); }
-.ins-opp-pri.is-medium { color: #6aa8ee; background: rgba(74, 144, 226, 0.16); }
+.ins-opp-icon.is-high { color: var(--ink-orange-7); background: rgba(255, 122, 33, 0.14); }
+.ins-opp-icon.is-medium { color: var(--ink-blue-2); background: rgba(74, 144, 226, 0.16); }
+.ins-opp-icon.is-low { color: var(--ink-violet-5); background: rgba(167, 139, 250, 0.16); }
+.ins-opp-pri.is-high { color: var(--ink-orange-7); background: rgba(255, 122, 33, 0.14); }
+.ins-opp-pri.is-medium { color: var(--ink-blue-2); background: rgba(74, 144, 226, 0.16); }
 .ins-opp-pri.is-low { color: var(--mute-t55); background: rgba(var(--tint), 0.08); }
 
 /* ── Revenue by service (approximate) + Marketing performance ────────────────
    A donut breakdown beside the send log. The donut centre is glanceable; every
    legend row and every send stat carries the exact figure. Tokens only. */
-.ins-chip.is-revsvc { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
-.ins-chip.is-mkt { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
+.ins-chip.is-revsvc { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
+.ins-chip.is-mkt { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
 .ins-figure-value.is-positive { color: var(--ink-lime-1); }
 .ins-figure-value.is-negative { color: var(--ink-orange-1); }
 .ins-stack { display: flex; gap: 3px; height: 1.5rem; }
@@ -12871,13 +13376,13 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .ins-dot.is-revenue { background: #4a90e2; }
 .ins-dot.is-costs { background: var(--accent); }
 .ins-dot.is-profit { background: #4ade80; }
-.ins-chip.is-cash { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
-.ins-chip.is-open { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
-.ins-chip.is-chart { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
-.ins-chip.is-value { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
-.ins-chip.is-ok { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
-.ins-chip.is-speed { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
-.ins-chip.is-source { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-chip.is-cash { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-13); }
+.ins-chip.is-open { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
+.ins-chip.is-chart { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
+.ins-chip.is-value { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
+.ins-chip.is-ok { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-13); }
+.ins-chip.is-speed { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
+.ins-chip.is-source { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
 
 /* Open opportunity */
 .ins-open { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; }
@@ -13633,9 +14138,24 @@ select optgroup {
      uppercase metric labels. */
   text-transform: none;
   white-space: normal;
+  /* NOT `visibility: hidden`, AND THIS IS WHY THE WHOLE APP PANNED SIDEWAYS.
+     A visibility:hidden box is invisible but still laid out, and it still
+     contributes scrollable overflow. This bubble is up to 288px wide, absolutely
+     positioned from a 14px icon, and there is one in most metric cards — so on a
+     390px phone the closed tooltips alone pushed the layout viewport to 534px
+     (497px at 320, 522 at 360). Every dashboard page carrying a metric card
+     could be dragged right into empty space, before anybody had touched a thing.
+
+     The measurement that was supposed to prevent it could not: place() clamps
+     the bubble against window.innerWidth, which is the ALREADY-WIDENED viewport,
+     so it read 534px of room and clamped to a width that fits inside the
+     overflow it caused.
+
+     display:none costs the 0.12s fade on browsers without allow-discrete, which
+     is the whole price. */
+  display: none;
   opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.12s ease, display 0.12s allow-discrete;
   pointer-events: none;
 }
 .infotip[data-align='start'] .infotip-bubble { left: 0; }
@@ -13644,17 +14164,36 @@ select optgroup {
 .infotip:hover .infotip-bubble,
 .infotip:focus-within .infotip-bubble,
 .infotip .infotip-bubble[data-open='true'] {
+  display: block;
   opacity: 1;
-  visibility: visible;
+}
+
+/* The fade survives where the browser can transition a discrete property; where
+   it cannot, the bubble simply appears, which is what a tooltip did for years. */
+@starting-style {
+  .infotip:hover .infotip-bubble,
+  .infotip:focus-within .infotip-bubble,
+  .infotip .infotip-bubble[data-open='true'] {
+    opacity: 0;
+  }
 }
 
 /* Touch has no hover state to leave, and :hover on a touch device sticks after
    a tap — which would leave two bubbles open at once. There, only the latched
    state counts. */
 @media (hover: none) {
-  .infotip:hover .infotip-bubble { opacity: 0; visibility: hidden; }
-  .infotip .infotip-bubble[data-open='true'] { opacity: 1; visibility: visible; }
+  .infotip:hover .infotip-bubble { display: none; opacity: 0; }
+  .infotip .infotip-bubble[data-open='true'] { display: block; opacity: 1; }
 }
+
+.schedule-bar-actions { flex: 0 0 auto; }
+/* Nothing waiting is not an alert. Same bar, no amber — the state is calm and
+   the control on it is "make a job", not "deal with this". */
+.sched-queue-bar.is-clear {
+  border-color: var(--edge-t12);
+  background: rgba(var(--tint), 0.03);
+}
+.sched-queue-bar.is-clear .sched-queue-bar-line { display: grid; gap: 0.1rem; }
 
 /* Narrow: a real panel over the page, opened from the banner and dismissed with
    a Back button. NOT a fixed bottom dock -- that is what this replaces. The old
@@ -13795,6 +14334,11 @@ select optgroup {
   overflow-wrap: anywhere;
 }
 .calendar-job-chip-main { font-size: 0.75rem; line-height: 1.25; }
+
+/* --- tablet ---------------------------------------------------------------- */
+
+@media (min-width: 768px) and (max-width: 1279.98px) {
+}
 
 /* --- the chip stops truncating names ---------------------------------------
    .calendar-job-chip has carried `white-space: nowrap` since it was a one-line

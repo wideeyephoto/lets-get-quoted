@@ -228,6 +228,10 @@
   --ink-amber-8: #ffe0a3;
   /* blue — periwinkle */
   --ink-blue: #cfe0ff;
+  /* Insights' steel blue, which was a bare literal on eleven chips and a
+     priority badge. Different value from --ink-blue, so it needs its own pair
+     rather than borrowing one. */
+  --ink-blue-2: #6aa8ee;
   /* green — go / complete */
   --ink-green-1: #78dc96;
   --ink-green-2: #6fdca4;
@@ -241,6 +245,7 @@
   --ink-green-10: #39e07a;
   --ink-green-11: #4fd39a;
   --ink-green-12: #6fe4b3;
+  --ink-green-13: #4ade80;
   /* lime — margin healthy */
   --ink-lime-1: #bef264;
   --ink-lime-2: #d9f99d;
@@ -304,6 +309,7 @@
   --ink-violet-2: #e9d5ff;
   --ink-violet-3: #c9b5ff;
   --ink-violet-4: #c4b5fd;
+  --ink-violet-5: #a78bfa;
 
   /* RAILS. The calendar bands are the one place colour is the DATA — six hues
      saying whose job this is. A 34%-alpha edge is enough to define a band on
@@ -994,6 +1000,7 @@
   --ink-amber-8: #876116;  /* was #ffe0a3 */
   /* blue — periwinkle */
   --ink-blue: #2361d4;  /* was #cfe0ff */
+  --ink-blue-2: #17518f;  /* was #6aa8ee */
   /* green — go / complete */
   --ink-green-1: #1f7739;  /* was #78dc96 */
   --ink-green-2: #1d7648;  /* was #6fdca4 */
@@ -1007,6 +1014,7 @@
   --ink-green-10: #13773a;  /* was #39e07a */
   --ink-green-11: #1d7650;  /* was #4fd39a */
   --ink-green-12: #16764e;  /* was #6fe4b3 */
+  --ink-green-13: #0f7038;  /* was #4ade80 */
   /* lime — margin healthy */
   --ink-lime-1: #4f7213;  /* was #bef264 */
   --ink-lime-2: #517213;  /* was #d9f99d */
@@ -1075,6 +1083,7 @@
   --ink-violet-2: #893bdf;  /* was #e9d5ff */
   --ink-violet-3: #7249e1;  /* was #c9b5ff */
   --ink-violet-4: #6b4ce2;  /* was #c4b5fd */
+  --ink-violet-5: #6d3fd6;  /* was #a78bfa */
 
   /* Rails go solid and mid-value. Not the ink — an edge as dark as the text
      would box every chip in and the month would read as a grid of buttons; not
@@ -7909,13 +7918,25 @@ li + li { margin-top: 0.45rem; }
 .photo-thumb-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .photo-thumb-open img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s ease; }
 .photo-thumb-open:hover img { transform: scale(1.05); }
+/* THESE PILLS ARE NOT THEMED, AND NEITHER IS THEIR INK.
+   They float on top of a photograph, so the fill is a near-black literal in both
+   themes — the only backdrop that reads over an arbitrary image. The INK was
+   themed, though, so on paper it flipped to paper values and left dark text on a
+   dark pill: "Default image" measured 1.21:1 and "Drag" 1.72:1 in the light
+   theme, against a pill composited over the brightest photo it can sit on.
+
+   Pinned to the values the dark theme was already showing (#ffd166 is what
+   --gold-ink resolves to there). Against that pill they measure 5.80:1 over a
+   white photo and 13.76:1 over a black one — the white case is the floor. */
 .photo-default-badge, .photo-drag-handle, .photo-make-default {
   position: absolute; z-index: 2; border: 1px solid var(--edge-t14); border-radius: 999px;
   background: rgba(5,10,18,.72); backdrop-filter: blur(8px); font-weight: 900;
 }
-.photo-default-badge { top: .5rem; left: .5rem; padding: .24rem .5rem; color: var(--gold-ink); font-size: .64rem; letter-spacing: .07em; text-transform: uppercase; }
-.photo-drag-handle { left: .45rem; bottom: .45rem; padding: .2rem .42rem; color: rgba(var(--tint), .7); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
-.photo-make-default { right: .35rem; bottom: .35rem; min-height: 26px; padding: .24rem .48rem; color: var(--gold-ink); font: inherit; font-size: .62rem; cursor: pointer; opacity: 0; transform: translateY(4px); transition: opacity .16s ease, transform .16s ease, border-color .16s ease; }
+.photo-default-badge { top: .5rem; left: .5rem; padding: .24rem .5rem; color: #ffd166; font-size: .64rem; letter-spacing: .07em; text-transform: uppercase; }
+/* .78 rather than .7: at 9.28px this is the smallest text on the pill, and .7
+   left it at 5.09:1 over a white photo. */
+.photo-drag-handle { left: .45rem; bottom: .45rem; padding: .2rem .42rem; color: rgba(255,255,255,.78); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+.photo-make-default { right: .35rem; bottom: .35rem; min-height: 26px; padding: .24rem .48rem; color: #ffd166; font: inherit; font-size: .62rem; cursor: pointer; opacity: 0; transform: translateY(4px); transition: opacity .16s ease, transform .16s ease, border-color .16s ease; }
 .photo-thumb:hover .photo-make-default, .photo-thumb:focus-within .photo-make-default { opacity: 1; transform: translateY(0); }
 .photo-make-default:hover, .photo-make-default:focus-visible { border-color: var(--cedge-amber-22); outline: none; }
 .photo-thumb-remove {
@@ -11537,6 +11558,51 @@ button.inbox-thread-item {
 
 .workspace-section-card {
   background: var(--bg-elevated);
+}
+
+/* THE CARD THAT PAINTED ITSELF OFF THE SHEET.
+   This was five inline styles on the component. One of them was
+   `background: rgba(245, 166, 35, 0.06)` — a SHORTHAND, which does not tint the
+   card, it replaces the card's fill with a 6% amber and lets whatever is behind
+   the panel show through. Behind a panel is the app canvas, which in the light
+   theme is a dark slab that every other card covers with its own opaque white.
+   So on paper the whole card came out as rgb(43,47,50) with the sheet's near
+   black ink on it: heading 1.29:1, body 1.19:1, eyebrow 1.96:1, both buttons
+   under 2:1. Not a contrast nit — the card was unreadable.
+
+   background-image, not background: the tint now rides on top of whatever fill
+   the card already resolves to, so it is a tint in both themes and there is no
+   second copy of the panel colour to keep in step. And it sits AFTER
+   .workspace-section-card rather than before, because that rule's shorthand
+   resets background-image to none and would otherwise erase this one.
+
+   :root[data-theme] is not decoration. `:root[data-theme='light'] .panel` sets
+   `background: #ffffff` — a shorthand at (0,3,0), which beat a bare
+   .blog-reminder-card at (0,1,0) and reset background-image to none no matter
+   where in the file it sat. Measured that way first: the tint simply was not
+   there. This selector matches that weight exactly and wins on source order,
+   which is the only reason it is written this way. */
+:root[data-theme] .blog-reminder-card {
+  border-color: var(--cedge-amber-6);
+  background-image: linear-gradient(rgba(245, 166, 35, 0.06), rgba(245, 166, 35, 0.06));
+}
+.blog-reminder-eyebrow { color: var(--gold-ink); }
+.blog-reminder-copy { font-size: 1.02rem; line-height: 1.5; }
+.blog-reminder-actions { margin-top: 0.75rem; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+/* The suggested topic, printed loud on purpose. The stops were four raw hex
+   literals picked against the dark canvas, and three of the four failed there
+   too (#ef4444 4.15:1, #3b82f6 4.25:1, #a855f7 3.95:1 at 16.32px — bold, but
+   under the 18.66px that would let 3:1 apply). They are now the four --ink-*
+   tokens for those same hues, which flip with the theme: 5.65–7.27:1 on the
+   canvas, 5.36–5.40:1 on the sheet. Same four colours, same order. */
+.blog-reminder-topic {
+  background-image: linear-gradient(92deg, var(--ink-orange-5) 0%, var(--ink-red-3) 40%, var(--ink-violet-1) 75%, var(--ink-blue) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.01em;
 }
 
 .workspace-section-heading {
@@ -26099,7 +26165,7 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-revtime-key.is-prev { background: none; height: 0; border-top: 2px dashed var(--mute-t45); }
 
 /* Six-stage funnel: a horizontal bar per stage, sized to the widest stage. */
-.ins-chip.is-funnel { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-chip.is-funnel { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
 .ins-funnel6 { display: grid; gap: 0.55rem; margin-top: 0.2rem; }
 /* Three columns since the per-stage conversion percentage was removed — it was
    a ratio of two counts that don't belong to each other. See buildSalesActivity. */
@@ -26142,11 +26208,11 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-row-actions2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; }
 .ins-card-sub { margin-left: auto; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; text-transform: none; color: var(--mute-t45); }
 
-.ins-chip.is-sched { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
-.ins-chip.is-quote { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
-.ins-chip.is-pay { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
-.ins-chip.is-cust { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
-.ins-chip.is-opp { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
+.ins-chip.is-sched { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
+.ins-chip.is-quote { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
+.ins-chip.is-pay { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-13); }
+.ins-chip.is-cust { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
+.ins-chip.is-opp { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
 
 /* Schedule utilization — booked/open donut, legend, filler CTA. */
 .ins-sched-body { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.2rem; }
@@ -26181,20 +26247,32 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-payhealth-stat .ins-mid.is-warn, .ins-cust-stat .ins-mid.is-warn { color: var(--gold-ink); }
 .ins-payhealth-note { margin-top: 0.5rem; }
 
-/* Top opportunities — the ranked "do this next" list. */
+/* Top opportunities — the ranked "do this next" list.
+
+   THE PRIORITY BADGES, AND EVERY CHIP THAT SHARES THEIR INK. Each of these
+   pairs a tinted pill with a matching ink, and the tint is an rgba of the DARK
+   theme's hue — so the pill lightens on paper while the ink stayed put. Measured
+   in the light theme: "Do first" 2.12:1, "Worth doing" 1.96:1, and the eleven
+   .ins-chip glyphs between 1.60 and 2.36. Colour is the whole signal on a badge
+   that says one word, so this is not a legibility nicety.
+
+   Every literal here is now the --ink-* token whose DARK value is that literal,
+   which makes this a no-op on the canvas and a real change on the sheet. Four
+   of them (blue-2, green-13, violet-5) had no token yet and are new; the rest
+   already existed. On paper they measure 4.58–6.79:1 against their own pill. */
 .ins-opps { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
 .ins-opp { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.8rem; padding: 0.6rem 0.7rem; border-radius: 12px; background: rgba(var(--tint), 0.04); }
 .ins-opp-icon { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; flex: none; border-radius: 9px; color: var(--mute-t60); background: rgba(var(--tint), 0.08); }
-.ins-opp-icon.is-high { color: var(--accent); background: rgba(255, 122, 33, 0.14); }
-.ins-opp-icon.is-medium { color: #6aa8ee; background: rgba(74, 144, 226, 0.16); }
-.ins-opp-icon.is-low { color: #a78bfa; background: rgba(167, 139, 250, 0.16); }
+.ins-opp-icon.is-high { color: var(--ink-orange-7); background: rgba(255, 122, 33, 0.14); }
+.ins-opp-icon.is-medium { color: var(--ink-blue-2); background: rgba(74, 144, 226, 0.16); }
+.ins-opp-icon.is-low { color: var(--ink-violet-5); background: rgba(167, 139, 250, 0.16); }
 .ins-opp-icon .action-btn-ic { width: 1.15rem; height: 1.15rem; }
 .ins-opp-body { display: grid; gap: 0.15rem; min-width: 0; }
 .ins-opp-titlerow { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .ins-opp-title { font-size: 0.92rem; }
 .ins-opp-pri { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.1rem 0.42rem; border-radius: 999px; white-space: nowrap; }
-.ins-opp-pri.is-high { color: var(--accent); background: rgba(255, 122, 33, 0.14); }
-.ins-opp-pri.is-medium { color: #6aa8ee; background: rgba(74, 144, 226, 0.16); }
+.ins-opp-pri.is-high { color: var(--ink-orange-7); background: rgba(255, 122, 33, 0.14); }
+.ins-opp-pri.is-medium { color: var(--ink-blue-2); background: rgba(74, 144, 226, 0.16); }
 .ins-opp-pri.is-low { color: var(--mute-t55); background: rgba(var(--tint), 0.08); }
 .ins-opp-detail { font-size: 0.8rem; color: var(--mute-t50); line-height: 1.45; }
 .ins-opp-cta { flex: none; white-space: nowrap; font-size: 0.8rem; font-weight: 700; color: var(--accent-ink); text-decoration: none; background: none; border: 0; cursor: pointer; padding: 0.35rem 0.2rem; }
@@ -26214,8 +26292,8 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 /* ── Revenue by service (approximate) + Marketing performance ────────────────
    A donut breakdown beside the send log. The donut centre is glanceable; every
    legend row and every send stat carries the exact figure. Tokens only. */
-.ins-chip.is-revsvc { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
-.ins-chip.is-mkt { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
+.ins-chip.is-revsvc { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
+.ins-chip.is-mkt { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
 
 .ins-revsvc-body { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.2rem; }
 .ins-revsvc-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; min-width: 12rem; flex: 1 1 12rem; }
@@ -26293,13 +26371,13 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 .ins-shell .ins-card { display: grid; gap: 0.5rem; align-content: start; padding: 1.05rem 1.15rem; }
 .ins-card-head { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 0.3rem; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute-t55); }
 .ins-chip { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; flex: none; border-radius: 8px; font-size: 0.8rem; }
-.ins-chip.is-cash { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
-.ins-chip.is-open { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
-.ins-chip.is-chart { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
-.ins-chip.is-value { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
-.ins-chip.is-ok { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
-.ins-chip.is-speed { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
-.ins-chip.is-source { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-chip.is-cash { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-13); }
+.ins-chip.is-open { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
+.ins-chip.is-chart { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
+.ins-chip.is-value { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-7); }
+.ins-chip.is-ok { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-13); }
+.ins-chip.is-speed { background: rgba(74, 144, 226, 0.16); color: var(--ink-blue-2); }
+.ins-chip.is-source { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-5); }
 .ins-big { font-size: 1.7rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .ins-mid { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .ins-shell .ins-sub { margin: 0; font-size: 0.78rem; line-height: 1.5; color: var(--mute-t50); }
@@ -27933,7 +28011,7 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
 
   /* THE WHOLE TOOLBAR GOES, not three of its four children.
      Every control in it belongs to the desktop grid, which is not on the screen
-     here: the agenda has its own day nav, its own Day/Dates tabs and its own
+     here: the agenda has its own day nav, its own Day/Month tabs and its own
      Today. Hiding the month nav and the view menu but leaving the row was how
      the phone ended up showing two weekend chips and nothing else — "Saturday
      0 / Sunday 0", 308px wide, switching columns off a grid that is not there.

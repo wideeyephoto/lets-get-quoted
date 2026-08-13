@@ -25,30 +25,25 @@ export default function BlogReminderBanner({ reminderWeeks, lastPublishedISO, su
 
   if (!visible) return null;
 
-  // Loud, colorful topic so the recommendation grabs the eye.
-  const topicStyle = {
-    background: 'linear-gradient(92deg, #f59e0b 0%, #ef4444 40%, #a855f7 75%, #3b82f6 100%)',
-    WebkitBackgroundClip: 'text',
-    backgroundClip: 'text',
-    color: 'transparent',
-    fontWeight: 900,
-    fontStyle: 'italic',
-    letterSpacing: '.01em',
-  } as const;
   // Marketing → Blog, not the website builder. Writing a post is marketing.
   const writeHref = `/dashboard/marketing/blog?topic=${encodeURIComponent(suggestedTopic)}`;
 
   return (
-    <section className="panel workspace-section-card" style={{ borderColor: '#f5a623', background: 'rgba(245, 166, 35, 0.06)' }}>
+    // The amber tint, the loud topic and the spacing are all in globals.css now.
+    // They were inline, and one of them — a `background` SHORTHAND — replaced the
+    // panel's own fill rather than tinting it, so in the light theme this card
+    // rendered as a dark slab with the sheet's near-black ink on it. See
+    // .blog-reminder-card for the measurements.
+    <section className="panel workspace-section-card blog-reminder-card">
       <div className="section-heading workspace-section-heading">
-        <p className="eyebrow" style={{ color: 'var(--gold-ink)' }}>📝 Blog reminder</p>
+        <p className="eyebrow blog-reminder-eyebrow">📝 Blog reminder</p>
         <h2>Your website needs a new blog post</h2>
       </div>
-      <p className="workspace-card-copy" style={{ fontSize: '1.02rem', lineHeight: 1.5 }}>
+      <p className="workspace-card-copy blog-reminder-copy">
         We recommend starting with an AI template about{' '}
-        <span style={topicStyle}>“{suggestedTopic}”</span>
+        <span className="blog-reminder-topic">“{suggestedTopic}”</span>
       </p>
-      <div className="actions" style={{ marginTop: '0.75rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+      <div className="actions blog-reminder-actions">
         <Link href={writeHref} className="btn primary">✨ Draft this post</Link>
         <button type="button" className="btn" onClick={() => { window.localStorage.setItem(SNOOZE_KEY, String(Date.now() + 2 * WEEK_MS)); setVisible(false); }}>
           Snooze 2 weeks

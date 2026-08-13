@@ -79,12 +79,15 @@ type Props = {
  * `agenda` is the day you are standing on; `month` is the picker you go to a
  * date with and come straight back from.
  *
- * THE INTERNAL NAMES STAYED, THE VISIBLE ONES DID NOT. On screen these are
- * "Day" and "Dates", because "Agenda" on a phone meant a single day while
- * "Agenda" on a desktop meant a month-long list, and "Month" on a phone was a
- * grid of counts while "Month" on a desktop was a capacity heatmap. Two words,
- * four meanings, no way to carry anything you learned from one screen to the
- * other.
+ * On screen these are "Day" and "Month", and the internal names match.
+ *
+ * "Agenda" was the word that had to go: on a phone it meant a single day while
+ * on a desktop it meant a month-long list, so nothing you learned from one
+ * screen carried to the other. "Dates" was the first replacement — it avoided
+ * the second collision, where a phone "Month" was a grid of counts and a
+ * desktop "Month" was a capacity heatmap. It also named the panel after what it
+ * contains rather than after the span it covers, which is not how anyone asks
+ * for it. This is a month of days; it is called Month.
  */
 type MobileView = 'agenda' | 'month';
 
@@ -192,7 +195,7 @@ export default function ScheduleMobileAgenda({
             className={`sched-tab sched-tab-month${view === 'month' ? ' is-on' : ''}`}
             onClick={() => setView('month')}
           >
-            Dates
+            Month
           </button>
         </div>
         <button
@@ -233,7 +236,7 @@ export default function ScheduleMobileAgenda({
       </div>
 
       {/* Five days around the one you are on, with how much is booked on each.
-          ONLY IN THE DAY VIEW. The Dates panel below is a month of the same
+          ONLY IN THE DAY VIEW. The Month panel below is a month of the same
           buttons doing the same job, and having both on screen at once put two
           date pickers on a 390px phone, one directly above the other — the
           strip also being the thing that pushed the actual schedule down. */}
