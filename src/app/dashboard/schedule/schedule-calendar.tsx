@@ -642,19 +642,53 @@ export default function ScheduleCalendar({
     return map;
   }, [planned]);
 
-  const agendaDays = useMemo(
-    () =>
-      monthDays
-        .map((cell) => ({
-          cell,
-          dayJobs: [...(jobsByDate.get(cell.dateKey) ?? [])].sort(compareCalendarJobs),
-          dayPlanned: plannedByDate.get(cell.dateKey) ?? [],
-        }))
-        // A day whose only entry is a recurring visit still belongs in the
-        // agenda — leaving it out is the whole complaint this fixes.
-        .filter((entry) => entry.dayJobs.length > 0 || entry.dayPlanned.length > 0),
-    [monthDays, jobsByDate, plannedByDate],
-  );
+  /**
+   * SEARCH AND A STATUS FILTER, because a list is the one view you can look
+   * something UP in.
+   *
+   * Every other view answers "what is on this day" and is bounded by the day.
+   * The Job list is the month — 124 rows on this account in August — and it had
+   * no way to narrow it at all, so finding one customer meant scrolling past
+   * everybody else, and "what is still unapproved" meant reading 124 badges.
+   *
+   * Matching is on what the row SHOWS: the client, the city and what the work
+   * is. Searching a field that is not on screen returns rows for a reason you
+   * cannot see.
+   */
+  const [agendaQuery, setAgendaQuery] = useState('');
+  const [agendaStatus, setAgendaStatus] = useState<'all' | 'new_lead' | 'in_progress' | 'complete'>('all');
+
+  const agendaDays = useMemo(() => {
+    const needle = agendaQuery.trim().toLowerCase();
+    const matches = (job: CalendarJob) => {
+      if (agendaStatus !== 'all' && job.status !== agendaStatus) return false;
+      if (!needle) return true;
+      return [job.client_name, job.city_label, job.scope_label]
+        .some((field) => (field ?? '').toLowerCase().includes(needle));
+    };
+
+    return monthDays
+      .map((cell) => ({
+        cell,
+        dayJobs: [...(jobsByDate.get(cell.dateKey) ?? [])].filter(matches).sort(compareCalendarJobs),
+        /* A recurring visit has no status and no client to search, so a filter
+           of either kind excludes it rather than letting it through — a "New
+           lead" filter that returns projections is not a filter. */
+        dayPlanned: needle || agendaStatus !== 'all' ? [] : plannedByDate.get(cell.dateKey) ?? [],
+      }))
+      // A day whose only entry is a recurring visit still belongs in the
+      // agenda — leaving it out is the whole complaint this fixes.
+      .filter((entry) => entry.dayJobs.length > 0 || entry.dayPlanned.length > 0);
+  }, [monthDays, jobsByDate, plannedByDate, agendaQuery, agendaStatus]);
+
+  /** How many rows the filters are hiding, so the list can say so. */
+  const agendaTotals = useMemo(() => {
+    let shown = 0;
+    for (const day of agendaDays) shown += day.dayJobs.length;
+    let all = 0;
+    for (const cell of monthDays) all += jobsByDate.get(cell.dateKey)?.length ?? 0;
+    return { shown, all };
+  }, [agendaDays, monthDays, jobsByDate]);
 
   // Timeline: one row per JOB, not per occurrence. `jobs` arrives already
   // expanded to a row per day, so this folds those back into a first and last
@@ -1229,8 +1263,59 @@ export default function ScheduleCalendar({
           onOpenDay={openDay}
         />
       ) : effectiveView === 'agenda' ? (
-        agendaDays.length === 0 ? (
-          <p className="calendar-view-empty">Nothing scheduled this month.</p>
+        <>
+        {/* Above the list, and only when there is a list worth narrowing. Three
+            rows do not need a search box, and offering one is a suggestion that
+            you are missing something. */}
+        {agendaTotals.all > 6 ? (
+          <div className="calendar-agenda-filters">
+            <label className="calendar-agenda-search">
+              <span className="sr-only">Search this month&apos;s jobs</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="m16 16 4 4" />
+              </svg>
+              <input
+                type="search"
+                value={agendaQuery}
+                placeholder="Customer, town or work"
+                onChange={(event) => setAgendaQuery(event.target.value)}
+              />
+            </label>
+            <label className="calendar-agenda-status">
+              <span className="sr-only">Filter by status</span>
+              <select value={agendaStatus} onChange={(event) => setAgendaStatus(event.target.value as typeof agendaStatus)}>
+                <option value="all">Any status</option>
+                <option value="new_lead">Quote not approved</option>
+                <option value="in_progress">Booked</option>
+                <option value="complete">Complete</option>
+              </select>
+            </label>
+            {/* What was taken out, and the way back. A list that has silently
+                dropped 118 of 124 rows looks like a month with six jobs in it. */}
+            {agendaTotals.shown !== agendaTotals.all ? (
+              <p className="calendar-agenda-count">
+                {agendaTotals.shown} of {agendaTotals.all}
+                <button type="button" onClick={() => { setAgendaQuery(''); setAgendaStatus('all'); }}>Clear</button>
+              </p>
+            ) : (
+              <p className="calendar-agenda-count">{agendaTotals.all} jobs</p>
+            )}
+          </div>
+        ) : null}
+        {agendaDays.length === 0 ? (
+          <p className="calendar-view-empty">
+            {agendaQuery || agendaStatus !== 'all' ? (
+              <>
+                Nothing this month matches.{' '}
+                <button type="button" onClick={() => { setAgendaQuery(''); setAgendaStatus('all'); }}>
+                  Show all {agendaTotals.all}
+                </button>
+              </>
+            ) : (
+              'Nothing scheduled this month.'
+            )}
+          </p>
         ) : (
           <ol className="calendar-agenda">
             {agendaDays.map(({ cell, dayJobs, dayPlanned }) => (
@@ -1298,7 +1383,8 @@ export default function ScheduleCalendar({
               </li>
             ))}
           </ol>
-        )
+        )}
+        </>
       ) : effectiveView === 'timeline' ? (
         timelineRows.length === 0 ? (
           /* NAMES WHAT THE VIEW IS FOR, rather than "nothing scheduled" — the

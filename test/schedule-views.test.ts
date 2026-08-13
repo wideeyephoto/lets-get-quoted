@@ -123,3 +123,103 @@ describe('the toolbar container queries', () => {
     expect(trigger).toBeGreaterThan(0);
   });
 });
+
+/**
+ * One row per person means a twelve-person crew draws twelve lanes whether or
+ * not there is work in them — a Tuesday with four jobs is four lanes of work
+ * and eight of "Free all day", so the thing you came to look at is spread down
+ * a screen of empty track.
+ */
+describe('the Crew day filters', () => {
+  const CREW = read('src', 'app', 'dashboard', 'schedule', 'ScheduleCrewLanes.tsx');
+
+  it('hides the empty lanes and filters by role', () => {
+    expect(CREW).toContain('const [hideFree, setHideFree] = useState(false);');
+    expect(CREW).toContain("const [role, setRole] = useState<string>('all');");
+    expect(CREW).toContain('const visibleRows = hideFree ?');
+  });
+
+  /** A day where everybody is working has nothing to hide, and a roster with
+   *  one role has nothing to filter by. A control that does nothing teaches
+   *  you the controls do nothing. */
+  it('renders neither unless it would do something', () => {
+    expect(CREW).toContain('{freeCount > 0 || roles.length > 1 ? (');
+    expect(CREW).toContain('{freeCount > 0 ? (');
+    expect(CREW).toContain('{roles.length > 1 ? (');
+  });
+
+  /** The count is in the label, so it is a decision rather than a gamble:
+   *  "hide 8" and "hide 1" are different offers. */
+  it('says how many lanes it would take out', () => {
+    expect(CREW).toContain("Hide the {freeCount} {freeCount === 1 ? 'lane' : 'lanes'}");
+  });
+
+  /**
+   * Work with nobody on it belongs to no role and is never "free" — and it is
+   * the single thing this view sees that no other view does. Filtering it out
+   * would be filtering out the answer.
+   */
+  it('never filters away the unassigned lane', () => {
+    expect(CREW).toContain('lane.orphan || lane.placed.length > 0');
+    const lanes = CREW.slice(CREW.indexOf('const laneRows = useMemo('), CREW.indexOf('const freeCount'));
+    expect(lanes).toContain('if (lanes.orphans.length > 0) {');
+  });
+
+  /** A grid with a header and no lanes reads as broken rather than as filtered. */
+  it('explains an empty result and offers the way back', () => {
+    expect(CREW).toContain('if (visibleRows.length === 0) {');
+    expect(CREW).toContain("setRole('all'); setHideFree(false);");
+  });
+
+  /**
+   * `overflow: hidden` establishes a scroll container, and a sticky child then
+   * sticks inside a box that never scrolls — the same as not being sticky.
+   * `overflow: clip` crops to the rounded corners without creating one.
+   */
+  it('can actually stick its hour axis', () => {
+    const block = GLOBALS.slice(GLOBALS.indexOf('.sched-crew {'), GLOBALS.indexOf('.sched-crew-head-name'));
+    expect(block).toContain('overflow: clip;');
+    expect(block).not.toContain('overflow: hidden;');
+    expect(block).toContain('position: sticky;');
+    // Opaque, and the same opaque as the week timeline's sticky head — a navy
+    // literal painted a dark bar across a white page in the light theme.
+    expect(block).toContain('background: var(--bg-3);');
+  });
+});
+
+/**
+ * The Job list is the one view you can look something UP in. Every other view
+ * is bounded by a day; this is the month — 65 rows on a real account in August,
+ * 124 counting occurrences — and it had no way to narrow it at all.
+ */
+describe('the Job list filters', () => {
+  it('searches and filters by status', () => {
+    expect(CALENDAR).toContain("const [agendaQuery, setAgendaQuery] = useState('');");
+    expect(CALENDAR).toContain("const [agendaStatus, setAgendaStatus] = useState<'all' | 'new_lead' | 'in_progress' | 'complete'>('all');");
+  });
+
+  /** Searching a field that is not on screen returns rows for a reason you
+   *  cannot see. */
+  it('matches on what the row shows', () => {
+    expect(CALENDAR).toContain('return [job.client_name, job.city_label, job.scope_label]');
+  });
+
+  /** A recurring projection has no status and no client to search, so a filter
+   *  of either kind excludes it rather than letting it through. */
+  it('drops recurring projections while a filter is on', () => {
+    expect(CALENDAR).toContain("dayPlanned: needle || agendaStatus !== 'all' ? [] : plannedByDate.get(cell.dateKey) ?? [],");
+  });
+
+  /** A list that has silently dropped 118 of 124 rows looks like a month with
+   *  six jobs in it. */
+  it('says what it took out, with the way back', () => {
+    expect(CALENDAR).toContain('{agendaTotals.shown} of {agendaTotals.all}');
+    expect(CALENDAR).toContain('Show all {agendaTotals.all}');
+  });
+
+  /** Three rows do not need a search box, and offering one is a suggestion
+   *  that you are missing something. */
+  it('only appears when there is a list worth narrowing', () => {
+    expect(CALENDAR).toContain('{agendaTotals.all > 6 ? (');
+  });
+});
