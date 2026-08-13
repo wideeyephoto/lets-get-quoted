@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
-import { isPhoneOptedOut, recordSmsConsent, sendInboxReplySms } from '@/lib/sms';
+import { ensureSmsConsentBaseline, isPhoneOptedOut, recordSmsConsent, sendInboxReplySms } from '@/lib/sms';
 import { loadBusinessName } from '@/lib/business-name';
 import { logOutboundMessage, markThreadRead } from '@/lib/messages';
 import { createMessageTemplate, deleteMessageTemplate } from '@/lib/message-templates';
+import { loadOwnerAlerts, validateOwnerAlerts } from '@/lib/owner-sms';
+import type { OwnerAlertsState } from '@/lib/owner-sms-state';
 
 export async function sendReplyAction(phone: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -37,6 +39,78 @@ export async function sendReplyAction(phone: string, formData: FormData) {
 
   revalidatePath('/dashboard/messages');
   redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
+}
+
+/**
+ * The owner's own notification number, and the consent that goes with it.
+ *
+ * WHAT MOVED HERE, AND WHY IT HAD TO. This was one text input and one checkbox
+ * folded inside a <details> labelled "Advanced — lead priority & alerts" on the
+ * automations page, and the whole disclosure at the point of capture was
+ * "Standard rates apply." No message frequency, no STOP or HELP, no statement
+ * that consent is not a condition of purchase, and no link to the SMS terms —
+ * which do exist, on a public page the dashboard never linked to. And the
+ * checkbox wrote a feature flag: there was no record that anyone had agreed to
+ * anything, or when.
+ *
+ * THE CONSENT LEDGER IS THE POINT. Saving now writes an sms_consent row for the
+ * owner's number, which is the row the inbound STOP handler flips — it only ever
+ * UPDATEs, so a number with no row could not be suppressed. Owner alert texts
+ * told people to "Reply STOP to opt out" and then ignored them; see the note on
+ * sendOwnerHighValueLeadSms.
+ *
+ * ensureSmsConsentBaseline rather than recordSmsConsent, deliberately: the
+ * former never overwrites an existing row, so somebody who has already texted
+ * STOP is not silently opted back in by pressing Save on a settings form. Only
+ * a START from their own handset can do that, which is the entire point of an
+ * opt-out.
+ */
+export async function saveOwnerAlertsAction(
+  _previous: OwnerAlertsState,
+  formData: FormData,
+): Promise<OwnerAlertsState> {
+  const enabled = formData.get('alertsEnabled') === 'on';
+  const consented = formData.get('alertsConsent') === 'on';
+  const phone = (formData.get('alertPhone') ?? '').toString();
+
+  const errors = validateOwnerAlerts({ phone, enabled, consented });
+  if (errors.length > 0) return { status: 'error', errors };
+
+  try {
+    const { supabase, accountId } = await requireOwnerContext();
+
+    // The same read the strip does, and it is a guard rather than a formality:
+    // if the settings could not be read they cannot be written either, and a
+    // form that accepts a submission it cannot store leaves somebody believing
+    // they are set up. The dialog disables the button on this too — this is the
+    // half that holds when the button is reached another way.
+    const current = await loadOwnerAlerts(accountId);
+    if (current.kind === 'unavailable') {
+      return {
+        status: 'error',
+        errors: [{ field: 'form', message: 'We could not read your current settings, so nothing was saved. Try again in a moment.' }],
+      };
+    }
+
+    const normalized = phone.trim() ? normalizeUsPhone(phone.trim()) : null;
+
+    const { error } = await supabase
+      .from('accounts')
+      .update({ alert_phone: normalized, high_value_sms_enabled: enabled })
+      .eq('id', accountId);
+    if (error) return { status: 'error', errors: [{ field: 'form', message: 'Could not save your notification settings.' }] };
+
+    if (normalized && enabled) await ensureSmsConsentBaseline(accountId, normalized, 'owner_alerts');
+
+    revalidatePath('/dashboard/messages');
+    revalidatePath('/dashboard/automations');
+    return {
+      status: 'saved',
+      message: enabled && normalized ? `Alerts will text ${normalized}.` : 'Saved. Nothing will be texted to you.',
+    };
+  } catch {
+    return { status: 'error', errors: [{ field: 'form', message: 'Could not save your notification settings.' }] };
+  }
 }
 
 export async function createTemplateAction(formData: FormData) {

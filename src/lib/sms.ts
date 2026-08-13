@@ -114,11 +114,33 @@ async function sendTwilioMessage(to: string, body: string) {
   return result.sid;
 }
 
-// Urgent alert texted to the OWNER's own mobile when a high-value lead lands.
-// This is a self-alert (the owner opted in by entering their number in settings),
-// so it is NOT logged to the customer inbox and skips consent tracking. Best-
-// effort: never throws — a texting hiccup must not sink lead capture.
+/**
+ * Urgent alert texted to the OWNER's own mobile when a high-value lead lands.
+ *
+ * Not logged to the customer inbox — this is a self-alert, not a conversation
+ * with anybody — but it DOES go through the consent ledger, and it did not.
+ *
+ * WHAT WAS WRONG, PLAINLY. The comment here used to say this "skips consent
+ * tracking" because the owner opted in by typing their number into settings.
+ * Two things followed from that, and both were bad. The message body appends
+ * "Reply STOP to opt out" (see withOptOut) — so it told people they could stop
+ * it. And the inbound STOP handler only ever UPDATEs an existing sms_consent
+ * row; an alert_phone that had never been through ensureSmsConsentBaseline had
+ * no row, so a STOP flipped nothing and the next lead texted them anyway. An
+ * instruction to reply STOP that does not work is worse than no instruction.
+ *
+ * Now: the setup dialog writes the baseline row when consent is given, and this
+ * checks it. isPhoneOptedOut FAILS CLOSED — an unreadable ledger skips the send
+ * — which for a lead alert means an owner occasionally misses one rather than a
+ * person who said stop being texted again.
+ *
+ * accountId is required for that check, and it is not optional in the way it
+ * looks: consent rows are keyed (account_id, phone_number).
+ *
+ * Best-effort: never throws — a texting hiccup must not sink lead capture.
+ */
 export async function sendOwnerHighValueLeadSms(input: {
+  accountId: string;
   alertPhone: string;
   businessName: string;
   leadName: string;
@@ -129,6 +151,7 @@ export async function sendOwnerHighValueLeadSms(input: {
     if (!twilioConfiguration()) return;
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
+    if (await isPhoneOptedOut(input.accountId, to)) return;
     const body = ownerHighValueLeadText(input);
     await sendTwilioMessage(to, body);
   } catch (error) {
@@ -209,14 +232,22 @@ export async function sendClientPortalLinkSms(input: {
 }
 
 // Tells the contractor, on their own mobile, that a lead answered. A self-alert
-// to the number they entered in settings — not a customer conversation, so it
-// skips the inbox and the consent ledger, exactly like the high-value lead
-// alert. Best-effort: never throws, because it runs inside a Twilio webhook.
-export async function sendOwnerEstimateAcceptedSms(input: { alertPhone: string; message: string }): Promise<void> {
+// to the number they gave in the texting-setup dialog — not a customer
+// conversation, so it skips the inbox. It does NOT skip the consent ledger:
+// withOptOut appends "Reply STOP to opt out" to this one too, and honoring that
+// is the whole of the promise. See sendOwnerHighValueLeadSms for what was
+// broken and why. Best-effort: never throws, because it runs inside a Twilio
+// webhook.
+export async function sendOwnerEstimateAcceptedSms(input: {
+  accountId: string;
+  alertPhone: string;
+  message: string;
+}): Promise<void> {
   try {
     if (!twilioConfiguration()) return;
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
+    if (await isPhoneOptedOut(input.accountId, to)) return;
     await sendTwilioMessage(to, withOptOut(input.message));
   } catch (error) {
     console.error('Owner estimate-offer alert SMS failed:', error instanceof Error ? error.message : error);

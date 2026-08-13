@@ -383,7 +383,9 @@ async function replyTo(admin: SupabaseClient, offer: OfferWithJob, message: stri
 async function notifyOwner(offer: OfferWithJob, message: string): Promise<void> {
   const alertPhone = offer.account?.alert_phone;
   if (!alertPhone) return;
-  await sendOwnerEstimateAcceptedSms({ alertPhone, message });
+  // accountId so the sender can check whether this owner replied STOP —
+  // consent rows are keyed (account_id, phone_number).
+  await sendOwnerEstimateAcceptedSms({ accountId: offer.account_id, alertPhone, message });
 }
 
 function friendlyDate(dateKey: string): string {

@@ -436,20 +436,27 @@ export async function setReviewFeedbackPageAction(next: boolean) {
   revalidatePath('/dashboard/settings');
 }
 
+/**
+ * Intake tuning. It no longer owns the owner's phone number, and it must not.
+ *
+ * WHAT WOULD HAVE HAPPENED IF THESE TWO LINES HAD STAYED. This used to read
+ * `highValueSmsEnabled` and `alertPhone` out of the form and write both to
+ * accounts. The fields moved to the texting-setup dialog on /dashboard/messages
+ * — so this form stopped submitting them, `formData.get` started returning
+ * null, and an unchecked checkbox is indistinguishable from an absent one:
+ * every save of "estimate pricing posture" would have silently cleared the
+ * owner's mobile number and switched their lead alerts off. A destructive write
+ * dressed as a no-op, on a form about something else entirely.
+ *
+ * The rule that keeps this from recurring: an update statement may only name
+ * columns whose inputs this form actually renders.
+ */
 export async function updateIntakeSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const estimatePosture = normalizeEstimatePosture(formData.get('estimatePosture'));
   const thresholdRaw = Number(formData.get('highValueLeadAmount'));
   const highValueLeadAmount = Number.isFinite(thresholdRaw) && thresholdRaw > 0 ? Math.round(thresholdRaw) : null;
   const muteLowQualityLeads = formData.get('muteLowQualityLeads') === 'on';
-  const highValueSmsEnabled = formData.get('highValueSmsEnabled') === 'on';
-  const rawPhone = String(formData.get('alertPhone') ?? '').trim();
-  const alertPhone = rawPhone ? normalizeUsPhone(rawPhone) ?? rawPhone : null;
-
-  // Guard the obvious footgun: SMS alerts on with no number to text.
-  if (highValueSmsEnabled && !alertPhone) {
-    throw new Error('Add your mobile number to get high-value lead texts.');
-  }
 
   const { error } = await supabase
     .from('accounts')
@@ -457,14 +464,13 @@ export async function updateIntakeSettingsAction(formData: FormData) {
       estimate_posture: estimatePosture,
       high_value_lead_amount: highValueLeadAmount,
       mute_low_quality_leads: muteLowQualityLeads,
-      high_value_sms_enabled: highValueSmsEnabled,
-      alert_phone: alertPhone,
     })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
 }
 
 export async function updateBookingAvailabilityAction(formData: FormData) {

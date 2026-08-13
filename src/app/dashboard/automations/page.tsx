@@ -28,6 +28,7 @@ import {
   updateReminderSettingsAction,
 } from '../settings/actions';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
+import { loadOwnerAlerts, ownerAlertChip } from '@/lib/owner-sms';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import { choiceReminderSettingsFromAccount } from '@/lib/choice-reminders';
@@ -178,8 +179,23 @@ export default async function AutomationsPage() {
   const estimatePosture = normalizeEstimatePosture(intakeSettings?.estimate_posture);
   const highValueLeadAmount = intakeSettings?.high_value_lead_amount ? Number(intakeSettings.high_value_lead_amount) : null;
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
-  const highValueSmsEnabled = Boolean(intakeSettings?.high_value_sms_enabled);
-  const alertPhone = (intakeSettings?.alert_phone as string | null) || '';
+  /**
+   * WHAT THIS PAGE IS ALLOWED TO SAY ABOUT TEXTING, which is where it stands
+   * and never a form.
+   *
+   * Read through ownerAlertChip so this and the strip on Messages cannot drift
+   * into two opinions about one account. It also means "Ready" carries the same
+   * narrow meaning in both places — a number on file AND no STOP against it,
+   * rather than merely a ticked checkbox.
+   *
+   * `high_value_sms_enabled` and `alert_phone` are still selected above because
+   * loadOwnerAlerts reads them itself; nothing on this page renders them.
+   */
+  const alertChip = ownerAlertChip(await loadOwnerAlerts(accountId));
+  const alertReadiness =
+    alertChip.label === 'Ready'
+      ? 'Ready — your mobile is on file and confirmed.'
+      : `${alertChip.label}. ${alertChip.detail ?? ''}`.trim();
 
   // The two ends of the review ask, built the same way the sender builds them so
   // the preview shows the link the customer really taps. The feedback-page one
@@ -417,15 +433,26 @@ export default async function AutomationsPage() {
                   <span>Don&apos;t interrupt me for low-quality leads &mdash; out-of-area, work you don&apos;t do, below-minimum, and &ldquo;just researching&rdquo; still land in your board, just without an alert or dashboard nag (keeps spam, marketing, and AI callers from stealing your attention)</span>
                 </label>
 
-                <label className="checkbox-row" htmlFor="highValueSmsEnabled">
-                  <input id="highValueSmsEnabled" name="highValueSmsEnabled" type="checkbox" defaultChecked={highValueSmsEnabled} />
-                  <span>Text my phone the moment a high-value lead comes in</span>
-                </label>
-                <div className="field full">
-                  <label htmlFor="alertPhone">My mobile for high-value texts</label>
-                  <input id="alertPhone" name="alertPhone" type="tel" inputMode="tel" placeholder="(248) 555-0100" defaultValue={alertPhone} />
-                  <small className="field-hint">Your own number &mdash; entering it opts you in to your own lead alerts. Standard rates apply.</small>
-                </div>
+                {/* THE NUMBER AND ITS CONSENT ARE NOT COLLECTED HERE ANY MORE.
+                    They were: a tel input and a checkbox, inside this
+                    <details>, under the words "Standard rates apply." — which
+                    is not a consent disclosure. No message frequency, no STOP
+                    or HELP, no statement that agreeing is not a condition of
+                    purchase, and no link to the SMS terms, which exist on a
+                    public page the dashboard never linked to. The checkbox
+                    wrote a feature flag; nothing recorded that anybody had
+                    agreed to anything, or when.
+
+                    So this page now REPORTS the state and links to where it is
+                    set. Collecting a phone number for texting in a collapsed
+                    "Advanced" section of a page about automations is how the
+                    disclosure came to be one sentence in the first place. */}
+                <p className="field-hint" style={{ margin: 0 }}>
+                  <strong>High-value lead texts:</strong> {alertReadiness}{' '}
+                  <Link href="/dashboard/messages?setup=1#texting-setup">
+                    Manage in Messages &rarr;
+                  </Link>
+                </p>
               </div>
             </details>
 

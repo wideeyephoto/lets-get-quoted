@@ -60,6 +60,10 @@ async function notifyOwner(
     // Urgent text to the owner's own mobile — high-value leads only, opt-in.
     if (alert.highValue && alert.smsEnabled && alert.alertPhone) {
       await sendOwnerHighValueLeadSms({
+        // Needed for the opt-out check inside: consent rows are keyed
+        // (account_id, phone_number), so there is no way to ask whether this
+        // owner has replied STOP without knowing whose account it is.
+        accountId: site.account_id,
         alertPhone: alert.alertPhone,
         businessName: site.company_name,
         leadName: lead.name ?? '',

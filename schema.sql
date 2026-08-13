@@ -1097,6 +1097,54 @@ create table if not exists sms_consent (
 );
 
 -- ----------------------------------------------------------------------------
+-- MESSAGING REGISTRATIONS - where a contractor's customer-texting registration
+-- actually stands, said explicitly rather than inferred.
+--
+-- WHY THIS IS NOT A BOOLEAN. The tempting shortcut is to read accounts.sms_number
+-- and call a number "approved", and it is backwards: the number is a CONSEQUENCE
+-- of approval, assigned after the fact, and (see its own note above) nothing
+-- writes it yet. An account with no number could be not-started, under review or
+-- rejected, and those are three different things to tell somebody.
+--
+-- There is deliberately no 'unavailable' status. That is not something an account
+-- IS — it is something the reader could not find out — and storing a read failure
+-- as a value is how "we could not check" quietly becomes "we checked and it is
+-- fine". The absence is handled in lib/owner-sms, which returns a different shape
+-- for it.
+--
+-- Every account is 'not_started' today: the provider has not confirmed the
+-- downstream-business registration process, so there is nothing to submit.
+-- ----------------------------------------------------------------------------
+create table if not exists messaging_registrations (
+  -- The account IS the key. A second row would be a second answer to "can this
+  -- contractor text customers".
+  account_id          uuid primary key references accounts(id) on delete cascade,
+  status              text not null default 'not_started'
+    check (status in ('not_started','submitted','in_review','approved','action_required','rejected')),
+  provider            text,
+  provider_reference  text,
+  -- What they have to DO, when the status says they have to do something. An
+  -- action_required with no reason on it is a dead end.
+  status_detail       text,
+  -- The two-way number once one is assigned. Kept here rather than read back
+  -- from accounts.sms_number, which is inbound ROUTING: conflating "we route
+  -- this number to you" with "you may text customers" is the inference this
+  -- table exists to stop.
+  assigned_number     text,
+  submitted_at        timestamptz,
+  decided_at          timestamptz,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+-- One number, one account. Same reasoning as accounts_sms_number_idx: two
+-- accounts holding the same assigned number is a routing bug that would look
+-- like a working feature.
+create unique index if not exists messaging_registrations_number_idx
+  on messaging_registrations (assigned_number)
+  where assigned_number is not null;
+
+-- ----------------------------------------------------------------------------
 -- JOB SCHEDULE REQUESTS - contractor-proposed dates clients can choose from.
 -- ----------------------------------------------------------------------------
 create table if not exists job_schedule_requests (
@@ -1644,7 +1692,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','payment_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression','booking_holds'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','payment_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression','booking_holds','messaging_registrations'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -1688,6 +1736,7 @@ drop policy if exists plan_all on finance_plans;
 drop policy if exists lead_all on leads;
 drop policy if exists sms_event_all on sms_events;
 drop policy if exists sms_consent_all on sms_consent;
+drop policy if exists messaging_registration_read on messaging_registrations;
 drop policy if exists sms_messages_all on sms_messages;
 drop policy if exists clients_all on clients;
 drop policy if exists campaigns_all on campaigns;
@@ -1803,6 +1852,11 @@ create policy booking_holds_all on booking_holds for all using ( is_owner(accoun
 create policy lead_all   on leads            for all using ( is_owner(account_id) );
 create policy sms_event_all on sms_events     for all using ( is_owner(account_id) );
 create policy sms_consent_all on sms_consent  for all using ( is_owner(account_id) );
+-- SELECT ONLY, and the only account-scoped table in this file that is. The rest
+-- hold things the owner creates; this holds a provider's decision about them,
+-- applied by staff through the service role. An owner who could write their own
+-- row could set it to 'approved' and start texting customers on that basis.
+create policy messaging_registration_read on messaging_registrations for select using ( is_owner(account_id) );
 create policy sms_messages_all on sms_messages for all using ( is_owner(account_id) );
 create policy clients_all on clients          for all using ( is_owner(account_id) );
 create policy campaigns_all on campaigns      for all using ( is_owner(account_id) );

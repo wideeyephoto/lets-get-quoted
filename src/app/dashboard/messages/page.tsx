@@ -9,7 +9,9 @@ import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
 import { starterRepliesFor } from '@/lib/starter-replies';
+import { loadMessagingSetup } from '@/lib/owner-sms';
 import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction, addPhoneAsClientAction } from './actions';
+import MessagingSetup from './MessagingSetup';
 import SavedReplies from './SavedReplies';
 import ComposeMessage from './ComposeMessage';
 import AddAsCustomer from './AddAsCustomer';
@@ -60,10 +62,13 @@ function MessageBody({ body }: { body: string }) {
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: { thread?: string; q?: string; filter?: string };
+  searchParams: { thread?: string; q?: string; filter?: string; setup?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const allConversations = await listConversations(supabase, accountId);
+  // Both reads report "unavailable" rather than a default on failure, so the
+  // strip can say it could not tell instead of announcing a state.
+  const setup = await loadMessagingSetup(accountId);
 
   // Filtering happens before the active thread is chosen, so opening the page
   // on "Unread" lands you in an unread thread rather than on an empty pane.
@@ -181,6 +186,12 @@ export default async function MessagesPage({
           <ComposeMessage contacts={contacts} action={startConversationAction} />
         </div>
       </header>
+
+      {/* One row, ~68px, between the header and the conversations. Everything it
+          could say is behind it in a dialog — measured at 511x648, an expanded
+          setup panel here pushes the first conversation off the screen, and
+          conversations are what this page is for. See MessagingSetup. */}
+      <MessagingSetup setup={setup} openOnLoad={searchParams.setup === '1'} />
 
       {/* ONE SHAPE, ALWAYS. An empty result used to replace the whole workspace
           with a single panel, so searching for a name that matched nothing
