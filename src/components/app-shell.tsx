@@ -35,7 +35,11 @@ const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
-  { href: '/dashboard/crew?tab=crew&add=1', icon: '/dashboard/crew', label: 'New crew member' },
+  // The Crew tab is called People now that it holds subcontractors too.
+  // ?tab=crew still resolves to it (see normalizeTab), but a link we ship should
+  // name the tab it opens rather than lean on an alias kept for bookmarks.
+  { href: '/dashboard/crew?tab=people&add=1', icon: '/dashboard/crew', label: 'New crew member' },
+  { href: '/dashboard/crew?tab=people&add=sub', icon: '/dashboard/crew', label: 'New subcontractor' },
 ];
 
 const baseNavItems: { href: string; label: string; hint?: string }[] = [

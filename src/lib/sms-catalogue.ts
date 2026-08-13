@@ -28,9 +28,17 @@ import {
   reviewRequestText,
   schedulingOptionsText,
   selectionRequestText,
+  subcontractorCancelledText,
+  subcontractorCoveredText,
+  subcontractorWonText,
   verificationCodeText,
   withOptOut,
 } from '@/lib/sms-templates';
+// The offer's own builder lives with the dispatch rules rather than in
+// sms-templates, for the same reason buildArrivalMessage does: its words depend
+// on the request it belongs to. Imported here so this page shows the real
+// string and not a retyped one.
+import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatch';
 
 /**
  * Every text message this app can send, in one list, with the real words.
@@ -367,6 +375,68 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     }),
   },
 
+  // -- subcontractor dispatch --------------------------------------------------
+  //
+  // Four messages, and only the first is the owner's own words. That is worth
+  // reading here rather than discovering later: the OFFER is composed in the
+  // request composer and previewed before it goes, so what an owner approves is
+  // what a subcontractor receives verbatim. The other three are ours, and they
+  // send themselves the moment somebody accepts — which is exactly why they
+  // belong on this page, where an owner can read what goes out under their name
+  // without having to run a dispatch to find out.
+  {
+    id: 'sub-offer',
+    title: 'Subcontract job offer',
+    trigger: 'You press send on a job request',
+    audience: 'crew',
+    control: manual('You choose the recipients and press send'),
+    ownerAuthored: true,
+    body: draftOfferMessage({
+      businessName: SAMPLE.business,
+      workDescription: 'Water heater replacement',
+      generalLocation: 'Royal Oak',
+      whenLabel: 'Friday 9–11 AM',
+      payAmount: 650,
+      expiresLabel: '6 PM',
+    }).replace(LINK_PLACEHOLDER, SAMPLE.link),
+  },
+  {
+    id: 'sub-offer-won',
+    title: 'Subcontractor confirmed',
+    trigger: 'A subcontractor accepts and the job is theirs',
+    audience: 'crew',
+    control: always('Part of accepting — it carries the address'),
+    body: subcontractorWonText({
+      businessName: SAMPLE.business,
+      workDescription: 'water heater replacement',
+      whenLabel: 'Friday 9–11 AM',
+      link: SAMPLE.link,
+    }),
+  },
+  {
+    id: 'sub-offer-covered',
+    title: 'Job covered by someone else',
+    trigger: 'Another subcontractor accepted first',
+    audience: 'crew',
+    control: always('Sent to everyone who did not get it'),
+    body: subcontractorCoveredText({
+      businessName: SAMPLE.business,
+      workDescription: 'water heater replacement',
+      location: 'Royal Oak',
+    }),
+  },
+  {
+    id: 'sub-offer-cancelled',
+    title: 'Subcontract offer withdrawn',
+    trigger: 'You cancel a job request that is still open',
+    audience: 'crew',
+    control: manual('Only when you cancel the request'),
+    body: subcontractorCancelledText({
+      businessName: SAMPLE.business,
+      workDescription: 'water heater replacement',
+    }),
+  },
+
   // -- Quick Stop ------------------------------------------------------------
   {
     id: 'quick-stop-offer',
@@ -534,6 +604,10 @@ export const CATALOGUE_SENDERS = [
   'sendQuickStopOfferSms',
   'sendQuickStopStatusSms',
   'sendQuoteFollowupSms',
+  // One sender, four messages: the offer, the confirmation, the covered notice
+  // and the withdrawal. They differ by event_type in the sms_events ledger, and
+  // all four are listed above.
+  'sendSubcontractorSms',
   'sendQuoteUpdatedSms',
   'sendRebookInviteSms',
   'sendReviewRequestSms',

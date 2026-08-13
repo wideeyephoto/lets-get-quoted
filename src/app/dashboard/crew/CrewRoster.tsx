@@ -11,11 +11,25 @@ import { setCrewOverviewAction, setCrewSkinAction, setRosterViewAction } from '@
 import type { CrewSkin, RosterView } from '@/lib/dashboard-views';
 import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
 import type { PayType } from '@/lib/pay-types';
+import {
+  SUB_STATUS_LABEL,
+  WORKER_TYPE_LABEL,
+  formatRate,
+  formatRating,
+  formatResponseTime,
+  type SubStatus,
+  type SubcontractorProfile,
+  type WorkerType,
+} from '@/lib/subcontractors';
 import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
 import OverviewBoard, { overviewOption, type OverviewItem } from './OverviewBoard';
 import AddCrewDrawer from './AddCrewDrawer';
+import AddSubcontractorDrawer from './AddSubcontractorDrawer';
+import SubcontractorFields from './SubcontractorFields';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import PayTypeFields from './PayTypeFields';
+import { updateSubcontractorAction } from './subcontractor-actions';
+import dispatch from './dispatch.module.css';
 import {
   assignCrewToJobAction,
   deleteArchivedCrewAction,
@@ -38,6 +52,28 @@ import styles from './crew.module.css';
 export type CrewRow = {
   id: string;
   name: string;
+  /**
+   * Employee or subcontractor. Everything below `subProfile` is null for the
+   * first kind — a shape that is checked rather than assumed, because this
+   * roster renders both and half these fields are meaningless on a person you
+   * employ.
+   */
+  workerType: WorkerType;
+  companyName: string | null;
+  /** The firm's name where there is one, otherwise the person's. */
+  displayName: string;
+  subStatus: SubStatus | null;
+  trades: string[];
+  compliance: { state: string; label: string } | null;
+  subMetrics: {
+    offered: number;
+    accepted: number;
+    completed: number;
+    responseMinutes: number | null;
+    acceptanceRate: number | null;
+    rating: number | null;
+  } | null;
+  subProfile: SubcontractorProfile | null;
   initials: string;
   photoUrl: string | null;
   roleLabel: string;
@@ -123,8 +159,17 @@ function money(amount: number): string {
   return `$${Math.round(amount).toLocaleString('en-US')}`;
 }
 
-/** Where every "add a crew member" control points. See AddCrewDrawer. */
-export const ADD_CREW_HREF = '/dashboard/crew?tab=crew&add=1';
+/** Where every "add an employee" control points. See AddCrewDrawer. */
+export const ADD_CREW_HREF = '/dashboard/crew?tab=people&add=1';
+/** And its subcontractor twin. See AddSubcontractorDrawer. */
+export const ADD_SUBCONTRACTOR_HREF = '/dashboard/crew?tab=people&add=sub';
+
+const COMPLIANCE_TONE: Record<string, string> = {
+  ok: 'ok',
+  expiring: 'warn',
+  expired: 'alert',
+  missing: 'warn',
+};
 
 const FIELD_APP_LABEL: Record<CrewRow['fieldApp'], string> = {
   linked: 'Field app',
@@ -143,6 +188,7 @@ export default function CrewRoster({
   assignableJobs,
   periodLabel,
   initialStatus,
+  initialWorkerType = 'all',
   initialView,
   initialSkin,
   initialOverview,
@@ -156,6 +202,8 @@ export default function CrewRoster({
   readOnly?: boolean;
   basePath?: string;
   initialStatus: 'active' | 'archived';
+  /** "?worker=subcontractor" — the whole directory, or one half of it. */
+  initialWorkerType?: WorkerType | 'all';
   initialView: RosterView;
   initialSkin: CrewSkin;
   /** Whether the whole page is in Overview. Outranks initialView while it's on. */
@@ -172,6 +220,7 @@ export default function CrewRoster({
 }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'active' | 'archived'>(initialStatus);
+  const [workerType, setWorkerType] = useState<WorkerType | 'all'>(initialWorkerType);
   const [role, setRole] = useState('all');
   const [jobFilter, setJobFilter] = useState('all');
   const [appFilter, setAppFilter] = useState('all');
@@ -244,6 +293,13 @@ export default function CrewRoster({
     [rows],
   );
 
+  // The trades this account already uses, so the add form offers their own
+  // vocabulary before ours — the same rule the role list follows.
+  const knownTrades = useMemo(
+    () => [...new Set(rows.flatMap((row) => row.trades))].sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
+
   // -- what happens after somebody is added -----------------------------------
 
   const focusedFor = useRef<string | null>(null);
@@ -259,6 +315,10 @@ export default function CrewRoster({
     setRole('all');
     setJobFilter('all');
     setAppFilter('all');
+    // The worker-type filter is cleared for the same reason as the rest: adding
+    // a subcontractor while the list is filtered to employees lands you on a
+    // roster that does not contain the firm you just typed in.
+    setWorkerType('all');
     setAdded(member);
   }, []);
 
@@ -289,6 +349,7 @@ export default function CrewRoster({
     const needle = query.trim().toLowerCase();
     const filtered = rows.filter((row) => {
       if (status === 'active' ? !row.active : row.active) return false;
+      if (workerType !== 'all' && row.workerType !== workerType) return false;
       if (role !== 'all' && row.roleLabel !== role) return false;
       if (appFilter !== 'all' && row.fieldApp !== appFilter) return false;
       if (jobFilter === 'available' && row.jobs.length > 0) return false;
@@ -301,6 +362,8 @@ export default function CrewRoster({
       // do, by the number you'd call, or by the job they're on today.
       return (
         row.name.toLowerCase().includes(needle) ||
+        (row.companyName ?? '').toLowerCase().includes(needle) ||
+        row.trades.some((trade) => trade.toLowerCase().includes(needle)) ||
         row.roleLabel.toLowerCase().includes(needle) ||
         (row.phoneLabel ?? '').toLowerCase().includes(needle) ||
         (row.phone ?? '').toLowerCase().includes(needle) ||
@@ -323,9 +386,11 @@ export default function CrewRoster({
       }
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
-  }, [rows, query, status, role, jobFilter, appFilter, sort]);
+  }, [rows, query, status, workerType, role, jobFilter, appFilter, sort]);
 
   const activeCount = rows.filter((row) => row.active).length;
+  const employeeCount = rows.filter((row) => row.workerType === 'employee').length;
+  const subCount = rows.length - employeeCount;
   const selected = openId ? rows.find((row) => row.id === openId) ?? null : null;
 
   // Focus's rail. Derived from every row rather than the filtered ones — what's
@@ -421,8 +486,8 @@ export default function CrewRoster({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search crew by name, role, phone or job"
-            aria-label="Search crew"
+            placeholder="Search by name, company, trade, phone or job"
+            aria-label="Search crew and subcontractors"
           />
         </div>
 
@@ -432,6 +497,18 @@ export default function CrewRoster({
             <select value={status} onChange={(event) => setStatus(event.target.value as 'active' | 'archived')}>
               <option value="active">Active ({activeCount})</option>
               <option value="archived">Archived ({rows.length - activeCount})</option>
+            </select>
+          </label>
+
+          {/* First among the filters, because it is the biggest cut: an
+              employee and a subcontractor are two different kinds of record and
+              almost nobody is looking for both at once. */}
+          <label className={styles.filter}>
+            <span>Worker type</span>
+            <select value={workerType} onChange={(event) => setWorkerType(event.target.value as WorkerType | 'all')}>
+              <option value="all">Everyone ({rows.length})</option>
+              <option value="employee">Employees ({employeeCount})</option>
+              <option value="subcontractor">Subcontractors ({subCount})</option>
             </select>
           </label>
 
@@ -507,10 +584,16 @@ export default function CrewRoster({
 
       {rows.length === 0 ? (
         <div className={styles.empty}>
-          <h3>No crew members yet</h3>
-          <p>Add the people who work with you — then assign them jobs and their hours roll up here.</p>
+          <h3>Nobody here yet</h3>
+          <p>
+            Add the people who work with you — employees whose hours roll up here, and the subcontractors you send job
+            offers to.
+          </p>
           {readOnly ? null : (
-            <Link href={ADD_CREW_HREF} className="btn primary">+ Add crew member</Link>
+            <div className={styles.emptyActions}>
+              <Link href={ADD_CREW_HREF} className="btn primary">+ Add employee</Link>
+              <Link href={ADD_SUBCONTRACTOR_HREF} className="btn secondary">+ Add subcontractor</Link>
+            </div>
           )}
         </div>
       ) : overview ? (
@@ -758,6 +841,10 @@ export default function CrewRoster({
       {readOnly ? null : (
         <Suspense fallback={null}>
           <AddCrewDrawer roles={roles} onAdded={handleAdded} />
+          {/* ?add=sub rather than ?add=1. Two drawers, one parameter, mutually
+              exclusive by construction — there is no state to get out of step
+              and no way for both to be open at once. */}
+          <AddSubcontractorDrawer knownTrades={knownTrades} onAdded={handleAdded} />
         </Suspense>
       )}
     </RosterMode.Provider>
@@ -914,6 +1001,69 @@ function periodTitle(periodLabel: string): string {
   return `Hours × the rate on each entry, for ${periodLabel}. Estimated — this product doesn't run payroll.`;
 }
 
+/**
+ * The one-line difference between the two kinds of person, on every layout.
+ *
+ * Only rendered for a subcontractor. An "Employee" chip on every employee would
+ * be noise on a roster that is mostly employees — the exception is what needs
+ * labelling, and the compliance state beside it is the fact that decides whether
+ * this firm can be offered work at all.
+ */
+function WorkerChips({ row }: { row: CrewRow }) {
+  if (row.workerType !== 'subcontractor') return null;
+  return (
+    <span className={dispatch.subChips}>
+      <span className={dispatch.chip} data-tone="info">
+        {WORKER_TYPE_LABEL.subcontractor}
+      </span>
+      {row.subStatus && row.subStatus !== 'active' ? (
+        <span className={dispatch.chip} data-tone={row.subStatus === 'preferred' ? 'ok' : 'muted'}>
+          {SUB_STATUS_LABEL[row.subStatus]}
+        </span>
+      ) : null}
+      {row.compliance ? (
+        <span className={dispatch.chip} data-tone={COMPLIANCE_TONE[row.compliance.state] ?? 'muted'}>
+          {row.compliance.label}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** The six numbers a subcontractor is judged on. See lib/subcontractors. */
+function SubMetricsPanel({ row }: { row: CrewRow }) {
+  if (!row.subMetrics) return null;
+  const metrics = row.subMetrics;
+  return (
+    <dl className={dispatch.subMetrics}>
+      <div className={dispatch.subMetric}>
+        <strong>{metrics.offered}</strong>
+        <span>Jobs offered</span>
+      </div>
+      <div className={dispatch.subMetric}>
+        <strong>{metrics.accepted}</strong>
+        <span>Accepted</span>
+      </div>
+      <div className={dispatch.subMetric}>
+        <strong>{metrics.completed}</strong>
+        <span>Completed</span>
+      </div>
+      <div className={dispatch.subMetric}>
+        <strong>{formatResponseTime(metrics.responseMinutes)}</strong>
+        <span>Avg response</span>
+      </div>
+      <div className={dispatch.subMetric}>
+        <strong>{formatRate(metrics.acceptanceRate)}</strong>
+        <span>Acceptance</span>
+      </div>
+      <div className={dispatch.subMetric}>
+        <strong>{formatRating(metrics.rating)}</strong>
+        <span>Internal rating</span>
+      </div>
+    </dl>
+  );
+}
+
 // -- layouts ------------------------------------------------------------------
 
 function CrewRowItem({
@@ -957,10 +1107,13 @@ function CrewRowItem({
             )}
           </span>
           <span className={styles.rowNames}>
-            <strong>{row.name}</strong>
+            <strong>{row.displayName}</strong>
             <small>
-              {row.roleLabel} · {row.rateLabel}
+              {row.workerType === 'subcontractor'
+                ? row.trades.slice(0, 2).join(' · ') || 'Subcontractor'
+                : `${row.roleLabel} · ${row.rateLabel}`}
             </small>
+            <WorkerChips row={row} />
           </span>
         </span>
 
@@ -1024,8 +1177,13 @@ function CrewCardItem({
           )}
         </span>
         <span className={styles.cardNames}>
-          <strong>{row.name}</strong>
-          <small>{row.roleLabel} · {row.rateLabel}</small>
+          <strong>{row.displayName}</strong>
+          <small>
+            {row.workerType === 'subcontractor'
+              ? row.trades.slice(0, 2).join(' · ') || 'Subcontractor'
+              : `${row.roleLabel} · ${row.rateLabel}`}
+          </small>
+          <WorkerChips row={row} />
         </span>
       </button>
 
@@ -1201,23 +1359,38 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
             name={row.name}
           />
           <div>
-            <h2>{row.name}</h2>
-            <p>{row.roleLabel} · {row.rateLabel}</p>
+            <h2>{row.displayName}</h2>
+            <p>
+              {row.workerType === 'subcontractor'
+                ? [row.companyName ? row.name : null, row.trades.join(' · ') || 'Subcontractor'].filter(Boolean).join(' · ')
+                : `${row.roleLabel} · ${row.rateLabel}`}
+            </p>
+            <WorkerChips row={row} />
           </div>
           <button type="button" className={styles.drawerClose} onClick={onClose} aria-label="Close">✕</button>
         </header>
 
-        <div className={styles.drawerSummary}>
-          <div>
-            <small>This pay period</small>
-            <strong>{row.periodHours} hours</strong>
-            <span>{row.periodPayLabel} estimated</span>
-            <em>{periodLabel}</em>
+        {/* A subcontractor's headline is their record with you, not a pay
+            period they were never in. The hours summary below is the employee's
+            version of the same question. */}
+        {row.workerType === 'subcontractor' ? (
+          <div className={styles.drawerSection}>
+            <h3>Their record with you</h3>
+            <SubMetricsPanel row={row} />
           </div>
-          <Link href={`/dashboard/crew?tab=hours&crew=${row.id}`} className="btn secondary">
-            View hours &amp; pay
-          </Link>
-        </div>
+        ) : (
+          <div className={styles.drawerSummary}>
+            <div>
+              <small>This pay period</small>
+              <strong>{row.periodHours} hours</strong>
+              <span>{row.periodPayLabel} estimated</span>
+              <em>{periodLabel}</em>
+            </div>
+            <Link href={`/dashboard/crew?tab=hours&crew=${row.id}`} className="btn secondary">
+              View hours &amp; pay
+            </Link>
+          </div>
+        )}
 
         {row.jobs.length > 0 ? (
           <div className={styles.drawerJobs}>
@@ -1230,7 +1403,33 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
           </div>
         ) : null}
 
-        {readOnly ? null : (
+        {/* TWO EDIT FORMS, and which one you get is decided by what this person
+            IS — not by a toggle. A subcontractor has no pay type, no field-app
+            invitation and no arrival permissions; an employee has no insurance
+            expiry and no travel radius. One form carrying both sets would be a
+            form where most of the fields do not apply to whoever is in front of
+            you, which is how a licence expiry ends up on a payroll record. */}
+        {!readOnly && row.workerType === 'subcontractor' && row.subProfile ? (
+          <details className={styles.drawerSection}>
+            <summary>Edit subcontractor</summary>
+            <form action={updateSubcontractorAction.bind(null, row.id)} className={styles.addForm}>
+              <SubcontractorFields
+                idPrefix={`sub-${row.id}`}
+                profile={row.subProfile}
+                knownTrades={row.trades}
+                contactName={row.name}
+                phone={row.phone ?? ''}
+                email={row.email ?? ''}
+                baseAddress={row.startAddress ?? ''}
+              />
+              <div className="field full">
+                <SaveButton>Save subcontractor</SaveButton>
+              </div>
+            </form>
+          </details>
+        ) : null}
+
+        {readOnly || row.workerType === 'subcontractor' ? null : (
         <details className={styles.drawerSection}>
           <summary>Edit crew member</summary>
           <form action={updateCrewAction.bind(null, row.id)} className="form-grid compact-form">
@@ -1311,7 +1510,10 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
 
         {readOnly ? null : (
         <footer className={styles.drawerFoot}>
-          {row.active && row.fieldApp === 'invitable' ? (
+          {/* A subcontractor is never invited to the field app: it signs a
+              person in to log hours against your payroll, which is exactly the
+              relationship a subcontractor does not have with you. */}
+          {row.workerType === 'subcontractor' ? null : row.active && row.fieldApp === 'invitable' ? (
             <form action={inviteCrewAction.bind(null, row.id)}>
               <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Invite sent ✓">
                 Invite to field app

@@ -1,0 +1,685 @@
+/* Subcontractor dispatch.
+ *
+ * Everything here is built out of the tokens the rest of the dashboard already
+ * uses — var(--bg-3) surfaces, var(--line) rules, var(--accent) for the one
+ * action that sends, var(--gold-ink) for section labels, var(--good) for an
+ * acceptance. There is no second palette and no second set of radii: a panel is
+ * 16–24px and a chip is 999px here because that is what a panel and a chip
+ * already are three tabs to the left.
+ *
+ * Two rules that are not decoration:
+ *   - every interactive control is at least 44px tall, because these screens
+ *     get used standing in a driveway;
+ *   - every wide thing (the recipient list, the offer table) scrolls inside its
+ *     own container, so the PAGE never scrolls sideways on a phone.
+ */
+
+/* -- the header's Add person menu ---------------------------------------- */
+
+.addPersonWrap {
+  position: relative;
+  display: inline-block;
+}
+
+.addPersonMenu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 40;
+  min-width: 16rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--chrome-solid, var(--bg-2));
+  box-shadow: 0 24px 60px var(--shadow-strong);
+}
+
+.addPersonItem {
+  display: grid;
+  gap: 0.1rem;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.addPersonItem small {
+  color: var(--muted-2);
+  font-size: 0.78rem;
+}
+
+.addPersonItem:hover,
+.addPersonItem:focus-visible {
+  background: rgba(255, 122, 33, 0.14);
+}
+
+/* -- summary cards -------------------------------------------------------- */
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.summaryCard {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-3);
+}
+
+.summaryValue {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.summaryLabel {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.summaryHint {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.74rem;
+  color: var(--muted-2);
+}
+
+.summaryCard[data-tone='alert'] .summaryValue { color: var(--bad); }
+.summaryCard[data-tone='ok'] .summaryValue { color: var(--good); }
+
+/* -- status chips --------------------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(var(--tint), 0.06);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.chip[data-tone='ok'] {
+  border-color: rgba(127, 224, 178, 0.4);
+  background: rgba(127, 224, 178, 0.14);
+  color: var(--good);
+}
+
+.chip[data-tone='warn'] {
+  border-color: rgba(255, 213, 145, 0.4);
+  background: rgba(255, 213, 145, 0.14);
+  color: var(--warn);
+}
+
+.chip[data-tone='alert'] {
+  border-color: rgba(255, 180, 167, 0.4);
+  background: rgba(255, 180, 167, 0.14);
+  color: var(--bad);
+}
+
+.chip[data-tone='info'] {
+  border-color: rgba(169, 200, 255, 0.4);
+  background: rgba(169, 200, 255, 0.12);
+  color: var(--info);
+}
+
+.chip[data-tone='muted'] {
+  color: var(--muted-2);
+}
+
+/* -- the request list ------------------------------------------------------ */
+
+.requestList {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.requestCard {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-3);
+}
+
+.requestHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+}
+
+.requestTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.requestTitle a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.requestTitle a:hover {
+  text-decoration: underline;
+}
+
+.requestMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.requestCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--muted-2);
+}
+
+.requestCounts strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.requestActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* -- forms shared by the drawer, the composer and the review -------------- */
+
+.formSection {
+  margin: 0 0 1.1rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.03);
+}
+
+.formSection > legend {
+  padding: 0 0.4rem;
+  color: var(--gold-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.formNote {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted-2);
+}
+
+.checkGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  border: 0;
+}
+
+.checkGridLegend {
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.checkChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--muted);
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.checkChip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.checkChip:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.checkChip:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.16);
+  color: var(--text);
+}
+
+.inlineInput {
+  width: 100%;
+}
+
+.wideDrawer {
+  max-width: min(46rem, 100vw);
+}
+
+/* -- the recipient picker -------------------------------------------------- */
+
+.matchList {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Long directories scroll HERE, not on the page. */
+  max-height: 32rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.matchRow {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-3);
+}
+
+.matchLabel {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.8rem 0.9rem;
+  cursor: pointer;
+}
+
+.matchLabel:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.matchRow:has(input:checked) {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.12), transparent 70%), var(--bg-3);
+}
+
+.matchRow:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.matchCheck {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.matchBody {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.matchName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.matchName small {
+  font-weight: 500;
+  color: var(--muted-2);
+}
+
+.matchFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.matchBlockers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--bad);
+}
+
+.matchSide {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+
+.matchRank {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+/* -- the message preview ---------------------------------------------------- */
+
+.previewCard {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-3);
+}
+
+.previewBubble {
+  padding: 0.85rem 1rem;
+  border-radius: 18px 18px 18px 6px;
+  background: rgba(var(--tint), 0.07);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.previewMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+
+.previewProblem {
+  margin: 0;
+  color: var(--bad);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.messageBox {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+}
+
+/* -- the offer table on a request ------------------------------------------- */
+
+.offerTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.offerTable {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.offerTable th,
+.offerTable td {
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.offerTable th {
+  color: var(--muted-2);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(var(--tint), 0.04);
+}
+
+.offerTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.offerWinner td {
+  background: rgba(127, 224, 178, 0.09);
+}
+
+/* -- the simulation notice --------------------------------------------------- */
+
+.simNotice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px dashed rgba(255, 213, 145, 0.5);
+  border-radius: 14px;
+  background: rgba(255, 213, 145, 0.08);
+  color: var(--warn);
+  font-size: 0.84rem;
+}
+
+/* -- the claimed banner ------------------------------------------------------- */
+
+.claimedBanner {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(127, 224, 178, 0.45);
+  border-radius: 18px;
+  background: rgba(127, 224, 178, 0.12);
+}
+
+.claimedBanner strong {
+  color: var(--good);
+  font-size: 1.05rem;
+}
+
+/* -- the job page panel --------------------------------------------------------- */
+
+.jobPanel {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-3);
+}
+
+.jobPanelStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.jobPanelStats strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- the private review ---------------------------------------------------------- */
+
+.scoreRow {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+}
+
+.scoreOptions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.scoreOption {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scoreOption:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.18);
+  color: var(--text);
+}
+
+.scoreOption:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.scoreOption input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+/* -- the directory rows ------------------------------------------------------------ */
+
+.subGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.subCard {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-3);
+}
+
+.subMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.2rem, 1fr));
+  gap: 0.4rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--line);
+}
+
+.subMetric {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.subMetric strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.subMetric span {
+  font-size: 0.72rem;
+  color: var(--muted-2);
+}
+
+.subChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.emptyState {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  padding: 1.5rem;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  color: var(--muted);
+}
+
+/* -- phones ------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .matchLabel {
+    grid-template-columns: auto 1fr;
+  }
+
+  /* The rank and distance move under the name rather than squeezing a third
+     column into 320px — which is what turned this row into a horizontal
+     scroller in the first place. */
+  .matchSide {
+    grid-column: 2;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  }
+
+  .summaryValue {
+    font-size: 1.5rem;
+  }
+
+  .requestActions .btn {
+    flex: 1 1 auto;
+  }
+
+  .scoreRow {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}

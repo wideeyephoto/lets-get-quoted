@@ -18,33 +18,55 @@ import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
 import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
+import { isLiveMessagingEnvironment } from '@/lib/sms';
+import { listSubcontractorRequests, loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
+import { normalizeWorkerType } from '@/lib/subcontractors';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
+import JobRequests from './JobRequests';
 import LaborByJob from './LaborByJob';
 import TimeClockCard from './TimeClockCard';
+import AddPersonMenu from './AddPersonMenu';
 import styles from './crew.module.css';
 
-// Crew & Labor — one home for the roster, the hours those people logged, and
-// what that labor did to each job's budget.
+// Crew & subcontractors — the people who do the work, whoever employs them.
 //
-// The three used to be two pages and a gap: a roster you couldn't see hours on,
-// a "Payroll" page reachable only from a link inside the roster header, and no
-// way at all to ask "which jobs are running over on labor". Tabs are links
-// rather than client state so a tab is shareable, back works, and the server
-// only fetches what the open tab actually needs.
+// FOUR SECTIONS, and the fourth is the one that changed what this page is. It
+// used to be three: a roster, the hours those people logged, and what that labor
+// did to each job's budget. Job requests is different in kind — it is not a
+// record of work done, it is the act of finding somebody to do it — and it sits
+// here rather than on its own page because the firms it dispatches to ARE the
+// directory on the first tab. Splitting them would have meant two places to keep
+// a subcontractor's insurance date up to date.
+//
+// Tabs are links rather than client state so a tab is shareable, back works, and
+// the server only fetches what the open tab actually needs.
 
 export const dynamic = 'force-dynamic';
 
 const TABS = [
-  { id: 'crew', label: 'Crew members' },
+  { id: 'people', label: 'People' },
+  { id: 'requests', label: 'Job requests' },
   { id: 'hours', label: 'Hours & pay' },
   { id: 'jobs', label: 'Labor by job' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
+/**
+ * 'crew' still means People.
+ *
+ * The old tab was called that, and the id is in the sidebar's New menu
+ * (?tab=crew&add=1), in the Payroll redirect, in the Job Costing settings copy
+ * and in every bookmark an owner has made in a year of using this page.
+ * Renaming the tab without keeping the alias would have quietly sent all of them
+ * to the default — which is the same tab, but only by luck, and the &add=1 that
+ * rides with the first one would have opened a drawer on a page that had just
+ * ignored half its own URL.
+ */
 function normalizeTab(value: unknown): TabId {
-  return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'crew';
+  if (value === 'crew') return 'people';
+  return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'people';
 }
 
 function initialsFor(name: string) {
@@ -69,8 +91,10 @@ export default async function CrewLaborPage({
     from?: string;
     to?: string;
     crew?: string;
+    /** "?worker=subcontractor" — the People tab, filtered to one kind of person. */
+    worker?: string;
     /**
-     * "?add=1" — open the add-crew drawer.
+     * "?add=1" — open the add-crew drawer. "?add=sub" opens the subcontractor one.
      *
      * Read on the CLIENT, by AddCrewDrawer's useSearchParams, and deliberately
      * not passed down from here. This page used to hand it over as a prop that
@@ -114,6 +138,18 @@ export default async function CrewLaborPage({
     crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)),
   );
 
+  // The subcontractor half of the directory, read whole — profile, compliance
+  // and the six performance numbers — but only on the two tabs that show any of
+  // it. Labor by job pays for none of this.
+  const today = todayIn(timeZone);
+  const subs =
+    tab === 'people' || tab === 'requests'
+      ? await loadSubcontractors(supabase, accountId, { today, includeArchived: true })
+      : [];
+  const subsById = new Map(subs.map((sub) => [sub.id, sub]));
+
+  const requests = tab === 'requests' ? await listSubcontractorRequests(supabase, accountId) : [];
+
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
 
@@ -139,10 +175,10 @@ export default async function CrewLaborPage({
   // not run and when the owner genuinely turned it off, which is right for
   // behavior and useless for explaining. Open shifts are only worth a query
   // when there is a clock that could have left one running.
-  const timeClockMode = tab === 'crew' ? await getTimeClockMode(supabase, accountId) : 'off';
-  const timeClockAvailable = tab === 'crew' ? await isTimeClockAvailable(supabase, accountId) : false;
+  const timeClockMode = tab === 'people' ? await getTimeClockMode(supabase, accountId) : 'off';
+  const timeClockAvailable = tab === 'people' ? await isTimeClockAvailable(supabase, accountId) : false;
   const crewOpenShifts =
-    tab === 'crew' && timeClockMode !== 'off' ? await listOpenShifts(supabase, accountId) : [];
+    tab === 'people' && timeClockMode !== 'off' ? await listOpenShifts(supabase, accountId) : [];
 
   // Hours for the roster's "this pay period" summary. Cheap enough to always
   // load: it's the number that makes a roster row worth reading.
@@ -150,9 +186,30 @@ export default async function CrewLaborPage({
 
   const crewRows: CrewRow[] = crew.map((member) => {
     const bucket = totals.get(member.id);
+    const sub = subsById.get(member.id) ?? null;
     return {
       id: member.id,
       name: member.name,
+      // Read off the row rather than off `sub`, because the People tab shows
+      // everybody and `sub` is only populated for subcontractors. An employee
+      // resolves to 'employee' here whether or not the migration has run.
+      workerType: normalizeWorkerType((member as unknown as Record<string, unknown>).worker_type),
+      companyName: sub?.profile.companyName ?? null,
+      displayName: sub?.displayName ?? member.name,
+      subStatus: sub?.profile.subStatus ?? null,
+      trades: sub?.profile.trades ?? [],
+      compliance: sub ? { state: sub.compliance.overall, label: sub.compliance.label } : null,
+      subMetrics: sub
+        ? {
+            offered: sub.metrics.offered,
+            accepted: sub.metrics.accepted,
+            completed: sub.metrics.completed,
+            responseMinutes: sub.metrics.responseMinutes,
+            acceptanceRate: sub.metrics.acceptanceRate,
+            rating: sub.metrics.rating,
+          }
+        : null,
+      subProfile: sub?.profile ?? null,
       initials: initialsFor(member.name),
       photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
       roleLabel: member.role_label,
@@ -258,7 +315,7 @@ export default async function CrewLaborPage({
         crewTheme !== 'overview' &&
         (crewTheme === 'focus' ||
           (tab === 'hours' && crewView === 'rail') ||
-          (tab === 'crew' && (rosterView === 'board' || rosterView === 'table')))
+          (tab === 'people' && (rosterView === 'board' || rosterView === 'table')))
           ? 'crew-wide'
           : '',
       ]
@@ -269,24 +326,30 @@ export default async function CrewLaborPage({
         <header className={styles.pageHead}>
           <div>
             <p className="eyebrow">Team</p>
-            <h1 className={styles.pageTitle}>Crew &amp; Labor</h1>
+            <h1 className={styles.pageTitle}>Crew &amp; subcontractors</h1>
           </div>
           <div className={styles.pageHeadActions}>
-            {tab === 'crew' ? (
+            {tab === 'people' ? (
               // No #add-crew fragment any more, and that is the point. The old
               // link scrolled to a collapsed toggle at the bottom of the roster
               // that a soft navigation never opened — the search parameter alone
               // now opens the drawer (AddCrewDrawer reads it), and a dangling
               // hash pointing at an element that no longer exists would only
               // scroll the page for no reason.
-              <Link href="/dashboard/crew?tab=crew&add=1" className="btn primary">
-                + Add crew member
+              <AddPersonMenu
+                employeeHref="/dashboard/crew?tab=people&add=1"
+                subcontractorHref="/dashboard/crew?tab=people&add=sub"
+              />
+            ) : null}
+            {tab === 'requests' && subs.length > 0 && assignableJobs.length > 0 ? (
+              <Link href="/dashboard/crew/requests/new" className="btn primary">
+                + New job request
               </Link>
             ) : null}
           </div>
         </header>
 
-        <nav className={styles.tabs} aria-label="Crew and labor sections">
+        <nav className={styles.tabs} aria-label="Crew and subcontractor sections">
           {TABS.map((item) => (
             <Link
               key={item.id}
@@ -299,15 +362,25 @@ export default async function CrewLaborPage({
           ))}
         </nav>
 
-        {tab === 'crew' ? (
+        {tab === 'people' ? (
           <CrewRoster
             rows={crewRows}
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
             periodLabel={period.rangeLabel}
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
+            initialWorkerType={searchParams.worker === 'subcontractor' || searchParams.worker === 'employee' ? searchParams.worker : 'all'}
             initialView={rosterView}
             initialSkin={crewSkin}
             initialOverview={crewTheme === 'overview'}
+          />
+        ) : null}
+
+        {tab === 'requests' ? (
+          <JobRequests
+            entries={requests}
+            assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
+            subcontractorCount={subs.length}
+            simulated={!isLiveMessagingEnvironment()}
           />
         ) : null}
 
@@ -375,7 +448,7 @@ export default async function CrewLaborPage({
         ) : null}
       </section>
 
-      {tab === 'crew' ? (
+      {tab === 'people' ? (
         <div className={`stat-ticker panel ${styles.rosterStats}`}>
           <div className="stat-ticker-item">
             <span className="stat-ticker-value">{activeCrew.length}</span>
@@ -390,6 +463,10 @@ export default async function CrewLaborPage({
             <span className="stat-ticker-label">Available</span>
           </div>
           <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{subs.length}</span>
+            <span className="stat-ticker-label">Subcontractors</span>
+          </div>
+          <div className="stat-ticker-item">
             <span className="stat-ticker-value">{crew.length - activeCrew.length}</span>
             <span className="stat-ticker-label">Archived</span>
           </div>
@@ -401,7 +478,7 @@ export default async function CrewLaborPage({
           that rail is not rendered when no hours exist for the period — so
           switching the clock ON required hours to have already been logged
           without it. See TimeClockCard. */}
-      {tab === 'crew' ? (
+      {tab === 'people' ? (
         <TimeClockCard
           mode={timeClockMode}
           available={timeClockAvailable}

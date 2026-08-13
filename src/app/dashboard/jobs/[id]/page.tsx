@@ -44,6 +44,15 @@ import { loadBusinessName } from '@/lib/business-name';
 import PaymentPreview from './PaymentPreview';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
+import {
+  getActiveRequestForJob,
+  listJobSubcontractors,
+  listSubcontractorReviews,
+  loadSubcontractors,
+  todayIn,
+} from '@/lib/subcontractor-dispatch-data';
+import SubcontractorPanel from './SubcontractorPanel';
+import SubcontractorReview from './SubcontractorReview';
 import { getLeadByConvertedJob } from '@/lib/leads';
 import { formatPhoneDashes } from '@/lib/phone';
 import { isPhoneOptedOut } from '@/lib/sms';
@@ -223,6 +232,17 @@ export default async function JobDetailPage({
   // Proof-to-Pay stages, flattened for the client component.
   const milestoneViews = (await listMilestones(supabase, accountId, job.id)).map(flattenMilestone);
   const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
+
+  // Subcontractor dispatch: the live request for this job (if any), whether
+  // there is anybody to ask, and — once the work is done — the private review.
+  // All four reads are cheap and degrade to nothing on a database that has not
+  // taken the 2026-08-17 migration.
+  const [subRequest, subcontractorDirectory, jobSubcontractors, jobSubReviews] = await Promise.all([
+    getActiveRequestForJob(supabase, accountId, job.id),
+    loadSubcontractors(supabase, accountId, { today: todayIn(arrivalSettings.timeZone) }),
+    listJobSubcontractors(supabase, accountId, job.id),
+    listSubcontractorReviews(supabase, accountId, { jobId: job.id }),
+  ]);
   const jobInvoice = selectPrimaryInvoice(invoices);
   const invoicePaidTotal = jobInvoice
     ? payments.filter((payment) => payment.invoice_id === jobInvoice.id && payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0)
@@ -1494,11 +1514,17 @@ export default async function JobDetailPage({
               </div>
             </form>
 
+            {/* WHO IS DOING THIS WORK — both answers, under one heading.
+                Assigning your own crew and asking a subcontractor to cover it
+                are the two ways this question gets settled, and splitting them
+                across two screens is how a job ends up double-manned. */}
             <div className="workspace-section-divider">
               <div className="section-heading workspace-section-heading">
                 <p className="eyebrow">Crew</p>
-                <h2>Assigned crew members</h2>
+                <h2>Who is doing this work</h2>
               </div>
+
+              <h3>Assign crew</h3>
               {crew.length === 0 ? (
                 <p className="empty-state">
                   No crew members yet. <Link href="/dashboard/crew">Add your crew →</Link>
@@ -1526,7 +1552,30 @@ export default async function JobDetailPage({
                   </div>
                 </form>
               )}
+
+              <h3>Request a subcontractor</h3>
+              <SubcontractorPanel
+                jobId={job.id}
+                entry={subRequest}
+                canRequest={subcontractorDirectory.length > 0}
+                reason={
+                  subcontractorDirectory.length === 0
+                    ? 'You have no subcontractors saved yet.'
+                    : undefined
+                }
+              />
             </div>
+
+            {/* Only once the work is finished. Scoring somebody's cleanliness
+                halfway through is an opinion, not a record. */}
+            {job.status === 'complete' ? (
+              <SubcontractorReview
+                jobId={job.id}
+                subcontractors={jobSubcontractors}
+                reviews={jobSubReviews}
+                requestId={subRequest?.request.id ?? null}
+              />
+            ) : null}
 
             <div className="workspace-section-divider">
               <div className="section-heading workspace-section-heading">

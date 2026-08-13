@@ -76,14 +76,28 @@ describe('opening the add-crew drawer', () => {
     // The page header, the sidebar's New menu and the roster's own empty state
     // must agree — a trigger pointing at a fragment the drawer does not read is
     // how "+ Add crew member" ended up as a link to nothing.
-    const href = '/dashboard/crew?tab=crew&add=1';
+    //
+    // The tab is called People now that the same roster holds subcontractors,
+    // so the href names that. ?tab=crew is still honoured (see normalizeTab in
+    // the crew page) for every bookmark made before the rename — but nothing we
+    // ship should be written against the alias.
+    const href = '/dashboard/crew?tab=people&add=1';
     expect(ROSTER_CODE).toContain(`export const ADD_CREW_HREF = '${href}'`);
-    expect(PAGE_CODE).toContain(`href="${href}"`);
+    expect(PAGE_CODE).toContain(`employeeHref="${href}"`);
     expect(SHELL_CODE).toContain(`{ href: '${href}', icon: '/dashboard/crew', label: 'New crew member' }`);
     // The dangling fragment is gone with the panel it used to scroll to.
     expect(PAGE_CODE).not.toContain('#add-crew');
     expect(SHELL_CODE).not.toContain('/dashboard/crew?add=1');
     expect(ROSTER_CODE).not.toContain('id="add-crew"');
+  });
+
+  it('has a twin for the other kind of person, on its own parameter', () => {
+    // Two drawers, one parameter, mutually exclusive by construction — so there
+    // is no state to get out of step and no way for both to be open at once.
+    const subHref = '/dashboard/crew?tab=people&add=sub';
+    expect(ROSTER_CODE).toContain(`export const ADD_SUBCONTRACTOR_HREF = '${subHref}'`);
+    expect(PAGE_CODE).toContain(`subcontractorHref="${subHref}"`);
+    expect(SHELL_CODE).toContain(`{ href: '${subHref}', icon: '/dashboard/crew', label: 'New subcontractor' }`);
   });
 
   it('is dismissible, traps focus while open, and hands focus back on close', () => {

@@ -1,0 +1,323 @@
+/* The subcontractor's own page.
+ *
+ * MOBILE FIRST, and not as a slogan: this is read one-handed, in a van, by
+ * somebody who has thirty seconds between jobs. So the layout is a single
+ * column at every width with a hard max, the type starts at 16px so iOS does
+ * not zoom the page when a field is focused, and the two decisions sit in a
+ * bar that is always reachable with a thumb.
+ *
+ * It wears the dashboard's tokens — navy surfaces, warm orange for the one
+ * action that commits, green for an acceptance — because a contractor's sub
+ * should recognise where this came from.
+ */
+
+.shell {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 8rem;
+}
+
+/* The action bar is fixed on a phone, so the page needs room under it. On a
+   wider screen it returns to the flow — a floating bar over a half-empty
+   desktop viewport is a phone affordance pretending to be a design. */
+@media (min-width: 48rem) {
+  .shell {
+    padding-bottom: 2.5rem;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 0;
+}
+
+.brandName {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.brandNote {
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+
+.card {
+  padding: 1.1rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--bg-elevated);
+}
+
+.title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lede {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.facts {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.fact {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.fact dt {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.fact dd {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.pay {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.payAmount {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+.payKind {
+  font-size: 0.85rem;
+  color: var(--muted-2);
+}
+
+.requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.requirement {
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.06);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.notice {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(255, 213, 145, 0.4);
+  border-radius: 14px;
+  background: rgba(255, 213, 145, 0.09);
+  color: var(--warn);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.noticeStrong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.privacyNote {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
+
+/* -- the decision ---------------------------------------------------------- */
+
+.actionBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--chrome-solid, var(--bg-2));
+  box-shadow: 0 -12px 40px var(--shadow-strong);
+}
+
+.actionBarInner {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (min-width: 48rem) {
+  .actionBar {
+    position: static;
+    padding: 0;
+    border-top: 0;
+    background: none;
+    box-shadow: none;
+  }
+}
+
+.accept {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1.02rem;
+}
+
+.secondaryRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.secondaryRow .btn,
+.secondaryRow button,
+.secondaryRow summary {
+  min-height: 48px;
+}
+
+.disclosure {
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-3);
+}
+
+.disclosureSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0.7rem 1rem;
+  color: var(--text);
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosureSummary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 16px;
+}
+
+.disclosureBody {
+  padding: 0 1rem 1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.disclosureBody textarea,
+.disclosureBody input {
+  width: 100%;
+  /* 16px minimum: anything smaller makes iOS zoom the whole page on focus, and
+     a page that jumps when you tap the box is a page people abandon. */
+  font-size: 16px;
+}
+
+/* -- outcomes ---------------------------------------------------------------- */
+
+.outcome {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.2rem;
+  margin-bottom: 0.85rem;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+}
+
+.outcome h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.outcome p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.outcomeAccepted {
+  border-color: rgba(127, 224, 178, 0.5);
+  background: linear-gradient(180deg, rgba(127, 224, 178, 0.16), transparent 70%), var(--bg-elevated);
+}
+
+.outcomeAccepted h1 {
+  color: var(--good);
+}
+
+.outcomeClaimed {
+  border-color: rgba(255, 180, 167, 0.4);
+}
+
+.authorized {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  padding: 0.95rem;
+  border: 1px solid rgba(127, 224, 178, 0.35);
+  border-radius: 16px;
+  background: rgba(127, 224, 178, 0.08);
+}
+
+.authorized a {
+  color: var(--accent-ink);
+}
+
+.nextSteps {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.footer {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted-2);
+}
+
+.footer a {
+  color: var(--muted);
+}

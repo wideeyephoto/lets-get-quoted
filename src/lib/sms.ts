@@ -412,6 +412,107 @@ async function deliverCrewSms(params: {
   }
 }
 
+// -- subcontractor dispatch ----------------------------------------------------
+
+export type SubcontractorSmsEvent = 'sub_offer' | 'sub_offer_covered' | 'sub_offer_won' | 'sub_offer_cancelled';
+
+/**
+ * May this deployment text a real phone?
+ *
+ * FOUR WAYS TO ANSWER NO, and every one of them is a place a real subcontractor
+ * has nearly been texted by accident:
+ *
+ *   1. A test run. Vitest sets dummy Twilio credentials (see vitest.config.ts)
+ *      precisely so importing this module works — which means isSmsConfigured()
+ *      is TRUE under test and is not, on its own, a safe gate.
+ *   2. A preview deploy. Every branch on Vercel gets a full database connection
+ *      and a full crew table; a dispatch demo on one would text the real firms.
+ *   3. An explicit off switch, for a staging environment that has live-looking
+ *      credentials and must not use them.
+ *   4. No provider configured at all, which is the ordinary local case.
+ *
+ * Anything that returns false here is SIMULATED: the offer, the ledger row and
+ * the whole flow still happen, so the feature is demonstrable, and the dashboard
+ * says out loud that nothing was delivered. See DispatchSimulationNotice.
+ */
+export function isLiveMessagingEnvironment(): boolean {
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) return false;
+  if (process.env.VERCEL_ENV === 'preview') return false;
+  if (process.env.LGQ_DISABLE_OUTBOUND_SMS === '1') return false;
+  return isSmsConfigured();
+}
+
+export type SubcontractorSmsResult = {
+  status: 'sent' | 'failed' | 'opted_out' | 'simulated';
+  providerId: string | null;
+  error?: string;
+};
+
+/**
+ * One subcontractor-directed text, through the same consent ledger every other
+ * crew text uses.
+ *
+ * Deliberately routed through sms_events (context='subcontractor') rather than a
+ * second delivery log: an owner asking "did that go out and what did it say"
+ * should get the answer from the same table whether it was a payment reminder,
+ * a crew assignment or a job offer.
+ *
+ * Never throws. The caller is mid-way through a dispatch or an acceptance, and
+ * a provider having a bad minute must not undo either — the failure is recorded
+ * on the offer and shown on the page instead.
+ */
+export async function sendSubcontractorSms(params: {
+  accountId: string;
+  crewId: string;
+  phone: string;
+  eventType: SubcontractorSmsEvent;
+  body: string;
+}): Promise<SubcontractorSmsResult> {
+  const admin = createAdminClient();
+  const normalized = normalizeUsPhone(params.phone) ?? params.phone.trim();
+  const base = {
+    account_id: params.accountId,
+    crew_id: params.crewId,
+    context: 'subcontractor',
+    event_type: params.eventType,
+    phone_number: normalized,
+    body: params.body,
+  };
+
+  const record = async (values: Record<string, unknown>) => {
+    try {
+      await admin.from('sms_events').insert({ ...base, ...values });
+    } catch (error) {
+      console.error('Subcontractor SMS ledger write failed:', error instanceof Error ? error.message : error);
+    }
+  };
+
+  if (await isPhoneOptedOut(params.accountId, normalized)) {
+    await record({ status: 'opted_out' });
+    return { status: 'opted_out', providerId: null };
+  }
+
+  if (!isLiveMessagingEnvironment()) {
+    // Recorded as sent with an unmistakable provider id. The row is the honest
+    // account of what happened: the message was composed, addressed and would
+    // have gone — and 'simulated' is not a message id anybody will mistake for
+    // a Twilio SID while reading the ledger.
+    await record({ status: 'sent', provider_id: 'simulated', sent_at: new Date().toISOString() });
+    return { status: 'simulated', providerId: 'simulated' };
+  }
+
+  try {
+    const providerId = await sendTwilioMessage(normalized, params.body);
+    await record({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() });
+    return { status: 'sent', providerId };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'SMS delivery failed.';
+    await record({ status: 'failed', error_reason: reason });
+    console.error(`Subcontractor SMS ${params.eventType} failed for crew ${params.crewId}:`, reason);
+    return { status: 'failed', providerId: null, error: reason };
+  }
+}
+
 export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentSmsEvent) {
   const admin = createAdminClient();
   const { data, error } = await admin

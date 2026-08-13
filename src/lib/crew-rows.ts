@@ -6,6 +6,7 @@ import { formatMoney, listJobs } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { laborTotalsByCrew } from '@/lib/labor-data';
+import { shapeSubcontractorProfile, subDisplayName } from '@/lib/subcontractors';
 import type { CrewRow } from '@/app/dashboard/crew/CrewRoster';
 
 /**
@@ -77,9 +78,24 @@ export async function loadRosterData(
 
   const rows: CrewRow[] = crew.map((member) => {
     const bucket = totals.get(member.id);
+    const profile = shapeSubcontractorProfile(member as unknown as Record<string, unknown>);
     return {
       id: member.id,
       name: member.name,
+      // The demo roster is employees only — it has no subcontractors and no
+      // offer history to derive metrics from. Everything subcontractor-shaped is
+      // therefore null rather than an invented zero: "0 jobs offered" against a
+      // firm nobody has ever texted is a claim, and this one would be about a
+      // firm that does not exist. The worker type is still read off the row, so
+      // the demo tells the truth the moment a subcontractor is in the fixture.
+      workerType: profile.workerType,
+      companyName: profile.companyName,
+      displayName: subDisplayName(member.name, profile.companyName),
+      subStatus: profile.workerType === 'subcontractor' ? profile.subStatus : null,
+      trades: profile.trades,
+      compliance: null,
+      subMetrics: null,
+      subProfile: profile.workerType === 'subcontractor' ? profile : null,
       initials: initialsFor(member.name),
       photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
       roleLabel: member.role_label,

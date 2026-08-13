@@ -121,6 +121,49 @@ export function crewScheduleSelectedText(input: {
   return `Hi ${input.crewName}, job ${input.jobRef} for ${input.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. ${input.businessName}. Reply STOP to opt out.`;
 }
 
+// -- subcontractor dispatch ---------------------------------------------------
+//
+// The OFFER itself has no builder here on purpose. Its words are written (or at
+// least approved) by the owner in the composer before anything is sent — see
+// draftOfferMessage in lib/subcontractor-dispatch, which produces the draft they
+// edit. What follows are the three messages the SYSTEM sends on its own, which
+// is exactly the set that has to be worded once and stay worded that way.
+
+/**
+ * "Somebody else got there first."
+ *
+ * The three things a sub who lost needs, in this order: it is gone, it is not
+ * personal, and they are still on the list. A firm that reads "unsuccessful" is
+ * a firm that stops opening the next one.
+ */
+export function subcontractorCoveredText(input: {
+  businessName: string;
+  workDescription: string;
+  location: string;
+}): string {
+  const where = input.location.trim() ? ` in ${input.location.trim()}` : '';
+  return `${input.businessName}: the ${input.workDescription.trim()}${where} has been covered by another sub. Thanks for taking a look — we will send the next one. Reply STOP to opt out.`;
+}
+
+/** "It's yours." Carries the link, because the address is behind it. */
+export function subcontractorWonText(input: {
+  businessName: string;
+  workDescription: string;
+  whenLabel: string;
+  link: string;
+}): string {
+  const when = input.whenLabel.trim() ? ` ${input.whenLabel.trim()}` : '';
+  return `${input.businessName}: you are confirmed for the ${input.workDescription.trim()}${when}. Address and contact details: ${input.link} Reply STOP to opt out.`;
+}
+
+/** The owner pulled the job before anybody took it. */
+export function subcontractorCancelledText(input: {
+  businessName: string;
+  workDescription: string;
+}): string {
+  return `${input.businessName}: the ${input.workDescription.trim()} we sent you has been cancelled. No action needed. Reply STOP to opt out.`;
+}
+
 // -- the job -----------------------------------------------------------------
 
 export function jobUpdateText(input: {
