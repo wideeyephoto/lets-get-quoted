@@ -27,6 +27,14 @@ export type QueueJob = {
   estimatedHours: number | null;
   /** in_progress. The other case is a quote nobody has accepted. */
   approved: boolean;
+  /**
+   * Came in today.
+   *
+   * Computed on the server against the account's own today rather than in the
+   * browser: a client-side new Date() is the visitor's timezone, so a job
+   * created at 6pm Detroit reads as tomorrow to anybody looking from London.
+   */
+  requestedToday: boolean;
   crewIds: string[];
   /** Where a sent set of dates has got to, if any were sent. */
   requestState: 'none' | 'sent' | 'needs_more_options';

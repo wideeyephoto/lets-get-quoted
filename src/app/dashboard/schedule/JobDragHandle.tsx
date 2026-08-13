@@ -40,8 +40,19 @@ export default function JobDragHandle({ jobId, jobName }: { jobId: string; jobNa
       // through beginDrag's tap path — cannot arm and immediately disarm it.
       onClick={(event) => { if (event.detail === 0) armJob(job); }}
       aria-pressed={armed}
-      aria-label={armed ? `${jobName} is waiting for a date — choose one on the calendar` : `Schedule ${jobName}: drag onto a calendar date, or press to pick one`}
-      title="Drag onto a calendar date, or tap and then tap a date"
+      /* THE LABEL LEADS WITH THE TAP, NOT THE DRAG.
+         It used to open with "drag onto a calendar date", which on a phone
+         describes a gesture that is a fight against a scrolling page — and this
+         control is not primarily a drag source there, it is the tap-to-arm
+         path. The drag is still available and still works; it is just no longer
+         the first thing the button claims to be. The section's own hint
+         describes the drag, and only where there is a pointer to do it with
+         (see .schedule-drag-hint-mouse).
+         Not deleted on touch: this is the only keyboard path to scheduling, and
+         hiding it by pointer type would take it from anybody on a touchscreen
+         laptop. */
+      aria-label={armed ? `${jobName} is waiting for a date — choose one on the calendar` : `Pick a date for ${jobName}`}
+      title="Tap, then tap a date on the calendar. You can also drag it there."
     >
       <span className="schedule-drag-grip" aria-hidden="true">⠿</span>
       {/* The words used to be printed on the button. They are still SAID — a

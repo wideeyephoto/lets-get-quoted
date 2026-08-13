@@ -156,8 +156,19 @@ describe('the button is named for what it does, and off until it can do it', () 
   it('is wired to the button', () => {
     expect(PANEL).toContain("const ready = scheduleReady({ dateKey, time: time || null });");
     expect(PANEL).toContain('disabled={!ready}');
-    expect(PANEL).toContain('>\n                  Schedule job\n                </SaveButton>');
     expect(PANEL).not.toContain('Save Start Date');
+  });
+
+  /**
+   * And the button says which of the two things it is about to do.
+   *
+   * "Schedule job" on a quote nobody has accepted is the same contradiction the
+   * queue card had: the page offering to book work that has not been sold, in
+   * the same words it uses for work that has.
+   */
+  it('names the commit differently when the quote is not approved', () => {
+    expect(PANEL).toContain("{job.approved ? 'Schedule job' : 'Tentatively schedule'}");
+    expect(PANEL).toContain("savedLabel={job.approved ? 'Scheduled' : 'Penciled in'}");
   });
 });
 
@@ -234,9 +245,24 @@ describe('one row per job, one action on it', () => {
   });
 
   it('shows what a scheduling decision needs', () => {
-    for (const fact of ['job.cityLabel', 'No duration', 'No crew', 'Quote not approved']) {
+    for (const fact of ['job.cityLabel', 'Duration not set', 'No crew yet', 'Quote not approved']) {
       expect(BENCH, fact).toContain(fact);
     }
+  });
+
+  /**
+   * And what the job is SHORT of, as chips rather than as dimmer text.
+   *
+   * The three facts above used to carry this by going grey when a value was
+   * missing, which reads as unimportant — the opposite of true for a job with
+   * no duration on a calendar whose whole job is measuring how full a day is.
+   */
+  it('names the outstanding work from the shared helper, not its own list', () => {
+    expect(BENCH).toContain("jobBlockers(job).filter((blocker) => blocker.key !== 'approval')");
+    expect(BENCH).toContain('className="sched-row-blocker"');
+    // The panel reads the same helper, so the card and the panel cannot
+    // disagree about what a job still needs.
+    expect(PANEL).toContain('jobBlockers({ ...job, crewIds })');
   });
 
   /** The card's big obvious target used to be a link to the job page — away

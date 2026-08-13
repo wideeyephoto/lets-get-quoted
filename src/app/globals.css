@@ -19057,11 +19057,88 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .sched-row-go { min-height: 44px; padding: 0 0.75rem; font-size: 0.82rem; white-space: nowrap; }
 
+/* Came in today. Gold rather than grey: the queue is ordered by readiness
+   rather than by age, so this is the only thing saying a row is new. */
+.sched-row-new {
+  padding: 0.05rem 0.36rem;
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.14);
+  color: var(--gold-ink);
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* WHAT THE JOB IS SHORT OF. Chips rather than the three greyed-out facts these
+   replaced — an absence rendered as dimmer text reads as unimportant, which is
+   the opposite of true for a job with no duration on a calendar that measures
+   how full a day is. */
+.sched-row-blockers { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.sched-row-blocker {
+  padding: 0.08rem 0.4rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 6px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--mute-i62);
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* An unapproved row gets two actions rather than one. Column on a narrow rail
+   so neither is squeezed to an ellipsis; they are 44px each either way. */
+.sched-row-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.sched-row-tentative {
+  min-height: 44px;
+  padding: 0 0.6rem;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .sched-row-actions { flex-direction: column; align-items: stretch; }
+}
+
+/* The outstanding list under the confirmation. Quiet, because none of it blocks
+   the save — a job can be scheduled before you know the crew or the duration,
+   and styling these as errors would say otherwise. */
+.sched-confirm-todo { margin-top: 0.5rem; }
+.sched-confirm-todo-head {
+  margin: 0 0 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute-i62);
+}
+.sched-confirm-todo ul { margin: 0; padding-left: 1rem; display: grid; gap: 0.15rem; }
+.sched-confirm-todo li { font-size: 0.76rem; line-height: 1.45; color: var(--mute-i56); }
+.sched-confirm-todo a { color: var(--dim-orange-3-6); }
+
 .sched-rows-foot { margin: 0.6rem 0 0; font-size: 0.8rem; }
 .sched-rows-foot a { display: inline-flex; align-items: center; min-height: 44px; color: var(--dim-orange-3-6); text-decoration: none; }
 .sched-rows-foot a:hover { text-decoration: underline; }
 
 /* ---- the job you have open ----------------------------------------------- */
+/**
+ * THIS PANEL HAD NO BACKGROUND AT ALL, and that is the whole of the
+ * "the drawer is see-through" report.
+ *
+ * It said `background: var(--panel)`. There is no `--panel` token in this
+ * stylesheet — only `--panel-rgb`. The name is defined in three places
+ * (feature-wheel-story.css, command-center-deck.css, flagship.module.css) and
+ * every one of them is scoped to a marketing component that never renders on
+ * /dashboard. So on the schedule page the substitution was invalid, the
+ * declaration computed to `unset`, and the drawer painted transparent over the
+ * calendar — which is why the calendar's dates and the panel's own text were
+ * landing on the same pixels.
+ *
+ * rgb(var(--panel-rgb)) is the token that actually exists here, taken at full
+ * opacity. Not var(--bg-elevated): that is rgba(...,0.86) and a 14%-transparent
+ * drawer over a dense month grid is the same bug with a smaller number.
+ */
 .sched-detail {
   display: flex;
   flex-direction: column;
@@ -19069,7 +19146,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   padding: 0.9rem 0.85rem;
   border: 1px solid var(--edge-t12);
   border-radius: 16px;
-  background: var(--panel);
+  background: rgb(var(--panel-rgb));
 }
 @media (min-width: 1600px) {
   .sched-detail { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
@@ -19102,10 +19179,68 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 @media (min-width: 720px) {
   .sched-detail.is-sheet {
     inset: 0 0 0 auto;
-    width: min(26rem, 92vw);
+    /* A STABLE 440-520px, not a percentage of the viewport.
+       min(26rem, 92vw) was 416px at best and shrank with the window, so the
+       crew list and the slot rows reflowed while you were reading them. The
+       clamp holds the panel still between 440 and 520; the outer min() is only
+       the small-screen backstop, and below 720 this rule does not apply at
+       all. */
+    width: min(92vw, clamp(440px, 34vw, 520px));
     max-height: none;
     border-radius: 18px 0 0 18px;
     box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42);
+  }
+}
+
+/**
+ * The header and the commit button stay put while the middle scrolls.
+ *
+ * The panel is one long scroll — suggestions, a manual picker, a crew list,
+ * then the confirmation — and both ends were scrolling away with it: on a
+ * short window you could not see whose job you were scheduling, and "Schedule
+ * job" was below the fold of a panel you had to scroll to the bottom of twice.
+ *
+ * Opaque backgrounds on both, for the same reason the panel itself needed one:
+ * a sticky element with a transparent background has the scrolling content
+ * pass through it.
+ */
+.sched-detail.is-sheet .sched-detail-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 0.6rem;
+  background: rgb(var(--panel-rgb));
+  border-bottom: 1px solid var(--edge-t08);
+}
+
+.sched-detail.is-sheet .sched-step-confirm {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  padding-bottom: 0.2rem;
+  background: rgb(var(--panel-rgb));
+  border-top: 1px solid var(--edge-t08);
+}
+
+@media (min-width: 1600px) {
+  /* The docked column scrolls too — see the sticky/max-height rule above — so
+     it needs the same two anchors. */
+  .sched-detail .sched-detail-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-bottom: 0.6rem;
+    background: rgb(var(--panel-rgb));
+  }
+  .sched-detail .sched-step-confirm {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-top: 0.75rem;
+    background: rgb(var(--panel-rgb));
+    border-top: 1px solid var(--edge-t08);
   }
 }
 

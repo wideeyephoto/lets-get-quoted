@@ -6,6 +6,7 @@ import UnscheduledQueue from './UnscheduledQueue';
 import SchedulePanel from './SchedulePanel';
 import JobDragHandle from './JobDragHandle';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
+import { jobBlockers, queueRank } from '@/lib/schedule-readiness';
 import type { CrewOption } from './schedule-calendar';
 import type { QueueJob, SuggestContext } from './schedule-queue-types';
 
@@ -78,6 +79,21 @@ export default function ScheduleWorkbench({
 
   const crewNameById = new Map(crew.map((member) => [member.id, member.name]));
 
+  /**
+   * WHAT TO DO NEXT, FIRST.
+   *
+   * The page already sorted approved work above unapproved. This sorts within
+   * those groups by how close each job is to being finishable in one pass — a
+   * job missing only a date beats one that will also need a duration, a crew
+   * and an address. A stable tiebreak on the incoming order, so two equally
+   * ready jobs keep the order the server sent and the list does not reshuffle
+   * itself between renders.
+   */
+  const ordered = jobs
+    .map((job, index) => ({ job, index }))
+    .sort((a, b) => queueRank(a.job) - queueRank(b.job) || a.index - b.index)
+    .map((entry) => entry.job);
+
   return (
     <div className="schedule-workbench">
       {jobs.length > 0 ? (
@@ -99,10 +115,13 @@ export default function ScheduleWorkbench({
             </div>
 
             <ol className="sched-rows">
-              {jobs.map((job) => {
+              {ordered.map((job) => {
                 const crewNames = job.crewIds.map((id) => crewNameById.get(id)).filter(Boolean) as string[];
                 const state = ROW_STATE[job.requestState];
                 const on = job.id === selectedId;
+                // Approval has its own flag on the row above; repeating it as a
+                // chip would say the same thing twice in two inches.
+                const blockers = jobBlockers(job).filter((blocker) => blocker.key !== 'approval');
                 return (
                   <li key={job.id}>
                     <div className={`sched-row${on ? ' is-on' : ''}${job.approved ? '' : ' is-unapproved'}`}>
@@ -124,35 +143,79 @@ export default function ScheduleWorkbench({
                               the tint is the same hue the calendar uses for an
                               unapproved chip, and a hue is not a sentence. */}
                           {job.approved ? null : <em className="sched-row-flag">Quote not approved</em>}
+                          {/* Came in today. The queue is sorted by readiness
+                              rather than by age, so without this the newest
+                              request can sit ninth with nothing saying it is
+                              new. */}
+                          {job.requestedToday ? <em className="sched-row-new">Requested today</em> : null}
                         </span>
                         <span className="sched-row-what">{job.scope ?? 'No scope written yet'}</span>
                         <span className="sched-row-facts">
                           <span>{job.cityLabel}</span>
-                          {/* An unestimated job is why a day can read as empty
-                              when it is not, so it is named here rather than
-                              left blank. */}
-                          <span className={job.estimatedHours ? undefined : 'sched-row-missing'}>
-                            {job.estimatedHours ? `${job.estimatedHours} hrs` : 'No duration'}
-                          </span>
-                          <span className={crewNames.length > 0 ? undefined : 'sched-row-missing'}>
-                            {crewNames.length > 0 ? crewNames.join(', ') : 'No crew'}
-                          </span>
+                          <span>{job.estimatedHours ? `${job.estimatedHours} hrs` : 'Duration not set'}</span>
+                          <span>{crewNames.length > 0 ? crewNames.join(', ') : 'No crew yet'}</span>
                         </span>
+                        {/* WHAT THIS JOB IS SHORT OF, as chips rather than as
+                            three greyed-out facts above that read as absences
+                            you have to notice. Same helper the panel reads, so
+                            the card and the panel cannot disagree. Approval is
+                            already stated as its own flag at the top of the
+                            row, so it is not repeated down here. */}
+                        {blockers.length > 0 ? (
+                          <span className="sched-row-blockers">
+                            {blockers.map((blocker) => (
+                              <em key={blocker.key} className="sched-row-blocker">
+                                {blocker.short}
+                              </em>
+                            ))}
+                          </span>
+                        ) : null}
                         {state ? <span className="sched-row-state">{state}</span> : null}
                       </button>
 
-                      {/* ONE PRIMARY ACTION. "Choose date & time" and "Offer
-                          customer times" were two buttons of equal weight on
-                          every card; which of you picks the time is a question
-                          inside scheduling, and it is asked in the panel. */}
-                      <button
-                        type="button"
-                        className="btn primary sched-row-go"
-                        onClick={() => setSelectedId(job.id)}
-                        aria-label={`Schedule ${job.clientName}`}
-                      >
-                        Schedule
-                      </button>
+                      {/* THE ACTION DEPENDS ON WHETHER THERE IS ANYTHING TO ACT ON.
+                          Every card used to get the same orange "Schedule"
+                          button, approved or not — so a quote nobody has
+                          accepted was offered the same next step as work that
+                          is sold, directly underneath a row that says "Quote
+                          not approved". The page contradicted itself twice in
+                          two inches.
+
+                          Approved work keeps the one primary action. An
+                          unapproved quote leads with the thing that actually
+                          unblocks it, and keeps scheduling as a quieter second
+                          option — the product does allow a date on an
+                          unapproved job and removing that would be taking away
+                          a capability rather than fixing a label, so it is
+                          named for what it is instead. */}
+                      {job.approved ? (
+                        <button
+                          type="button"
+                          className="btn primary sched-row-go"
+                          onClick={() => setSelectedId(job.id)}
+                          aria-label={`Schedule ${job.clientName}`}
+                        >
+                          Schedule
+                        </button>
+                      ) : (
+                        <span className="sched-row-actions">
+                          <Link
+                            className="btn primary sched-row-go"
+                            href={`/dashboard/jobs/${job.id}`}
+                            aria-label={`Review the quote for ${job.clientName} to get it approved`}
+                          >
+                            Review quote
+                          </Link>
+                          <button
+                            type="button"
+                            className="btn ghost sched-row-tentative"
+                            onClick={() => setSelectedId(job.id)}
+                            aria-label={`Tentatively schedule ${job.clientName} before the quote is approved`}
+                          >
+                            Tentatively schedule
+                          </button>
+                        </span>
+                      )}
                     </div>
                   </li>
                 );

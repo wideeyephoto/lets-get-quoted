@@ -152,18 +152,40 @@ export default function ScheduleMonthCapacity({
               <span className="sched-month-top">
                 <span className="sched-month-day">{cell.day}</span>
                 <span className="sched-month-flags">
+                  {/* TITLES ON ALL THREE. The day cell's own aria-label already
+                      spells each of these out, so a screen reader was fine and
+                      a sighted user was looking at a bare "!", "◇" and "?" with
+                      no key anywhere on the page.
+
+                      NOTE ON THE DIAMOND: ◇ also means "quote not approved" in
+                      CalendarLegend, so the same glyph carries two meanings on
+                      this route. The title disambiguates it on hover; giving
+                      the two states distinct shapes is the real fix and is not
+                      done here. */}
                   {conflicts.length > 0 ? (
-                    <i className="sched-month-flag clash" aria-hidden="true">!</i>
+                    <i className="sched-month-flag clash" aria-hidden="true" title="Two jobs overlap on this day">!</i>
                   ) : null}
                   {unassigned > 0 ? (
-                    <i className="sched-month-flag crewless" aria-hidden="true">◇</i>
+                    <i
+                      className="sched-month-flag crewless"
+                      aria-hidden="true"
+                      title={`${unassigned} ${unassigned === 1 ? 'job has' : 'jobs have'} no crew assigned`}
+                    >
+                      ◇
+                    </i>
                   ) : null}
                   {/* A shape, not just a shade. The band for this state is a
                       neutral hatch precisely so it is not a sixth hue on a ramp
                       that is already the pattern red/green blindness flattens,
                       and this mark is the second way of saying it. */}
                   {unknown > 0 ? (
-                    <i className="sched-month-flag unknown" aria-hidden="true">?</i>
+                    <i
+                      className="sched-month-flag unknown"
+                      aria-hidden="true"
+                      title={`${unknown} ${unknown === 1 ? 'job has' : 'jobs have'} no duration set, so this day's total is incomplete`}
+                    >
+                      ?
+                    </i>
                   ) : null}
                   {block ? (
                     <em className="sched-month-state off">Off</em>

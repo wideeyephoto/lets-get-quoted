@@ -8,6 +8,7 @@ import SaveButton from '@/components/save-button';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
 import { scheduleReady, suggestSlots, type SuggestedSlot } from '@/lib/schedule-suggestions';
+import { jobBlockers } from '@/lib/schedule-readiness';
 import { useModal } from './use-modal';
 import type { CrewOption } from './schedule-calendar';
 import type { QueueJob, SuggestContext } from './schedule-queue-types';
@@ -142,6 +143,12 @@ export default function SchedulePanel({
   const ready = scheduleReady({ dateKey, time: time || null });
   const chosenSlot = slots.find((slot) => slot.dateKey === dateKey && slot.time === time) ?? null;
 
+  // What is still outstanding, from the same helper the queue card reads, minus
+  // the crew line once crew have been ticked in this panel — that one is being
+  // answered on screen right now and repeating it under the button would be
+  // the panel arguing with itself.
+  const remaining = jobBlockers({ ...job, crewIds }).filter((blocker) => blocker.key !== 'crew' || crewIds.length === 0);
+
   return (
     <>
       {docked ? null : <div className="sched-detail-scrim" onClick={onClose} aria-hidden="true" />}
@@ -216,9 +223,21 @@ export default function SchedulePanel({
                           aria-pressed={on}
                           onClick={() => { setDateKey(slot.dateKey); setTime(slot.time); }}
                         >
+                          {/* THE ABSOLUTE DATE LEADS. It used to be "Today" or
+                              "In 3 days" and nothing else, so committing to a
+                              date meant working out which date that was —
+                              and a page left open over midnight said "Today"
+                              about yesterday. The relative label is still
+                              useful, as the second line rather than instead of
+                              the first. */}
                           <span className="sched-slot-when">
-                            <strong>{relativeLabel(slot.dateKey, context.todayKey) ?? dayLabel(slot.dateKey)}</strong>
-                            <em>{clockLabel(slot.time)}</em>
+                            <strong>
+                              {dayLabel(slot.dateKey)} at {clockLabel(slot.time)}
+                            </strong>
+                            {(() => {
+                              const near = relativeLabel(slot.dateKey, context.todayKey);
+                              return near ? <em>{near}</em> : null;
+                            })()}
                           </span>
                           <span className="sched-slot-why">
                             {slot.reason}
@@ -321,6 +340,25 @@ export default function SchedulePanel({
                 )}
               </p>
 
+              {/* WHAT IS STILL MISSING, listed rather than left to be
+                  discovered later. None of these block the save — a job can be
+                  scheduled before you know the crew or the duration — so they
+                  are stated as outstanding work, not as errors. `remaining`
+                  reads the same fields the queue row flags, so the card and the
+                  panel cannot disagree about what a job is short of. */}
+              {remaining.length > 0 ? (
+                <div className="sched-confirm-todo">
+                  <p className="sched-confirm-todo-head">Still outstanding</p>
+                  <ul>
+                    {remaining.map((item) => (
+                      <li key={item.key}>
+                        {item.href ? <Link href={item.href}>{item.label}</Link> : item.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               <form
                 action={async (formData: FormData) => {
                   // Crew first: scheduling revalidates the page and unmounts
@@ -342,14 +380,18 @@ export default function SchedulePanel({
                     "Save Start Date", always enabled — and pressing it with an
                     empty date redirected back to the queue having done nothing,
                     which is indistinguishable from a broken button. */}
+                {/* The same word the queue card used to get you here. An
+                    unapproved quote is being penciled in, and a button that
+                    says "Schedule job" on work nobody has bought is the
+                    contradiction this panel is downstream of. */}
                 <SaveButton
                   className="btn primary sched-confirm-go"
                   disabled={!ready}
                   title={ready ? undefined : 'Choose a day first'}
-                  pendingLabel="Scheduling…"
-                  savedLabel="Scheduled"
+                  pendingLabel={job.approved ? 'Scheduling…' : 'Penciling in…'}
+                  savedLabel={job.approved ? 'Scheduled' : 'Penciled in'}
                 >
-                  Schedule job
+                  {job.approved ? 'Schedule job' : 'Tentatively schedule'}
                 </SaveButton>
               </form>
             </section>

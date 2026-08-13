@@ -4,6 +4,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { getMapPins } from '@/lib/map-pins';
 import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeCalendarView, normalizeMapTheme, normalizeMapView, normalizeWeekendDays } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
+import { isRequestedToday } from '@/lib/schedule-readiness';
 import { computeHoursByDate } from '@/lib/booking';
 import { countUnknownDurationByDate } from '@/lib/schedule-capacity';
 import { daysWithScatter, loadOverWindow } from '@/lib/schedule-load';
@@ -509,6 +510,9 @@ export default async function SchedulePage({
       ? Number(job.estimated_hours)
       : null,
     approved: job.status === 'in_progress',
+    // Against the account's own today, computed above from `now` — not in the
+    // browser, where it would be the visitor's timezone.
+    requestedToday: isRequestedToday(job.created_at, todayKey),
     crewIds: assignmentsByJob[job.id] ?? [],
     requestState: (() => {
       const request = scheduleRequestByJob[job.id];
