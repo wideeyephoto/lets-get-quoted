@@ -36,7 +36,10 @@ describe('the calendar view switcher', () => {
   it('leaves the remaining four in the menu, and only those', () => {
     expect(CALENDAR).toMatch(/const QUICK_VIEW_OPTIONS = VIEW_OPTIONS\.filter\(\(option\) => QUICK_VIEWS\.has\(option\.id\)\)/);
     expect(CALENDAR).toMatch(/const MENU_VIEW_OPTIONS = VIEW_OPTIONS\.filter\(\(option\) => !QUICK_VIEWS\.has\(option\.id\)\)/);
-    expect(CALENDAR).toMatch(/\{MENU_VIEW_OPTIONS\.map\(/);
+    // .filter() before .map(): Projects is dropped from the list when there is
+    // no multi-day work to draw (and kept while you are in it) — see
+    // hasProjects. The half-and-half split is what this is really asserting.
+    expect(CALENDAR).toMatch(/\{MENU_VIEW_OPTIONS\.filter\([\s\S]{0,200}?\)\.map\(/);
     expect(CALENDAR).not.toMatch(/\{VIEW_OPTIONS\.map\(/);
   });
 

@@ -462,6 +462,7 @@ export default async function SchedulePage({
       // is worth, how long it'll take, and who's on it. All of it is already
       // loaded — it just wasn't being passed down.
       value_label: job.quoted_amount > 0 ? formatMoney(job.quoted_amount) : null,
+      value: Number(job.quoted_amount) || 0,
       hours_label: job.estimated_hours ? `${job.estimated_hours}h` : null,
       // The same figure unformatted. The time views draw a block this many
       // hours tall, and it is the difference between a job that looks like a
@@ -858,6 +859,9 @@ export default async function SchedulePage({
              never drawn off the top of the grid. */
           workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
           workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
+          /* So the Year view can say what a month's capacity is. Same list the
+             booking engine and the weekend default read. */
+          workingWeekdays={workingWeekdays}
         />
 
         <div className="schedule-panel-foot">

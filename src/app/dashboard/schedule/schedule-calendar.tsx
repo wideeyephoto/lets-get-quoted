@@ -24,7 +24,8 @@ import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, togg
    — the timeline columns, the capacity cells, the crew lanes — calls
    useScheduleDrag itself, because they are the ones that own a date. */
 import { useModal } from './use-modal';
-import { formatJobSchedule, formatJobTime, weekdayOfDateKey } from '@/lib/jobs';
+import { addDaysToDateKey, formatJobSchedule, formatJobTime, formatMoney, weekdayOfDateKey } from '@/lib/jobs';
+import { loadOverWindow } from '@/lib/schedule-load';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -86,6 +87,7 @@ function CalendarViewMenu({
   value,
   onChange,
   columns,
+  hasProjects,
   days,
   onDaysChange,
   weekendCounts,
@@ -103,6 +105,15 @@ function CalendarViewMenu({
    * broken seven-day one. The button now says what it will actually give you.
    */
   columns: 7 | 3 | 1 | null;
+  /**
+   * Whether there is multi-day work to draw.
+   *
+   * Projects is the one view with a precondition: with nothing running across
+   * days it is an empty grid, and listing a destination that is always empty
+   * teaches you the menu is full of dead ends. It stays listed while you are IN
+   * it — a view that vanishes from under you is worse than one that is empty.
+   */
+  hasProjects: boolean;
   /** The weekend switches, which are in here rather than on the row — see the
       note at the top of CalendarDayColumns. */
   days: WeekendDays;
@@ -170,7 +181,7 @@ function CalendarViewMenu({
       </button>
       <FloatingPanel anchorRef={buttonRef} open={open} onClose={() => setOpen(false)} className="calendar-view-panel" width={264}>
         <div role="menu" aria-label="More calendar views">
-          {MENU_VIEW_OPTIONS.map((option) => (
+          {MENU_VIEW_OPTIONS.filter((option) => option.id !== 'timeline' || hasProjects || value === 'timeline').map((option) => (
             <button
               key={option.id}
               type="button"
@@ -221,6 +232,10 @@ export type CalendarJob = {
   badge_tone: string;
   badge_title: string | null;
   value_label: string | null;
+  /** The same money as a number. value_label is already formatted, and the Year
+      view has to ADD twelve months of these — parsing "$4,525" back out of a
+      string this component was handed as a number is not a summary. */
+  value?: number | null;
   hours_label: string | null;
   /** The same number hours_label prints, unformatted. The time views size a
       block from it, and parsing "3.5h" back out of the label to do that would
@@ -333,6 +348,7 @@ export default function ScheduleCalendar({
   initialDayKey,
   workdayStart = null,
   workdayEnd = null,
+  workingWeekdays = [],
   queueCount = 0,
   readOnly = false,
   basePath = '/dashboard',
@@ -388,6 +404,9 @@ export default function ScheduleCalendar({
    */
   workdayStart?: string | null;
   workdayEnd?: string | null;
+  /** Weekday numbers this business works (0=Sun … 6=Sat). Empty means all seven.
+      The Year view needs it to know what a month's capacity even is. */
+  workingWeekdays?: number[];
   /** Approved work with no date, so the Day view's empty state can name what
       pressing it would do. Zero on the demo, which has no queue. */
   queueCount?: number;
@@ -640,8 +659,38 @@ export default function ScheduleCalendar({
   // Timeline: one row per JOB, not per occurrence. `jobs` arrives already
   // expanded to a row per day, so this folds those back into a first and last
   // column — which is the only view that shows a multi-day job as one thing.
+  /**
+   * The days Projects lays out — the month, or one week of it.
+   *
+   * A MONTH OF 26px COLUMNS IS NOT A CHART, IT IS A BARCODE. 31 columns plus a
+   * 180px name gutter is 986px, which does not fit the 728px calendar column at
+   * 1920, so the view arrived pre-scrolled sideways with every bar too narrow to
+   * label. Zoomed to a week the same grid gives each day ~78px and a two-day job
+   * gets 156px — enough to say what it is on the bar itself.
+   */
+  const [timelineZoom, setTimelineZoom] = useState<'month' | 'week'>('month');
+  const timelineDays = useMemo(() => {
+    if (timelineZoom === 'month') return monthDays;
+    const inWeek = new Set(weekDayKeys);
+    const week = monthDays.filter((cell) => inWeek.has(cell.dateKey));
+    // A week that has run off the end of the month leaves nothing to draw;
+    // showing the month beats showing an empty grid.
+    return week.length > 0 ? week : monthDays;
+  }, [monthDays, timelineZoom, weekDayKeys]);
+
+  /**
+   * One bar per job, for work that RUNS — not for everything in the month.
+   *
+   * The view is called Projects and it drew every job in the month, one-day
+   * jobs included: thirteen 26px blocks with nothing written in any of them,
+   * which is a worse month grid rather than a picture of multi-day work. A job
+   * that starts and finishes on Tuesday is not a project, and the six views
+   * either side of this one all show it better.
+   *
+   * `spans` is the honest population; `rows` is what gets drawn.
+   */
   const timelineRows = useMemo(() => {
-    const columnByDate = new Map(monthDays.map((cell, index) => [cell.dateKey, index]));
+    const columnByDate = new Map(timelineDays.map((cell, index) => [cell.dateKey, index]));
     const byJob = new Map<string, { job: CalendarJob; first: number; last: number }>();
 
     for (const job of jobs) {
@@ -663,10 +712,33 @@ export default function ScheduleCalendar({
       if (column > row.last) row.last = column;
     }
 
-    return [...byJob.values()].sort(
-      (a, b) => a.first - b.first || b.last - b.first - (a.last - a.first) || a.job.client_name.localeCompare(b.job.client_name),
-    );
-  }, [jobs, monthDays]);
+    return [...byJob.values()]
+      /* Two days on the grid, or an entered end date. The second half matters
+         at a month boundary: a job running Jan 30 – Feb 4 has two columns in
+         January and four in February, and it is one project in both. */
+      .filter(({ first, last, job }) => last > first || Boolean(job.scheduled_until))
+      .sort(
+        (a, b) => a.first - b.first || b.last - b.first - (a.last - a.first) || a.job.client_name.localeCompare(b.job.client_name),
+      );
+  }, [jobs, timelineDays]);
+
+  /**
+   * Whether there is any multi-day work in the month at all.
+   *
+   * Read at MONTH scale on purpose, so zooming to a week that happens to hold
+   * none does not make the view disappear out from under you.
+   */
+  const hasProjects = useMemo(() => {
+    const daysByJob = new Map<string, Set<string>>();
+    for (const job of jobs) {
+      if (job.scheduled_until) return true;
+      const set = daysByJob.get(job.id) ?? new Set<string>();
+      set.add(job.scheduled_for);
+      if (set.size > 1) return true;
+      daysByJob.set(job.id, set);
+    }
+    return false;
+  }, [jobs]);
 
   /**
    * Work booked on each weekend day of the range on screen.
@@ -774,6 +846,16 @@ export default function ScheduleCalendar({
   const twelveMonthSummary = useMemo(() => {
     const firstVisibleCell = weeks.flat().find(Boolean);
     const baseDate = firstVisibleCell ? new Date(`${firstVisibleCell.dateKey}T00:00:00`) : new Date(`${todayKey}T00:00:00`);
+    /* Availability blocks, as the map loadOverWindow wants. Only real blocks:
+       a month is not less capable of holding work because it is already full. */
+    const blockedDays: Record<string, true> = {};
+    for (const block of blocks) {
+      for (let i = 0; i < 400; i += 1) {
+        const key = addDaysToDateKey(block.start_date, i);
+        if (key > block.end_date) break;
+        blockedDays[key] = true;
+      }
+    }
 
     return Array.from({ length: 12 }, (_, index) => {
       const monthDate = addMonths(baseDate, index);
@@ -783,15 +865,40 @@ export default function ScheduleCalendar({
         .sort((a, b) => `${a.scheduled_for}${a.scheduled_time ?? ''}`.localeCompare(`${b.scheduled_for}${b.scheduled_time ?? ''}`));
       const uniqueJobs = Array.from(new Map(monthOccurrences.map((job) => [job.id, job])).values());
 
+      /* HOW FULL EACH MONTH IS, not just how many jobs are in it.
+         Twelve cards of a bare count answered "is there work in November" and
+         nothing else — a month with three 40-hour jobs and a month with three
+         one-hour jobs printed the same 3. Same function as the header stat, so
+         the two cannot disagree; capacity is the working days in that month
+         that are not blocked, times the day's own hours. */
+      const load = loadOverWindow({
+        fromKey: `${monthKey}-01`,
+        days: new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate(),
+        hoursByDate,
+        unknownByDate: unknownDurationByDate,
+        capacityPerDay: capacityHours,
+        workingWeekdays,
+        blockedDays,
+      });
+
+      /* The value of the work, once per job rather than once per occurrence —
+         a six-day job is not six times the money. Money is deliberately absent
+         from this page's header (a calendar is not an accounts screen), but a
+         twelve-month planning view is the one place where "how much work is in
+         November" is the question being asked. */
+      const value = uniqueJobs.reduce((sum, job) => sum + (job.value ?? 0), 0);
+
       return {
         monthKey,
         label: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
         uniqueJobCount: uniqueJobs.length,
         jobs: uniqueJobs.slice(0, 3),
         extraJobCount: Math.max(0, uniqueJobs.length - 3),
+        load,
+        value,
       };
     });
-  }, [jobs, todayKey, weeks]);
+  }, [blocks, capacityHours, hoursByDate, jobs, todayKey, unknownDurationByDate, weeks, workingWeekdays]);
 
   /**
    * Stepping, and what the range is called.
@@ -983,6 +1090,7 @@ export default function ScheduleCalendar({
             value={calendarView}
             onChange={setCalendarView}
             columns={span}
+            hasProjects={hasProjects}
             days={days}
             onDaysChange={updateDays}
             weekendCounts={weekendJobCounts}
@@ -1193,14 +1301,46 @@ export default function ScheduleCalendar({
         )
       ) : effectiveView === 'timeline' ? (
         timelineRows.length === 0 ? (
-          <p className="calendar-view-empty">Nothing scheduled this month.</p>
+          /* NAMES WHAT THE VIEW IS FOR, rather than "nothing scheduled" — the
+             month is usually full of work, and the reason this is empty is that
+             none of it runs longer than a day. */
+          <p className="calendar-view-empty">
+            No multi-day work {timelineZoom === 'week' ? 'this week' : 'this month'}. Projects draws jobs that run
+            across several days as one bar; everything booked here starts and finishes the same day.
+            {timelineZoom === 'week' ? (
+              <>
+                {' '}
+                <button type="button" onClick={() => setTimelineZoom('month')}>Show the whole month</button>
+              </>
+            ) : null}
+          </p>
         ) : (
+          <>
+            <div className="calendar-timeline-zoom" role="group" aria-label="How much time to show">
+              {(['month', 'week'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`calendar-timeline-zoom-btn${timelineZoom === option ? ' active' : ''}`}
+                  aria-pressed={timelineZoom === option}
+                  onClick={() => setTimelineZoom(option)}
+                >
+                  {option === 'month' ? 'Month' : 'Week'}
+                </button>
+              ))}
+              <span className="calendar-timeline-zoom-note">
+                {timelineRows.length} {timelineRows.length === 1 ? 'project' : 'projects'}
+              </span>
+            </div>
           <div className="calendar-timeline-scroll">
             <div
               className="calendar-timeline"
               style={{
-                gridTemplateColumns: `minmax(140px, 180px) repeat(${monthDays.length}, minmax(26px, 1fr))`,
-                minWidth: 180 + monthDays.length * 26,
+                /* 34px, not 26. The bars carry their own labels now and a
+                   two-day job is the shortest thing on this grid, so the
+                   narrowest bar it can draw is 68px rather than 52. */
+                gridTemplateColumns: `minmax(140px, 180px) repeat(${timelineDays.length}, minmax(34px, 1fr))`,
+                minWidth: 180 + timelineDays.length * 34,
               }}
             >
               {/* Full-height column tints, drawn first so the bars paint over
@@ -1208,7 +1348,7 @@ export default function ScheduleCalendar({
                   along is impossible to place by eye. Explicit end line rather
                   than -1, which resolves against explicit rows this grid
                   doesn't have. */}
-              {monthDays.map((cell, dayIndex) => {
+              {timelineDays.map((cell, dayIndex) => {
                 const weekday = new Date(`${cell.dateKey}T00:00:00`).getDay();
                 const isToday = cell.dateKey === todayKey;
                 if (!isToday && weekday !== 0 && weekday !== 6) return null;
@@ -1222,7 +1362,7 @@ export default function ScheduleCalendar({
                 );
               })}
               <span className="calendar-timeline-corner" style={{ gridRow: 1 }}>Job</span>
-              {monthDays.map((cell, dayIndex) => {
+              {timelineDays.map((cell, dayIndex) => {
                 const weekday = new Date(`${cell.dateKey}T00:00:00`).getDay();
                 return (
                   <span
@@ -1254,22 +1394,48 @@ export default function ScheduleCalendar({
                       title={[job.client_name, `${span} day${span === 1 ? '' : 's'}`, job.badge_label, job.value_label, job.hours_label, job.city_label].filter(Boolean).join(' · ')}
                       onClick={() => openJobActions(job.occurrence_key)}
                     >
-                      {/* A one-day bar is ~26px. Anything written in it comes
-                          out as "8. P…", so below three days the bar is just a
-                          block and the label lives in the tooltip. */}
-                      {span >= 3 ? (
-                        <span>
-                          {span} days{job.value_label ? ` · ${job.value_label}` : ''}
-                        </span>
-                      ) : null}
+                      {/* EVERY BAR SAYS SOMETHING NOW. The old rule was that
+                          below three days a bar was a bare block with its label
+                          in the tooltip — and with one-day jobs on the grid that
+                          was most of them, so the view was a row of unlabeled
+                          rectangles you had to hover one at a time. The shortest
+                          bar here is two days at 68px, which holds "2 days"; the
+                          client's name and the value arrive as there is room for
+                          them. The name is also in column 1, so the bar losing
+                          it is not the same as it being unavailable.
+
+                          WHICH PARTS SHOW IS A CONTAINER QUERY ON THE BAR, not a
+                          day count. A day count was right at one zoom and wrong
+                          at the other: three days is 102px across a month and
+                          286px across a week, and the week's version was hiding
+                          a name it had 190px of room for. The bar knows how wide
+                          it is; nothing else here does. */}
+                      <span className="calendar-timeline-bar-label">
+                        <b>{span} days</b>
+                        <i>{job.short_name}</i>
+                        {job.value_label ? <em>{job.value_label}</em> : null}
+                      </span>
                     </button>
                   </Fragment>
                 );
               })}
             </div>
           </div>
+          </>
         )
       ) : effectiveView === 'year' ? (
+        <>
+        {/* WHICH TWELVE MONTHS. The toolbar above says "August 2026", which is
+            the month the arrows step and not what is on the screen — so the one
+            view that is not about a month was captioned with one. The window
+            starts at the month you have navigated to, which is also what the
+            arrows do to it, and that is worth saying once. */}
+        <p className="calendar-year-range">
+          <strong>
+            {twelveMonthSummary[0]?.label} – {twelveMonthSummary[twelveMonthSummary.length - 1]?.label}
+          </strong>
+          <span>Hours booked against the hours in each month. Press a month to open it.</span>
+        </p>
         <div className="calendar-year-grid">
           {twelveMonthSummary.map((month) => (
             <article className="calendar-year-card" key={month.monthKey}>
@@ -1277,7 +1443,36 @@ export default function ScheduleCalendar({
                 <button type="button" className="calendar-year-month-link" onClick={() => navigateToMonth(month.monthKey)}>
                   {month.label}
                 </button>
-                <span>{month.uniqueJobCount}</span>
+                <span data-empty={month.uniqueJobCount === 0 || undefined}>{month.uniqueJobCount === 1 ? '1 job' : `${month.uniqueJobCount} jobs`}</span>
+              </div>
+              {/* A COUNT ALONE SAID ALMOST NOTHING. Three 40-hour jobs and three
+                  one-hour jobs both printed "3". The bar is the same ramp the
+                  Capacity view uses, and the hours under it are the reason it is
+                  that color. */}
+              <div className="calendar-year-load" data-load={month.load.percent === null ? 'none' : month.load.percent > 100 ? 'over' : month.load.percent >= 75 ? 'high' : month.load.percent > 0 ? 'some' : 'none'}>
+                <div
+                  className="calendar-year-load-bar"
+                  role="img"
+                  aria-label={
+                    month.load.percent === null
+                      ? 'No working days in this month'
+                      : `${month.load.percent}% booked — ${month.load.bookedHours} of ${month.load.capacityHours} hours${month.load.unknownJobs > 0 ? `, and ${month.load.unknownJobs} ${month.load.unknownJobs === 1 ? 'job with' : 'jobs with'} no duration set` : ''}`
+                  }
+                >
+                  <span style={{ width: `${Math.min(100, month.load.percent ?? 0)}%` }} />
+                </div>
+                <p aria-hidden="true">
+                  <b>{month.load.percent === null ? '—' : `${month.load.percent}%`}</b>
+                  <span>
+                    {month.load.bookedHours} / {month.load.capacityHours} hrs
+                  </span>
+                  {month.value > 0 ? <em>{formatMoney(month.value)}</em> : null}
+                </p>
+                {month.load.unknownJobs > 0 ? (
+                  <p className="calendar-year-unknown">
+                    {month.load.unknownJobs} {month.load.unknownJobs === 1 ? 'job has' : 'jobs have'} no duration set
+                  </p>
+                ) : null}
               </div>
               {month.jobs.length > 0 ? (
                 <div className="calendar-year-jobs">
@@ -1295,6 +1490,7 @@ export default function ScheduleCalendar({
             </article>
           ))}
         </div>
+        </>
       ) : null}
       {effectiveView !== 'year' && (
         <div className="calendar-days-row">
