@@ -6,6 +6,10 @@ import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapVie
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
 import { computeHoursByDate } from '@/lib/booking';
 import { countUnknownDurationByDate } from '@/lib/schedule-capacity';
+import { daysWithScatter, loadOverWindow } from '@/lib/schedule-load';
+/* Local, not UTC: `new Date('2026-08-17')` is midnight UTC and lands on the
+   16th everywhere west of Greenwich. See the note at the top of that file. */
+import { parseDateKey } from '@/lib/schedule-agenda';
 import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -129,15 +133,18 @@ function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T
   }, {});
 }
 
-// Marks for the four header stats. Drawn here rather than pulled from the baked
-// icon set — that set is trade glyphs (wrench, droplet, roller) for contractor
-// sites, and none of them mean "revenue". Four paths is cheaper than growing
-// that set for dashboard chrome.
+// Marks for the three header stats. Drawn here rather than pulled from the
+// baked icon set — that set is trade glyphs (wrench, droplet, roller) for
+// contractor sites, and none of them mean "how full is the month". Three paths
+// is cheaper than growing that set for dashboard chrome.
+//
+// The money and trend marks went with the cards they belonged to; a briefcase
+// went with the jobs card, whose number is a caption now.
 const STAT_PATHS: Record<string, string> = {
-  briefcase: 'M3 8.5h18v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-10Zm5-1V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5M3 12.5h18',
-  money: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm2.6 5.2a3 3 0 0 0-2.6-1.2c-1.5 0-2.6.8-2.6 2s1 1.7 2.6 2 2.7.8 2.7 2-1.2 2-2.7 2a3 3 0 0 1-2.7-1.3M12 6v12',
-  trend: 'M3.5 16.5 9 11l3.5 3.5L20.5 6.5M15.5 6.5h5v5',
-  calendar: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM8 3v4M16 3v4M4 10h16M8.5 13.5h.01M12 13.5h.01M15.5 13.5h.01M8.5 16.5h.01M12 16.5h.01',
+  /** A dial with a needle: how full, at a glance, before the number is read. */
+  gauge: 'M4.2 17.5a8.5 8.5 0 1 1 15.6 0M12 17l3.8-5.2',
+  people: 'M9 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.5 19.5a5.5 5.5 0 0 1 11 0M16 6.2a3 3 0 0 1 0 5.8M17.5 14.6a5.5 5.5 0 0 1 3 4.9',
+  route: 'M6.5 3.5a2.6 2.6 0 0 1 2.6 2.6c0 1.9-2.6 4.6-2.6 4.6S3.9 8 3.9 6.1A2.6 2.6 0 0 1 6.5 3.5Zm11 9a2.6 2.6 0 0 1 2.6 2.6c0 1.9-2.6 4.6-2.6 4.6s-2.6-2.7-2.6-4.6a2.6 2.6 0 0 1 2.6-2.6ZM6.5 13.5v2.2a2.3 2.3 0 0 0 2.3 2.3h2.6',
 };
 
 function StatIcon({ shape }: { shape: keyof typeof STAT_PATHS }) {
@@ -344,6 +351,18 @@ export default async function SchedulePage({
     };
   });
 
+  /* THE HEADER ANSWERS THE PAGE'S OWN QUESTION NOW.
+     It carried jobs, revenue and profit — the three an accounts screen would
+     carry, and on a calendar the middle one was the sum of every quote in the
+     window whether the work had happened or not. The questions this page exists
+     for are: am I full, is anybody assigned, and is a day's work scattered.
+     Revenue is real and it is not one of them; Insights is built to explain it
+     and links to it from the nav.
+
+     The costs query went with it. It fetched every cost row against thirty days
+     of jobs to compute a subtraction that, on future work, was almost always
+     revenue minus nothing — one round trip per page load for a figure that
+     printed the figure above it. */
   const in30Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
   const next30Key = toDateKey(in30Days.getFullYear(), in30Days.getMonth(), in30Days.getDate());
   const scheduledNext30DayJobs = scheduledJobs.filter((job) => {
@@ -351,17 +370,15 @@ export default async function SchedulePage({
     return dateKey >= todayKey && dateKey <= next30Key;
   });
   const scheduledNext30Days = scheduledNext30DayJobs.length;
-  const estimatedRevenue = scheduledNext30DayJobs.reduce((sum, job) => sum + Number(job.quoted_amount || 0), 0);
-  const next30JobIds = scheduledNext30DayJobs.map((job) => job.id);
-  const { data: next30Costs } = next30JobIds.length > 0
-    ? await supabase
-        .from('costs')
-        .select('amount')
-        .eq('account_id', accountId)
-        .in('job_id', next30JobIds)
-    : { data: [] as Array<{ amount: number | string | null }> };
-  const estimatedCost = (next30Costs ?? []).reduce((sum, cost) => sum + Number(cost.amount || 0), 0);
-  const estimatedProfit = estimatedRevenue - estimatedCost;
+
+  // Work starting in the next seven days with nobody on it. Seven and not
+  // thirty: a job three weeks out with no crew is normal, and a job on Thursday
+  // with no crew is a phone call.
+  const in7Key = addDaysToDateKey(todayKey, 6);
+  const unassignedThisWeek = scheduledJobs.filter((job) => {
+    const dateKey = job.scheduled_for as string;
+    return dateKey >= todayKey && dateKey <= in7Key && (assignmentsByJob[job.id]?.length ?? 0) === 0;
+  }).length;
 
   const scheduledJobIds = scheduledJobs.map((job) => job.id);
   const { data: crewDateTextEvents } = scheduledJobIds.length > 0
@@ -525,6 +542,37 @@ export default async function SchedulePage({
     }
   }
 
+  const load = loadOverWindow({
+    fromKey: todayKey,
+    days: 30,
+    hoursByDate: Object.fromEntries(hoursByDateForCalendar),
+    unknownByDate: unknownDurationByDate,
+    capacityPerDay: scheduleDayHours,
+    workingWeekdays,
+    /* Availability blocks only. A day that is merely FULL still has capacity —
+       it is spent, which is the whole point of the ratio. Passing the map that
+       also holds full days would shrink the denominator every time the numerator
+       grew, and a fully booked month would read as 100% however much work was
+       in it. */
+    blockedDays: blockedOnlyDays,
+  });
+
+  /* SCATTER IS 15 STRAIGHT-LINE MILES, and that number is a flag rather than a
+     measurement. The app's own city-driving fallback is two minutes a mile
+     (minutesFromMiles, ~30mph door to door), so 15 miles between a day's two
+     furthest stops is about half an hour each way before anybody has picked up
+     a tool — the point where a day stops being one neighborhood.
+
+     It is haversine over coordinates the jobs already carry: no API call and no
+     drive time, and a river or a highway can make nonsense of it. That is why
+     the card names miles rather than minutes, says "straight line" where it is
+     read, and points at the route planner rather than pretending to be one.
+
+     Checked against this account's real data at 25 miles first, where it never
+     fired: the widest day in the window is 19.5 miles across four stops, which
+     is exactly the day worth looking at. */
+  const scatter = daysWithScatter({ fromKey: todayKey, days: 30, placesByDate, thresholdMiles: 15 });
+
   /* CLOSED UNLESS ASKED FOR, ON THIS PAGE ONLY.
      normalizeMapView's absent-cookie default is 'large', which is right for
      Leads and Customers where the map IS the screen. Here the calendar is the
@@ -631,46 +679,88 @@ export default async function SchedulePage({
                 so the same page printed 11 and 3 for the same question. The bar
                 below owns that number now, and says which is which. */}
             <p className="sched-sum" aria-hidden="true">
-              <span><strong>{scheduledNext30Days}</strong> jobs</span>
-              <span><strong>{formatMoney(estimatedRevenue)}</strong> revenue</span>
+              <span><strong>{load.percent === null ? '—' : `${load.percent}%`}</strong> booked</span>
+              <span><strong>{scheduledNext30Days}</strong> jobs · 30d</span>
+              {unassignedThisWeek > 0 ? <span><strong>{unassignedThisWeek}</strong> need crew</span> : null}
             </p>
           </div>
 
           <div className="schedule-stats">
-            <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${scheduledNext30Days} jobs booked in the next 30 days`}>
-              <StatIcon shape="briefcase" />
-              <strong>{scheduledNext30Days}</strong>
-              <small>Jobs · 30d</small>
+            {/* HOW FULL, WHICH IS THE QUESTION THE PAGE IS FOR.
+                Booked hours against the hours there are to book: working days
+                in the window that are not blocked, times the day's own figure.
+                Over 100% is its own state and not a bar that stops at full — a
+                month booked to 34 of 30 days is a promise somebody breaks.
+
+                The jobs count rides in the caption rather than taking a card of
+                its own. It is the same window and the same work, and it was
+                answering "how much" with a number that says nothing about
+                whether it fits. */}
+            <Link
+              className={`sched-stat${load.percent !== null && load.percent > 100 ? ' needs' : ''}`}
+              href="/dashboard/schedule/settings"
+              aria-label={
+                load.percent === null
+                  ? `No working days in the next 30 days, so there is no capacity to book against. ${scheduledNext30Days} jobs are scheduled.`
+                  : `${load.percent} percent booked over the next 30 days: ${load.bookedHours} of ${load.capacityHours} hours across ${load.workingDays} working days, holding ${scheduledNext30Days} jobs.${load.unknownJobs > 0 ? ` ${load.unknownJobs} of them have no duration set and are not in that total.` : ''} Opens schedule settings, where the working week and the hours in a day are set.`
+              }
+              title={
+                load.percent === null
+                  ? 'No working days in the next 30 days'
+                  : `${load.bookedHours} of ${load.capacityHours} hrs across ${load.workingDays} working days${load.unknownJobs > 0 ? ` · ${load.unknownJobs} ${load.unknownJobs === 1 ? 'job has' : 'jobs have'} no duration set, and are not counted` : ''}`
+              }
+            >
+              <StatIcon shape="gauge" />
+              <strong>{load.percent === null ? '—' : `${load.percent}%`}</strong>
+              <small>Booked · {scheduledNext30Days} jobs</small>
             </Link>
-            <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedRevenue)} estimated revenue in the next 30 days`}>
-              <StatIcon shape="money" />
-              <strong>{formatMoney(estimatedRevenue)}</strong>
-              <small>Revenue</small>
+
+            {/* WORK THIS WEEK WITH NOBODY ON IT. Amber only when there is some:
+                the card that is asking for something should not look like the
+                ones that are not. */}
+            <Link
+              className={`sched-stat${unassignedThisWeek > 0 ? ' needs' : ''}`}
+              href="/dashboard/crew"
+              aria-label={
+                unassignedThisWeek > 0
+                  ? `${unassignedThisWeek} ${unassignedThisWeek === 1 ? 'job' : 'jobs'} in the next 7 days have no crew assigned`
+                  : 'Every job in the next 7 days has crew assigned'
+              }
+            >
+              <StatIcon shape="people" />
+              <strong>{unassignedThisWeek}</strong>
+              <small>Need crew · 7d</small>
             </Link>
-            {/* "Profit" only once something has been taken off the top.
-                Costs land on a job as the work happens, so on a calendar of
-                FUTURE jobs the subtraction is usually revenue minus nothing —
-                and this card then printed the revenue figure a second time,
-                under a label promising margin. A booked job with no costs
-                against it yet has a known value and an unknown profit; say
-                which one this is. */}
-            {estimatedCost > 0 ? (
-              <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedProfit)} estimated profit in the next 30 days, after ${formatMoney(estimatedCost)} of recorded costs`}>
-                <StatIcon shape="trend" />
-                <strong>{formatMoney(estimatedProfit)}</strong>
-                <small>Profit</small>
-              </Link>
-            ) : (
-              <Link className="sched-stat" href="/dashboard/jobs" aria-label="No costs recorded against the next 30 days of jobs yet, so profit cannot be estimated">
-                <StatIcon shape="trend" />
-                <strong>{formatMoney(0)}</strong>
-                <small>Costs logged</small>
-              </Link>
-            )}
-            {/* NO "Ready to book" CARD. It was a fourth link to the same queue,
-                a row under a button that already named the same count — and its
-                number disagreed with two of the other three because it counted
-                approved work only and said nothing about the rest. */}
+
+            {/* DAYS WHOSE STOPS ARE A LONG WAY APART. Straight-line, said out
+                loud, and pointed at the planner that can do better than a
+                straight line. */}
+            <Link
+              className={`sched-stat${scatter.days > 0 ? ' needs' : ''}`}
+              href="/dashboard/schedule/plan"
+              aria-label={
+                scatter.days > 0
+                  ? `${scatter.days} ${scatter.days === 1 ? 'day' : 'days'} in the next 30 have stops more than 15 miles apart in a straight line, the widest ${scatter.worstMiles} miles. Opens the route planner.`
+                  : 'No day in the next 30 has stops more than 15 miles apart. Opens the route planner.'
+              }
+              title={
+                scatter.worstKey
+                  /* dayLabel and not the raw key: "2026-08-17" is a database
+                     value, and this is the one string on the card a person
+                     reads to decide whether to go and look at that day. */
+                  ? `Widest day: ${scatter.worstMiles} miles between stops on ${dayLabel(parseDateKey(scatter.worstKey))}. Straight-line, not drive time.`
+                  : 'Straight-line distance between the two furthest stops on a day, not drive time'
+              }
+            >
+              <StatIcon shape="route" />
+              <strong>{scatter.days}</strong>
+              <small>Spread out · 30d</small>
+            </Link>
+            {/* NO WEATHER CARD, AND IT IS THE ONE THING ON THE LIST THAT IS
+                MISSING. A forecast is a network call per load, on a page that
+                just gave one up — and the weather panel it would duplicate is on
+                the settings route. It belongs on the day you are looking at
+                rather than in a thirty-day count; see the Day view. */}
           </div>
 
         </header>
