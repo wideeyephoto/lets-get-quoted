@@ -61,6 +61,20 @@ export type FeatureDetailLayoutProps = {
   secondary?: { label: string; href?: string } | null;
   proof: FeatureProofPoint[];
   /**
+   * A section between the hero and the proof strip — the first thing under the
+   * fold.
+   *
+   * For a page whose evidence IS the pitch. /features/website-builder shows a
+   * real published site: the whole argument is "look at what it makes", and it
+   * sat below the proof strip, the story and the benefits — 3,124px down on a
+   * phone, with the video itself at 3,566px. Three and a half screens of
+   * telling somebody about a thing they could have been shown.
+   *
+   * Use `afterProof` instead when the evidence answers the proof points rather
+   * than replacing them.
+   */
+  afterHero?: ReactNode;
+  /**
    * A section between the proof strip and the story.
    *
    * There was nowhere to put a page's single strongest piece of evidence
@@ -134,6 +148,7 @@ export default function FeatureDetailLayout({
   primary,
   secondary,
   proof,
+  afterHero,
   afterProof,
   story,
   benefits,
@@ -201,6 +216,8 @@ export default function FeatureDetailLayout({
 
         {demo ?? null}
       </section>
+
+      {afterHero ?? null}
 
       <section className="detail-proof" aria-label="What this does">
         {proof.map((point) => (

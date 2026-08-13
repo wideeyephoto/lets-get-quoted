@@ -45,25 +45,36 @@ const CSS = read('src', 'components', 'marketing', 'example-site-showcase.module
 
 const MEDIA_DIR = ['public', 'media', 'website-builder', 'lawn-and-order'];
 
-describe('the example-site band sits between the benefits and the steps', () => {
+/**
+ * IT MOVED, AND THE MEASUREMENT IS WHY.
+ *
+ * It was passed to `afterBenefits`, which put it under the proof strip, the
+ * story and the three benefits: 3,124px down on a phone, with the video itself
+ * at 3,566px. Three and a half screens of describing a website to somebody who
+ * could have been looking at one. On this page the example IS the argument, so
+ * it is the first thing under the hero — measured 1,498px and 1,941px after.
+ */
+describe('the example-site band sits directly under the hero', () => {
   it('is passed through the layout slot, not as a child', () => {
     // children renders after the four steps, three sections further down, by
     // which point the page has finished arguing.
-    expect(PAGE_CODE).toMatch(/afterBenefits=\{\s*<ExampleSiteShowcase/);
+    expect(PAGE_CODE).toMatch(/afterHero=\{\s*<ExampleSiteShowcase/);
   });
 
-  it('the layout renders that slot after the story and before the process', () => {
-    const story = LAYOUT_CODE.indexOf('detail-story');
-    const slot = LAYOUT_CODE.indexOf('{afterBenefits ?? null}');
-    const process = LAYOUT_CODE.indexOf('detail-process');
-    expect(story).toBeGreaterThan(-1);
-    expect(slot).toBeGreaterThan(story);
-    expect(process).toBeGreaterThan(slot);
+  it('the layout renders that slot after the hero and before the proof strip', () => {
+    const hero = LAYOUT_CODE.indexOf('detail-hero');
+    const slot = LAYOUT_CODE.indexOf('{afterHero ?? null}');
+    const proof = LAYOUT_CODE.indexOf('detail-proof');
+    expect(hero).toBeGreaterThan(-1);
+    expect(slot).toBeGreaterThan(hero);
+    expect(proof).toBeGreaterThan(slot);
   });
 
-  it('leaves the existing afterProof slot alone', () => {
-    // The sibling that /features/back-office depends on.
+  it('leaves the other two slots alone', () => {
+    // afterProof is what /features/back-office depends on; afterBenefits is
+    // still the right answer for evidence that ANSWERS the benefits.
     expect(LAYOUT_CODE).toContain('{afterProof ?? null}');
+    expect(LAYOUT_CODE).toContain('{afterBenefits ?? null}');
   });
 });
 
@@ -92,7 +103,7 @@ describe('what the section claims', () => {
   it('makes no performance claim', () => {
     // Percentages, multipliers and lead counts. Nothing on this page can
     // support one, and an invented one is the fastest way to lose the rest.
-    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterBenefits'), PAGE_CODE.indexOf('storyId='));
+    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterHero'), PAGE_CODE.indexOf('storyId='));
     expect(band).not.toMatch(/\d+\s*%/);
     expect(band).not.toMatch(/\b\d+x\b/i);
     expect(band).not.toMatch(/\b(more leads|conversion|increase[sd]?|boost)\b/i);

@@ -676,3 +676,71 @@
     display: none;
   }
 }
+
+/* ---- where the rest of it is ---------------------------------------------
+
+   Cards rather than the pill row above, and the difference is the sentence.
+   `.nextLinks` is four names following one request to payment — a row of pills
+   is right for that. These eight are destinations somebody is deciding between,
+   and a decision needs the line under the name.
+
+   The :global(.section-block) prefix is the same trick the pill row uses and
+   for the same reason: the flagship shell sets `.root :global(a) { color:
+   inherit }` at (0,2,0), which a bare `.elsewhere a` only ties with and then
+   loses to on source order. */
+
+:global(.section-block) .elsewhere {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 0.7rem;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+:global(.section-block) .elsewhere a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  height: 100%;
+  /* The whole card is the target, so the 44px floor is met by the card and not
+     by the words inside it. */
+  min-height: 44px;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+:global(.section-block) .elsewhere a:hover {
+  border-color: rgba(255, 122, 33, 0.45);
+  background: rgba(255, 122, 33, 0.04);
+}
+
+:global(.section-block) .elsewhere a:focus-visible {
+  outline: 2px solid var(--flare, #ff7a21);
+  outline-offset: 3px;
+}
+
+:global(.section-block) .elsewhere strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+:global(.section-block) .elsewhere strong span { color: var(--flare, #ff7a21); }
+
+:global(.section-block) .elsewhere a > span {
+  color: var(--muted, rgba(255, 255, 255, 0.66));
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.section-block) .elsewhere a { transition: none; }
+}

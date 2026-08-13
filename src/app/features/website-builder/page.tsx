@@ -65,6 +65,24 @@ const NEXT: { href: string; label: string }[] = [
   { href: '/features/payments', label: 'Payments' },
 ];
 
+/* THE REST OF THE PRODUCT, FROM THE PAGE MOST PEOPLE ARRIVE ON.
+   The four links above follow one request through to getting paid, which is the
+   journey this page argues for — and they were the only four internal links on
+   it. That left eight capability pages reachable from here only by going back
+   to /features and starting again, on the page a contractor lands on first.
+   Each line says what the page is FOR rather than repeating its title, because
+   a column of product names is a sitemap and this is meant to be read. */
+const ELSEWHERE: { href: string; label: string; body: string }[] = [
+  { href: '/features/reviews', label: 'Reviews', body: 'Ask after the work is done, and put the good ones on the site itself.' },
+  { href: '/features/client-portal', label: 'Client portal', body: 'One link where a customer finds their quote, visit, invoice and photos.' },
+  { href: '/features/recurring', label: 'Recurring work', body: 'Plans that create their own jobs on the morning of the visit.' },
+  { href: '/features/quick-stops', label: 'Quick Stops', body: 'Fill a gap in the day with a nearby job worth the detour.' },
+  { href: '/features/crew', label: 'Crew & labor', body: 'Who is on what, hours worked, and what the day actually cost.' },
+  { href: '/features/back-office', label: 'Back office', body: 'One record per job, from the first message to the last payment.' },
+  { href: '/features/cash-flow', label: 'Cash flow', body: 'What is owed, what is coming, and what it leaves you with.' },
+  { href: '/pricing', label: 'Pricing', body: 'No monthly subscription. A per-job fee, and Stripe’s cut named in full.' },
+];
+
 /* The four beats a visitor moves through, which is the page's whole argument
    about why a contractor site is not the same thing as a website. */
 const JOURNEY: { n: string; title: string; body: string }[] = [
@@ -262,7 +280,13 @@ export default function WebsiteBuilderPage() {
          traffic or conversion number. "Example site created with Let's Get
          Quoted" is the whole claim, and it is one we can stand behind by
          pointing at the URL. */
-      afterBenefits={
+      /* FIRST THING UNDER THE HERO, because on this page the example IS the
+         argument. It was passed to afterBenefits and landed 3,124px down on a
+         phone with the video itself at 3,566 — three and a half screens of
+         describing a website to somebody who could have been looking at one.
+         The proof strip, the story and the three benefits all still make their
+         case; they now make it to a reader who has already seen the thing. */
+      afterHero={
         <ExampleSiteShowcase
           eyebrow="Example site created with Let’s Get Quoted"
           title="From three answers to a complete contractor website."
@@ -514,6 +538,47 @@ export default function WebsiteBuilderPage() {
             </details>
           ))}
         </div>
+      </section>
+
+      {/* -------------------------------------------------------------------
+          WHERE THE REST OF IT IS.
+
+          The site is the front door and this is the page most people arrive
+          on, so it was the worst place in the product to be a dead end — four
+          links out, all of them following the same one request to payment, and
+          eight capability pages you could only reach by going back to
+          /features and starting again.
+
+          Real anchor text, and a line saying what each page is for. "Reviews →"
+          on its own is a nav item; a reader deciding whether that page is worth
+          a click needs the sentence, and a search engine reading this page for
+          what it connects to needs it more.
+          ------------------------------------------------------------------ */}
+      <section className="section-block" aria-labelledby="elsewhere-title">
+        <div className={styles.sectionHead}>
+          <p className="eyebrow">The rest of the back office</p>
+          <h2 id="elsewhere-title">The site is the front door. This is the building.</h2>
+          {/* No class: .sectionHead > p already styles the lede, and
+              styles.sectionLede does not exist — a CSS-module miss is silently
+              `undefined` rather than an error. */}
+          <p>
+            Every request the site sends you lands in the same place as the work you already have — so the
+            quote, the visit, the crew, the invoice and the review are one job rather than five tools.
+          </p>
+        </div>
+
+        <ul className={styles.elsewhere}>
+          {ELSEWHERE.map((item) => (
+            <li key={item.href}>
+              <Link href={item.href}>
+                <strong>
+                  {item.label} <span aria-hidden="true">&rarr;</span>
+                </strong>
+                <span>{item.body}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
     </FeatureDetailLayout>
   );
