@@ -225,7 +225,148 @@ describe('the confirmation says what is still outstanding', () => {
 });
 
 /* ===========================================================================
-   6. The drag handle stays
+   6. Clearing the blockers without leaving the page
+   ======================================================================== */
+describe('the duration is editable in place', () => {
+  const ACTIONS = stripJs(read('src', 'app', 'dashboard', 'jobs', 'actions.ts'));
+
+  it('replaced the link that took you off the schedule', () => {
+    expect(PANEL).toContain('<DurationField jobId={job.id} hours={job.estimatedHours} />');
+    expect(PANEL).not.toContain('Not set — add one');
+  });
+
+  it('the action is owner-scoped and filters on the account as well as the id', () => {
+    const fn = ACTIONS.slice(ACTIONS.indexOf('export async function setJobEstimatedHoursAction'));
+    const body = fn.slice(0, fn.indexOf('\nexport '));
+    expect(body).toContain('await requireOwnerContext()');
+    expect(body).toContain(".eq('account_id', accountId)");
+  });
+
+  it('rejects an impossible duration rather than silently clamping it', () => {
+    // Turning a typed 200 into 24 puts a number on the calendar nobody typed.
+    const fn = ACTIONS.slice(ACTIONS.indexOf('export async function setJobEstimatedHoursAction'));
+    expect(fn).toContain('hours < 0 || hours > 24');
+    expect(fn).toContain('Enter a duration between 0 and 24 hours.');
+  });
+
+  it('revalidates the schedule, so the capacity ramp picks the new figure up', () => {
+    const fn = ACTIONS.slice(ACTIONS.indexOf('export async function setJobEstimatedHoursAction'));
+    expect(fn).toContain("revalidatePath('/dashboard/schedule')");
+  });
+
+  it('is a real labelled control with a touch target', () => {
+    expect(PANEL).toContain('Estimated hours');
+    expect(ruleFor('.sched-duration-input')).toContain('min-height: 44px');
+  });
+});
+
+describe('the crew step recommends before it lists', () => {
+  it('marks who is already booked on the chosen day', () => {
+    expect(PANEL).toContain('busyOnChosenDay');
+    expect(PANEL).toContain('already on {clashes}');
+  });
+
+  it('says nothing about conflicts before a day is chosen', () => {
+    // "Already booked" is meaningless before there is a date to be booked
+    // against, and a count from some other day would be worse than none.
+    expect(PANEL).toContain('if (dateKey) {');
+  });
+
+  it('warns without blocking — doubling somebody up is sometimes right', () => {
+    expect(PANEL).not.toMatch(/disabled=\{[^}]*clashes/);
+    expect(ruleFor('.sched-crew-clash')).toContain('var(--gold-ink)');
+  });
+
+  it('sorts the free before the busy, stably', () => {
+    expect(PANEL).toContain('const visibleCrew = byRole');
+    expect(PANEL).toContain('return a.index - b.index;');
+  });
+
+  it('offers a role filter only when there is more than one role', () => {
+    // A row of one button that cannot change anything is furniture.
+    expect(PANEL).toContain('{roles.length > 1 ? (');
+    expect(PANEL).toContain('aria-label="Filter crew by role"');
+  });
+
+  it('clears the filter when a different job is opened', () => {
+    expect(PANEL).toContain('setRoleFilter(null);');
+  });
+
+  it('the busy map is built from data the page already had', () => {
+    const PAGE = stripJs(read('src', 'app', 'dashboard', 'schedule', 'page.tsx'));
+    expect(PAGE).toContain('const busyCrewByDate: Record<string, string[]> = {};');
+    // No extra round trip: it reuses assignmentsByJob and scheduledJobs.
+    expect(PAGE).toContain('assignmentsByJob[job.id] ?? []');
+  });
+});
+
+/* ===========================================================================
+   7. The rail collapses
+   ======================================================================== */
+describe('the desktop queue collapses', () => {
+  const QUEUE = stripJs(read('src', 'app', 'dashboard', 'schedule', 'UnscheduledQueue.tsx'));
+
+  it('offers the toggle only where the queue is a permanent column', () => {
+    // Below 1280 the queue is an overlay and "collapse" is what Back does.
+    expect(QUEUE).toContain('const showCollapseToggle = !isOverlay;');
+    expect(ruleFor('.sched-queue-collapse')).toContain('display: none');
+    expect(CSS).toMatch(/@media \(min-width: 1280px\)[\s\S]{0,200}\.sched-queue-collapse \{ display: inline-flex; \}/);
+  });
+
+  it('carries the count, so a closed rail says what is behind it', () => {
+    expect(QUEUE).toContain('${count} waiting');
+  });
+
+  it('takes the collapsed list out of the tab order but not the toggle', () => {
+    // Inerting the wrapper would take the button with it, and a closed rail
+    // with no way to reopen it is a rail you have lost.
+    expect(QUEUE).toContain('const panelInert = collapsed && showCollapseToggle;');
+    expect(QUEUE).toMatch(/const node = panelRef\.current;[\s\S]{0,200}setAttribute\('inert'/);
+  });
+
+  it('reclaims the column rather than just hiding the list', () => {
+    expect(CSS).toContain('.schedule-workbench:has(.sched-queue.is-collapsed)');
+    expect(CSS).toContain('grid-template-columns: auto minmax(0, 1fr);');
+  });
+
+  it('the rail is a real column now, so the toggle is not a stray grid item', () => {
+    // As display:contents the wrapper vanished and a toggle added here would
+    // have been a third item in a two-column grid.
+    expect(ruleFor('.sched-queue')).toContain('display: flex');
+    expect(ruleFor('.sched-queue-panel')).toContain('display: contents');
+  });
+
+  it('is announced as a disclosure', () => {
+    expect(QUEUE).toContain('aria-expanded={!collapsed}');
+    expect(QUEUE).toContain('aria-controls="sched-queue-panel"');
+    expect(QUEUE).toContain('id="sched-queue-panel"');
+  });
+});
+
+/* ===========================================================================
+   8. One glyph, one meaning
+   ======================================================================== */
+describe('the capacity flags', () => {
+  const CAPACITY = stripJs(read('src', 'app', 'dashboard', 'schedule', 'ScheduleMonthCapacity.tsx'));
+  const LEGEND = read('src', 'app', 'dashboard', 'schedule', 'CalendarLegend.tsx');
+
+  it('no longer spends the legend’s diamond on a second meaning', () => {
+    // ◇ is "quote not approved" in CalendarLegend. It also meant "this day has
+    // jobs with no crew" here — one glyph, two unrelated things, on one route.
+    expect(LEGEND).toContain("new_lead: '◇'");
+    expect(CAPACITY).not.toMatch(/crewless[^>]*>\s*◇/);
+    expect(CAPACITY).toContain('∅');
+  });
+
+  it('explains all three on hover, since none of them has a visible key', () => {
+    for (const phrase of ['Two jobs overlap', 'no crew assigned', 'no duration set']) {
+      expect(CAPACITY, phrase).toContain(phrase);
+    }
+  });
+});
+
+/* ===========================================================================
+   9. The drag handle stays
    ======================================================================== */
 describe('the drag handle', () => {
   it('is not hidden on touch, because it is the only keyboard path', () => {

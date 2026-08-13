@@ -681,6 +681,52 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
+/**
+ * Set a job's estimated hours from wherever you happen to be standing.
+ *
+ * Exists because "no duration" is the blocker the scheduling panel reports most
+ * and the only way to clear it was to leave the page, open the job, edit a
+ * field, and come back to a queue that had lost your place. It is one number;
+ * it should not cost a round trip through another screen.
+ *
+ * A missing duration is not cosmetic. The capacity ramp measures how full a day
+ * is by summing estimated hours, so an unestimated job is why a day can read as
+ * empty when it is fully booked.
+ *
+ * Returns a result rather than throwing: this is called from a panel inside a
+ * list, and an unhandled throw would replace the page with an error boundary
+ * and lose the queue position it was called from.
+ */
+export async function setJobEstimatedHoursAction(
+  jobId: string,
+  hours: number | null,
+): Promise<{ ok: boolean; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  // Rejected rather than clamped. A negative or absurd duration is a typo, and
+  // silently turning 200 into 24 would put a number on the calendar nobody
+  // typed. 0 clears the estimate, which is a real thing to want.
+  if (hours !== null && (!Number.isFinite(hours) || hours < 0 || hours > 24)) {
+    return { ok: false, message: 'Enter a duration between 0 and 24 hours.' };
+  }
+
+  const value = hours === null || hours === 0 ? null : Math.round(hours * 10) / 10;
+  const { error } = await supabase
+    .from('jobs')
+    .update({ estimated_hours: value })
+    .eq('id', jobId)
+    .eq('account_id', accountId);
+
+  if (error) return { ok: false, message: 'Could not save that duration.' };
+
+  revalidatePath('/dashboard/schedule');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return {
+    ok: true,
+    message: value === null ? 'Duration cleared.' : `Set to ${value} ${value === 1 ? 'hour' : 'hours'}.`,
+  };
+}
+
 // Quick single add/remove toggle used by the schedule calendar's click-to-
 // assign popover — unlike updateJobCrewAction, this doesn't replace the
 // whole assignment set, it just flips one crew member on one job.

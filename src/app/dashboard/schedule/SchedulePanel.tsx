@@ -1,12 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import SaveButton from '@/components/save-button';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
-import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
+import {
+  scheduleJobAction,
+  sendClientScheduleOptionsAction,
+  setJobEstimatedHoursAction,
+  updateJobCrewAction,
+} from '../jobs/actions';
 import { scheduleReady, suggestSlots, type SuggestedSlot } from '@/lib/schedule-suggestions';
 import { jobBlockers } from '@/lib/schedule-readiness';
 import { useModal } from './use-modal';
@@ -48,6 +53,84 @@ function relativeLabel(dateKey: string, todayKey: string): string | null {
   if (days === 1) return 'Tomorrow';
   if (days > 1 && days < 7) return `In ${days} days`;
   return null;
+}
+
+/**
+ * The duration, editable in place.
+ *
+ * Its own component so the whole panel does not re-render on every keystroke —
+ * the slot list above it is recomputed by suggestSlots and is the expensive
+ * thing on this screen.
+ *
+ * Saves on blur and on Enter rather than behind a Save button: it is one
+ * number, and a button would be a third control in a definition list. The
+ * server revalidates /dashboard/schedule, so the suggestions and the capacity
+ * ramp pick the new figure up on the next render without this having to tell
+ * them.
+ */
+function DurationField({ jobId, hours }: { jobId: string; hours: number | null }) {
+  const [value, setValue] = useState(hours === null ? '' : String(hours));
+  const [state, setState] = useState<{ tone: 'idle' | 'ok' | 'error'; message: string }>({ tone: 'idle', message: '' });
+  const [saving, startSaving] = useTransition();
+
+  // The server wins once a revalidation lands, and a new job is a new value.
+  useEffect(() => {
+    setValue(hours === null ? '' : String(hours));
+    setState({ tone: 'idle', message: '' });
+  }, [jobId, hours]);
+
+  function commit() {
+    const trimmed = value.trim();
+    const next = trimmed === '' ? null : Number(trimmed);
+    // Unchanged means nothing to say and nothing to write.
+    if ((next ?? 0) === (hours ?? 0)) return;
+    if (next !== null && !Number.isFinite(next)) {
+      setState({ tone: 'error', message: 'Enter a number of hours.' });
+      return;
+    }
+    startSaving(async () => {
+      const result = await setJobEstimatedHoursAction(jobId, next);
+      setState({ tone: result.ok ? 'ok' : 'error', message: result.message });
+    });
+  }
+
+  return (
+    <span className="sched-duration">
+      <label className="sr-only" htmlFor={`sched-hours-${jobId}`}>
+        Estimated hours
+      </label>
+      <input
+        id={`sched-hours-${jobId}`}
+        className="sched-duration-input"
+        type="number"
+        inputMode="decimal"
+        min={0}
+        max={24}
+        step={0.5}
+        value={value}
+        placeholder="Not set"
+        disabled={saving}
+        onChange={(event) => setValue(event.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+      />
+      <span className="sched-duration-unit">hrs</span>
+      {state.message ? (
+        <span
+          className={`sched-duration-note${state.tone === 'error' ? ' is-error' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          {state.message}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function clockLabel(time: string): string {
@@ -92,6 +175,8 @@ export default function SchedulePanel({
    * On by default, matching which of the two submits used to be the primary.
    */
   const [notifyCrew, setNotifyCrew] = useState(true);
+  /** null is "everyone". A role string filters the crew list to it. */
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // A new job is a new decision. Without this, opening the second job in the
@@ -103,6 +188,9 @@ export default function SchedulePanel({
     setTime('');
     setCrewIds(job?.crewIds ?? []);
     setNotifyCrew(true);
+    // A role filter left on from the last job would hide most of the roster on
+    // this one, silently.
+    setRoleFilter(null);
   }, [job?.id, job?.crewIds]);
 
   // Only a dialog when it behaves like one. Docked in the third column it is a
@@ -149,6 +237,42 @@ export default function SchedulePanel({
   // the panel arguing with itself.
   const remaining = jobBlockers({ ...job, crewIds }).filter((blocker) => blocker.key !== 'crew' || crewIds.length === 0);
 
+  /**
+   * How many jobs each crew member already has on the chosen day.
+   *
+   * Empty until a day is picked, which is correct rather than a gap: "already
+   * booked" is meaningless before there is a date to be booked against, and
+   * showing a count from some other day would be worse than showing none.
+   */
+  const busyOnChosenDay = new Map<string, number>();
+  if (dateKey) {
+    for (const id of context.busyCrewByDate[dateKey] ?? []) {
+      busyOnChosenDay.set(id, (busyOnChosenDay.get(id) ?? 0) + 1);
+    }
+  }
+
+  const roles = [...new Set(crew.map((member) => member.role_label).filter(Boolean))].sort() as string[];
+  const byRole = roleFilter === null ? crew : crew.filter((member) => member.role_label === roleFilter);
+
+  /**
+   * RECOMMENDED FIRST: free on the chosen day, then already assigned to this
+   * job, then everyone else.
+   *
+   * A stable sort on the incoming order underneath, so the list does not
+   * reshuffle itself as you tick names — somebody you just checked staying put
+   * matters more than the ordering being perfect.
+   */
+  const visibleCrew = byRole
+    .map((member, index) => ({ member, index }))
+    .sort((a, b) => {
+      const clash = (busyOnChosenDay.get(a.member.id) ?? 0) - (busyOnChosenDay.get(b.member.id) ?? 0);
+      if (clash !== 0) return clash;
+      const already = Number(job.crewIds.includes(b.member.id)) - Number(job.crewIds.includes(a.member.id));
+      if (already !== 0) return already;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.member);
+
   return (
     <>
       {docked ? null : <div className="sched-detail-scrim" onClick={onClose} aria-hidden="true" />}
@@ -178,13 +302,12 @@ export default function SchedulePanel({
           </div>
           <div>
             <dt>Est. time</dt>
-            {/* Not "0h". An unestimated job is the reason a day can read as
-                empty when it is not — see the capacity ramp — and this is where
-                somebody can still do something about it. */}
+            {/* EDITED HERE, not on another page. An unestimated job is the
+                reason a day can read as empty when it is not — see the capacity
+                ramp — and the fix used to be a link that took you off the
+                schedule and lost your place in the queue. */}
             <dd>
-              {job.estimatedHours ? `${job.estimatedHours} hrs` : (
-                <Link href={`/dashboard/jobs/${job.id}`}>Not set — add one</Link>
-              )}
+              <DurationField jobId={job.id} hours={job.estimatedHours} />
             </dd>
           </div>
           <div>
@@ -287,25 +410,69 @@ export default function SchedulePanel({
               {crew.length === 0 ? (
                 <p className="sched-step-empty">No active crew yet. <Link href="/dashboard/crew">Add your team →</Link></p>
               ) : (
-                <div className="sched-crew-list">
-                  {crew.map((member) => {
-                    const on = crewIds.includes(member.id);
-                    return (
-                      <label className="sched-crew-option" key={member.id}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() => setCrewIds((current) => on ? current.filter((id) => id !== member.id) : [...current, member.id])}
-                        />
-                        <span className="sched-crew-check" aria-hidden="true">✓</span>
-                        <span className="sched-crew-copy">
-                          <strong>{member.name}</strong>
-                          <small>{member.role_label}</small>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <>
+                  {/* ROLE FILTER. Only once there is more than one role to
+                      filter by — a row of one button that cannot change
+                      anything is furniture. */}
+                  {roles.length > 1 ? (
+                    <div className="sched-crew-roles" role="group" aria-label="Filter crew by role">
+                      <button
+                        type="button"
+                        className={`sched-crew-role${roleFilter === null ? ' is-on' : ''}`}
+                        aria-pressed={roleFilter === null}
+                        onClick={() => setRoleFilter(null)}
+                      >
+                        Everyone
+                      </button>
+                      {roles.map((role) => (
+                        <button
+                          key={role}
+                          type="button"
+                          className={`sched-crew-role${roleFilter === role ? ' is-on' : ''}`}
+                          aria-pressed={roleFilter === role}
+                          onClick={() => setRoleFilter(roleFilter === role ? null : role)}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="sched-crew-list">
+                    {visibleCrew.map((member) => {
+                      const on = crewIds.includes(member.id);
+                      const clashes = busyOnChosenDay.get(member.id) ?? 0;
+                      return (
+                        <label className={`sched-crew-option${clashes > 0 ? ' has-clash' : ''}`} key={member.id}>
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() => setCrewIds((current) => on ? current.filter((id) => id !== member.id) : [...current, member.id])}
+                          />
+                          <span className="sched-crew-check" aria-hidden="true">✓</span>
+                          <span className="sched-crew-copy">
+                            <strong>{member.name}</strong>
+                            <small>
+                              {member.role_label}
+                              {/* A CONFLICT, NOT A BLOCK. Doubling somebody up
+                                  is sometimes right — two short calls on one
+                                  street — so this says what is true and leaves
+                                  the decision alone. */}
+                              {clashes > 0 ? (
+                                <em className="sched-crew-clash">
+                                  {' · '}already on {clashes} {clashes === 1 ? 'job' : 'jobs'} that day
+                                </em>
+                              ) : null}
+                            </small>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {visibleCrew.length === 0 ? (
+                    <p className="sched-step-empty">Nobody with that role is active.</p>
+                  ) : null}
+                </>
               )}
               {/* Only when it would actually do something. A switch governing a
                   text to nobody is a switch that teaches you it does nothing. */}

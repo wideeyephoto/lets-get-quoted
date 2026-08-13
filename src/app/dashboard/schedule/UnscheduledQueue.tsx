@@ -132,6 +132,23 @@ export default function UnscheduledQueue({
   const label = `${count} ${count === 1 ? 'job needs' : 'jobs need'} a date`;
 
   /**
+   * COLLAPSING THE DESKTOP RAIL.
+   *
+   * Only meaningful above 1280, where the queue is a permanent column rather
+   * than an overlay you have already dismissed. It is a real toggle rather
+   * than a CSS-only trick because the collapsed rail has to leave the tab
+   * order — a hidden column you can still Tab into is worse than one that is
+   * simply there.
+   *
+   * Deliberately NOT persisted. A remembered collapse means opening the
+   * schedule to a rail that is closed for a reason you set last week, with
+   * eleven jobs behind it and nothing on screen saying so; the count on the
+   * toggle is only useful if you can see it.
+   */
+  const [collapsed, setCollapsed] = useState(false);
+  const showCollapseToggle = !isOverlay;
+
+  /**
    * A CLOSED DIALOG MUST NOT BE IN THE ACCESSIBILITY TREE.
    *
    * On a tablet this is a full-screen overlay that is closed almost all of the
@@ -163,12 +180,59 @@ export default function UnscheduledQueue({
     }
   }, [hidden]);
 
+  /**
+   * The collapsed rail leaves the tab order too — but the TOGGLE must not.
+   *
+   * So this marks the panel rather than the wrapper. Inerting the wrapper (as
+   * the overlay case above does) would take the collapse button with it, and a
+   * closed rail with no way to reopen it is a rail you have lost. The overlay
+   * case can inert the wrapper safely because the toggle is not rendered at
+   * those widths at all.
+   */
+  const panelInert = collapsed && showCollapseToggle;
+  useEffect(() => {
+    const node = panelRef.current;
+    if (!node) return;
+    if (panelInert) {
+      node.setAttribute('inert', '');
+      node.setAttribute('aria-hidden', 'true');
+    } else if (!hidden) {
+      node.removeAttribute('inert');
+      node.removeAttribute('aria-hidden');
+    }
+  }, [panelInert, hidden]);
+
   return (
-    <div className={`sched-queue${open ? ' is-open' : ''}`} data-count={count} ref={rootRef}>
+    <div
+      className={`sched-queue${open ? ' is-open' : ''}${collapsed && showCollapseToggle ? ' is-collapsed' : ''}`}
+      data-count={count}
+      ref={rootRef}
+    >
       {/* The backdrop only exists in overlay mode; on desktop the whole wrapper
           is display:contents and this never paints. */}
       <div className="sched-queue-scrim" onClick={close} aria-hidden="true" />
+
+      {/* The collapsed rail's only control. It carries the count, because a
+          closed column that does not say how much is behind it is a column you
+          forget you closed. Rendered only on the desktop rail — below 1280 the
+          queue is an overlay and "collapse" is what the Back button does. */}
+      {showCollapseToggle ? (
+        <button
+          type="button"
+          className="sched-queue-collapse"
+          onClick={() => setCollapsed((value) => !value)}
+          aria-expanded={!collapsed}
+          aria-controls="sched-queue-panel"
+        >
+          <span aria-hidden="true">{collapsed ? '›' : '‹'}</span>
+          <span className="sched-queue-collapse-label">
+            {collapsed ? `${count} waiting` : 'Hide'}
+          </span>
+        </button>
+      ) : null}
+
       <div
+        id="sched-queue-panel"
         className="sched-queue-panel"
         ref={panelRef}
         tabIndex={-1}

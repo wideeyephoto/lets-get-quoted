@@ -60,4 +60,13 @@ export type SuggestContext = {
   blockedDays: Record<string, string>;
   workingWeekdays: number[];
   workdayStart: string | null;
+  /**
+   * Who is already booked on each day: dateKey -> crew ids.
+   *
+   * So the crew list can say "already on 2 jobs that day" beside a name instead
+   * of letting somebody be assigned to two places at once and finding out on
+   * the morning. Built from the assignments the page has already loaded, so it
+   * costs no extra query.
+   */
+  busyCrewByDate: Record<string, string[]>;
 };

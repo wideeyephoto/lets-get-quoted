@@ -382,6 +382,23 @@ export default async function SchedulePage({
     return dateKey >= todayKey && dateKey <= in7Key && (assignmentsByJob[job.id]?.length ?? 0) === 0;
   }).length;
 
+  /* WHO IS ALREADY BOOKED, BY DAY.
+     From the assignments and scheduled jobs already in hand, so it costs no
+     extra query. The scheduling panel reads it to say "already on 2 jobs that
+     day" beside a name — the alternative is assigning somebody to two places
+     at once and finding out on the morning of the work.
+
+     Duplicates are kept rather than de-duplicated: two entries for the same
+     crew member on the same date is two jobs, which is exactly the count the
+     panel prints. */
+  const busyCrewByDate: Record<string, string[]> = {};
+  for (const job of scheduledJobs) {
+    const dateKey = job.scheduled_for as string;
+    const assigned = assignmentsByJob[job.id] ?? [];
+    if (assigned.length === 0) continue;
+    (busyCrewByDate[dateKey] ??= []).push(...assigned);
+  }
+
   const scheduledJobIds = scheduledJobs.map((job) => job.id);
   const { data: crewDateTextEvents } = scheduledJobIds.length > 0
     ? await supabase
@@ -694,6 +711,7 @@ export default async function SchedulePage({
           blockedDays: blockedOnlyDays,
           workingWeekdays,
           workdayStart: (account as { workday_start?: string } | null)?.workday_start ?? null,
+          busyCrewByDate,
         }}
         clientAvailability={clientScheduleAvailability}
       >

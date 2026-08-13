@@ -157,11 +157,14 @@ export default function ScheduleMonthCapacity({
                       a sighted user was looking at a bare "!", "◇" and "?" with
                       no key anywhere on the page.
 
-                      NOTE ON THE DIAMOND: ◇ also means "quote not approved" in
-                      CalendarLegend, so the same glyph carries two meanings on
-                      this route. The title disambiguates it on hover; giving
-                      the two states distinct shapes is the real fix and is not
-                      done here. */}
+                      THE CREWLESS MARK IS NOT A DIAMOND ANY MORE. It was ◇,
+                      which CalendarLegend already spends on "quote not
+                      approved" — the same glyph carrying two unrelated meanings
+                      on one route, one of them about a job's status and the
+                      other about a whole day's staffing. ∅ belongs to neither
+                      family: the status marks are geometric (◇ ◆ ✓ –) and the
+                      other two flags here are punctuation (! ?), so "nobody on
+                      it" now reads as its own thing. */}
                   {conflicts.length > 0 ? (
                     <i className="sched-month-flag clash" aria-hidden="true" title="Two jobs overlap on this day">!</i>
                   ) : null}
@@ -171,7 +174,7 @@ export default function ScheduleMonthCapacity({
                       aria-hidden="true"
                       title={`${unassigned} ${unassigned === 1 ? 'job has' : 'jobs have'} no crew assigned`}
                     >
-                      ◇
+                      ∅
                     </i>
                   ) : null}
                   {/* A shape, not just a shade. The band for this state is a

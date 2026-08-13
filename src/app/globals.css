@@ -19266,6 +19266,28 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .sched-detail-facts dt { color: var(--mute-i62); font-size: 0.75rem; }
 .sched-detail-facts dd { margin: 0; font-size: 0.8rem; line-height: 1.35; }
 
+/* THE DURATION, EDITED IN PLACE. It used to be a link to the job page, which
+   is a round trip through another screen for one number — and it came back to
+   a queue that had lost your place. */
+.sched-duration { display: inline-flex; align-items: baseline; gap: 0.3rem; flex-wrap: wrap; }
+.sched-duration-input {
+  width: 4.2rem;
+  /* 44px, because it is a real control in a panel that is used on a phone. */
+  min-height: 44px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.sched-duration-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sched-duration-unit { color: var(--mute-i62); font-size: 0.75rem; }
+.sched-duration-note { flex-basis: 100%; font-size: 0.72rem; color: var(--mute-i62); }
+.sched-duration-note.is-error { color: #f8a5a5; }
+
 /* ---- the three steps ------------------------------------------------------ */
 .sched-step { display: grid; gap: 0.5rem; padding-top: 0.65rem; border-top: 1px solid var(--edge-t10); }
 .sched-step h3 {
@@ -19352,6 +19374,36 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   cursor: pointer;
 }
 .sched-manual-grid { display: grid; gap: 0.45rem; margin-top: 0.3rem; }
+
+/* ROLE FILTER, shown only when there is more than one role to filter by. */
+.sched-crew-roles { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
+.sched-crew-role {
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mute-i56);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sched-crew-role:hover { color: var(--text); border-color: var(--edge-t22); }
+/* The chosen one is marked by fill AND weight, not by hue alone. */
+.sched-crew-role.is-on {
+  border-color: var(--cedge-orange-5);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--ink-orange-12);
+  font-weight: 800;
+}
+.sched-crew-role:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Already booked elsewhere that day. A WARNING, NOT A BLOCK — doubling
+   somebody up is sometimes right, so this states the fact and leaves the
+   decision alone. Gold rather than red for the same reason. */
+.sched-crew-clash { color: var(--gold-ink); font-style: normal; font-weight: 700; }
+.sched-crew-option.has-clash { background: rgba(255, 209, 102, 0.05); }
 
 .sched-crew-list { display: grid; gap: 0.25rem; }
 .sched-crew-option {
@@ -29597,8 +29649,60 @@ select optgroup {
 
 /* --- the unscheduled queue -------------------------------------------------
    Desktop: transparent wrapper, the section flows into the rail. */
-.sched-queue { display: contents; }
+/**
+ * THE DESKTOP RAIL IS A REAL COLUMN NOW, not display: contents.
+ *
+ * It had to become one to hold the collapse toggle. As `display: contents` the
+ * wrapper vanished and its children became grid items directly — so a toggle
+ * added here would have been a THIRD item in a two-column grid
+ * (minmax(300px,340px) minmax(0,1fr)), pushing the calendar into a column that
+ * does not exist.
+ *
+ * As a flex column the wrapper is the grid item, the toggle and the panel stack
+ * inside it, and the grid is untouched. .sched-queue-panel stays
+ * `display: contents` so the section it wraps is still the thing being laid
+ * out, exactly as before.
+ */
+.sched-queue { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
 .sched-queue-panel { display: contents; }
+
+/* Collapsed: the list goes, the toggle stays. The panel is also marked `inert`
+   in the component — a column you can still Tab into while it is hidden is
+   worse than one that is simply there. */
+.sched-queue.is-collapsed .sched-queue-panel { display: none; }
+
+.sched-queue-collapse {
+  display: none; /* Only the desktop rail collapses; see the 1280 block. */
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--mute-i56);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sched-queue-collapse:hover { color: var(--text); border-color: var(--edge-t22); }
+.sched-queue-collapse:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (min-width: 1280px) {
+  .sched-queue-collapse { display: inline-flex; }
+
+  /* Reclaim the column. Without this the rail keeps its 300px minimum and
+     collapsing hides the list without giving the calendar the room — which is
+     the only reason anybody would collapse it.
+     :has() is the whole mechanism; where it is unsupported the toggle still
+     works and the space simply is not reclaimed, which is a degradation rather
+     than a break. */
+  .schedule-workbench:has(.sched-queue.is-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
 .sched-queue-scrim,
 .sched-queue-head { display: none; }
 
