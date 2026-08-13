@@ -2060,7 +2060,10 @@ h3 {
   padding: 0 0.35rem;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--mute-g262);
+  /* 0.62 of a light grey measured 4.03:1 on the rail, which stays dark in both
+     palettes — so the light theme's solid override never applies here and the
+     alpha is doing all the work. */
+  color: rgba(var(--grey-2), 0.82);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2107,6 +2110,7 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  min-height: 44px;
   padding: 0.6rem 0.75rem;
   border: 0;
   border-radius: 12px;
@@ -2212,7 +2216,11 @@ h3 {
      don't shrink to match, so the rail's rhythm is identical either way.
      2.3rem is exactly the height these rows already had (0.55rem × 2 padding +
      a 1.2rem badge) — this is a redistribution, not a resize. */
-  min-height: 2.3rem;
+  /* 44px. It was 2.3rem (36.8px measured), which is comfortably above WCAG's
+     24px floor and comfortably below a fingertip — and this rail is the primary
+     navigation on a touch tablet. Seventeen rows grow by 7px each; the rail
+     already scrolls when it has to. */
+  min-height: 44px;
   padding: 0.45rem 0.6rem;
   border-radius: 12px;
   color: rgba(var(--ink-rgb), 0.72);
@@ -2348,8 +2356,10 @@ h3 {
   text-transform: uppercase;
   /* A section eyebrow can be quiet, but 0.5 of a mid grey lands under 3:1 on
      paper. Light gets the alpha back — the same visual weight costs more
-     contrast on a light ground than on a dark one. */
-  color: var(--mute-g350);
+     contrast on a light ground than on a dark one.
+     And 0.5 was not enough on the DARK rail either: measured 3.8:1 at 10px,
+     which is small uppercase text with letter-spacing on top. */
+  color: rgba(var(--grey-3), 0.72);
 }
 :root[data-theme='light'] .sidenav-glabel { color: rgba(var(--grey-3), 0.85); }
 
@@ -2617,11 +2627,14 @@ h3 {
    rather than wrapping or ellipsing. */
 .sidenav-foot > .sidenav-account { flex: 0 1 auto; width: auto; min-width: 0; }
 .sidenav-foot > .stripe-status-pill.sidenav-stripe { flex: 1 1 auto; width: auto; min-width: 0; }
-/* One line, one height. The pill is a smaller control than the Account card and
-   centring them left a 4px step that read as a misalignment rather than two
-   different things. */
+/* One line, one height — 44px, not the 40 this pinned them to. The pill is a
+   smaller control than the Account card and centring them left a 4px step that
+   read as a misalignment rather than two different things, so they share a
+   floor. It just has to be the floor everything else in the rail uses: 40
+   overrode the Account card's own 44 and quietly made it the second-smallest
+   target in the nav. */
 .sidenav-foot > .stripe-status-pill.sidenav-stripe,
-.sidenav-foot > .sidenav-account { min-height: 40px; }
+.sidenav-foot > .sidenav-account { min-height: 44px; }
 
 /* CENTRED, because these two stopped being rows. Left-aligned content is what
    a nav list wants — every label starting on the same x, so the eye can run
@@ -4327,6 +4340,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  min-height: 44px;
   padding: 0.5rem 0.9rem;
   border-radius: 999px;
   font-size: 0.78rem;
@@ -4367,7 +4381,10 @@ h3 {
    the host URL below gets the badge's full width and never gets cut off. */
 .website-nav-live-top { display: inline-flex; align-items: baseline; gap: 0.35rem; }
 .website-nav-live-label { font-size: 0.76rem; font-weight: 700; color: var(--good); }
-.website-nav-live-edit { font-size: 0.62rem; font-weight: 600; color: var(--mute-i40); }
+/* WHITE AT AN ALPHA, not dark ink at one. This sits on the badge's purple fill
+   in both themes, where --mute-i40 measured 3.53:1 and 3.23:1 — the token is
+   for text on a PANEL, and this is text on a color. */
+.website-nav-live-edit { font-size: 0.62rem; font-weight: 600; color: rgba(255, 255, 255, 0.82); }
 .website-nav-badge.live:hover .website-nav-live-edit { color: rgba(var(--ink-rgb), 0.7); }
 
 .website-nav-live-host {
@@ -4428,6 +4445,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  min-height: 44px;
   padding: 0.35rem 0.8rem 0.35rem 0.4rem;
   border-radius: 12px;
   font-size: 0.78rem;
@@ -6905,7 +6923,9 @@ li + li { margin-top: 0.45rem; }
 .calendar-year-card { min-width: 0; min-height: 150px; padding: .85rem; border: 1px solid var(--edge-t10); border-radius: 12px; background: rgba(var(--tint), .025); }
 .calendar-year-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .7rem; }
 .calendar-year-card-header strong { color: var(--text); font-size: .95rem; }
-.calendar-year-month-link { border: 0; padding: 0; background: transparent; color: var(--text); font: inherit; font-size: .95rem; font-weight: 900; text-align: left; cursor: pointer; }
+/* The month name is the way INTO a month and it measured 20px tall — the
+   smallest target on the page, on the view whose whole job is picking a month. */
+.calendar-year-month-link { display: inline-flex; align-items: center; min-height: 44px; border: 0; padding: 0; background: transparent; color: var(--text); font: inherit; font-size: .95rem; font-weight: 900; text-align: left; cursor: pointer; }
 .calendar-year-month-link:hover { color: var(--gold-ink); text-decoration: underline; text-underline-offset: 4px; }
 .calendar-year-card-header span { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 .45rem; border: 1px solid var(--cedge-amber-12); border-radius: 999px; background: rgba(255,209,102,.08); color: var(--gold-ink); font-size: .78rem; font-weight: 900; }
 /* A month with nothing in it is not news. Eleven gold "0 jobs" pills down a
@@ -6916,7 +6936,7 @@ li + li { margin-top: 0.45rem; }
   color: var(--mute-t45);
 }
 .calendar-year-jobs { display: grid; gap: .35rem; }
-.calendar-year-job { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: .45rem; align-items: center; width: 100%; padding: .38rem .45rem; border: 1px solid var(--edge-t08); border-radius: 8px; background: rgba(var(--tint), .045); color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.calendar-year-job { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: .45rem; align-items: center; width: 100%; min-height: 44px; padding: .38rem .45rem; border: 1px solid var(--edge-t08); border-radius: 8px; background: rgba(var(--tint), .045); color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .calendar-year-job:hover { border-color: var(--cedge-orange-26); background: rgba(255,138,61,.11); }
 .calendar-year-job span { color: var(--mute-i55); font-size: .66rem; font-weight: 900; text-transform: uppercase; }
 .calendar-year-job strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
@@ -7126,7 +7146,7 @@ li + li { margin-top: 0.45rem; }
 .calendar-view-trigger:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.8); outline-offset: 2px; }
 .calendar-view-trigger-ic { width: 1.05rem; height: 1.05rem; flex: none; color: var(--accent); }
 .calendar-view-trigger-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
-.calendar-view-trigger-text small { font-size: 0.6rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--mute-t45); }
+.calendar-view-trigger-text small { font-size: 0.6rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--mute-t60); }
 .calendar-view-trigger-text strong { font-size: 0.8rem; font-weight: 800; }
 .calendar-view-caret { width: 0.85rem; height: 0.85rem; flex: none; color: var(--mute-t50); transition: transform 0.16s ease; }
 .calendar-view-trigger.open .calendar-view-caret { transform: rotate(180deg); }
@@ -7466,11 +7486,15 @@ li + li { margin-top: 0.45rem; }
   white-space: nowrap;
 }
 
+/* 44px, not the 26px these measured. Thirteen of them are the entire content of
+   this view, and a Gantt bar you cannot reliably hit is a chart you can only
+   read. The rows grow with them, which a scrolling view can afford — and the
+   labels the bars now carry needed the height anyway. */
 .calendar-timeline-bar {
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 1.65rem;
+  height: 44px;
   padding: 0 0.5rem;
   border: 0;
   border-radius: 8px;
@@ -18921,13 +18945,15 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 /* A missing duration is why a day can read as empty when it is not, and a job
    with no crew is a job nobody has been told about. Both are named rather than
    left blank, and dimmer than the facts that ARE known. */
-.sched-row-missing { color: var(--mute-i42); font-style: italic; }
+/* 3.82:1 at 12px, on a line that exists to warn you the hours are unknowable.
+   Not italic-and-faint: it is the row's most consequential fact. */
+.sched-row-missing { color: var(--mute-i62); font-style: italic; }
 .sched-row-state { color: var(--gold-ink); font-size: 0.7rem; font-weight: 700; }
 
 .sched-row-go { min-height: 44px; padding: 0 0.75rem; font-size: 0.82rem; white-space: nowrap; }
 
 .sched-rows-foot { margin: 0.6rem 0 0; font-size: 0.8rem; }
-.sched-rows-foot a { color: var(--dim-orange-3-6); text-decoration: none; }
+.sched-rows-foot a { display: inline-flex; align-items: center; min-height: 44px; color: var(--dim-orange-3-6); text-decoration: none; }
 .sched-rows-foot a:hover { text-decoration: underline; }
 
 /* ---- the job you have open ----------------------------------------------- */
@@ -23001,7 +23027,10 @@ a.bset-card { color: inherit; text-decoration: none; }
 .sidenav-actions .sidenav-plan,
 .sidenav-actions .sidenav-new {
   width: auto;
-  min-height: 0;
+  /* `min-height: 0` was releasing the base rule's floor so two buttons could
+     share one row; it also let them measure 37 and 39px. The floor they need is
+     44, not 50 — the row still fits, the type is still the tighter size. */
+  min-height: 44px;
   padding: 0.6rem 0.5rem;
   border-radius: 12px;
   font-size: 0.85rem;
@@ -29874,6 +29903,10 @@ body[data-schedule-overlay="job"] .sched-queue {
   z-index: 4;
   border-bottom: 1px solid var(--line);
   background: var(--bg-3);
+  /* SAYS ITS OWN INK, because it paints its own background. Inherited, the day
+     numbers came out at 2.39:1 on the light theme's white sticky row — a colour
+     picked for the panel behind it, on a surface that is no longer the panel. */
+  color: var(--text);
 }
 .sched-tl-zone {
   display: flex;
@@ -29942,7 +29975,11 @@ body[data-schedule-overlay="job"] .sched-queue {
   box-shadow: inset 0 -3px 0 var(--accent);
 }
 .sched-tl-day-head.today small { color: var(--accent-ink); }
-.sched-tl-day-head.today strong { color: var(--accent); }
+/* --accent-ink, not --accent. The raw brand orange on the head's now-white
+   background measured 2.39:1 at 22px, and 3:1 is the floor for text that size.
+   The inset bar underneath is what actually marks today; the colour agrees with
+   it rather than carrying it alone. */
+.sched-tl-day-head.today strong { color: var(--accent-ink); }
 
 /* margin-left:auto pushed these to the right end of a ROW. In a column it
    would push them to the right edge instead, breaking the left alignment the
@@ -29975,7 +30012,12 @@ body[data-schedule-overlay="job"] .sched-queue {
  * exceptions, on more days. Flattening all three would have been the other
  * error; only the routine one comes down.
  */
-.sched-tl-head-flag.full { background: rgba(255,138,61,.18); color: var(--ink-orange-4); }
+/* 9px text needs the full 4.5:1, and the two orange inks measured 4.49 and
+   4.48 on this wash — near enough to look fixed and not be. The amber ink is
+   the same hue family, is what the rest of the schedule uses for "this needs
+   your attention", and is dark enough in the light palette (#886016) to clear
+   it outright. */
+.sched-tl-head-flag.full { background: rgba(255,138,61,.18); color: var(--ink-amber-1); }
 .sched-tl-head-flag.blocked {
   padding: 0;
   background: none;
@@ -30310,7 +30352,7 @@ body[data-schedule-overlay="job"] .sched-queue {
 
 .sched-crew-filter input[type='checkbox'] { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); cursor: pointer; }
 .sched-crew-filter select {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 0.5rem;
   border: 1px solid var(--line);
   border-radius: 10px;

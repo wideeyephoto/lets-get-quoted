@@ -1,5 +1,5 @@
 .gear { position: relative; }
-.gearBtn { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .85rem; border-radius: 999px; border: 1px solid var(--edge-t14); background: rgba(var(--tint), .03); color: var(--muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+.gearBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; padding: .5rem .85rem; border-radius: 999px; border: 1px solid var(--edge-t14); background: rgba(var(--tint), .03); color: var(--muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
 .gearBtn svg { width: 16px; height: 16px; }
 .gearBtn:hover { color: var(--text); border-color: var(--cedge-orange-72); }
 .gearBtn[aria-expanded="true"] { color: var(--accent); border-color: var(--cedge-orange-25); background: rgba(255,122,33,.1); }
