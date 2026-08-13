@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  DETAILS,
   HOLD_MS,
   INTAKE_BEATS,
   INTAKE_ESTIMATE,
+  INTAKE_NAME,
+  INTAKE_PHONE,
   INTAKE_PROJECT,
   INTAKE_QUESTIONS,
   INTAKE_SUMMARY,
@@ -53,7 +56,7 @@ describe('the script', () => {
     expect(INTAKE_PROJECT).toBe('Lawn care');
   });
 
-  it('runs the three questions and the three answers, in order', () => {
+  it('runs the three questions and the three answers, then asks who to call back', () => {
     expect(INTAKE_TURNS.map((turn) => turn.text)).toEqual([
       'Absolutely. What would you like done — mowing, edging, cleanup, or something else?',
       'Mowing and edging.',
@@ -61,7 +64,10 @@ describe('the script', () => {
       'About an acre.',
       'How often would you like the service?',
       'Every two weeks.',
+      'Last thing — who should the contractor get back to?',
     ]);
+    // The last turn has no spoken answer on purpose: it is answered in the two
+    // fields, which is how the real intake asks for it.
     expect(INTAKE_TURNS.map((turn) => turn.role)).toEqual([
       'ai',
       'homeowner',
@@ -69,6 +75,7 @@ describe('the script', () => {
       'homeowner',
       'ai',
       'homeowner',
+      'ai',
     ]);
   });
 
@@ -78,10 +85,11 @@ describe('the script', () => {
     expect(INTAKE_ESTIMATE).not.toContain('-');
   });
 
-  /* Three questions asked, three bars drawn. Counted rather than typed, so a
-     fourth question cannot leave the progress bar claiming there are three. */
+  /* One bar per question asked, COUNTED rather than typed — which is exactly
+     what stopped the contact-details step from leaving the bar claiming three.
+     The literal below moved on its own when the turn was added. */
   it('counts the bars off the questions', () => {
-    expect(INTAKE_QUESTIONS).toBe(3);
+    expect(INTAKE_QUESTIONS).toBe(4);
     expect(MODULE).toContain("INTAKE_TURNS.filter((turn) => turn.role === 'ai').length");
   });
 });
@@ -206,7 +214,7 @@ describe('frameAt', () => {
     expect(frameAt(questions[0].from + 1).question).toBe(1);
     expect(frameAt(questions[1].from + 1).question).toBe(2);
     expect(frameAt(questions[2].from + 1).question).toBe(3);
-    expect(frameAt(RESULT_AT - 1).question).toBe(3);
+    expect(frameAt(RESULT_AT - 1).question).toBe(4);
   });
 
   it('shows the dots before each answer and never alongside the estimate', () => {
@@ -232,6 +240,9 @@ describe('frameAt', () => {
     expect(frameAt(RESULT_AT - 1).bubbles.length).toBe(INTAKE_TURNS.length);
     expect(frameAt(RESULT_AT).done).toBe(true);
     expect(frameAt(RESULT_AT).bubbles).toEqual([]);
+    // The captured details go with them. A name and number left on screen
+    // beside a finished price is a form that never submitted.
+    expect(frameAt(RESULT_AT).details).toBeNull();
     expect(frameAt(LOOP_AT - 1).done).toBe(true);
   });
 
@@ -321,20 +332,17 @@ describe('the loop', () => {
   });
 
   /**
-   * REPLAY HAS TO RESTART A RUNNING LOOP.
+   * The seek ref outlived the buttons that used it.
    *
-   * `setPlaying(true)` while already playing is not a state change, so the
-   * effect does not re-run, so its captured `base` and `startedAt` are still
-   * the old ones and the next frame puts the demo straight back where it was.
-   * Measured before the fix: pressing Replay four seconds in moved nothing.
+   * Replay and Show estimate are gone, but the mount effect still jumps the
+   * clock from the finished SSR frame back to zero — so the ref the effect
+   * applies AFTER cancelling the old rAF is still what stops a frame queued by
+   * the previous loop from overwriting that jump.
    */
-  it('restarts through a counter rather than through a boolean that is already true', () => {
+  it('applies a seek through a ref the effect reads after the cancel', () => {
     expect(COMPONENT).toContain('setRun((value) => value + 1)');
     expect(COMPONENT).toContain('}, [playing, awake, run]);');
-    // And the mark travels in a ref the effect applies after the cancel, so a
-    // frame queued from the old loop cannot overwrite it.
     expect(COMPONENT).toContain('seek.current = 0;');
-    expect(COMPONENT).toContain('seek.current = RESULT_AT;');
     expect(COMPONENT).toContain('elapsed.current = seek.current;');
   });
 
@@ -342,12 +350,38 @@ describe('the loop', () => {
     expect(COMPONENT).toContain('current.signature === next.signature ? current : next');
   });
 
-  it('carries all three controls, and they are real buttons', () => {
-    for (const label of ['Replay', 'Show estimate']) {
-      expect(COMPONENT, label).toContain(`>\n              ${label}\n            </button>`);
+  /**
+   * THE BUTTON ROW IS GONE — AND PAUSING IS NOT.
+   *
+   * Replay, Pause and Show estimate were removed from the hero on request:
+   * three buttons gave a marketing panel the furniture of a video player.
+   * Pause could not simply go with them. WCAG 2.2.2 wants a mechanism for
+   * motion that starts on its own and runs past five seconds, and this loops
+   * for about seventeen — so the control survives, hidden until focused.
+   */
+  it('shows no button row', () => {
+    for (const label of ['Replay', 'Show estimate', "'Pause' : 'Resume'"]) {
+      expect(COMPONENT, label).not.toContain(label);
     }
-    expect(COMPONENT).toContain("{playing ? 'Pause' : 'Resume'}");
+    expect(COMPONENT).not.toContain('styles.buttons');
     expect(COMPONENT).not.toContain('<div onClick');
+  });
+
+  it('keeps a real, reachable pause control', () => {
+    expect(COMPONENT).toContain('className={styles.quietControl}');
+    expect(COMPONENT).toContain('onClick={toggle}');
+    expect(COMPONENT).toContain("{playing ? 'Pause the demonstration' : 'Resume the demonstration'}");
+  });
+
+  /* Clipped, NOT display:none or visibility:hidden — either of those takes it
+     out of the tab order and out of the accessibility tree, which removes the
+     mechanism rather than hiding it. That distinction is the whole point. */
+  it('hides that control without removing it from the page', () => {
+    const at = CSS.indexOf('\n.quietControl {');
+    const quiet = CSS.slice(at, CSS.indexOf('}', at));
+    expect(quiet).toContain('clip-path: inset(50%)');
+    expect(quiet).not.toContain('display: none');
+    expect(quiet).not.toContain('visibility: hidden');
   });
 });
 
@@ -395,12 +429,12 @@ describe('the card', () => {
      the same orange is 3.1:1 — the same reading the page's primary button uses. */
   it('puts navy on every orange fill', () => {
     expect(rule('.fromHomeowner .said')).toContain('color: #071521');
-    expect(rule('.controlPrimary')).toContain('color: #071521');
   });
 
+  /* The one remaining control still meets the floor once it is visible, which
+     is the only time a pointer could reach it. */
   it('keeps the 44px target floor the rest of the page keeps', () => {
-    expect(rule('.control')).toContain('min-height: 44px');
-    expect(CSS).toContain('.control:focus-visible');
+    expect(rule('.quietControl:focus-visible')).toContain('min-height: 44px');
     expect(CSS).toContain('outline: 2px solid var(--flare)');
   });
 
@@ -448,5 +482,89 @@ describe('the card', () => {
        messages, 598 with six and 416 under the estimate, so the panel grew and
        shrank twice a loop and took the page below it along for the ride. */
     expect(card).toMatch(/height: \d+px/);
+  });
+});
+
+/* ===========================================================================
+   7. The lead details
+   ======================================================================== */
+describe('the name and number', () => {
+  /**
+   * THE DEMO WAS SHOWING THE WRONG PRODUCT.
+   *
+   * It produced a price out of three questions and stopped. But the estimate is
+   * not what is being sold — the LEAD is, and the real intake asks for these
+   * two before it shows a number. Without them the hero promised an easier flow
+   * than a homeowner actually meets, and hid the moment the contractor gets
+   * something they can act on.
+   */
+  it('asks for both, before any price exists', () => {
+    expect(DETAILS.nameFrom).toBeLessThan(RESULT_AT);
+    expect(DETAILS.phoneTo).toBeLessThan(RESULT_AT);
+    // And after the last spoken answer — nothing is asked out of order.
+    const lastSpoken = INTAKE_BEATS.filter((beat) => beat.role === 'homeowner').at(-1)!;
+    expect(DETAILS.nameFrom).toBeGreaterThanOrEqual(lastSpoken.to);
+  });
+
+  it('is reserved-for-fiction, so it can never be a real number', () => {
+    expect(INTAKE_PHONE).toContain('555');
+    expect(INTAKE_PHONE).toBe('(248) 555-0142');
+  });
+
+  /* Empty boxes sitting through the earlier questions would read as two things
+     the homeowner declined to fill in. */
+  it('does not exist before the last question lands', () => {
+    expect(frameAt(0).details).toBeNull();
+    expect(frameAt(DETAILS.nameFrom - 1).details).toBeNull();
+    expect(frameAt(DETAILS.nameFrom + 1).details).not.toBeNull();
+  });
+
+  it('types the name, then the number, in that order', () => {
+    const midName = frameAt((DETAILS.nameFrom + DETAILS.nameTo) / 2).details!;
+    expect(midName.nameTyping).toBe(true);
+    expect(INTAKE_NAME.startsWith(midName.name)).toBe(true);
+    expect(midName.name).not.toBe(INTAKE_NAME);
+    // The number has not started while the name is still going.
+    expect(midName.phone).toBe('');
+    expect(midName.phoneTyping).toBe(false);
+
+    const midPhone = frameAt((DETAILS.phoneFrom + DETAILS.phoneTo) / 2).details!;
+    expect(midPhone.name).toBe(INTAKE_NAME);
+    expect(midPhone.nameTyping).toBe(false);
+    expect(midPhone.phoneTyping).toBe(true);
+    expect(INTAKE_PHONE.startsWith(midPhone.phone)).toBe(true);
+  });
+
+  /* The reveal must never cut the number off mid-digits. */
+  it('finishes both before the estimate is worked out', () => {
+    const settled = frameAt(RESULT_AT - 1).details!;
+    expect(settled.name).toBe(INTAKE_NAME);
+    expect(settled.phone).toBe(INTAKE_PHONE);
+    expect(settled.nameTyping).toBe(false);
+    expect(settled.phoneTyping).toBe(false);
+  });
+
+  /* Same derived-timing rule as the rest of the script: the marks are computed
+     from the strings, so lengthening a name delays the estimate rather than
+     truncating the field. */
+  it('derives its timing from the text rather than hard-coding it', () => {
+    expect(MODULE).toContain('INTAKE_NAME.length * MS_PER_CHAR');
+    expect(MODULE).toContain('INTAKE_PHONE.length * MS_PER_CHAR');
+  });
+
+  it('changes the signature as it types, so the frame actually redraws', () => {
+    const a = frameAt(DETAILS.nameFrom + 60).signature;
+    const b = frameAt(DETAILS.nameTo - 10).signature;
+    expect(a).not.toBe(b);
+  });
+
+  /* Rendered as fields, like the project line — not as chat bubbles. Restaging
+     a form as a conversation demonstrates an interface that does not exist. */
+  it('renders as labelled fields and stays out of the live region', () => {
+    expect(COMPONENT).toContain('className={styles.details}');
+    expect(COMPONENT).toContain('{INTAKE_NAME_LABEL}');
+    expect(COMPONENT).toContain('{INTAKE_PHONE_LABEL}');
+    const block = COMPONENT.slice(COMPONENT.indexOf('className={styles.details}'));
+    expect(block.slice(0, block.indexOf('</div>'))).toContain('aria-hidden="true"');
   });
 });

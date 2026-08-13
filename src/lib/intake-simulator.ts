@@ -56,10 +56,44 @@ export const INTAKE_TURNS: readonly IntakeTurn[] = [
   { role: 'homeowner', text: 'About an acre.' },
   { role: 'ai', text: 'How often would you like the service?' },
   { role: 'homeowner', text: 'Every two weeks.' },
+  // The last question, and the one the whole product turns on: an estimate
+  // nobody can follow up is not a lead. Answered in FIELDS rather than in the
+  // chat, because that is how the real intake asks — see INTAKE_NAME below.
+  { role: 'ai', text: 'Last thing — who should the contractor get back to?' },
 ];
 
-/** How many questions the progress bars count. Three, and the transcript asks three. */
+/** How many steps the progress bars count. One per question the AI asks. */
 export const INTAKE_QUESTIONS = INTAKE_TURNS.filter((turn) => turn.role === 'ai').length;
+
+/* -------------------------------------------------------------------------
+   The lead details
+   ---------------------------------------------------------------------- */
+
+/**
+ * WHY THE DEMO NOW COLLECTS A NAME AND A NUMBER.
+ *
+ * It did not, and that made it a demonstration of the wrong product. The
+ * estimate is not the thing being sold — the LEAD is, and the real intake asks
+ * for these two before it shows a price. A hero that produced a number out of
+ * three questions was quietly promising an easier flow than the one a homeowner
+ * meets, and hiding the moment the contractor actually gets something.
+ *
+ * Rendered as fields rather than as chat bubbles, for the same reason the
+ * project line at the top is a field: that is what the real form does, and a
+ * demo that restages a form as a conversation is showing an interface that does
+ * not exist.
+ */
+export const INTAKE_NAME = 'Dana Whitfield';
+
+/**
+ * 555 on purpose. It is the reserved-for-fiction exchange, so this cannot be
+ * somebody's real phone no matter how long the page is up — which a plausible
+ * ten digits in a marketing hero absolutely can be.
+ */
+export const INTAKE_PHONE = '(248) 555-0142';
+
+export const INTAKE_NAME_LABEL = 'Your name';
+export const INTAKE_PHONE_LABEL = 'Mobile number';
 
 /* -------------------------------------------------------------------------
    The clock
@@ -106,6 +140,9 @@ export type IntakeBeat = {
   readonly thinkingFrom: number | null;
 };
 
+/** Between finishing the name and starting the number — one tab, essentially. */
+const TAB_MS = 300;
+
 function buildSchedule() {
   const beats: IntakeBeat[] = [];
   // The project field types first, and everything else queues behind it.
@@ -123,7 +160,21 @@ function buildSchedule() {
     }
   }
 
-  return { beats, estimateThinkingFrom: cursor, resultAt: cursor + ESTIMATE_MS };
+  // The two detail fields, filled after the last question lands. Same derived
+  // timing as everything else: lengthen a name and the estimate simply arrives
+  // later, rather than the number being cut off by the reveal.
+  const nameFrom = cursor;
+  const nameTo = nameFrom + INTAKE_NAME.length * MS_PER_CHAR;
+  const phoneFrom = nameTo + TAB_MS;
+  const phoneTo = phoneFrom + INTAKE_PHONE.length * MS_PER_CHAR;
+  cursor = phoneTo + SETTLE_MS;
+
+  return {
+    beats,
+    details: { nameFrom, nameTo, phoneFrom, phoneTo },
+    estimateThinkingFrom: cursor,
+    resultAt: cursor + ESTIMATE_MS,
+  };
 }
 
 const SCHEDULE = buildSchedule();
@@ -133,6 +184,9 @@ export const INTAKE_BEATS: readonly IntakeBeat[] = SCHEDULE.beats;
 /** When the project field starts and finishes typing. */
 export const PROJECT_FROM = FIELD_AT;
 export const PROJECT_TO = FIELD_AT + INTAKE_PROJECT.length * MS_PER_CHAR;
+
+/** When the name and number fields fill. */
+export const DETAILS = SCHEDULE.details;
 
 /** When the questions give way to the estimate. */
 export const RESULT_AT = SCHEDULE.resultAt;
@@ -163,6 +217,17 @@ export type IntakeFrame = {
   /** Which of the three questions is being worked on, 1-based. */
   readonly question: number;
   readonly bubbles: readonly IntakeBubble[];
+  /**
+   * The contact fields, once the last question has been asked. Null before
+   * that — they must not sit empty on screen through the whole conversation,
+   * which would read as two things the homeowner declined to fill in.
+   */
+  readonly details: {
+    readonly name: string;
+    readonly nameTyping: boolean;
+    readonly phone: string;
+    readonly phoneTyping: boolean;
+  } | null;
   readonly thinking: boolean;
   /**
    * Everything above, flattened.
@@ -217,12 +282,25 @@ export function frameAt(elapsed: number): IntakeFrame {
     (INTAKE_BEATS.some((beat) => beat.thinkingFrom !== null && at >= beat.thinkingFrom && at < beat.from) ||
       at >= SCHEDULE.estimateThinkingFrom);
 
+  // Appear together, the moment the name starts. Two labelled boxes waiting
+  // through the earlier questions would look like a form somebody skipped.
+  const details =
+    done || at < DETAILS.nameFrom
+      ? null
+      : {
+          name: typedSlice(INTAKE_NAME, at, DETAILS.nameFrom, DETAILS.nameTo),
+          nameTyping: at < DETAILS.nameTo,
+          phone: typedSlice(INTAKE_PHONE, at, DETAILS.phoneFrom, DETAILS.phoneTo),
+          phoneTyping: at >= DETAILS.phoneFrom && at < DETAILS.phoneTo,
+        };
+
   const signature = [
     done ? 'result' : 'intake',
     project,
     projectPct,
     question,
     thinking ? 'dots' : '',
+    details ? `${details.name}~${details.phone}${details.nameTyping || details.phoneTyping ? '~' : '='}` : '',
     ...bubbles.map((bubble) => `${bubble.turn}${bubble.typing ? '~' : '='}${bubble.text}`),
   ].join('|');
 
@@ -233,6 +311,7 @@ export function frameAt(elapsed: number): IntakeFrame {
     projectPct,
     question,
     bubbles,
+    details,
     thinking,
     signature,
   };

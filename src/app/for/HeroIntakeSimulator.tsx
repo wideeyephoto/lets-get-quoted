@@ -4,6 +4,9 @@ import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   INTAKE_ESTIMATE,
+  INTAKE_NAME,
+  INTAKE_NAME_LABEL,
+  INTAKE_PHONE_LABEL,
   INTAKE_QUESTIONS,
   INTAKE_SUMMARY,
   LOOP_AT,
@@ -157,21 +160,10 @@ export default function HeroIntakeSimulator() {
     return () => cancelAnimationFrame(raf);
   }, [playing, awake, run]);
 
-  const replay = useCallback(() => {
-    seek.current = 0;
-    setFrame(frameAt(0));
-    setPlaying(true);
-    setRun((value) => value + 1);
-  }, []);
-
+  // Replay and Show estimate went with their buttons. Pause did not: it is the
+  // WCAG 2.2.2 mechanism for motion that starts by itself, so it survives on a
+  // control that is only drawn when it is focused. See the footer.
   const toggle = useCallback(() => setPlaying((value) => !value), []);
-
-  const showEstimate = useCallback(() => {
-    seek.current = RESULT_AT;
-    setFrame(RESTING);
-    setPlaying(false);
-    setRun((value) => value + 1);
-  }, []);
 
   return (
     <div className={styles.panel} ref={rootRef}>
@@ -222,8 +214,10 @@ export default function HeroIntakeSimulator() {
             <p className={styles.summary}>{INTAKE_SUMMARY}</p>
             <ol className={styles.next}>
               <li>
+                {/* Named, because the two fields above are what made it a lead
+                    rather than a page view, and the payoff should say so. */}
                 <b>Lead captured</b>
-                <span>The request lands in the contractor&rsquo;s dashboard.</span>
+                <span>{INTAKE_NAME} lands in the contractor&rsquo;s dashboard, with her number.</span>
               </li>
               <li>
                 <b>Quote sent</b>
@@ -273,6 +267,38 @@ export default function HeroIntakeSimulator() {
               ))}
             </div>
 
+            {/**
+             * THE LEAD, WHICH IS THE POINT OF ALL OF IT.
+             *
+             * Fields, not chat bubbles — the real intake asks for these in a
+             * form, and restaging a form as a conversation would demonstrate an
+             * interface that does not exist. They appear only once the last
+             * question has landed; sitting empty through the earlier ones, they
+             * would read as two things the homeowner declined to answer.
+             *
+             * Outside the live region: a screen reader hearing "Dana", "Dana W",
+             * "Dana Wh" is the same problem the bubbles solve with aria-hidden,
+             * and the estimate that follows names the lead anyway.
+             */}
+            {frame.details ? (
+              <div className={styles.details} aria-hidden="true">
+                <p className={styles.detail}>
+                  <span className={styles.detailLabel}>{INTAKE_NAME_LABEL}</span>
+                  <span className={styles.detailValue}>
+                    {frame.details.name}
+                    {frame.details.nameTyping ? <i className={styles.caret} /> : null}
+                  </span>
+                </p>
+                <p className={styles.detail}>
+                  <span className={styles.detailLabel}>{INTAKE_PHONE_LABEL}</span>
+                  <span className={styles.detailValue}>
+                    {frame.details.phone}
+                    {frame.details.phoneTyping ? <i className={styles.caret} /> : null}
+                  </span>
+                </p>
+              </div>
+            ) : null}
+
             {/* Outside the live region on purpose: "AI is thinking" four times a
                 loop is the definition of a chatty announcement, and the answer
                 that follows it says everything the dots were standing in for. */}
@@ -285,19 +311,27 @@ export default function HeroIntakeSimulator() {
           </div>
         )}
 
+        {/**
+         * THE THREE BUTTONS ARE GONE, AND ONE HAD TO BE REPLACED.
+         *
+         * Replay, Pause/Resume and Show estimate were removed from the hero on
+         * request — they gave a marketing panel the furniture of a video player
+         * and pulled the eye away from the copy beside it.
+         *
+         * But Pause was not only a convenience. WCAG 2.2.2 requires a mechanism
+         * to pause any motion that starts on its own and runs past five seconds,
+         * and this loops for about seventeen. So the mechanism stays and only
+         * the appearance goes: a control that is invisible until it is focused,
+         * reachable by keyboard, announced by a screen reader, and never drawn
+         * for anybody looking at the page normally. prefers-reduced-motion is
+         * still handled separately and more completely — that path never starts
+         * the animation at all.
+         */}
         <footer className={styles.controls}>
           <p className={styles.disclaimer}>Demo &mdash; nothing is submitted</p>
-          <span className={styles.buttons}>
-            <button type="button" className={styles.control} onClick={replay}>
-              Replay
-            </button>
-            <button type="button" className={styles.control} onClick={toggle}>
-              {playing ? 'Pause' : 'Resume'}
-            </button>
-            <button type="button" className={`${styles.control} ${styles.controlPrimary}`} onClick={showEstimate}>
-              Show estimate
-            </button>
-          </span>
+          <button type="button" className={styles.quietControl} onClick={toggle}>
+            {playing ? 'Pause the demonstration' : 'Resume the demonstration'}
+          </button>
         </footer>
       </section>
     </div>
