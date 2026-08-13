@@ -29,7 +29,6 @@ import type { CalendarJob, CrewOption } from './schedule-calendar';
  * showing eleven hours of ruled lines and no explanation of what to do about it.
  */
 export default function ScheduleDaySummary({
-  dateKey,
   jobs,
   crew,
   assignments,
@@ -40,7 +39,13 @@ export default function ScheduleDaySummary({
   queueCount,
   weather,
 }: {
-  dateKey: string;
+  /**
+   * ACCEPTED AND UNUSED. schedule-calendar passes it, and this summary is about
+   * a day it never has to name — every figure below arrives already computed for
+   * that day. Kept on the type rather than removed from the call site because it
+   * is the obvious thing the next person here will need, and it costs nothing.
+   */
+  dateKey?: string;
   jobs: CalendarJob[];
   crew: CrewOption[];
   assignments: Record<string, string[]>;

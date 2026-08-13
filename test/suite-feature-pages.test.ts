@@ -420,7 +420,11 @@ describe('the video studio is in the catalog and on the page', () => {
  * started rendering its category.
  */
 describe('every catalog category is rendered by some page', () => {
-  const RENDERED = SUITE.flatMap((entry) => entry.catalog);
+  // Widened to string[] deliberately. SUITE is `as const`, so the inferred
+  // element type is the union of the slugs it already names — which makes
+  // `RENDERED.includes(slug)` below a type error for exactly the slugs this
+  // test exists to find: the ones no page renders.
+  const RENDERED: string[] = SUITE.flatMap((entry) => entry.catalog);
 
   it('the builder page links on instead of listing', () => {
     // THE CATALOG CAME OFF THAT PAGE. Twelve entries, 1,837px of a phone

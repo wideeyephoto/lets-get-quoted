@@ -208,6 +208,11 @@ describe('the whole-day Google Maps link', () => {
 describe('costing straight off the serialized payload', () => {
   const payload: DayPlanPayload = {
     dateKey: '2026-07-30',
+    // Same as dateKey: this fixture is "looking at today". Costing never reads
+    // it, but the save bar does — see the field's note in day-plan-view.ts —
+    // and a fixture where the two silently differ would be modelling a day
+    // being viewed in advance, which is not what any test below is about.
+    todayKey: '2026-07-30',
     crewId: null,
     crewName: null,
     stops: [A, B],

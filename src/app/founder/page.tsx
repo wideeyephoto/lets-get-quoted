@@ -1,25 +1,44 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import SiteFooter from '@/components/site-footer';
 import StickyCta from '@/components/sticky-cta';
 import {
   APP_SIGNUP_URL,
   CtaLink,
-  ExampleFrame,
   MARKETING_MAIN_ID,
   MARKETING_PAGE_CLASS,
   MarketingCta,
   PriceZeroDial,
 } from '@/components/marketing';
-import { FEATURE_CATEGORIES, FEATURE_COUNT } from '@/lib/features';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './founder.module.css';
 
 export const metadata: Metadata = {
-  title: 'Founder story',
+  title: 'A note from Brett, founder',
   description:
-    'Why Let’s Get Quoted is building a better website and connected back office for contractors.',
+    'Why I built Let’s Get Quoted: so a one-truck business can look—and run—like a much bigger company. No card, no monthly subscription, the complete product.',
   alternates: { canonical: 'https://letsgetquoted.com/founder' },
+  /* Spelled out rather than inherited: the root layout's title `template` does
+     not reach openGraph, so without these a share card reads "The website, CRM
+     & payments platform built for contractors" — the site's pitch, not this
+     page's. The IMAGE is deliberately left to the root default; see the note in
+     the delivery summary. A 1122×1402 portrait dropped into a 1.91:1 card gets
+     center-cropped to the torso, so an inherited product shot beats a
+     beheaded founder until a purpose-made 1200×630 card exists. */
+  openGraph: {
+    title: 'A note from Brett, founder · Let’s Get Quoted',
+    description:
+      'I built Let’s Get Quoted so a one-truck business can look—and run—like a much bigger company.',
+    url: 'https://letsgetquoted.com/founder',
+    type: 'profile',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'A note from Brett, founder · Let’s Get Quoted',
+    description:
+      'I built Let’s Get Quoted so a one-truck business can look—and run—like a much bigger company.',
+  },
 };
 
 /* The one number on the page, read from the canonical fee model rather than
@@ -34,57 +53,89 @@ const STARTING_RATE = FEE_TIERS[0].rate;
    JSX text: it keeps the curly punctuation intact without scattering entities
    through the markup, and it keeps the copy in one readable block. */
 
-const LEDE =
-  'I kept seeing talented contractors held back by terrible websites, generic lead forms and a back office split across too many tools. Let’s Get Quoted is my attempt to fix the whole chain—not just redesign the front page.';
-
-/* The hero says what the product does FOR you in one breath; LEDE above says
-   where it came from, and now opens the story section instead. Two different
-   jobs that were being done by one paragraph in the old hero. */
 const HERO_LEDE =
   'I built Let’s Get Quoted to turn a strong first impression into a cleaner lead, a faster quote and a business that is easier to run.';
 
-/* The line the hero is built around. It is PRINCIPLES[3] compressed to
-   something you can hold — the long version is still down the page, doing the
-   arguing. */
-const HERO_PULL_QUOTE = '“The one-truck business gets the complete product.”';
+/* The three things the page is actually offering, in the hero rather than
+   discovered on the pricing page. Each is a fact stated elsewhere on this page
+   and provable on /pricing — not a feature list. */
+const HERO_POINTS = ['No card', 'No monthly subscription', 'Complete product'] as const;
+
+const LEDE =
+  'I kept seeing talented contractors held back by terrible websites, generic lead forms and a back office split across too many tools. Let’s Get Quoted is my attempt to fix the whole chain—not just redesign the front page.';
+
+const START_BODY =
+  'So I did not start with the website. I started with what happens after somebody fills it in, and worked backwards until the front page and the back office were the same system rather than two things a contractor has to keep in step by hand.';
+
+/* Three cards, and they are the three problems LEDE names — the website, the
+   lead and the back office, in that order. Not a fourth invented for symmetry. */
+const BROKEN: { title: string; body: string }[] = [
+  {
+    title: 'The website was a dead end.',
+    body: 'A good-looking site that finishes with a contact form is a brochure. It collects a name and a number and hands the contractor the same blank start every time.',
+  },
+  {
+    title: 'The lead arrived with nothing in it.',
+    body: 'No scope, no address, no sense of how soon or how big. Every quote began with a call to find out what the form should have asked.',
+  },
+  {
+    title: 'The back office was five tools.',
+    body: 'Quoting in one, scheduling in another, invoices somewhere else, and the same job details typed into all of them. Nothing that gets typed twice stays correct.',
+  },
+];
+
+/* ------------------------------------------------------------------------- */
+/* The five steps, and why each one is safe to print.                         */
+/*                                                                            */
+/* This replaced a field-by-field diagram of the intake row moving between    */
+/* tables. The diagram was accurate and far too long for a founder letter;    */
+/* these are the same journey at the altitude the page is written at. Every   */
+/* step is shipped code, not roadmap:                                         */
+/*   1. src/app/api/public/leads/route.ts -> createLead (name, phone, email,  */
+/*      address, projectType, message, photoPaths)                            */
+/*   2. the intake scorer — price expectation, urgency, distance              */
+/*   3. src/lib/leads.ts convertLeadToJob, then the quote and its signature   */
+/*   4. the accepted quote becomes a scheduled job; src/app/field/jobs/[id]   */
+/*      renders address + scope for the assigned crew                         */
+/*   5. src/lib/invoices.ts getPublicInvoice — the invoice is headed with the */
+/*      name the homeowner typed on step 1                                    */
+/* ------------------------------------------------------------------------- */
+const FLOW: { step: string; body: string }[] = [
+  {
+    step: 'Request',
+    body: 'Your site asks what you would have asked on the phone: what the job is, where it is, how soon, and photos.',
+  },
+  {
+    step: 'Qualified lead',
+    body: 'It arrives sorted rather than raw — the contact details, the scope, how urgent it reads and how far away it is.',
+  },
+  {
+    step: 'Accepted quote',
+    body: 'You quote from that scope instead of retyping it, and they approve and sign from their phone.',
+  },
+  {
+    step: 'Scheduled job',
+    body: 'The accepted quote becomes a job on the calendar, and your crew opens the same address and scope on site.',
+  },
+  {
+    step: 'Payment',
+    body: 'You invoice from the same record. They pay by card, and the job closes where it started.',
+  },
+];
+
+/* The honest counterweight, kept from the longer version of this section.
+   convertLeadToJob does not pass photoPaths to createJob, so photos genuinely
+   stay on the lead. Drawing them travelling would be the easy lie. */
+const FLOW_NOTE =
+  'One thing that does not travel: photos stay on the request they arrived with rather than being copied onto the job. It is the one gap in the chain above, and it is easier to say so than to quietly draw it closed.';
 
 const MANIFESTO_QUOTE =
   '“A contractor starting with one truck should be able to look professional, respond intelligently and run the work with the same confidence as a much larger company.”';
 
-const PLEDGES = [
-  'Beautiful enough to build trust',
-  'Useful enough to run the job',
-  'Accessible before the business is big',
-];
-
-/* Four beats, in order, which is why they are an <ol> below. */
-const CHAPTERS: { title: string; body: ReactNode }[] = [
-  {
-    title: 'The problem',
-    body: 'Too many great tradespeople have no website, an outdated website or a good-looking site that still delivers vague, low-context leads.',
-  },
-  {
-    // The draft's sentence, kept word for word — "understand location" is the
-    // distance-aware phrasing that is actually true of the intake scorer, and
-    // nothing in it promises a location-triggered alert. The second sentence is
-    // added, not substituted.
-    title: 'The realization',
-    body: 'If the website can ask smarter questions, it can set price expectations, find urgency, understand location and give the contractor a better first call. A website does not have to be a phone-number collector—it can qualify the opportunity before anyone picks up.',
-  },
-  {
-    title: 'The bigger opportunity',
-    body: 'Once that context exists, it should not disappear. It should follow the job into the quote, schedule, texts, client portal, crew handoff and payment.',
-  },
-  {
-    title: 'The promise',
-    body: 'Build the complete product for the contractor starting today and the established operator growing toward the next crew—without a monthly subscription standing in the way.',
-  },
-];
-
 /* A set, not a sequence, which is why these are a <ul>. The fourth is the one
-   the draft left out, and it is the principle the other three depend on: a
-   product that is beautiful, connected and cheap to start is worth nothing to a
-   one-truck business if the one-truck version is the hollow one. */
+   the others depend on: a product that is beautiful, connected and cheap to
+   start is worth nothing to a one-truck business if the one-truck version is
+   the hollow one. */
 const PRINCIPLES: { title: string; body: string }[] = [
   {
     title: 'Design earns trust.',
@@ -104,357 +155,262 @@ const PRINCIPLES: { title: string; body: string }[] = [
   },
 ];
 
-/* ------------------------------------------------------------------------- */
-/* "Context should travel", drawn instead of asserted.                        */
-/*                                                                            */
-/* Every field on the left is one the public intake actually stores           */
-/* (src/app/api/public/leads/route.ts -> createLead: name, phone, email,      */
-/* address, projectType, message, photoPaths), and every destination on the   */
-/* right is a place shipped code reads those same columns back out. The       */
-/* homeowner, the address and the job are invented — hence the ExampleFrame — */
-/* but the plumbing is not.                                                   */
-/* ------------------------------------------------------------------------- */
+const PROMISE_BODY =
+  'I will keep the free account complete rather than crippled, I will not add a monthly bill to a business that has not been paid yet, and I will not describe something as finished before it is.';
 
-const INTAKE_FIELDS: { label: string; value: string }[] = [
-  { label: 'Name', value: 'D. Whitfield' },
-  { label: 'Phone', value: '(555) 014-9820' },
-  { label: 'Email', value: 'd.whitfield@example.com' },
-  { label: 'Address', value: '22 Linden Ct, Royal Oak MI' },
-  { label: 'Project type', value: 'Kitchen remodel' },
-  {
-    label: 'What’s happening',
-    value: 'Cabinets are original to the house and the sink base has gone soft. Hoping to start before fall.',
-  },
-  { label: 'Photos', value: '3 attached' },
+/* DIRECTION, NOT A FEATURE LIST, and the tense is doing the work.
+   Everything else on this page describes shipped behavior. This paragraph does
+   not, so it says "where this goes next" and "when each piece arrives" out
+   loud. Do not soften those into the present tense to make the page sound
+   further along — an intake that "reads a job" is not something an account can
+   do today, and a contractor deciding on this product would find that out in
+   week one. */
+const DIRECTION =
+  'Where this goes next is more of the thinking and less of the typing: intake that gets better at reading a job, and a quote that starts itself from what the homeowner already described. That is the direction I am building in. I would rather say when each piece lands than sell it in advance.';
+
+const PLEDGES = [
+  'Beautiful enough to build trust',
+  'Useful enough to run the job',
+  'Accessible before the business is big',
 ];
-
-/* Each `how` describes a real code path, and each `carries` lists only columns
-   that path genuinely moves:
-     1. src/lib/leads.ts convertLeadToJob — clientName / clientPhone /
-        clientEmail / address, plus a scope assembled from project_type +
-        message.
-     2. src/lib/jobs.ts createJob — findOrCreateClientId on the same name,
-        phone, email and address, so the job links to a client profile.
-     3. src/app/field/jobs/[id]/page.tsx — selects client_name, client_phone,
-        address and scope and renders them for the assigned crew.
-     4. src/lib/message-context.ts messageContext — a normalised inbound number
-        resolves to client -> job (titled by its scope) -> latest invoice.
-     5. src/lib/invoices.ts getPublicInvoice — job.client_name and ref on the
-        signing page; src/lib/client-portal.ts PortalJob — scope, address,
-        quotedAmount for every job under that client. */
-const TRAVEL_STOPS: { title: string; how: string; carries: string[] }[] = [
-  {
-    title: 'The job record',
-    how: 'Turning the request into a job carries the contact details across as they were typed, and files the project type and the description together as the scope of work.',
-    carries: ['Name', 'Phone', 'Email', 'Address', 'Scope'],
-  },
-  {
-    title: 'The client in the book',
-    how: 'That same phone number and email either match a client already on file or open a new one, so the second job at this house lands on the same record as the first.',
-    carries: ['Name', 'Phone', 'Email', 'Address'],
-  },
-  {
-    title: 'The crew’s job screen',
-    how: 'Whoever is assigned opens the job on their own phone and reads the address and the scope the homeowner wrote. Nobody retypes it into a text message the night before.',
-    carries: ['Name', 'Phone', 'Address', 'Scope'],
-  },
-  {
-    title: 'The message thread',
-    how: 'A text from that number arrives with the client, the job it is most likely about and the latest invoice already attached to the conversation.',
-    carries: ['Name', 'Address', 'Scope', 'Latest invoice'],
-  },
-  {
-    title: 'The invoice, and the homeowner’s portal',
-    how: 'The invoice they sign is headed with the name they gave. Their portal link lists every job filed under them — scope, address and what they were quoted.',
-    carries: ['Name', 'Address', 'Scope'],
-  },
-];
-
-/* The honest counterweight. convertLeadToJob does not pass photoPaths to
-   createJob, so photos genuinely stay on the lead. Drawing them travelling
-   would be the easy lie; this is the weaker true thing. */
-const TRAVEL_STAYS = {
-  title: 'The photos stay on the request',
-  how: 'They belong to the message they arrived with and are not copied onto the job. One thing on this page that does not travel, said out loud rather than quietly drawn as if it did.',
-};
 
 export default function FounderPage() {
   return (
-    <>
-      {/* The header comes from src/app/founder/layout.tsx now, which is the
-          same one the homepage and /features draw.
+    /* styles.page carries nothing on a desktop. It exists so the mobile block
+       in founder.module.css can tighten THIS page's .section-block padding
+       without reaching the shared class on every other marketing route. */
+    <main className={`${MARKETING_PAGE_CLASS} ${styles.page}`} id={MARKETING_MAIN_ID}>
+      <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
+      <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
-          It used to be <MarketingHeader />, and that was the most visibly wrong
-          of the three headers this site had: a floating rounded card rather
-          than a full-bleed bar, a circle-check logo rather than the wordmark,
-          and a nav that offered Features / How it works / Pricing / FAQ /
-          Contact — omitting "For your trade" and, on the founder page, the link
-          to the founder page. */}
-      <main className={MARKETING_PAGE_CLASS} id={MARKETING_MAIN_ID}>
-        <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
-        <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
+      <div className="marketing-shell">
+        {/* 1 — the letterhead. One H1 on the page and it is here.
+            The header itself comes from src/app/founder/layout.tsx, which is
+            the same PublicHeaderLayout the homepage and /features mount. */}
+        <section className={styles.portraitHero} aria-labelledby="founder-title">
+          <div className={styles.portraitCopy}>
+            <p className="eyebrow">A note from Brett, founder</p>
+            <h1 id="founder-title" className={styles.title}>
+              I built Let’s Get Quoted so a one-truck business can look—and run—like{' '}
+              <em>a much bigger company.</em>
+            </h1>
+            <p className={styles.lede}>{HERO_LEDE}</p>
 
-        <div className="marketing-shell">
-          {/* Portrait-led. The hero used to be copy beside a manifesto panel —
-              two blocks of text arguing for the first screen, neither of them
-              the face the eyebrow promises. The panel is still on the page,
-              directly below, where it is something you read rather than
-              something competing with the headline. */}
-          <section className={styles.portraitHero} aria-labelledby="founder-title">
-            <div className={styles.portraitCopy}>
-              <p className="eyebrow">From Brett, the founder</p>
-              <h1 id="founder-title" className={styles.title}>
-                Contractors don’t need more software. <em>They need better leverage.</em>
-              </h1>
-              <p className={styles.lede}>{HERO_LEDE}</p>
-
-              <div className="actions">
-                <CtaLink spec={{ label: 'Start free' }} className="btn primary" arrow />
-                <a className={styles.readStory} href="#the-story">
-                  Read the story <span aria-hidden="true">↓</span>
-                </a>
-              </div>
+            <div className="actions">
+              <CtaLink spec={{ label: 'Build my free site' }} className="btn primary" arrow />
+              <a className={styles.readStory} href="#my-story">
+                Read my story <span aria-hidden="true">↓</span>
+              </a>
             </div>
 
-            <figure className={styles.portraitFrame}>
-              {/* THE PLACEHOLDER. Swapping it in is one element: replace this
-                  <div> with an <img className={styles.portraitSlot} src=… alt="Brett, …" />
-                  and delete the note below it. Every rule that shapes the
-                  picture — crop, greyscale, the fade into the copy — is already
-                  on .portraitSlot and applies to an <img> unchanged, so the
-                  layout cannot move when the real photograph lands.
-
-                  aria-hidden because it depicts nothing; the note beside it is
-                  the only thing here with anything to say. */}
-              <div className={styles.portraitSlot} aria-hidden="true" />
-              <p className={styles.portraitSlotNote}>
-                <svg className={styles.portraitSlotGlyph} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
-                  <circle cx="12" cy="8.5" r="3.75" />
-                  <path d="M4.5 20.5c0-3.9 3.36-6.75 7.5-6.75s7.5 2.85 7.5 6.75" strokeLinecap="round" />
-                </svg>
-                Portrait to come
-              </p>
-            </figure>
-
-            {/* A sibling of the figure, not a figcaption inside it. Inside, it
-                inherited the frame's fixed aspect ratio, so on a phone — where
-                it stops being absolutely positioned — it landed on top of the
-                portrait instead of below it. Out here it is absolute against
-                the hero on desktop and simply the last row on a phone. */}
-            <blockquote className={styles.portraitQuote}>{HERO_PULL_QUOTE}</blockquote>
-          </section>
-
-          {/* Was the right half of the hero. */}
-          <section className="section-block" aria-labelledby="founder-manifesto-title">
-            <div className={styles.sectionHead}>
-              <p className="eyebrow">Why I’m building this</p>
-              <h2 id="founder-manifesto-title">The standard I am holding it to.</h2>
-            </div>
-            <div className={`panel ${styles.manifesto}`}>
-              <blockquote className={styles.quote}>{MANIFESTO_QUOTE}</blockquote>
-              <ul className={styles.pledges}>
-                {PLEDGES.map((pledge, index) => (
-                  <li key={pledge} className={styles.pledge}>
-                    <span className={styles.pledgeNum} aria-hidden="true">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span>{pledge}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className={styles.signature}>
-                {/* The monogram kept its place here, where it signs the pledges
-                    above it. In the hero it was a stand-in for a face; on a
-                    statement of principles it is a signature. */}
-                <span className={styles.monogram} aria-hidden="true">
-                  B
-                </span>
-                <span>
-                  <span className={styles.signatureName}>Brett</span>
-                  <span className={styles.signatureRole}>Founder · Let’s Get Quoted</span>
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* Where "Read the story ↓" lands. The id is on the SECTION rather
-              than the heading so the scroll-margin that clears the fixed
-              header has something to sit on. */}
-          <section
-            className={`section-block ${styles.storyAnchor}`}
-            id="the-story"
-            aria-labelledby="founder-story-title"
-          >
-            <div className={styles.sectionHead}>
-              <p className="eyebrow">The idea behind the product</p>
-              <h2 id="founder-story-title">The website should start the back office.</h2>
-              {/* The old hero's opening paragraph. It answers "where did this
-                  come from", which is the question somebody who just pressed
-                  "Read the story" is asking — and never the one the hero was
-                  being asked. */}
-              <p className={styles.lede}>{LEDE}</p>
-            </div>
-            <ol className={styles.cards}>
-              {CHAPTERS.map((chapter, index) => (
-                <li key={chapter.title} className={styles.card}>
-                  {/* The numeral is visual rhythm, not information — the list
-                      element already carries the order. */}
-                  <span className={styles.cardNum} aria-hidden="true">
-                    {String(index + 1).padStart(2, '0')}
+            {/* The terms, in the hero rather than found later. A list because
+                it is three separate facts, not one sentence broken by dots. */}
+            <ul className={styles.heroPoints}>
+              {HERO_POINTS.map((point) => (
+                <li key={point} className={styles.heroPoint}>
+                  <span className={styles.heroTick} aria-hidden="true">
+                    ✓
                   </span>
-                  <h3 className={styles.cardTitle}>{chapter.title}</h3>
-                  <p className={styles.cardBody}>{chapter.body}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          {/* The page's one product graphic. It exists because "context should
-              travel" is the claim the whole product rests on and, until now,
-              the page only stated it. A screenshot cannot argue it — the point
-              is not what one screen looks like, it is that five screens are
-              reading the same row. So: the request on the left, the places it
-              turns up on the right, and the one thing that stays behind. */}
-          <section className="section-block" aria-labelledby="founder-travel-title">
-            <div className={styles.sectionHead}>
-              <p className="eyebrow">Captured once</p>
-              <h2 id="founder-travel-title">What a homeowner types should never be typed again.</h2>
-              <p className={styles.sectionLede}>
-                One request comes in. Everything after it—the job, the client record, the crew’s
-                screen, the text thread, the invoice—reads what the homeowner already wrote instead
-                of asking somebody to key it in a second time.
-              </p>
-            </div>
-
-            <ExampleFrame
-              className={styles.travelFrame}
-              label="One request, and where its values turn up next"
-              note="Sample homeowner and job. The fields on the left are the ones the intake actually stores, and each destination is a place the product already reads them back out."
-            >
-              <div className={styles.travel}>
-                <div className={styles.origin}>
-                  {/* A <p>, not an <h3>: this is a picture of a form inside an
-                      example frame, and a real heading here would let the mock
-                      outrank the section it sits in. */}
-                  <p className={styles.originTitle}>Request from your website</p>
-                  <dl className={styles.fields}>
-                    {INTAKE_FIELDS.map((field) => (
-                      <div key={field.label} className={styles.field}>
-                        <dt className={styles.fieldLabel}>{field.label}</dt>
-                        <dd className={styles.fieldValue}>{field.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-
-                <div className={styles.stopsWrap}>
-                  <p className={styles.stopsTitle}>Where those values appear afterwards</p>
-                  <ol className={styles.stops}>
-                    {TRAVEL_STOPS.map((stop) => (
-                      <li key={stop.title} className={styles.stop}>
-                        <p className={styles.stopTitle}>{stop.title}</p>
-                        <p className={styles.stopHow}>{stop.how}</p>
-                        <ul className={styles.chips} aria-label={`Values carried into ${stop.title}`}>
-                          {stop.carries.map((carried) => (
-                            <li key={carried} className={styles.chip}>
-                              {carried}
-                            </li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
-                  </ol>
-
-                  <div className={styles.stays}>
-                    <p className={styles.staysTitle}>{TRAVEL_STAYS.title}</p>
-                    <p className={styles.stopHow}>{TRAVEL_STAYS.how}</p>
-                  </div>
-                </div>
-              </div>
-            </ExampleFrame>
-          </section>
-
-          <section className="section-block" aria-labelledby="founder-principles-title">
-            <div className={styles.sectionHead}>
-              <p className="eyebrow">What guides the build</p>
-              <h2 id="founder-principles-title">Beautiful. Practical. Aligned with the contractor.</h2>
-            </div>
-            <ul className={styles.cards}>
-              {PRINCIPLES.map((principle, index) => (
-                <li key={principle.title} className={styles.card}>
-                  <span className={styles.cardNum} aria-hidden="true">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <h3 className={styles.cardTitle}>{principle.title}</h3>
-                  <p className={styles.cardBody}>{principle.body}</p>
+                  {point}
                 </li>
               ))}
             </ul>
-          </section>
+          </div>
 
-          {/* The $0 dial, and the reason it is not a naked circle: on its own it
-              would be the "empty decorative space" this page is meant to avoid.
-              Beside it is the whole catalogue, read from FEATURE_CATEGORIES at
-              build time — category names and counts only, so it states the
-              shape of the product without reprinting /features. It is the proof
-              of the fourth principle above: the free account is not the
-              stripped-down one, because there is no tier field anywhere in the
-              catalogue to strip it with.
-              Not an ExampleFrame — the price and the counts are real, and an
-              "Example" badge on either would read as a hedge. */}
-          <section className="section-block" aria-labelledby="founder-zero-title">
-            <div className={styles.zeroBand}>
-              <PriceZeroDial variant="lead" className={styles.zeroDial} />
+          <figure className={styles.portraitFrame}>
+            {/* The real photograph. It replaced a drawn placeholder, and every
+                rule that shapes it — the crop, the grayscale, the mask that
+                fades it into the copy — was already on .portraitSlot waiting
+                for an <img>, which is why the swap moved nothing.
 
-              <div className={styles.zeroCopy}>
-                <div className={styles.sectionHead}>
-                  <p className="eyebrow">Software should earn its keep</p>
-                  <h2 id="founder-zero-title">Nothing to pay before the product moves money.</h2>
-                </div>
-                <p className={styles.sectionLede}>
-                  There is no plan to choose and no tier to grow out of. There is one catalogue—
-                  {` ${FEATURE_COUNT} `}features across {FEATURE_CATEGORIES.length} groups—and the
-                  one-truck account opens with all of it.
-                </p>
+                `priority`: this is above the fold on every width and is the
+                page's likely LCP element. It is the one image on the marketing
+                cluster that should preload. */}
+            <Image
+              className={styles.portraitSlot}
+              src="/founder/brett-workshop.jpg"
+              alt="Brett, founder of Let’s Get Quoted, standing at a workbench in a workshop"
+              width={1122}
+              height={1402}
+              sizes="(max-width: 860px) 100vw, 480px"
+              priority
+            />
+          </figure>
+        </section>
 
-                <p className={styles.catalogueHead} id="founder-catalogue-head">
-                  Every group, in every account
-                </p>
-                <ul className={styles.catalogue} aria-labelledby="founder-catalogue-head">
-                  {FEATURE_CATEGORIES.map((category) => (
-                    <li key={category.slug} className={styles.catRow}>
-                      <span className={styles.catNum} aria-hidden="true">
-                        {category.num}
-                      </span>
-                      <span className={styles.catTitle}>{category.title}</span>
-                      <span className={styles.catCount}>
-                        {category.features.length}
-                        <span className="sr-only"> features</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+        {/* 2 — where it started. The target of "Read my story ↓"; the id is on
+            the SECTION rather than the heading so the scroll-margin that
+            clears the fixed header has something to sit on. */}
+        <section
+          className={`section-block ${styles.storyAnchor}`}
+          id="my-story"
+          aria-labelledby="founder-start-title"
+        >
+          <div className={styles.sectionHead}>
+            <p className="eyebrow">Where it started</p>
+            <h2 id="founder-start-title">
+              Good contractors were losing work before the first phone call.
+            </h2>
+          </div>
+          <p className={styles.prose}>{LEDE}</p>
+          <p className={styles.prose}>{START_BODY}</p>
+        </section>
 
-                <p className={styles.zeroNote}>
-                  The one charge is the platform fee, taken out of a payment a homeowner actually
-                  makes to you—never a monthly bill, and never a charge for reaching a feature.
-                  Card processing ({STRIPE_PROCESSING_NOTE}) is separate and goes to Stripe.
-                </p>
+        {/* 3 — the three problems LEDE just named, one card each. */}
+        <section className="section-block" aria-labelledby="founder-broken-title">
+          <div className={styles.sectionHead}>
+            <p className="eyebrow">What felt broken</p>
+            <h2 id="founder-broken-title">Three things, and they were all the same thing.</h2>
+          </div>
+          <ul className={styles.cards}>
+            {BROKEN.map((item, index) => (
+              <li key={item.title} className={styles.card}>
+                {/* The numeral is rhythm, not information — the list already
+                    carries the count. */}
+                <span className={styles.cardNum} aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3 className={styles.cardTitle}>{item.title}</h3>
+                <p className={styles.cardBody}>{item.body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 4 — the answer, as one journey rather than a field-by-field
+            diagram. An <ol>: these are five stages in order, and the arrows
+            between them are CSS so they are never read aloud. */}
+        <section className="section-block" aria-labelledby="founder-idea-title">
+          <div className={styles.sectionHead}>
+            <p className="eyebrow">The idea behind the product</p>
+            <h2 id="founder-idea-title">One request should carry itself all the way to getting paid.</h2>
+            <p className={styles.sectionLede}>
+              What a homeowner types on your website should never be typed again. It becomes the
+              job, the quote, the schedule and the invoice—the same record, moving forward.
+            </p>
+          </div>
+
+          <ol className={styles.flow}>
+            {FLOW.map((stage, index) => (
+              <li key={stage.step} className={styles.flowStep}>
+                <span className={styles.flowNum} aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3 className={styles.flowTitle}>{stage.step}</h3>
+                <p className={styles.flowBody}>{stage.body}</p>
+              </li>
+            ))}
+          </ol>
+
+          <p className={styles.flowNote}>{FLOW_NOTE}</p>
+        </section>
+
+        {/* 5 — who it is for. The quote is the claim; the four principles are
+            what holding to it costs. */}
+        <section className="section-block" aria-labelledby="founder-who-title">
+          <div className={styles.sectionHead}>
+            <p className="eyebrow">Who I am building for</p>
+            <h2 id="founder-who-title">The contractor who has not hired an office yet.</h2>
+          </div>
+          <blockquote className={styles.quote}>{MANIFESTO_QUOTE}</blockquote>
+          <ul className={styles.cards}>
+            {PRINCIPLES.map((principle, index) => (
+              <li key={principle.title} className={styles.card}>
+                <span className={styles.cardNum} aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3 className={styles.cardTitle}>{principle.title}</h3>
+                <p className={styles.cardBody}>{principle.body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 6 — the business model. The dial stays; the twelve-row catalogue
+            that used to sit beside it does not. Reprinting the whole feature
+            index on a founder letter was /pricing's job being done twice, and
+            it was the single longest thing on the page on a phone. The link
+            below goes to the page that owns those numbers.
+
+            Not an ExampleFrame — the price is real, and stamping "Example" on
+            it would read as a hedge on the number itself. */}
+        <section className="section-block" aria-labelledby="founder-model-title">
+          <div className={styles.zeroBand}>
+            <PriceZeroDial variant="lead" className={styles.zeroDial} />
+
+            <div className={styles.zeroCopy}>
+              <div className={styles.sectionHead}>
+                <p className="eyebrow">The business model</p>
+                <h2 id="founder-model-title">Nothing to pay before the product moves money.</h2>
               </div>
+              <p className={styles.prose}>
+                There is no plan to choose and no tier to grow out of, because there is no tier
+                field anywhere in the product to put you in one. Every account opens with all of
+                it.
+              </p>
+              <p className={styles.zeroNote}>
+                The one charge is the platform fee, taken out of a payment a homeowner actually
+                makes to you—never a monthly bill, and never a charge for reaching a feature. It
+                starts at {STARTING_RATE} and falls as your volume grows. Card processing (
+                {STRIPE_PROCESSING_NOTE}) is separate and goes to Stripe.
+              </p>
+              <Link href="/pricing" className={styles.pricingLink}>
+                See pricing details <span aria-hidden="true">→</span>
+              </Link>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <MarketingCta
-            kicker="The next chapter is your business"
-            title="Build something customers trust—and a system your team can run."
-            note={`No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you, falling as your volume grows, and applies only when they actually pay.`}
-          />
+        {/* 7 — the promise, signed. The monogram is a signature here, not a
+            stand-in for a face; the face is at the top of the page. */}
+        <section className="section-block" aria-labelledby="founder-promise-title">
+          <div className={styles.sectionHead}>
+            <p className="eyebrow">My promise</p>
+            <h2 id="founder-promise-title">What I am holding this product to.</h2>
+          </div>
 
-          <SiteFooter />
-        </div>
+          <div className={`panel ${styles.promise}`}>
+            <p className={styles.prose}>{PROMISE_BODY}</p>
 
-        <StickyCta href={APP_SIGNUP_URL} label="Build my free site" />
-      </main>
-    </>
+            <ul className={styles.pledges}>
+              {PLEDGES.map((pledge, index) => (
+                <li key={pledge} className={styles.pledge}>
+                  <span className={styles.pledgeNum} aria-hidden="true">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span>{pledge}</span>
+                </li>
+              ))}
+            </ul>
+
+            <p className={styles.direction}>{DIRECTION}</p>
+
+            <div className={styles.signature}>
+              <span className={styles.monogram} aria-hidden="true">
+                B
+              </span>
+              <span>
+                <span className={styles.signatureName}>Brett</span>
+                <span className={styles.signatureRole}>Founder, Let’s Get Quoted</span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* 8 */}
+        <MarketingCta
+          kicker="The next chapter is your business"
+          title="Build something customers trust—and a system your team can run."
+          note={`No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you, falling as your volume grows, and applies only when they actually pay.`}
+        />
+
+        <SiteFooter />
+      </div>
+
+      {/* The page's ONE persistent mobile control. It is mobile-only by its own
+          stylesheet and fades in past the hero, so it never doubles up with the
+          hero's buttons. Nothing else on this page is sticky. */}
+      <StickyCta href={APP_SIGNUP_URL} label="Build my free site" />
+    </main>
   );
 }
