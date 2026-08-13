@@ -7,13 +7,14 @@ import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import FloatingPanel from '@/components/floating-panel';
 import { DayColumnMenuRows, HiddenDaysNotice } from './CalendarDayColumns';
+import ScheduleDaySummary from './ScheduleDaySummary';
 import ScheduleMobileAgenda from './ScheduleMobileAgenda';
 import ScheduleTimeline, { type TimelineDayMeta } from './ScheduleTimeline';
 import ScheduleCrewLanes from './ScheduleCrewLanes';
 import ScheduleMonthCapacity from './ScheduleMonthCapacity';
 import CalendarLegend from './CalendarLegend';
 import { occurrenceMinutes } from '@/lib/schedule-timeline';
-import { longDateLabel, monthKeyOf, shiftDateKey } from '@/lib/schedule-agenda';
+import { monthKeyOf, parseDateKey, shiftDateKey } from '@/lib/schedule-agenda';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
 import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
@@ -23,7 +24,7 @@ import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, togg
    — the timeline columns, the capacity cells, the crew lanes — calls
    useScheduleDrag itself, because they are the ones that own a date. */
 import { useModal } from './use-modal';
-import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
+import { formatJobSchedule, formatJobTime, weekdayOfDateKey } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -88,6 +89,7 @@ function CalendarViewMenu({
   days,
   onDaysChange,
   weekendCounts,
+  weekendRangeWord,
   showDayColumns,
 }: {
   value: CalendarView;
@@ -106,6 +108,8 @@ function CalendarViewMenu({
   days: WeekendDays;
   onDaysChange: (next: WeekendDays) => void;
   weekendCounts: { sat: number; sun: number };
+  /** Which range those counts were taken over — see the prop on the rows. */
+  weekendRangeWord: string;
   showDayColumns: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -192,7 +196,7 @@ function CalendarViewMenu({
               everything about what the grid draws, which is what stopped the
               toolbar needing a second row of controls. */}
           {showDayColumns ? (
-            <DayColumnMenuRows days={days} onChange={onDaysChange} counts={weekendCounts} />
+            <DayColumnMenuRows days={days} onChange={onDaysChange} counts={weekendCounts} rangeWord={weekendRangeWord} />
           ) : null}
         </div>
       </FloatingPanel>
@@ -329,6 +333,7 @@ export default function ScheduleCalendar({
   initialDayKey,
   workdayStart = null,
   workdayEnd = null,
+  queueCount = 0,
   readOnly = false,
   basePath = '/dashboard',
 }: {
@@ -383,6 +388,9 @@ export default function ScheduleCalendar({
    */
   workdayStart?: string | null;
   workdayEnd?: string | null;
+  /** Approved work with no date, so the Day view's empty state can name what
+      pressing it would do. Zero on the demo, which has no queue. */
+  queueCount?: number;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
 
@@ -486,12 +494,6 @@ export default function ScheduleCalendar({
       .filter((member): member is CrewOption => Boolean(member))
     : [];
 
-  const weekAtAGlance = useMemo(() => {
-    return weeks.find((week) => week.some((cell) => cell?.dateKey === todayKey))
-      ?? weeks.find((week) => week.some((cell) => cell && (jobsByDate.get(cell.dateKey)?.length ?? 0) > 0))
-      ?? weeks.find((week) => week.some(Boolean))
-      ?? [];
-  }, [jobsByDate, todayKey, weeks]);
 
   /**
    * WHICH DAY THE TIME VIEWS ARE POINTED AT.
@@ -522,6 +524,20 @@ export default function ScheduleCalendar({
   }, [monthOfGrid, todayKey]);
 
   /**
+   * All seven days of the week on screen, hidden ones included.
+   *
+   * Separate from timelineDayKeys BECAUSE of the hiding: the notice that says
+   * "there is work on a column you cannot see" has to look at the columns you
+   * cannot see, and reading the filtered list would count them as zero — the
+   * one state it exists for would be the one state it could never report.
+   */
+  const weekDayKeys = useMemo(() => {
+    const weekday = new Date(`${anchorDayKey}T00:00:00`).getDay();
+    const sunday = shiftDateKey(anchorDayKey, -weekday);
+    return [0, 1, 2, 3, 4, 5, 6].map((day) => shiftDateKey(sunday, day));
+  }, [anchorDayKey]);
+
+  /**
    * The columns a time view shows.
    *
    * Week snaps to the calendar week and drops the weekend days the toggles
@@ -537,12 +553,8 @@ export default function ScheduleCalendar({
     if (span === 1) return [anchorDayKey];
     if (span === 3) return [0, 1, 2].map((offset) => shiftDateKey(anchorDayKey, offset));
 
-    const weekday = new Date(`${anchorDayKey}T00:00:00`).getDay();
-    const sunday = shiftDateKey(anchorDayKey, -weekday);
-    return [0, 1, 2, 3, 4, 5, 6]
-      .filter((day) => (day !== 0 || days.sun) && (day !== 6 || days.sat))
-      .map((day) => shiftDateKey(sunday, day));
-  }, [anchorDayKey, days.sat, days.sun, effectiveView, span]);
+    return weekDayKeys.filter((_, day) => (day !== 0 || days.sun) && (day !== 6 || days.sat));
+  }, [days.sat, days.sun, effectiveView, span, weekDayKeys]);
 
   /**
    * How long each occurrence runs, and where it sits in a multi-day job.
@@ -582,8 +594,6 @@ export default function ScheduleCalendar({
     }
     return meta;
   }, [capacityHours, jobs]);
-
-  const visibleWeeks = useMemo(() => effectiveView === 'week' ? [weekAtAGlance] : weeks, [effectiveView, weekAtAGlance, weeks]);
 
   // Every real day in the month, in order. Padding cells are null, so filtering
   // them out leaves exactly the month — which is what both new views count in.
@@ -658,26 +668,68 @@ export default function ScheduleCalendar({
     );
   }, [jobs, monthDays]);
 
-  // Work booked on each weekend day in the month on screen.
-  //
-  // Counted whether the column is shown or not — that is the whole point. The
-  // old version only counted HIDDEN days, which meant the number existed only
-  // while it was too late to be useful; a chip has to be able to say "6" before
-  // you hide the day as well as after.
-  //
-  // Indexes are real weekday numbers (0=Sun … 6=Sat) because `weeks` keeps all
-  // seven columns and hiding is a render-time concern, not a data one.
+  /**
+   * Work booked on each weekend day of the range on screen.
+   *
+   * Counted whether the column is shown or not — that is the whole point. The
+   * first version counted only HIDDEN days, so the number existed only once it
+   * was too late to be useful.
+   *
+   * THE RANGE IS THE ONE YOU ARE LOOKING AT, WHICH IS NOT ALWAYS THE MONTH.
+   * This read `visibleWeeks`, and in Week that is `weekAtAGlance` — the week
+   * containing TODAY, which stops moving the moment you step the week stepper.
+   * Walk forward three weeks with two Saturday jobs waiting there and the notice
+   * still reported on the week you left. Capacity really does span the month, so
+   * the range follows the view rather than being fixed to either.
+   */
   const weekendJobCounts = useMemo(() => {
     let sun = 0;
     let sat = 0;
-    for (const week of visibleWeeks) {
-      const sunday = week[0];
-      const saturday = week[6];
-      if (sunday) sun += jobsByDate.get(sunday.dateKey)?.length ?? 0;
-      if (saturday) sat += jobsByDate.get(saturday.dateKey)?.length ?? 0;
+    const count = (dateKey: string) => {
+      const weekday = weekdayOfDateKey(dateKey);
+      if (weekday === 0) sun += jobsByDate.get(dateKey)?.length ?? 0;
+      if (weekday === 6) sat += jobsByDate.get(dateKey)?.length ?? 0;
+    };
+    if (effectiveView === 'week') {
+      // All seven, not the five on screen — see weekDayKeys.
+      for (const dateKey of weekDayKeys) count(dateKey);
+    } else {
+      for (const week of weeks) for (const cell of week) if (cell) count(cell.dateKey);
     }
     return { sun, sat };
-  }, [visibleWeeks, jobsByDate]);
+  }, [effectiveView, weekDayKeys, weeks, jobsByDate]);
+
+  /** What those counts are OF, in the words the notice and the menu use. */
+  const weekendRangeWord = effectiveView === 'week' ? 'this week' : 'this month';
+
+  /**
+   * Why a day is off, or null — availability blocks ONLY.
+   *
+   * `blockedDays` cannot answer this. It is the drag guard's reason map, and it
+   * holds every day that is merely at CAPACITY as well ("That day's 10h capacity
+   * is already full"), which is right for a warning you can override and wrong
+   * for everything else. The timeline read it as "closed" and so every fully
+   * booked weekday came up flagged `Closed · 5` with a tooltip claiming five
+   * jobs were scheduled outside configured working hours — the `Full` branch one
+   * line below it was unreachable. Measured on this account: five of five
+   * weekdays, all of them simply busy.
+   */
+  function blockReasonFor(dateKey: string): string | null {
+    const block = blocks.find((b) => dateKey >= b.start_date && dateKey <= b.end_date);
+    if (!block) return null;
+    return block.reason ? `Blocked off — ${block.reason}.` : 'This day is blocked off.';
+  }
+
+  /** The same answer as a map, for the day columns. Only the days on screen. */
+  const closedDays = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const dateKey of timelineDayKeys) {
+      const reason = blockReasonFor(dateKey);
+      if (reason) map[dateKey] = reason;
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timelineDayKeys, blocks]);
 
   function openJobActions(occurrenceKey: string) {
     setIsConfirmingRemove(false);
@@ -746,16 +798,30 @@ export default function ScheduleCalendar({
    *
    * The arrow moves by whatever is on screen — a week view steps a week, a
    * three-column tablet steps three days — so pressing it twice never skips
-   * days or shows you the same job twice. Both derive from the column list
-   * rather than from the view name, which is what keeps the tablet honest.
+   * days or shows you the same job twice.
+   *
+   * A SNAPPED WEEK STEPS SEVEN EVEN WHEN IT DRAWS FIVE. This was the column
+   * count alone, which was right while a week meant seven columns. With the
+   * weekend columns off by default it made the step five: from Monday the 10th,
+   * +5 is Saturday the 15th, which snaps back to the week of the 9th — press
+   * Next twice and you are looking at the same five days you started on. The
+   * tablet's three-day view does not snap, so there the column count is still
+   * the honest answer.
    */
-  const stepDays = timelineDayKeys.length > 1 ? timelineDayKeys.length : 1;
+  const stepDays = effectiveView === 'week' && span === 7 ? 7 : timelineDayKeys.length > 1 ? timelineDayKeys.length : 1;
   const stepNoun = stepDays === 1 ? 'day' : stepDays === 7 ? 'week' : `${stepDays} days`;
   const rangeLabel = useMemo(() => {
     const first = timelineDayKeys[0];
     const last = timelineDayKeys[timelineDayKeys.length - 1];
     if (!first) return '';
-    if (first === last) return longDateLabel(first);
+    /* "Wed, August 12" and not "Wednesday, August 12". The long form measured
+       188px, which put the Day view's nav at 388px — and 388 + 365 of controls
+       does not fit a 728px toolbar, so the one view with the longest label was
+       the one view still wrapping onto two rows. The worst case here is
+       "Wednesday, September 30"; shortening the weekday buys 55px of it. */
+    if (first === last) {
+      return parseDateKey(first).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
+    }
     const firstDate = new Date(`${first}T00:00:00`);
     const lastDate = new Date(`${last}T00:00:00`);
     const sameMonth = firstDate.getMonth() === lastDate.getMonth() && firstDate.getFullYear() === lastDate.getFullYear();
@@ -920,6 +986,7 @@ export default function ScheduleCalendar({
             days={days}
             onDaysChange={updateDays}
             weekendCounts={weekendJobCounts}
+            weekendRangeWord={weekendRangeWord}
             /* ONLY WHERE THERE ARE COLUMNS TO HIDE. Week and Capacity are the
                two views built out of day columns. Day and Crew day show the
                single day you picked; the Job list shows days that have work;
@@ -987,9 +1054,25 @@ export default function ScheduleCalendar({
             put the toolbar straight back onto the two rows this pass removed.
             The switches it reports on are in the views menu. */}
         {COLUMN_VIEWS.has(effectiveView) ? (
-          <HiddenDaysNotice days={days} onChange={updateDays} counts={weekendJobCounts} />
+          <HiddenDaysNotice days={days} onChange={updateDays} counts={weekendJobCounts} rangeWord={weekendRangeWord} />
         ) : null}
         <CalendarLegend variant={effectiveView === 'month' ? 'capacity' : 'status'} showUnknown={hasUnknownDuration} />
+        {/* DAY ONLY. In Week the same strip would be summarising seven days
+            through one of them, and the columns already carry their own
+            "closed · 5" headers. */}
+        {effectiveView === 'day' ? (
+          <ScheduleDaySummary
+            dateKey={anchorDayKey}
+            jobs={jobsByDate.get(anchorDayKey) ?? []}
+            crew={crew}
+            assignments={assignments}
+            bookedHours={hoursByDate[anchorDayKey] ?? 0}
+            unknownJobs={unknownDurationByDate[anchorDayKey] ?? 0}
+            capacityHours={capacityHours}
+            blockedReason={blockReasonFor(anchorDayKey)}
+            queueCount={queueCount}
+          />
+        ) : null}
       {effectiveView === 'day' || effectiveView === 'week' ? (
         <ScheduleTimeline
           dayKeys={timelineDayKeys}
@@ -1002,7 +1085,9 @@ export default function ScheduleCalendar({
           workdayStart={workdayStart}
           workdayEnd={workdayEnd}
           fullDates={fullSet}
-          blockedDays={blockedDays}
+          /* Blocks only — see blockReasonFor. Passing the drag guard's map here
+             was what made every busy day claim to be closed. */
+          blockedDays={closedDays}
           onOpenJob={openJobActions}
           onOpenDay={openDay}
           readOnly={readOnly}

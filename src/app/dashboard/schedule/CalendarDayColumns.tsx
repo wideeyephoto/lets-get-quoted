@@ -38,9 +38,9 @@ function items(days: WeekendDays, counts: { sat: number; sun: number }): Item[] 
 }
 
 /** Written out in full — this is a control you read, not a column header. */
-function jobsText(count: number) {
-  if (count === 0) return 'No jobs this month';
-  return `${count} ${count === 1 ? 'job' : 'jobs'} this month`;
+function jobsText(count: number, rangeWord: string) {
+  if (count === 0) return `No jobs ${rangeWord}`;
+  return `${count} ${count === 1 ? 'job' : 'jobs'} ${rangeWord}`;
 }
 
 /**
@@ -57,11 +57,14 @@ export function DayColumnMenuRows({
   days,
   onChange,
   counts,
+  rangeWord,
 }: {
   days: WeekendDays;
   onChange: (next: WeekendDays) => void;
-  /** Jobs on each weekend day in the month on screen — whether shown or not. */
+  /** Jobs on each weekend day of the range on screen — whether shown or not. */
   counts: { sat: number; sun: number };
+  /** "this week" or "this month", matching what the counts were taken over. */
+  rangeWord: string;
 }) {
   return (
     <div className="calendar-col-group" role="group" aria-labelledby="calendar-col-heading">
@@ -89,7 +92,7 @@ export function DayColumnMenuRows({
             </span>
             <span className="calendar-view-option-text">
               <strong>{item.label}</strong>
-              <small>{hiding ? `${item.count} hidden from the calendar` : jobsText(item.count)}</small>
+              <small>{hiding ? `${item.count} hidden from the calendar` : jobsText(item.count, rangeWord)}</small>
             </span>
             {/* The pressed state is on the button; the consequence is not. A
                 screen reader should hear what pressing this does. */}
@@ -120,10 +123,19 @@ export function HiddenDaysNotice({
   days,
   onChange,
   counts,
+  rangeWord,
 }: {
   days: WeekendDays;
   onChange: (next: WeekendDays) => void;
   counts: { sat: number; sun: number };
+  /**
+   * "this week" or "this month" — whichever the counts were taken over.
+   *
+   * Not decoration: Week counts the seven days on screen and Capacity counts
+   * the month, so a fixed "this month" here would have been wrong half the time
+   * about a number the reader is being asked to act on.
+   */
+  rangeWord: string;
 }) {
   const hidden = items(days, counts).filter((item) => !item.on && item.count > 0);
   if (hidden.length === 0) return null;
@@ -141,8 +153,8 @@ export function HiddenDaysNotice({
         <path d="M10.6 4.3 2.9 18a1.6 1.6 0 0 0 1.4 2.4h15.4a1.6 1.6 0 0 0 1.4-2.4L13.4 4.3a1.6 1.6 0 0 0-2.8 0Z" />
       </svg>
       <span>
-        {total === 1 ? '1 job is' : `${total} jobs are`} booked this month on a day the calendar is not showing —{' '}
-        {where}.
+        {total === 1 ? '1 job is' : `${total} jobs are`} booked {rangeWord} on a day the calendar is not
+        showing — {where}.
       </span>
       <button type="button" onClick={() => onChange(restored)}>
         Show {columns}

@@ -7044,14 +7044,6 @@ li + li { margin-top: 0.45rem; }
   .calendar-view-quick-btn svg { width: 1.15rem; height: 1.15rem; }
 }
 
-/* Tighter still: the menu button drops to its icon. A safety net rather than a
-   width anything reaches on a desktop — below 640px this whole toolbar is
-   replaced by the mobile agenda's own controls. */
-@container caltoolbar (max-width: 560px) {
-  .calendar-view-trigger { padding: 0 0.55rem; }
-  .calendar-view-trigger-text { display: none; }
-}
-
 /* QUIETER THAN THE GROUP BESIDE IT, NOT LOUDER.
    This carried two glows — a blue outer and a blue inset — which made the way
    to the four views you rarely visit the brightest object in the row, beside a
@@ -7085,6 +7077,22 @@ li + li { margin-top: 0.45rem; }
 .calendar-view-trigger-text strong { font-size: 0.8rem; font-weight: 800; }
 .calendar-view-caret { width: 0.85rem; height: 0.85rem; flex: none; color: var(--mute-t50); transition: transform 0.16s ease; }
 .calendar-view-trigger.open .calendar-view-caret { transform: rotate(180deg); }
+
+/* THE MENU BUTTON'S WORDS GO FIRST, before the three views lose theirs.
+   780 and not 560: the calendar column is 728px at 1920 in the three-column
+   layout, and Day's nav is the widest of the three (a date, not a range), so
+   that width has to be paid for out of something. Day / Week / Capacity are
+   the control people press; this is the way to four views they visit
+   occasionally, and it keeps its icon, its caret and its accessible name.
+
+   BELOW THE BASE RULES ON PURPOSE. A container query carries no extra
+   specificity, so written above them `display: flex` won on source order and
+   this block measured as if it were not there. */
+@container caltoolbar (max-width: 780px) {
+  .calendar-view-trigger { padding: 0 0.55rem; }
+  .calendar-view-trigger-text { display: none; }
+}
+
 
 .calendar-view-panel {
   padding: 0.35rem;
@@ -30743,6 +30751,52 @@ body[data-schedule-overlay="job"] .sched-queue {
 :root[data-theme='light'] .calendar-job-status-new_lead    { --job-fill: rgba(233,178,60,.16); }
 :root[data-theme='light'] .calendar-job-status-in_progress { --job-fill: rgba(61,184,255,.14); }
 :root[data-theme='light'] .calendar-job-status-complete    { --job-fill: rgba(76,190,120,.14); }
+
+/* ---- the Day view's own summary ------------------------------------------
+   The one view about a single day was the only one that said nothing about it:
+   Capacity colors every cell by how full it is and the phone prints "2h of 8h
+   booked" over the day it shows, while this drew eleven hours of ruled lines
+   and left the addition to you. Same strip as the phone (.sched-cap), because
+   a day must not read as busy on one and open on the other. */
+.sched-daysum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin: 0 0 0.7rem;
+}
+
+/* The capacity strip carries the row; the rest sits beside it. */
+.sched-daysum .sched-cap { flex: 1 1 18rem; min-width: 0; }
+
+.sched-daysum-crew,
+.sched-daysum-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--mute-i62);
+}
+
+.sched-daysum-crew strong { color: var(--text); font-size: 0.88rem; font-weight: 800; }
+.sched-daysum-who { color: var(--mute-t50); }
+.sched-daysum-quiet { color: var(--mute-t45); }
+
+.sched-daysum-empty button {
+  min-height: 44px;
+  padding: 0 0.55rem;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sched-daysum-empty button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
 /* THE VIEW YOU ASKED FOR IS NOT THE VIEW YOU GOT, AND HERE IS WHY.
    Capacity below 1280 is seven cells at ~80px sharing the row with the rail, so

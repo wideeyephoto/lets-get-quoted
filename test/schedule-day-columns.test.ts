@@ -56,7 +56,7 @@ describe('the weekend day columns', () => {
     // not inside .calendar-toolbar.
     const toolbar = CALENDAR.slice(CALENDAR.indexOf('<div className="calendar-toolbar">'), CALENDAR.indexOf('<ScheduleMobileAgenda'));
     expect(toolbar).not.toContain('HiddenDaysNotice');
-    expect(COLUMNS).toContain('booked this month on a day the calendar is not showing');
+    expect(COLUMNS).toContain('booked {rangeWord} on a day the calendar is not');
   });
 
   /** Reading it and undoing it should not be two different gestures. */

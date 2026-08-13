@@ -583,7 +583,24 @@ export default async function SchedulePage({
   const mapCookie = cookies().get(mapViewCookie('schedule'))?.value;
   const mapView = mapCookie ? normalizeMapView(mapCookie) : 'off';
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
-  const weekendDays = normalizeWeekendDays(cookies().get(CALENDAR_WEEKEND_COOKIE)?.value);
+  /* THE DEFAULT WEEK IS THE WEEK THIS BUSINESS WORKS.
+     Both weekend columns were on until somebody turned them off, so a Mon–Fri
+     landscaper opened a seven-column week and paid for two columns of nothing
+     with the width of the five that matter — measured at ~78px a weekday on a
+     1920 screen, which is where the clipped labels in this pass come from.
+     `booking_weekdays` is the business's own answer to the same question and is
+     already loaded for the booking engine; DEFAULT_BOOKING_WEEKDAYS is Mon–Fri,
+     so an account that never configured it gets the workweek too.
+
+     ONLY THE DEFAULT. A cookie always wins, in both directions, so anybody who
+     has ever pressed one of these keeps exactly what they chose. And the case
+     this could get wrong — a business that works Saturdays without having said
+     so — is the one the hidden-days notice was built for: it names the work on
+     the missing column and puts it back in one press. */
+  const weekendCookie = cookies().get(CALENDAR_WEEKEND_COOKIE)?.value;
+  const weekendDays = weekendCookie
+    ? normalizeWeekendDays(weekendCookie)
+    : { sat: workingWeekdays.includes(6), sun: workingWeekdays.includes(0) };
   // Read server-side so the calendar renders in the right shape on the first
   // paint — and, more to the point, so stepping a month doesn't reset it.
   const calendarView = normalizeCalendarView(cookies().get(CALENDAR_VIEW_COOKIE)?.value);
@@ -800,6 +817,11 @@ export default async function SchedulePage({
           }
           weekendDays={weekendDays}
           initialView={calendarView}
+          /* So the Day view's empty state can say what pressing it does. The
+             approved count, not every unscheduled job: the other population is
+             a quote nobody has accepted, and "schedule one of those" is the
+             wrong offer. */
+          queueCount={approvedUnscheduled}
           /* NO RAIL TOGGLE HERE ANY MORE. It read "Show jobs (10)" one row under
              a stat that read "10 · Ready to book" and pointed at the same rail —
              the same number and the same destination, twice. The stat is the one

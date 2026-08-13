@@ -31,7 +31,7 @@ import { OPEN_SCHEDULE_QUEUE_EVENT } from './dock-events';
  *   waiting by default, and for "review the quote" that is the wrong one — the
  *   approved jobs are sorted above the unapproved ones.
  */
-function openQueue(focusJobId?: string) {
+export function openQueue(focusJobId?: string) {
   /* This used to have to undo a collapsed desktop rail first — RailToggle could
      hide the queue's docked home behind a body attribute, so the event alone
      would open something that was display:none. That toggle is gone, nothing
