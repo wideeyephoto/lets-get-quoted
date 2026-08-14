@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { formatMoney } from '@/lib/jobs';
+import { formatMoneyExact } from '@/lib/jobs';
 import type { RecurringPlan } from '@/lib/recurring';
 import type { PlanContext } from '@/lib/recurring-context';
 import type { RecurringView } from '@/lib/recurring-view';
@@ -85,21 +85,21 @@ export default function RecurringScreen({
   const workload = (
     <>
       <strong>Next 30 days:</strong> {next30.count} visit{next30.count === 1 ? '' : 's'}
-      {next30.value > 0 ? ` · ${formatMoney(next30.value)} expected` : ''}
+      {next30.value > 0 ? ` · ${formatMoneyExact(next30.value)} expected` : ''}
       <span className="recurring-workload-sep" aria-hidden="true">·</span>
       <strong>Next 90 days:</strong> {next90.count} visit{next90.count === 1 ? '' : 's'}
-      {next90.value > 0 ? ` · ${formatMoney(next90.value)} expected` : ''}
+      {next90.value > 0 ? ` · ${formatMoneyExact(next90.value)} expected` : ''}
     </>
   );
 
   // The amount is dropped here rather than sent across and formatted there:
-  // formatMoney lives in @/lib/jobs, which reaches the database, and pulling it
+  // formatMoneyExact lives in @/lib/jobs, which reaches the database, and pulling it
   // into the client bundle fails the build with "Can't resolve 'fs'".
   const board: BoardModel = {
     issues,
     visits: boardVisitList.map(({ amount, ...rest }) => ({
       ...rest,
-      amountLabel: amount > 0 ? formatMoney(amount) : null,
+      amountLabel: amount > 0 ? formatMoneyExact(amount) : null,
     })),
     windowLabel: boardWindowLabel,
     workload,
@@ -140,7 +140,7 @@ export default function RecurringScreen({
           <div className={`workspace-metric-grid four-up recurring-stat-grid${ops ? ' rops-tiles' : ''}`}>
             <article className="workspace-metric-card accent recurring-mrr-card">
               <span className="workspace-metric-label">Estimated monthly recurring</span>
-              <strong className="workspace-metric-value">{formatMoney(monthlyRecurring)}</strong>
+              <strong className="workspace-metric-value">{formatMoneyExact(monthlyRecurring)}</strong>
               {/* The figure is exact; the line behind it is only the shape of
                   the book over time — see trailingMonthlyRecurring. */}
               <Sparkline

@@ -582,10 +582,17 @@ export default async function JobDetailPage({
               ) : null}
             </div>
           ) : null}
+          {/* TO THE CENT, because the money panel below is. This header said
+              "$100 quoted" over an Approved and a Remaining of $99.94 — the
+              same number twice, rounded in one place and not the other, which
+              reads as two different figures and sends somebody looking for the
+              six cents. formatMoney's own note says it: whole dollars are for a
+              summary, never for something a customer authorizes, and a quote is
+              the thing a customer authorizes. */}
           <div className="job-command-facts" aria-label="Job facts">
             <span>
               <strong>
-                <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`}>{formatMoney(job.quoted_amount)}</Link>
+                <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`}>{formatMoneyExact(job.quoted_amount)}</Link>
               </strong>{' '}
               quoted
             </span>
@@ -628,7 +635,9 @@ export default async function JobDetailPage({
               {!isPrimary('price') && !isPrimary('send_quote') ? (
                 <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}#quote-breakdown`}>
                   <strong>{job.quoted_amount > 0 ? 'Edit the quote' : 'Price this job'}</strong>
-                  <small>{job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'No amount on this job yet'}</small>
+                  {/* Same figure as the header and the money panel, so all
+                      three agree to the cent. */}
+                  <small>{job.quoted_amount > 0 ? `${formatMoneyExact(job.quoted_amount)} quoted` : 'No amount on this job yet'}</small>
                 </Link>
               ) : null}
               {!isPrimary('schedule') ? (

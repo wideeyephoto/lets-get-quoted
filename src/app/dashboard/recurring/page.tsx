@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { formatMoney } from '@/lib/jobs';
+import { formatMoneyExact } from '@/lib/jobs';
 import { todayDateKey } from '@/lib/recurring';
 import { shortDate } from '@/lib/recurring-display';
 import { buildRecurringView } from '@/lib/recurring-view';
@@ -90,8 +90,8 @@ export default async function RecurringPage({
         action={setPlanAutopayAction.bind(null, plan.id, true)}
         confirmMessage={
           plan.card_last4
-            ? `Turn on autopay for ${plan.client_name}? The card already on file (•••• ${plan.card_last4}) is charged ${formatMoney(plan.amount)} on the day of each visit from here on. Nothing is charged right now.`
-            : `Turn on autopay for ${plan.client_name}? They get a secure link to add a card, and each visit then charges ${formatMoney(plan.amount)} on the day it happens. Nothing is charged right now.`
+            ? `Turn on autopay for ${plan.client_name}? The card already on file (•••• ${plan.card_last4}) is charged ${formatMoneyExact(plan.amount)} on the day of each visit from here on. Nothing is charged right now.`
+            : `Turn on autopay for ${plan.client_name}? They get a secure link to add a card, and each visit then charges ${formatMoneyExact(plan.amount)} on the day it happens. Nothing is charged right now.`
         }
         className="linklike"
         pendingLabel="Turning on…"
@@ -107,7 +107,7 @@ export default async function RecurringPage({
             action={runPlanNowAction.bind(null, plan.id)}
             confirmMessage={
               plan.auto_charge && plan.card_last4
-                ? `Create this visit today instead of ${shortDate(plan.next_run_date)}, and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoney(plan.amount) : ''}? The customer is billed immediately and the plan moves on to the visit after this one.`
+                ? `Create this visit today instead of ${shortDate(plan.next_run_date)}, and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoneyExact(plan.amount) : ''}? The customer is billed immediately and the plan moves on to the visit after this one.`
                 : `Create this visit today instead of ${shortDate(plan.next_run_date)}? The plan then moves on to the visit after this one.`
             }
             className="btn secondary"
