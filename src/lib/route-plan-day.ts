@@ -335,6 +335,11 @@ export function toPlanStop(
   const hoursToday =
     load.kind === 'spread' ? load.perDay : load.kind === 'over' ? load.capacity : hours;
 
+  /* The job carries no usable estimate, so the number below is the account's
+     default and not this job's. Computed once here rather than re-derived at
+     the row, so what the plan RAN on and what the row SAYS cannot disagree. */
+  const assumedVisit = !(Number.isFinite(hoursToday) && hoursToday > 0);
+
   return {
     id: job.id,
     label: job.client_name,
@@ -342,8 +347,8 @@ export function toPlanStop(
     lat: job.lat != null ? Number(job.lat) : null,
     lng: job.lng != null ? Number(job.lng) : null,
     scheduledTime: job.scheduled_time,
-    visitMinutes:
-      Number.isFinite(hoursToday) && hoursToday > 0 ? Math.round(hoursToday * 60) : defaultVisitMinutes,
+    visitMinutes: assumedVisit ? defaultVisitMinutes : Math.round(hoursToday * 60),
+    assumedVisit,
     // The one hard constraint: a customer who confirmed their appointment by text
     // keeps that time, full stop.
     locked: Boolean(job.appointment_confirmed_at),

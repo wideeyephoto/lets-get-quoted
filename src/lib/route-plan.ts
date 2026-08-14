@@ -29,6 +29,22 @@ export type PlanStop = {
   // see toPlanStop in route-plan-day, which is where the two used to be
   // confused.
   visitMinutes: number;
+  /**
+   * True when visitMinutes is the account's default rather than the job's own
+   * estimate — the job has no estimated_hours at all.
+   *
+   * THE ROUTER STILL NEEDS A NUMBER. It cannot order a day around a stop of
+   * unknown length, so the default stands and the plan is still produced. What
+   * changed is that it is no longer SILENT: the same job counts as zero hours
+   * on the Schedule page's capacity (see countUnknownDurationByDate, which
+   * deliberately refuses to invent one), so a day could read "0 of 136 hours"
+   * while the route it proposed had already spent two of them. Two answers for
+   * one job, neither of them labelled.
+   *
+   * The router ignores this flag. It exists so the row can say the number is
+   * assumed and point at the field that would settle it.
+   */
+  assumedVisit?: boolean;
   // Customer confirmed this appointment → pin it to `scheduledTime`.
   locked: boolean;
   /**

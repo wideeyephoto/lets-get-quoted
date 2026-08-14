@@ -18048,6 +18048,16 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .plan-badge.span { background: rgba(255, 122, 41, 0.16); color: var(--ink-orange-1); }
 .plan-badge.span::before { content: '⧉'; font-weight: 800; }
 
+/* "Assumed: 2 hr" — the job has no estimated hours, so the route planned it on
+   the account default. Amber because it IS a warning: the same job counts as
+   zero against the day's capacity, so the day can read "0 of 136 hours" while
+   the route has already spent two of them. A link, so the field that settles it
+   is one press away; underlined on hover rather than always, so a row with
+   three badges does not read as a row of links. */
+.plan-badge.assumed { background: rgba(251, 191, 36, 0.16); color: var(--ink-amber-1); }
+.plan-badge.assumed::before { content: '≈'; font-weight: 800; }
+.plan-badge.assumed:hover { text-decoration: underline; }
+
 /* Where the day is meant to end. Violet because it's neither a lock (green)
    nor a warning (amber) — it's an intention, and it can be out of date. */
 .plan-badge.last { background: rgba(167, 139, 250, 0.18); color: var(--ink-neutral-14); }

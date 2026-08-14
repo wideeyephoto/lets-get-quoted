@@ -133,3 +133,60 @@ describe('a clock that admits the day ran out', () => {
     expect(SRC).toContain('formatTimeLabel(parseTimeMinutes(payload.workdayEnd)');
   });
 });
+
+/**
+ * A JOB WITH NO ESTIMATED HOURS, AND THE TWO ANSWERS IT USED TO GET.
+ *
+ * The Schedule page counts it as zero — countUnknownDurationByDate deliberately
+ * refuses to invent a duration, because inventing hours would close days that
+ * are genuinely open. The route planner cannot do that: it has to order the day
+ * around something, so it falls back to the account default.
+ *
+ * Both are right on their own. Together, silently, they produced a Schedule
+ * page reading "0 of 136 hours" above a route that had already spent two of
+ * them on one of those jobs. The fallback stays; it is labelled now.
+ */
+describe('a stop the router had to guess the length of', () => {
+  const noHours: PlanJobRow = { ...JOB, estimated_hours: null, scheduled_until: null };
+
+  it('still gets planned, on the account default', () => {
+    const stop = toPlanStop(noHours, 120);
+    expect(stop.visitMinutes).toBe(120);
+  });
+
+  it('and is marked as assumed, so the row can say so', () => {
+    expect(toPlanStop(noHours, 120).assumedVisit).toBe(true);
+  });
+
+  it('is not marked when the job actually says how long it takes', () => {
+    expect(toPlanStop({ ...JOB, estimated_hours: 3 }, 120).assumedVisit).toBe(false);
+    expect(toPlanStop({ ...JOB, estimated_hours: 3 }, 120).visitMinutes).toBe(180);
+  });
+
+  it('treats zero, negative and unparseable the same as missing', () => {
+    for (const estimated_hours of [0, -4, Number.NaN, 'abc' as unknown as number]) {
+      const stop = toPlanStop({ ...JOB, estimated_hours }, 90);
+      expect(stop.assumedVisit, String(estimated_hours)).toBe(true);
+      expect(stop.visitMinutes, String(estimated_hours)).toBe(90);
+    }
+  });
+
+  /** A multi-day job HAS hours — they are just divided. That is a share, not a
+   *  guess, and labelling it "assumed" would be a second wrong answer. */
+  it('does not call a multi-day share an assumption', () => {
+    const stop = toPlanStop({ ...JOB, estimated_hours: 16 }, 120, { placement: { day: 1, of: 2 }, capacityHours: 8 });
+    expect(stop.assumedVisit).toBe(false);
+    expect(stop.visitMinutes).toBe(480);
+  });
+
+  it('the row shows it, and links at the field that settles it', () => {
+    const SRC = readFileSync('src/app/dashboard/schedule/plan/DayPlanner.tsx', 'utf8').replace(/\r\n/g, '\n');
+    expect(SRC).toContain('stop.assumedVisit ?');
+    expect(SRC).toContain('Assumed: {minutesLabel(stop.visitMinutes)}');
+    // A link to the job, not a bare badge — the fix is one field away.
+    expect(SRC).toMatch(/className="plan-badge assumed"[\s\S]{0,40}title=/);
+    expect(SRC).toMatch(/href=\{`\/dashboard\/jobs\/\$\{stop\.id\}`\}\s*\n\s*className="plan-badge assumed"/);
+    // And it says the other half out loud: zero against capacity.
+    expect(SRC).toContain('zero hours against the day');
+  });
+});
