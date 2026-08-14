@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 6d8bc0d73b857562
+   source-sha256: 0419eb23cbeec342
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -14838,6 +14838,21 @@ select optgroup {
 :root[data-theme='light'] .calendar-band-color-3 { --job-fill: rgba(233,178,60,.16); }
 :root[data-theme='light'] .calendar-band-color-4 { --job-fill: rgba(255,112,163,.14); }
 :root[data-theme='light'] .calendar-band-color-5 { --job-fill: rgba(146,110,235,.14); }
+
+/* THE RAIL TOGGLE IS GONE, AND SO ARE ITS RULES.
+   It sat in the calendar toolbar reading "Show jobs (10)" while the stat strip
+   directly above it read "10 · Ready to book" and linked to the same rail — the
+   same number and the same destination, twice, a row apart. The stat is the one
+   that stays: it is already there, it is already a link to #unscheduled-jobs,
+   and it says what the number means.
+
+   The `body[data-sched-rail]` rules go with it. Nothing sets that attribute any
+   more, so a stale "collapsed" left in someone's localStorage simply never
+   matches and the rail comes back on its own — no migration needed, and no way
+   to be stranded with a hidden queue and no button to bring it back. */
+
+/* The queue's written drag instruction is gone; the handle's own title carries
+   what is left of it, and that only appears where there is a pointer anyway. */
 
 
 /* ===========================================================================

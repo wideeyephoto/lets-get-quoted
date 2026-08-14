@@ -32,10 +32,12 @@ describe('the map is opened rather than dismissed', () => {
   });
 
   /** An explicit choice still persists both ways — only the meaning of "never
-   *  chose" changed. */
+   *  chose" changed. Closing it is the gear's "Map → None" now that the Hide
+   *  button beside the tabs is gone, so the off path runs through onSetMapView
+   *  rather than a click handler of its own. */
   it('remembers a deliberate open', () => {
     expect(MAP).toContain("onClick={() => setMap('large')}");
-    expect(MAP).toContain("onClick={() => setMap('off')}");
+    expect(MAP).toContain('onSetMapView={setMap}');
     expect(MAP).toContain("await setMapViewAction(next, 'schedule');");
   });
 

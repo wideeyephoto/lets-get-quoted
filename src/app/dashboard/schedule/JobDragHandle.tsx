@@ -45,9 +45,8 @@ export default function JobDragHandle({ jobId, jobName }: { jobId: string; jobNa
          describes a gesture that is a fight against a scrolling page — and this
          control is not primarily a drag source there, it is the tap-to-arm
          path. The drag is still available and still works; it is just no longer
-         the first thing the button claims to be. The section's own hint
-         describes the drag, and only where there is a pointer to do it with
-         (see .schedule-drag-hint-mouse).
+         the first thing the button claims to be. The section used to carry a
+         written hint about the drag; the title below is what is left of it.
          Not deleted on touch: this is the only keyboard path to scheduling, and
          hiding it by pointer type would take it from anybody on a touchscreen
          laptop. */

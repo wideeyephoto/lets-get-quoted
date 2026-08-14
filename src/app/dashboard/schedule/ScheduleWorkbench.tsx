@@ -105,16 +105,6 @@ export default function ScheduleWorkbench({
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Needs a date</p>
               <h2>Unscheduled jobs</h2>
-              {/* One sentence, and only where dragging is possible. The old pair
-                  told every device to press a button AND described a drag the
-                  reader could not do — on a phone the calendar it referred to
-                  was not even on screen. */}
-              <p className="schedule-drag-hint">
-                Press a job to schedule it.
-                <span className="schedule-drag-hint-mouse">
-                  {' '}On a mouse you can also drag one straight onto a calendar date.
-                </span>
-              </p>
             </div>
 
             <ol className="sched-rows">

@@ -144,8 +144,10 @@ export default function ScheduleMap({
           rule in lib/map-pin-scope is that an unfiltered map keeps its full
           picture, because that is the view worth having. Scoping to the month
           would also leave two of the three legend filters permanently dead, the
-          map having nothing but scheduled work left to show. So both tabs say
-          what they hold instead, and the contradiction goes with the ambiguity. */}
+          map having nothing but scheduled work left to show. So each tab's own
+          label says what it holds instead, and the contradiction goes with the
+          ambiguity. The line that said it on screen as well has been removed;
+          the tab labels still carry it. */}
       <div className="sched-map-bar">
         <div className="sched-map-tabs" role="tablist" aria-label="Map or list">
           <button
@@ -173,9 +175,8 @@ export default function ScheduleMap({
             List <span aria-hidden="true">· {jobs.length}</span>
           </button>
         </div>
-        <button type="button" className="sched-map-hide" onClick={() => setMap('off')} disabled={pending}>
-          Hide
-        </button>
+        {/* Closing it lives in the gear ("Map → None") and nowhere else — the
+            bar carried a Hide button beside it that did the same thing. */}
         {gear}
       </div>
 
@@ -186,9 +187,6 @@ export default function ScheduleMap({
           role="tabpanel"
           aria-labelledby="sched-map-tab-map"
         >
-          <p className="sched-map-scope">
-            Every active job and lead with an address — not just {monthLabel}. The list is the month.
-          </p>
           {/* Two jobs at one address used to draw one marker on top of another,
               and the lower one could not be clicked, hovered or reached at all —
               not crowded, missing. This is the part of clustering that matters

@@ -6869,7 +6869,6 @@ li + li { margin-top: 0.45rem; }
 }
 
 /* ===== Drag-to-schedule ===== */
-.schedule-drag-hint { margin: .5rem 0 0; color: var(--ink-neutral-5); font-size: .85rem; line-height: 1.5; }
 /* A GRIP, NOT A LABELLED BUTTON.
    It used to read "Drag to calendar" and sit at the foot of the card, under the
    crew row — the furthest point from the calendar and the last place anybody
@@ -19207,7 +19206,6 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   }
   .sched-queue-col .workspace-section-heading { margin-bottom: 0.6rem; }
   .sched-queue-col .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
-  .sched-queue-col .schedule-drag-hint { font-size: 0.76rem; line-height: 1.4; }
 
   /* The list is the part that scrolls; the heading and the foot link stay put.
      min-height:0 is what lets a flex child shrink below its content at all. */
@@ -19733,9 +19731,13 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .sched-map-open-wrap { display: grid; gap: 0.6rem; }
 .sched-map-open-wrap[data-pending] { opacity: 0.6; }
 
+/* space-between, not a margin on the last child: the gear is the only thing to
+   the right of the tabs now that Hide (which carried the `margin-left: auto`)
+   is gone. */
 .sched-map-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.6rem;
   flex-wrap: wrap;
 }
@@ -19764,31 +19766,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 /* Selected is a fill AND a weight change, never the fill alone. */
 .sched-map-tab.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
 .sched-map-tab:focus-visible,
-.sched-map-open:focus-visible,
-.sched-map-hide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.sched-map-hide {
-  min-height: 44px;
-  margin-left: auto;
-  padding: 0 0.7rem;
-  border: 1px solid var(--edge-t16);
-  border-radius: 12px;
-  background: rgba(var(--tint), 0.04);
-  color: var(--mute-i62);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* What each tab actually holds. The two counts differ on purpose — the map is
-   the whole territory, the list is the month on the calendar — and saying so is
-   what stops "Map · 39" beside "List · 12" reading as a fault. */
-.sched-map-scope {
-  margin: 0 0 0.5rem;
-  color: var(--mute-i62);
-  font-size: 0.8rem;
-}
+.sched-map-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- the same month as rows ---------------------------------------------- */
 .sched-map-sort {
@@ -31380,14 +31358,8 @@ body[data-schedule-overlay="job"] .sched-queue {
    matches and the rail comes back on its own — no migration needed, and no way
    to be stranded with a hidden queue and no button to bring it back. */
 
-/* -- the mouse-only half of the queue instruction -------------------------- */
-/* Hidden where there is no pointer to drag with. A width query would guess
-   wrong on a touchscreen laptop in one direction and a mouse-driven small
-   window in the other; `hover: hover` asks the question that actually matters. */
-.schedule-drag-hint-mouse { display: none; }
-@media (hover: hover) and (pointer: fine) {
-  .schedule-drag-hint-mouse { display: inline; }
-}
+/* The queue's written drag instruction is gone; the handle's own title carries
+   what is left of it, and that only appears where there is a pointer anyway. */
 
 
 /* ===========================================================================

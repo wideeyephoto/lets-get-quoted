@@ -384,7 +384,12 @@ describe('the drag handle', () => {
     expect(HANDLE).not.toContain('drag onto a calendar date, or press to pick one');
   });
 
-  it('and the drag instruction is still only shown where there is a pointer', () => {
-    expect(CSS).toMatch(/@media \(hover: hover\) and \(pointer: fine\)[\s\S]{0,120}\.schedule-drag-hint-mouse/);
+  /* The written drag instruction under the queue heading was removed on
+     request, and its pointer-only half went with it. What is left is the
+     handle's title, which a touch device never shows in the first place. */
+  it('and the written drag instruction is gone entirely', () => {
+    expect(CSS).not.toContain('.schedule-drag-hint');
+    expect(BENCH).not.toContain('schedule-drag-hint');
+    expect(HANDLE).toContain('title="Tap, then tap a date on the calendar.');
   });
 });

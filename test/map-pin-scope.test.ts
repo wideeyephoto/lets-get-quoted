@@ -218,8 +218,12 @@ describe('the schedule states which set each tab holds', () => {
     expect(MAP).toContain('in ${monthLabel}');
   });
 
-  it('says it on screen too, not only to a screen reader', () => {
-    expect(MAP).toContain('not just {monthLabel}');
+  /* The scope sentence under the map ("Every active job and lead with an
+     address — not just August 2026") was removed on request. The tab labels
+     above are the only place the difference is stated now, which is what the
+     two assertions above cover. */
+  it('no longer repeats it in a line under the map', () => {
+    expect(MAP).not.toContain('sched-map-scope');
   });
 
   it('leaves the map itself unnarrowed', () => {
