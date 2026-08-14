@@ -80,6 +80,17 @@ describe('renderBrandedEmail', () => {
     expect(html).not.toContain('reach BrokePipes directly');
   });
 
+  it('can accurately describe an account email with a direct customer reply', () => {
+    const html = renderBrandedEmail({
+      brand: brand(),
+      audience: 'account',
+      heading: 'Dana requested a quote',
+      accountReplyText: 'Reply to this email to contact Dana directly.',
+    });
+    expect(html).toContain('Reply to this email to contact Dana directly.');
+    expect(html).not.toContain('reach Let&#39;s Get Quoted');
+  });
+
   it('uses a hosted logo when there is one, a wordmark when there is not', () => {
     expect(renderBrandedEmail({ brand: brand(), heading: 'x' })).toContain('>BrokePipes<');
     const withLogo = renderBrandedEmail({ brand: brand({ logoUrl: 'https://cdn.example.com/logo.png' }), heading: 'x' });

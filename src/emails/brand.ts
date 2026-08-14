@@ -137,6 +137,8 @@ export type BrandedEmail = {
   brand: EmailBrand;
   /** Account mail keeps Let's Get Quoted as the sender while using the saved theme. */
   audience?: 'customer' | 'account';
+  /** Optional account-mail reply instruction when Reply-To points somewhere else. */
+  accountReplyText?: string;
   /** Mail-client preview line. */
   preheader?: string;
   /** Small uppercase kicker above the heading. */
@@ -263,7 +265,7 @@ export function renderBrandedEmail(input: BrandedEmail): string {
     ? `For ${name} &nbsp;&middot;&nbsp; sent by Let&#39;s Get Quoted`
     : `Sent by ${name}${contactBits ? `<br/>${contactBits}` : ''}`;
   const replyLine = accountEmail
-    ? `Reply to this email to reach Let&#39;s Get Quoted.`
+    ? escapeHtml(input.accountReplyText || `Reply to this email to reach Let's Get Quoted.`)
     : `Reply to this email to reach ${name} directly.`;
 
   return `<!DOCTYPE html>

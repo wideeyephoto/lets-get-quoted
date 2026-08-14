@@ -1179,6 +1179,7 @@ export async function sendLeadNotificationEmail(input: {
       preheader: subject,
       eyebrow,
       heading: `${input.lead.name || 'A customer'} requested a quote`,
+      accountReplyText: `Reply to this email to contact ${input.lead.name || 'the lead'} directly.`,
       bodyHtml: `${banner}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230"><strong>Contact:</strong> ${contact || 'Not provided'}</p><p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230"><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1c2230"><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6;color:#1c2230">${escapeHtml(input.lead.message)}</div>`,
       cta: { label: `Open quote request in ${input.businessName}`, url: input.dashboardUrl },
     }),
