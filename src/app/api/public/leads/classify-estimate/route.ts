@@ -43,7 +43,12 @@ export async function POST(request: NextRequest) {
   const description = typeof body?.description === 'string' ? body.description.trim().slice(0, 500) : '';
   const answer = typeof body?.answer === 'string' ? body.answer.trim().slice(0, 300) : '';
   const previousResponseId = typeof body?.previousResponseId === 'string' ? body.previousResponseId.slice(0, 120) : '';
-  const turn = Number.isFinite(body?.turn) ? Math.max(0, Math.min(MAX_QUESTIONS, Number(body.turn))) : 0;
+  // Smart Intake asks for a shorter cap; Instant Booking keeps the legacy six
+  // unless it opts in. One protocol, two deliberately different journeys.
+  const maxQuestions = Number.isFinite(body?.maxQuestions)
+    ? Math.max(1, Math.min(MAX_QUESTIONS, Math.round(Number(body.maxQuestions))))
+    : MAX_QUESTIONS;
+  const turn = Number.isFinite(body?.turn) ? Math.max(0, Math.min(maxQuestions, Number(body.turn))) : 0;
   const businessName = typeof body?.businessName === 'string' ? body.businessName.trim().slice(0, 120) : '';
   const businessSummary = typeof body?.businessSummary === 'string' ? body.businessSummary.trim().slice(0, 200) : '';
   const serviceArea = typeof body?.serviceArea === 'string' ? body.serviceArea.trim().slice(0, 120) : '';
@@ -82,7 +87,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(fallback());
   }
 
-  const questionsRemaining = MAX_QUESTIONS - turn;
+  const questionsRemaining = maxQuestions - turn;
   // Free context from the site's own profile (already stored, no extra AI call) —
   // helps the model tailor questions/classification to this specific trade and
   // region instead of asking generically. Only needed on the first turn; once
@@ -140,7 +145,7 @@ export async function POST(request: NextRequest) {
     const payload = await response.json();
     let parsed = JSON.parse(extractOutputText(payload));
 
-    if (parsed.type === 'question' && typeof parsed.question === 'string' && turn < MAX_QUESTIONS) {
+    if (parsed.type === 'question' && typeof parsed.question === 'string' && turn < maxQuestions) {
       return NextResponse.json({ type: 'question', question: parsed.question, responseId: payload.id });
     }
 

@@ -29,8 +29,8 @@ export default async function NewCasePage({ searchParams }: { searchParams: { ac
           <label>Account ID (optional)</label>
           <input className={styles.input} name="account_id" defaultValue={searchParams.account_id ?? ''} placeholder="Leave blank for a general/platform case" />
 
-          <label>Priority</label>
-          <select className={styles.input} name="priority" defaultValue="normal">
+          <label htmlFor="case-priority">Priority</label>
+          <select id="case-priority" className={styles.input} name="priority" defaultValue="normal">
             <option value="low">Low</option>
             <option value="normal">Normal</option>
             <option value="high">High</option>

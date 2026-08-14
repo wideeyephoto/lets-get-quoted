@@ -1850,8 +1850,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   </div>
                   <div className={styles.contentSubhead}><strong>Floating badges</strong></div>
                   <div className={`${styles.formField}${flashField === 'heroBadge' ? ` ${styles.fieldFlash}` : ''}`} id="design-hero-badge">
-                    <span>Hero badge</span>
-                    <select value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.title}</option>)}<option value="custom">Custom badge…</option><option value="none">No badge</option></select>
+                    {/* A <label>, not a <span>. The "Badge style" field three
+                        lines down has always wrapped its select in one; these
+                        two were divs with a span on top, which looks the same
+                        and names nothing. Not converted to a wrapping label
+                        because each field holds a SECOND control — the custom
+                        text input below — and a label wrapping two of them
+                        silently attaches to the first. */}
+                    <label htmlFor="hero-badge-preset">Hero badge</label>
+                    <select id="hero-badge-preset" value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.title}</option>)}<option value="custom">Custom badge…</option><option value="none">No badge</option></select>
                     <small className={styles.fieldHint}>The floating trust chip on your hero photo (Fixit, Shine, Coat &amp; more).</small>
                     {siteContent.heroBadge.preset === 'custom' && (
                       <input value={siteContent.heroBadge.customLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, customLabel: event.target.value } })} placeholder="e.g. Clear Quotes. Quality Work." />
@@ -1859,8 +1866,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   </div>
                   <label className={styles.formField}><span>Badge style</span><select value={siteContent.heroBadge.style} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, style: event.target.value } })}>{HERO_BADGE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
                   <div className={styles.formField}>
-                    <span>Extra floating badge</span>
-                    <select value={siteContent.heroBadge.secondPreset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondPreset: event.target.value } })}>
+                    <label htmlFor="hero-badge-second">Extra floating badge</label>
+                    <select id="hero-badge-second" value={siteContent.heroBadge.secondPreset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondPreset: event.target.value } })}>
                       <option value="default">Template default (e.g. &ldquo;500+ customers&rdquo;)</option>
                       {HERO_BADGE_PRESETS.map((badge) => <option key={`second-${badge.key}`} value={badge.key}>{badge.title}</option>)}
                       <option value="custom">Custom badge…</option>

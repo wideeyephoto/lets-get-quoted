@@ -134,7 +134,16 @@ export default function MigrationWizard() {
                   <td>{f.name}</td>
                   <td>{f.rowCount}</td>
                   <td>
-                    <select value={f.entity} onChange={(e) => setEntity(i, e.target.value as ImportEntity | 'skip')} disabled={phase === 'running'}>
+                    {/* One of these per row, all identical to a screen reader
+                        — "combo box, Clients" five times over, with the column
+                        header and the filename in cells it cannot pair them
+                        with. The name has to carry the row. */}
+                    <select
+                      value={f.entity}
+                      onChange={(e) => setEntity(i, e.target.value as ImportEntity | 'skip')}
+                      disabled={phase === 'running'}
+                      aria-label={`Import ${f.name} as`}
+                    >
                       {ENTITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </td>

@@ -422,7 +422,11 @@ export default async function AdminAccountDetailPage({
             )}
             <form action={logPrivacyRequestAction.bind(null, params.id)} className={styles.formStack} style={{ marginTop: '0.8rem' }}>
               <div className={styles.searchRow} style={{ margin: 0 }}>
-                <select name="kind" defaultValue="access" className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
+                {/* The one on this page with no visible label at all — the
+                    others had a <label> that simply pointed at nothing. Both
+                    kinds of unlabelled read the same to a screen reader. */}
+                <label htmlFor="privacy-request-kind" className="sr-only">Type of privacy request</label>
+                <select id="privacy-request-kind" name="kind" defaultValue="access" className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
                   <option value="access">Access</option>
                   <option value="deletion">Deletion</option>
                   <option value="correction">Correction</option>

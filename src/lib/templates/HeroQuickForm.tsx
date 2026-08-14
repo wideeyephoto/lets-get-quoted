@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
+import { matchesServedCity } from '@/lib/service-area-match';
 import { HoneypotField } from '@/components/honeypot-field';
 import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
@@ -32,6 +33,7 @@ function formatReplyTime(ms: number): string {
 }
 
 const MAX_PHOTOS = 6;
+const MAX_INTAKE_QUESTIONS = 3;
 
 /* --- the contact fields ----------------------------------------------------
    This is the step the whole intake has been walking toward, and it used to be
@@ -132,7 +134,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const askLocation = wizardEnabled && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
   // Real, earned response-time stat (absent = no honest claim to make).
   const avgReplyMs = typeof site.avg_response_ms === 'number' && site.avg_response_ms > 0 ? site.avg_response_ms : null;
-  const replyPromise = avgReplyMs ? `typically replies within ${formatReplyTime(avgReplyMs)}` : 'we reply within about an hour';
+  const replyPromise = avgReplyMs
+    ? `we typically reply within ${formatReplyTime(avgReplyMs)}`
+    : 'we\u2019ll follow up as soon as possible';
 
   // Star rating for the result screen — the owner's published rating badge
   // (enabled + real review count), the same source SiteProofStrip uses.
@@ -195,13 +199,19 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // The AI-priced range for the described job; null when the AI couldn't
   // price it (the lead still submits, just without a shown number).
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
-  const [timeline, setTimeline] = useState<'asap' | 'month' | 'researching'>('asap');
+  const [timeline, setTimeline] = useState<'asap' | 'month' | 'researching' | null>(null);
   const [location, setLocation] = useState('');
   // Everything the submit will actually insist on. Drives the button's lit
   // state only — never a disabled attribute, so the real check still runs and
   // still says which field is wrong. In the preview it is always lit, because
   // in the preview the button always works.
-  const contactReady = demo || Boolean(name.trim() && contact.trim() && (!askLocation || location.trim()));
+  const contactReady = demo || Boolean(
+    name.trim() &&
+    contact.trim() &&
+    (!askLocation || location.trim()) &&
+    (!askTimeline || timeline) &&
+    (wizardEmailField !== 'required' || classifyEmail(email.trim()).valid),
+  );
   // How the homeowner wants the follow-up: some people never answer calls.
   const [contactPref, setContactPref] = useState<'any' | 'text'>('any');
   // Soft fit signals from the AI (out-of-area / excluded work) — shown as
@@ -282,7 +292,18 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     const max = Number(result?.max);
     const basis = typeof result?.basis === 'string' ? result.basis.trim().slice(0, 60) : '';
     setEstimate(Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max ? { min: Math.round(min), max: Math.round(max), ...(basis ? { basis } : {}) } : null);
-    setFit({ inArea: result?.inArea === true ? true : result?.inArea === false ? false : null, excluded: result?.excluded === true });
+    const namedLocation = location.trim() && !/^\d{5}(?:-\d{4})?$/.test(location.trim());
+    const configuredCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
+    const deterministicArea = askLocation && namedLocation && configuredCities.length > 0
+      ? matchesServedCity(location, configuredCities)
+      : null;
+    setFit({
+      // The submitted town and the published list are authoritative for Smart
+      // Intake. A ZIP remains unknown until the server has a deterministic map;
+      // never let a model guess become a customer-facing rejection warning.
+      inArea: askLocation ? deterministicArea : null,
+      excluded: result?.excluded === true,
+    });
     setStep('contact');
   }
 
@@ -293,6 +314,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       setStatus({ tone: 'error', text: "Tell us what you need done." });
       return;
     }
+    if (askLocation && !location.trim()) {
+      setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
+      return;
+    }
     setStatus(null);
     setIsClassifying(true);
     try {
@@ -300,9 +325,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         siteId: site.id,
         description: trimmedDescription,
         turn: 0,
+        maxQuestions: MAX_INTAKE_QUESTIONS,
         businessName: site.company_name,
         businessSummary: site.tagline || site.headline || '',
         serviceArea: site.service_area || '',
+        location: location.trim(),
       });
       applyChatResult(result);
     } catch {
@@ -320,7 +347,13 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     if (!trimmedAnswer) return;
     setIsClassifying(true);
     try {
-      const result = await classify({ siteId: site.id, previousResponseId: chatResponseId, answer: trimmedAnswer, turn: chatTurn });
+      const result = await classify({
+        siteId: site.id,
+        previousResponseId: chatResponseId,
+        answer: trimmedAnswer,
+        turn: chatTurn,
+        maxQuestions: MAX_INTAKE_QUESTIONS,
+      });
       applyChatResult(result);
     } catch {
       setStep('contact');
@@ -340,6 +373,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         previousResponseId: chatResponseId,
         answer: 'Please skip the remaining questions and give your best-judgment estimate from what you already know.',
         turn: 99,
+        maxQuestions: MAX_INTAKE_QUESTIONS,
       });
       applyChatResult(result);
     } catch {
@@ -408,6 +442,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     setChatTurn(0);
     setEstimate(null);
     setFit({ inArea: null, excluded: false });
+    setTimeline(null);
     setStatus(null);
     setSentWithoutEstimate(false);
     setStep('describe');
@@ -439,6 +474,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       }
       if (askLocation && !location.trim()) {
         setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
+        return;
+      }
+      if (askTimeline && !timeline) {
+        setStatus({ tone: 'error', text: 'Choose when you need the work done.' });
         return;
       }
       if (needsVerification && (!verify || !verifyCode.trim())) {
@@ -518,18 +557,24 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       }
 
       if (details) {
-        const timelineLabel = timeline === 'asap' ? 'Needed ASAP' : timeline === 'month' ? 'In the next month' : 'Just researching prices';
+        const timelineLabel = timeline === 'asap'
+          ? 'Needed ASAP'
+          : timeline === 'month'
+            ? 'In the next month'
+            : timeline === 'researching'
+              ? 'Just researching prices'
+              : '';
         const parts = [
           estimate
             ? `AI estimate shown to the customer: ${formatCurrency(estimate.min)}-${formatCurrency(estimate.max)}.`
             : 'AI estimate was unavailable — no price range was shown; needs a manual quote.',
-          askTimeline ? `Timing: ${timelineLabel}.` : '',
+          askTimeline && timelineLabel ? `Timing: ${timelineLabel}.` : '',
           location.trim() ? `Location given: ${location.trim()}.` : '',
           contactPref === 'text' ? 'Contact preference: TEXT ONLY — asked not to be called.' : '',
         ].filter(Boolean);
         const trimmedDescription = details.description.trim();
         data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${parts.join(' ')}` : parts.join(' '));
-        data.set('timeline', timeline);
+        if (askTimeline && timeline) data.set('timeline', timeline);
         if (location.trim()) data.set('location', location.trim());
         if (estimate) {
           data.set('estimateMin', String(estimate.min));

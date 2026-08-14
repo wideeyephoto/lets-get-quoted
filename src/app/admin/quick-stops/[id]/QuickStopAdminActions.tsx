@@ -62,8 +62,8 @@ export default function QuickStopAdminActions({
         <p className={styles.muted} style={{ fontSize: '.82rem' }}>Resolving a Quick Stop is not part of your role.</p>
       ) : (
         <form action={adminResolveQuickStopAction.bind(null, requestId)} className={styles.formStack}>
-          <label>Resolve / adjudicate</label>
-          <select className={styles.input} name="outcome" defaultValue={outcomes[0]} style={{ minWidth: 0 }}>
+          <label htmlFor="quick-stop-outcome">Resolve / adjudicate</label>
+          <select id="quick-stop-outcome" className={styles.input} name="outcome" defaultValue={outcomes[0]} style={{ minWidth: 0 }}>
             {outcomes.map((key) => <option key={key} value={key}>{QUICK_STOP_OUTCOME[key].label}</option>)}
           </select>
           <input className={styles.input} name="reason" placeholder="Note (internal)" />

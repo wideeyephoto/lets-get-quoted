@@ -100,9 +100,13 @@ export default function AccountActions({
 
         {can('money.plan') ? (
         <form action={changePlanAction.bind(null, accountId)} className={styles.formStack}>
-          <label>Plan</label>
+          {/* htmlFor, because a <label> attached to nothing is decoration. It
+              read correctly on screen and was inert everywhere else: no
+              accessible name on the select, and clicking the word did not focus
+              it. */}
+          <label htmlFor="account-plan">Plan</label>
           <div className={styles.searchRow} style={{ margin: 0 }}>
-            <select name="plan" defaultValue={plan} className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
+            <select id="account-plan" name="plan" defaultValue={plan} className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
               <option value="free">Free</option>
               <option value="pro">Pro</option>
               <option value="crew_plus">Crew+</option>

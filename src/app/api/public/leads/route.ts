@@ -11,6 +11,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { isSmsConfigured, sendOwnerHighValueLeadSms } from '@/lib/sms';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { serviceAreaVerdict } from '@/lib/service-area-match';
 
 export const runtime = 'nodejs';
 
@@ -199,8 +200,15 @@ export async function POST(request: NextRequest) {
     ? { min: estimateMin, max: estimateMax }
     : null;
   const flags: string[] = [];
-  if (text(data, 'inArea', 8) === 'false') flags.push('out_of_area');
-  if (text(data, 'excluded', 8) === 'true') flags.push('excluded_work');
+  // The submitted town is authoritative. Never trust a client/AI `inArea`
+  // field to decide which owners get interrupted, and never make lead creation
+  // wait on an external geocoder. A bare ZIP stays unknown for now; the live
+  // form asks for a town or city so normal submissions are deterministic.
+  if (fromWizard && filters.serviceAreaGate) {
+    const servedCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
+    if ((await serviceAreaVerdict(location, servedCities)) === false) flags.push('out_of_area');
+  }
+  if (filters.exclusions.length > 0 && text(data, 'excluded', 8) === 'true') flags.push('excluded_work');
   // Deliverable-looking but not worth mailing. NOT a prune flag — it says
   // nothing about whether the job is real, only that the address isn't. It
   // keeps the address out of every automated send, which is the whole point:

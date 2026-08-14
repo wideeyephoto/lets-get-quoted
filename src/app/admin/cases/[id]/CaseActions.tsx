@@ -46,9 +46,9 @@ export default function CaseActions({
       <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
       <form action={changeStatusAction.bind(null, caseId)} className={styles.formStack}>
-        <label>Change status</label>
+        <label htmlFor="case-status">Change status</label>
         <div className={styles.searchRow} style={{ margin: 0 }}>
-          <select className={styles.input} name="status" defaultValue={status} style={{ minWidth: 0, flex: '0 0 160px' }}>
+          <select id="case-status" className={styles.input} name="status" defaultValue={status} style={{ minWidth: 0, flex: '0 0 160px' }}>
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <button type="submit" className="btn secondary">Update status</button>
