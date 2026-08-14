@@ -174,14 +174,16 @@
  *
  * The panel is its FINISHED height from the first paint — request, job panel,
  * our text, the reply and the homeowner's offer — so the sections below it
- * never move. Without it the proof strip stepped down by 87px at 1440, 68px at
- * 1024 and 736, and 150px at 320, on top of four smaller steps as the automatic
- * stages arrived.
+ * never move. Without it the section under the hero stepped down by 87px at
+ * 1440, 68px at 1024 and 736, and 150px at 320, on top of four smaller steps as
+ * the automatic stages arrived. (That section was the four-cell proof strip; it
+ * is now the story band, which is further from the panel and no less able to
+ * jump.)
  *
  * Three values because narrower wraps to more lines, and the numbers are the
- * measured finished heights at the widest point of each bucket. Re-measure with
- * _qs-verify.mjs if any stage gains a line — the check is that `proofShift` is
- * 0 at every width. */
+ * measured finished heights at the widest point of each bucket. Re-measure if
+ * any stage gains a line — the check is that the top of the section below the
+ * hero is at the same y before the sequence runs and after it ends. */
 .sim .thread {
   display: flex;
   flex-direction: column;
@@ -434,14 +436,10 @@
   outline-offset: 2px;
 }
 
-.sim .hint {
-  margin: 8px 0 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: #9db3c0;
-}
+/* There is no `.hint`. The sentence under the field went — see FEE_FORM — and
+   the rule went with it rather than sitting here waiting to be reattached.
 
-/* Inline, next to the field it is about, and it says what to type rather than
+   Inline, next to the field it is about, and it says what to type rather than
    what went wrong. */
 .sim .error {
   margin: 8px 0 0;

@@ -90,7 +90,6 @@ export default function QuickStopHeroSimulation() {
   const runningRef = useRef(false);
 
   const fieldId = useId();
-  const hintId = `${fieldId}-hint`;
   const errorId = `${fieldId}-error`;
 
   const at = stageIndex(stage);
@@ -404,7 +403,9 @@ export default function QuickStopHeroSimulation() {
                       if (error) setError(null);
                     }}
                     aria-invalid={error ? 'true' : undefined}
-                    aria-describedby={error ? `${errorId} ${hintId}` : hintId}
+                    /* The validation line and nothing else. The helper sentence
+                       that used to be described here is gone — see FEE_FORM. */
+                    aria-describedby={error ? errorId : undefined}
                   />
                   <button type="submit" className={styles.send}>
                     {FEE_FORM.submit}
@@ -415,9 +416,6 @@ export default function QuickStopHeroSimulation() {
                     {error}
                   </p>
                 ) : null}
-                <p className={styles.hint} id={hintId}>
-                  {FEE_FORM.hint}
-                </p>
               </form>
             </li>
           ) : null}

@@ -371,6 +371,34 @@ describe('the shared layout gained two optional slots', () => {
     expect(LAYOUT).toContain('{steps.length ? (');
   });
 
+  /** And the proof strip, for a page whose hero already IS the explanation. */
+  it('can drop the proof strip entirely', () => {
+    expect(LAYOUT).toContain('proof?: FeatureProofPoint[];');
+    expect(LAYOUT).toContain('proof = []');
+    expect(LAYOUT).toContain('{proof.length ? (');
+  });
+
+  it('leaves the strip on the eleven pages that still carry one', () => {
+    // Optional is not the same as discouraged: quick-stops is the exception,
+    // and this is what stops it becoming the rule by accident.
+    for (const slug of [
+      'ai-intake',
+      'back-office',
+      'cash-flow',
+      'client-portal',
+      'crew',
+      'payments',
+      'quotes',
+      'recurring',
+      'reviews',
+      'scheduling',
+      'website-builder',
+    ]) {
+      expect(source(slug), slug).toContain('proof={[');
+    }
+    expect(source('quick-stops'), 'quick-stops').not.toContain('proof={[');
+  });
+
   it('leaves the pages that still use those sections alone', () => {
     // quick-stops dropped out of this list when its flow moved into
     // afterBenefits — four beats with icons, in place of the three the layout
@@ -724,10 +752,30 @@ describe('the quick stops page', () => {
     expect(SRC).toContain('className={styles.denial}');
   });
 
-  it('answers the six questions off the product’s own constants', () => {
-    // Six since "What exactly is the homeowner paying for?" was added — the
-    // question the page previously left a visitor to answer for themselves.
-    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(6);
+  /**
+   * THE SCREENING PARAGRAPH IS GONE, AND SO IS ITS ECHO.
+   *
+   * The "Needs your response" rung opened with a list of work that never
+   * reaches that rung — gas, carbon monoxide, fire, live electrical and five
+   * more — on the one row whose subject is that the request is now yours. It
+   * now says what the three answers are. The FAQ carried the same list a second
+   * time and went with it; nothing replaces either, by request.
+   */
+  it('says what the gate is for, and says the screening list nowhere', () => {
+    expect(SRC).toContain(
+      'The request waits here for you. Reply with the priority fee that makes the stop worth it, decline it, or let it expire.',
+    );
+    expect(SRC).not.toContain('Before it reaches you');
+    expect(SRC).not.toMatch(/screened out|screening list/i);
+    expect(SRC).not.toMatch(/out-of-scope/i);
+    expect(SRC).not.toMatch(/carbon monoxide|hazmat|permit pulled/i);
+    expect(SRC).not.toContain('What work is never offered as a Quick Stop?');
+  });
+
+  it('answers the five questions off the product’s own constants', () => {
+    // Six when "What exactly is the homeowner paying for?" was added; five
+    // since the screening question left with the paragraph it repeated.
+    expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(5);
     expect(SRC).toContain('DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS');
     expect(SRC).toContain('const minFee = centsToDollars(DEFAULT_QUICK_STOP_MIN_FEE_CENTS)');
     expect(SRC).not.toMatch(/<details[^>]*name=/);

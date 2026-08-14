@@ -72,7 +72,12 @@ const LIFECYCLE = [
     status: QUICK_STOP_STATUS_LABEL.awaiting_contractor,
     who: 'You',
     gate: true,
-    body: 'Before it reaches you it is checked against a fixed list of unsafe and out-of-scope work — gas, carbon monoxide, fire, live electrical, structural, flooding, sewage, hazmat — which is rules rather than judgement, so it cannot be talked around. What survives that waits here for you. Decline it and it ends; ignore it and it expires.',
+    /* WHAT THIS RUNG IS ABOUT IS THE GATE, not what happens before it.
+       It used to open with the screening list — gas, carbon monoxide, fire,
+       live electrical and five more — which is a paragraph about work that
+       never reaches this row, printed on the row that exists to say the
+       request is now yours. The three answers you have are the subject. */
+    body: 'The request waits here for you. Reply with the priority fee that makes the stop worth it, decline it, or let it expire.',
   },
   {
     status: QUICK_STOP_STATUS_LABEL.contractor_offer_sent,
@@ -171,9 +176,12 @@ const FLOW = [
 
 /* Answers checked against the product: the fee band, the detour limit, the
    visit ceiling and the daily cap are the same constants the rules list reads,
-   the payment deadline is DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS, and the
-   excluded work is the fixed screening list the lifecycle section describes.
-   Nothing here promises a capability the page has not already shown. */
+   and the payment deadline is DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS.
+   Nothing here promises a capability the page has not already shown.
+
+   FIVE, NOT SIX. "What work is never offered as a Quick Stop?" went with the
+   screening sentence in the lifecycle ladder above — it was the same list said
+   a second time, and the answer to it is not being replaced anywhere else. */
 const FAQ: { q: string; a: string }[] = [
   {
     q: 'What exactly is the homeowner paying for?',
@@ -190,10 +198,6 @@ const FAQ: { q: string; a: string }[] = [
   {
     q: 'Where do the requests come from?',
     a: 'Your own site. These are homeowners who asked you for work through your intake form and happen to be near a job already on your schedule — not a shared pool, and not somebody else’s leads resold to several contractors at once.',
-  },
-  {
-    q: 'What work is never offered as a Quick Stop?',
-    a: 'A fixed list of unsafe and out-of-scope work is screened out before you ever see it — gas leaks, live electrical faults, anything that needs a permit pulled, and anything that plainly cannot be finished in a single short visit. That list is not a setting; it is the same for everybody.',
   },
   {
     q: 'Does it run when I am not looking at it?',
@@ -252,24 +256,16 @@ export default function QuickStopsPage() {
          mock that needs it — this one invents nothing a visitor could mistake
          for a real account, since they have just typed half of it themselves. */
       demo={<QuickStopHeroSimulation />}
-      proof={[
-        {
-          title: 'Route-aware',
-          body: 'See work close to jobs already on the schedule.',
-        },
-        {
-          title: 'Always optional',
-          body: 'You decide whether an opportunity fits the day.',
-        },
-        {
-          title: 'Your fee',
-          body: 'Set the priority visit fee and the arrival window before sending.',
-        },
-        {
-          title: 'Paid before you go',
-          body: 'The window is confirmed when the visit fee is paid. Service is billed separately.',
-        },
-      ]}
+      /* NO PROOF STRIP, AND THAT IS THE POINT OF THE HERO.
+         The four cells — Route-aware, Always optional, Your fee, Paid before
+         you go — sat directly under the simulation and made the hero read as
+         two sections joined together: the panel appeared to end, and then four
+         cards summarized in eleven words each the thing the visitor had just
+         played through and typed half of. Every one of those claims is made at
+         length further down, by the flow, the denials and the limits.
+         The layout's `proof` is optional for exactly this. Dropping it lets the
+         hero end at the bottom of the conversation card and run straight into
+         the story band's own spacing. */
       story={{
         eyebrow: 'Fill the gaps without losing control',
         title: 'A small detour, paid for before you make it.',
@@ -299,9 +295,9 @@ export default function QuickStopsPage() {
          telling of one story. What the four-beat version adds is where the
          work comes from (route plus a priority area you drew) and that the
          request is texted and emailed the moment it lands, neither of which
-         this page carried. What the three said and it does not — the screening
-         list, and an offer lapsing on its own — is the lifecycle ladder's
-         subject a section further down, said there at full length. */
+         this page carried. What the three said and it does not — an offer
+         lapsing on its own — is the lifecycle ladder's subject a section
+         further down, said there at full length. */
       afterBenefits={
         <section className={styles.pitch} id="how-it-works" aria-labelledby="quick-stops-pitch-title">
           <div className={styles.pitchGrid}>

@@ -122,18 +122,25 @@ export const CONTRACTOR_TEXT: readonly string[] = [
 
 /* ---- 4. the form -------------------------------------------------------- */
 
+/**
+ * TWO STRINGS, AND THERE WAS A THIRD.
+ *
+ * A hint sat under the field reading "In dollars. A dollar reply is a yes —
+ * there is no separate confirmation to send." Both halves were explaining the
+ * composer to somebody already looking at it: the `$` welded to the left edge
+ * of the box is the unit, and "there is no separate confirmation" describes a
+ * step that is not on screen — the surest way to make a reader look for one.
+ * The label, the prefix, the field, the validation line and the button say the
+ * whole thing between them.
+ *
+ * WHAT THAT COST, and what pays for it. The hint was the input's
+ * aria-describedby, so it was also where the unit was said for somebody who
+ * cannot see the prefix. aria-describedby now carries the validation message
+ * and nothing else, which is what it is for; the label is the one description
+ * of the field, and it names the thing being asked for rather than its format.
+ */
 export const FEE_FORM = {
   label: 'Reply with the priority fee you want',
-  /**
-   * Under the field, and not a placeholder: a hint inside the box disappears
-   * exactly when somebody starts typing and needs it.
-   *
-   * It opens with the unit because the `$` beside the field is decoration —
-   * aria-hidden, since a loose symbol read out before an input belongs to
-   * nothing. This line is the input's description, so it is where the unit has
-   * to be said for somebody who cannot see the symbol.
-   */
-  hint: 'In dollars. A dollar reply is a yes — there is no separate confirmation to send.',
   submit: 'Send reply',
 } as const;
 

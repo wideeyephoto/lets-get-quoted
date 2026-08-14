@@ -11,6 +11,7 @@ import {
   AUTO_STAGES,
   CHOICE_RESULT,
   CONTRACTOR_TEXT,
+  FEE_FORM,
   GATE_STAGE,
   HOMEOWNER_OFFER,
   HOMEOWNER_REQUEST,
@@ -37,6 +38,8 @@ const CSS = read('src', 'app', 'features', 'quick-stops', 'quick-stop-hero-simul
 const PAGE = read('src', 'app', 'features', 'quick-stops', 'page.tsx');
 const PAGE_CODE = strip(PAGE);
 const SCRIPT = read('src', 'app', 'features', 'quick-stops', 'quick-stop-hero-script.ts');
+const SCRIPT_CODE = strip(SCRIPT);
+const LAYOUT = read('src', 'components', 'marketing', 'feature-detail-layout.tsx');
 /** Comments out: the sheet's own note lists the eleven classes it deleted, and
  *  that list is the thing the assertion below would otherwise trip over. */
 const PAGE_CSS = read('src', 'app', 'features', 'quick-stops', 'quick-stops.module.css').replace(
@@ -67,12 +70,31 @@ describe('the hero simulation replaced the pending-offer card', () => {
    * that the page stopped labelling anything.
    */
   it('has no frame, caption or replay control around it', () => {
-    const hero = PAGE_CODE.slice(PAGE_CODE.indexOf('eyebrow='), PAGE_CODE.indexOf('proof={'));
+    const hero = PAGE_CODE.slice(PAGE_CODE.indexOf('eyebrow='), PAGE_CODE.indexOf('story={'));
     expect(hero).not.toContain('ExampleFrame');
     expect(hero).not.toMatch(/Live example/i);
     expect(SIM_CODE).not.toMatch(/replay/i);
     // Two ExampleFrames became one, and it is not this one.
     expect(PAGE_CODE.match(/<ExampleFrame/g) ?? []).toHaveLength(1);
+  });
+
+  /**
+   * AND NOTHING UNDER IT EITHER. The layout's four-cell strip sat directly
+   * below the panel — Route-aware, Always optional, Your fee, Paid before you
+   * go — which made the hero read as two sections joined together and summarized
+   * in eleven words each the exchange the visitor had just played through.
+   */
+  it('ends at the bottom of the panel, with no proof strip under it', () => {
+    expect(PAGE_CODE).not.toContain('proof={');
+    // Comments stripped: the page's own note names the four cells it dropped.
+    for (const gone of ['Route-aware', 'Always optional', 'Paid before you go']) {
+      expect(PAGE_CODE, `${gone} is still under the hero`).not.toContain(gone);
+    }
+    // The strip is optional in the layout rather than deleted from it: eleven
+    // other feature pages still pass one.
+    expect(LAYOUT).toContain('proof?: FeatureProofPoint[];');
+    expect(LAYOUT).toContain('proof = []');
+    expect(LAYOUT).toContain('{proof.length ? (');
   });
 
   it('keeps both production CTAs exactly as they were', () => {
@@ -267,10 +289,28 @@ describe('the fee form', () => {
   });
 
   /** A dollar reply IS the yes. Asking for a second confirmation is the step
-   *  this page exists to say does not happen. */
-  it('needs no separate YES', () => {
+   *  this page exists to say does not happen — so there is no confirm control,
+   *  and no sentence explaining the absence of one either. */
+  it('needs no separate YES, and no sentence saying so', () => {
     expect(SIM_CODE).not.toMatch(/\bYES\b/);
-    expect(SCRIPT).toContain('A dollar reply is a yes');
+    // The helper line under the field is gone. Comments stripped first: the
+    // constant's own note quotes the sentence it replaced, which is the thing
+    // that has to stay findable.
+    expect(FEE_FORM).not.toHaveProperty('hint');
+    expect(SCRIPT_CODE).not.toContain('A dollar reply is a yes');
+    expect(SCRIPT_CODE).not.toContain('In dollars.');
+    expect(SIM_CODE).not.toMatch(/styles\.hint|FEE_FORM\.hint/);
+    expect(CSS).not.toMatch(/\.hint\s*\{/);
+  });
+
+  /** What is left is the whole control: a real label, the unit, the field, the
+   *  validation line, the button. aria-describedby now carries the one thing it
+   *  is for. */
+  it('keeps the composer a labeled field with inline validation', () => {
+    expect(FEE_FORM.label).toBe('Reply with the priority fee you want');
+    expect(FEE_FORM.submit).toBe('Send reply');
+    expect(SIM).toContain('aria-describedby={error ? errorId : undefined}');
+    expect(SIM_CODE).not.toContain('hintId');
   });
 });
 
@@ -345,6 +385,27 @@ describe('what it says to a screen reader', () => {
   it('keeps the status out of sight — there is no visible status row', () => {
     expect(CSS).not.toMatch(/\.status\b/);
     expect(SIM_CODE).not.toMatch(/styles\.status|styles\.footer/);
+    // The announcements reach the live region and nowhere else: nothing draws
+    // `live`, and no stage string is rendered into a styled element.
+    expect(SIM_CODE.match(/\{live\}/g) ?? []).toHaveLength(1);
+    expect(SIM_CODE).toMatch(/className="sr-only" aria-live="polite"[\s\S]*?\{live\}/);
+    expect(SIM_CODE).not.toMatch(/styles\.\w+[^>]*>\s*\{live\}/);
+  });
+
+  /**
+   * The panel ends where the conversation ends. Everything visible is inside
+   * `styles.panel`; the only sibling it has is the hidden live region, and the
+   * result of the homeowner's choice is inside the offer card rather than
+   * repeated under it.
+   */
+  it('draws nothing below the conversation card', () => {
+    const afterPanel = SIM_CODE.slice(SIM_CODE.lastIndexOf('</ol>'));
+    expect(afterPanel.match(/<p\b/g) ?? []).toHaveLength(1);
+    expect(afterPanel).toContain('className="sr-only"');
+    expect(afterPanel).not.toMatch(/styles\./);
+    // The one result block sits inside the offer, above the thread's closing tag.
+    expect(SIM_CODE.match(/styles\.result\b/g) ?? []).toHaveLength(1);
+    expect(SIM_CODE.indexOf('styles.result')).toBeLessThan(SIM_CODE.lastIndexOf('</ol>'));
   });
 
   it('never moves focus on a timer, and does not drop it on submit', () => {

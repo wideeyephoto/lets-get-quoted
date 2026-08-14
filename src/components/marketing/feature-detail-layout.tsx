@@ -60,7 +60,17 @@ export type FeatureDetailLayoutProps = {
    * and a jump link, all at once, all competing.
    */
   secondary?: { label: string; href?: string } | null;
-  proof: FeatureProofPoint[];
+  /**
+   * The four-cell cream strip under the hero.
+   *
+   * OPTIONAL, like `story` and `steps`, and for the same reason a page can earn
+   * its way out of those. On /features/quick-stops the hero IS the explanation —
+   * a simulation the visitor takes part in — and four summary cards bolted to
+   * the bottom of it read as a second section joined to the first, so the panel
+   * stopped appearing to end where it ends. Omit it and the hero runs straight
+   * into the story band, which carries its own spacing.
+   */
+  proof?: FeatureProofPoint[];
   /**
    * A section between the hero and the proof strip — the first thing under the
    * fold.
@@ -166,7 +176,7 @@ export default function FeatureDetailLayout({
   demo,
   primary,
   secondary,
-  proof,
+  proof = [],
   afterHero,
   afterProof,
   story,
@@ -240,14 +250,16 @@ export default function FeatureDetailLayout({
 
       {afterHero ?? null}
 
-      <section className="detail-proof" aria-label="What this does">
-        {proof.map((point) => (
-          <span key={point.title}>
-            <b>{point.title}</b>
-            <small>{point.body}</small>
-          </span>
-        ))}
-      </section>
+      {proof.length ? (
+        <section className="detail-proof" aria-label="What this does">
+          {proof.map((point) => (
+            <span key={point.title}>
+              <b>{point.title}</b>
+              <small>{point.body}</small>
+            </span>
+          ))}
+        </section>
+      ) : null}
 
       {afterProof ?? null}
 
