@@ -5,9 +5,11 @@
  * within its own scope: `.root p, .root ol { margin: 0 }`, `.root ul, .root ol
  * { list-style: none }`, `.root button { background: none; border: 0; padding:
  * 0 }`, `.root h1..h6 { font-size: inherit }`. Those are all (0,1,1), which a
- * bare module class at (0,1,0) LOSES to outright — the Replay button would have
- * no border and no padding, and nothing about that failure is visible in the
- * source. `.sim .replay` is (0,2,0) and wins honestly.
+ * bare module class at (0,1,0) LOSES to outright — the Replay button that used
+ * to sit under the panel would have had no border and no padding, and nothing
+ * about that failure is visible in the source. `.sim .replay` was (0,2,0) and
+ * won honestly. That button is gone, but the scoping stays: every rule below is
+ * up against the same reset.
  *
  * The colors are the shell's where the shell has one (--ink, --mint, --muted)
  * and stated here where it does not: there is no electric blue in the flagship
@@ -436,45 +438,10 @@
   background: rgba(126, 183, 214, 0.26);
 }
 
-/* ---- what the panel says about itself ----------------------------------- */
-
-.sim .caption {
-  max-width: 330px;
-  margin: 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-  text-align: center;
-  color: #8ba0ad;
-}
-
-.sim .actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.sim .replay {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  /* 34px of target. The shell's own button reset zeroes padding and border, so
-     both are restated here — see the note at the top of this file. */
-  min-height: 34px;
-  padding: 0 13px;
-  border: 1px solid rgba(126, 183, 214, 0.28);
-  border-radius: 999px;
-  background: rgba(126, 183, 214, 0.06);
-  color: #b9cbd5;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
-}
-
-.sim .replay:hover {
-  border-color: rgba(255, 106, 36, 0.6);
-  color: #ff6a24;
-}
+/* The panel used to carry a caption ("blue bubbles are SMS…") and a row holding
+   a demo link and a Replay button. All three are gone — .caption, .actions and
+   .replay went with them rather than being left here for a class nobody
+   renders. The phone is the whole panel now. */
 
 /* ---- pausing ------------------------------------------------------------
  *
@@ -498,8 +465,7 @@
   .sim .row,
   .sim .card,
   .sim .transcript,
-  .sim .status,
-  .sim .replay {
+  .sim .status {
     transition: none;
     animation: none;
   }

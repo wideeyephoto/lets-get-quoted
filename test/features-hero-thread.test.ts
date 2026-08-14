@@ -118,8 +118,17 @@ describe('what is an SMS and what is not', () => {
     expect(SIM).toContain('Customer dashboard');
   });
 
-  it('says which shape is which, on the page, in words', () => {
-    expect(SIM).toContain('Blue bubbles are SMS · floating updates are customer-dashboard activity');
+  /**
+   * The caption under the panel said this in a sentence and has been removed
+   * along with the rest of that footer. So the CARD's own label is now the only
+   * thing on the panel that names the surface a dashboard event happened on —
+   * which makes it the one piece of this that cannot quietly go next.
+   */
+  it('says which shape is which, on every card that is not a text', () => {
+    const label = strip(SIM).slice(strip(SIM).indexOf('styles.cardLabel'));
+    expect(label.slice(0, label.indexOf('</span>'))).toContain('Customer dashboard');
+    // And it is inside the card, so it cannot be rendered without one.
+    expect(strip(SIM).indexOf('{card ? (')).toBeLessThan(strip(SIM).indexOf('styles.cardLabel'));
   });
 
   it('leaves the header changed after each card, permanently', () => {
@@ -152,12 +161,23 @@ describe('how the simulation behaves', () => {
     expect(SIM).toMatch(/intersectionRatio >= 0\.5/);
   });
 
-  it('does not loop, and offers a replay instead', () => {
-    expect(SIM).not.toMatch(/setInterval|infinite/);
-    expect(SIM).toContain('onClick={start}');
-    // Outside the phone, which is aria-hidden — a control inside it would be
-    // hidden from the keyboard user it exists for.
-    expect(SIM.indexOf('aria-hidden="true"')).toBeLessThan(SIM.indexOf('onClick={start}'));
+  /**
+   * IT PLAYS ONCE AND THAT IS ALL IT DOES NOW.
+   *
+   * The footer under the panel — the caption, the "Open the live demo" link and
+   * the Replay button — was removed on request. Replay was the only control
+   * this panel ever had, so what has to hold instead is that the sequence still
+   * cannot restart itself: the observer starts it once (`begun`), and nothing
+   * re-arms it.
+   */
+  it('does not loop, and no longer offers a replay', () => {
+    expect(strip(SIM)).not.toMatch(/setInterval|infinite/);
+    expect(strip(SIM)).not.toContain('onClick=');
+    expect(strip(SIM)).not.toContain('<button');
+    // start() is still reachable — the observer calls it — and still guarded by
+    // a latch, which is what keeps "plays once" true without a control.
+    expect(SIM).toContain('if (seen && !begun)');
+    expect(SIM).toContain('begun = true;');
   });
 
   it('stops the clock and the CSS when nobody is watching', () => {
@@ -186,7 +206,9 @@ describe('how the simulation behaves', () => {
 
   it('reserves the height the messages will need', () => {
     // Measured: the empty phone was 548px and the full one 576px, so the
-    // caption and the Replay control under it stepped down the page twice a run.
+    // caption and the Replay control that used to sit under it stepped down the
+    // page twice a run. Both are gone, but the reserve stays: without it the
+    // panel still grows mid-sequence and shoves the hero's copy column.
     expect(SIM_CSS).toMatch(/\.sim \.thread \{[\s\S]*?min-height: \d{3}px/);
   });
 });

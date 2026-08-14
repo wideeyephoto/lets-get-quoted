@@ -5316,22 +5316,12 @@
   color: #e2edf1;
 }
 
-/* A rule above it, mirroring the one under the head — without it the link sat
-   directly under the last event and read as a seventh row of the thread. */
-.root :global(.hero-thread-demo) {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 14px;
-  padding-top: 13px;
-  border-top: 1px solid #1e3743;
-  font-size: 11.5px;
-  font-weight: 750;
-  letter-spacing: .01em;
-  color: #9db0bd;
-  transition: color .18s ease;
-}
-.root :global(.hero-thread-demo):hover { color: var(--orange); }
+/* .hero-thread-demo — the "Open the live demo" link under the thread — is gone.
+   It had a rule above it mirroring the one under the head, and a hover, and a
+   third rule further down undoing the divider for the simulation panel. The
+   only markup that carried the class was CinematicMessageSimulation's footer,
+   which was removed, so all three went with it rather than staying here as
+   selectors that can never match. */
 
 /* Below the two-column band the thread rejoins the flow under the copy.
 
@@ -7808,13 +7798,3 @@
   .root :global(.hero-thread-sim) { padding: 0; }
 }
 
-/* The demo link carried a rule above it because it used to be the last row
-   INSIDE the panel, and a divider was what stopped it reading as a seventh
-   message. It sits under the phone now, beside the Replay control, where the
-   same divider is a line hanging in space. (0,3,0) against the base rule's
-   (0,2,0), so it wins without touching the pages that still nest it. */
-.root :global(.hero-thread-sim .hero-thread-demo) {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}

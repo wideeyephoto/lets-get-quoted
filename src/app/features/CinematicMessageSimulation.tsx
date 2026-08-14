@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   HERO_CONTEXT,
@@ -35,8 +34,16 @@ import styles from './cinematic-message-simulation.module.css';
  * again — what they leave behind is the status in the header, which is the
  * actual product behavior being sold.
  *
- * NOT LOOPED. It plays once and offers a Replay. A ten-second sequence
- * restarting forever beside a headline is a thing to look away from.
+ * That claim is carried by the CARD's own label ("Customer dashboard", on every
+ * one of them) and by the fact that it never enters the message list. It used
+ * to be restated in a caption under the panel as well; the caption and the two
+ * controls beside it are gone, so the label is the only thing saying it and has
+ * to stay on every card.
+ *
+ * NOT LOOPED, and no longer replayable. It plays once, when somebody scrolls to
+ * it. A ten-second sequence restarting forever beside a headline is a thing to
+ * look away from, and the Replay button that used to sit under the panel went
+ * with the rest of that footer.
  */
 
 /** What is on screen at a given moment. Each step sets the whole thing, so a
@@ -378,23 +385,6 @@ export default function CinematicMessageSimulation() {
         </div>
       </div>
 
-      {/* The honesty line, and it is not decoration: it is the only thing on
-          the panel that says which of the two shapes is a text message. */}
-      <p className={styles.caption}>
-        Blue bubbles are SMS · floating updates are customer-dashboard activity
-      </p>
-
-      <div className={styles.actions}>
-        <Link className="hero-thread-demo" href="/demo">
-          Open the live demo <span aria-hidden="true">→</span>
-        </Link>
-        {!stilled ? (
-          <button type="button" className={styles.replay} onClick={start}>
-            <span aria-hidden="true">↻</span> Replay
-            <span className="sr-only"> the job simulation</span>
-          </button>
-        ) : null}
-      </div>
     </div>
   );
 }
