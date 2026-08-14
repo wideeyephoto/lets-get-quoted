@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 310b66fac0cf2885
+   source-sha256: 110a1a8a9cd3ddd6
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -5448,6 +5448,11 @@ li + li { margin-top: 0.45rem; }
   border: none; background: rgba(0,0,0,.6); color: #fff; font-size: 1rem; line-height: 1;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+/* Same two pixels, and here the restraint is the whole point: this button is
+   layered over .photo-thumb-open, which fills the thumbnail. Every pixel this
+   grows is a pixel where "open this photo" becomes "delete this photo", so it
+   grows by the least that clears 24 and no more. */
+.photo-thumb-remove::after { content: ''; position: absolute; inset: -2px; }
 .photo-thumb-remove:hover { background: rgba(220,38,38,.85); }
 
 .photo-lightbox-backdrop {
@@ -13703,7 +13708,34 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   font-size: 0.72rem; font-weight: 900;
 }
 .iq-save-error strong { color: var(--ink-orange-1); }
+
+.iq-phone {
+  display: grid; gap: 0.7rem; justify-items: center;
+  padding: 2rem 1.4rem;
+  border-radius: 16px;
+  border: 1px solid var(--edge-t12);
+  background:
+    radial-gradient(120% 90% at 50% 120%, rgba(255, 122, 33, 0.16), transparent 62%),
+    rgba(var(--shade), 0.28);
+}
+.iq-phone-q {
+  margin: 0; max-width: 22rem; padding: 0.85rem 1.1rem;
+  border-radius: 14px 14px 14px 4px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.09);
+  font-size: 1.05rem; text-align: center;
+}
+.iq-phone-steps { display: flex; align-items: center; gap: 0.5rem; width: 100%; max-width: 22rem; }
+.iq-phone-steps i { width: 0.55rem; height: 0.55rem; flex: none; border-radius: 50%; border: 1px solid var(--edge-t28); }
 .iq-phone-steps i.is-on { width: 5rem; border-radius: 999px; border-color: transparent; background: var(--accent); }
+.iq-phone-btn {
+  margin: 0; width: 100%; max-width: 22rem; padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ff8a3d, #ff7a21);
+  color: var(--on-accent);
+  font-size: 1.05rem; font-weight: 700; text-align: center;
+}
+.iq-phone-fine { margin: 0; font-size: 0.79rem; color: var(--mute-t45); }
 .iq-bicon.is-a { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
 .iq-bicon.is-b { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
 .iq-bicon.is-c { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }

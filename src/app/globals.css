@@ -6434,6 +6434,11 @@ li + li { margin-top: 0.45rem; }
 .client-schedule-selected-meta strong { color: var(--text); font-size: .78rem; }
 .client-schedule-selected-meta small, .client-schedule-selected-card > small { color: var(--mute-i54); font-size: .7rem; }
 .client-schedule-remove-button { position: absolute; top: .42rem; right: .42rem; width: 22px; height: 22px; border: 1px solid var(--edge-t12); border-radius: 999px; background: rgba(var(--tint), .06); color: rgba(var(--ink-rgb), .72); cursor: pointer; }
+/* 22px is two short of a target. Two pixels each way, not the 0.6rem the info
+   buttons take: this one is parked in the corner of a card, and a hit area
+   that reached out ten pixels would start answering for the card underneath
+   it. 26x26, and nothing else moves. */
+.client-schedule-remove-button::after { content: ''; position: absolute; inset: -2px; }
 .sign-in-method-badge { display: inline-flex; align-items: center; line-height: 1; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; padding: .4rem .7rem; border-radius: 999px; }
 .sign-in-method-badge.linked { background: rgba(120, 220, 150, .16); color: var(--ink-green-1); }
 .sign-in-method-badge.unlinked { background: rgba(var(--tint), .08); color: var(--mute-t55); }
@@ -8008,6 +8013,11 @@ li + li { margin-top: 0.45rem; }
   border: none; background: rgba(0,0,0,.6); color: #fff; font-size: 1rem; line-height: 1;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+/* Same two pixels, and here the restraint is the whole point: this button is
+   layered over .photo-thumb-open, which fills the thumbnail. Every pixel this
+   grows is a pixel where "open this photo" becomes "delete this photo", so it
+   grows by the least that clears 24 and no more. */
+.photo-thumb-remove::after { content: ''; position: absolute; inset: -2px; }
 .photo-thumb-remove:hover { background: rgba(220,38,38,.85); }
 
 .photo-lightbox-backdrop {
@@ -26304,6 +26314,19 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   border: 1px solid var(--edge-t16); background: transparent;
   color: var(--mute-t55); font-size: 0.64rem; font-weight: 700; line-height: 1; cursor: help;
 }
+/* THE RING IS 17px. A THUMB IS NOT.
+   Six of these ride the Insights KPI cards and they were the smallest real hit
+   area in the dashboard — 17x17 measured by hit-testing, not by reading the
+   box, which is the only way to tell this apart from .infotip-btn: that one is
+   a 14px glyph and reads as the worst offender in any audit that measures
+   width/height, but it has carried this same expansion for months and answers
+   a tap across 35x34.
+   Invisible, so nothing moves: the ring stays 17px and only the region that
+   counts as a press grows, to 36x36. Safe to overlap outward here because the
+   nearest other target on the page is 63px away — measured, because an
+   expanded hit area that swallows a neighbouring control is worse than a small
+   one. */
+.ins-kpi-info::after { content: ''; position: absolute; inset: -0.6rem; }
 .ins-kpi-info:hover, .ins-kpi-info:focus-visible {
   color: var(--text); border-color: var(--cedge-orange-5); outline: none;
 }
