@@ -611,6 +611,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     if (wanted && user?.email) {
       const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
       await sendQuoteSentConfirmationEmail({
+        accountId,
         recipientEmail: user.email,
         businessName,
         clientName: job.client_name,

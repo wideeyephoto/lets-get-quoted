@@ -62,6 +62,7 @@ export async function raiseWarrantyClaimAction(
     ]);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId: access.accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject: claim.inWarrantyAtClaim ? 'Warranty request — in warranty' : 'Warranty request — cover has ended',

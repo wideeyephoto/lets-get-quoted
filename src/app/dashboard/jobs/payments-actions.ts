@@ -93,6 +93,7 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
         const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
         const job = await getJob(supabase, accountId, jobId);
         await sendPaymentRequestedConfirmationEmail({
+          accountId,
           recipientEmail: user.email,
           businessName,
           clientName: job?.client_name || 'your customer',

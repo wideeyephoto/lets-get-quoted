@@ -53,6 +53,7 @@ export async function askQuoteQuestion(token: string, question: string): Promise
     const ownerEmail = await getAccountOwnerEmail(admin, access.accountId);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId: access.accountId,
         recipientEmail: ownerEmail,
         businessName: await loadBusinessName(admin, access.accountId),
         subject: `${clientName} has a question about ${job?.ref ?? 'their quote'}`,

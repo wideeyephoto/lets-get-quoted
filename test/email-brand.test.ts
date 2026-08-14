@@ -9,6 +9,8 @@ import {
   safeAccent,
   type EmailBrand,
 } from '../src/emails/brand';
+import { renderDailyDigestEmailHtml } from '../src/lib/email';
+import type { DailyDigest } from '../src/lib/daily-digest';
 
 const brand = (over: Partial<EmailBrand> = {}): EmailBrand => ({
   businessName: 'BrokePipes',
@@ -63,6 +65,19 @@ describe('renderBrandedEmail', () => {
     expect(html).toContain('Reply to this email to reach BrokePipes directly.');
     // One small attribution line is fine; the email must not read as ours.
     expect((html.match(/Let&#39;s Get Quoted/g) ?? []).length).toBe(1);
+  });
+
+  it('identifies account email as sent by Let\'s Get Quoted for the business', () => {
+    const html = renderBrandedEmail({
+      brand: brand(),
+      audience: 'account',
+      heading: 'Your business today',
+    });
+    expect(html).toContain('For BrokePipes');
+    expect(html).toContain('sent by Let&#39;s Get Quoted');
+    expect(html).toContain('Reply to this email to reach Let&#39;s Get Quoted.');
+    expect(html).not.toContain('Sent by BrokePipes');
+    expect(html).not.toContain('reach BrokePipes directly');
   });
 
   it('uses a hosted logo when there is one, a wordmark when there is not', () => {
@@ -132,6 +147,53 @@ describe('renderBrandedEmail', () => {
     const legacy = renderBrandedEmail({ brand: brand(), heading: 'x' });
     const explicit = renderBrandedEmail({ brand: brand({ theme: 'studio' }), heading: 'x' });
     expect(legacy).toBe(explicit);
+  });
+});
+
+describe('renderDailyDigestEmailHtml', () => {
+  const digest: DailyDigest = {
+    dateLabel: 'Friday, August 14',
+    hasSignal: true,
+    moneyInCount: 2,
+    moneyInTotal: 125000,
+    openRequestsCount: 3,
+    openRequestsTotal: 4630000,
+    failedCount: 1,
+    failedTotal: 27500,
+    newLeads: 4,
+    quotesApproved: 2,
+    confirmations: 3,
+    newReviews: 1,
+    newReviewsAvg: 5,
+    privateFeedback: 1,
+    todaysJobs: [{ clientName: 'Preston Voss', time: '11:45 AM', ref: 'JOB-29' }],
+    todaysJobsCount: 1,
+    rebookDue: 10,
+    payday: null,
+    cash: null,
+    selections: { jobs: 2, overdue: 1 },
+  };
+
+  it('renders the owner digest through every selected theme', () => {
+    const documents = EMAIL_THEMES.map((theme) => renderDailyDigestEmailHtml({
+      brand: brand({ theme: theme.id }),
+      businessName: 'BrokePipes',
+      digest,
+      dashboardUrl: 'https://app.example.test/dashboard',
+      manageUrl: 'https://app.example.test/dashboard/automations#daily-digest',
+    }));
+
+    expect(documents).toHaveLength(5);
+    expect(new Set(documents).size).toBe(5);
+    for (const html of documents) {
+      expect(html).toContain('Your business today');
+      expect(html).toContain('Preston Voss');
+      expect(html).toContain('Awaiting payment');
+      expect(html).toContain('For BrokePipes');
+      expect(html).toContain('sent by Let&#39;s Get Quoted');
+      expect(html).not.toMatch(/display\s*:\s*flex/i);
+      expect(html.trimEnd().endsWith('</html>')).toBe(true);
+    }
   });
 });
 

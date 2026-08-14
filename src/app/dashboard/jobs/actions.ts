@@ -1619,6 +1619,7 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
           const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
           const phone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
           await sendReviewRequestConfirmationEmail({
+            accountId,
             recipientEmail: user.email,
             businessName,
             clientName: job.client_name,

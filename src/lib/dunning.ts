@@ -137,6 +137,7 @@ async function alertOwnerChargeFailed(
             ? "We couldn't reach the client automatically (no email or opted-in mobile on file), so please contact them to update their card."
             : `The card failed after several automatic retries. We've asked the client to update their card; you may also want to follow up.`;
     await sendContractorAlertEmail({
+      accountId: plan.account_id,
       recipientEmail: to,
       businessName,
       subject: `A recurring charge for ${plan.client_name} couldn't be collected`,

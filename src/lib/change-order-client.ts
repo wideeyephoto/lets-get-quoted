@@ -116,6 +116,7 @@ export async function respondAsClient(
     ]);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId: access.accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject: approved ? `Change order approved — ${formatMoney(order.amount)}` : 'Change order declined',

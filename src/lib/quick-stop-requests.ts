@@ -195,6 +195,7 @@ export async function createQuickStopRequest(
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName: opts.businessName,
         subject: `⚡ New Quick Stop request — respond within ${opts.responseDeadlineMins} min`,

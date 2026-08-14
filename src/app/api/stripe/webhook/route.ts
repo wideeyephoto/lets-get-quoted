@@ -39,6 +39,7 @@ async function emailContractorAlert(
       return;
     }
     await sendContractorAlertEmail({
+      accountId,
       recipientEmail: ownerEmail,
       businessName,
       subject: alert.subject,

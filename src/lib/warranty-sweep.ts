@@ -78,6 +78,7 @@ export async function runServiceReminderSweep(): Promise<SweepResult> {
       if (!ownerEmail) continue;
 
       await sendContractorAlertEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject: `${items.length} job${items.length === 1 ? '' : 's'} due a service`,

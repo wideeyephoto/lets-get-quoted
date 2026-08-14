@@ -183,6 +183,7 @@ export async function confirmQuickStopPayment(admin: SupabaseClient, paymentId: 
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject: '✅ Quick Stop confirmed & paid',

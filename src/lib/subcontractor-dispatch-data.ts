@@ -1305,6 +1305,7 @@ async function notifyOwner(
           ? `${who} is available for ${request.workDescription}`
           : `${who} asked a question`;
     await sendContractorAlertEmail({
+      accountId,
       recipientEmail: ownerEmail,
       businessName,
       subject: heading,

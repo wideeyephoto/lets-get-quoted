@@ -32,14 +32,26 @@ function previewHtml(theme: EmailThemeId, props: Pick<Props, 'businessName' | 'a
 
   return renderBrandedEmail({
     brand,
-    preheader: 'Quote #1048 is ready to review',
-    eyebrow: 'Quote #1048',
-    heading: 'Dana, your quote is ready',
-    paragraphs: [
-      'Front yard cleanup · $1,850',
-      'Review the details and approve online — no login needed.',
-    ],
-    cta: { label: 'View & approve quote', url: 'https://example.com/quote' },
+    audience: 'account',
+    preheader: `${props.businessName} daily digest`,
+    eyebrow: 'Daily digest',
+    heading: 'Your business today',
+    paragraphs: ['Friday, August 14'],
+    bodyHtml: `
+      <p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">MONEY</p>
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="padding:8px 0;color:#4b5563;font-size:15px">Payments received</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#059669">2 &middot; $1,250</td></tr>
+        <tr><td style="padding:8px 0;color:#4b5563;font-size:15px">Awaiting payment</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#172033">14 &middot; $46,300</td></tr>
+      </table>
+      <p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">PIPELINE</p>
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="padding:8px 0;color:#4b5563;font-size:15px">New leads</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#059669">4</td></tr>
+        <tr><td style="padding:8px 0;color:#4b5563;font-size:15px">Quotes approved</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#059669">2</td></tr>
+      </table>
+      <p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">TODAY&rsquo;S SCHEDULE &middot; 1 JOB</p>
+      <p style="margin:0 0 6px;font-size:15px;color:#172033"><strong>11:45 AM</strong> &middot; Preston Voss <span style="color:#9ca3af">JOB-29</span></p>
+    `,
+    cta: { label: 'Open your dashboard', url: 'https://example.com/dashboard' },
   });
 }
 
@@ -49,8 +61,9 @@ function ThemePicker(props: Props) {
   return (
     <>
       <p className={`workspace-details-copy ${styles.intro}`}>
-        Quotes, invoices, reminders, booking updates, review requests, and campaigns all use one consistent
-        layout. Every option keeps your logo, business color, contact details, and reply address.
+        Customer quotes, invoices, reminders, campaigns, and contractor account alerts like the daily digest all
+        use one consistent layout. Every option keeps your logo and business color; customer replies still go to
+        your saved reply address.
       </p>
 
       <form action={props.saveAction}>
@@ -104,7 +117,7 @@ export default function EmailThemeSection(props: Props) {
       <details className={`panel workspace-section-card ${styles.accordion}`} id="email-theme">
         <summary className={styles.summary}>
           <span className={styles.summaryHeading}>
-            <span className="eyebrow">Customer emails</span>
+            <span className="eyebrow">Outgoing email</span>
             <strong>Choose your email look</strong>
           </span>
           <span className={styles.summaryCopy}>Preview and set the design used for outgoing email.</span>
@@ -120,7 +133,7 @@ export default function EmailThemeSection(props: Props) {
   return (
     <section className="panel workspace-section-card" id="email-theme">
       <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Customer emails</p>
+        <p className="eyebrow">Outgoing email</p>
         <h2>Choose your email look</h2>
       </div>
       <ThemePicker {...props} />

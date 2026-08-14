@@ -131,6 +131,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
       // customer never received.
       if (user?.email) {
         await sendInvoiceSentConfirmationEmail({
+          accountId,
           recipientEmail: user.email,
           businessName,
           clientName: job.client_name,

@@ -5,9 +5,9 @@
 // line for THEIR plumber's invoice. This is the one shell they all render
 // through, wearing the contractor's name, color and logo.
 //
-// Emails our own customers get — the daily digest, lead alerts, "your quote was
-// sent" confirmations — deliberately do NOT use this. Those are us talking to
-// the contractor, and they should look like us.
+// Account emails to the contractor use this shell too. They keep Let's Get
+// Quoted in the From/reply identity, but the owner's selected layout, logo and
+// color still carry through so every email for one account feels related.
 //
 // EMAIL HTML IS NOT WEB HTML. Everything below is inline-styled and
 // table-based on purpose:
@@ -135,6 +135,8 @@ function preheaderBlock(text: string): string {
 
 export type BrandedEmail = {
   brand: EmailBrand;
+  /** Account mail keeps Let's Get Quoted as the sender while using the saved theme. */
+  audience?: 'customer' | 'account';
   /** Mail-client preview line. */
   preheader?: string;
   /** Small uppercase kicker above the heading. */
@@ -256,6 +258,13 @@ export function renderBrandedEmail(input: BrandedEmail): string {
     brand.phone ? `<a href="tel:${escapeHtml(brand.phone)}" style="color:${MUTED};text-decoration:none">${escapeHtml(brand.phone)}</a>` : '',
     brand.siteUrl ? `<a href="${escapeHtml(brand.siteUrl)}" style="color:${MUTED};text-decoration:none">${escapeHtml(brand.siteUrl.replace(/^https?:\/\//, ''))}</a>` : '',
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const accountEmail = input.audience === 'account';
+  const senderLine = accountEmail
+    ? `For ${name} &nbsp;&middot;&nbsp; sent by Let&#39;s Get Quoted`
+    : `Sent by ${name}${contactBits ? `<br/>${contactBits}` : ''}`;
+  const replyLine = accountEmail
+    ? `Reply to this email to reach Let&#39;s Get Quoted.`
+    : `Reply to this email to reach ${name} directly.`;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${name}</title></head>
@@ -275,10 +284,10 @@ ${preheaderBlock(input.preheader ?? '')}
       <tr><td bgcolor="${paint.footer}" style="${paint.footerStyle}">
         <div style="border-top:1px solid ${HAIRLINE};padding-top:16px">
           <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED}">
-            Sent by ${name}${contactBits ? `<br/>${contactBits}` : ''}
+             ${senderLine}
           </p>
           <p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:${MUTED}">
-            Reply to this email to reach ${name} directly.
+             ${replyLine}
           </p>
           ${input.footerHtml ?? ''}
         </div>

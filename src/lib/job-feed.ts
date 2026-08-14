@@ -842,6 +842,7 @@ export async function approveClientJobQuote(
       ]);
       const businessName = pickBusinessName(site, account);
       await sendContractorAlertEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject: `${job.client_name} approved the quote`,

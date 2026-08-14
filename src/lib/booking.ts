@@ -473,6 +473,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendLeadNotificationEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName,
         lead,
@@ -560,6 +561,7 @@ export async function createBookingRequestLead(
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendLeadNotificationEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName: await loadBusinessName(admin, accountId),
         lead,

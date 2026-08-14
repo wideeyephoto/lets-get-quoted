@@ -231,6 +231,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
 // let a send failure throw, or Stripe would retry the whole event and re-run
 // the DB mutations.
 export async function sendContractorAlertEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   subject: string;
@@ -245,17 +246,22 @@ export async function sendContractorAlertEmail(input: {
     return;
   }
 
-  const accent = input.tone === 'info' ? '#2563eb' : '#dc2626';
   const eyebrow = input.tone === 'info' ? 'ACCOUNT UPDATE' : 'ACTION NEEDED';
-  const paragraphs = input.bodyLines
-    .map((line) => `<p style="margin:0 0 12px;line-height:1.5">${escapeHtml(line)}</p>`)
-    .join('');
+  const brand = await brandFor(input);
 
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
     subject: input.subject,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:${accent};font-weight:700;letter-spacing:0.04em">${eyebrow}</p><h1 style="font-size:24px;margin:0 0 16px">${escapeHtml(input.heading)}</h1>${paragraphs}<p style="margin-top:24px"><a href="${escapeHtml(input.ctaUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">${escapeHtml(input.ctaLabel)}</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    html: renderBrandedEmail({
+      brand,
+      audience: 'account',
+      preheader: input.subject,
+      eyebrow,
+      heading: input.heading,
+      paragraphs: input.bodyLines,
+      cta: { label: input.ctaLabel, url: input.ctaUrl },
+    }),
     reply_to: 'hello@letsgetquoted.com',
     tags: [{ name: 'kind', value: 'contractor_alert' }],
   });
@@ -289,6 +295,7 @@ export function describeDelivery(channel: SentChannel, sentTo: string | null): s
 }
 
 export async function sendQuoteSentConfirmationEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   clientName: string;
@@ -300,6 +307,7 @@ export async function sendQuoteSentConfirmationEmail(input: {
 }): Promise<void> {
   const delivered = input.channel !== 'none';
   await sendContractorAlertEmail({
+    accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
@@ -320,6 +328,7 @@ export async function sendQuoteSentConfirmationEmail(input: {
 }
 
 export async function sendPaymentRequestedConfirmationEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   clientName: string;
@@ -331,6 +340,7 @@ export async function sendPaymentRequestedConfirmationEmail(input: {
 }): Promise<void> {
   const delivered = input.channel !== 'none';
   await sendContractorAlertEmail({
+    accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
@@ -351,6 +361,7 @@ export async function sendPaymentRequestedConfirmationEmail(input: {
 }
 
 export async function sendReviewRequestConfirmationEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   clientName: string;
@@ -360,6 +371,7 @@ export async function sendReviewRequestConfirmationEmail(input: {
   jobUrl: string;
 }): Promise<void> {
   await sendContractorAlertEmail({
+    accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: `Review request sent to ${input.clientName}`,
@@ -375,6 +387,7 @@ export async function sendReviewRequestConfirmationEmail(input: {
 // job booked the next day, so a per-send confirmation would be a stack of mail
 // rather than a signal. This says how many went and how many couldn't.
 export async function sendReminderRunSummaryEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   sentCount: number;
@@ -383,6 +396,7 @@ export async function sendReminderRunSummaryEmail(input: {
 }): Promise<void> {
   const plural = input.sentCount === 1 ? 'reminder' : 'reminders';
   await sendContractorAlertEmail({
+    accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: `${input.sentCount} appointment ${plural} sent for tomorrow`,
@@ -400,6 +414,7 @@ export async function sendReminderRunSummaryEmail(input: {
 }
 
 export async function sendInvoiceSentConfirmationEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   clientName: string;
@@ -411,6 +426,7 @@ export async function sendInvoiceSentConfirmationEmail(input: {
 }): Promise<void> {
   const delivered = input.channel !== 'none';
   await sendContractorAlertEmail({
+    accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
@@ -995,21 +1011,16 @@ function escapeHtml(value: string | null) {
   })[character] || character);
 }
 
-// Owner "here's your business today" digest. Transactional/relationship email to
-// the account owner about their own account — not marketing, so no unsubscribe
-// footer (they toggle it in Settings). Throws on provider rejection so the caller
-// (cron or the Settings test button) can count it as failed.
-export async function sendDailyDigestEmail(input: {
-  recipientEmail: string;
+// The owner's "here's your business today" digest, separated from delivery so
+// every selected theme can be rendered and inspected without sending an email.
+export function renderDailyDigestEmailHtml(input: {
+  brand: EmailBrand;
   businessName: string;
   digest: DailyDigest;
   dashboardUrl: string;
   manageUrl: string;
   isTest?: boolean;
-}): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('Email provider is not configured.');
-  }
+}): string {
   const d = input.digest;
 
   // A labelled stat line; `accent` highlights the ones that want attention.
@@ -1084,20 +1095,40 @@ export async function sendDailyDigestEmail(input: {
     ? `<p style="margin:0 0 14px;padding:8px 12px;background:#f4f5f7;border-radius:6px;color:#6b7280;font-size:13px">This is a test digest — the real one sends once a day when there&rsquo;s something to report.</p>`
     : '';
 
-  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">
-    <p style="color:#b45309;font-weight:700;letter-spacing:0.04em">DAILY DIGEST</p>
-    <h1 style="font-size:24px;margin:0 0 4px">${escapeHtml(input.businessName)}</h1>
-    <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${escapeHtml(d.dateLabel)}</p>
-    ${testBanner}
-    ${section('Money', money)}
-    ${section('Pipeline', pipeline)}
-    ${todayList}
-    ${section('Schedule', schedule)}
-    ${section('Reputation', reputation)}
-    <p style="margin:26px 0 0"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Open your dashboard</a></p>
-    <p style="margin-top:26px;color:#9ca3af;font-size:12px;line-height:1.6">You&rsquo;re getting this because the daily digest is on for ${escapeHtml(input.businessName)}. <a href="${escapeHtml(input.manageUrl)}" style="color:#9ca3af">Manage it in Settings</a>.</p>
-  </div>`;
+  return renderBrandedEmail({
+    brand: input.brand,
+    audience: 'account',
+    preheader: `${input.businessName} · ${d.dateLabel}`,
+    eyebrow: 'Daily digest',
+    heading: 'Your business today',
+    paragraphs: [d.dateLabel],
+    bodyHtml: [
+      testBanner,
+      section('Money', money),
+      section('Pipeline', pipeline),
+      todayList,
+      section('Schedule', schedule),
+      section('Reputation', reputation),
+    ].join(''),
+    cta: { label: 'Open your dashboard', url: input.dashboardUrl },
+    footerHtml: `<p style="margin:12px 0 0;color:#9ca3af;font-size:12px;line-height:1.6">You&rsquo;re getting this because the daily digest is on for ${escapeHtml(input.businessName)}. <a href="${escapeHtml(input.manageUrl)}" style="color:#9ca3af">Manage the daily digest</a>.</p>`,
+  });
+}
 
+export async function sendDailyDigestEmail(input: {
+  accountId: string;
+  recipientEmail: string;
+  businessName: string;
+  digest: DailyDigest;
+  dashboardUrl: string;
+  manageUrl: string;
+  isTest?: boolean;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+  const brand = await brandFor(input);
+  const html = renderDailyDigestEmailHtml({ ...input, brand });
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
@@ -1113,6 +1144,7 @@ export async function sendDailyDigestEmail(input: {
 }
 
 export async function sendLeadNotificationEmail(input: {
+  accountId: string;
   recipientEmail: string;
   businessName: string;
   lead: Lead;
@@ -1136,11 +1168,20 @@ export async function sendLeadNotificationEmail(input: {
     ? `<div style="padding:14px 18px;margin-bottom:16px;background:#fff1e6;border:1px solid #fb7a3c;border-radius:10px;color:#9a3412;font-weight:700">🔥 HIGH-VALUE LEAD${range ? ` — estimated ${escapeHtml(range)}` : ''}. Get to this one first — fast response wins the big jobs.</div>`
     : '';
   const eyebrow = input.highValue ? 'HIGH-VALUE WEBSITE LEAD' : 'NEW WEBSITE QUOTE REQUEST';
+  const brand = await brandFor(input);
   const result = await resend.emails.send({
     from: 'Let\'s Get Quoted <hello@letsgetquoted.com>',
     to: input.recipientEmail,
     subject,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${banner}<p style="color:#b45309;font-weight:700">${eyebrow}</p><h1 style="font-size:26px">${escapeHtml(input.lead.name)} requested a quote</h1><p>${contact}</p><p><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b">${escapeHtml(input.lead.message)}</div><p style="margin-top:24px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:white;text-decoration:none;font-weight:700">Open quote request in ${escapeHtml(input.businessName)}</a></p></div>`,
+    html: renderBrandedEmail({
+      brand,
+      audience: 'account',
+      preheader: subject,
+      eyebrow,
+      heading: `${input.lead.name || 'A customer'} requested a quote`,
+      bodyHtml: `${banner}<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230"><strong>Contact:</strong> ${contact || 'Not provided'}</p><p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230"><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1c2230"><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6;color:#1c2230">${escapeHtml(input.lead.message)}</div>`,
+      cta: { label: `Open quote request in ${input.businessName}`, url: input.dashboardUrl },
+    }),
     reply_to: input.lead.email || 'hello@letsgetquoted.com',
     tags: [{ name: 'kind', value: 'lead_notification' }],
   });

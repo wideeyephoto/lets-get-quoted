@@ -516,6 +516,7 @@ export async function submitPrivateFeedback(admin: SupabaseClient, token: string
     ]);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId: invite.account_id as string,
         recipientEmail: ownerEmail,
         businessName,
         subject: `New private feedback${rating ? ` (${rating}★)` : ''}`,

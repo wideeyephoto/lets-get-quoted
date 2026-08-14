@@ -232,11 +232,12 @@ export async function runDailyDigests(now: Date = new Date()): Promise<DigestRun
 
       const businessName = await resolveBusinessName(admin, accountId);
       await sendDailyDigestEmail({
+        accountId,
         recipientEmail: to,
         businessName,
         digest,
         dashboardUrl: `${APP_ORIGIN}/dashboard`,
-        manageUrl: `${APP_ORIGIN}/dashboard/settings#daily-digest`,
+        manageUrl: `${APP_ORIGIN}/dashboard/automations#daily-digest`,
       });
       sent++;
     } catch (err) {
@@ -259,11 +260,12 @@ export async function sendTestDigest(supabase: SupabaseClient, accountId: string
   const digest = await buildDailyDigest(supabase, accountId);
   const businessName = await resolveBusinessName(admin, accountId);
   await sendDailyDigestEmail({
+    accountId,
     recipientEmail: to,
     businessName,
     digest,
     dashboardUrl: `${APP_ORIGIN}/dashboard`,
-    manageUrl: `${APP_ORIGIN}/dashboard/settings#daily-digest`,
+    manageUrl: `${APP_ORIGIN}/dashboard/automations#daily-digest`,
     isTest: true,
   });
   return { ok: true, message: `Sent a test digest to ${to}.` };

@@ -145,6 +145,7 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
     if (ownerEmail) {
       const businessName = await loadBusinessName(admin, accountId);
       await sendContractorAlertEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName,
         subject:

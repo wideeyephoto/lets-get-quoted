@@ -47,6 +47,7 @@ async function notifyOwner(
       const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
       if (ownerUser.user?.email) {
         await sendLeadNotificationEmail({
+          accountId: site.account_id,
           recipientEmail: ownerUser.user.email,
           businessName: site.company_name,
           lead,

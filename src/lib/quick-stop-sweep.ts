@@ -57,6 +57,7 @@ export async function sweepQuickStopOffers(admin: SupabaseClient, accountId?: st
       const ownerEmail = await getAccountOwnerEmail(admin, row.account_id);
       if (ownerEmail) {
         await sendContractorAlertEmail({
+          accountId: row.account_id,
           recipientEmail: ownerEmail,
           businessName: 'Let’s Get Quoted',
           subject: 'Quick Stop offer expired unpaid',

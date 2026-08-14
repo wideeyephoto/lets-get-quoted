@@ -359,6 +359,7 @@ async function sendReminderSummaries(
       ]);
       if (!ownerEmail) continue;
       await sendReminderRunSummaryEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName: (account?.business_name as string) || 'Your business',
         sentCount: counts.sent,

@@ -192,6 +192,7 @@ export async function resolveQuickStopCancellation(
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendContractorAlertEmail({
+        accountId,
         recipientEmail: ownerEmail,
         businessName: 'Let’s Get Quoted',
         subject: opts.kind === 'no_show' ? 'Quick Stop no-show recorded' : 'Quick Stop canceled',

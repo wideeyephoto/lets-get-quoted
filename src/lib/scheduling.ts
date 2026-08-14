@@ -195,6 +195,7 @@ async function notifyOwnerOfScheduleResponse(
 
     if (kind === 'selected' && detail.option) {
       await sendContractorAlertEmail({
+        accountId: request.account_id,
         recipientEmail: ownerEmail,
         businessName: request.businessName,
         subject: `${clientName} picked a start date`,
@@ -210,6 +211,7 @@ async function notifyOwnerOfScheduleResponse(
       });
     } else if (kind === 'needs_more_options') {
       await sendContractorAlertEmail({
+        accountId: request.account_id,
         recipientEmail: ownerEmail,
         businessName: request.businessName,
         subject: `${clientName} asked for different dates`,
