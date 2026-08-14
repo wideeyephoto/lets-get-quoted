@@ -8,6 +8,7 @@ import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/da
 import type { JobsView, MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
+import { scopePinsToFilter } from '@/lib/map-pin-scope';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import FocusView from './FocusView';
 import JobSmoothieView from './JobSmoothieView';
@@ -172,6 +173,16 @@ export default function JobsWorkspace({
 
   const filtered = useMemo(() => (status === 'all' ? jobs : jobs.filter((j) => j.status === status)), [jobs, status]);
 
+  /* THE MAP FOLLOWS THE FILTER. It used to be handed the global pin set while
+     the list beside it was filtered, so choosing Complete left "5 of 39" above
+     a map still drawing 33 pins and a legend counting 37 places — three numbers
+     on one screen, none of them wrong alone. See lib/map-pin-scope. */
+  const visibleJobIds = useMemo(() => new Set(filtered.map((job) => job.id)), [filtered]);
+  const scopedPins = useMemo(
+    () => scopePinsToFilter(mapPins, 'job', visibleJobIds, status !== 'all'),
+    [mapPins, visibleJobIds, status],
+  );
+
   // The view/map gear sits on the map's legend row, matching the leads page. Down
   // in the filter bar its popover opened downwards into the panels below it and
   // was overlapped by them; on the legend row it opens over the map instead.
@@ -204,7 +215,7 @@ export default function JobsWorkspace({
         <JobSmoothieView
           jobs={jobs}
           todayKey={todayKey}
-          mapPins={mapPins}
+          mapPins={scopedPins}
           mapTheme={effectiveMapTheme}
           gear={gear}
           onSelect={onFocusSelect}
@@ -226,7 +237,7 @@ export default function JobsWorkspace({
           than the query. */}
       {effectiveMapView === 'large' ? (
         <div className="workspace-embedded-map">
-          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} focusPinId={view === 'focus' && focusJobId ? `job-${focusJobId}` : null} onPinClick={onPinClick} />
+          <PinMap pins={scopedPins} theme={mapTheme} legendAccessory={gear} focusPinId={view === 'focus' && focusJobId ? `job-${focusJobId}` : null} onPinClick={onPinClick} />
         </div>
       ) : (
         // Map off: keep the gear reachable, or there'd be no way to turn it back on.
