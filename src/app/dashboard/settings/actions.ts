@@ -174,6 +174,7 @@ export async function updateIntakeContentAction(input: {
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/sites');
+  revalidatePath('/dashboard/automations');
 }
 
 /**
@@ -233,8 +234,8 @@ export async function toggleClientPortalAction(next: boolean) {
  * Add or remove the portal link on the contractor's website, and rename it.
  *
  * Writes only the clientPortal branch of the site content, so it can't clobber
- * anything the builder holds — same reason toggleSmartIntakeAction spreads the
- * existing quoteForm rather than replacing it.
+ * anything the builder holds — the same read/merge/write boundary used by the
+ * other site-content actions on this page.
  */
 export async function updatePortalLinkAction(input: { navEnabled: boolean; navLabel: string }) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -296,44 +297,6 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
   revalidatePath('/dashboard/schedule');
   // The panel now lives on these two, so they have to be cleared as well.
   revalidatePath('/dashboard/schedule/plan');
-}
-
-// Switches the website between Smart Intake (AI instant estimates) and the classic
-// quote form. Unlike the other automations this isn't an `accounts` column — it
-// lives in the site content, where `quoteForm.enabled` is the single source of
-// truth and getSiteContent derives estimateRanges.enabled as its inverse. Exactly
-// one intake method is ever live, so turning Smart Intake off IS turning the old
-// quote form on; the same pair of switches sits in the website builder.
-export async function toggleSmartIntakeAction(next: boolean) {
-  const { supabase, accountId } = await requireOwnerContext();
-  const { data: site } = await supabase
-    .from('sites')
-    .select('id, content')
-    .eq('account_id', accountId)
-    .maybeSingle();
-  if (!site) throw new Error('Create your website first to choose how leads come in.');
-
-  const current = getSiteContent((site.content as Record<string, unknown> | null) ?? null);
-  const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, {
-    // Spread the existing quoteForm so its other settings (email required, button
-    // wording) survive the flip.
-    quoteForm: { ...current.quoteForm, enabled: !next },
-  });
-  await updateSite(supabase, accountId, site.id as string, { content });
-
-  const { data: { user } } = await supabase.auth.getUser();
-  await recordAccountEvent({
-    accountId,
-    kind: 'automation_toggled',
-    summary: next
-      ? 'Smart Intake turned on (website now shows instant AI estimates)'
-      : 'Smart Intake turned off (website switched to the old-school quote form)',
-    actorEmail: user?.email ?? null,
-    meta: { automation: 'intake-ai', quoteFormEnabled: !next },
-  });
-
-  revalidatePath('/dashboard/settings');
-  revalidatePath('/dashboard/sites');
 }
 
 // Flips one automation on or off straight from the Automations list. Touches only

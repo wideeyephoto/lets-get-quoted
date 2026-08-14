@@ -37,11 +37,10 @@ describe('intake method is mutually exclusive', () => {
   });
 });
 
-// The Settings → Automations switch writes quoteForm.enabled and reads back
-// estimateRanges.enabled as "is Smart Intake on". That round trip only holds
-// because the two are strict inverses, so lock it here: if this ever drifts, the
-// switch silently starts lying about which intake is live.
-describe('the Automations switch round-trips through quoteForm.enabled', () => {
+// The Website Builder's method picker writes quoteForm.enabled and every other
+// surface reads estimateRanges.enabled as "is Smart Intake active". That round
+// trip only holds because the two are strict inverses.
+describe('the intake method choice round-trips through quoteForm.enabled', () => {
   const smartIntakeAfterWriting = (smartIntakeOn: boolean) =>
     getSiteContent({ quoteForm: { enabled: !smartIntakeOn } }).estimateRanges.enabled;
 

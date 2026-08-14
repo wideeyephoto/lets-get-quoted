@@ -5,11 +5,11 @@ import { createPortal } from 'react-dom';
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import { templateFontVars } from '@/lib/templates/fonts';
 import themeStyles from '@/lib/templates/themes.module.css';
-import { getColorScheme, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getSiteContent, mergeSiteContent } from '@/lib/site-content';
 import { readableOnAccent } from '@/lib/templates/theme-color';
 import type { Site } from '@/lib/sites';
 
-// "Preview your AI Intake" — the three tuners above this decide what a homeowner
+// "Preview Smart Intake" — the tuners above this decide what a homeowner
 // is asked, and until now the only way to find out what they added up to was to
 // publish the site and open it on a phone.
 //
@@ -55,7 +55,18 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
 
   // The same variables every template root sets, built the same way, so the
   // preview can't drift into showing a color the live site doesn't use.
-  const scheme = getColorScheme(getSiteContent(site.content).colorScheme);
+  const siteContent = getSiteContent(site.content);
+  const smartIntakeLive = siteContent.estimateRanges.enabled;
+  // This control is specifically a Smart Intake tuner, so its preview always
+  // renders Smart Intake even when the live website currently uses the classic
+  // form. The warning below makes that preview-only override explicit.
+  const previewSite: Site = {
+    ...site,
+    content: mergeSiteContent(site.content, {
+      quoteForm: { ...siteContent.quoteForm, enabled: false },
+    }),
+  };
+  const scheme = getColorScheme(siteContent.colorScheme);
   const themeStyle = {
     '--theme-accent': site.accent_override || scheme?.accent || '#2563eb',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : scheme?.onAccent || '#ffffff',
@@ -64,7 +75,7 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
 
   return (
     <>
-      {/* `compact` is for the Intake AI card, where the panel it sits beside is
+      {/* `compact` is for the Smart Intake card, where the panel it sits beside is
           already headed "Live intake preview" — a second full-width banner
           repeating that would be the loudest thing in the column and say
           nothing new. Everywhere else it stays the explaining card, because
@@ -75,7 +86,7 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
         </button>
       ) : (
         <button type="button" className="intake-preview-trigger" onClick={show}>
-          <span aria-hidden="true">👀</span> Preview your AI Intake
+          <span aria-hidden="true">👀</span> Preview Smart Intake
           <small>See what a homeowner sees, without sending anything</small>
         </button>
       )}
@@ -92,9 +103,9 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
                 if (event.target === event.currentTarget) setOpen(false);
               }}
             >
-              <div className="app-modal intake-preview-modal" role="dialog" aria-modal="true" aria-label="Preview your AI Intake">
+              <div className="app-modal intake-preview-modal" role="dialog" aria-modal="true" aria-label="Preview Smart Intake">
                 <div className="app-modal-head">
-                  <h2>Your AI Intake, as a customer sees it</h2>
+                  <h2>Smart Intake, as a customer sees it</h2>
                   <button ref={closeRef} type="button" className="icon-btn" aria-label="Close" onClick={() => setOpen(false)}>
                     ✕
                   </button>
@@ -104,6 +115,13 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
                     Type a job the way one of your customers would and answer the questions. This is the real intake
                     running on your current settings &mdash; <strong>nothing is sent and no lead is created.</strong>
                   </p>
+
+                  {!smartIntakeLive ? (
+                    <p className="intake-preview-warn">
+                      <strong>Preview only:</strong> your live website currently uses the classic form. Switch the intake
+                      method in Website Builder when you&rsquo;re ready to make Smart Intake live.
+                    </p>
+                  ) : null}
 
                   {!site.published ? (
                     <p className="intake-preview-warn">
@@ -120,7 +138,7 @@ export default function IntakePreviewModal({ site, compact = false }: { site: Si
                       published site will actually use. */}
                   <div className="intake-preview-stage">
                     <div className={themeStyles.site} style={themeStyle} data-button={site.button_style || 'solid'}>
-                      <HeroQuickForm key={runId} site={site} demo />
+                      <HeroQuickForm key={runId} site={previewSite} demo />
                     </div>
                   </div>
 

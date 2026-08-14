@@ -129,8 +129,6 @@ export default function IntakeContentSection({
   // setting it describes does.
   const quality = intakeQuality(qualityInput);
   const status = groupStatus(qualityInput);
-  const buttonText = 'Get my instant estimate';
-
   return (
     <div className={`intake-quality${smartIntakeOn ? '' : ' is-paused'}`}>
       {!smartIntakeOn ? (
@@ -149,8 +147,8 @@ export default function IntakeContentSection({
           <div className="iq-setup-head">
             <span className="iq-spark" aria-hidden="true">✦</span>
             <div>
-              <strong>Intake AI setup</strong>
-              <small>Build a smarter intake. Get better leads.</small>
+              <strong>Smart Intake setup</strong>
+              <small>Questions &amp; qualification — changes save automatically.</small>
             </div>
           </div>
 
@@ -223,7 +221,7 @@ export default function IntakeContentSection({
               title="Check the visitor’s service area"
               hint={
                 hasCities
-                  ? 'Asks for their ZIP or town and flags leads outside your list.'
+                  ? 'Asks for their town or city and flags leads outside your list.'
                   : 'Add cities to “Cities you serve” in the website builder to activate this.'
               }
             />
@@ -355,23 +353,10 @@ export default function IntakeContentSection({
         <div className="iq-preview-col">
           <div className="iq-preview-head">
             <div>
-              <p className="iq-live"><i aria-hidden="true" /> Live intake preview</p>
-              <small>This is what homeowners will see</small>
+              <p className="iq-live"><i aria-hidden="true" /> Preview Smart Intake</p>
+              <small>Open the real homeowner form with your current settings.</small>
             </div>
             {preview}
-          </div>
-
-          {/* A representation, not the real form — the real one is a click away
-              in "Open full preview", which renders the actual component against
-              the draft site. What this HAS to get right is the button wording,
-              because that is a setting on the left. */}
-          <div className="iq-phone" aria-hidden="true">
-            <p className="iq-phone-q">What can we help you with today?</p>
-            <div className="iq-phone-steps">
-              <i className="is-on" /><i /><i /><i />
-            </div>
-            <p className="iq-phone-btn">{buttonText}</p>
-            <p className="iq-phone-fine">Takes 30 seconds &nbsp;•&nbsp; No commitment</p>
           </div>
 
           <div className="iq-benefits">

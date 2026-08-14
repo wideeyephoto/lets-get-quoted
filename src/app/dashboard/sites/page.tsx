@@ -15,7 +15,7 @@ export const metadata = {
 // somebody else's site rather than a head start on their own.
 //
 // Intake tuning used to be rendered here and passed into the builder as a slot.
-// It lives on Settings → Automations → Intake AI now: none of it changed how
+// It lives on Automations → Smart Intake now: none of it changed how
 // the site looked, and a page about headlines and photos was the wrong place to
 // decide which leads interrupt somebody.
 //

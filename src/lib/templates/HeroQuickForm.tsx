@@ -137,6 +137,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const replyPromise = avgReplyMs
     ? `we typically reply within ${formatReplyTime(avgReplyMs)}`
     : 'we\u2019ll follow up as soon as possible';
+  const responseTiming = avgReplyMs
+    ? `Typically within ${formatReplyTime(avgReplyMs)} to confirm the details and next steps.`
+    : 'As soon as possible to confirm the details and next steps.';
 
   // Star rating for the result screen — the owner's published rating badge
   // (enabled + real review count), the same source SiteProofStrip uses.
@@ -158,6 +161,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     : '';
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
+  const [chatQuestion, setChatQuestion] = useState('');
+  const [chatAnswer, setChatAnswer] = useState('');
+  const [chatResponseId, setChatResponseId] = useState('');
+  const [chatTurn, setChatTurn] = useState(0);
 
   // `step` is seeded from wizardEnabled, which is fine on a live site where the
   // intake method never changes mid-visit — but the builder's live preview
@@ -175,10 +182,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // focus into the new step so keyboard/SR users aren't dropped on <body> when
   // the previous step's button unmounts — the focused field's accessible name
   // (or the result heading) announces the step. Mirrors the main quote form.
-  const prevStepRef = useRef(step);
+  const focusScreenKey = `${step}:${step === 'qa' ? chatTurn : 0}`;
+  const prevFocusScreenKeyRef = useRef(focusScreenKey);
   useEffect(() => {
-    if (prevStepRef.current === step) return;
-    prevStepRef.current = step;
+    if (prevFocusScreenKeyRef.current === focusScreenKey) return;
+    prevFocusScreenKeyRef.current = focusScreenKey;
     const form = formRef.current;
     if (!form) return;
     const field = form.querySelector<HTMLElement>('input:not([tabindex="-1"]):not([type="file"]), textarea');
@@ -186,7 +194,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     if (!target) return;
     if (target.tagName === 'H2') target.setAttribute('tabindex', '-1');
     target.focus({ preventScroll: true });
-  }, [step]);
+  }, [focusScreenKey]);
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -263,10 +271,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [sentWithoutEstimate, setSentWithoutEstimate] = useState(false);
   const introVideo = siteContent.introVideo;
 
-  const [chatQuestion, setChatQuestion] = useState('');
-  const [chatAnswer, setChatAnswer] = useState('');
-  const [chatResponseId, setChatResponseId] = useState('');
-  const [chatTurn, setChatTurn] = useState(0);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
 
   function addPhotos(files: FileList | File[]) {
@@ -315,7 +319,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       return;
     }
     if (askLocation && !location.trim()) {
-      setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
+      setStatus({ tone: 'error', text: 'Add the town or city where the work is so we can confirm we serve your area.' });
       return;
     }
     setStatus(null);
@@ -466,14 +470,14 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     if (!name.trim() || !trimmedContact) return;
 
     if (wizardEnabled) {
-      // The AI intake always needs a real phone number — the follow-up we
-      // promise is a text or call within a few hours.
+      // Smart Intake always needs a real phone number so the contractor can
+      // follow up by text or call.
       if (!normalizeUsPhone(trimmedContact)) {
         setStatus({ tone: 'error', text: 'Enter a valid phone number so we can text or call you with your quote.' });
         return;
       }
       if (askLocation && !location.trim()) {
-        setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
+        setStatus({ tone: 'error', text: 'Add the town or city where the work is so we can confirm we serve your area.' });
         return;
       }
       if (askTimeline && !timeline) {
@@ -580,7 +584,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           data.set('estimateMin', String(estimate.min));
           data.set('estimateMax', String(estimate.max));
         }
-        if (fit.inArea !== null) data.set('inArea', String(fit.inArea));
         if (fit.excluded) data.set('excluded', 'true');
         data.set('wizard', '1');
         data.set('contactPreference', contactPref);
@@ -604,7 +607,12 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         setStep('result');
       } else {
         if (details) setSentWithoutEstimate(true);
-        setStatus({ tone: 'success', text: details ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'text or call'} you within the next few hours with your exact quote.` : `Thanks! We'll call you back within about an hour with your free estimate.` });
+        setStatus({
+          tone: 'success',
+          text: details
+            ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'text or call'} you ${avgReplyMs ? `typically within ${formatReplyTime(avgReplyMs)}` : 'as soon as possible'} to confirm the details and next steps.`
+            : `Thanks! Your request is in — ${avgReplyMs ? `we typically reply within ${formatReplyTime(avgReplyMs)}` : 'we\u2019ll follow up as soon as possible'} to confirm the details and next steps.`,
+        });
         formRef.current?.reset();
         setName('');
         setContact('');
@@ -648,7 +656,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
           <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
+          <p className={styles.heroFormNote}>Tell us about the job. We may ask up to {MAX_INTAKE_QUESTIONS} quick questions, then collect contact details before showing your range.</p>
           {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
             aria-label="Describe your project"
@@ -665,6 +673,18 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               }
             }}
           />
+          {askLocation && (
+            <Field icon="pin" label="Town or city where the work is" filled={Boolean(location.trim())}>
+              <input
+                placeholder="Royal Oak, MI"
+                autoComplete="address-level2"
+                maxLength={80}
+                required={!demo}
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+              />
+            </Field>
+          )}
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
           {/* The escape hatch exists ONLY while a classification is in flight.
               It used to sit here permanently as "Skip the estimate — just send
@@ -695,7 +715,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       {step === 'qa' && (
         <div className={styles.heroFormStep} key="qa">
           <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
-          <p className={styles.heroFormQaMeta}>Question {chatTurn} <span>· just a few quick ones</span></p>
+          <p className={styles.heroFormQaMeta}>Question {chatTurn} <span>· up to {MAX_INTAKE_QUESTIONS} total</span></p>
           <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
           <input
             aria-labelledby="hqf-question"
@@ -717,7 +737,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               Taking too long? Just send my details →
             </button>
           )}
-          <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>
+          <button type="button" className={styles.heroFormRestart} onClick={restartWizard} disabled={isClassifying}>← Edit project details</button>
         </div>
       )}
 
@@ -772,11 +792,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               />
             </Field>
           </div>
-          {askLocation && (
-            <Field icon="pin" label="Where the work is" filled={Boolean(location.trim())}>
-              <input placeholder="48067 or Royal Oak" maxLength={80} required={!demo} value={location} onChange={(event) => setLocation(event.target.value)} />
-            </Field>
-          )}
           {askTimeline && (
             <div className={styles.heroFormChoice} role="group" aria-label="When do you need this done?">
               <span className={styles.heroFormChoiceLabel}>When do you need this done?</span>
@@ -876,7 +891,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
           <small className={styles.heroFormPrivacy}><span aria-hidden="true">🔒</span> Your request goes only to {site.company_name} — never sold or shared.</small>
           <div className={styles.heroFormPhotoRow}>
-            <p className={styles.heroFormPhotoPrompt}><span aria-hidden="true">📷</span> Snap a photo of the job — it gets you a faster, more accurate quote.</p>
+            <p className={styles.heroFormPhotoPrompt}><span aria-hidden="true">📷</span> Add a job photo for a more accurate follow-up (optional).</p>
             <input
               ref={photoInputRef}
               className={styles.heroFormPhotoInput}
@@ -910,7 +925,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             return notes.length ? <p className={styles.heroFormFitNote}>Heads up: {notes.join('; ')} — send your request and we&apos;ll confirm when we reach out.</p> : null;
           })()}
           <small className={styles.heroFormConsent}>
-            By submitting, you agree to be contacted by phone, text, or email about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
+            By submitting, you agree to be contacted {wizardEnabled && contactPref === 'text' ? 'by text or email' : 'by phone, text, or email'} about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
           </small>
           {/* Lights up once everything required is in. The button is never
               disabled — a dead button explains nothing and the real validation
@@ -920,7 +935,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             {isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}
           </button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
-          {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>}
+          {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard} disabled={isSubmitting || isClassifying}>← Edit project details</button>}
         </div>
       )}
 
@@ -949,7 +964,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
           <ol className={styles.heroFormSteps}>
             <li><strong>Request sent</strong><span>{demo ? 'What a real customer sees here — yours wasn’t sent.' : 'We got your details.'}</span></li>
-            <li><strong>We {contactPref === 'text' ? 'text' : 'reach'} you</strong><span>Within a few hours to confirm exact pricing.</span></li>
+            <li><strong>We {contactPref === 'text' ? 'text' : 'reach'} you</strong><span>{responseTiming}</span></li>
             <li><strong>Book your job</strong><span>Or a free in-person estimate — your call.</span></li>
           </ol>
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}

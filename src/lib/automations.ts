@@ -2,8 +2,9 @@
 // can therefore be flipped straight from the Automations list without opening the
 // card and saving a form.
 //
-// Deliberately NOT in here: "Intake AI", which is genuinely always on and has no
-// column behind it, so it keeps its status pill.
+// Deliberately NOT in here: Smart Intake. Smart-vs-classic is an either/or
+// website method stored in site content, not an automation that can be toggled
+// independently from this list.
 export const AUTOMATION_COLUMNS = {
   // Master switch only — the weekday/window setup underneath is untouched, so
   // turning booking back on restores exactly what was configured.

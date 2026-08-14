@@ -1731,7 +1731,7 @@ export function preserveBlogPosts(
 /**
  * Keep the intake tuning the website builder no longer owns.
  *
- * These settings moved to Settings → Automations → Intake AI. The builder still
+ * These settings moved to Automations → Smart Intake. The builder still
  * sends the whole content object it loaded when the page opened, so without
  * this a lead filter changed in Settings is silently reverted by a Save the
  * owner thought only changed their headline — and they would have no reason to

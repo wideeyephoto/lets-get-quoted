@@ -61,7 +61,7 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   // trusted to the client, because it is an invariant and not a convention.
   //
   // Intake tuning is preserved for the same reason: it moved to Settings →
-  // Automations → Intake AI, and the builder would otherwise revert it.
+  // Automations → Smart Intake, and the builder would otherwise revert it.
   const contentWithBlogPreserved = updates.content
     ? preserveIntakeSettings(
         sites[0].content as Record<string, unknown> | null,

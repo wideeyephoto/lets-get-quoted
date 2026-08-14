@@ -7,6 +7,7 @@ describe('Smart Intake service-area matching', () => {
   it('normalizes city labels without turning neighboring names into matches', () => {
     expect(canonicalPlace('48067 · Royal Oak, MI')).toBe('royal oak');
     expect(matchesServedCity('Royal Oak, MI', cities)).toBe(true);
+    expect(matchesServedCity('Royal Oak MI', cities)).toBe(true);
     expect(matchesServedCity('Royal Oak, MD', cities)).toBe(false);
     expect(matchesServedCity('Oak Park', cities)).toBe(false);
   });
@@ -20,6 +21,12 @@ describe('Smart Intake service-area matching', () => {
     const resolveZip = vi.fn(async () => 'Royal Oak, MI');
     await expect(serviceAreaVerdict('48067', cities, resolveZip)).resolves.toBe(true);
     expect(resolveZip).toHaveBeenCalledWith('48067');
+  });
+
+  it('can resolve an address or neighborhood without treating lookup failure as outside', async () => {
+    const resolveLocation = vi.fn(async () => 'Royal Oak, MI');
+    await expect(serviceAreaVerdict('Woodward and 11 Mile', cities, resolveLocation)).resolves.toBe(true);
+    expect(resolveLocation).toHaveBeenCalledWith('Woodward and 11 Mile');
   });
 
   it('stays unknown when a ZIP cannot be resolved', async () => {

@@ -51,6 +51,7 @@ type WebsiteBuilderProps = {
 // string says" — an unknown key would set openSection to something no card
 // matches, closing every card on a tab that normally has one open.
 const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
+  intake: { tab: 'page', card: 'estimate' },
   reviews: { tab: 'page', card: 'testimonials' },
   // Linked from Settings → Business → Connected apps, which is where somebody
   // looking for their integrations goes. The linking itself stays here: it
@@ -1570,7 +1571,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
 
             {activeTab === 'page' && (
               <div className={styles.formSection}>
-                <div className={styles.cardGroupLabel}>Get you leads</div>
+                <div className={styles.cardGroupLabel}>Lead capture</div>
                 <p className={styles.cardGroupHint}>One intake runs at a time — pick which, then set it up below.</p>
 
                 {/* One control for one boolean. This used to be two mirrored
@@ -1610,7 +1611,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
 
                 {/* What the intake ASKS — lead filters, the email field, what
                     it's called, the estimate posture and the preview — moved to
-                    Settings → Automations → Intake AI. None of it changed how
+                    Automations → Smart Intake. None of it changed how
                     the site looks; it decides which leads interrupt you, which
                     is an automation and not a page-design choice.
 
@@ -1638,13 +1639,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   />
                 </SectionCard>
 
-                <a className={styles.intakeSettingsLink} href="/dashboard/settings#intake-ai">
+                <a className={styles.intakeSettingsLink} href="/dashboard/automations#intake-ai">
                   <span>
-                    <strong>Adjust your intake settings</strong>
+                    <strong>Configure Smart Intake</strong>
                     <small>
                       {siteContent.quoteForm.enabled
-                        ? 'Email requirement and lead filters for your quote form.'
-                        : 'What the AI asks, which jobs you want, pricing posture, alerts — and a preview.'}
+                        ? 'Set up its questions, qualification, pricing posture, alerts, and live preview.'
+                        : 'Questions, qualification, pricing posture, alerts — and a live preview.'}
                     </small>
                   </span>
                   <span aria-hidden="true">↗</span>

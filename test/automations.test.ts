@@ -38,7 +38,8 @@ describe('automation toggle map', () => {
     expect(isAutomationKey('reviews')).toBe(true);
     expect(isAutomationKey('daily-digest')).toBe(true);
     expect(isAutomationKey('booking')).toBe(true);
-    // Intake AI is genuinely always on, so it deliberately has no switch.
+    // Smart Intake vs classic form is a Website Builder method choice, not an
+    // automation toggle, so the Automations page deliberately has no switch.
     expect(isAutomationKey('intake-ai')).toBe(false);
     // Junk and prototype-chain probes.
     expect(isAutomationKey('')).toBe(false);

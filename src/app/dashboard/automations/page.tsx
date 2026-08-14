@@ -22,7 +22,6 @@ import {
   sendTestDigestAction,
   toggleAutomationAction,
   toggleClientPortalAction,
-  toggleSmartIntakeAction,
   updateFollowupSettingsAction,
   updateIntakeSettingsAction,
   updateReminderSettingsAction,
@@ -101,7 +100,8 @@ type AutomationStatus = { label: string; tone: 'on' | 'off' | 'neutral' };
 // Pass `toggle` with the action that flips it and it gets a real switch you can
 // use from the list without opening the card. The action is explicit rather than
 // derived from the id because these don't all live in the same place: most are a
-// boolean column on `accounts`, but Intake AI is a flag inside the site content.
+// boolean column on `accounts`. Smart Intake is a website method stored in site
+// content, so it reports the active method instead of receiving a toggle here.
 // `status` remains for rows with nothing to flip.
 function AutomationCard({
   id,
@@ -169,7 +169,7 @@ export default async function AutomationsPage() {
     .maybeSingle();
   const autoReviewRequest = Boolean(reviewSettings?.auto_review_request);
 
-  // Intake AI tuning + lead priority — read defensively so a pre-migration DB
+  // Smart Intake tuning + lead priority — read defensively so a pre-migration DB
   // degrades to defaults instead of 500-ing the page.
   const { data: intakeSettings } = await supabase
     .from('accounts')
@@ -225,7 +225,7 @@ export default async function AutomationsPage() {
     .single();
   const quickStopEnabled = Boolean((quickStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
 
-  // Intake AI isn't "always on" — enabling the classic quote form in the website
+  // Smart Intake isn't "always on" — enabling the classic quote form in the website
   // builder switches it off. quoteForm.enabled is the source of truth; this is its
   // inverse, exactly as getSiteContent derives it.
   const smartIntakeOn = businessBasics.estimateRanges.enabled;
@@ -384,10 +384,12 @@ export default async function AutomationsPage() {
         <AutomationCard
           id="intake-ai"
           group="booking-intake"
-          title="Intake AI"
-          subtitle="Instant estimates & lead priority"
+          title="Smart Intake"
+          subtitle="Estimate questions & lead priority"
           {...(site
-            ? { toggle: { on: smartIntakeOn, action: toggleSmartIntakeAction } }
+            ? { status: smartIntakeOn
+                ? { label: 'Smart Intake active', tone: 'on' as const }
+                : { label: 'Classic form active', tone: 'neutral' as const } }
             : { status: { label: 'Needs a website', tone: 'neutral' as const } })}
         >
           {site && !smartIntakeOn ? (
@@ -395,18 +397,18 @@ export default async function AutomationsPage() {
               <span aria-hidden="true">📝</span>
               <span>
                 Smart Intake is off, so your website is using the <strong>classic quote form</strong> &mdash;
-                visitors type out their job and wait for you to reply with a price. Switching this back on
-                replaces it with instant AI estimates. Only one intake runs at a time.
+                visitors type out their job and wait for you to reply with a price. Only one intake runs at a time.{' '}
+                <Link href="/dashboard/sites?open=intake">Change the intake method in Website Builder &rarr;</Link>
               </span>
             </div>
           ) : null}
           <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            Your website&apos;s AI intake opens the relationship for you: it asks a homeowner{' '}
-            <strong>2&ndash;8 short questions</strong>, gives them a instant ballpark, and captures the
-            details &mdash; building trust in the first 30 seconds, then handing that warm, qualified lead
-            straight to you. The estimate is a smart pre-visit range (you set the exact quote on-site), so it
-            lands most jobs in the right neighborhood and gets the conversation started before a competitor
-            even picks up.
+            Smart Intake asks a homeowner <strong>up to 3 short scoping questions</strong>, collects their contact
+            details, then shows a rough pre-visit range. You set the exact quote after confirming the job; the
+            answers here qualify and prioritize the lead before it reaches your board.
+          </p>
+          <p className="workspace-details-copy" style={{ marginBottom: '0.75rem' }}>
+            <strong>Pricing &amp; alert priority</strong><br />Saved when you select <strong>Save pricing &amp; alerts</strong>.
           </p>
           <form action={updateIntakeSettingsAction} className="form-grid compact-form">
             <div className="field full">
@@ -457,7 +459,7 @@ export default async function AutomationsPage() {
             </details>
 
             <div className="form-actions">
-              <SaveButton>Save intake settings</SaveButton>
+              <SaveButton onlyWhenChanged>Save pricing &amp; alerts</SaveButton>
             </div>
           </form>
 

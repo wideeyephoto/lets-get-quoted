@@ -28,6 +28,18 @@ function parsedPlace(value: string | null | undefined): ParsedPlace {
 
   const withoutLeadingZip = raw.replace(/^\s*\d{5}(?:-\d{4})?\s*(?:[·,\-]\s*)?/, '');
   const parts = withoutLeadingZip.split(/[·,]/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 1) {
+    // Homeowners commonly omit the comma in "Royal Oak MI". Treat a final
+    // two-letter token as an explicit state without breaking towns such as
+    // "New York" or "Cedar City".
+    const spaceState = parts[0].match(/^(.*?)\s+([a-z]{2})$/i);
+    if (spaceState) {
+      return {
+        town: normalizedWords(spaceState[1]),
+        state: normalizedWords(spaceState[2]),
+      };
+    }
+  }
   return {
     town: normalizedWords(parts[0] ?? ''),
     state: normalizedWords(parts[1] ?? ''),
@@ -62,7 +74,7 @@ export function matchesServedCity(
 export async function serviceAreaVerdict(
   location: string | null | undefined,
   servedCities: Array<string | null | undefined>,
-  resolveZip?: (zip: string) => Promise<string | null>,
+  resolveLocation?: (location: string) => Promise<string | null>,
 ): Promise<ServiceAreaVerdict> {
   const rawLocation = (location ?? '').trim();
   const cities = servedCities.map((city) => (city ?? '').trim()).filter(Boolean);
@@ -70,17 +82,19 @@ export async function serviceAreaVerdict(
   if (matchesServedCity(rawLocation, cities)) return true;
 
   const zip = rawLocation.match(/^\s*(\d{5})(?:-\d{4})?\s*$/)?.[1];
-  if (zip) {
-    if (!resolveZip) return null;
+  if (resolveLocation) {
     try {
-      const resolved = await resolveZip(zip);
+      const resolved = await resolveLocation(zip ?? rawLocation);
       return resolved ? matchesServedCity(resolved, cities) : null;
     } catch {
       return null;
     }
   }
 
-  // The field asks for a ZIP or town. A non-empty named place that is not in
-  // the published list is therefore outside it; ambiguous ZIPs stay unknown.
+  if (zip) return null;
+
+  // The live field asks specifically for a town or city. An unmatched named
+  // place is therefore outside the published list; ambiguous ZIPs stay
+  // unknown unless a bounded resolver is supplied by a future caller.
   return canonicalPlace(rawLocation) ? false : null;
 }

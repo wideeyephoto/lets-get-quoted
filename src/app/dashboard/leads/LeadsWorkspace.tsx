@@ -111,7 +111,7 @@ function ScoreLegend() {
         <span className={styles.scoreChip} data-score="low">Low</span>
         <span>Probably not a fit yet — just researching, out of your area, below your minimum, or work you don&rsquo;t take on.</span>
       </div>
-      <p className={styles.scoreLegendNote}>Your 24/7 AI Estimator sets this from the homeowner&rsquo;s answers. Open any lead to change its score, or <Link href="/dashboard/settings#intake-ai">tune your AI intake &rarr;</Link></p>
+      <p className={styles.scoreLegendNote}>Smart Intake sets this from the homeowner&rsquo;s answers. Open any lead to change its score, or <Link href="/dashboard/automations#intake-ai">configure Smart Intake &rarr;</Link></p>
     </div>
   );
 }
