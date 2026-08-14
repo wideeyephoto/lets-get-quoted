@@ -1160,6 +1160,23 @@ function StopRow({
             {stop.span.totalHours ? ` · ~${formatHours(stop.span.totalHours / stop.span.of)} hrs today` : ''}
           </span>
         ) : null}
+        {/* THE NUMBER THIS STOP WAS PLANNED ON IS NOT THIS JOB'S.
+            It has no estimated hours, so the router used the account default —
+            it cannot order a day around a stop of unknown length. That is
+            defensible; doing it silently was not. The same job counts as ZERO
+            hours on the Schedule page's capacity, which is how a day came to
+            read "0 of 136 hours" while the route below it had already spent
+            two. A link, not a badge, because the thing that settles it is one
+            field on the job. */}
+        {stop.assumedVisit ? (
+          <Link
+            href={`/dashboard/jobs/${stop.id}`}
+            className="plan-badge assumed"
+            title={`This job has no estimated hours, so the route assumed your default of ${minutesLabel(stop.visitMinutes)}. It counts as zero hours against the day's capacity until you set one. Open the job to add it.`}
+          >
+            Assumed: {minutesLabel(stop.visitMinutes)}
+          </Link>
+        ) : null}
         {/* A preference, so it can be wrong — and when it is, saying so is the
             whole value. Silently dragging it back would be the same as not
             letting the day change, which days do. */}
