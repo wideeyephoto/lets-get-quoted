@@ -11,12 +11,7 @@ import {
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
-import {
-  HERO_THREAD,
-  HERO_THREAD_CLIENT,
-  HERO_THREAD_FIRST,
-  HERO_THREAD_JOB,
-} from './hero-thread';
+import CinematicMessageSimulation from './CinematicMessageSimulation';
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
 import ProductTour from './ProductTour';
@@ -276,63 +271,13 @@ export default function FeaturesPage() {
           <Link href="/pricing">See exactly how the fee works</Link>
         </p>
 
-        {/* One job, running past the reader. The bubbles marked `out` are built
-            by the same functions that send the real texts — see hero-thread.ts
-            for why that is not optional. */}
-        <div className="hero-thread">
-          <div className="hero-thread-head">
-            <span>
-              <i aria-hidden="true" /> Job {HERO_THREAD_JOB}
-            </span>
-            <small>{HERO_THREAD_CLIENT} · Royal Oak</small>
-          </div>
-
-          <ol className="hero-thread-rows">
-            {HERO_THREAD.map((row) => {
-              if (row.kind === 'event') {
-                return (
-                  <li className={`ht-event ht-${row.tone}`} key={row.id}>
-                    <time>{row.time}</time>
-                    <span>{row.text}</span>
-                  </li>
-                );
-              }
-
-              if (row.kind === 'intake') {
-                return (
-                  <li className="ht-intake" key={row.id}>
-                    <span className="ht-kicker">Smart Intake read it</span>
-                    <p>{row.summary}</p>
-                    <div className="ht-signals">
-                      {row.signals.map(([label, value]) => (
-                        <span key={label}>
-                          <small>{label}</small>
-                          <b>{value}</b>
-                        </span>
-                      ))}
-                    </div>
-                  </li>
-                );
-              }
-
-              return (
-                <li className={`ht-msg ht-${row.kind}`} key={row.id}>
-                  {/* Which way a message is travelling is carried by which side
-                      of the thread it sits on, and a side is not readable. */}
-                  <span className="sr-only">
-                    {row.kind === 'out' ? `Sent to ${HERO_THREAD_FIRST}` : `From ${HERO_THREAD_FIRST}`}
-                  </span>
-                  <p>{row.body}</p>
-                  <time>{row.time}</time>
-                </li>
-              );
-            })}
-          </ol>
-
-          <Link className="hero-thread-demo" href="/demo">
-            Open the live demo <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        {/* One job MOVING, rather than one job printed.
+            The panel is a client component because everything difficult about
+            it is behavioural — see CinematicMessageSimulation. It keeps the
+            .hero-thread class because that is what places it in this grid, and
+            adds .hero-thread-sim, which takes the old panel's chrome back off:
+            the shell is the phone now, not the box around it. */}
+        <CinematicMessageSimulation />
       </section>
 
       {/* Four facts about the product, immediately after the claims that need

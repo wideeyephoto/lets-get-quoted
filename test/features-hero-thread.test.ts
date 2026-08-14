@@ -1,11 +1,28 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { HERO_THREAD, HERO_THREAD_CLIENT, HERO_THREAD_JOB } from '@/app/features/hero-thread';
+import {
+  HERO_DASHBOARD_EVENTS,
+  HERO_SMS,
+  HERO_STATUS,
+  HERO_SUMMARY,
+  HERO_THREAD_CLIENT,
+  HERO_THREAD_JOB,
+} from '@/app/features/hero-thread';
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+/** WHY comments quote the copy they replaced, so they have to come out before
+ *  anything asserts that the copy is gone. */
+const strip = (source: string) =>
+  source
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 const PAGE = read('src', 'app', 'features', 'page.tsx');
 const THREAD = read('src', 'app', 'features', 'hero-thread.ts');
+const THREAD_CODE = strip(THREAD);
+const SIM = read('src', 'app', 'features', 'CinematicMessageSimulation.tsx');
+const SIM_CSS = read('src', 'app', 'features', 'cinematic-message-simulation.module.css');
 const CSS = read('src', 'components', 'flagship', 'flagship.module.css');
 const GENERATOR = read('scripts', 'generate-flagship-css.mjs');
 
@@ -21,9 +38,11 @@ describe('the hero thread replaced the pipeline', () => {
     }
   });
 
-  it('renders the thread instead', () => {
-    expect(PAGE).toContain('hero-thread');
-    expect(PAGE).toContain('HERO_THREAD.map');
+  it('renders the simulation in the slot the thread used to sit in', () => {
+    // .hero-thread is what PLACES the visual in the two-column hero, so the
+    // wrapper keeps it; .hero-thread-sim takes the old panel's chrome off.
+    expect(PAGE).toContain('<CinematicMessageSimulation />');
+    expect(SIM).toContain('hero-thread hero-thread-sim');
   });
 
   /**
@@ -34,24 +53,22 @@ describe('the hero thread replaced the pipeline', () => {
   it('builds every outgoing message with the real sender', () => {
     expect(THREAD).toMatch(/from '@\/lib\/sms-templates'/);
 
-    // Every `out` row's body is a call, not a string. A quoted body would mean
-    // somebody typed a customer message into a marketing page.
-    // The array, not the type union above it — `body: string` in the
-    // declaration is a type, and reading it as data made this pass on a lie.
-    const rows = THREAD.slice(THREAD.indexOf('export const HERO_THREAD'));
-    const outBodies = [...rows.matchAll(/kind: 'out',[\s\S]{0,200}?body:\s*([^\n]+)/g)].map((m) => m[1].trim());
-    expect(outBodies.length, 'no `out` rows found — has the shape changed?').toBeGreaterThan(1);
-    for (const body of outBodies) {
+    // Every body is a call, not a string. A quoted body would mean somebody
+    // typed a customer message into a marketing page.
+    // The array, not the type declaration above it — `body: string` in the type
+    // is a type, and reading it as data made this pass on a lie once already.
+    const rows = THREAD.slice(THREAD.indexOf('export const HERO_SMS'), THREAD.indexOf('export type HeroDashboardEvent'));
+    const bodies = [...rows.matchAll(/^\s{4}body:\s*(.+)$/gm)].map((m) => m[1].trim());
+    expect(bodies.length, 'no messages found — has the shape changed?').toBe(HERO_SMS.length);
+    for (const body of bodies) {
       expect(body, `an outgoing body is written inline: ${body}`).not.toMatch(/^['"`]/);
-      expect(body).toMatch(/Text\(\{$|Text\($/);
+      expect(body).toMatch(/Text\(\{$/);
     }
   });
 
   it('and those messages arrive with the sample data filled in', () => {
-    const outgoing = HERO_THREAD.filter((row) => row.kind === 'out');
-    expect(outgoing.length).toBeGreaterThan(1);
-    for (const row of outgoing) {
-      if (row.kind !== 'out') continue;
+    expect(HERO_SMS.length).toBeGreaterThan(1);
+    for (const row of HERO_SMS) {
       expect(row.body.length).toBeGreaterThan(40);
       expect(row.body, `${row.id} has an unresolved placeholder`).not.toMatch(/\$\{|undefined|null/);
       // The line that keeps the number deliverable, visible in the hero.
@@ -59,21 +76,118 @@ describe('the hero thread replaced the pipeline', () => {
     }
   });
 
-  it('names the same job and customer in the panel head as in the thread', () => {
-    expect(PAGE).toContain('HERO_THREAD_JOB');
-    expect(PAGE).toContain('HERO_THREAD_CLIENT');
+  it('names the same job and customer everywhere the panel says them', () => {
+    expect(SIM).toContain('HERO_THREAD_JOB');
     expect(HERO_THREAD_JOB).toMatch(/^J-\d+$/);
     expect(HERO_THREAD_CLIENT.length).toBeGreaterThan(3);
+    expect(HERO_SUMMARY).toContain(HERO_THREAD_CLIENT);
+  });
+});
+
+/**
+ * THE ONE THING THIS PANEL MUST NOT SAY.
+ *
+ * The thread it replaced had the customer replying "Approved — Tuesday morning
+ * works for us." by text. Nothing in the product works that way: the homeowner
+ * accepts the quote and picks a slot in their own dashboard, and the
+ * contractor's software watches that happen. A blue bubble saying otherwise
+ * taught the wrong model of the single mechanism this page exists to explain.
+ */
+describe('what is an SMS and what is not', () => {
+  it('has no inbound message at all', () => {
+    expect(THREAD_CODE).not.toContain('Approved — Tuesday morning works');
+    expect(THREAD_CODE).not.toMatch(/kind: 'in'/);
+    // And nothing draws one: one direction means one alignment.
+    expect(SIM_CSS).not.toMatch(/align-items:\s*flex-start/);
+  });
+
+  it('never fakes the customer typing', () => {
+    // A typing indicator over a thread whose only participant is the software
+    // is an animation that says a person is about to reply. Nobody replies.
+    expect(SIM).not.toMatch(/typing|isTyping|dots/i);
+    expect(SIM_CSS).not.toMatch(/typing/i);
+  });
+
+  it('draws dashboard activity outside the message list, and removes it', () => {
+    // Absolutely positioned over the thread area: a card that took a row in the
+    // list would BE a message, whatever its color.
+    expect(SIM_CSS).toMatch(/\.sim \.cardWrap \{[^}]*position: absolute/);
+    // Rendered only while the frame says so — nothing is left behind.
+    expect(SIM).toContain('{card ? (');
+    // And it says where it happened, every time.
+    expect(SIM).toContain('Customer dashboard');
+  });
+
+  it('says which shape is which, on the page, in words', () => {
+    expect(SIM).toContain('Blue bubbles are SMS · floating updates are customer-dashboard activity');
+  });
+
+  it('leaves the header changed after each card, permanently', () => {
+    // The card is the event; the pill is the record. A card that disappeared
+    // without changing anything behind it would be decoration.
+    expect(HERO_STATUS.map((s) => s.label)).toEqual(['Quote sent', 'Tue 9–11', 'Booked']);
+    for (const [index, event] of HERO_DASHBOARD_EVENTS.entries()) {
+      const next = HERO_STATUS[index + 1];
+      expect(next, `no status follows ${event.id}`).toBeTruthy();
+      expect(next.at, `${event.id} changes the header before it has left`).toBeGreaterThanOrEqual(event.until);
+    }
+  });
+
+  it('shows a link without shipping a dead one', () => {
+    // lgq.co/j/1048 is an illustration. An anchor pointing at it would be a
+    // click that goes nowhere, in a hero.
+    expect(SIM).toContain('<span className={styles.link}>{link}</span>');
+    const panel = SIM.slice(SIM.indexOf('<div className={styles.phone}>'), SIM.indexOf('</div>\n      </div>'));
+    expect(panel).not.toMatch(/<a\b|<Link\b/);
+  });
+});
+
+/**
+ * It plays once, when somebody is looking, and stops when they are not.
+ */
+describe('how the simulation behaves', () => {
+  it('starts on viewport entry rather than on load', () => {
+    expect(SIM).toContain('IntersectionObserver');
+    expect(SIM).toContain('threshold: [0, 0.5]');
+    expect(SIM).toMatch(/intersectionRatio >= 0\.5/);
+  });
+
+  it('does not loop, and offers a replay instead', () => {
+    expect(SIM).not.toMatch(/setInterval|infinite/);
+    expect(SIM).toContain('onClick={start}');
+    // Outside the phone, which is aria-hidden — a control inside it would be
+    // hidden from the keyboard user it exists for.
+    expect(SIM.indexOf('aria-hidden="true"')).toBeLessThan(SIM.indexOf('onClick={start}'));
+  });
+
+  it('stops the clock and the CSS when nobody is watching', () => {
+    expect(SIM).toContain("addEventListener('visibilitychange'");
+    expect(SIM).toContain('performance.now()');
+    expect(SIM_CSS).toContain('animation-play-state: paused');
+  });
+
+  it('answers reduced motion with the finished panel and no cards', () => {
+    expect(SIM).toContain("matchMedia('(prefers-reduced-motion: reduce)')");
+    expect(SIM).toContain('setFrame(FINAL)');
+    expect(SIM_CSS).toContain('@media (prefers-reduced-motion: reduce)');
   });
 
   /**
-   * Which way a message travels is carried by which side of the thread it sits
-   * on, and a side cannot be read aloud.
+   * The visual is a scripted demo of an invented job. Narrated row by row as it
+   * animates it would announce the same half-finished conversation three times,
+   * so it is hidden and described once instead.
    */
-  it('says out loud who each message is from', () => {
-    expect(PAGE).toContain('sr-only');
-    expect(PAGE).toMatch(/Sent to \$\{HERO_THREAD_FIRST\}/);
-    expect(PAGE).toMatch(/From \$\{HERO_THREAD_FIRST\}/);
+  it('is hidden from screen readers, with one summary that is not', () => {
+    expect(SIM).toContain('aria-hidden="true"');
+    expect(SIM).toContain('<p className="sr-only">{HERO_SUMMARY}</p>');
+    expect(HERO_SUMMARY).toMatch(/dashboard/i);
+    expect(HERO_SUMMARY.length).toBeGreaterThan(120);
+  });
+
+  it('reserves the height the messages will need', () => {
+    // Measured: the empty phone was 548px and the full one 576px, so the
+    // caption and the Replay control under it stepped down the page twice a run.
+    expect(SIM_CSS).toMatch(/\.sim \.thread \{[\s\S]*?min-height: \d{3}px/);
   });
 });
 
