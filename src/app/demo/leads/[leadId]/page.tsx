@@ -1,7 +1,7 @@
 import DemoLeadsScreen from '../DemoLeadsScreen';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Lead — demo' };
+export const metadata = { title: 'Lead — Live Demo' };
 
 // The Focus pane's own links point at a lead's page, and in the demo there
 // wasn't one — so "Open full lead →", "Send quote" and "Log a call or text →"

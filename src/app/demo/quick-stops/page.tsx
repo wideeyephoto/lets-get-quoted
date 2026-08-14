@@ -8,7 +8,7 @@ import QuickStopStatus from '@/app/dashboard/quick-stops/QuickStopStatus';
 import QuickStopRequestCard, { type CardRequest } from '@/app/dashboard/quick-stops/QuickStopRequestCard';
 import { DEMO_QUICK_STOP_CARDS } from '@/lib/demo-rows';
 
-export const metadata = { title: 'Quick Stops — demo' };
+export const metadata = { title: 'Quick Stops — Live Demo' };
 export const dynamic = 'force-dynamic';
 
 // Quick Stops on the real page is eight components deep and every one of them

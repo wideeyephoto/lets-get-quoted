@@ -76,17 +76,14 @@ const isControl = (r: Rule) =>
   !/\binput\b/.test(r.selector);
 
 /**
- * .template-deck-dot, 8x8, in a row with `gap: 0.5rem` — 8px between them. No
- * hit area can reach 24px here without overlapping the dot next door, and a
- * tap landing in the overlap goes to whichever paints last, which is worse
- * than a small target that goes where it is aimed. Reaching 24 means changing
- * the spacing, which is a visual decision about a slider.
- *
- * It is also not rendered: nothing in src/ imports template-slider.tsx, the
- * same as map-section.tsx. Left alone on both counts. Delete this entry with
- * the fix, or with the component.
+ * There was one exception here: .template-deck-dot, 8x8 in a row with an 8px
+ * gap, where no hit area reaches 24px without overlapping the dot next door.
+ * It went out with its component — nothing imported template-slider.tsx, so
+ * the slider, its CSS and this allowance were all deleted together. The list
+ * is kept, empty, because the next one of these should be written down rather
+ * than argued about in a review.
  */
-const KNOWN_SMALL = ['.template-deck-dot'];
+const KNOWN_SMALL: string[] = [];
 
 function undersizedWithoutExpansion(): string[] {
   const bad: string[] = [];
@@ -126,14 +123,12 @@ describe('a control drawn smaller than 24px', () => {
     expect(undersizedWithoutExpansion()).toEqual([]);
   });
 
-  it('still knows the one that is outstanding', () => {
-    // So changing the slider's spacing fails here and takes the note with it,
-    // rather than the allowance quietly outliving the reason for it.
+  it('does not carry an allowance for a rule that no longer exists', () => {
+    // An exception that outlives its selector reads as a known defect that is
+    // still there. Every entry has to name something real.
     const all = SHEETS.flatMap((f) => rules(readFileSync(f, 'utf8')));
     for (const sel of KNOWN_SMALL) {
-      const r = all.find((x) => x.selector === sel);
-      expect(r, `${sel} rule not found`).toBeDefined();
-      expect(px(r!.body, 'width')).toBeLessThan(MIN);
+      expect(all.some((x) => x.selector === sel), `${sel} is allowed for but no longer defined`).toBe(true);
     }
   });
 

@@ -68,6 +68,8 @@ export default function StopArrival(props: StopArrivalProps) {
 
       <FloatingPanel
         id={panelId}
+        role="dialog"
+        label="Send an arrival update"
         anchorRef={buttonRef}
         open={open}
         onClose={() => setOpen(false)}

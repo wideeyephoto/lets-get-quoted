@@ -148,7 +148,16 @@ export default function ScheduledDatePicker({
           >
             {selectedDate ? formatDateLabel(selectedDate) : 'Choose date'}
           </button>
-          <FloatingPanel id={calendarId} anchorRef={buttonRef} open={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} className="modern-calendar-panel" width={312}>
+          <FloatingPanel
+            id={calendarId}
+            role="dialog"
+            label="Choose scheduled date"
+            anchorRef={buttonRef}
+            open={isCalendarOpen}
+            onClose={() => setIsCalendarOpen(false)}
+            className="modern-calendar-panel"
+            width={312}
+          >
               <div className="modern-calendar-header">
                 <button type="button" aria-label="Previous month" onClick={() => setVisibleMonth((current) => addMonths(current, -1))}>
                   Prev
