@@ -223,12 +223,26 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
   // customer already confirmed — the honest move there is to ring them, not to
   // text an offer about an appointment they have already agreed to. Both are
   // excluded rather than shown and then refused.
+  /**
+   * Whether it is fair to ask this customer to take another day.
+   *
+   * TWO REASONS TO ASK, AND ONLY ONE OF THEM IS ABOUT DRIVING. The default test
+   * is whether moving the stop saves enough of the day to justify the ask — a
+   * detour worth four minutes is not worth a text and a discount. A stop the day
+   * cannot FINISH is a different case: the reason to move it is that it does not
+   * fit, and gating that on mileage meant the one row on the page reading
+   * "cannot be finished today" was the row with no way to act on it.
+   *
+   * A customer-confirmed time still blocks both. They agreed to a slot; the
+   * page says so and the fix there is a conversation, not a button.
+   */
   const canOfferMove = useCallback(
-    (stopId: string) => {
+    (stopId: string, reason: 'saves_driving' | 'stranded' = 'saves_driving') => {
       if (!payload.rescheduleAvailable) return false;
       if (isRouteStopId(stopId)) return false;
       const stop = byId.get(stopId);
       if (!stop || stop.locked) return false;
+      if (reason === 'stranded') return true;
       const saving = savingByStopId.get(stopId);
       return Boolean(saving && isWorthMoving(saving));
     },
@@ -400,6 +414,16 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
   const jobEntries = plan.planned.filter((entry) => !isRouteStopId(entry.stop.id));
   const firstJob = jobEntries[0] ?? null;
   const lastJob = jobEntries[jobEntries.length - 1] ?? null;
+  /**
+   * THE JOB WORTH MOVING, WHICH IS NOT ALWAYS "THE LAST ONE".
+   *
+   * The banner offered "Move the last job" — a link to a job page, where you
+   * then have to find the date field yourself. On a day holding two multi-day
+   * jobs the last stop and the stranded stop are often different rows, and the
+   * one that matters is the one the day cannot finish. Falls back to the last
+   * job on a day that merely runs late, where there is no stranded stop at all.
+   */
+  const strandedJob = stranded.filter((entry) => !isRouteStopId(entry.stop.id)).pop() ?? lastJob;
   const manualDeltaMiles = Math.round((plan.miles - optimized.miles) * 10) / 10;
   const manualDeltaMinutes = Math.round(plan.minutes - optimized.minutes);
 
@@ -493,7 +517,28 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
               </p>
             </div>
           </div>
+          {/* THE NEXT STEP, NAMED. This was "Adjust the day" (scroll down) and
+              "Move the last job" (open a job page and find the date field) —
+              two ways of telling somebody to go and solve it. The day already
+              knows which stop it cannot finish, and there is a whole flow for
+              asking that customer to take another day, with the days that have
+              room and a discount if you want one. So it is offered here, on the
+              job it is about. */}
           <div className="plan-overtime-actions">
+            {strandedJob
+            && canOfferMove(strandedJob.stop.id, strandedIds.has(strandedJob.stop.id) ? 'stranded' : 'saves_driving')
+            && !pendingOfferJobIds.has(strandedJob.stop.id) ? (
+              <button type="button" className="btn primary" onClick={() => openOffer(strandedJob.stop.id)}>
+                Ask {strandedJob.stop.label} to move day
+              </button>
+            ) : null}
+            {strandedJob ? (
+              <Link href={`/dashboard/jobs/${strandedJob.stop.id}`} className="btn secondary">
+                {pendingOfferJobIds.has(strandedJob.stop.id)
+                  ? `${strandedJob.stop.label} — offer sent, open the job`
+                  : `Move ${strandedJob.stop.label} myself`}
+              </Link>
+            ) : null}
             <button
               type="button"
               className="btn secondary"
@@ -501,11 +546,6 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
             >
               Adjust the day
             </button>
-            {lastJob ? (
-              <Link href={`/dashboard/jobs/${lastJob.stop.id}`} className="btn secondary">
-                Move the last job
-              </Link>
-            ) : null}
             <button type="button" className="linklike" onClick={() => setOvertimeDismissed(true)}>
               Keep this schedule
             </button>
@@ -572,7 +612,11 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
                 onTogglePin={() => togglePin(entry.stop.id)}
                 onTogglePreferredLast={() => togglePreferredLast(entry.stop.id)}
                 onMoveToEnd={() => moveToEnd(entry.stop.id)}
-                onOfferMove={canOfferMove(entry.stop.id) ? () => openOffer(entry.stop.id) : null}
+                onOfferMove={
+                  canOfferMove(entry.stop.id, strandedIds.has(entry.stop.id) ? 'stranded' : 'saves_driving')
+                    ? () => openOffer(entry.stop.id)
+                    : null
+                }
                 offerPending={pendingOfferJobIds.has(entry.stop.id)}
                 onNudge={(direction) => nudge(index, direction)}
                 onDragStart={() => handleDragStart(entry.stop.id)}
@@ -1151,11 +1195,36 @@ function StopRow({
         )}
         {/* Not "finishes late" — that is the whole day's overrun. This one
             cannot be STARTED, which is a different conversation and the one
-            that ends with moving a job rather than working an evening. */}
+            that ends with moving a job rather than working an evening.
+
+            AND IT IS THE BUTTON, because a label is not a next step. The row
+            that says the day cannot hold it is exactly where somebody wants to
+            act on it, and the action was three taps away behind ⋮ — on the one
+            badge on the page whose whole content is "something has to move".
+            Same panel the menu item opens; nothing new is being offered here,
+            it is being offered WHERE the problem is stated. */}
         {startsAfterDayEnd ? (
-          <span className="plan-badge warn" title="This stop is still being worked after your day ends. Move a job to another day, or shorten one — starting earlier will not fit it.">
-            Cannot be finished today
-          </span>
+          onOfferMove && !offerPending ? (
+            <button
+              type="button"
+              className="plan-badge warn is-action"
+              onClick={onOfferMove}
+              title="This stop is still being worked after your day ends. Ask the customer to take another day — they see the new dates and reply, and nothing moves until they do."
+            >
+              Cannot be finished today — ask them to move
+            </button>
+          ) : (
+            <span
+              className="plan-badge warn"
+              title={
+                offerPending
+                  ? 'This stop is still being worked after your day ends. You have asked them to move — nothing changes until they reply.'
+                  : 'This stop is still being worked after your day ends. Move a job to another day, or shorten one — starting earlier will not fit it.'
+              }
+            >
+              {offerPending ? 'Cannot be finished today — waiting on their reply' : 'Cannot be finished today'}
+            </span>
+          )
         ) : null}
         {entry.late ? (
           <span className="plan-badge warn">Tight — you&apos;d arrive nearer {formatTimeLabel(entry.arrivalMinutes)}</span>

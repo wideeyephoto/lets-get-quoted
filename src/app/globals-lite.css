@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 0ab8ba863eac68c1
+   source-sha256: 7daf3a7d1cf3feaa
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -10668,6 +10668,21 @@ button.plan-badge.last.is-adrift {
 button.plan-badge.last.is-adrift:hover { background: rgba(255, 209, 102, 0.24); }
 button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
 .plan-stop.is-adrift { box-shadow: inset 3px 0 0 rgba(255, 209, 102, 0.75); }
+
+/* "Cannot be finished today" is the one badge on this row whose entire content
+   is "something has to move", and it was a label — with the action three taps
+   away behind ⋮. It is the button now, so it has to look pressable. Same
+   treatment as the adrift last-stop badge above, which is the same idea. */
+button.plan-badge.warn.is-action {
+  border: 1px solid var(--cedge-amber-4);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+button.plan-badge.warn.is-action:hover { background: rgba(251, 191, 36, 0.3); }
+button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
 .plan-stop-otw.is-live {
   border-color: rgba(255, 122, 41, 0.55);
   background: rgba(255, 122, 41, 0.14);
