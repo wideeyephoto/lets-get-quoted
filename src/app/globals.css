@@ -29187,6 +29187,25 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .mkt-progress-step.is-done .mkt-progress-dot { background: var(--accent); }
 .mkt-progress-step.is-here { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
 
+/* "Written for window cleaning. Your trade is now plumbing." Sits directly
+   above the status buttons it disables, because a warning somewhere else on the
+   page explains a greyed-out button the reader has already given up on. Amber
+   for the unrecorded case (look at this) and red for a confirmed drift (this is
+   wrong), which is the same pair the rest of the dashboard uses. */
+.mkt-trade-drift {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  border-left: 3px solid var(--ink-amber-1);
+  background: rgba(251, 191, 36, 0.12);
+}
+.mkt-trade-drift.is-blocking { border-left-color: var(--bad); background: rgba(248, 113, 113, 0.12); }
+.mkt-trade-drift-text { margin: 0; flex: 1 1 16rem; font-size: 0.82rem; line-height: 1.5; font-weight: 600; }
+
 .mkt-status-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .mkt-after-publish { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--rule-t10); }
 

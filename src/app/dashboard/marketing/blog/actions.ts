@@ -164,6 +164,11 @@ export async function generateBlogPostAction(topic?: string): Promise<{ ok: true
       status: 'draft' as const,
       date: new Date().toISOString().slice(0, 10),
       publishAt: '',
+      // The trade the DRAFT was written for, from the drafter rather than read
+      // off the site again — see GeneratedBlogPost.trade. Without it a post
+      // cannot be told apart from one written for a trade the owner has since
+      // left, which is how a plumber came to publish about window cleaning.
+      ...(draft.trade ? { trade: draft.trade } : {}),
     },
     ...current,
   ]);

@@ -539,6 +539,19 @@ export type SiteBlogPost = {
   // Stored on the post rather than matched on the title, so renaming the post
   // never breaks the link back to the card that offered it.
   beatId?: string;
+  /**
+   * The trade the site was set to when this was drafted.
+   *
+   * A plumbing business had a live article about window cleaning — correct when
+   * it was written, because the account was a window cleaning business then.
+   * The owner changed trade and the article stayed. Nothing could notice,
+   * because a post recorded everything about itself EXCEPT the one field that
+   * would have shown it. See lib/blog-trade-drift.
+   *
+   * Absent on every post written before this existed, which is a state the
+   * drift check has a name for rather than treating as a mismatch.
+   */
+  trade?: string;
 };
 
 export type SiteBlogContent = {
@@ -1329,6 +1342,11 @@ function parseBlogPosts(value: unknown): SiteBlogPost[] {
       // content is saved — including by the builder's ordinary save, which would
       // quietly unlink the post from the topic that produced it.
       ...(/^[a-z0-9-]{1,40}$/.test(toString(item.beatId)) ? { beatId: toString(item.beatId) } : {}),
+      // Same reason as beatId: unread here is dropped on the next save, and a
+      // post that forgot its own trade is the bug this field exists for.
+      // Absent stays absent — an empty string would read as "recorded, and
+      // blank", which the drift check would then have to special-case.
+      ...(toString(item.trade).trim() ? { trade: toString(item.trade).trim().slice(0, 80) } : {}),
     };
   });
 }

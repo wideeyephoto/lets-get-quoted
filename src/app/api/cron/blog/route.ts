@@ -86,6 +86,10 @@ export const GET = cronRoute('blog', async () => {
           status: 'draft' as const,
           date: today,
           publishAt: '',
+          // The trade at drafting time. This one runs unattended every fortnight,
+          // so it is the caller most likely to write a post for a trade the
+          // owner has already moved on from. See lib/blog-trade-drift.
+          ...(draft.trade ? { trade: draft.trade } : {}),
         }, ...posts];
         changed = true;
         drafted++;

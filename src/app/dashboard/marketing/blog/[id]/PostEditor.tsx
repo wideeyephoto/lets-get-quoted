@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { SiteBlogPost } from '@/lib/site-content';
 import { postDateLabel, postState, POST_STATE_LABEL, todayKeyOf } from '@/lib/marketing-status';
+import { blocksPublish, tradeDriftNotice, tradeDriftOf } from '@/lib/blog-trade-drift';
 import StockPhotoPicker from '../StockPhotoPicker';
 import { stashCampaignDraft } from '../../campaign-handoff';
 import {
@@ -56,6 +57,24 @@ export default function PostEditor({
   const state = postState(post, today);
   const words = wordCount(post.body);
   const liveUrl = publicBase && post.status === 'published' ? `${publicBase}/${post.slug}` : null;
+
+  /**
+   * WAS THIS WRITTEN FOR THE TRADE THIS BUSINESS IS NOW?
+   *
+   * A plumbing business had a live article about window cleaning. It was
+   * correct when written — the account was a window cleaning business then —
+   * and nothing noticed the change, because a post did not record what it was
+   * written for. It does now.
+   *
+   * Acknowledged in component state rather than saved: the answer is "yes I
+   * know, publish it anyway", which is about this press and not about the post.
+   * Saving it would mean a post that had been waved through once could never
+   * warn again, including after the NEXT trade change.
+   */
+  const drift = tradeDriftOf(post.trade, trade);
+  const [tradeAcknowledged, setTradeAcknowledged] = useState(false);
+  const tradeBlocked = blocksPublish(drift) && !tradeAcknowledged;
+  const driftNotice = tradeDriftNotice(drift, post.trade, trade);
 
   function run(key: string, work: () => Promise<void>) {
     setBusy(key);
@@ -169,11 +188,34 @@ export default function PostEditor({
           })}
         </ol>
 
+        {/* The trade moved and the article did not. Named rather than
+            described — "off-trade" does not tell somebody which of their own
+            posts this is, and both trades are theirs. A published post gets it
+            too, and more urgently: that one is already out. */}
+        {driftNotice ? (
+          <div className={`mkt-trade-drift${drift === 'drift' ? ' is-blocking' : ''}`} role="status">
+            <p className="mkt-trade-drift-text">
+              {post.status === 'published' && drift === 'drift' ? 'This is live and off-trade. ' : null}
+              {driftNotice}
+            </p>
+            {tradeBlocked ? (
+              <button type="button" className="btn secondary" onClick={() => setTradeAcknowledged(true)}>
+                Publish it anyway
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mkt-status-actions">
           {post.status !== 'published' ? (
             <>
               {post.status !== 'ready' ? (
-                <button type="button" className="btn secondary" onClick={() => edit({ status: 'ready' })}>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={tradeBlocked}
+                  onClick={() => edit({ status: 'ready' })}
+                >
                   Mark as ready
                 </button>
               ) : (
@@ -181,7 +223,15 @@ export default function PostEditor({
                   Back to draft
                 </button>
               )}
-              <button type="button" className="btn primary" onClick={() => edit({ status: 'published' })}>
+              {/* Ready and Publish are both gated; "Back to draft" and
+                  "Archive" never are — pulling an off-trade post back is the
+                  thing this is trying to make easy. */}
+              <button
+                type="button"
+                className="btn primary"
+                disabled={tradeBlocked}
+                onClick={() => edit({ status: 'published' })}
+              >
                 Publish now
               </button>
             </>

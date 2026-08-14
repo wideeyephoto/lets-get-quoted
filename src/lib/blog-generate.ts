@@ -4,7 +4,23 @@ import 'server-only';
 // action AND the biweekly cron, so it takes plain site fields (no auth context)
 // and returns the raw post fields — the caller assembles the SiteBlogPost
 // (id/slug/date/status) so drafts always land as unpublished, owner-approved.
-export type GeneratedBlogPost = { title: string; excerpt: string; body: string };
+export type GeneratedBlogPost = {
+  title: string;
+  excerpt: string;
+  body: string;
+  /**
+   * The trade this was written for, echoed back so the caller can stamp it on
+   * the post.
+   *
+   * Returned from HERE rather than read off the site again by whoever saves the
+   * draft: this is the trade the prompt actually used, and the two could differ
+   * if the owner changes trade while a draft is generating. The stamp has to
+   * describe the article, not the account at save time — that is the whole
+   * point of it. Empty when the trade was unknown and the model was left to
+   * infer it from the business name, because a guess is not a record.
+   */
+  trade: string;
+};
 
 function asString(value: unknown, max: number): string {
   return (typeof value === 'string' ? value : '').trim().slice(0, max);
@@ -97,5 +113,5 @@ export async function draftBlogPost(input: {
   const body = asString(parsed.body, 8000);
   if (!title || !body) throw new Error('The AI returned an empty draft. Please try again.');
 
-  return { title, excerpt: asString(parsed.excerpt, 200), body };
+  return { title, excerpt: asString(parsed.excerpt, 200), body, trade };
 }

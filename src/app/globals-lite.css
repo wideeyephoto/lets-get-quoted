@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: b970582aac101658
+   source-sha256: 096bcad855fb540e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -14236,6 +14236,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .mkt-progress-step.is-done { border-color: rgba(255, 122, 33, 0.35); color: var(--text); }
 .mkt-progress-step.is-done .mkt-progress-dot { background: var(--accent); }
 .mkt-progress-step.is-here { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
+.mkt-trade-drift.is-blocking { border-left-color: var(--bad); background: rgba(248, 113, 113, 0.12); }
 .cash-marker:focus-visible .cash-marker-focus,
 .cash-marker.is-selected .cash-marker-focus { opacity: 1; }
 /* Sign and colour both. The "+"/"−" carries it in greyscale. */

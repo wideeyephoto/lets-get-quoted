@@ -180,6 +180,9 @@ export async function createBlogPostFromBeatAction(
     // What links the post back to the calendar card. Stored on the post rather
     // than matched on the title, so renaming it doesn't break the link.
     beatId: beat.id,
+    // And the trade it was written for, so a later trade change can be noticed
+    // rather than published. See lib/blog-trade-drift.
+    ...(draft.trade ? { trade: draft.trade } : {}),
   };
 
   const { error } = await supabase
