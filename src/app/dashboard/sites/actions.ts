@@ -8,6 +8,8 @@ import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
+import { geocodeArea } from '@/lib/geocode';
+import { anchorServiceArea } from '@/lib/site-area';
 import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
 import { generateSeoCopy } from '@/lib/seo/seo-copy';
 import { siteToSeoInput } from '@/lib/seo/site-seo';
@@ -245,6 +247,26 @@ export async function generateSiteTextAction(
   // resolved city + service area.
   const serviceArea = (typeof options?.serviceArea === 'string' && options.serviceArea.trim()) || (zip ? '' : currentSite.service_area) || '';
   const tradeInput = typeof options?.trade === 'string' ? options.trade.trim().slice(0, 80) : '';
+
+  /* THE ZIP IS LOOKED UP, NOT REMEMBERED.
+   *
+   * It used to be handed to gpt-4o-mini with an instruction saying a ZIP is
+   * authoritative and an example of resolving one. Asked for 48067 the model
+   * answered Maplewood, Springfield and Sunnyvale — real US place names,
+   * correctly spelled, none of them near Royal Oak — and they were published
+   * on a live site under "Areas we serve". No amount of instruction fixes
+   * that: a small model asked to recall a five-digit lookup will produce
+   * something ZIP-shaped and confident.
+   *
+   * So Google resolves it first and the answer goes into the prompt as a fact.
+   * The model still writes the copy and still suggests the neighboring towns,
+   * which is what it is good at — it just no longer decides which state the
+   * business is in. If geocoding is unconfigured or the ZIP does not resolve,
+   * this is empty and the old behavior stands, which is the same behavior as
+   * a site with no ZIP at all. */
+  const resolvedZipPlace = zip ? await geocodeArea(zip) : null;
+  const primaryCity = resolvedZipPlace?.ok ? resolvedZipPlace.place : '';
+
   const styleSeed = COPY_STYLE_SEEDS[Math.floor(Math.random() * COPY_STYLE_SEEDS.length)];
   // Offer the model the ENTIRE baked icon set (Lucide + curated Iconify glyphs)
   // rather than a hand-picked handful, so each generated service can pick the
@@ -282,6 +304,12 @@ export async function generateSiteTextAction(
 
   const input =
     `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}${zip ? `Business ZIP code: ${zip}. ` : ''}` +
+    /* The resolved town, last so it is the most recent thing in the input, and
+       stated as settled rather than as another hint to weigh. Without it the
+       model was picking the state. */
+    (primaryCity
+      ? `The ZIP code ${zip} has ALREADY been resolved and the business is in ${primaryCity}. That is a fact, not a suggestion: use ${primaryCity} as the primary city and list only towns and neighborhoods that genuinely border it. Do not name a city in any other state. `
+      : '') +
     'Generate the example website text described above. Respond with json only.';
 
   try {
@@ -319,17 +347,19 @@ export async function generateSiteTextAction(
     //
     // So it is enforced here rather than requested there. No location in, no
     // location out.
-    const locationKnown = Boolean(zip || serviceArea);
-    const cities = locationKnown
-      ? asArray(parsed.cities)
-          .filter((c): c is string => typeof c === 'string')
-          .slice(0, 12)
-          .map((c) => c.slice(0, 50))
-      : [];
-    // Empty rather than "your local area". A site that never names a town reads
-    // as a business that works everywhere; a site that says "serving your local
-    // area" reads as one that has not finished being built.
-    const generatedServiceArea = locationKnown ? asString(parsed.service_area, 120) : '';
+    /* THE RESOLVED TOWN LEADS, WHATEVER THE MODEL SAID. The prompt states it as
+       a fact, which helps; anchorServiceArea is the part that does not depend
+       on the model agreeing. See lib/site-area.ts for the failure it exists
+       for. */
+    const { cities, serviceArea: generatedServiceArea } = anchorServiceArea({
+      primaryCity,
+      modelCities: asArray(parsed.cities)
+        .filter((c): c is string => typeof c === 'string')
+        .slice(0, 12)
+        .map((c) => c.slice(0, 50)),
+      modelServiceArea: asString(parsed.service_area, 120),
+      locationKnown: Boolean(zip || serviceArea),
+    });
 
     // Build SEO copy deterministically rather than trusting the model — the
     // generator guarantees the char limits, refuses to repeat the service

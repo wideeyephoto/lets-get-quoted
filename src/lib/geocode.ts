@@ -67,7 +67,7 @@ export async function geocodeAddress(address: string | null | undefined): Promis
  * resolves to England.
  */
 export type AreaGeocodeResult =
-  | { ok: true; label: string; lat: number; lng: number; radiusMiles: number }
+  | { ok: true; label: string; place: string; lat: number; lng: number; radiusMiles: number }
   | { ok: false; reason: 'unconfigured' | 'not-found' | 'too-large' };
 
 /** The DB check constraint on quick_stop_priority_zones.radius_miles. */
@@ -106,6 +106,35 @@ export function areaLabelFor(result: { formatted_address?: string; address_compo
   }
   if (place) return place.slice(0, 80);
   return (result.formatted_address ?? '').replace(/,\s*USA$/, '').slice(0, 80) || 'Unnamed area';
+}
+
+/**
+ * The place itself — "Royal Oak, MI" — with no ZIP on the front.
+ *
+ * areaLabelFor answers "what should this row be CALLED in the owner's list",
+ * and for a ZIP that is "48067 · Royal Oak, MI", because somebody who typed
+ * digits wants to read the town back. This answers a different question: what
+ * town IS this, in words, for somewhere that is not a list row.
+ *
+ * It exists because the website generator was asking gpt-4o-mini to resolve
+ * ZIPs from memory. Asked for 48067 it produced Maplewood, Springfield and
+ * Sunnyvale — real US place names, correctly spelled, none of them within 2,000
+ * miles of Royal Oak — and they went out on a live site under "Areas we serve".
+ * A ZIP is a lookup, not a judgement call, so it is looked up.
+ */
+export function placeNameFor(result: {
+  formatted_address?: string;
+  address_components?: GeocodeComponent[];
+}): string {
+  const components = result.address_components ?? [];
+  const town =
+    componentOf(components, 'locality') ??
+    componentOf(components, 'postal_town') ??
+    componentOf(components, 'sublocality') ??
+    componentOf(components, 'neighborhood') ??
+    componentOf(components, 'administrative_area_level_3');
+  const state = componentOf(components, 'administrative_area_level_1', true);
+  return [town, state].filter(Boolean).join(', ').slice(0, 80);
 }
 
 /**
@@ -181,6 +210,7 @@ export async function geocodeArea(query: string | null | undefined): Promise<Are
     return {
       ok: true,
       label: areaLabelFor(result ?? {}),
+      place: placeNameFor(result ?? {}),
       lat: location.lat,
       lng: location.lng,
       radiusMiles: Math.max(MIN_AREA_RADIUS_MILES, Math.round(radiusMiles * 100) / 100),
