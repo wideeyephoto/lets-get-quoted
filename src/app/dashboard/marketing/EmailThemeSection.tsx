@@ -15,6 +15,8 @@ type Props = {
   logoUrl: string | null;
   currentTheme: string | null | undefined;
   saveAction?: (formData: FormData) => Promise<void>;
+  /** Marketing uses a folded utility card; the standalone comparison page does not. */
+  accordion?: boolean;
 };
 
 function previewHtml(theme: EmailThemeId, props: Pick<Props, 'businessName' | 'accent' | 'logoUrl'>): string {
@@ -41,16 +43,12 @@ function previewHtml(theme: EmailThemeId, props: Pick<Props, 'businessName' | 'a
   });
 }
 
-export default function EmailThemeSection(props: Props) {
+function ThemePicker(props: Props) {
   const selected = normalizeEmailTheme(props.currentTheme);
 
   return (
-    <section className="panel workspace-section-card" id="email-theme">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Customer emails</p>
-        <h2>Choose your email look</h2>
-      </div>
-      <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+    <>
+      <p className={`workspace-details-copy ${styles.intro}`}>
         Quotes, invoices, reminders, booking updates, review requests, and campaigns all use one consistent
         layout. Every option keeps your logo, business color, contact details, and reply address.
       </p>
@@ -96,6 +94,36 @@ export default function EmailThemeSection(props: Props) {
           {props.saveAction ? <SaveButton onlyWhenChanged>Save email theme</SaveButton> : null}
         </div>
       </form>
+    </>
+  );
+}
+
+export default function EmailThemeSection(props: Props) {
+  if (props.accordion) {
+    return (
+      <details className={`panel workspace-section-card ${styles.accordion}`} id="email-theme">
+        <summary className={styles.summary}>
+          <span className={styles.summaryHeading}>
+            <span className="eyebrow">Customer emails</span>
+            <strong>Choose your email look</strong>
+          </span>
+          <span className={styles.summaryCopy}>Preview and set the design used for outgoing email.</span>
+          <span className={styles.chevron} aria-hidden="true">⌄</span>
+        </summary>
+        <div className={styles.accordionBody}>
+          <ThemePicker {...props} />
+        </div>
+      </details>
+    );
+  }
+
+  return (
+    <section className="panel workspace-section-card" id="email-theme">
+      <div className="section-heading workspace-section-heading compact-heading">
+        <p className="eyebrow">Customer emails</p>
+        <h2>Choose your email look</h2>
+      </div>
+      <ThemePicker {...props} />
     </section>
   );
 }

@@ -5,7 +5,7 @@ import { loadBlogWorkspace } from '@/lib/site-blog';
 import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import { countStates, needsAttention, postState, shortDate, todayKeyOf } from '@/lib/marketing-status';
 import { overviewSummary, prepareRecommendations, type Recommendation } from '@/lib/marketing-overview';
-import { marketingCalendarAction } from './actions';
+import { marketingCalendarAction, updateEmailThemeAction } from './actions';
 import MarketingOverviewScreen from './MarketingOverviewScreen';
 
 export const dynamic = 'force-dynamic';
@@ -28,12 +28,17 @@ export default async function MarketingPage() {
   const { supabase, accountId } = await requireOwnerContext();
   const today = todayKeyOf();
 
-  const [view, recipients, { data: addressRow }, rebookCandidates, blogData] = await Promise.all([
+  const [view, recipients, { data: addressRow }, rebookCandidates, blogData, { data: emailSite }] = await Promise.all([
     marketingCalendarAction(4),
     loadRecipients(supabase, accountId),
     supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle(),
     listRebookCandidates(supabase, accountId, DEFAULT_REBOOK_DAYS),
     loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
+    supabase
+      .from('sites')
+      .select('accent_override, logo_url, email_theme')
+      .eq('account_id', accountId)
+      .maybeSingle(),
   ]);
 
   const posts = blogData?.posts ?? [];
@@ -84,6 +89,13 @@ export default async function MarketingPage() {
       counts={counts}
       hasBlog={Boolean(blogData)}
       rebookDue={rebookCandidates.filter((c) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
+      emailTheme={{
+        businessName: view.businessName,
+        accent: (emailSite?.accent_override as string | null) ?? null,
+        logoUrl: (emailSite?.logo_url as string | null) ?? null,
+        currentTheme: (emailSite?.email_theme as string | null) ?? null,
+        saveAction: updateEmailThemeAction,
+      }}
     />
   );
 }

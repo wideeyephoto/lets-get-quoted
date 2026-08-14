@@ -15,11 +15,9 @@ import TradeAutocomplete from '@/components/trade-autocomplete';
 import ExportData from './ExportData';
 import DeleteAccountButton from './DeleteAccountButton';
 import { updateBusinessAddressesAction, updateBusinessBasicsAction, deleteAccountAction } from './actions';
-import { updateEmailThemeAction } from './actions';
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import InsuranceSection from './InsuranceSection';
 import BusinessWorkspace from './BusinessWorkspace';
-import EmailThemeSection from './EmailThemeSection';
 import { businessSetup } from '@/lib/business-setup';
 import { insuranceState } from '@/lib/insurance';
 import { insuranceProofUrl } from '@/lib/insurance-storage';
@@ -341,7 +339,7 @@ export default async function SettingsPage({
             // job-costing was missing, so /dashboard/settings#job-costing
             // resolved to no tab and did nothing at all — the section exists,
             // carries that id, and could not be linked to.
-            anchors: ['job-costing', 'business-basics', 'email-theme', 'quote-changes', 'import', 'export', 'marketing-address', 'finances', 'insurance', 'quickbooks', 'addresses'],
+            anchors: ['job-costing', 'business-basics', 'quote-changes', 'import', 'export', 'marketing-address', 'finances', 'insurance', 'quickbooks', 'addresses'],
             content: (
               <BusinessWorkspace
                 setup={setup}
@@ -356,7 +354,7 @@ export default async function SettingsPage({
           id: 'profile',
           label: 'Profile & locations',
           blurb: 'Who you are, what you do, and where you work from.',
-          anchors: ['business-basics', 'email-theme', 'quote-changes', 'marketing-address', 'addresses'],
+          anchors: ['business-basics', 'quote-changes', 'marketing-address', 'addresses'],
           content: (
               <>
                 {/* The customer portal used to sit here. It moved to
@@ -398,14 +396,6 @@ export default async function SettingsPage({
                     </div>
                   </form>
                 </section>
-
-                <EmailThemeSection
-                  businessName={businessName}
-                  accent={(site?.accent_override as string | null) ?? null}
-                  logoUrl={(site?.logo_url as string | null) ?? null}
-                  currentTheme={(site?.email_theme as string | null) ?? null}
-                  saveAction={updateEmailThemeAction}
-                />
 
                 <section className="panel workspace-section-card" id="addresses">
                   <div className="section-heading workspace-section-heading compact-heading">

@@ -1,4 +1,4 @@
-import EmailThemeSection from '@/app/dashboard/settings/EmailThemeSection';
+import EmailThemeSection from '@/app/dashboard/marketing/EmailThemeSection';
 
 export default function DemoEmailThemesPage() {
   return (

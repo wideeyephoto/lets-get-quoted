@@ -1,3 +1,81 @@
+.accordion {
+  margin-top: 1.1rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(12rem, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-height: 76px;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summaryHeading {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.summaryHeading :global(.eyebrow) {
+  margin: 0;
+}
+
+.summaryHeading strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.summaryCopy {
+  justify-self: end;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.chevron {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-items: center;
+  border: 1px solid var(--edge-t12);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 1.1rem;
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.accordion[open] .chevron {
+  transform: rotate(180deg);
+}
+
+.summary:hover .chevron {
+  border-color: var(--edge-t28);
+}
+
+.summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: inherit;
+}
+
+.accordionBody {
+  padding: 0 1.25rem 1.25rem;
+  border-top: 1px solid var(--rule-t10);
+}
+
+.intro {
+  margin: 1rem 0;
+}
+
 .fieldset {
   min-width: 0;
   margin: 0;
@@ -151,6 +229,15 @@
 }
 
 @media (max-width: 760px) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.7rem;
+  }
+
+  .summaryCopy {
+    display: none;
+  }
+
   .grid { grid-template-columns: minmax(0, 1fr); }
   .preview { height: 270px; }
   .iframe { transform: translateX(-50%) scale(0.43); }
@@ -158,5 +245,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card { transition: none; }
+  .card,
+  .chevron { transition: none; }
 }

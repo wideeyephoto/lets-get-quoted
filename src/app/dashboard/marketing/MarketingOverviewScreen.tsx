@@ -6,6 +6,7 @@ import type { overviewSummary, PreparedRecommendation } from '@/lib/marketing-ov
 import type { CalendarView } from '@/lib/marketing-calendar-data';
 import { stateName } from '@/lib/marketing-calendar';
 import MarketingNav from './MarketingNav';
+import EmailThemeSection from './EmailThemeSection';
 
 /**
  * Marketing's overview, given its numbers.
@@ -20,6 +21,14 @@ import MarketingNav from './MarketingNav';
 
 type UpcomingPost = { id: string; title: string; publishAt: string };
 
+type EmailThemeSettings = {
+  businessName: string;
+  accent: string | null;
+  logoUrl: string | null;
+  currentTheme: string | null;
+  saveAction?: (formData: FormData) => Promise<void>;
+};
+
 type Props = {
   view: CalendarView;
   mailingAddress: string | null;
@@ -30,6 +39,7 @@ type Props = {
   /** False when the account has no website to post to at all. */
   hasBlog: boolean;
   rebookDue: number;
+  emailTheme: EmailThemeSettings;
   basePath?: string;
   navOnly?: string[];
 };
@@ -43,6 +53,7 @@ export default function MarketingOverviewScreen({
   counts,
   hasBlog,
   rebookDue,
+  emailTheme,
   basePath = '/dashboard',
   navOnly,
 }: Props) {
@@ -206,6 +217,8 @@ export default function MarketingOverviewScreen({
           ) : null}
         </div>
       </div>
+
+      <EmailThemeSection {...emailTheme} accordion />
     </main>
   );
 }

@@ -6,7 +6,7 @@ import { loadBlogWorkspace } from '@/lib/site-blog';
 import { overviewSummary, prepareRecommendations, type Recommendation } from '@/lib/marketing-overview';
 import { buildCalendarView } from '@/lib/marketing-calendar-data';
 import { DEMO_ACCOUNT_ID, DEMO_SITE_HOST } from '@/lib/demo-data';
-import { DEMO_ACCOUNT_ROW, demoSupabase } from '@/lib/demo-rows';
+import { DEMO_ACCOUNT_ROW, DEMO_SITE_ROW, demoSupabase } from '@/lib/demo-rows';
 import MarketingOverviewScreen from '@/app/dashboard/marketing/MarketingOverviewScreen';
 
 export const metadata = { title: 'Marketing — Live Demo' };
@@ -77,6 +77,12 @@ export default async function DemoMarketingPage() {
       counts={counts}
       hasBlog={Boolean(blogData)}
       rebookDue={rebookCandidates.filter((c) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
+      emailTheme={{
+        businessName: view.businessName,
+        accent: (DEMO_SITE_ROW.accent_override as string | null) ?? null,
+        logoUrl: (DEMO_SITE_ROW.logo_url as string | null) ?? null,
+        currentTheme: (DEMO_SITE_ROW.email_theme as string | null) ?? null,
+      }}
       basePath="/demo"
     />
   );
