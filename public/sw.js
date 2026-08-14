@@ -255,6 +255,18 @@ async function pageFirstFromNetwork(request) {
   const cache = await caches.open(PAGE_CACHE);
   try {
     const response = await fetch(request);
+
+    // THE SESSION BEHIND THE CACHE IS GONE. Cached /field pages are somebody's
+    // customer names, site addresses and phone numbers, and the only purge used
+    // to be an explicit sign-out — which is the one thing nobody does to an app
+    // that lives on their home screen. A session that has expired, or access
+    // that an owner has revoked, both surface here: as a 401/403, or as a
+    // redirect to the sign-in wall. Either is the signal to forget.
+    if (response.status === 401 || response.status === 403 || redirectedToLogin(response)) {
+      await forgetPages();
+      return response;
+    }
+
     if (response.ok) {
       await cache.put(request, response.clone());
       await trim(cache);
@@ -280,6 +292,28 @@ async function assetFirstFromCache(request) {
   return response;
 }
 
+/** A page response that ended up at the sign-in wall. */
+function redirectedToLogin(response) {
+  if (!response.redirected || !response.url) return false;
+  try {
+    return new URL(response.url).pathname.startsWith('/field/login');
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Drop the cached pages, keeping the queue.
+ *
+ * Used when the ACCOUNT changes rather than the person: switching business, or
+ * a session that has lapsed. The queued writes still belong to the crew member
+ * who made them and are still addressed to the job they named, so throwing them
+ * away would lose work that a sign-in is about to make deliverable.
+ */
+async function forgetPages() {
+  await caches.delete(PAGE_CACHE);
+}
+
 /** Everything a signed-out device must not keep. */
 async function forgetEverything() {
   await Promise.all([caches.delete(PAGE_CACHE), emptyQueue().catch(() => {})]);
@@ -299,6 +333,12 @@ self.addEventListener('fetch', (event) => {
     // customer addresses and phone numbers, and a phone that changes hands
     // between crews should not still have them.
     if (url.pathname === '/auth/signout') event.waitUntil(forgetEverything());
+    // Switching business is the same problem wearing different clothes: the
+    // person is still entitled to the app, but every cached page belongs to the
+    // account they are leaving, and serving one offline afterwards would show
+    // account A's customers under account B's name. The queue survives — those
+    // writes name their own job and are still owed to whoever they were for.
+    if (url.pathname === '/field/choose') event.waitUntil(forgetPages());
     return;
   }
 

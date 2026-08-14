@@ -261,6 +261,44 @@ describe('the clock, and what a crew member is paid for it', () => {
     expect(result.ok && result.rows[0].ended_at).toBeNull();
   });
 
+  it('refuses a shift claimed to have started yesterday', async () => {
+    // The offline queue accepts a start time this server did not witness, which
+    // is the point — but "queued while out of signal" and "a day I say I
+    // worked" have to be different things, and the endpoint is not the only way
+    // in: time_entry_crew_insert answers PostgREST directly.
+    const result = await crewQuery(
+      `insert into time_entries (account_id, crew_id, job_id, rate, started_at)
+       values ($1, $2, $3, 32.50, now() - interval '20 hours')`,
+      [ids.account, ids.crew, ids.myJob],
+    );
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toMatch(/cannot start more than/i);
+  });
+
+  it('refuses a shift claimed to start in the future', async () => {
+    const result = await crewQuery(
+      `insert into time_entries (account_id, crew_id, job_id, rate, started_at)
+       values ($1, $2, $3, 32.50, now() + interval '4 hours')`,
+      [ids.account, ids.crew, ids.myJob],
+    );
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toMatch(/in the future/i);
+  });
+
+  it('does not fire on a genuine replay from earlier in the same day', async () => {
+    // A shift is already open from the test above, so this is refused by the
+    // one-open-shift index — and THAT is the point: the refusal has to be the
+    // duplicate rule, not the backdate rule, or a crew member who queued a
+    // clock-in at breakfast could not send it at lunchtime.
+    const result = await crewQuery(
+      `insert into time_entries (account_id, crew_id, job_id, rate, started_at)
+       values ($1, $2, $3, 32.50, now() - interval '6 hours')`,
+      [ids.account, ids.crew, ids.myJob],
+    );
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).not.toMatch(/cannot start/i);
+  });
+
   it('refuses a shift opened on a job they are not assigned to', async () => {
     const result = await crewQuery(
       `insert into time_entries (account_id, crew_id, job_id, rate) values ($1, $2, $3, 32.50)`,

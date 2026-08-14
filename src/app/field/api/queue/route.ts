@@ -7,6 +7,8 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
 import { clockIn, clockOut, getOpenShift } from '@/lib/time-clock-data';
 import {
+  MAX_BACKDATE_HOURS,
+  OFFLINE_NOTE,
   claimSubmission,
   releaseSubmission,
   resolveOfflineTime,
@@ -93,13 +95,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
+  // Refused, not clamped. A timestamp outside the window this endpoint will
+  // honour is evidence of a broken or hostile client, and pinning it to the
+  // edge would turn the most absurd input into the largest claim on offer.
   const when = resolveOfflineTime(payload.at);
+  if (!when) {
+    return bad(
+      `That timestamp is unusable — a queued entry has to be from the last ${MAX_BACKDATE_HOURS} hours.`,
+    );
+  }
 
   try {
     switch (kind) {
       case 'clock-in': {
         if (timeClockMode === 'off') return bad('The time clock is switched off for this business.', 409);
-        await clockIn(supabase, accountId, crew.id, jobId, Number(crew.hourly_rate) || 0, when.at);
+        await clockIn(
+          supabase,
+          accountId,
+          crew.id,
+          jobId,
+          Number(crew.hourly_rate) || 0,
+          when.at,
+          // The marker goes on at INSERT. A shift that opened offline and closed
+          // in signal would otherwise look measured, and under required clocking
+          // that is exactly the distinction the owner switched the feature on for.
+          when.fromPhone ? OFFLINE_NOTE : undefined,
+        );
         break;
       }
 
@@ -109,7 +130,11 @@ export async function POST(request: Request) {
         // did land, or by the owner. Not an error; there is simply nothing left
         // to do, and saying "no open shift" to a worker would strand the queue.
         if (!entry || entry.job_id !== jobId) break;
-        const note = withOfflineNote(String(payload.note ?? '').trim() || null, when.fromPhone);
+        // The shift carries the marker if EITHER end of it came from the phone:
+        // clock-out writes over the note, so a clock-in that was queued offline
+        // would otherwise lose its disclosure the moment the shift closed.
+        const fromPhone = when.fromPhone || (entry.note ?? '').includes(OFFLINE_NOTE);
+        const note = withOfflineNote(String(payload.note ?? '').trim() || null, fromPhone);
         // Never before the shift started: a phone whose clock is behind would
         // otherwise close a shift into negative hours.
         const endedAt = Date.parse(when.at) > Date.parse(entry.started_at) ? when.at : new Date().toISOString();

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { LONG_SHIFT_HOURS } from '@/lib/time-clock';
 
 // "Have we already done this one?"
 //
@@ -69,8 +70,16 @@ export async function releaseSubmission(
 
 // -- times that came from somebody's phone ------------------------------------
 
-/** Anything older than this is not a queued shift, it's a mistake or a claim. */
-export const MAX_BACKDATE_HOURS = 18;
+/**
+ * How far back a queued submission may reasonably reach.
+ *
+ * LONG_SHIFT_HOURS, not a number of its own: it is already the point at which
+ * this app stops believing a shift, so a replay that claims to have been
+ * waiting longer than that is claiming something the product would flag as
+ * implausible if it had watched it happen. Deliberately BELOW MAX_SHIFT_HOURS
+ * (16) so no queued replay can produce a shift the app calls implausible.
+ */
+export const MAX_BACKDATE_HOURS = LONG_SHIFT_HOURS;
 
 /** Below this, the phone and the server simply disagree about the second. */
 const CLOCK_SKEW_MS = 5 * 60_000;
@@ -79,26 +88,38 @@ export type OfflineTime = { at: string; fromPhone: boolean };
 
 /**
  * The time a thing happened, as reported by a phone that may have been out of
- * signal for hours.
+ * signal for hours. Null when the phone's answer cannot be used.
  *
  * The client's clock is TRUSTED but BOUNDED. Trusted, because the whole point
  * of queueing a clock-out is that the moment it happened is not the moment it
  * sends, and stamping the replay time would turn a 3pm finish into a 7pm one.
- * Bounded, because "when did you stop work" is also the answer to "what am I
- * paying you for": the future is refused outright and the past is clamped to a
- * window no real shift outlives.
+ *
+ * BOUNDED BY REFUSAL, NOT BY CLAMPING, and that distinction is the fix rather
+ * than a detail. This used to pin an out-of-range value to the edge of the
+ * window — so a request saying "1999" became a clock-in exactly 12 hours ago,
+ * and the most absurd input the endpoint could receive was silently turned into
+ * the largest claim it was willing to grant. A timestamp outside the window is
+ * evidence of a broken or hostile client, and the honest answer to it is no.
+ *
+ * The FUTURE still clamps, because clamping down to now can only ever shrink
+ * what is being claimed — a phone five minutes ahead is an ordinary phone, not
+ * an argument.
  *
  * `fromPhone` marks the entries whose times did not come from this server, so
  * the owner reading a timesheet can see which ones to take on trust.
  */
-export function resolveOfflineTime(value: unknown, now: Date = new Date()): OfflineTime {
+export function resolveOfflineTime(value: unknown, now: Date = new Date()): OfflineTime | null {
   const nowMs = now.getTime();
-  const parsed = typeof value === 'string' ? Date.parse(value) : NaN;
-  if (!Number.isFinite(parsed)) return { at: now.toISOString(), fromPhone: false };
+  // No timestamp at all is the ordinary online case: the server's own clock is
+  // the right answer and nothing is being asserted.
+  if (value === undefined || value === null || value === '') return { at: now.toISOString(), fromPhone: false };
 
-  const floor = nowMs - MAX_BACKDATE_HOURS * 3_600_000;
-  const clamped = Math.min(Math.max(parsed, floor), nowMs);
-  return { at: new Date(clamped).toISOString(), fromPhone: nowMs - clamped > CLOCK_SKEW_MS };
+  const parsed = typeof value === 'string' ? Date.parse(value) : NaN;
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed < nowMs - MAX_BACKDATE_HOURS * 3_600_000) return null;
+
+  const at = Math.min(parsed, nowMs);
+  return { at: new Date(at).toISOString(), fromPhone: nowMs - at > CLOCK_SKEW_MS };
 }
 
 /** The suffix that says "these times are the phone's, not ours". */

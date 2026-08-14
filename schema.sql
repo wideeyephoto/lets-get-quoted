@@ -1992,6 +1992,20 @@ begin
     new.ended_at := null;
     new.cost_id := null;
     new.closed_by_owner := false;
+
+    -- HOW FAR BACK A SHIFT MAY REACH. started_at is outside the update
+    -- whitelist below, so backdating a running shift is refused — but the
+    -- offline queue endpoint exists precisely to accept a start time this
+    -- server did not witness, and the insert policy answers PostgREST without
+    -- going through it. 13 hours against the application's 12 so that the
+    -- app's bound is the binding one and clock drift between the web host and
+    -- the database never turns a legitimate replay into an error.
+    if new.started_at < now() - interval '13 hours' then
+      raise exception 'a shift cannot start more than 13 hours ago';
+    end if;
+    if new.started_at > now() + interval '15 minutes' then
+      raise exception 'a shift cannot start in the future';
+    end if;
     return new;
   end if;
 

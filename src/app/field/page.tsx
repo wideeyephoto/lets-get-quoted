@@ -235,8 +235,14 @@ export default async function FieldHomePage() {
         <FieldPwa />
         {/* Pull today's job pages into the cache while there's still signal, so
             the scope, address and checklist survive the drive into the valley
-            with no bars. See public/sw.js. */}
-        <FieldOfflineWarm urls={['/field', '/field/pay', ...todayJobs.map((job) => `/field/jobs/${job.id}`)]} />
+            with no bars. See public/sw.js.
+
+            My pay is deliberately NOT warmed. It is the most sensitive page the
+            field app has — somebody's earnings, sitting in a device cache — and
+            the least useful in a dead spot, because nothing on it is needed to
+            do the work in front of you. Opening it still caches it; nobody who
+            never looks at it carries it around. */}
+        <FieldOfflineWarm urls={['/field', ...todayJobs.map((job) => `/field/jobs/${job.id}`)]} />
 
         {/* Deliberately above the jobs. Somebody checking what they're owed
             shouldn't have to scroll past a week of work to find it. */}

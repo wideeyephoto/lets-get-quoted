@@ -118,6 +118,14 @@ export async function clockIn(
    * bounding it — see resolveOfflineTime.
    */
   startedAt?: string,
+  /**
+   * Marks a shift whose start time this server did not witness — see
+   * OFFLINE_NOTE. Written at INSERT rather than left to clock-out, because a
+   * shift that opened offline and closed in signal would otherwise carry no
+   * trace of it, and "which of these start times did we actually measure" is
+   * the question an owner reviewing a timesheet is really asking.
+   */
+  note?: string,
 ): Promise<TimeEntryRow> {
   const existing = await getOpenShift(supabase, accountId, crewId);
   if (existing) {
@@ -130,7 +138,14 @@ export async function clockIn(
 
   const { data, error } = await supabase
     .from('time_entries')
-    .insert({ account_id: accountId, crew_id: crewId, job_id: jobId, rate, ...(startedAt ? { started_at: startedAt } : {}) })
+    .insert({
+      account_id: accountId,
+      crew_id: crewId,
+      job_id: jobId,
+      rate,
+      ...(startedAt ? { started_at: startedAt } : {}),
+      ...(note ? { note } : {}),
+    })
     .select('*')
     .single();
 
