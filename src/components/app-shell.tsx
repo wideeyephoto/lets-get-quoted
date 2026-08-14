@@ -12,7 +12,7 @@ import ThemeFab from './theme-fab';
 import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
-import { isSectionNew, markNavSeen, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
+import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
@@ -860,10 +860,29 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           ) : null}
           {/* Ahead of the numbers, so the badge cluster reads left to right as
               "is there news, then how much". */}
-          {isNew ? <span className="sidenav-unseen" title={newLabelByHref[href]}>New</span> : null}
-          {count > 0 ? <span className="sidenav-count">{count}</span> : null}
+          {/* EVERY BADGE SAYS WHAT IT IS, IN TEXT.
+              The row read "Leads New 3 12" to a screen reader — four things,
+              none of them explained — and the explanations were all sitting in
+              `title` attributes on these spans, where a phone cannot hover and
+              an accessible name does not look. The digits are now decoration
+              beside a real label. See navAttentionLabel in lib/nav-helpers. */}
+          {isNew ? (
+            <span className="sidenav-unseen" title={newLabelByHref[href]}>
+              <span aria-hidden="true">New</span>
+              <span className="sr-only">{newLabelByHref[href] ?? 'New since your last visit'}</span>
+            </span>
+          ) : null}
+          {count > 0 ? (
+            <span className="sidenav-count" title={navAttentionLabel(href, count) ?? undefined}>
+              <span aria-hidden="true">{count}</span>
+              <span className="sr-only">{navAttentionLabel(href, count) ?? `${count} need your attention`}</span>
+            </span>
+          ) : null}
           {total && total.count > 0 ? (
-            <span className="sidenav-total" title={total.title}>{total.count}</span>
+            <span className="sidenav-total" title={total.title}>
+              <span aria-hidden="true">{total.count}</span>
+              <span className="sr-only">{total.title}</span>
+            </span>
           ) : null}
         </Link>
       );
@@ -1421,9 +1440,21 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                     title={item.hint}
                   >
                     {item.label}
-                    {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
-                    {item.href === '/dashboard/jobs' && jobsNeedingAttentionCount > 0 ? <span className="topnav-count">{jobsNeedingAttentionCount}</span> : null}
-                    {item.href === '/dashboard/schedule' && unscheduledJobCount > 0 ? <span className="topnav-count">{unscheduledJobCount}</span> : null}
+                    {/* The same three counts the rail draws, in a different
+                        component — which is why the wording comes from one
+                        place rather than being typed out twice. */}
+                    {[
+                      ['/dashboard/leads', newQuoteRequestCount],
+                      ['/dashboard/jobs', jobsNeedingAttentionCount],
+                      ['/dashboard/schedule', unscheduledJobCount],
+                    ].map(([href, n]) =>
+                      item.href === href && (n as number) > 0 ? (
+                        <span className="topnav-count" key={href as string} title={navAttentionLabel(href as string, n as number) ?? undefined}>
+                          <span aria-hidden="true">{n as number}</span>
+                          <span className="sr-only">{navAttentionLabel(href as string, n as number)}</span>
+                        </span>
+                      ) : null,
+                    )}
                   </Link>
                 );
               })}

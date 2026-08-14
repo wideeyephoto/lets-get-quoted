@@ -186,3 +186,38 @@ export function markNavSeen(seen: NavSeenMap, href: string, newestCreatedAt: str
   if (!Number.isNaN(current) && current >= next) return seen;
   return { ...seen, [href]: newestCreatedAt };
 }
+
+/* --- what the numbers on the rail mean --------------------------------------
+ *
+ * THREE BADGES ON ONE ROW, ALL DIGITS. A leads row reading "Leads New 3 12"
+ * gives a screen reader four things and explains none of them, and the
+ * explanations existed — in `title` attributes on the <span>s. A title on a
+ * non-interactive span is a hover tooltip: no touch device can reach it, and it
+ * is not part of the accessible name, so the one place the meaning was written
+ * down was the one place neither a phone nor a screen reader could look.
+ *
+ * The counts themselves were never the problem. leadSummary and leadRailTitle
+ * are built server-side and shared with the dashboard card precisely so the two
+ * cannot drift. This is only about saying, in text, which number is which.
+ *
+ * Here rather than in app-shell so the rail and the mobile top bar — which
+ * render the same three attention counts in two different components — cannot
+ * describe them differently.
+ */
+const ATTENTION_LABEL: Record<string, (count: number) => string> = {
+  '/dashboard/leads': (n) => `${n} website ${n === 1 ? 'lead is' : 'leads are'} waiting for a reply`,
+  '/dashboard/jobs': (n) => `${n} ${n === 1 ? 'job needs' : 'jobs need'} attention`,
+  '/dashboard/schedule': (n) => `${n} approved ${n === 1 ? 'job has' : 'jobs have'} no date yet`,
+  '/dashboard/messages': (n) => `${n} unread ${n === 1 ? 'message' : 'messages'}`,
+};
+
+/**
+ * The filled badge: what needs you here today.
+ *
+ * Null for a section with no attention count, so a caller cannot invent a
+ * label for a number this file has no definition of.
+ */
+export function navAttentionLabel(href: string, count: number): string | null {
+  const make = ATTENTION_LABEL[href];
+  return make ? make(count) : null;
+}

@@ -4319,7 +4319,12 @@ h3 {
 .schedule-drop-warning { margin: 0 0 0.6rem; padding: 0.5rem 0.7rem; border-radius: 0.55rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid var(--cedge-amber-7); }
 
 /* Screen-reader-only text (visually hidden, still announced). */
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* `text-transform: none` because these labels sit INSIDE styled things. The
+   rail's "New" pill is uppercase, so the sentence explaining it inherited the
+   uppercase too — and a screen reader handed a short run of capitals may spell
+   it out rather than read it. Nothing here is ever seen, so nothing here should
+   inherit how its container looks. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; text-transform: none; letter-spacing: normal; }
 
 /* Dashboard navigation skeleton (app/dashboard/loading.tsx) — shown instantly
    while the next page's data loads, so nav clicks never feel frozen. */
