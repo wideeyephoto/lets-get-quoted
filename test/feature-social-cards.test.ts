@@ -230,9 +230,22 @@ describe('the website builder page', () => {
     expect(SRC).not.toMatch(/step (one|two|three|four|five|six|seven|eight|\d)/i);
   });
 
-  it('compresses six benefits into the three things that happen to a visitor', () => {
-    const benefits = SRC.slice(SRC.indexOf('benefits={['), SRC.indexOf('storyId='));
-    expect([...benefits.matchAll(/title: '/g)].length).toBe(3);
+  /**
+   * SIX BENEFITS BECAME THREE, AND THEN NONE.
+   *
+   * The three that survived the first cut were "look established from click
+   * one", "answer how much while interest is high" and "receive a request you
+   * can act on" — the hero's promise, then two of the four journey beats, with
+   * the story paragraph above them making the same case a fourth time. The band
+   * is gone rather than shortened, and the layout gained the optional props
+   * that let a page drop it.
+   */
+  it('drops the story band rather than repeating the hero in it', () => {
+    expect(SRC).not.toContain('benefits={[');
+    expect(SRC).not.toContain('story={{');
+    expect(SRC).not.toContain('A beautiful site should be the beginning');
+    const LAYOUT = readFileSync('src/components/marketing/feature-detail-layout.tsx', 'utf8');
+    expect(LAYOUT).toContain('{story || benefits.length ? (');
   });
 
   it('draws the journey and the one comparison', () => {
@@ -244,7 +257,12 @@ describe('the website builder page', () => {
   });
 
   it('answers the practical questions with disclosures that work unhydrated', () => {
-    expect(SRC).toContain('<details key={item.q} open={index === 0}>');
+    // ALL SIX CLOSED. The first was open so the section did not read as a list
+    // of headings — an argument for a section arriving after two thousand words
+    // of pitch. After the cut it arrives sooner, and one open answer is an
+    // answer every other reader scrolls past to find theirs.
+    expect(SRC).toContain('<details key={item.q}>');
+    expect(SRC).not.toMatch(/<details[^>]*open=/);
     // No `name`: an exclusive accordion hides five answers from find-in-page.
     expect(SRC).not.toMatch(/<details[^>]*name=/);
     // SIX now, not five. The page was repositioned around the video studio —
@@ -252,24 +270,40 @@ describe('the website builder page', () => {
     // answers "what kind of video, and what will actually play" leaves its one
     // new claim hanging. The other five are unchanged.
     expect([...SRC.matchAll(/^\s+q: '/gm)].length).toBe(6);
-    expect(SRC).toContain('What kind of video can I put on it?');
+    expect(SRC).toContain('What kind of video can I add?');
   });
 
   it('keeps the claims that were already checked against the product', () => {
-    // The CNAME target is the real one (lib/domains.ts), the trade count is
-    // computed, and the fee comes from the pricing model rather than a number
-    // typed into a marketing page.
+    // The CNAME target is the real one (lib/domains.ts) and the trade count is
+    // computed rather than typed.
     expect(SRC).toContain('domains.letsgetquoted.com');
     expect(SRC).toContain('TRADES.length');
-    expect(SRC).toContain('FEE_TIERS[0].rate');
-    expect(SRC).toContain('STRIPE_PROCESSING_NOTE');
+  });
+
+  /**
+   * THE FEE IS NOT RESTATED HERE ANY MORE, WHICH IS WHY THE LINK IS PINNED.
+   *
+   * The page used to carry the schedule twice — in the cost answer and in the
+   * closing band — built from FEE_TIERS so it could not go stale. The rewrite
+   * dropped both to "a platform fee when a homeowner pays you, plus Stripe
+   * processing", which is true at every tier. That is only honest while the
+   * page still points somewhere that names the numbers, so the pointer is the
+   * thing under test, and so is the absence of a hand-typed rate.
+   */
+  it('names no rate of its own, and links to the page that does', () => {
+    expect(SRC).not.toMatch(/\d+(\.\d+)?%/);
+    expect(SRC).toContain('href="/pricing"');
+    expect(SRC).toContain('See full pricing');
   });
 
   it('invents no proof', () => {
     expect(SRC).not.toMatch(/\b\d[\d,]*\+? (contractors|customers|users|businesses) (use|trust|have)/i);
     expect(SRC).not.toMatch(/trusted by|rated \d|testimonial/i);
-    // The one invented business is labelled as invented wherever it appears.
-    expect(SRC).toContain('Invented company, invented range');
+    // The one invented business is labelled as invented. It used to be said
+    // twice, in a note under each panel; it is said once, under both.
+    expect(SRC).toContain(
+      'The company, request and estimate are examples. The domain configuration shown',
+    );
   });
 });
 

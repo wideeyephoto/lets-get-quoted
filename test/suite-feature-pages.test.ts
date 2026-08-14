@@ -375,12 +375,13 @@ describe('the video studio is in the catalog and on the page', () => {
     expect(WEBSITE).not.toMatch(/lede="[^"]*video/i);
     expect(WEBSITE).not.toMatch(/tertiary=\{\{ label: '[^']*video/i);
 
-    const benefits = WEBSITE.slice(WEBSITE.indexOf('benefits={['), WEBSITE.indexOf('storyId='));
-    expect(benefits).toMatch(/video/i);
-    // Still three. The compression this page was rebuilt for stands.
-    expect([...benefits.matchAll(/title: '/g)]).toHaveLength(3);
-    // And the answer, which is where the detail belongs.
-    expect(WEBSITE).toContain('What kind of video can I put on it?');
+    // ONE PLACE NOW, not two. The benefit that carried the other half went with
+    // the whole story band — see the website-builder block in
+    // feature-social-cards.test — so the answer is where the claim lives, which
+    // is the position this test was written to protect in the first place.
+    const faq = WEBSITE.slice(WEBSITE.indexOf('const FAQ'), WEBSITE.indexOf('export default'));
+    expect(faq).toMatch(/video/i);
+    expect(WEBSITE).toContain('What kind of video can I add?');
   });
 
   it('counts the six layouts the product actually has', () => {
@@ -390,15 +391,18 @@ describe('the video studio is in the catalog and on the page', () => {
     const block = styles.slice(styles.indexOf('VIDEO_SECTION_STYLES'), styles.indexOf('const VIDEO_STYLE_KEYS'));
     expect([...block.matchAll(/\{ key: '/g)]).toHaveLength(6);
     expect(site.features.find((f) => f.id === 'video-sections')?.desc).toContain('Six layouts');
-    expect(WEBSITE).toContain('six video layouts');
+    expect(WEBSITE).toMatch(/six layouts/);
   });
 
-  it('promises checking, not scriptwriting', () => {
+  it('promises nothing about video the product does not do', () => {
     // The line the copy must not cross. Nothing in the product plans a shoot.
     expect(WEBSITE).not.toMatch(/shot list|storyboard|script(s|ing|ed)? (your|the) video|we film/i);
-    // And the check is advice, which is how it behaves — videoPlaybackWarning
-    // and heroDurationAdvice both warn and return; neither refuses an upload.
-    expect(WEBSITE).toMatch(/advises rather than refusing|never blocks|It advises/i);
+    // THE UPLOAD CHECKS CAME OUT OF THE ANSWER, and that is fine — a drawer on
+    // a page about generating a site is not where four clauses about codec
+    // sniffing belong. What the shorter answer must not do is claim the
+    // opposite of what videoPlaybackWarning and heroDurationAdvice actually do:
+    // both warn and return, so nothing here may say an upload is refused.
+    expect(WEBSITE).not.toMatch(/reject(s|ed|ing)?|refuse(s|d)? (your|the|an?) (clip|video|upload)|blocks the upload/i);
   });
 
   it('reaches the builder from the nav and the hero', () => {

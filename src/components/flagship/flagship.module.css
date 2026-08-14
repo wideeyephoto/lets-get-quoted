@@ -7771,3 +7771,14 @@
   .root :global(.detail-hero-chips) { gap: 6px; margin-bottom: 16px; }
   .root :global(.detail-hero-chips li) { padding: 5px 10px; font-size: 12px; }
 }
+
+/* ---- the line that belongs to all the steps, not to any one of them -------
+
+   "Everything remains editable before and after you publish." on
+   /features/website-builder. Set as a sentence under the row rather than as a
+   fourth card, because a card would put it IN the row and make the count wrong
+   — the eyebrow above it says three answers and the row has to show three.
+
+   Ranked above the shell's own `.root p { margin: 0 }` by the descendant
+   selector, same as every other rule in this file. */
+.root :global(.detail-process-note) { margin: 26px 0 0; max-width: 640px; color: #8ea5b0; font-size: 14px; line-height: 1.65; }

@@ -85,12 +85,23 @@ export type FeatureDetailLayoutProps = {
    * differentiated thing on the page and it was the fourth thing you reached.
    */
   afterProof?: ReactNode;
-  story: {
+  /**
+   * The cream band: one argument on the left, a grid of benefit cards on the
+   * right.
+   *
+   * OPTIONAL, because a page can earn its way out of it. On
+   * /features/website-builder the three cards were "look established", "answer
+   * how much", "receive a request you can act on" — which is the hero's promise,
+   * and then the customer-journey section's four beats, said a third time in
+   * between them. Omitting both drops the band; a page that omits only one gets
+   * the other on its own.
+   */
+  story?: {
     eyebrow: string;
     title: ReactNode;
     body: ReactNode;
   };
-  benefits: FeatureDetailCard[];
+  benefits?: FeatureDetailCard[];
   /**
    * A section between the benefits and the steps.
    *
@@ -108,6 +119,13 @@ export type FeatureDetailLayoutProps = {
       should not print the same argument twice. */
   stepsTitle?: ReactNode;
   steps?: FeatureDetailCard[];
+  /**
+   * One line under the step cards, for the qualifier that belongs to all of
+   * them rather than to any one — "Everything remains editable before and after
+   * you publish." Repeated inside each card it is padding; repeated in a
+   * section of its own it is a section.
+   */
+  stepsNote?: ReactNode;
   cta: Omit<MarketingCtaProps, 'variant'>;
   backLink?: { href: string; label: string } | null;
   storyId?: string;
@@ -152,11 +170,12 @@ export default function FeatureDetailLayout({
   afterHero,
   afterProof,
   story,
-  benefits,
+  benefits = [],
   afterBenefits,
   stepsEyebrow = 'BUILT INTO THE WORKFLOW',
   stepsTitle,
   steps = [],
+  stepsNote,
   cta,
   backLink = DEFAULT_BACK_LINK,
   storyId = 'details',
@@ -232,27 +251,31 @@ export default function FeatureDetailLayout({
 
       {afterProof ?? null}
 
-      <section className="detail-story" id={storyId}>
-        <div>
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> {story.eyebrow}
-          </p>
-          <h2>{story.title}</h2>
-          <p>{story.body}</p>
-        </div>
-        <div className="detail-benefits">
-          {benefits.map((item, index) => (
-            <article key={item.title}>
-              {/* The numeral is rhythm, not information — the heading already
-                  carries the meaning and "01 Ask better questions" read aloud
-                  is noise. */}
-              <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      {story || benefits.length ? (
+        <section className="detail-story" id={storyId}>
+          {story ? (
+            <div>
+              <p className="eyebrow">
+                <span aria-hidden="true">✦</span> {story.eyebrow}
+              </p>
+              <h2>{story.title}</h2>
+              <p>{story.body}</p>
+            </div>
+          ) : null}
+          <div className="detail-benefits">
+            {benefits.map((item, index) => (
+              <article key={item.title}>
+                {/* The numeral is rhythm, not information — the heading already
+                    carries the meaning and "01 Ask better questions" read aloud
+                    is noise. */}
+                <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {afterBenefits ?? null}
 
@@ -273,12 +296,20 @@ export default function FeatureDetailLayout({
               </article>
             ))}
           </div>
+          {stepsNote ? <p className="detail-process-note">{stepsNote}</p> : null}
         </section>
       ) : null}
 
       {children}
 
-      <PageCTA title={typeof cta.title === 'string' ? cta.title : undefined} />
+      {/* The band takes strings only — it renders them into its own heading and
+          eyebrow, and a page passing a fragment gets the band's default rather
+          than markup in a place that cannot hold it. */}
+      <PageCTA
+        kicker={typeof cta.kicker === 'string' ? cta.kicker : undefined}
+        title={typeof cta.title === 'string' ? cta.title : undefined}
+        body={typeof cta.body === 'string' ? cta.body : undefined}
+      />
       <SiteFooter />
     </main>
   );

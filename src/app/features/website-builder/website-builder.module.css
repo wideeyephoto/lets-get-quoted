@@ -28,15 +28,55 @@
 
 /* ---- the publish + first-request section --------------------------------- */
 
+/* ---- the four bands this page adds under the shared layout ---------------
+ *
+ * THE GUTTER AND THE TYPE SCALE ARE HERE BECAUSE globals.css IS NOT.
+ *
+ * `.section-block` and `.section-block h2` are styled in globals.css — padding,
+ * radius, border, and a heading size — and the marketing tree deliberately does
+ * not import that sheet (714KB; see the note in src/app/layout.tsx). So every
+ * rule in it lands on nothing here: measured at 1440 these sections had 0px of
+ * padding, sat 8px from the viewport edge while the bands above them started at
+ * 88px, and their <h2> computed to 16px — the same size as the sentence under
+ * it, which is a section heading that does not read as one.
+ *
+ * The numbers are the shell's own: clamp(24px, 6vw, 104px) is what
+ * .detail-process and .detail-story pad to, so these line up with the sections
+ * the layout renders rather than approximating them. The same gap exists on the
+ * other feature pages that add .section-block children; this fixes the four on
+ * this page, which are the four it argues with. */
+
+.band {
+  padding: clamp(52px, 5.6vw, 92px) clamp(24px, 6vw, 104px);
+}
+
 .sectionHead {
   max-width: 46rem;
 }
-.sectionHead h2 {
+
+/* :global(.section-block)-PREFIXED, and both of these were losing without it.
+   The shell re-declares Tailwind's preflight inside its own scope —
+   `.root h1, .root h2, ... { font-size: inherit; font-weight: inherit;
+   letter-spacing: normal }` and `.root p { margin: 0 }`, both (0,1,1) — which
+   a bare `.sectionHead h2` and `.sectionHead > p` only TIE with, and a tie is
+   decided by source order, which the shell wins. That is why the h2 measured
+   16px: not because nothing styled it, but because the rule that did was
+   outranked by a reset. The descendant form is (0,2,1) and wins outright.
+   `.sectionHead > p`'s 0.9rem top margin had been dropped the same way since
+   the day it was written. */
+:global(.section-block) .sectionHead h2 {
+  margin: 0.6rem 0 0;
   max-width: 28ch;
+  font-size: clamp(27px, 2.7vw, 42px);
+  font-weight: 800;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
 }
-.sectionHead > p {
+:global(.section-block) .sectionHead > p {
   margin: 0.9rem 0 0;
   max-width: 58ch;
+  font-size: 16px;
+  line-height: 1.62;
 }
 
 .twoPanel {
@@ -146,13 +186,15 @@
   overflow-wrap: anywhere;
 }
 
-.ownership {
-  margin: 0;
-  padding-left: 0.8rem;
-  border-left: 2px solid var(--cedge-orange-2);
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: var(--text);
+/* One line under both panels, where two ExampleFrame notes used to hang off
+   them separately. Centred and quiet: it qualifies the pair, so it must not
+   read as a caption belonging to whichever panel it happens to sit under. */
+.exampleNote {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--muted-2);
+  text-align: center;
 }
 
 /* A control the mock only depicts. A <span>, deliberately: a real <button>
@@ -356,75 +398,6 @@
   font-weight: 700;
 }
 
-/* ---- where the trail goes next -------------------------------------------
-
-   Four names and nothing else, in place of the twelve-entry capability catalog
-   that used to close this page. Bodies were deliberately left off: a sentence
-   under each would restate the four beats directly above it.
-
-   :global(.section-block)-SCOPED, and that is load-bearing rather than tidy.
-   The flagship shell resets the elements themselves — `.root p { margin: 0 }`
-   and `.root ul, .root ol { margin: 0; padding: 0; list-style: none }`, both
-   at (0,1,1) — which outranks a lone module class at (0,1,0). The same is true
-   of `.root :global(a) { color: inherit }`, which a bare `.nextLinks a` only
-   ties with and then loses to on source order. The descendant form is (0,2,0)
-   and (0,2,1) and wins honestly, without !important. */
-
-:global(.section-block) .next {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.7rem 1.1rem;
-  margin-top: 1.75rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--line);
-}
-
-:global(.section-block) .nextLabel {
-  margin: 0;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--mute-t55, var(--mute));
-}
-
-:global(.section-block) .nextLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-:global(.section-block) .nextLinks a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45em;
-  /* 44px of target including the padding, not 44px of words. */
-  min-height: 44px;
-  padding: 0 0.95rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--bg-elevated);
-  color: var(--text);
-  font-size: 0.86rem;
-  font-weight: 650;
-  text-decoration: none;
-  transition: border-color 0.18s ease, color 0.18s ease;
-}
-
-:global(.section-block) .nextLinks a:hover {
-  border-color: rgba(255, 122, 33, 0.45);
-  color: var(--flare, #ff7a21);
-}
-
-:global(.section-block) .nextLinks a span {
-  color: var(--flare, #ff7a21);
-}
-
 /* ---- the practical questions --------------------------------------------
 
    <details>, so it works before hydration, is in the tab order for free, and
@@ -509,7 +482,9 @@
   }
   /* A media query adds no specificity, so this has to carry the same
      :global(.section-block) prefix as the base rule or it never applies. */
-  :global(.section-block) .nextLinks a {
+  :global(.section-block) .suiteLink,
+  :global(.section-block) .suiteMore a,
+  :global(.section-block) .faqMore a {
     transition: none;
   }
 }
@@ -544,72 +519,81 @@
   }
 }
 
-/* ---- where the rest of it is ---------------------------------------------
+/* ---- the suite bridge, and the two links that leave this page -------------
 
-   Cards rather than the pill row above, and the difference is the sentence.
-   `.nextLinks` is four names following one request to payment — a row of pills
-   is right for that. These eight are destinations somebody is deciding between,
-   and a decision needs the line under the name.
+   The eight-card grid that used to close the page is gone; what is left is one
+   sentence with five product names in it and a link to the rest.
 
-   The :global(.section-block) prefix is the same trick the pill row uses and
-   for the same reason: the flagship shell sets `.root :global(a) { color:
-   inherit }` at (0,2,0), which a bare `.elsewhere a` only ties with and then
-   loses to on source order. */
+   :global(.section-block)-SCOPED, and that is load-bearing rather than tidy.
+   The flagship shell sets `.root :global(a) { color: inherit }` at (0,2,0),
+   which a bare `.suiteLink` at (0,1,0) loses to outright — the links would
+   render as plain body text with no colour and no underline, which on an inline
+   link means no link at all. The descendant form is (0,2,0) and wins on source
+   order, without !important.
 
-:global(.section-block) .elsewhere {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-  gap: 0.7rem;
-  margin: 1.75rem 0 0;
-  padding: 0;
-  list-style: none;
+   INLINE, so no 44px rule applies. These are words inside a sentence, and the
+   WCAG target-size exception for inline links in a block of text is exactly
+   this case; the two standalone links below are the ones with a target. */
+
+:global(.section-block) .suiteLink {
+  color: var(--flare, #ff7a21);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+  transition: color 0.18s ease;
 }
 
-:global(.section-block) .elsewhere a {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  height: 100%;
-  /* The whole card is the target, so the 44px floor is met by the card and not
-     by the words inside it. */
+:global(.section-block) .suiteLink:hover {
+  color: var(--text);
+}
+
+:global(.section-block) .suiteLink:focus-visible {
+  outline: 2px solid var(--flare, #ff7a21);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The two "go on then" links — one under the answers, one under the suite
+   sentence. Both are a real target rather than a line of text: 44px of height
+   with the padding included, not 44px of words. */
+:global(.section-block) .suiteMore,
+:global(.section-block) .faqMore {
+  margin: 1.5rem 0 0;
+}
+
+:global(.section-block) .suiteMore a,
+:global(.section-block) .faqMore a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
   min-height: 44px;
-  padding: 0.95rem 1.05rem;
+  padding: 0 1.05rem;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 999px;
   background: var(--bg-elevated);
   color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 650;
   text-decoration: none;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.18s ease, color 0.18s ease;
 }
 
-:global(.section-block) .elsewhere a:hover {
+:global(.section-block) .suiteMore a:hover,
+:global(.section-block) .faqMore a:hover {
   border-color: rgba(255, 122, 33, 0.45);
-  background: rgba(255, 122, 33, 0.04);
+  color: var(--flare, #ff7a21);
 }
 
-:global(.section-block) .elsewhere a:focus-visible {
+:global(.section-block) .suiteMore a:focus-visible,
+:global(.section-block) .faqMore a:focus-visible {
   outline: 2px solid var(--flare, #ff7a21);
   outline-offset: 3px;
 }
 
-:global(.section-block) .elsewhere strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  font-size: 0.94rem;
-  font-weight: 800;
-}
-
-:global(.section-block) .elsewhere strong span { color: var(--flare, #ff7a21); }
-
-:global(.section-block) .elsewhere a > span {
-  color: var(--muted, rgba(255, 255, 255, 0.66));
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :global(.section-block) .elsewhere a { transition: none; }
+:global(.section-block) .suiteMore a span,
+:global(.section-block) .faqMore a span {
+  color: var(--flare, #ff7a21);
 }
 
 /* ---- the hero's theme picker, cycling ------------------------------------

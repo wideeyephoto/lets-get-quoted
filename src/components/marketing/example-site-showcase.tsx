@@ -108,8 +108,22 @@ export type ExampleSiteShowcaseProps = {
   title: React.ReactNode;
   body: React.ReactNode;
   linkLabel: string;
-  /** The still that carries the section when the video is only decoration. */
-  support: { src: string; alt: string; caption: React.ReactNode; label: string; width: number; height: number };
+  /**
+   * The still that carries the section when the video is only decoration.
+   *
+   * `caption` is optional because it is the easiest line on a section like this
+   * to leave saying what the paragraph above it has already said — which is
+   * exactly what it was doing on /features/website-builder. The label alone is
+   * enough to name the picture.
+   */
+  support: {
+    src: string;
+    alt: string;
+    caption?: React.ReactNode;
+    label: string;
+    width: number;
+    height: number;
+  };
   id?: string;
 };
 
@@ -404,7 +418,7 @@ export default function ExampleSiteShowcase({
         />
         <figcaption className={styles.supportCopy}>
           <span className={styles.supportLabel}>{support.label}</span>
-          <span>{support.caption}</span>
+          {support.caption ? <span>{support.caption}</span> : null}
         </figcaption>
       </figure>
     </section>

@@ -83,12 +83,27 @@ describe('what the section claims', () => {
     expect(PAGE_CODE).toContain('Instant website generation for contractors');
     expect(PAGE_CODE).toContain('Your complete contractor website, generated instantly.');
     expect(PAGE_CODE).toContain(
-      'Enter a few details about your business and Let’s Get Quoted creates your service pages, project gallery, trust signals and instant estimate—all connected and ready to customize.',
+      'Your service pages, project gallery, reviews and instant estimate are generated together — then everything is yours to edit.',
     );
     expect(PAGE_CODE).toContain('Visit the Lawn & Order example site ↗');
-    expect(PAGE_CODE).toContain(
-      'Service pages, project galleries, reviews and instant estimates—generated as one connected site.',
-    );
+  });
+
+  /**
+   * THE CAPTION UNDER THE STILL SAID THE PARAGRAPH AGAIN.
+   *
+   * "creates your service pages, project gallery, trust signals and instant
+   * estimate — all connected" and, forty words later, "service pages, project
+   * galleries, reviews and instant estimates — generated as one connected
+   * site". One list, twice, in one section. The label stays because it names
+   * the picture; the sentence went, and the prop is optional so a section that
+   * genuinely needs one can still have it.
+   */
+  it('does not say the same list twice', () => {
+    expect(PAGE_CODE).not.toContain('generated as one connected site');
+    expect(PAGE_CODE).toContain("label: 'Generated together'");
+    expect(PAGE_CODE).not.toMatch(/caption:/);
+    expect(SHOWCASE_CODE).toContain('caption?: React.ReactNode;');
+    expect(SHOWCASE_CODE).toContain('{support.caption ? <span>{support.caption}</span> : null}');
   });
 
   /**
@@ -103,7 +118,7 @@ describe('what the section claims', () => {
    * rather than decoration.
    */
   it('still calls the band an example, in the link if nowhere else', () => {
-    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterHero'), PAGE_CODE.indexOf('storyId='));
+    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterHero'), PAGE_CODE.indexOf('stepsEyebrow='));
     expect(band).toMatch(/\bexample\b/i);
   });
 
@@ -127,7 +142,7 @@ describe('what the section claims', () => {
   it('makes no performance claim', () => {
     // Percentages, multipliers and lead counts. Nothing on this page can
     // support one, and an invented one is the fastest way to lose the rest.
-    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterHero'), PAGE_CODE.indexOf('storyId='));
+    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterHero'), PAGE_CODE.indexOf('stepsEyebrow='));
     expect(band).not.toMatch(/\d+\s*%/);
     expect(band).not.toMatch(/\b\d+x\b/i);
     expect(band).not.toMatch(/\b(more leads|conversion|increase[sd]?|boost)\b/i);
