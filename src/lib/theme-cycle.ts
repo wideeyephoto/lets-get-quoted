@@ -103,7 +103,7 @@ export const THEME_CYCLE_STEPS: readonly ThemeCycleStep[] = AVAILABLE_TEMPLATES.
  * Long enough to read the name on the tile and see the preview settle, short
  * enough that all eight are seen by somebody who scrolls past at a normal pace.
  */
-export const DWELL_MS = 2400;
+export const DWELL_MS = 4200;
 
 export const CYCLE_MS = DWELL_MS * THEME_CYCLE_STEPS.length;
 

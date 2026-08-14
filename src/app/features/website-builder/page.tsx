@@ -171,14 +171,22 @@ export default function WebsiteBuilderPage() {
          dashboard's own component and the templates and schemes are the real
          modules, so a ninth template joins this hero on its own — which is
          exactly what a screenshot cannot do, and would go stale instead. */
-      demo={
-        <ExampleFrame
-          label="The theme picker from the builder, cycling every template — these are the real templates."
-          note="Invented company, invented range. The templates, color schemes and accents are the real ones, read from the same modules the builder uses — add a template and it appears here too. The version you can click is in the demo."
-        >
-          <HeroThemeCycler />
-        </ExampleFrame>
-      }
+      /* THE HERO SHOWS THE PICKER, NOT A FINISHED SITE.
+
+         What was here was one generated homepage with an instant estimate on
+         it — a good picture of the OUTPUT, and the output is not what this page
+         argues. The claim is that the site is yours and that changing it is
+         instant, and a still of somebody else's finished homepage says neither
+         of those. The generated site still appears twice further down, where it
+         belongs: in ExampleSiteShowcase and in the request card.
+
+         NO ExampleFrame AROUND IT, unlike the two panels lower down. That
+         wrapper exists to label a DRAWING of a screen as a drawing — an honesty
+         device for Cedar Creek Roofing, who does not exist. There is nothing to
+         disclaim here: the panel is the real theme picker rendering the real
+         /themes routes, so a caption explaining that it is only an example
+         would have been the single inaccurate thing on it. */
+      demo={<HeroThemeCycler />}
       /* SEEING THE DESIGNS IS THE STEP BEFORE SIGNING UP, so it leads.
          Nobody commits to a website they have not looked at, and this was the
          third of three buttons — behind an offer to build the thing and a jump
@@ -382,8 +390,8 @@ export default function WebsiteBuilderPage() {
           <p className="eyebrow">The last answer, and the first request</p>
           <h2 id="publish-title">Publishing is one action. What arrives after it is the point.</h2>
           <p>
-            Both panels are {SITE.company} &mdash; the same invented business as the preview
-            above, a few minutes later. Publishing goes live on the free subdomain at once;
+            Both panels are {SITE.company}, an invented company, a few minutes after
+            generating its site. Publishing goes live on the free subdomain at once;
             a custom domain is a separate switch that never blocks it.
           </p>
         </div>
@@ -438,8 +446,8 @@ export default function WebsiteBuilderPage() {
           </ExampleFrame>
 
           <ExampleFrame
-            label={`The first request the published site sends you — the same job the visitor priced in the preview above.`}
-            note="Invented request. The service-area line is derived from the towns you named as your service area; no per-request mileage is calculated."
+            label="The first request the published site sends you."
+            note="Invented company, invented range. The service-area line is derived from the towns you named as your service area; no per-request mileage is calculated."
           >
             <div className={styles.panelStack}>
               <div className={styles.rowTop}>

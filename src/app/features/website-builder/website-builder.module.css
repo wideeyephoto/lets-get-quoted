@@ -780,14 +780,19 @@
   color: var(--text);
 }
 
-/* ---- the preview that recolors ---- */
+/* ---- the preview, which is a real page ----------------------------------
+ *
+ * /themes/[id] rendered at 1280px and scaled down, so what appears is each
+ * template's DESKTOP layout. An iframe left to the column's own ~400px would
+ * render every theme's phone layout instead — real, and useless for judging a
+ * design. The scale factor is measured by a ResizeObserver in the component,
+ * because CSS cannot divide a used width by a constant. */
 
 .pickerPreview {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  background: var(--pick-bg);
-  transition: background-color 0.28s ease;
+  background: #0b0f14;
 }
 
 .previewBar {
@@ -795,106 +800,46 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid var(--pick-line);
-  background: var(--pick-surface);
-  transition: background-color 0.28s ease, border-color 0.28s ease;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elevated);
 }
 .previewHost {
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  color: var(--pick-muted);
+  color: var(--muted-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.previewSite {
-  display: grid;
+/* The window the scaled frame is seen through. aspect-ratio rather than a fixed
+   height so the box is the right shape before the iframe exists — otherwise the
+   panel would jump the moment it loaded. */
+.previewViewport {
+  position: relative;
   flex: 1 1 auto;
-  align-content: start;
-  gap: 0.5rem;
-  padding: 0.85rem 0.9rem 1rem;
-}
-
-.previewTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--pick-line);
-}
-.previewBrand {
+  min-height: 0;
   overflow: hidden;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--pick-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.previewCta {
-  flex: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  background: var(--pick-accent);
-  font-size: 0.56rem;
-  font-weight: 800;
-  /* Near-black on every accent. The eight template accents span yellow to deep
-     red, and no single light ink clears 4.5:1 across that range — a dark one
-     does, on all of them. */
-  color: #0b0f14;
-  transition: background-color 0.28s ease;
+  aspect-ratio: 128 / 94;
+  /* Visible for the moment between the panel scrolling in and the template
+     answering. Dark, because every theme's own chrome is closer to this than
+     to white, so the swap is a change of content rather than a flash. */
+  background: #0b0f14;
 }
 
-.previewHeadline {
-  margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.15;
-  color: var(--pick-ink);
-  transition: color 0.28s ease;
-}
-.previewSub {
-  margin: 0;
-  font-size: 0.68rem;
-  color: var(--pick-muted);
+.previewFrame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: top left;
+  /* Nothing to click. The panel demonstrates the templates; the one you can
+     actually use is linked below the hero. */
+  pointer-events: none;
 }
 
-.previewCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: 0.15rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--pick-accent);
-  border-radius: 9px;
-  background: var(--pick-surface);
-  transition: border-color 0.28s ease, background-color 0.28s ease;
-}
-.previewCardLabel {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--pick-accent);
-  transition: color 0.28s ease;
-}
-.previewCardRange {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--pick-ink);
-}
 
-.pickerFoot {
-  margin: 0;
-  padding: 0.5rem 1rem 0.6rem;
-  border-top: 1px solid var(--line);
-  font-size: 0.62rem;
-  letter-spacing: 0.03em;
-  color: var(--muted);
-}
 
 @media (max-width: 720px) {
   .pickerBody {
@@ -907,18 +852,13 @@
 }
 
 /* Nothing moves for somebody who asked for nothing to move: the component never
-   starts its interval, so this only has to stop the color transitions from
-   easing on the one paint the server rendered. */
+   starts its interval, so this only has to stop the highlight transitions from
+   easing on the one paint that is rendered. The real page still loads in the
+   frame — the objection to motion is the motion, not the content. */
 @media (prefers-reduced-motion: reduce) {
   .themeTile,
   .schemeSwatch,
-  .accentChip,
-  .pickerPreview,
-  .previewBar,
-  .previewCta,
-  .previewHeadline,
-  .previewCard,
-  .previewCardLabel {
+  .accentChip {
     transition: none;
   }
 }

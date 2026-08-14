@@ -125,6 +125,23 @@ describe('the hero panel', () => {
     expect(PAGE).not.toContain('styles.estimateRange');
   });
 
+  /**
+   * NO ExampleFrame AROUND IT, unlike the two panels lower down.
+   *
+   * That wrapper exists to label a DRAWING of a screen as a drawing — an
+   * honesty device for Cedar Creek Roofing, who does not exist. There is
+   * nothing to disclaim here: the panel is the real picker rendering the real
+   * /themes routes, so a caption calling it an example would have been the one
+   * inaccurate thing on it. The other two uses on this page stay.
+   */
+  it('carries no example caption, because there is nothing to disclaim', () => {
+    expect(PAGE).toContain('demo={<HeroThemeCycler />}');
+    expect(PAGE).not.toContain('The theme picker from the builder, cycling every template');
+    expect(PAGE).not.toContain('Invented company, invented range. The templates');
+    // Still used by the two drawn mocks further down.
+    expect(PAGE).toContain('<ExampleFrame');
+  });
+
   /* The mock's CSS went with it — except the window dots, which the picker's
      own preview bar reuses. A second identical pair is how the two drift. */
   it('left no dead rules behind, and kept the shared chrome', () => {
@@ -137,17 +154,61 @@ describe('the hero panel', () => {
   });
 
   /**
-   * ONE STATE CHANGE REPAINTS EVERYTHING.
+   * THE PREVIEW IS THE REAL PAGE, NOT A RECOLOURED DRAWING.
    *
-   * The claim the section makes is that rebranding is instant, so the preview
-   * has to recolor in a single pass — six custom properties on the root rather
-   * than a color threaded into each element.
+   * The first version of this was a hand-drawn mock tinted per theme, and it
+   * was quietly dishonest: eight template names above one layout in eight color
+   * schemes, when the templates differ in typography, structure and
+   * photography. Recoloring is not what changing a template does. So the panel
+   * loads /themes/[id] — the same route the builder's own preview uses — and
+   * the thing it claims to show is the thing it shows.
    */
-  it('recolors the preview through custom properties on one element', () => {
-    for (const token of ['--pick-accent', '--pick-bg', '--pick-surface', '--pick-ink', '--pick-muted', '--pick-line']) {
-      expect(COMPONENT, token).toContain(token);
-      expect(CSS, token).toContain(`var(${token})`);
-    }
+  it('loads the real themes route, carrying the theme, scheme and accent', () => {
+    expect(COMPONENT).toContain('`/themes/${step.templateId}?scheme=');
+    expect(COMPONENT).toContain('accent=');
+    expect(COMPONENT).toContain('<iframe');
+    // Keyed on the full query, so a step change reloads rather than leaving the
+    // previous template on screen under a new name.
+    expect(COMPONENT).toContain('key={previewSrc}');
+    // And no trace of the drawn mock it replaced.
+    expect(COMPONENT).not.toContain('previewHeadline');
+    expect(COMPONENT).not.toContain('Cedar Creek Roofing');
+  });
+
+  /**
+   * AN IFRAME IN A HERO, WITHOUT PAYING FOR IT AT FIRST PAINT.
+   *
+   * It is not in the server HTML and is not requested during load — it appears
+   * the first time the panel intersects the viewport. That was the whole
+   * objection to using the real route here, and this is the answer to it.
+   */
+  it('does not exist until the panel has been seen', () => {
+    expect(COMPONENT).toContain('useState(false)');
+    expect(COMPONENT).toContain('setShowFrame(true)');
+    expect(COMPONENT).toContain('showFrame && box');
+    expect(COMPONENT).toContain('loading="lazy"');
+  });
+
+  /* Rendered at 1280 and scaled, or every theme would show its PHONE layout in
+     a 400px column — real, and useless for judging a design. */
+  it('renders the desktop layout and scales it to the column', () => {
+    expect(COMPONENT).toContain('FRAME_WIDTH = 1280');
+    expect(COMPONENT).toContain('viewport.clientWidth / FRAME_WIDTH');
+    expect(COMPONENT).toContain('viewport.clientHeight / scale');
+    expect(COMPONENT).toContain('ResizeObserver');
+    expect(CSS).toContain('transform-origin: top left');
+  });
+
+  /**
+   * IT IS A PICTURE THAT HAPPENS TO BE RENDERED BY A BROWSER.
+   *
+   * Without this a keyboard user tabs off the hero into a different site's
+   * navigation, and a screen reader reads out a second page.
+   */
+  it('is not somewhere a visitor can land', () => {
+    expect(COMPONENT).toContain('tabIndex={-1}');
+    expect(COMPONENT).toContain('aria-hidden="true"');
+    expect(CSS).toContain('pointer-events: none');
   });
 
   /**
