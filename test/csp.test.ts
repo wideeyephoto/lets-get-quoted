@@ -107,6 +107,31 @@ describe('buildCsp', () => {
     }
   });
 
+  it('lets WebAssembly compile in production, or every map falls back to raster', () => {
+    /**
+     * Google's vector map renderer is a wasm module, and compiling one is
+     * governed by script-src. Without a token permitting it Chrome throws
+     * "Compiling or instantiating WebAssembly module violates the following
+     * Content Security Policy directive", the Maps SDK catches it, and logs
+     * "Attempted to load a Vector Map, but failed. Falling back to Raster."
+     *
+     * The reason this survived is the assertion directly above: development
+     * ships 'unsafe-eval', and 'unsafe-eval' permits wasm as well. So the bug
+     * cannot occur in the only environment anybody debugs in. Asserted in
+     * production specifically, because that is the only build where it bites.
+     */
+    try {
+      vi.stubEnv('NODE_ENV', 'production');
+      const script = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('script-src')!;
+      expect(script).toContain("'wasm-unsafe-eval'");
+      // And it must stay the narrow token: this permits compiling wasm, not
+      // eval() of JavaScript strings.
+      expect(script).not.toContain("'unsafe-eval'");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('lets a contractor’s own analytics tags report home, once consented', () => {
     // script-src needs no entry — the tags are injected by our own nonced
     // bundle, so 'strict-dynamic' covers them. These are only where they SEND.

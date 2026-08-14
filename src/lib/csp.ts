@@ -190,9 +190,38 @@ export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
   // can't leak into a production build by someone toggling the wrong constant.
   const devEval = process.env.NODE_ENV === 'production' ? [] : ["'unsafe-eval'"];
 
+  /**
+   * 'wasm-unsafe-eval' — THE MAPS ERROR NOBODY COULD REPRODUCE LOCALLY.
+   *
+   * Google's vector map renderer is a WebAssembly module, and compiling one is
+   * governed by script-src. With neither 'unsafe-eval' nor this token, Chrome
+   * throws
+   *
+   *   CompileError: Compiling or instantiating WebAssembly module violates
+   *   the following Content Security Policy directive
+   *
+   * the SDK catches it, and logs "Attempted to load a Vector Map, but failed.
+   * Falling back to Raster." Every map in the product silently drops to raster
+   * tiles — which also drops the Map ID's styling, so the maps come back
+   * unthemed as well as slower.
+   *
+   * IT NEVER HAPPENS IN DEVELOPMENT, which is the whole reason it survived:
+   * devEval above puts 'unsafe-eval' in the header, and 'unsafe-eval' permits
+   * wasm too. So the one environment anybody debugs in is the one environment
+   * where the bug cannot occur. Measured on all three headers rather than
+   * reasoned about — production as shipped BLOCKED, dev ALLOWED, production
+   * plus this token ALLOWED.
+   *
+   * Not gated on NODE_ENV: production is the only place it does anything, and
+   * a token that is only present where it is not needed is not a safeguard.
+   * It is also strictly narrower than 'unsafe-eval' — it permits compiling
+   * wasm and nothing else, in particular no eval() of JavaScript strings.
+   */
+  const wasm = "'wasm-unsafe-eval'";
+
   const directives: Array<[string, string[]]> = [
     ['default-src', ["'self'"]],
-    ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'", ...devEval]],
+    ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'", wasm, ...devEval]],
     // Next injects <style> tags and React writes inline style attributes, neither
     // of which a nonce covers. This is the standard, accepted compromise.
     // fonts.googleapis.com: the Google Maps SDK pulls its own stylesheets from
