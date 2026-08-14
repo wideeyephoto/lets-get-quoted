@@ -3,103 +3,33 @@
  * Same discipline as src/app/home-next/home-next.module.css: the shell, the
  * hero grid, the section blocks, the eyebrows, the buttons and the closing band
  * come from globals unchanged, and globals.css is never edited. Only the pieces
- * globals has no class for are here — the offer card, the two-gate status
- * ladder, the denial list and the rules grid.
+ * globals has no class for are here — the two-gate status ladder, the denial
+ * list and the rules grid. The hero panel has its own sheet next door
+ * (quick-stop-hero-simulation.module.css).
  *
  * Nothing below is ported from the Codex draft. The copy came from there; every
  * colour, radius and font is a destination token.
  *
- * WHY FOUR RULES BELOW ARE WRITTEN `:global(.section-block) .x` OR `.offer .x`
- * RATHER THAN `.x`. This page renders inside the flagship shell, which carries
- * `.root ul, .root ol { margin: 0; padding: 0 }` at (0,1,1) — and a lone module
- * class is (0,1,0). Measured: the rules grid's 1.25rem of padding, the offer
- * card's 0.9rem row padding and the 1.4rem above the ladder and the denial list
- * all computed to 0px, so the bordered box hugged its own text and the lists sat
- * flush against the paragraph introducing them. .faq escaped it only by being a
- * <div>. The descendant forms are (0,2,0) and win without !important. */
+ * WHY SOME RULES BELOW ARE WRITTEN `:global(.section-block) .x` RATHER THAN
+ * `.x`. This page renders inside the flagship shell, which carries `.root ul,
+ * .root ol { margin: 0; padding: 0 }` at (0,1,1) — and a lone module class is
+ * (0,1,0). Measured: the rules grid's 1.25rem of padding and the 1.4rem above
+ * the ladder and the denial list all computed to 0px, so the bordered box
+ * hugged its own text and the lists sat flush against the paragraph introducing
+ * them. .faq escaped it only by being a <div>. The descendant forms are (0,2,0)
+ * and win without !important. */
 
-/* ---- the offer, as you send it ------------------------------------------ */
-
-.offer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.offerHead {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-}
-
-.offerName {
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--text);
-  min-width: 0;
-}
-
-/* The live status, printed with the label the product actually uses. */
-.offerStatus {
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--on-accent);
-  background: var(--accent-2);
-  padding: 0.16rem 0.5rem;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.offer .offerFacts {
-  list-style: none;
-  margin: 0;
-  padding: 0.9rem 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
-  gap: 0.8rem 1rem;
-}
-.offer .offerFacts > li + li { margin-top: 0; }
-
-.fact {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.factLabel {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--muted-2);
-}
-
-.factValue {
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--text);
-}
-
-.offerNote {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.55;
-  color: var(--muted);
-}
-
-.offerNote strong {
-  color: var(--text);
-  font-weight: 700;
-}
+/* THE OFFER CARD IS GONE, and eleven rules went with it rather than being left
+ * here for classes nothing renders: .offer, .offerHead, .offerName,
+ * .offerStatus, .offerFacts, .fact, .factLabel, .factValue, .offerNote and the
+ * two overrides further down (.offer .offerFacts .factLead .factValue, and
+ * .offerName in the 620px block).
+ *
+ * It drew an offer already sent, waiting on payment — the last frame of the
+ * mechanism, in a hero belonging to people who have not been told what the
+ * mechanism is. QuickStopHeroSimulation plays the exchange instead, in its own
+ * module sheet, and the fee in it is typed by the visitor rather than quoted at
+ * them. */
 
 /* ---- the pitch, and the flow -------------------------------------------- */
 
@@ -443,21 +373,6 @@
   .pitch .promises { gap: 0.55rem 1.1rem; }
 }
 
-/* The line that stops "$145" being read as the price of the repair. A block, so
-   it cannot be mistaken for the tail of the bullet list above it. */
-.heroImportant {
-  display: block;
-  margin-top: 0.7rem;
-  max-width: 56ch;
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.55;
-  color: var(--ink-orange-1);
-}
-
-/* The lead row of the example card: the number that is actually due. */
-.offer .offerFacts .factLead .factValue { color: var(--ink-orange-1); font-size: 1.05rem; }
-
 /* ---- the status ladder -------------------------------------------------- */
 
 /* The point of this list is the two places it can stop, so the stopping points
@@ -612,7 +527,6 @@
 }
 
 @media (max-width: 720px) {
-  .offerName { font-size: 1rem; }
   .rung {
     grid-template-columns: 1fr;
     gap: 0.35rem;

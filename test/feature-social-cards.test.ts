@@ -553,16 +553,38 @@ describe('the quick stops page', () => {
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
+  /** Half the hero's copy moved into the simulation's script, so half the
+   *  claims this block guards are in there rather than on the page. */
+  const HERO_SCRIPT = readFileSync('src/app/features/quick-stops/quick-stop-hero-script.ts', 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
   it('says what the money buys in the first sentence', () => {
     // "Prepaid jobs nearby" is the one thing a Quick Stop is not. The homeowner
     // buys a PRIORITY VISIT — a place in today's route and an arrival window —
     // and the work is quoted and invoiced like any other job. The old page
     // reached its fifth section before saying so, which is a refund request and
     // a chargeback waiting to happen.
+    //
+    // THE HEADLINE NO LONGER CARRIES IT. It carries the offer — "Let customers
+    // pay you extra for a high-priority stop" — because that is the thing a
+    // contractor landing here has not been sold yet. So this pins the sentence
+    // where it MOVED to rather than where it was: the trust line under the
+    // buttons, which is on the same screen and is read before anybody presses
+    // anything. The old wording is still the page's search-facing one and is
+    // asserted below, in the metadata where it now lives.
+    expect(SRC).toContain('Let customers pay you extra for a');
+    expect(SRC).toContain('high-priority stop.');
+    expect(SRC).toContain('Service is charged separately');
+
+    // Still the title and description Google and a shared link get.
     expect(SRC).toContain('Get paid to fit nearby customers into');
     expect(SRC).toContain('today’s route.');
-    expect(SRC).toMatch(/Any service, labor or\s+parts are charged separately\./);
-    expect(SRC).toContain('It is not payment toward the service');
+
+    // And it is said a second time in the one place a HOMEOWNER would be
+    // deciding — the offer inside the hero simulation, next to the fee itself.
+    expect(HERO_SCRIPT).toContain('Service work is priced separately.');
   });
 
   it('never calls a Quick Stop a prepaid job', () => {
@@ -588,12 +610,23 @@ describe('the quick stops page', () => {
     // A single number on a page is read as the price of the thing on the page,
     // however many sentences around it say otherwise. The split gives the
     // second box no figure at all, because "priced separately" IS the fact.
-    const card = SRC.slice(SRC.indexOf('function PendingOffer'), SRC.indexOf('const LIFECYCLE'));
-    expect(card).toContain('Priority visit fee · due now');
-    expect(card).toContain('Priced and charged separately');
-    expect(card).not.toContain('Your fee');
-    expect(SRC).toContain('The priority visit fee');
-    expect(SRC).toContain('The service charge');
+    //
+    // THIS USED TO READ THE HERO'S OFFER CARD, which is gone — it printed a
+    // lone "$145" above the fold, which is the exact failure described above.
+    // The two-card split is the better version of the same distinction and is
+    // now the only one, so it is what gets pinned.
+    const split = SRC.slice(SRC.indexOf('className={styles.split}'), SRC.indexOf('splitNote'));
+    expect(split).toContain('Paid now');
+    expect(split).toContain('The priority visit fee');
+    expect(split).toContain('Priced separately');
+    expect(split).toContain('The service charge');
+    // The second box still carries no figure of its own.
+    expect(split).not.toMatch(/\$\d/);
+
+    // And the hero's number is one the VISITOR types rather than one the page
+    // quotes at them — the reason the card could go at all.
+    expect(SRC).not.toMatch(/\$145/);
+    expect(HERO_SCRIPT).not.toMatch(/\$145/);
     // "The visit fee gets you to their door. It does not pay for the service."
     // sat immediately under the two cards, restating them in prose. The cards
     // are the distinction; a sentence repeating them is the fourth time the

@@ -3,6 +3,7 @@ import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import QuickStopPanel from '@/components/quick-stop-panel';
 import { QuickStopIcon } from '@/components/quick-stop-icons';
+import QuickStopHeroSimulation from './QuickStopHeroSimulation';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   QUICK_STOP_STATUS_LABEL,
@@ -53,61 +54,6 @@ export const metadata: Metadata = {
     images: ['/features/og-quick-stops.jpg'],
   },
 };
-
-/* The offer as the contractor sends it.
- *
- * THE CARD'S JOB IS THE DISTINCTION, and it did not used to make it. "Your fee
- * · $145" beside "Visit length · about 45 min" reads as the price of the 45
- * minutes. It is not: $145 buys the priority visit and the arrival window, and
- * the work is quoted and invoiced like any other job. Two rows now, one of them
- * carrying no number at all, because "priced separately" IS the fact.
- *
- * The status chip is imported from the real lifecycle table rather than
- * retyped, so this panel cannot drift from the status a contractor actually
- * sees. It deliberately shows the moment AFTER sending and BEFORE payment —
- * "Awaiting payment" — because that gap is the entire argument of the page. */
-function PendingOffer() {
-  return (
-    <div className={styles.offer}>
-      <div className={styles.offerHead}>
-        <span className={styles.offerName}>Kitchen tap dripping · 2.1 miles off route</span>
-        <span className={styles.offerStatus}>
-          {QUICK_STOP_STATUS_LABEL.awaiting_customer_payment}
-        </span>
-      </div>
-
-      <ul className={styles.offerFacts}>
-        <li className={`${styles.fact} ${styles.factLead}`}>
-          <span className={styles.factLabel}>Priority visit fee · due now</span>
-          <span className={styles.factValue}>$145</span>
-        </li>
-        <li className={styles.fact}>
-          <span className={styles.factLabel}>Service work</span>
-          <span className={styles.factValue}>Priced and charged separately</span>
-        </li>
-        <li className={styles.fact}>
-          <span className={styles.factLabel}>Arrival window</span>
-          <span className={styles.factValue}>Today, 3:00 – 4:00 PM</span>
-        </li>
-        <li className={styles.fact}>
-          <span className={styles.factLabel}>Pay window</span>
-          <span className={styles.factValue}>{DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes</span>
-        </li>
-      </ul>
-
-      {/* The last sentence — "any diagnosis, labor, parts or repair is
-          separate" — is the fourth time the page makes that distinction, and
-          the two-card split below makes it far better than any sentence can.
-          What survives is the thing only this panel says: nothing is booked
-          yet. */}
-      <p className={styles.offerNote}>
-        <strong>Not on your calendar yet.</strong> The homeowner has{' '}
-        {DEFAULT_QUICK_STOP_PAYMENT_DEADLINE_MINS} minutes to pay the $145 priority visit fee. Once
-        it clears, the arrival window is confirmed.
-      </p>
-    </div>
-  );
-}
 
 /* The lifecycle, with the two places it stops.
  *
@@ -259,34 +205,30 @@ export default function QuickStopsPage() {
 
   return (
     <FeatureDetailLayout
-      eyebrow="New revenue from the route you already drive"
+      eyebrow="Customers pay more to be seen sooner"
       /* WHAT THE MONEY IS FOR, IN THE FIRST SENTENCE.
          This page used to be headed "Fill schedule gaps with prepaid jobs
          nearby", and "prepaid job" is the one thing a Quick Stop is not. The
          homeowner is paying for a PRIORITY VISIT — a place in today's route and
          an arrival window — and the work itself is quoted and invoiced exactly
-         as it would be on any other job. Read the old page top to bottom and
-         you reached the fifth section before anything said so.
+         as it would be on any other job.
          That is not a wording preference. A homeowner who thinks $145 covered
          the repair is a refund request, a chargeback, and a contractor standing
-         in a kitchen having an argument we caused. */
-      title={<>Get paid to fit nearby customers into <em>today’s route.</em></>}
+         in a kitchen having an argument we caused. The headline no longer
+         carries the distinction itself — it carries the OFFER, which is what
+         somebody landing here has not yet been sold — so the trust line under
+         the buttons makes it, the simulation makes it again in the homeowner's
+         own view ("Service work is priced separately"), and the two-card split
+         further down makes it at length. Three places, none of them optional. */
+      title={<>Let customers pay you extra for a <em>high-priority stop.</em></>}
       lede={
         <>
-          When a nearby homeowner wants faster service, you choose the arrival window and set a
-          Quick Stop priority fee. They pay that fee to reserve the visit. Any service, labor or
-          parts are charged separately.
+          When a customer wants to be seen sooner, reply with the fee that makes the stop worth it.
+          We show them your soonest arrival, and they can pay for priority or schedule a regular
+          visit.
         </>
       }
-      heroNote={
-        <>
-          No subscription · You approve every request · The visit fee is paid before you go
-          <strong className={styles.heroImportant}>
-            The Quick Stop fee reserves the priority visit. It is not payment toward the service
-            itself.
-          </strong>
-        </>
-      }
+      heroNote={<>You set the priority fee · Customer pays before you go · Service is charged separately</>}
       /* THE DEMO LEADS, BECAUSE THE CONCEPT IS UNFAMILIAR. Every other page
          here sells something a contractor already does by hand; this one sells
          an idea most of them have never had — a paid priority visit slotted
@@ -295,14 +237,21 @@ export default function QuickStopsPage() {
          in the wrong order. */
       primary={{ label: 'See Quick Stops in the demo', href: '/demo/quick-stops' }}
       secondary={{ label: 'See how the fee works', href: '#how-it-works' }}
-      demo={
-        <ExampleFrame
-          label="An offer you have sent, waiting on the visit fee"
-          note="Sample job and fee. The status and the pay window are the product’s real ones."
-        >
-          <PendingOffer />
-        </ExampleFrame>
-      }
+      /* THE EXCHANGE, PLAYED, RATHER THAN ITS LAST FRAME PRINTED.
+         What was here was a card of an offer already sent, parked at "awaiting
+         payment" — the END of the mechanism, shown to somebody who had not yet
+         been told what the mechanism is. And it put a lone "$145" in the hero,
+         which is the page's oldest failure mode: one number on a page is read
+         as the price of the thing on the page.
+         The simulation answers both. The fee is a number the VISITOR types, so
+         it reads as theirs to set rather than as ours to quote, and the panel
+         only shows it beside "Service work is priced separately" in the
+         homeowner's own view.
+         NO ExampleFrame, on request: no caption above the panel and no status
+         row below it. The one lower down the page keeps that convention for the
+         mock that needs it — this one invents nothing a visitor could mistake
+         for a real account, since they have just typed half of it themselves. */
+      demo={<QuickStopHeroSimulation />}
       proof={[
         {
           title: 'Route-aware',

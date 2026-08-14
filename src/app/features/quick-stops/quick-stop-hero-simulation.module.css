@@ -1,0 +1,711 @@
+/* The /features/quick-stops hero simulation.
+ *
+ * EVERYTHING IS SCOPED UNDER .sim, AND THAT IS NOT TIDINESS. The page renders
+ * inside flagship.module.css's `.root`, which re-declares Tailwind's preflight
+ * within its own scope: `.root p, .root dl, .root dd { margin: 0 }`, `.root ul,
+ * .root ol { list-style: none; padding: 0 }`, `.root button { background: none;
+ * border: 0; padding: 0 }`, `.root b, .root strong { font-weight: inherit }`,
+ * `.root small { font-size: inherit }`. Those are all (0,1,1), which a bare
+ * module class at (0,1,0) LOSES to outright — an unscoped `.send` would be a
+ * submit button with no background and no padding, and nothing about that
+ * failure is visible in the source. Every rule below is (0,2,0) or better and
+ * wins honestly.
+ *
+ * THE COLOURS ARE ROLES, and each one is measured against what sits on it:
+ *
+ *   blue    #1668e3 + white ...... the homeowner's own words        5.1:1
+ *   teal    #071f27 + #cfe6ee .... what intake made of them        11.4:1
+ *   cream   #f5f0e7 + #07131d .... the text we send the contractor 16.1:1
+ *   orange  #ff6a24 + #07131d .... the contractor's reply, and act. 6.0:1
+ *   yellow  #ffd76b on the panel .. the number, and only the number 11.9:1
+ *   mint    #50e3bd on the panel .. a progress step that is done    10.4:1
+ *
+ * Orange carries INK, not white. White on #ff6a24 is 2.9:1 and fails even the
+ * large-text threshold; the brand's own primary button gets away with it at
+ * display sizes and this panel is not display sizes. The hue is the same.
+ */
+
+.sim {
+  width: 100%;
+  /* The hero column, not the page. Wider than the /features phone because this
+     is a conversation with a form in it rather than a picture of one. */
+  max-width: 520px;
+  margin-inline: auto;
+}
+
+/* ---- the shell ---------------------------------------------------------- */
+
+.sim .panel {
+  display: flex;
+  flex-direction: column;
+  padding: 15px 15px 16px;
+  border: 1px solid rgba(126, 183, 214, 0.22);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #0b1822 0%, #071119 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 30px 70px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- who is talking ------------------------------------------------------ */
+
+.sim .head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(126, 183, 214, 0.14);
+}
+
+.sim .avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(150deg, #ff6a24, #d8471a);
+  color: #0a0603;
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.sim .who {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sim .who b {
+  font-size: 13.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: #eaf3f7;
+}
+
+.sim .who small {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #8ba3b1;
+}
+
+.sim .online {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid rgba(80, 227, 189, 0.34);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6ee7c6;
+}
+
+.sim .online i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #50e3bd;
+}
+
+/* ---- the four steps ------------------------------------------------------ */
+
+/* A rail, not a progress bar: there is no percentage here, only which of four
+   named things has happened. */
+.sim .progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 13px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim .step {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 2px solid rgba(126, 183, 214, 0.2);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #7f97a5;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.sim .stepDot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.sim .step[data-state='active'] {
+  border-top-color: rgba(255, 106, 36, 0.75);
+  color: #ffa877;
+}
+
+.sim .step[data-state='active'] .stepDot {
+  opacity: 1;
+}
+
+.sim .step[data-state='done'] {
+  border-top-color: rgba(80, 227, 189, 0.7);
+  color: #6ee7c6;
+}
+
+.sim .step[data-state='done'] .stepDot {
+  opacity: 1;
+}
+
+/* ---- the conversation ---------------------------------------------------- */
+
+/* THE RESERVE, AND IT IS MEASURED RATHER THAN GUESSED.
+ *
+ * The panel is its FINISHED height from the first paint — request, job panel,
+ * our text, the reply and the homeowner's offer — so the sections below it
+ * never move. Without it the proof strip stepped down by 87px at 1440, 68px at
+ * 1024 and 736, and 150px at 320, on top of four smaller steps as the automatic
+ * stages arrived.
+ *
+ * Three values because narrower wraps to more lines, and the numbers are the
+ * measured finished heights at the widest point of each bucket. Re-measure with
+ * _qs-verify.mjs if any stage gains a line — the check is that `proofShift` is
+ * 0 at every width. */
+.sim .thread {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-height: 692px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* It is a focus target and nothing else — see the comment on threadRef. No
+   ring: programmatic focus on a container is not a control being highlighted. */
+.sim .thread:focus {
+  outline: none;
+}
+
+.sim .row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  margin: 0;
+}
+
+.sim .row[data-side='in'],
+.sim .row[data-side='sys'] {
+  align-items: flex-start;
+}
+
+.sim .row[data-side='out'] {
+  align-items: flex-end;
+}
+
+.sim .row[data-side='full'],
+.sim .row[data-side='form'] {
+  align-items: stretch;
+}
+
+/* A message arrives all at once; nothing is typed out. An animation rather than
+   a transition, because a row is MOUNTED when it arrives and there is no
+   previous state for a transition to run from. Gated on data-armed, so the
+   server-rendered panel and the reduced-motion one never run it. */
+.sim[data-armed='true'] .row {
+  animation: qsRowIn 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes qsRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sim .meta {
+  margin: 0 3px 5px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #7d95a2;
+}
+
+/* ---- 1. the homeowner, in blue ------------------------------------------- */
+
+.sim .bubbleIn {
+  max-width: 88%;
+  margin: 0;
+  padding: 10px 14px 11px;
+  border-radius: 18px 18px 18px 6px;
+  /* 5.1:1 under #fff. The brighter blues in this family are prettier and do
+     not pass. */
+  background: #1668e3;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 10px 22px rgba(11, 62, 141, 0.34);
+}
+
+/* ---- 2. what intake made of it, in teal ---------------------------------- */
+
+.sim .job {
+  padding: 12px 14px 13px;
+  border: 1px solid rgba(88, 190, 214, 0.34);
+  border-left: 3px solid #4fc3d9;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(10, 44, 55, 0.95), rgba(7, 31, 39, 0.95));
+}
+
+.sim .jobTitle {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #6fd8e6;
+}
+
+.sim .jobSub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #eaf7fa;
+}
+
+.sim .jobFacts {
+  display: grid;
+  gap: 4px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim .jobFacts li {
+  position: relative;
+  margin: 0;
+  padding-left: 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #cfe6ee;
+}
+
+.sim .jobFacts li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4fc3d9;
+}
+
+/* ---- 3. the text we send, in cream --------------------------------------- */
+
+/* Warm paper against the panel's navy, because this one is OURS — the only
+   thing on the panel that the software itself says. */
+.sim .bubbleSys {
+  max-width: 94%;
+  padding: 11px 14px 12px;
+  border-radius: 16px 16px 16px 6px;
+  background: var(--cream, #f5f0e7);
+  color: #07131d;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+
+.sim .bubbleSys p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #07131d;
+}
+
+.sim .bubbleSys p + p {
+  margin-top: 9px;
+  font-weight: 700;
+}
+
+/* ---- 4. the form --------------------------------------------------------- */
+
+.sim .form {
+  padding: 12px 13px 13px;
+  border: 1px solid rgba(255, 106, 36, 0.38);
+  border-radius: 14px;
+  background: rgba(255, 106, 36, 0.07);
+}
+
+.sim .formLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+  color: #ffcfb4;
+}
+
+/* A grid, not a flex row with a gap. The `$` and the box are ONE control
+   visually — joined borders, no seam — and the button is a separate thing 8px
+   away. Flex made that two negative margins, and at 320px the input just shrank
+   towards nothing instead of letting the button wrap, because `min-width: 0` is
+   what stops it overflowing everywhere else. Tracks say it once. */
+.sim .field {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.sim .prefix {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  border: 1px solid rgba(126, 183, 214, 0.28);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+  font-weight: 750;
+  color: #ffd76b;
+}
+
+.sim .input {
+  /* An input carries a default `size` that is wider than a 320px panel, and
+     min-width is what stops the track honouring it. */
+  min-width: 0;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid rgba(126, 183, 214, 0.28);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.sim .input:focus-visible {
+  outline: 2px solid var(--yellow, #ffd76b);
+  outline-offset: 1px;
+}
+
+.sim .input[aria-invalid='true'] {
+  border-color: #ff9d7a;
+}
+
+.sim .send {
+  margin-left: 8px;
+  padding: 9px 15px;
+  border: 0;
+  border-radius: 10px;
+  background: #ff6a24;
+  /* Ink, not white: see the palette note at the top. */
+  color: #07131d;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.sim .send:hover {
+  background: #ff8047;
+}
+
+.sim .send:focus-visible {
+  outline: 2px solid var(--yellow, #ffd76b);
+  outline-offset: 2px;
+}
+
+.sim .hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #9db3c0;
+}
+
+/* Inline, next to the field it is about, and it says what to type rather than
+   what went wrong. */
+.sim .error {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #ffb59a;
+}
+
+/* ---- 5. the reply, in orange --------------------------------------------- */
+
+.sim .bubbleOut {
+  margin: 0;
+  padding: 9px 18px 10px;
+  border-radius: 18px 18px 6px 18px;
+  background: #ff6a24;
+  color: #07131d;
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 22px rgba(216, 71, 26, 0.32);
+}
+
+/* ---- 6. what the homeowner sees ------------------------------------------ */
+
+.sim .offer {
+  padding: 13px 15px 14px;
+  border: 1px solid rgba(168, 204, 255, 0.32);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(13, 32, 52, 0.96), rgba(8, 20, 33, 0.96));
+}
+
+.sim .offerFrom {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9dc2f5;
+}
+
+.sim .offerTitle {
+  margin: 7px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f2f8ff;
+}
+
+.sim .offerRows {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0 0;
+}
+
+.sim .offerRows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sim .offerRows dt {
+  font-size: 12px;
+  color: #b3c9dc;
+}
+
+.sim .offerRows dd {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 750;
+  text-align: right;
+  color: #eaf3fb;
+}
+
+/* The number, and it is the only thing on the panel wearing yellow. */
+.sim .offerRows .offerFee {
+  font-size: 15px;
+  font-weight: 850;
+  color: #ffd76b;
+}
+
+.sim .offerSupport {
+  margin: 11px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(168, 204, 255, 0.16);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #b8ccdd;
+}
+
+.sim .choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sim .choice {
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.sim .choice[data-tone='accept'] {
+  background: #ff6a24;
+  color: #07131d;
+}
+
+.sim .choice[data-tone='accept']:hover:not(:disabled) {
+  background: #ff8047;
+}
+
+.sim .choice[data-tone='regular'] {
+  border-color: rgba(168, 204, 255, 0.4);
+  background: rgba(168, 204, 255, 0.08);
+  color: #dceaf8;
+}
+
+.sim .choice[data-tone='regular']:hover:not(:disabled) {
+  background: rgba(168, 204, 255, 0.16);
+}
+
+.sim .choice:focus-visible {
+  outline: 2px solid var(--yellow, #ffd76b);
+  outline-offset: 2px;
+}
+
+/* Both of them, once either is pressed. The choice has been made; leaving the
+   other one live would offer a second one that does not exist. */
+.sim .choice:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* ---- 7. how it ended ----------------------------------------------------- */
+
+.sim .result {
+  margin-top: 11px;
+  padding: 10px 12px 11px;
+  border-radius: 11px;
+  border-left: 3px solid #50e3bd;
+  background: rgba(80, 227, 189, 0.1);
+}
+
+.sim .result[data-choice='regular'] {
+  border-left-color: #a8ccff;
+  background: rgba(168, 204, 255, 0.1);
+}
+
+.sim .resultTitle {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #8df0d3;
+}
+
+.sim .result[data-choice='regular'] .resultTitle {
+  color: #cbe0ff;
+}
+
+.sim .resultBody {
+  margin: 5px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #c6dbe6;
+}
+
+/* ---- pausing -------------------------------------------------------------
+ *
+ * The timers stop on their own when the panel scrolls away or the tab goes to
+ * the background; this stops the CSS that is already mid-flight with them, so a
+ * row does not finish arriving while nobody is watching. */
+
+.sim[data-paused='true'] .row {
+  animation-play-state: paused;
+}
+
+/* ---- less motion ---------------------------------------------------------
+ *
+ * The request, the job details, our text and the fee form — immediately, with
+ * no entrance. The sequence is not replayed at speed and nothing is skipped:
+ * the panel simply starts where it would otherwise pause, which is the same
+ * place the server renders it. */
+
+.sim[data-still='true'] .row {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim .row,
+  .sim .step,
+  .sim .send,
+  .sim .choice {
+    animation: none;
+    transition: none;
+  }
+  .sim[data-armed='true'] .row {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ---- narrower ------------------------------------------------------------
+ *
+ * Checked at 1024, 736, 360 and 320. The panel is fluid the whole way; what
+ * changes is the reserve (everything wraps to more lines, so the finished
+ * height grows) and the two homeowner buttons, which stop fitting side by side
+ * well before the panel does. */
+
+@media (max-width: 1100px) {
+  /* Stacked under the copy rather than beside it, so it gets the column's full
+     width instead of the hero's right-hand half. */
+  .sim {
+    max-width: 560px;
+  }
+}
+
+@media (max-width: 620px) {
+  .sim .thread {
+    min-height: 756px;
+  }
+  .sim .bubbleIn,
+  .sim .bubbleSys {
+    max-width: 100%;
+  }
+  /* "Accept priority visit" and "Schedule non-priority visit" are 21 and 28
+     characters; two columns of a 300px panel is three lines each. The hero's
+     own CTAs are NOT touched — they have their own rules and their own
+     breakpoint. */
+  .sim .choices {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .sim .panel {
+    padding: 13px 12px 14px;
+    border-radius: 18px;
+  }
+  .sim .thread {
+    min-height: 868px;
+  }
+  /* Four labels across 296px is 74px each, and "Homeowner" is 68px at 10.5px.
+     One step down keeps every one of them on a single line. */
+  .sim .step {
+    font-size: 9.5px;
+    gap: 4px;
+  }
+  /* The button drops to a row of its own: at 296px it and the field together
+     leave the box about eight characters wide. Full width once it does — a
+     96px button floating under a full-width field reads as unrelated to it. */
+  .sim .field {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+  .sim .send {
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+  }
+}
