@@ -229,3 +229,114 @@ describe('support does not float over the product', () => {
     expect(SHELL).toContain('<ThemeFab />');
   });
 });
+
+/**
+ * ONE COLOUR PER SECTION, AND IT REACHES THE RAIL.
+ *
+ * The rail's four cards each own a hue, worn by the eyebrow and the row icons
+ * and by nothing else. Two things make that quietly breakable, which is why it
+ * is pinned here rather than left to the eye:
+ *
+ * 1. The colour arrives through an INHERITED VARIABLE consumed in the fallback
+ *    slot of the base rules (`var(--section-accent, <old value>)`). Rewriting
+ *    either rule to set a colour outright takes the accent off the rail without
+ *    breaking anything a typecheck or a render test would notice.
+ * 2. `.sidenav-glabel` has a light-theme rule at (0,3,0). An accent written as
+ *    `.sidenav-group .sidenav-glabel` is (0,2,0) — it would apply in dark and
+ *    revert to grey in light, which is a bug nobody sees unless they switch
+ *    themes on the one screen it affects.
+ *
+ * Measured on the rendered rail: eyebrow/icon contrast is 5.7–10.9:1 across
+ * both themes (the rail keeps the dark chrome in Harbour, so there is one
+ * ground, not two).
+ */
+describe('the rail is colour-coded by section', () => {
+  const ACCENTS = [
+    ['work', '#ff791f'],
+    ['team', '#40c9f4'],
+    ['money', '#44e0a4'],
+    ['grow', '#b89afb'],
+  ] as const;
+
+  it('gives every group an accent and renders it as a class', () => {
+    for (const [name] of ACCENTS) {
+      expect(SHELL, name).toContain(`accent: '${name}'`);
+    }
+    // Both rails the shell draws: the signed-in one and the marketing drawer.
+    expect(SHELL.match(/sidenav-group sidenav-group--\$\{group\.accent\}/g) ?? []).toHaveLength(2);
+    // And the demo rail, which promises to mirror NAV_GROUPS.
+    for (const [name] of ACCENTS) {
+      expect(DEMO_RAIL, name).toContain(`accent: '${name}'`);
+    }
+    expect(DEMO_RAIL).toContain('sidenav-group sidenav-group--${group.accent}');
+  });
+
+  it('states the four hues as tokens, once, in both sheets', () => {
+    for (const [name, hex] of ACCENTS) {
+      for (const [sheet, css] of [['globals', GLOBALS], ['lite', LITE]] as const) {
+        expect(css, `${sheet}: --nav-${name}`).toContain(`--nav-${name}: ${hex};`);
+        expect(css, `${sheet}: .sidenav-group--${name}`).toContain(
+          `.sidenav-group--${name} { --section-accent: var(--nav-${name}); }`,
+        );
+      }
+    }
+  });
+
+  /** The two rules the accent actually rides on. Both themes, both sheets. */
+  it('reaches the eyebrow and the icons through the variable, not a new rule', () => {
+    for (const [sheet, css] of [['globals', GLOBALS], ['lite', LITE]] as const) {
+      expect(css, `${sheet}: icon`).toContain('color: var(--section-accent, var(--mute-g458));');
+      expect(css, `${sheet}: eyebrow`).toContain('color: var(--section-accent, rgba(var(--grey-3), 0.72));');
+      // The light rule hands over to the same variable, or the accent is a
+      // dark-theme-only feature.
+      expect(css, `${sheet}: eyebrow (light)`).toContain(
+        ":root[data-theme='light'] .sidenav-glabel { color: var(--section-accent, rgba(var(--grey-3), 0.85)); }",
+      );
+    }
+  });
+
+  /**
+   * Hover brightens every other icon to a grey. Inside a section that reads as
+   * the colour falling off, so the accent survives it — except on the rows
+   * already saying something in colour.
+   */
+  it('keeps the accent under the cursor, and off the two rows that own a colour', () => {
+    expect(GLOBALS).toContain(
+      ".sidenav-group .sidenav-link:not(.active):not([data-state='on']):hover .sidenav-ic {",
+    );
+  });
+
+  /**
+   * WHAT STILL OUTRANKS IT. Each of these is (0,3,0) against the (0,1,0) that
+   * carries the accent, so they win on specificity rather than on source order
+   * — moving the accent block would not change any of them.
+   */
+  it('leaves the active row, the ON rows and the locked rows alone', () => {
+    expect(GLOBALS).toContain('.sidenav-link.active .sidenav-ic { color: var(--accent); }');
+    expect(GLOBALS).toContain(".sidenav-link[data-state='on'] .sidenav-ic { color: var(--ink-green-11); }");
+    expect(GLOBALS).toContain('.sidenav-link.preview .sidenav-ic { color: var(--mute-g432); }');
+    // Schedule's active treatment is untouched: wash, left rail, ring.
+    expect(GLOBALS).toContain('box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px rgba(255, 122, 33, 0.22);');
+  });
+
+  /**
+   * The Money group had two rows wearing hues of their own — cyan on Insights,
+   * green on Cash flow — which made a four-row section read as three things.
+   * They were removed rather than left to fight the section they sit in.
+   */
+  it('lets no single row set its own icon colour inside a section', () => {
+    for (const [sheet, css] of [['globals', GLOBALS], ['lite', LITE]] as const) {
+      expect(css, `${sheet}: insights`).not.toContain("[href$='/insights'] .sidenav-ic");
+      expect(css, `${sheet}: cash-flow`).not.toContain("[href$='/cash-flow'] .sidenav-ic");
+    }
+  });
+
+  /** The labels stay neutral. Eighteen coloured words is not a rail. */
+  it('colours the icons and the eyebrow, not the link text', () => {
+    const rule = GLOBALS.slice(GLOBALS.indexOf('.sidenav-link {'), GLOBALS.indexOf('.sidenav-link:hover'));
+    expect(rule).toContain('color: rgba(var(--ink-rgb), 0.72);');
+    expect(rule).not.toContain('--section-accent');
+    // And the card itself is still the same neutral for all four.
+    expect(GLOBALS).not.toMatch(/\.sidenav-group--\w+\s*\{[^}]*background/);
+  });
+});

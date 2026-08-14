@@ -122,16 +122,22 @@ const FLOW_CLASS: Record<string, string> = {
 // rule above it — see the note at the `renderSideLink('/dashboard', …)` call.
 // This comment used to say it sat above the groups, which stopped being true
 // when it moved and is the kind of stale note that gets read as the spec.
-const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
-  { label: 'Team', hrefs: ['/dashboard/crew'] },
+//
+// `accent` is the group's hue, carried as a class rather than a style so the
+// value itself stays in globals.css — see --nav-work and the .sidenav-group--*
+// block there. Spelled out rather than derived from the label because a group
+// that ever gets a two-word name would otherwise emit a class with a space in
+// it and silently lose its accent.
+const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
+  { label: 'Work', accent: 'work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
+  { label: 'Team', accent: 'team', hrefs: ['/dashboard/crew'] },
   // Insights first, cash flow last — the group reads backwards in time. What
   // happened, what repeats, what things cost, then what the balance does next.
-  { label: 'Money', hrefs: ['/dashboard/insights', '/dashboard/recurring', '/dashboard/services', '/dashboard/cash-flow'] },
+  { label: 'Money', accent: 'money', hrefs: ['/dashboard/insights', '/dashboard/recurring', '/dashboard/services', '/dashboard/cash-flow'] },
   // Automations leads the group: it is the only row here that reaches customers
   // without somebody pressing something, so it is what the rest of Grow runs on
   // top of.
-  { label: 'Grow', hrefs: ['/dashboard/automations', '/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
+  { label: 'Grow', accent: 'grow', hrefs: ['/dashboard/automations', '/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
 ];
 
 type AccountStatus = {
@@ -984,7 +990,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <nav className="sidenav-nav" aria-label="Dashboard">
             {NAV_GROUPS.map((group) => (
-              <div className="sidenav-group" key={group.label}>
+              <div className={`sidenav-group sidenav-group--${group.accent}`} key={group.label}>
                 <p className="sidenav-glabel">{group.label}</p>
                 {group.hrefs.map((href) => renderSideLink(href))}
               </div>
@@ -1285,7 +1291,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <p className="sidenav-glabel sidenav-lockhdr"><span aria-hidden="true">✦</span> Preview everything included</p>
             )}
             {NAV_GROUPS.map((group) => (
-              <div className="sidenav-group" key={group.label}>
+              <div className={`sidenav-group sidenav-group--${group.accent}`} key={group.label}>
                 <p className="sidenav-glabel">{group.label}</p>
                 {group.hrefs.map((href) => renderAppLink(href))}
               </div>

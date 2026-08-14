@@ -46,9 +46,13 @@ type DemoItem = {
 
 // Mirrors NAV_GROUPS in app-shell.tsx. A row that sits somewhere else here would
 // be showing a prospect a product that does not exist.
-const GROUPS: { label: string; items: DemoItem[] }[] = [
+// `accent` is the group's hue and mirrors NAV_GROUPS too — a prospect looking
+// at the demo should see the same four section colors the product uses. The
+// value itself lives in globals.css, on .sidenav-group--*.
+const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
   {
     label: 'Work',
+    accent: 'work',
     items: [
       { icon: '/dashboard/leads', label: 'Leads', href: '/demo/leads' },
       { icon: '/dashboard/jobs', label: 'Jobs', href: '/demo/jobs' },
@@ -60,6 +64,7 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
   },
   {
     label: 'Team',
+    accent: 'team',
     // Hours & pay is a TAB inside Crew & Labor in the live app, not its own rail
     // row — /demo/payroll still exists and the Crew page links to it.
     items: [
@@ -68,6 +73,7 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
   },
   {
     label: 'Money',
+    accent: 'money',
     items: [
       // Same order as NAV_GROUPS in app-shell — two sidebars that drift apart
       // is the thing the demo exists not to do.
@@ -79,6 +85,7 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
   },
   {
     label: 'Grow',
+    accent: 'grow',
     items: [
       // Leads the group here too. It was a sublink under Account in both rails;
       // moving it in one and not the other is exactly the drift the note at the
@@ -212,7 +219,7 @@ export default function DemoSidebar() {
 
         <nav className="sidenav-nav" aria-label="Demo dashboard">
           {GROUPS.map((group) => (
-            <div className="sidenav-group" key={group.label}>
+            <div className={`sidenav-group sidenav-group--${group.accent}`} key={group.label}>
               <p className="sidenav-glabel">{group.label}</p>
               {group.items.map((item) => renderItem(item))}
             </div>

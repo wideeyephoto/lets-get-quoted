@@ -117,6 +117,23 @@
   /* Ink on the active nav row, which is an accent WASH rather than a solid
      accent — so --on-accent (built for solid orange) is wrong here. */
   --on-active: #fff;
+  /* THE RAIL'S FOUR SECTIONS, one hue each.
+     Work keeps the brand orange (it is the day's work, and the accent already
+     means "this wants you"); the other three step away from it so Team, Money
+     and Grow are told apart before a single label is read. Consumed ONLY
+     through --section-accent on .sidenav-group--* — never referenced by a row,
+     because the moment one item picks its own the section stops being a
+     section. See the .sidenav-group--* block.
+     No light-theme counterpart on purpose: Harbour flips the content SHEETS to
+     paper and leaves the chrome dark (--chrome is a deep navy in both themes),
+     so the rail these are drawn on never changes ground. Measured against the
+     lighter of the two grounds (#1b232e): 6.1, 8.2, 9.4 and 6.8:1 — every one
+     clears 4.5:1, which is what the 10px uppercase eyebrow needs, not just the
+     3:1 an icon does. */
+  --nav-work: #ff791f;
+  --nav-team: #40c9f4;
+  --nav-money: #44e0a4;
+  --nav-grow: #b89afb;
   --shadow-strong: rgba(0, 0, 0, 0.55);
   --shadow-soft: rgba(0, 0, 0, 0.32);
   /* The page ground, and the chrome (rail / top bar) that sits a shade apart
@@ -2201,7 +2218,16 @@ h3 {
 
 /* A leading line icon on every nav row. Sits dimmer than the label at rest and
    brightens with it on hover / active; on the accent Home pill it inverts to
-   the dark on-accent ink. */
+   the dark on-accent ink.
+   Inside a section card it takes that section's hue instead — and it takes it
+   through the FALLBACK, not through a second rule. --section-accent is only
+   ever set on .sidenav-group--*, so an icon outside one (the footer's Account,
+   the marketing drawer's ungrouped rows) resolves the fallback and is byte-for-
+   byte what it was. That matters more than tidiness here: every state that
+   overrides this colour — .active, [data-state='on'], .preview, :hover — is
+   (0,3,0) against this rule's (0,1,0), so putting the accent in a selector of
+   its own would have had to out-specify four of them to be seen at rest and
+   would then have beaten the ones it must not. */
 .sidenav-ic {
   width: 1.15rem;
   height: 1.15rem;
@@ -2211,7 +2237,7 @@ h3 {
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
-  color: var(--mute-g458);
+  color: var(--section-accent, var(--mute-g458));
   transition: color 0.15s ease;
 }
 
@@ -2345,6 +2371,33 @@ h3 {
   opacity: 0.5;
 }
 
+/* ONE HUE PER SECTION, and it is worn by exactly two things: the eyebrow and
+   the icons under it. Not the labels (eighteen coloured words is a rail nobody
+   can scan), not the card (four tinted blocks is a paint chart), not the
+   borders. The card stays the same soft neutral it has always been — the colour
+   is a mark on the section, not a fill of it.
+   Carried as ONE inherited variable rather than four rules per section, so a
+   row's colour is decided by which card it sits in and cannot be set by hand
+   somewhere else — which is what kept Insights and Cash flow off their own
+   group's hue for as long as they had bespoke rules.
+   Everything that means something OTHER than "which section" still outranks it,
+   by specificity rather than by source order: the active row's orange
+   (.sidenav-link.active .sidenav-ic), the ON ring's green
+   (.sidenav-link[data-state='on'] .sidenav-ic) and the demo rail's locked
+   preview grey are all (0,3,0) against the (0,1,0) that carries the accent. */
+.sidenav-group--work { --section-accent: var(--nav-work); }
+.sidenav-group--team { --section-accent: var(--nav-team); }
+.sidenav-group--money { --section-accent: var(--nav-money); }
+.sidenav-group--grow { --section-accent: var(--nav-grow); }
+
+/* Hover brightens the icon on every other row; inside a section it would swap
+   the hue for a grey instead, which reads as the colour falling off. So the
+   accent survives the hover — except on the two rows that are already saying
+   something with colour, which keep theirs. */
+.sidenav-group .sidenav-link:not(.active):not([data-state='on']):hover .sidenav-ic {
+  color: var(--section-accent);
+}
+
 /* Panel: each section is its own soft card so Work / Team / Money / Grow read
    as distinct blocks rather than one long list. */
 .sidenav-group {
@@ -2367,10 +2420,16 @@ h3 {
      paper. Light gets the alpha back — the same visual weight costs more
      contrast on a light ground than on a dark one.
      And 0.5 was not enough on the DARK rail either: measured 3.8:1 at 10px,
-     which is small uppercase text with letter-spacing on top. */
-  color: rgba(var(--grey-3), 0.72);
+     which is small uppercase text with letter-spacing on top.
+     A section eyebrow takes its section's hue instead — same fallback trick as
+     .sidenav-ic, and here it is load-bearing rather than merely tidy: the light
+     rule below is (0,3,0), so an accent written as `.sidenav-group .glabel`
+     (0,2,0) would have applied in dark and silently reverted to grey the moment
+     somebody switched themes. Threading it through the value means both rules
+     hand over to the same variable. */
+  color: var(--section-accent, rgba(var(--grey-3), 0.72));
 }
-:root[data-theme='light'] .sidenav-glabel { color: rgba(var(--grey-3), 0.85); }
+:root[data-theme='light'] .sidenav-glabel { color: var(--section-accent, rgba(var(--grey-3), 0.85)); }
 
 /* Account's nested sub-item (Automations) — indented and quieter than the
    parent row, with a small connector tick so it reads as a child. */
@@ -26728,63 +26787,18 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   .ins-source-win { display: none; }
 }
 
-/* Insights wears a lit icon.
-   The one row on the rail that is about looking rather than doing, so it gets a
-   colour nothing else on the rail uses. Matched on href rather than a new class
-   so the demo rail's copy (/demo/insights) lights up from the same rule — two
-   sidebars that drift apart is the thing the demo exists not to do.
-
-   The blue survives the active state on purpose: this is a signature mark, and
-   swapping it for the accent orange when you're standing on the page would mean
-   the icon you learned to look for is the one that disappears. "Where am I" is
-   still carried by the row's wash and its left bar, which is unchanged. */
-/* Colour, no bloom. This wore a neon glow and so did cash flow, and two lit
-   tubes three rows apart made the money group shout over every other group in
-   the rail — a signature only signs anything while the rest of the page is
-   quiet. The blue is doing the whole job now, which is all it was ever asked
-   to do: mark the row you look for. */
-.sidenav-link[href$='/insights'] .sidenav-ic {
-  color: #4bd9ff;
-}
-.sidenav-link[href$='/insights']:hover {
-  background: rgba(75, 217, 255, 0.1);
-}
-.sidenav-link[href$='/insights']:hover .sidenav-ic,
-.sidenav-link[href$='/insights'].active .sidenav-ic {
-  color: #9aeaff;
-}
-/* Neon cyan on white is a highlighter, so paper darkens the core to clear 3:1. */
-:root[data-theme='light'] .sidenav-link[href$='/insights'] .sidenav-ic {
-  color: #0a91c4;
-}
-
-/* Cash flow is green, and that is all it is now.
-   The bloom and the 70-second neon flicker are both gone. The flicker only
-   worked as a conceit while the glyph had a halo to dim with it — strip the
-   glow and the same keyframes are just an icon blinking, which reads as a
-   rendering fault rather than a sign.
-   Matched on href so the demo rail's copy lights the same way, and the colour
-   survives the active state, because a mark that vanishes when you stand on
-   the page is the one you stop looking for.
-   Green rather than the accent for the obvious reason: this is the money. */
-.sidenav-link[href$='/cash-flow'] .sidenav-ic {
-  color: #39e07a;
-}
-.sidenav-link[href$='/cash-flow']:hover {
-  background: rgba(57, 224, 122, 0.09);
-}
-.sidenav-link[href$='/cash-flow']:hover .sidenav-ic,
-.sidenav-link[href$='/cash-flow'].active .sidenav-ic {
-  color: #6ef2a2;
-}
-
-/* The tube green is 1.9:1 on white, so paper drops to the ink value — an icon
-   still has to clear 3:1. */
-:root[data-theme='light'] .sidenav-link[href$='/cash-flow'] .sidenav-ic,
-:root[data-theme='light'] .sidenav-link[href$='/cash-flow']:hover .sidenav-ic,
-:root[data-theme='light'] .sidenav-link[href$='/cash-flow'].active .sidenav-ic {
-  color: var(--ink-green-10);
-}
+/* INSIGHTS AND CASH FLOW GAVE THEIR SIGNATURE COLOURS BACK.
+   Each of these two rows carried a hue of its own — cyan for the numbers, green
+   for the money — matched on href, each surviving hover and the active state,
+   each with a light-theme value under it. They were the right idea in a rail
+   where nothing else was coloured. They are the wrong one in a rail where the
+   SECTION is: both sit in Money, so two of that group's four icons read as
+   mint and two did not, which says the group is three things rather than one.
+   Nothing about them is lost that the rail was using. Money's hue (--nav-money,
+   #44e0a4) is within a few points of the green cash flow already wore, both
+   rows keep the standard hover wash and the active row's orange still says
+   where you are. If a single row ever needs to be picked out again, it wants a
+   shape — a mark, a badge — not a colour that has to fight its own section. */
 
 /* Revenue breakdown: three bars on ONE scale, not a stacked bar. A stack has to
    clamp the moment costs exceed revenue, which is the month you most need to
