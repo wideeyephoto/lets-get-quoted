@@ -25,11 +25,36 @@
  * display sizes and this panel is not display sizes. The hue is the same.
  */
 
+/* THE RESERVE, AND IT IS OUTSIDE THE CARD.
+ *
+ * The height the finished panel needs is held here, on the transparent box the
+ * card floats in, and the card itself is only ever as tall as what has arrived
+ * in it. Nothing below the hero moves, and the card looks like a card.
+ *
+ * IT USED TO BE ON THE THREAD, which reserved the same space INSIDE the panel.
+ * That bought the same stability and drew a card at its finished height from
+ * the first paint — so the state the visitor actually sits in, waiting at the
+ * fee form, was a composer with 380px of empty navy under it. The pause is the
+ * point of this hero and it was the worst-looking moment in it.
+ *
+ * Centered rather than top-aligned: the hero grid centers this column against
+ * the copy, and a card pinned to the top of a box taller than itself reads as
+ * misaligned with the headline beside it. It grows from the middle out.
+ *
+ * Three values because narrower wraps to more lines. Each is the measured
+ * height of the panel in its LAST state — the offer answered, result and all —
+ * at the tallest point of its bucket, which is the narrow end. Re-measure if
+ * any stage gains a line: the check is that the top of the section below the
+ * hero is at the same y before the sequence runs and after a decision. */
 .sim {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
   /* The hero column, not the page. Wider than the /features phone because this
      is a conversation with a form in it rather than a picture of one. */
   max-width: 520px;
+  min-height: 916px;
   margin-inline: auto;
 }
 
@@ -170,25 +195,11 @@
 
 /* ---- the conversation ---------------------------------------------------- */
 
-/* THE RESERVE, AND IT IS MEASURED RATHER THAN GUESSED.
- *
- * The panel is its FINISHED height from the first paint — request, job panel,
- * our text, the reply and the homeowner's offer — so the sections below it
- * never move. Without it the section under the hero stepped down by 87px at
- * 1440, 68px at 1024 and 736, and 150px at 320, on top of four smaller steps as
- * the automatic stages arrived. (That section was the four-cell proof strip; it
- * is now the story band, which is further from the panel and no less able to
- * jump.)
- *
- * Three values because narrower wraps to more lines, and the numbers are the
- * measured finished heights at the widest point of each bucket. Re-measure if
- * any stage gains a line — the check is that the top of the section below the
- * hero is at the same y before the sequence runs and after it ends. */
+/* No reserve here — it is on `.sim`, outside the card. See the note up there. */
 .sim .thread {
   display: flex;
   flex-direction: column;
   gap: 13px;
-  min-height: 692px;
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
@@ -666,8 +677,8 @@
 }
 
 @media (max-width: 620px) {
-  .sim .thread {
-    min-height: 756px;
+  .sim {
+    min-height: 1015px;
   }
   .sim .bubbleIn,
   .sim .bubbleSys {
@@ -687,8 +698,8 @@
     padding: 13px 12px 14px;
     border-radius: 18px;
   }
-  .sim .thread {
-    min-height: 868px;
+  .sim {
+    min-height: 1137px;
   }
   /* Four labels across 296px is 74px each, and "Homeowner" is 68px at 10.5px.
      One step down keeps every one of them on a single line. */

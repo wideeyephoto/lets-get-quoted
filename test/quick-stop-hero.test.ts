@@ -213,13 +213,31 @@ describe('the stage machine', () => {
   });
 
   it('reserves the height the finished panel needs, at every width', () => {
-    // Otherwise the sections below step down five times: once per stage and
-    // again when the offer lands.
+    // Otherwise the sections below step down six times: once per stage, again
+    // when the offer lands, and again when it is answered.
     const reserves = [...CSS.matchAll(/min-height: (\d+)px/g)].map((match) => Number(match[1]));
-    expect(reserves.length, 'the thread has no reserve').toBeGreaterThanOrEqual(3);
+    expect(reserves.length, 'there is no reserve').toBeGreaterThanOrEqual(3);
     // Narrower wraps to more lines, so each reserve is at least as tall as the
     // one before it.
     expect(reserves).toEqual([...reserves].sort((a, b) => a - b));
+  });
+
+  /**
+   * AND IT IS OUTSIDE THE CARD. On the thread it reserved the same space INSIDE
+   * the panel, which drew a full-height card from the first paint — so the
+   * state the visitor sits in longest, waiting at the fee form, was a composer
+   * with 380px of empty navy under it. On `.sim` the card is only ever as tall
+   * as what has arrived and the held space is hero background.
+   */
+  it('holds that height outside the panel, not inside it', () => {
+    const sim = CSS.slice(CSS.indexOf('\n.sim {'), CSS.indexOf('/* ---- the shell'));
+    expect(sim).toMatch(/min-height: \d+px/);
+    expect(sim).toContain('justify-content: center');
+    // The thread grows with its content and nothing else.
+    const thread = CSS.slice(CSS.indexOf('.sim .thread {'), CSS.indexOf('.sim .thread:focus'));
+    expect(thread).not.toContain('min-height');
+    // Every override is on the box, not the list.
+    expect(CSS).not.toMatch(/\.sim \.thread \{[^}]*min-height/);
   });
 });
 
