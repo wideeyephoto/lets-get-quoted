@@ -750,3 +750,10 @@
 /* The number already in the customer's head, beside the one being decided. */
 .quoteAnchor { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem; margin: 0; padding: .5rem .7rem; border: 1px dashed var(--edge-t14); border-radius: 10px; font-size: .8rem; color: var(--mute-t58); }
 .quoteAnchor strong { color: var(--gold-ink); font-size: .92rem; font-weight: 800; }
+
+/* A form that fills itself in is disconcerting until something says why. Solid
+   rather than dashed, unlike .quoteAnchor above it: that one is a number
+   somebody else was shown, this one is a statement about the form you are
+   looking at. */
+.quoteRestored { margin: 0; padding: .55rem .75rem; border: 1px solid rgba(127, 224, 178, .34); border-radius: 10px; background: rgba(127, 224, 178, .07); font-size: .8rem; line-height: 1.5; color: var(--mute-t58); }
+.quoteRestored strong { display: block; color: var(--good); font-size: .84rem; font-weight: 800; }

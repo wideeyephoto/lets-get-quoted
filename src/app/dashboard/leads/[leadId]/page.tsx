@@ -121,7 +121,18 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   // Quotes collect payment through Stripe, so sending is gated on a finished
   // Stripe Connect onboarding (server enforces this too, in convertLeadAction).
   const stripeConnected = Boolean(account?.stripe_connect_id && account?.connect_onboarded);
-  const quoteSeedItems: QuoteItem[] = [{ id: 'seed-base', label: lead.project_type || '', amount: 0, kind: 'base', selected: true, recommended: false }];
+  /* THE QUOTE THAT WAS ALREADY TYPED, IF THERE IS ONE.
+     "Undo sent quote" deletes the job the quote created, and everything on the
+     form used to go with it — so fixing one price in a ten-line quote meant
+     retyping the other nine, and the cheap thing to do was leave the wrong
+     quote out there. The draft is stored on the lead by the send and refreshed
+     from the job by the undo (see LeadQuoteDraft), so this form reopens where
+     the last one left off. It seeds the fields and nothing else: every value is
+     re-validated by convertLeadAction on the next send. */
+  const quoteDraft = getLeadTriage(lead).quoteDraft ?? null;
+  const quoteSeedItems: QuoteItem[] = quoteDraft?.items?.length
+    ? quoteDraft.items
+    : [{ id: 'seed-base', label: lead.project_type || '', amount: 0, kind: 'base', selected: true, recommended: false }];
 
   // Paired path+url, never zipped by index: a photo belonging to another account
   // or one the storage API declines to sign shortens the URL list, which would
@@ -544,6 +555,18 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 stayLabel="Keep building it"
                 leaveLabel="Leave and lose it"
               />
+              {/* Said out loud, because a form that fills itself in is
+                  disconcerting if you do not know why. It also dates the quote:
+                  the owner is about to resend something they wrote earlier, and
+                  how much earlier changes whether they reread it. */}
+              {quoteDraft ? (
+                <p className={styles.quoteRestored}>
+                  {/* formatElapsedTime returns "2h" / "3 days" — the "ago" is
+                      the caller's, exactly as it is everywhere else on this page. */}
+                  <strong>Restored from the quote you sent {formatElapsedTime(quoteDraft.sentAt)} ago.</strong>{' '}
+                  Line items, hours and payment terms are as you left them — change what you need and send it again.
+                </p>
+              ) : null}
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
                 <span className="workspace-details-copy">Enter the amount and text the client their quote.</span>
@@ -576,13 +599,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
                 <QuickFillButtons label="Quick add:" targetId="estimatedHours" values={[{ label: '4 hrs', value: '4' }, { label: '8 hrs', value: '8' }, { label: '16 hrs', value: '16' }, { label: '24 hrs', value: '24' }, { label: '40 hrs', value: '40' }]} />
                 <label className={`sms-consent-check ${styles.quoteHoursCheck}`}>
-                  <input id="showHoursToClient" name="showHoursToClient" type="checkbox" />
+                  <input id="showHoursToClient" name="showHoursToClient" type="checkbox" defaultChecked={quoteDraft?.showHoursToClient ?? false} />
                   <span>
                     <strong>Show estimated hours on the client&apos;s quote</strong>
                     <small>Off by default — hours stay on your job for planning and aren&apos;t shown to the client.</small>
                   </span>
                 </label>
-                <DepositField />
+                <DepositField draft={quoteDraft} />
                 {/* One control and one sentence, from one decision — see
                     QuoteDeliveryPreview. This was a checkbox and a hardcoded
                     paragraph that ignored it. */}

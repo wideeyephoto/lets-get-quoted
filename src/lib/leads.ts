@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createJob, deleteJob, type Job } from '@/lib/jobs';
+import { createJob, deleteJob, getJob, parseQuoteItems, type Job, type QuoteItem } from '@/lib/jobs';
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 
@@ -54,6 +54,63 @@ export type LeadTriage = {
   archived?: boolean;
   declinedReason?: string | null;
   contactLog?: LeadContactEntry[];
+  /**
+   * The quote as it was last sent, so undoing it is an edit rather than a
+   * retype. See LeadQuoteDraft.
+   */
+  quoteDraft?: LeadQuoteDraft | null;
+};
+
+/**
+ * WHAT THE OWNER TYPED, KEPT AFTER THE JOB IT MADE IS DELETED.
+ *
+ * "Undo sent quote" deletes the job — it has to, because the job is what the
+ * customer was sent a link to, and leaving a half-real one behind is worse than
+ * removing it. But the quote was ten line items, a deposit percentage and a
+ * payment schedule, and all of it lived on that job. Undoing to fix one price
+ * meant typing the other nine again, so the safe correction was the expensive
+ * one and the cheap one was to leave a wrong quote out there.
+ *
+ * So the draft lives on the LEAD, which survives. It is written at send time
+ * (the form fields, which exist nowhere else afterwards) and refreshed from the
+ * job at undo time (the line items and hours, which may have been edited on the
+ * job since). Nothing here is ever shown to a customer: it is the form's
+ * opening state, and every value is re-validated on the next send.
+ *
+ * Stored inside `triage`, which is already a JSONB blob on the row, rather than
+ * in a column of its own — the column would have to land in a migration before
+ * any deploy could read it, and this needs no new schema at all.
+ */
+export type LeadQuoteDraft = {
+  items: QuoteItem[];
+  estimatedHours: number | null;
+  showHoursToClient: boolean;
+  paymentTerms: 'full' | 'deposit' | 'plan';
+  depositValue: number | null;
+  depositUnit: 'percent' | 'fixed';
+  depositTiming: 'before_schedule' | 'before_work';
+  planDepositPercent: number | null;
+  planInstallments: number | null;
+  planFrequency: 'weekly' | 'biweekly' | 'monthly';
+  planFirstDate: string | null;
+  planAllowPayInFull: boolean;
+  /** When the quote this came from was sent. Shown to the owner, not stored for logic. */
+  sentAt: string;
+};
+
+/** The shape a form-less caller gets: pay in full, nothing else assumed. */
+export const EMPTY_QUOTE_DRAFT: Omit<LeadQuoteDraft, 'items' | 'sentAt'> = {
+  estimatedHours: null,
+  showHoursToClient: false,
+  paymentTerms: 'full',
+  depositValue: null,
+  depositUnit: 'percent',
+  depositTiming: 'before_schedule',
+  planDepositPercent: null,
+  planInstallments: null,
+  planFrequency: 'monthly',
+  planFirstDate: null,
+  planAllowPayInFull: true,
 };
 
 export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_minimum', 'just_researching']);
@@ -122,6 +179,45 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
           .filter((entry): entry is LeadContactEntry => Boolean(entry) && typeof entry === 'object' && typeof entry.at === 'string' && typeof entry.label === 'string')
           .map((entry) => ({ at: entry.at, label: entry.label, ...(typeof entry.note === 'string' && entry.note ? { note: entry.note } : {}) }))
       : undefined,
+    /* PARSED HERE OR LOST EVERYWHERE.
+       This function does not read the blob, it rebuilds it — and every triage
+       write in the app is `{ ...getLeadTriage(lead), ...change }`. A field this
+       does not know about therefore survives exactly until the next snooze,
+       archive, decline or logged call, and then vanishes with no error. The
+       draft was written and read back empty for exactly that reason. */
+    quoteDraft: parseQuoteDraft(triage.quoteDraft),
+  };
+}
+
+/**
+ * The stored draft, validated rather than trusted.
+ *
+ * It seeds a form the owner is about to send to a customer, so a malformed blob
+ * must degrade to "no draft" rather than to a half-filled quote — and every
+ * value is re-validated by convertLeadAction on the next send regardless.
+ */
+function parseQuoteDraft(raw: unknown): LeadQuoteDraft | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const draft = raw as Record<string, unknown>;
+  const items = parseQuoteItems(Array.isArray(draft.items) ? draft.items : []);
+  if (!items.length) return null;
+
+  const num = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+  const terms = draft.paymentTerms;
+  return {
+    items,
+    estimatedHours: num(draft.estimatedHours),
+    showHoursToClient: draft.showHoursToClient === true,
+    paymentTerms: terms === 'deposit' || terms === 'plan' ? terms : 'full',
+    depositValue: num(draft.depositValue),
+    depositUnit: draft.depositUnit === 'fixed' ? 'fixed' : 'percent',
+    depositTiming: draft.depositTiming === 'before_work' ? 'before_work' : 'before_schedule',
+    planDepositPercent: num(draft.planDepositPercent),
+    planInstallments: num(draft.planInstallments),
+    planFrequency: draft.planFrequency === 'weekly' || draft.planFrequency === 'biweekly' ? draft.planFrequency : 'monthly',
+    planFirstDate: typeof draft.planFirstDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(draft.planFirstDate) ? draft.planFirstDate : null,
+    planAllowPayInFull: draft.planAllowPayInFull !== false,
+    sentAt: typeof draft.sentAt === 'string' ? draft.sentAt : new Date().toISOString(),
   };
 }
 
@@ -695,6 +791,14 @@ export async function convertLeadToJob(
 // its feed events, costs, invoices, schedule requests, etc. via FK
 // constraints) and puts the lead back into a pre-conversion state so the
 // quote can be redone with correct details.
+//
+// THE DETAILS COME BACK WITH IT. The job carried the line items and the hours,
+// and deleting the job used to take them with it — so correcting one price in a
+// ten-line quote meant typing the other nine again. The draft on the lead is
+// refreshed from the job on the way out (the job is the current version of
+// those two fields, since either can be edited there after sending) and merged
+// over whatever the send stored, which is everything the form asked for that
+// the job never held. See LeadQuoteDraft.
 export async function unconvertLeadFromJob(
   supabase: SupabaseClient,
   accountId: string,
@@ -704,12 +808,23 @@ export async function unconvertLeadFromJob(
   if (!lead) throw new Error('Lead not found.');
   if (!lead.converted_job) throw new Error('This lead has not been converted to a job yet.');
 
+  const triage = getLeadTriage(lead);
+  const quoteDraft = await captureQuoteDraft(supabase, accountId, lead.converted_job, triage.quoteDraft ?? null);
+
   await deleteJob(supabase, accountId, lead.converted_job);
 
   const revertedStatus: LeadStatus = lead.quote_visit ? 'contacted' : 'new';
   const { data, error } = await supabase
     .from('leads')
-    .update({ converted_job: null, status: revertedStatus, updated_at: new Date().toISOString() })
+    .update({
+      converted_job: null,
+      status: revertedStatus,
+      triage: { ...triage, quoteDraft },
+      // Kept on the lead too, so the field is filled even for a lead whose
+      // hours were only ever typed into the quote form.
+      estimated_hours: quoteDraft?.estimatedHours ?? lead.estimated_hours,
+      updated_at: new Date().toISOString(),
+    })
     .eq('account_id', accountId)
     .eq('id', leadId)
     .select('*')
@@ -717,6 +832,49 @@ export async function unconvertLeadFromJob(
 
   if (error || !data) throw error ?? new Error('Unable to undo the sent quote.');
   return data as Lead;
+}
+
+/**
+ * The quote to hand back to the form, read off the job that is about to go.
+ *
+ * BEST EFFORT, ALWAYS. This runs one step before an irreversible delete, and a
+ * failure to read it is not a reason to strand the owner with a job they asked
+ * to remove — the worst case is the form opens the way it always used to. So
+ * every failure here returns what we already had rather than throwing.
+ */
+async function captureQuoteDraft(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  stored: LeadQuoteDraft | null,
+): Promise<LeadQuoteDraft | null> {
+  let job: Job | null = null;
+  try {
+    job = await getJob(supabase, accountId, jobId);
+  } catch (error) {
+    console.error(`Quote draft not captured for job ${jobId}:`, (error as Error).message);
+    return stored;
+  }
+  if (!job) return stored;
+
+  const items = parseQuoteItems(job.quote_items ?? []);
+  // A quote with no line items at all is the legacy single-amount shape. One
+  // row carrying that amount is a better starting point than an empty builder.
+  const seeded: QuoteItem[] = items.length
+    ? items
+    : Number(job.quoted_amount) > 0
+      ? [{ id: 'restored-total', label: job.scope?.split('\n')[0]?.slice(0, 80) || 'Quoted work', amount: Number(job.quoted_amount), kind: 'base', selected: true, recommended: false }]
+      : (stored?.items ?? []);
+
+  if (!seeded.length) return stored;
+
+  return {
+    ...EMPTY_QUOTE_DRAFT,
+    ...(stored ?? {}),
+    items: seeded,
+    estimatedHours: job.estimated_hours ?? stored?.estimatedHours ?? null,
+    sentAt: stored?.sentAt ?? job.created_at ?? new Date().toISOString(),
+  };
 }
 
 export async function scheduleLeadQuoteVisit(

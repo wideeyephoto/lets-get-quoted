@@ -95,10 +95,15 @@ describe('the quote send', () => {
   });
 
   it('writes the preference down before the job exists', () => {
+    // The triage write carries the quote draft as well now, so it is a named
+    // object rather than an inline literal — see LeadQuoteDraft. What is under
+    // test is unchanged: the preference is on the row before anything can throw.
     const convert = LEAD_ACTIONS.slice(LEAD_ACTIONS.indexOf('export async function convertLeadAction('));
-    const storeAt = convert.indexOf('triage: { ...getLeadTriage(lead), messageChannel }');
+    const buildAt = convert.indexOf('const nextTriage = { ...getLeadTriage(lead), messageChannel, quoteDraft }');
+    const storeAt = convert.indexOf('.update({ triage: nextTriage,');
     const jobAt = convert.indexOf('await convertLeadToJob(');
-    expect(storeAt).toBeGreaterThan(-1);
+    expect(buildAt).toBeGreaterThan(-1);
+    expect(storeAt).toBeGreaterThan(buildAt);
     expect(jobAt).toBeGreaterThan(storeAt);
   });
 

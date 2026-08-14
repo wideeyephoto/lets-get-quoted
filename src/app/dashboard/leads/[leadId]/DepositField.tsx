@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { LeadQuoteDraft } from '@/lib/leads';
 import styles from '../leads.module.css';
 
 type Terms = 'full' | 'deposit' | 'plan';
@@ -19,8 +20,13 @@ function defaultFirstDate(): string {
 //   • Payment Plan — a deposit now + fixed, 0%-interest installments that split
 //     the SAME quote total (never more). convertLeadAction reads `paymentTerms`
 //     and the matching fields below.
-export default function DepositField() {
-  const [terms, setTerms] = useState<Terms>('full');
+//
+// `draft` reopens it on the terms the last quote was sent with. A deposit
+// percentage and an installment schedule are decisions, not typing, but they
+// are decisions the owner already made — and until the draft existed, undoing a
+// quote silently reset all three back to "pay in full".
+export default function DepositField({ draft }: { draft?: LeadQuoteDraft | null }) {
+  const [terms, setTerms] = useState<Terms>(draft?.paymentTerms ?? 'full');
 
   return (
     <div className={styles.depositField}>
@@ -52,13 +58,13 @@ export default function DepositField() {
       {terms === 'deposit' ? (
         <div className={styles.depositRow}>
           <div className={styles.depositAmount}>
-            <input name="depositValue" type="number" min="1" step="1" inputMode="decimal" placeholder="25" aria-label="Deposit amount" />
-            <select name="depositUnit" aria-label="Deposit unit" defaultValue="percent">
+            <input name="depositValue" type="number" min="1" step="1" inputMode="decimal" placeholder="25" aria-label="Deposit amount" defaultValue={draft?.depositValue ?? ''} />
+            <select name="depositUnit" aria-label="Deposit unit" defaultValue={draft?.depositUnit ?? 'percent'}>
               <option value="percent">% of quote</option>
               <option value="fixed">$ fixed</option>
             </select>
           </div>
-          <select name="depositTiming" aria-label="When the deposit is due" defaultValue="before_schedule">
+          <select name="depositTiming" aria-label="When the deposit is due" defaultValue={draft?.depositTiming ?? 'before_schedule'}>
             <option value="before_schedule">Due before scheduling</option>
             <option value="before_work">Due before work starts</option>
           </select>
@@ -71,19 +77,19 @@ export default function DepositField() {
             <label>
               <span>Deposit</span>
               <span className={styles.planInline}>
-                <input name="planDepositPercent" type="number" min="1" max="99" step="1" defaultValue="50" aria-label="Deposit percent" />
+                <input name="planDepositPercent" type="number" min="1" max="99" step="1" defaultValue={draft?.planDepositPercent ?? 50} aria-label="Deposit percent" />
                 <em>% now</em>
               </span>
             </label>
             <label>
               <span>Installments</span>
-              <input name="planInstallments" type="number" min="1" max="24" step="1" defaultValue="4" aria-label="Number of installments" />
+              <input name="planInstallments" type="number" min="1" max="24" step="1" defaultValue={draft?.planInstallments ?? 4} aria-label="Number of installments" />
             </label>
           </div>
           <div className={styles.planRow}>
             <label>
               <span>Billed</span>
-              <select name="planFrequency" defaultValue="monthly" aria-label="Installment frequency">
+              <select name="planFrequency" defaultValue={draft?.planFrequency ?? 'monthly'} aria-label="Installment frequency">
                 <option value="weekly">Weekly</option>
                 <option value="biweekly">Every 2 weeks</option>
                 <option value="monthly">Monthly</option>
@@ -91,7 +97,15 @@ export default function DepositField() {
             </label>
             <label>
               <span>First installment</span>
-              <input name="planFirstDate" type="date" defaultValue={defaultFirstDate()} aria-label="First installment date" />
+              {/* The stored date only wins while it is still in the future — a
+                  draft restored three months after it was sent would otherwise
+                  reopen with a first installment already in the past. */}
+              <input
+                name="planFirstDate"
+                type="date"
+                defaultValue={draft?.planFirstDate && draft.planFirstDate > new Date().toISOString().slice(0, 10) ? draft.planFirstDate : defaultFirstDate()}
+                aria-label="First installment date"
+              />
             </label>
           </div>
           {/* THE PLAN AS AN OFFER, NOT A REQUIREMENT.
@@ -102,7 +116,7 @@ export default function DepositField() {
               "I'll just pay it". On by default, because a contractor willing to
               be paid in four parts is rarely unwilling to be paid in one. */}
           <label className={styles.planAllowFull}>
-            <input type="checkbox" name="planAllowPayInFull" defaultChecked />
+            <input type="checkbox" name="planAllowPayInFull" defaultChecked={draft?.planAllowPayInFull ?? true} />
             <span>
               <strong>Also let them pay in full</strong>
               <small>The client chooses: the whole total in one payment, or the schedule below. Most say yes to one of the two.</small>

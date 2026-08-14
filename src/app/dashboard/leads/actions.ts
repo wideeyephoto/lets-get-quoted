@@ -10,7 +10,7 @@ import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } fro
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
-import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadQuoteDraft, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -364,16 +364,44 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const clientPhone = route.channel === 'sms' ? leadPhone : null;
   const clientEmail = route.channel === 'email' ? leadEmail : null;
 
-  // Stored on the lead before the job exists, so convertLeadToJob can hand it
-  // over — and so it survives even if everything after this throws.
-  if ((getLeadTriage(lead).messageChannel ?? 'auto') !== messageChannel) {
-    await supabase
-      .from('leads')
-      .update({ triage: { ...getLeadTriage(lead), messageChannel }, updated_at: new Date().toISOString() })
-      .eq('account_id', accountId)
-      .eq('id', leadId);
-    lead.triage = { ...getLeadTriage(lead), messageChannel };
-  }
+  /* Stored on the lead before the job exists, so convertLeadToJob can hand the
+     channel over — and so both survive even if everything after this throws.
+
+     THE DRAFT IS WRITTEN HERE AND NOWHERE ELSE, because this is the only place
+     the form's own fields exist. The line items and hours end up on the job and
+     can be read back from it; the payment terms, the deposit percentage, the
+     installment schedule and the show-hours choice are turned into payment rows
+     and never stored as the answers the owner gave. Undoing a quote used to
+     lose all of them. Unconditional — unlike the channel write above, a draft
+     that matches the last one still has to be re-stamped, because what changed
+     may be the quote rather than the preference. */
+  const quoteDraft: LeadQuoteDraft = {
+    items: quoteItems,
+    estimatedHours: estimatedHours ?? null,
+    showHoursToClient,
+    paymentTerms,
+    depositValue: Number.isFinite(depositValueRaw) && depositValueRaw > 0 ? depositValueRaw : null,
+    depositUnit,
+    depositTiming,
+    planDepositPercent: optionalAmount(formData.get('planDepositPercent')) ?? null,
+    planInstallments: optionalAmount(formData.get('planInstallments')) ?? null,
+    planFrequency: ((): 'weekly' | 'biweekly' | 'monthly' => {
+      const raw = formData.get('planFrequency');
+      return raw === 'weekly' || raw === 'biweekly' ? raw : 'monthly';
+    })(),
+    planFirstDate: /^\d{4}-\d{2}-\d{2}$/.test((formData.get('planFirstDate') ?? '').toString())
+      ? (formData.get('planFirstDate') ?? '').toString()
+      : null,
+    planAllowPayInFull: formData.get('planAllowPayInFull') !== null,
+    sentAt: new Date().toISOString(),
+  };
+  const nextTriage = { ...getLeadTriage(lead), messageChannel, quoteDraft };
+  await supabase
+    .from('leads')
+    .update({ triage: nextTriage, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+  lead.triage = nextTriage;
 
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   // Persist the itemized quote (and let it recompute quoted_amount) now that the
