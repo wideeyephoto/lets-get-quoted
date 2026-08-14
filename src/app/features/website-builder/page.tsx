@@ -3,6 +3,7 @@ import Link from 'next/link';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
+import HeroThemeCycler from './HeroThemeCycler';
 import { TRADES } from '@/lib/trades';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './website-builder.module.css';
@@ -157,60 +158,25 @@ export default function WebsiteBuilderPage() {
          instead of before it. */
       heroChips={['Every word editable', 'Your own domain', 'Instant estimate included']}
       heroNote="Published on a free subdomain the moment it is ready. Connecting a custom domain is a separate switch that never holds up going live."
+      /* THE HERO SHOWS THE PICKER, NOT A FINISHED SITE.
+
+         What was here was one generated homepage with an instant estimate on
+         it — a good picture of the OUTPUT, and the output is not what this page
+         argues. The claim is that the site is yours and that changing it is
+         instant, and a still of somebody else's finished homepage says neither
+         of those. The generated site still appears twice further down, where it
+         belongs: in ExampleSiteShowcase and in the request card.
+
+         A replica made of the real parts, not a screenshot. ThemeIcon is the
+         dashboard's own component and the templates and schemes are the real
+         modules, so a ninth template joins this hero on its own — which is
+         exactly what a screenshot cannot do, and would go stale instead. */
       demo={
         <ExampleFrame
-          label="A generated site, before a word has been edited — with the instant estimate on the front page."
-          note="Invented company, invented range. The numbers a real visitor sees come from your trade, your job description and your own pricing posture."
+          label="The theme picker from the builder, cycling every template — these are the real templates."
+          note="Invented company, invented range. The templates, color schemes and accents are the real ones, read from the same modules the builder uses — add a template and it appears here too. The version you can click is in the demo."
         >
-          <div className={styles.browser}>
-            <div className={styles.browserBar}>
-              <span className={styles.dots} aria-hidden="true">
-                <span className={styles.dot} />
-                <span className={styles.dot} />
-                <span className={styles.dot} />
-              </span>
-              <span className={styles.url}>{SITE.domain}</span>
-            </div>
-
-            <div className={styles.site}>
-              <div className={styles.siteTop}>
-                <span className={styles.siteBrand}>{SITE.company}</span>
-                <span className={styles.sitePhone}>(555) 014-2280</span>
-              </div>
-
-              <ul className={styles.siteNav}>
-                <li>Services</li>
-                <li>Service area</li>
-                <li>Reviews</li>
-                <li>FAQs</li>
-                <li>Get an estimate</li>
-              </ul>
-
-              {/* A <p>, not an <h3>: this is a picture of somebody else's page.
-                  A real heading here would put an h3 above every h2 on this
-                  page and hand a screen-reader user a heading tree in which the
-                  mock outranks the sections. */}
-              <p className={styles.siteHeadline}>
-                Roof repairs and full replacements, done when we said we&rsquo;d do them.
-              </p>
-              <p className={styles.siteSub}>Serving {SITE.area}.</p>
-
-              <div className={styles.estimate}>
-                <p className={styles.estimateTitle}>Instant estimate</p>
-                <p className={styles.estimateAsk}>What needs doing?</p>
-                <p className={styles.estimateField}>
-                  &ldquo;Shingles came off in the storm and there&rsquo;s a water stain on
-                  the bedroom ceiling. Single storey, about 1,900 sq ft.&rdquo;
-                </p>
-                <div className={styles.estimateOut}>
-                  <span className={styles.estimateLabel}>Estimated range for this job</span>
-                  <span className={styles.estimateRange}>
-                    {SITE.low} &ndash; {SITE.high}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HeroThemeCycler />
         </ExampleFrame>
       }
       /* SEEING THE DESIGNS IS THE STEP BEFORE SIGNING UP, so it leads.
