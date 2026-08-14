@@ -31,9 +31,22 @@ import { useModal } from './use-modal';
  */
 export default function UnscheduledQueue({
   count,
+  selectedJobId,
   children,
 }: {
   count: number;
+  /**
+   * The job the workbench has open, or null.
+   *
+   * PICKING A JOB CLOSES THIS PANEL. On a phone the queue is a full-screen
+   * overlay and the job's own panel is another one, so pressing "Schedule"
+   * opened the customer's details UNDERNEATH the list they were pressed from —
+   * and worse than invisible: this panel's focus trap had marked that one inert
+   * on the way in, so the thing you had just asked for was unreachable as well
+   * as unseen. Reported as "it brings up our customer's details hidden behind
+   * this page".
+   */
+  selectedJobId: string | null;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -58,14 +71,32 @@ export default function UnscheduledQueue({
     if (!isOverlay) setOpen(false);
   }, [isOverlay]);
 
-  const close = useCallback(() => setOpen(false), []);
-  useModal(open && isOverlay, panelRef, close, 'queue');
+  /**
+   * OPEN, MINUS THE TWO THINGS THAT OVERRULE IT — and derived during render
+   * rather than pushed into state by an effect, which is the whole point.
+   *
+   * An effect would close this one commit AFTER the job panel opened, and for
+   * that one commit both overlays are open at once: two focus traps, two calls
+   * to inertOutside, and each one marking the other inert. Whichever unwinds
+   * second then restores an attribute the other still wanted. Computing it here
+   * means the commit that opens the panel is the same commit that closes this,
+   * so React runs this hook's cleanup before that one's setup and the marking
+   * never overlaps.
+   *
+   * `open` itself is still cleared below, so dismissing the job panel does not
+   * bring the list back on top of the calendar.
+   */
+  const showing = open && !(isOverlay && (selectedJobId !== null || armedJob !== null));
 
-  // PICKING A JOB CLOSES THE PANEL. You have just said which job; what you need
-  // next is the calendar, and the panel is covering all of it.
+  const close = useCallback(() => setOpen(false), []);
+  useModal(showing && isOverlay, panelRef, close, 'queue');
+
+  // PICKING A JOB CLOSES THE PANEL, and it stays closed. You have just said
+  // which job; what you need next is the calendar and the job's own panel, and
+  // this is covering both. `armedJob` is the same decision made by dragging.
   useEffect(() => {
-    if (armedJob) setOpen(false);
-  }, [armedJob]);
+    if (armedJob || selectedJobId) setOpen(false);
+  }, [armedJob, selectedJobId]);
 
   /**
    * The banner and the mobile agenda both ask for this by name.
@@ -167,7 +198,7 @@ export default function UnscheduledQueue({
    * attribute. React 19 takes it as a prop and this can go.
    */
   const rootRef = useRef<HTMLDivElement>(null);
-  const hidden = isOverlay && !open;
+  const hidden = isOverlay && !showing;
   useEffect(() => {
     const node = rootRef.current;
     if (!node) return;
@@ -204,7 +235,7 @@ export default function UnscheduledQueue({
 
   return (
     <div
-      className={`sched-queue${open ? ' is-open' : ''}${collapsed && showCollapseToggle ? ' is-collapsed' : ''}`}
+      className={`sched-queue${showing ? ' is-open' : ''}${collapsed && showCollapseToggle ? ' is-collapsed' : ''}`}
       data-count={count}
       ref={rootRef}
     >
@@ -240,7 +271,7 @@ export default function UnscheduledQueue({
            permanently visible region, and calling that a modal dialog would be a
            lie to every screen reader that met it. */
         role={isOverlay ? 'dialog' : 'region'}
-        aria-modal={isOverlay && open ? true : undefined}
+        aria-modal={isOverlay && showing ? true : undefined}
         aria-label={isOverlay ? label : 'Jobs waiting for a date'}
       >
         <div className="sched-queue-head">

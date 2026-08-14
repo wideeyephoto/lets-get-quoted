@@ -354,3 +354,50 @@ describe('texting the crew is a choice, not a side effect', () => {
     expect(PANEL).toContain("${notifyCrew ? 'Newly added crew get a text.' : 'Nobody gets a text.'}");
   });
 });
+
+/**
+ * TWO FULL-SCREEN OVERLAYS, AND PRESSING A BUTTON IN ONE OPENED THE OTHER
+ * UNDERNEATH IT.
+ *
+ * Below 1280 the unscheduled-job queue is an overlay, and so is the job panel.
+ * Pressing "Schedule" on a card set the selection and left the queue exactly
+ * where it was — so the customer's details opened behind the list they had just
+ * been pressed from. Worse than invisible: the queue's focus trap marks
+ * everything outside itself inert on the way in, so the panel was unreachable
+ * as well as unseen.
+ *
+ * Reported from a phone: "clicking schedule on our unscheduled jobs in mobile
+ * view brings up our customer's details hidden behind this page".
+ */
+describe('picking a job gets the queue out of the way', () => {
+  const QUEUE = stripJs(read('src', 'app', 'dashboard', 'schedule', 'UnscheduledQueue.tsx'));
+
+  it('tells the queue which job is open', () => {
+    expect(BENCH).toContain('<UnscheduledQueue count={jobs.length} selectedJobId={selectedId}>');
+    expect(QUEUE).toContain('selectedJobId: string | null;');
+  });
+
+  /**
+   * DERIVED DURING RENDER, NOT PUSHED BY AN EFFECT — and that is the fix, not a
+   * detail of it. An effect closes one commit AFTER the panel opens, and for
+   * that commit both overlays are open: two focus traps, two walks of
+   * inertOutside, each marking the other inert, and whichever unwinds second
+   * restores an attribute the other still wanted.
+   */
+  it('closes in the same commit that opens the panel', () => {
+    expect(QUEUE).toContain(
+      'const showing = open && !(isOverlay && (selectedJobId !== null || armedJob !== null));',
+    );
+    // Everything that decides whether it is an overlay reads the derived value.
+    expect(QUEUE).toContain('useModal(showing && isOverlay, panelRef, close, \'queue\')');
+    expect(QUEUE).toContain('const hidden = isOverlay && !showing;');
+    expect(QUEUE).toContain('aria-modal={isOverlay && showing ? true : undefined}');
+    expect(QUEUE).not.toMatch(/const hidden = isOverlay && !open;/);
+  });
+
+  /** And it stays closed, so dismissing the panel does not put the list back
+   *  on top of the calendar. */
+  it('clears the latch as well', () => {
+    expect(QUEUE).toContain('if (armedJob || selectedJobId) setOpen(false);');
+  });
+});
