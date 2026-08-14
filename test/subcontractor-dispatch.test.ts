@@ -570,15 +570,46 @@ describe('the offer message', () => {
 // ============================================================================
 
 describe('offer tokens', () => {
-  it('mints an unguessable, non-sequential token and stores only its hash', () => {
+  it('mints an unguessable token and stores only its hash', () => {
     const { token, tokenHash } = createOfferToken();
-    expect(token).not.toContain('r1');
+
+    /* A SHAPE, NOT A SUBSTRING. This asserted `token` did not contain "r1" —
+       a guard against the old row-reference ids, written as a search for two
+       characters that occur in random base64url about once every sixty runs.
+       It failed that often, on a suite nothing else in it could explain.
+       32 random bytes as base64url is 43 characters, then the signature. */
+    const [secret, signature] = token.split('.');
+    expect(secret).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(signature).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(token.length).toBeGreaterThan(40);
+
     expect(tokenHash).toMatch(/^[0-9a-f]{64}$/);
     expect(tokenHash).not.toContain(token);
     // The hash is not reversible into a working link, which is the point of
     // storing it rather than the token.
     expect(token).not.toContain(tokenHash);
+  });
+
+  /**
+   * What "non-sequential" is actually worth asserting. A counter-based scheme —
+   * r1, r2, offer-1 — passes a substring check the moment you rename it, and
+   * fails every line of this.
+   */
+  it('is not a counter wearing a disguise', () => {
+    const secrets = Array.from({ length: 50 }, () => createOfferToken().token.split('.')[0]);
+
+    // A counter shares a prefix; 50 random 43-character secrets do not all
+    // start with the same character (64^-49, so this is not a coin flip).
+    expect(new Set(secrets.map((s) => s[0])).size).toBeGreaterThan(1);
+
+    // A counter sorts back into the order it was minted in. Random values do
+    // not, and the odds of 50 of them doing so by accident are 1 in 50!.
+    expect([...secrets].sort()).not.toEqual(secrets);
+
+    // And none is reachable by extending another.
+    for (const secret of secrets) {
+      expect(secrets.filter((other) => other.startsWith(secret))).toHaveLength(1);
+    }
   });
 
   it('mints a different token every time', () => {
