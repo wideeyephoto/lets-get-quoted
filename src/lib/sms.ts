@@ -38,7 +38,13 @@ import {
 // every consent rule and every ledger write in it was one file away from a
 // vendor's REST URL. What is left here is provider-neutral by construction —
 // who may be texted, what is recorded, and what happens when a send fails.
-import { isSmsProviderConfigured, sendProviderMessage, smsProviderConfig } from '@/lib/sms-provider';
+import {
+  isSmsProviderConfigured,
+  outboundSmsSuppression,
+  sendProviderMessage,
+  SIMULATED_PROVIDER_ID,
+  smsProviderConfig,
+} from '@/lib/sms-provider';
 import type { PaymentSmsEvent } from '@/lib/sms-templates';
 
 export type { PaymentSmsEvent };
@@ -525,8 +531,6 @@ export type SubcontractorSmsEvent = 'sub_offer' | 'sub_offer_covered' | 'sub_off
  * the whole flow still happen, so the feature is demonstrable, and the dashboard
  * says out loud that nothing was delivered. See DispatchSimulationNotice.
  *
- * TWO THINGS THIS DOES NOT DO, both worth knowing before you trust it.
- *
  * Reason 1 above used to claim isSmsConfigured() is TRUE under vitest and so
  * cannot be relied on alone. That has never been true: the test env sets an
  * account sid and a token but no sender, so the config predicate fails and
@@ -536,20 +540,22 @@ export type SubcontractorSmsEvent = 'sub_offer' | 'sub_offer_covered' | 'sub_off
  * evaporating. test/sms-provider.test.ts now pins that, and a setup file blocks
  * the socket outright.
  *
- * And this guards ONE sender. sendSubcontractorSms is the only caller; the
- * other ~30 send functions in this file check nothing but whether a provider is
- * configured. So a preview deploy or a staging box holding live credentials
- * WILL text real customers payment reminders, arrival texts and crew
- * assignments while dutifully simulating subcontractor offers. That is a real
- * bug, it predates the provider seam, and fixing it changes send behavior
- * across the whole application — which is why it is not riding along with a
- * refactor whose entire claim is that it changes no behavior.
+ * THIS NO LONGER GUARDS ONE SENDER. It used to, and that was the bug: this
+ * predicate had exactly one caller — sendSubcontractorSms — while the other
+ * ~30 send functions in this file checked nothing but whether a provider was
+ * configured. A preview deploy or a staging box holding live credentials would
+ * text real customers payment reminders, arrival texts and crew assignments
+ * while dutifully simulating subcontractor offers.
+ *
+ * The answer was not to add a call to twenty-nine functions and hope the
+ * thirtieth remembers. outboundSmsSuppression() now sits at the single fetch in
+ * sendProviderMessage, so nothing reaches a carrier without passing it. What is
+ * left here is the same question asked for a different purpose — the DASHBOARD
+ * needs to know, so it can say out loud that a dispatch was simulated — and it
+ * reads the one predicate rather than restating its four clauses.
  */
 export function isLiveMessagingEnvironment(): boolean {
-  if (process.env.NODE_ENV === 'test' || process.env.VITEST) return false;
-  if (process.env.VERCEL_ENV === 'preview') return false;
-  if (process.env.LGQ_DISABLE_OUTBOUND_SMS === '1') return false;
-  return isSmsConfigured();
+  return outboundSmsSuppression() === null;
 }
 
 export type SubcontractorSmsResult = {
@@ -602,19 +608,24 @@ export async function sendSubcontractorSms(params: {
     return { status: 'opted_out', providerId: null };
   }
 
+  // sendProviderMessage now refuses to reach a carrier in any of these
+  // environments on its own, so this is no longer the thing standing between a
+  // preview deploy and a real subcontractor's phone. It stays because this
+  // caller needs a distinct STATUS — the dashboard prints "simulated" from it
+  // — and because there is no reason to compose a request nobody will send.
   if (!isLiveMessagingEnvironment()) {
     // Recorded as sent with an unmistakable provider id. The row is the honest
     // account of what happened: the message was composed, addressed and would
     // have gone — and 'simulated' is not a message id anybody will mistake for
     // a Twilio SID while reading the ledger.
-    await record({ status: 'sent', provider_id: 'simulated', sent_at: new Date().toISOString() });
-    return { status: 'simulated', providerId: 'simulated' };
+    await record({ status: 'sent', provider_id: SIMULATED_PROVIDER_ID, sent_at: new Date().toISOString() });
+    return { status: 'simulated', providerId: SIMULATED_PROVIDER_ID };
   }
 
   try {
     const providerId = await sendProviderMessage(normalized, params.body);
     await record({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() });
-    return { status: 'sent', providerId };
+    return { status: providerId === SIMULATED_PROVIDER_ID ? 'simulated' : 'sent', providerId };
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'SMS delivery failed.';
     await record({ status: 'failed', error_reason: reason });

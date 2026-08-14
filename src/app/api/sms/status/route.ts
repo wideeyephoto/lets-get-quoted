@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { hasSignatureHeader, validateWebhookSignature } from '@/lib/sms-provider';
+import { hasSignatureHeader, SIMULATED_PROVIDER_ID, validateWebhookSignature } from '@/lib/sms-provider';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 
 export const runtime = 'nodejs';
@@ -23,13 +23,13 @@ export async function POST(request: Request) {
   const providerId = String(data.get('MessageSid') || '');
   const providerStatus = String(data.get('MessageStatus') || '');
 
-  // 'simulated' is the provider id every simulated dispatch writes (see
-  // sendSubcontractorSms). provider_id carries no unique constraint, so a
-  // callback that happened to arrive with that MessageSid would mark EVERY
-  // simulated row in the database as failed in one statement. The sentinel was
-  // argued safe on the grounds that no real SID looks like that; nothing
-  // enforced it. Now something does.
-  if (providerId === 'simulated') return new NextResponse(null, { status: 204 });
+  // The provider id every suppressed send writes — which since the off switch
+  // moved to sendProviderMessage is any sender, not just dispatch. provider_id
+  // carries no unique constraint, so a callback that happened to arrive with
+  // that MessageSid would mark EVERY simulated row in the database as failed in
+  // one statement. The sentinel was argued safe on the grounds that no real SID
+  // looks like that; nothing enforced it. Now something does.
+  if (providerId === SIMULATED_PROVIDER_ID) return new NextResponse(null, { status: 204 });
 
   // Providers retry status callbacks that come back as an error, and a retry
   // here would just repeat the same update — harmless, but the failure still

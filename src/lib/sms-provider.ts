@@ -279,8 +279,63 @@ function xmlSid(raw: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+// -- the off switch ------------------------------------------------------------
+
+/**
+ * The provider id written whenever a message was composed and addressed but
+ * deliberately not delivered.
+ *
+ * Not a real SID and not mistakable for one while reading the ledger, which is
+ * the whole reason it is a word. /api/sms/status refuses callbacks carrying it,
+ * because provider_id has no unique constraint and one spoofed callback would
+ * otherwise mark every simulated row in the database as failed.
+ */
+export const SIMULATED_PROVIDER_ID = 'simulated';
+
+export type SmsSuppression = 'not-configured' | 'test' | 'preview' | 'switched-off';
+
+/**
+ * Why outbound SMS must not leave this process right now, or null to send.
+ *
+ * WHY THIS LIVES HERE AND NOT IN THE SENDERS. It used to be one predicate,
+ * `isLiveMessagingEnvironment`, consulted by exactly one of the thirty-odd send
+ * functions — sendSubcontractorSms. The other twenty-nine checked only whether
+ * a provider was configured, so a preview deploy or a staging box holding live
+ * credentials WOULD text real customers payment reminders, arrival texts and
+ * crew assignments while dutifully simulating subcontractor offers. The switch
+ * read like a kill switch and covered about three percent of the sending.
+ *
+ * A guard that every caller has to remember is not a guard. This one sits at
+ * the single fetch instead, so the thirty-first sender is covered on the day it
+ * is written and by somebody who has never heard of this comment.
+ *
+ * ORDER IS DELIBERATE. `not-configured` is tested first and stays a throw,
+ * because that is the ordinary local case and twenty-nine callers already
+ * record it as a failure — turning it into a silent success would rewrite the
+ * meaning of every one of those rows. The three below it are the opposite
+ * situation: credentials that exist and work, and must not be used.
+ */
+export function outboundSmsSuppression(): SmsSuppression | null {
+  if (!smsProviderConfig()) return 'not-configured';
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) return 'test';
+  if (process.env.VERCEL_ENV === 'preview') return 'preview';
+  if (process.env.LGQ_DISABLE_OUTBOUND_SMS === '1') return 'switched-off';
+  return null;
+}
+
 /** The one egress point in the application. */
 export async function sendProviderMessage(to: string, body: string): Promise<string> {
+  const suppressed = outboundSmsSuppression();
+  if (suppressed === 'not-configured') throw new Error('SMS provider is not configured.');
+  if (suppressed) {
+    // Composed, addressed, and going nowhere. Returning the sentinel rather
+    // than throwing keeps the caller's ledger row honest: the message was
+    // built and would have gone, which is a different fact from the provider
+    // rejecting it, and the two must not land in the same column.
+    console.info(`Outbound SMS suppressed (${suppressed}).`);
+    return SIMULATED_PROVIDER_ID;
+  }
+
   const config = smsProviderConfig();
   if (!config) throw new Error('SMS provider is not configured.');
   const request = buildSendRequest(config, to, body);

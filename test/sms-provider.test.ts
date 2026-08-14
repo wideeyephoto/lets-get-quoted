@@ -7,13 +7,16 @@ import {
   configuredSmsProviders,
   hasSignatureHeader,
   isSmsProviderConfigured,
+  outboundSmsSuppression,
   parseSendResponse,
+  sendProviderMessage,
+  SIMULATED_PROVIDER_ID,
   smsProviderConfig,
   smsProviderSummary,
   validateWebhookSignature,
   type SmsProviderConfig,
 } from '@/lib/sms-provider';
-import { isSmsConfigured } from '@/lib/sms';
+import { isLiveMessagingEnvironment, isSmsConfigured } from '@/lib/sms';
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 const stripJs = (source: string) =>
@@ -59,13 +62,13 @@ function noProviders() {
 
 describe('the suite cannot text anybody', () => {
   /**
-   * The single most important assertion in this file.
+   * Belt one of three, and the weakest of them.
    *
-   * ~30 send functions check nothing but whether a provider is configured, so
-   * this predicate — not the isLiveMessagingEnvironment ladder, which guards
-   * one sender — is what stands between a test run and a real phone. It is
-   * currently false only because vitest.config.ts omits a sender, which is a
-   * one-line edit away from being untrue.
+   * This is only false because vitest.config.ts omits a sender, which is a
+   * one-line edit away from being untrue — so it is asserted, but it is no
+   * longer what the suite relies on. Below it: outboundSmsSuppression refuses
+   * to send under VITEST even with working credentials, and the setup file
+   * blocks the socket outright.
    */
   it('has no sender configured, so isSmsConfigured() is false', () => {
     expect(isSmsConfigured()).toBe(false);
@@ -81,6 +84,102 @@ describe('the suite cannot text anybody', () => {
     // A data: URL exercises the passthrough without opening a socket.
     const response = await fetch('data:text/plain,not-a-provider');
     expect(await response.text()).toBe('not-a-provider');
+  });
+});
+
+/**
+ * THE OFF SWITCH, WHICH USED TO GUARD ONE SENDER IN THIRTY.
+ *
+ * isLiveMessagingEnvironment had exactly one caller — sendSubcontractorSms —
+ * while the other ~30 send functions checked nothing but whether a provider was
+ * configured. A preview deploy or a staging box holding live credentials would
+ * text real customers payment reminders, arrival texts and crew assignments
+ * while dutifully simulating subcontractor offers. It read like a kill switch
+ * and covered about three percent of the sending.
+ *
+ * EVERY CASE BELOW STUBS CREDENTIALS THAT WORK. That is the whole point: "is a
+ * provider configured" and "may this deployment text a real phone" are
+ * different questions, and the gap between them is where the bug lived. The
+ * last test in the block proves the difference is real by letting one through.
+ */
+describe('the outbound off switch', () => {
+  const live = () => {
+    useTwilio();
+    vi.stubEnv('VITEST', '');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '');
+  };
+
+  it('sits at the single egress point, not in the callers', () => {
+    const PROVIDER = stripJs(read('src', 'lib', 'sms-provider.ts'));
+    // The suppression is read before the fetch, in the same function.
+    const send = PROVIDER.slice(PROVIDER.indexOf('export async function sendProviderMessage'));
+    expect(send.indexOf('outboundSmsSuppression()')).toBeGreaterThanOrEqual(0);
+    expect(send.indexOf('outboundSmsSuppression()')).toBeLessThan(send.indexOf('await fetch('));
+    // And sms.ts no longer keeps a second copy of the ladder.
+    const SMS = stripJs(read('src', 'lib', 'sms.ts'));
+    expect(SMS).toContain('return outboundSmsSuppression() === null;');
+    expect(SMS).not.toContain("process.env.LGQ_DISABLE_OUTBOUND_SMS === '1'");
+  });
+
+  it('still throws when there is no provider at all, which is the local case', async () => {
+    noProviders();
+    expect(outboundSmsSuppression()).toBe('not-configured');
+    await expect(sendProviderMessage('+15551230000', 'hi')).rejects.toThrow(/not configured/i);
+  });
+
+  /**
+   * ORDER MATTERS, AND THIS IS WHY not-configured IS TESTED FIRST IN THE CODE.
+   *
+   * Twenty-nine callers already record an unconfigured provider as a delivery
+   * FAILURE. Turning that into a silent success would rewrite the meaning of
+   * every one of those rows — so the ordinary local case keeps throwing, and
+   * only the three deliberate switches simulate.
+   */
+  it('reports the reason rather than a bare boolean', () => {
+    live();
+    expect(outboundSmsSuppression()).toBeNull();
+    vi.stubEnv('VERCEL_ENV', 'preview');
+    expect(outboundSmsSuppression()).toBe('preview');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '1');
+    expect(outboundSmsSuppression()).toBe('switched-off');
+    vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '');
+    vi.stubEnv('VITEST', '1');
+    expect(outboundSmsSuppression()).toBe('test');
+  });
+
+  for (const [name, apply] of [
+    ['a preview deploy', () => vi.stubEnv('VERCEL_ENV', 'preview')],
+    ['the explicit off switch', () => vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '1')],
+    ['a test run', () => vi.stubEnv('VITEST', '1')],
+  ] as const) {
+    it(`sends nothing from ${name}, even holding working credentials`, async () => {
+      live();
+      apply();
+      const spy = vi.spyOn(globalThis, 'fetch');
+      await expect(sendProviderMessage('+15551230000', 'hi')).resolves.toBe(SIMULATED_PROVIDER_ID);
+      expect(spy).not.toHaveBeenCalled();
+      expect(isLiveMessagingEnvironment()).toBe(false);
+      spy.mockRestore();
+    });
+  }
+
+  /**
+   * THE CONTROL, and the reason the three above are not vacuous.
+   *
+   * Same credentials, nothing suppressing: it goes straight for the socket. If
+   * this ever stopped reaching the network the tests above would still pass
+   * while asserting nothing, because a function that never sends trivially
+   * never sends from preview.
+   */
+  it('really does reach for the network when nothing is suppressing it', async () => {
+    live();
+    expect(isLiveMessagingEnvironment()).toBe(true);
+    // The suite's own socket guard is what stops it here — proof that the
+    // suppression, not the absence of an opportunity, is doing the work above.
+    await expect(sendProviderMessage('+15551230000', 'hi')).rejects.toThrow(/Blocked/);
   });
 });
 
