@@ -107,3 +107,52 @@ describe('the narrow-screen grid collapses actually fire', () => {
     expect(block).not.toContain('\n  .form-grid,');
   });
 });
+
+/**
+ * TURNING IT ON HAD NO VISIBLE EFFECT, AND THEN HANDED YOU A BUTTON.
+ *
+ * updateWeatherSettingsAction was the only action in its directory with no
+ * revalidatePath, so pressing "Turn it on" wrote weather_alerts_enabled = true
+ * and re-rendered the route from cache — which still said false. Measured
+ * against a real account: the column flipped and twenty-five seconds later the
+ * card on screen was still the off card, offering to turn it on.
+ *
+ * Reported as "I turned it on, it froze for ten seconds, then it just has this
+ * manual check weather button now" — the button being the enabled panel,
+ * reached by reloading, which was the only thing that produced a fresh render.
+ */
+describe('turning the forecast on', () => {
+  const ACTIONS = read('src', 'app', 'dashboard', 'schedule', 'weather-actions.ts');
+  const PANEL = read('src', 'app', 'dashboard', 'schedule', 'WeatherPanel.tsx');
+  const SETTINGS = read('src', 'app', 'dashboard', 'schedule', 'settings', 'page.tsx');
+
+  it('revalidates the page it just changed', () => {
+    expect(ACTIONS).toContain("revalidatePath('/dashboard/schedule/settings')");
+    // The calendar reads the same setting.
+    expect(ACTIONS).toContain("revalidatePath('/dashboard/schedule')");
+  });
+
+  it('comes back with the flag that means "just now"', () => {
+    expect(ACTIONS).toContain("redirect('/dashboard/schedule/settings?weather=on#weather-panel')");
+    expect(SETTINGS).toContain("justEnabled={searchParams?.weather === 'on'}");
+    expect(PANEL).toContain('justEnabled?: boolean;');
+  });
+
+  /**
+   * The first check runs itself, because being handed another button is not
+   * being turned on. Only then: checking on every render would be two requests
+   * to a free public service per location every time somebody opens their
+   * settings, which is what the on-demand design exists to avoid.
+   */
+  it('runs the first check itself, once, and only then', () => {
+    expect(PANEL).toContain('if (!justEnabled || !enabled || autoChecked.current) return;');
+    expect(PANEL).toContain('autoChecked.current = true;');
+    // A ref rather than state: an effect runs twice under strict mode in
+    // development, and this one costs a network round trip.
+    expect(PANEL).toContain('const autoChecked = useRef(false);');
+  });
+
+  it('says what it is doing while it does it', () => {
+    expect(PANEL).toContain('Reading the forecast for every day you have work booked.');
+  });
+});

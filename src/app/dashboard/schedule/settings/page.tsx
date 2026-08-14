@@ -29,7 +29,14 @@ export const metadata = { title: 'Schedule settings' };
  * The map does NOT come with them. It is a route tool, it is about work that is
  * already booked, and it belongs beside the calendar it annotates.
  */
-export default async function ScheduleSettingsPage() {
+export default async function ScheduleSettingsPage({
+  searchParams,
+}: {
+  /* `?weather=on` is set by updateWeatherSettingsAction's redirect and means
+     "they pressed Turn it on a moment ago", which is the one moment the panel
+     fetches a forecast without being asked. */
+  searchParams?: { weather?: string };
+}) {
   const { supabase, accountId } = await requireOwnerContext();
 
   const now = new Date();
@@ -120,7 +127,11 @@ export default async function ScheduleSettingsPage() {
         workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
       />
 
-      <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
+      <WeatherPanel
+        enabled={weather.enabled}
+        profile={weather.sensitivity.label}
+        justEnabled={searchParams?.weather === 'on'}
+      />
 
       <div className="sched-settings-row">
         <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />

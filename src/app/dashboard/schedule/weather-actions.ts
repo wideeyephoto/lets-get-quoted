@@ -1,5 +1,7 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { draftCustomerMessage, RISK_LABEL, type Assessment } from '@/lib/weather';
 import { jobsAtRisk, weatherSettings } from '@/lib/weather-data';
@@ -61,6 +63,24 @@ export async function weatherRisksAction(): Promise<{ enabled: boolean; profile:
   };
 }
 
+/**
+ * Turning it on.
+ *
+ * THE WRITE WAS LANDING AND THE PAGE WAS NOT MOVING. This action had no
+ * revalidatePath — the only one in this directory without one — so pressing
+ * "Turn it on" saved `weather_alerts_enabled = true` and then re-rendered the
+ * route from cache, which still said false. Measured against a real account:
+ * the column flipped, and twenty-five seconds later the card on screen was
+ * still the off card offering to turn it on. Reported as "I turned it on, it
+ * froze for ten seconds, and then it just has this manual button now" — the
+ * button they ended up looking at was the enabled panel, arrived at by
+ * reloading, which is the only thing that got them a fresh render.
+ *
+ * The redirect is what tells the panel it has just been switched on, so it can
+ * run the first check itself instead of handing back another button. Checking
+ * is still on demand everywhere else: two requests to a free public service per
+ * location is not something to spend on every page load.
+ */
 export async function updateWeatherSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const profile = String(formData.get('weatherProfile') ?? '').trim();
@@ -76,4 +96,8 @@ export async function updateWeatherSettingsAction(formData: FormData) {
       weather_profile: profile || null,
     })
     .eq('id', accountId);
+
+  revalidatePath('/dashboard/schedule/settings');
+  revalidatePath('/dashboard/schedule');
+  redirect('/dashboard/schedule/settings?weather=on#weather-panel');
 }

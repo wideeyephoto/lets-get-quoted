@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { SENSITIVITIES } from '@/lib/weather';
 import { updateWeatherSettingsAction, weatherRisksAction, type WeatherRiskView } from './weather-actions';
 
@@ -26,7 +26,25 @@ function formatDay(value: string): string {
  * service per location, and a contractor opening their schedule forty times a
  * day shouldn't spend that.
  */
-export default function WeatherPanel({ enabled, profile }: { enabled: boolean; profile: string }) {
+export default function WeatherPanel({
+  enabled,
+  profile,
+  justEnabled = false,
+}: {
+  enabled: boolean;
+  profile: string;
+  /**
+   * True on the one render that follows pressing "Turn it on".
+   *
+   * WHY A FLAG AND NOT "CHECK WHEN ENABLED". Turning a feature on and being
+   * handed another button to press is not turning it on — but checking on every
+   * render would mean two requests to a free public service per location every
+   * time somebody opens their schedule settings, which is the thing the
+   * on-demand design exists to avoid. This is the one moment they have actually
+   * asked for a forecast, so it is the one moment it fetches by itself.
+   */
+  justEnabled?: boolean;
+}) {
   const [state, setState] = useState<{ checked: boolean; risks: WeatherRiskView[] }>({ checked: false, risks: [] });
   const [copied, setCopied] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -37,6 +55,18 @@ export default function WeatherPanel({ enabled, profile }: { enabled: boolean; p
       setState({ checked: true, risks: result.risks });
     });
   }
+
+  // Once, and never twice: an effect runs a second time under React's strict
+  // double-invoke in development, and this one costs a network round trip.
+  const autoChecked = useRef(false);
+  useEffect(() => {
+    if (!justEnabled || !enabled || autoChecked.current) return;
+    autoChecked.current = true;
+    check();
+    // check() is stable enough for this — it only closes over setState and the
+    // transition starter, both of which React guarantees are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justEnabled, enabled]);
 
   if (!enabled) {
     return (
@@ -80,7 +110,7 @@ export default function WeatherPanel({ enabled, profile }: { enabled: boolean; p
   }
 
   return (
-    <section className="panel workspace-section-card">
+    <section className="panel workspace-section-card" id="weather-panel">
       <div className="section-heading workspace-section-heading compact-heading">
         <p className="eyebrow">Weather · {profile}</p>
         <h2>Days that look wrong</h2>
@@ -89,7 +119,9 @@ export default function WeatherPanel({ enabled, profile }: { enabled: boolean; p
       {!state.checked ? (
         <>
           <p className="workspace-details-copy" style={{ marginTop: 0 }}>
-            Checks the next two weeks of scheduled work against the forecast.
+            {pending
+              ? 'Reading the forecast for every day you have work booked. Takes a few seconds.'
+              : 'Checks the next two weeks of scheduled work against the forecast.'}
           </p>
           <button type="button" className="btn secondary" onClick={check} disabled={pending}>
             {pending ? 'Checking…' : 'Check the forecast'}
