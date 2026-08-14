@@ -9,6 +9,8 @@ import ConfirmActionButton from '../../jobs/[id]/ConfirmActionButton';
 import { listPortalLinks } from '@/lib/client-portal-data';
 import { revokeClientPortalAction } from './portal-actions';
 
+export const metadata = { title: 'Client' };
+
 const STATUS_LABEL: Record<JobStatus, string> = {
   new_lead: 'New',
   in_progress: 'In progress',

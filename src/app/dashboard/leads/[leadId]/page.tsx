@@ -29,6 +29,8 @@ import SendQuoteForm from './SendQuoteForm';
 import StripeQuoteGate from './StripeQuoteGate';
 import styles from '../leads.module.css';
 
+export const metadata = { title: 'Lead' };
+
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
   const normalized = address.replace(/\s+/g, ' ').trim();

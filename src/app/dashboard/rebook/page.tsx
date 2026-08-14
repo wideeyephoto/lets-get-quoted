@@ -2,6 +2,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import { listRebookCandidates, resolveRebookContext, REBOOK_DAY_OPTIONS, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import RebookScreen from './RebookScreen';
 
+export const metadata = { title: 'Rebook' };
+
 /**
  * Past customers due to be asked again, for a signed-in owner.
  *

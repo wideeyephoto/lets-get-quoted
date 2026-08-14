@@ -3,6 +3,8 @@ import { getSiteGallery } from '@/lib/site-images';
 import { getOrCreateSite, withPublicContact } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 
+export const metadata = { title: 'Website preview' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function SitePreviewPage() {

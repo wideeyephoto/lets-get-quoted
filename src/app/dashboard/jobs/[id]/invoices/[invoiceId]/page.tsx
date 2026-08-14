@@ -11,6 +11,8 @@ import {
 import SaveButton from '@/components/save-button';
 import DeleteInvoiceButton from './DeleteInvoiceButton';
 
+export const metadata = { title: 'Invoice' };
+
 const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',
   sent: 'Sent',

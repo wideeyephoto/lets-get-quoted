@@ -3,6 +3,8 @@ import { groupRuns } from '@/lib/message-context';
 import DemoInbox, { type DemoThreadView } from './DemoInbox';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
+export const metadata = { title: 'Messages — Live Demo' };
+
 export const dynamic = 'force-dynamic';
 
 function hoursAgo(hours: number): string {

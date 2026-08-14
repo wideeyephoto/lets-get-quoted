@@ -8,6 +8,8 @@ import { todayKeyOf } from '@/lib/job-queue';
 import JobsWorkspace from '@/app/dashboard/jobs/JobsWorkspace';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
+export const metadata = { title: 'Jobs — Live Demo' };
+
 export const dynamic = 'force-dynamic';
 
 /**

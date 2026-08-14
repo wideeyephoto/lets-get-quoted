@@ -3,6 +3,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import FinanceReports from '../settings/FinanceReports';
 
+export const metadata = { title: 'Financial reports' };
+
 /**
  * Financial reports, on their own page.
  *

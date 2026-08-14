@@ -14,6 +14,8 @@ import { SEED_TRADES } from '@/lib/subcontractor-form';
 import { createRequestAction } from '../../subcontractor-actions';
 import styles from '../../dispatch.module.css';
 
+export const metadata = { title: 'New subcontractor request' };
+
 // Step one of two: WHAT the job is.
 //
 // Recipients are chosen on the next screen, not this one, and that split is

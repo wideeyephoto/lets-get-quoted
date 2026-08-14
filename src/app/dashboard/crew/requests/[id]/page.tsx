@@ -27,6 +27,8 @@ import { cancelRequestAction, chooseSubcontractorAction, reopenRequestAction, se
 import RecipientPicker, { type Recipient } from './RecipientPicker';
 import styles from '../../dispatch.module.css';
 
+export const metadata = { title: 'Subcontractor request' };
+
 // One request: what was asked, who was asked, and where every one of them got to.
 //
 // Two states, one page. Before anything is sent it is the composer's second half

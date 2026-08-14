@@ -13,6 +13,8 @@ import {
 import { replyToSupportCaseAction } from '../actions';
 import styles from '../help.module.css';
 
+export const metadata = { title: 'Help request' };
+
 /**
  * One request, and the conversation on it.
  *

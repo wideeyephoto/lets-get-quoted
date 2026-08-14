@@ -19,6 +19,8 @@ import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, n
 import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
 import AutomationLink from '@/components/automation-link';
 
+export const metadata = { title: 'Jobs' };
+
 // Compact "Aug 3" / "Aug 3 · 9:00 AM" label for a job's scheduled date, parsed
 // off the date parts so a date-only value never shifts a day by timezone.
 function formatScheduledLabel(dateIso: string, time: string | null): string {

@@ -29,6 +29,8 @@ import TimeClockCard from './TimeClockCard';
 import AddPersonMenu from './AddPersonMenu';
 import styles from './crew.module.css';
 
+export const metadata = { title: 'Crew & Labor' };
+
 // Crew & subcontractors — the people who do the work, whoever employs them.
 //
 // FOUR SECTIONS, and the fourth is the one that changed what this page is. It

@@ -9,6 +9,8 @@ import type { CrewMember } from '@/lib/crew';
 import { DEMO_CREW } from '@/lib/demo-data';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
+export const metadata = { title: 'Payroll — Live Demo' };
+
 export const dynamic = 'force-dynamic';
 
 // Fictional hours logged by each active crew member this pay period, split

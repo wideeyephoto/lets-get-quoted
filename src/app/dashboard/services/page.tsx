@@ -8,6 +8,8 @@ import SaveButton from '@/components/save-button';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { createServiceAction, updateServiceAction, setServiceActiveAction, deleteServiceAction } from './actions';
 
+export const metadata = { title: 'Price book' };
+
 export default async function ServicesPage({ searchParams }: { searchParams: { status?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   const services = await listServices(supabase, accountId);

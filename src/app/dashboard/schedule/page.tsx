@@ -30,6 +30,8 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import BookingRequests from './BookingRequests';
 import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
 
+export const metadata = { title: 'Schedule' };
+
 function parseMonthParam(month?: string): { year: number; monthIndex: number } {
   if (month && /^\d{4}-\d{2}$/.test(month)) {
     const [y, m] = month.split('-').map(Number);

@@ -5,6 +5,8 @@ import { googleReviewUrl } from '@/lib/review-routing';
 import { getSiteContent } from '@/lib/site-content';
 import ReviewsScreen from './ReviewsScreen';
 
+export const metadata = { title: 'Reviews' };
+
 /**
  * Reputation and feedback, for a signed-in owner.
  *

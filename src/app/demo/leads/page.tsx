@@ -1,5 +1,7 @@
 import DemoLeadsScreen from './DemoLeadsScreen';
 
+export const metadata = { title: 'Leads — Live Demo' };
+
 export const dynamic = 'force-dynamic';
 
 // The screen itself is in DemoLeadsScreen, because /demo/leads/[leadId] renders

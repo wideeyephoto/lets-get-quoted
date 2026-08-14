@@ -4,6 +4,8 @@ import { formatJobSchedule, formatMoney, formatPercent, type JobStatus } from '@
 import { DEMO_JOBS, getDemoCosts, getDemoMargin, getDemoPayments } from '@/lib/demo-data';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
+export const metadata = { title: 'Job — Live Demo' };
+
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<JobStatus, string> = {

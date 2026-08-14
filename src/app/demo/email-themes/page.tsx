@@ -1,5 +1,7 @@
 import EmailThemeSection from '@/app/dashboard/marketing/EmailThemeSection';
 
+export const metadata = { title: 'Email themes — Live Demo' };
+
 export default function DemoEmailThemesPage() {
   return (
     <main className="wide-shell workspace-shell">

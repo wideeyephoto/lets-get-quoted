@@ -35,6 +35,8 @@ import { arrivalSettingsFromAccount, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLA
 import { getActiveTrackingByJob } from '@/lib/job-tracking';
 import { formatJobSchedule } from '@/lib/jobs';
 
+export const metadata = { title: 'Plan my day' };
+
 export const dynamic = 'force-dynamic';
 
 function dayLabel(dateKey: string): string {

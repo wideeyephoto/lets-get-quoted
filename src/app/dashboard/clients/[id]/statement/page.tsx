@@ -6,6 +6,8 @@ import { formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import PrintButton from './PrintButton';
 
+export const metadata = { title: 'Client statement' };
+
 function fmtDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }

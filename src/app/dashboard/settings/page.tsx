@@ -30,6 +30,8 @@ import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
 import { formatMoney } from '@/lib/jobs';
 
+export const metadata = { title: 'Account' };
+
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }

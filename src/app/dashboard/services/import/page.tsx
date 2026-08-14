@@ -3,6 +3,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import SmartImport from '@/components/smart-import';
 import { analyzeServicesImport, previewServicesImport, commitServicesImport } from './actions';
 
+export const metadata = { title: 'Import your services' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function ImportServicesPage() {

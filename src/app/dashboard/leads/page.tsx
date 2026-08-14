@@ -14,6 +14,8 @@ import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } 
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
 
+export const metadata = { title: 'Leads' };
+
 
 export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();

@@ -5,6 +5,8 @@ import { getJob, parseQuoteItems, formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import PrintButton from '@/components/print-button';
 
+export const metadata = { title: 'Quote' };
+
 export default async function QuotePrintPage({ params }: { params: { id: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   const job = await getJob(supabase, accountId, params.id);

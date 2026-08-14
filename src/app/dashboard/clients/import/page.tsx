@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import ClientImport from './ClientImport';
 
+export const metadata = { title: 'Import customers' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function ImportClientsPage() {

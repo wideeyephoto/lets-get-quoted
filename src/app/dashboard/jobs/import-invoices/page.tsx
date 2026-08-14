@@ -4,6 +4,8 @@ import SmartImport from '@/components/smart-import';
 import { financialImportReady } from '@/lib/invoice-import';
 import { analyzeInvoicesImport, previewInvoicesImport, commitInvoicesImport } from './actions';
 
+export const metadata = { title: 'Import invoices' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function ImportInvoicesPage() {

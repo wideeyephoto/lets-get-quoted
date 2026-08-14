@@ -12,6 +12,8 @@ import {
 import { openSupportCaseAction } from './actions';
 import styles from './help.module.css';
 
+export const metadata = { title: 'Help' };
+
 /**
  * Help — where a contractor asks us something and can see what happened next.
  *

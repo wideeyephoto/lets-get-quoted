@@ -3,6 +3,8 @@ import { expireStaleLeads } from '@/lib/leads';
 import { buildDashboardHome } from '@/lib/dashboard-home-data';
 import DashboardHomeScreen from './DashboardHomeScreen';
 
+export const metadata = { title: 'Dashboard' };
+
 /**
  * The dashboard home, for a signed-in owner.
  *

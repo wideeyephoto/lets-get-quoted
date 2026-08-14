@@ -127,6 +127,8 @@ import {
   normalizeClientChannelPreference,
 } from '@/lib/client-channel';
 
+export const metadata = { title: 'Job' };
+
 export default async function JobDetailPage({
   params,
   searchParams,

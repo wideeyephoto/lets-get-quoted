@@ -3,6 +3,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import SmartImport from '@/components/smart-import';
 import { analyzeJobsImport, previewJobsImport, commitJobsImport } from './actions';
 
+export const metadata = { title: 'Import jobs' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function ImportJobsPage() {

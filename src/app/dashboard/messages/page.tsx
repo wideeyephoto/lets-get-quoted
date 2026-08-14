@@ -18,6 +18,8 @@ import AddAsCustomer from './AddAsCustomer';
 import ScrollToLatest from './ScrollToLatest';
 import SaveButton from '@/components/save-button';
 
+export const metadata = { title: 'Messages' };
+
 function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }

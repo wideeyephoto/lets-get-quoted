@@ -4,6 +4,8 @@ import ServiceIcon from '@/lib/templates/ServiceIcon';
 import PriceBookStats from '@/components/price-book-stats';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
+export const metadata = { title: 'Price book — Live Demo' };
+
 export const dynamic = 'force-dynamic';
 
 function demoService(

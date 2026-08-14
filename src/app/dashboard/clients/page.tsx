@@ -9,6 +9,8 @@ import { listDuplicateDismissals } from '@/lib/client-duplicates-data';
 import { dismissDuplicateGroupAction, mergeClientsAction } from './actions';
 import ClientsScreen from './ClientsScreen';
 
+export const metadata = { title: 'Clients' };
+
 /**
  * The customer book, for a signed-in owner.
  *
