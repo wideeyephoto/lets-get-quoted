@@ -6,6 +6,7 @@ import type { JobDetailDto } from '@/lib/job-detail';
 import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
+import { mapEmptyNote, scopePinsToFilter } from '@/lib/map-pin-scope';
 import ActionIcon from '@/components/action-icon';
 import RecordPhotos from '../RecordPhotos';
 import {
@@ -95,6 +96,25 @@ export default function JobSmoothieView({
     return sortQueue(filtered, sort, todayKey);
   }, [jobs, stage, query, sort, todayKey]);
 
+  /**
+   * THE STAGE CHIPS DID NOT REACH THE MAP — AND THIS IS THE DEFAULT VIEW.
+   *
+   * JobsWorkspace scopes the pins it hands out, but off ITS status filter, which
+   * is the toolbar on the other five layouts. Smoothie has its own chips and its
+   * own search, holds them in its own state, and passed the pins straight to the
+   * map. So the fix that made the jobs map obey a filter never applied to the
+   * view most people are looking at: "Complete 53 of 86" in the queue, "Map 27"
+   * on the pane switch beside it, unmoved.
+   *
+   * Same rule as the leads queue, from the same place. See lib/map-pin-scope.
+   */
+  const queueFiltered = stage !== 'all' || query.trim() !== '';
+  const shownJobIds = useMemo(() => new Set(shown.map((job) => job.id)), [shown]);
+  const scopedPins = useMemo(
+    () => scopePinsToFilter(mapPins, 'job', shownJobIds, queueFiltered),
+    [mapPins, shownJobIds, queueFiltered],
+  );
+
   // Opens on the head of the QUEUE, not on jobs[0]. "Soonest first" puts
   // tomorrow's work at the top and finished work at the bottom, so jobs[0] is
   // routinely a long way down it — the pane showed one job while the orange row
@@ -117,7 +137,7 @@ export default function JobSmoothieView({
 
   // Only the work: scheduled and unscheduled jobs. A lead pin belongs to the
   // leads page and is one legend click away — see PinMap's initialHidden.
-  const jobPinCount = useMemo(() => mapPins.filter((pin) => pin.kind !== 'lead').length, [mapPins]);
+  const jobPinCount = useMemo(() => scopedPins.filter((pin) => pin.kind !== 'lead').length, [scopedPins]);
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
   const mapCount = visiblePins ?? jobPinCount;
 
@@ -348,14 +368,19 @@ export default function JobSmoothieView({
             <div className={styles.mapPane}>
               <div className={styles.mapHead}>
                 <h2 className={styles.paneTitle}>Where the work is</h2>
+                {/* The standing note describes the UNFILTERED map, and stopped
+                    being true the moment the map started obeying the chips. */}
                 <p className={styles.mapNote}>
-                  Booked and unbooked jobs. Leads are switched off — turn them on in the legend.
+                  {queueFiltered
+                    ? 'The jobs matching your filter. Clear it to see every booked and unbooked job.'
+                    : 'Booked and unbooked jobs. Leads are switched off — turn them on in the legend.'}
                 </p>
               </div>
               <PinMap
-                pins={mapPins}
+                pins={scopedPins}
                 theme={mapTheme}
                 initialHidden={['lead']}
+                emptyNote={mapEmptyNote('job', queueFiltered)}
                 spreadOverlap
                 onVisibleCountChange={setVisiblePins}
                 focusPinId={selectedId ? `job-${selectedId}` : null}

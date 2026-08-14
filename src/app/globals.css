@@ -19654,6 +19654,15 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   cursor: pointer;
 }
 
+/* What each tab actually holds. The two counts differ on purpose — the map is
+   the whole territory, the list is the month on the calendar — and saying so is
+   what stops "Map · 39" beside "List · 12" reading as a fault. */
+.sched-map-scope {
+  margin: 0 0 0.5rem;
+  color: var(--mute-i62);
+  font-size: 0.8rem;
+}
+
 /* ---- the same month as rows ---------------------------------------------- */
 .sched-map-sort {
   display: flex;

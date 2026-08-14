@@ -59,3 +59,32 @@ export function mapScopeLabel(shown: number, total: number, filtered: boolean): 
   if (!filtered) return `${shown} on the map`;
   return `${shown} of ${total} on the map`;
 }
+
+/**
+ * Why the map is empty, when a filter is what emptied it.
+ *
+ * Scoping the pins fixed the contradiction and created a smaller one. Filter
+ * Jobs to Complete and the map is now correctly empty — under PinMap's standing
+ * empty copy, "No mapped locations yet — addresses are geocoded as leads and
+ * jobs come in", which is about a new account with nothing in it. Read beside a
+ * list of eleven completed jobs it says the geocoder is broken.
+ *
+ * It is never the whole reason, either. Two things keep a record off the map and
+ * only one of them is the filter: getMapPins has never pinned finished work, and
+ * it cannot pin an address it has not geocoded. Both belong in the sentence,
+ * because the one the reader needs is whichever one they are looking at.
+ *
+ * Undefined when no filter is on — then an empty map really does mean nothing is
+ * geocoded yet, and PinMap's own copy is the right thing to say.
+ */
+const NOT_PINNED: Record<'job' | 'lead', string> = {
+  job: 'Completed and archived jobs are never pinned, and a job with no address yet cannot be.',
+  lead: 'Won, lost, snoozed and archived leads are never pinned, and a lead with no address yet cannot be.',
+};
+
+export function mapEmptyNote(kind: 'job' | 'lead', filtered: boolean): string | undefined {
+  if (!filtered) return undefined;
+  // The way out, said where the dead end is. Clearing the filter is also what
+  // brings back the other record type, which scoping drops on purpose.
+  return `Nothing on this filter has a pin. ${NOT_PINNED[kind]} Clear the filter to see the rest of the map.`;
+}

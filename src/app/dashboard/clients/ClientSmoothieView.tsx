@@ -319,10 +319,26 @@ export default function ClientSmoothieView({
                 <h2 className={styles.paneTitle}>Where everybody is</h2>
                 <p className={styles.mapNote}>
                   Each customer sits on their most recent job&apos;s address. Pick one to open them.
+                  {shown.length !== clients.length ? ' Showing the customers your filter matched.' : ''}
                 </p>
               </div>
-              {pins.length > 0 ? (
-                <ClientsMap clients={clients} pins={pins} selectedId={selectedId} onSelect={onSelect} />
+              {shown.length === 0 ? (
+                /* ClientsMap renders NOTHING for an empty list — it returns null
+                   before it draws a frame — and until the band filters reached
+                   it that could not happen, because the list it got was the
+                   whole book. Now it can, and a blank pane under a heading is
+                   the worst of the three answers. */
+                <p className="empty-state">No customers match that filter, so there is nothing to place on the map.</p>
+              ) : pins.length > 0 ? (
+                /* `shown`, not `clients`. ClientsMap already drops pins whose
+                   customer is not in the list it was handed — "a map that
+                   ignores the search is a second, contradictory answer on the
+                   same screen", as its own comment says — but it was handed the
+                   WHOLE book, so the search box was the only filter it ever
+                   obeyed. Pressing "Nothing on the books 22" left it reading
+                   "21 of 42 pinned" beside a list of 22. The band filters are
+                   filters too. */
+                <ClientsMap clients={shown} pins={pins} selectedId={selectedId} onSelect={onSelect} />
               ) : (
                 <p className="empty-state">No customer has a geocoded address yet.</p>
               )}

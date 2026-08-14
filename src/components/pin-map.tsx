@@ -36,6 +36,11 @@ const KIND_LABEL: Record<MapPinKind, string> = {
 
 const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];
 
+// What an empty map means when nothing has narrowed it: a young account whose
+// addresses have not been through the geocoder yet. A caller that emptied the
+// map itself passes `emptyNote` instead — see the prop.
+const NOTHING_MAPPED = 'No mapped locations yet — addresses are geocoded as leads and jobs come in.';
+
 // A Material-style teardrop pin (24×27, tip at 12,27) — far more visible on a
 // light map than a small circle, with a dark ring so even the gold pins pop.
 // Keeping the original SVG geometry avoids a visual size jump during the move
@@ -112,6 +117,7 @@ export default function PinMap({
   onPinClick,
   initialHidden,
   onVisibleCountChange,
+  emptyNote,
   spreadOverlap = false,
 }: {
   pins: MapPin[];
@@ -140,6 +146,19 @@ export default function PinMap({
    * is not showing.
    */
   onVisibleCountChange?: (count: number) => void;
+  /**
+   * What to say instead when there is nothing to draw.
+   *
+   * The standing copy below — "addresses are geocoded as leads and jobs come
+   * in" — is about a new account. It is the right thing to say when the map has
+   * never had anything on it, and wrong the moment a FILTER is what emptied it:
+   * beside a list of eleven completed jobs it reads as a broken geocoder.
+   *
+   * The map cannot tell those apart, and does not have to guess: the page that
+   * owns the filter knows. See mapEmptyNote in lib/map-pin-scope, which is where
+   * the wording lives so all four maps say the same thing.
+   */
+  emptyNote?: string;
   /**
    * Fan out pins that sit on the same spot so each one is separately clickable.
    *
@@ -366,9 +385,19 @@ export default function PinMap({
             What was missing is that nothing said so, so a keyboard user tabbed
             onto one pin out of eighteen and had no reason to think there were
             seventeen more behind it. */}
+        {/* An empty map gets the reason, not the instructions. "0 places on
+            this map. Press Tab to reach the pins, then the arrow keys to move
+            between them" was read out in full to somebody who had just filtered
+            every pin off the screen — a tour of a room with nothing in it. */}
         <p className="sr-only" id={`${mapId}-help`}>
-          {pins.length} {pins.length === 1 ? 'place' : 'places'} on this map. Press Tab to reach the pins, then the
-          arrow keys to move between them and Enter to open one. Every place is also a row in the list beside the map.
+          {pins.length === 0 ? (
+            emptyNote ?? NOTHING_MAPPED
+          ) : (
+            <>
+              {pins.length} {pins.length === 1 ? 'place' : 'places'} on this map. Press Tab to reach the pins, then the
+              arrow keys to move between them and Enter to open one. Every place is also a row in the list beside the map.
+            </>
+          )}
         </p>
         <div
           ref={containerRef}
@@ -397,9 +426,7 @@ export default function PinMap({
           </div>
         ) : null}
       </div>
-      {pins.length === 0 ? (
-        <div className="pin-map-empty">No mapped locations yet — addresses are geocoded as leads and jobs come in.</div>
-      ) : null}
+      {pins.length === 0 ? <div className="pin-map-empty">{emptyNote ?? NOTHING_MAPPED}</div> : null}
       {status === 'error' ? <div className="pin-map-empty">Map unavailable.</div> : null}
       {/* The legend is the filter. It already names every kind of pin and shows
           its color, so making it clickable adds a control without adding a

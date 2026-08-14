@@ -313,6 +313,12 @@ export default function LeadsWorkspace({
           className={styles.mapToggle}
           aria-pressed={mapOpen}
           aria-controls="leads-map-panel"
+          // A bare number beside a list of a different length invites arithmetic
+          // that does not work. These five layouts have no filter of their own —
+          // unlike Smoothie's stage chips, which the map now follows — so the
+          // count is right and only unlabelled: it counts jobs as well as leads,
+          // which is the point of the map and not visible in "Map 39".
+          aria-label={`Map — ${mapPins.length} ${mapPins.length === 1 ? 'lead or job' : 'leads and jobs'} with an address`}
           onClick={toggleMap}
         >
           <span aria-hidden="true">🗺</span> Map

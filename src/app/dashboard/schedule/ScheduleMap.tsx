@@ -131,18 +131,34 @@ export default function ScheduleMap({
 
   return (
     <div className="sched-map-open-wrap" data-pending={pending || undefined}>
+      {/* TWO TABS, TWO DIFFERENT SETS, ONE UNLABELLED NUMBER EACH.
+          The list is this month — deliberately, see the comment on the prop in
+          page.tsx. The map is every active job and lead there is, which is what
+          a map of a territory is for. Presented as tabs under one heading, with
+          the tablist announcing itself as "how to read the month", they read as
+          two views of one thing that could not agree on how big it was: "List ·
+          12" beside 39 pins.
+
+          NOT FIXED BY NARROWING THE MAP. Nobody filtered anything here — the
+          month is the calendar's own state, not a control on this map — and the
+          rule in lib/map-pin-scope is that an unfiltered map keeps its full
+          picture, because that is the view worth having. Scoping to the month
+          would also leave two of the three legend filters permanently dead, the
+          map having nothing but scheduled work left to show. So both tabs say
+          what they hold instead, and the contradiction goes with the ambiguity. */}
       <div className="sched-map-bar">
-        <div className="sched-map-tabs" role="tablist" aria-label="How to read the month">
+        <div className="sched-map-tabs" role="tablist" aria-label="Map or list">
           <button
             type="button"
             role="tab"
             id="sched-map-tab-map"
             aria-selected={tab === 'map'}
             aria-controls="sched-map-panel"
+            aria-label={`Map — all ${pins.length} active ${pins.length === 1 ? 'job or lead' : 'jobs and leads'} with an address`}
             className={`sched-map-tab${tab === 'map' ? ' is-on' : ''}`}
             onClick={() => setTab('map')}
           >
-            Map
+            Map <span aria-hidden="true">· {pins.length}</span>
           </button>
           <button
             type="button"
@@ -150,6 +166,7 @@ export default function ScheduleMap({
             id="sched-map-tab-list"
             aria-selected={tab === 'list'}
             aria-controls="sched-map-panel"
+            aria-label={`List — ${jobs.length} scheduled ${jobs.length === 1 ? 'job' : 'jobs'} in ${monthLabel}`}
             className={`sched-map-tab${tab === 'list' ? ' is-on' : ''}`}
             onClick={() => setTab('list')}
           >
@@ -169,6 +186,9 @@ export default function ScheduleMap({
           role="tabpanel"
           aria-labelledby="sched-map-tab-map"
         >
+          <p className="sched-map-scope">
+            Every active job and lead with an address — not just {monthLabel}. The list is the month.
+          </p>
           {/* Two jobs at one address used to draw one marker on top of another,
               and the lower one could not be clicked, hovered or reached at all —
               not crowded, missing. This is the part of clustering that matters

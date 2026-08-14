@@ -7,6 +7,7 @@ import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
+import { mapEmptyNote, scopePinsToFilter } from '@/lib/map-pin-scope';
 import RecordPhotos from '../RecordPhotos';
 import {
   QUEUE_SORTS,
@@ -107,6 +108,27 @@ export default function LeadSmoothieView({
     return sortQueue(filtered, sort);
   }, [leads, stage, query, sort]);
 
+  /**
+   * THE STAGE CHIPS DID NOT REACH THE MAP.
+   *
+   * They filter the queue and nothing else, so pressing "Lost 1" left one row in
+   * the list beside a map still drawing seven active leads — and the pane switch
+   * beside it still counting them. Two panels answering different questions
+   * under one toolbar, both printing a number.
+   *
+   * A filter filters the page. The rule and the reasoning are in
+   * lib/map-pin-scope, shared with the jobs workspace and the month's map on the
+   * schedule. Search counts as a filter for the same reason the chips do:
+   * typing a town narrows the list, and a map that ignores it is the same
+   * contradiction with a different control on top of it.
+   */
+  const queueFiltered = stage !== 'all' || query.trim() !== '';
+  const shownLeadIds = useMemo(() => new Set(shown.map((lead) => lead.id)), [shown]);
+  const scopedPins = useMemo(
+    () => scopePinsToFilter(mapPins, 'lead', shownLeadIds, queueFiltered),
+    [mapPins, shownLeadIds, queueFiltered],
+  );
+
   // Opens on the head of the QUEUE, not on leads[0]. The list arrives newest
   // first and the queue is ordered by priority, so leads[0] is routinely a long
   // way down it — the pane showed one lead while the orange row sat forty rows
@@ -132,7 +154,7 @@ export default function LeadSmoothieView({
   // Only the opportunities: leads and quotes out. A scheduled job is work
   // already won, and on a busy territory it buries the two kinds you came here
   // to act on. Still one legend click away — see PinMap's initialHidden.
-  const openPinCount = useMemo(() => mapPins.filter((pin) => pin.kind !== 'scheduled').length, [mapPins]);
+  const openPinCount = useMemo(() => scopedPins.filter((pin) => pin.kind !== 'scheduled').length, [scopedPins]);
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
   const mapCount = visiblePins ?? openPinCount;
 
@@ -412,14 +434,19 @@ export default function LeadSmoothieView({
             <div className={styles.mapPane}>
               <div className={styles.mapHead}>
                 <h2 className={styles.paneTitle}>Where the work is</h2>
+                {/* The standing note describes the UNFILTERED map, and stopped
+                    being true the moment the map started obeying the chips. */}
                 <p className={styles.mapNote}>
-                  Active leads and quotes out. Scheduled jobs are switched off — turn them on in the legend.
+                  {queueFiltered
+                    ? 'The leads matching your filter. Clear it to see every active lead and quote out.'
+                    : 'Active leads and quotes out. Scheduled jobs are switched off — turn them on in the legend.'}
                 </p>
               </div>
               <PinMap
-                pins={mapPins}
+                pins={scopedPins}
                 theme={mapTheme}
                 initialHidden={['scheduled']}
+                emptyNote={mapEmptyNote('lead', queueFiltered)}
                 spreadOverlap
                 onVisibleCountChange={setVisiblePins}
                 focusPinId={selectedId ? `lead-${selectedId}` : null}
