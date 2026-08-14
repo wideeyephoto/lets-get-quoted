@@ -30,8 +30,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Unit tests
+        run: npm test
+
+      - name: SEO tests
+        run: npm run test:seo
+
+      - name: Stock image tests
+        run: npm run test:stock
+
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint
