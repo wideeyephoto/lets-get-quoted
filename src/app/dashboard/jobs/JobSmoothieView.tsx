@@ -7,6 +7,7 @@ import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
 import { mapEmptyNote, scopePinsToFilter } from '@/lib/map-pin-scope';
+import { nextTabIndex } from '@/lib/tab-strip';
 import ActionIcon from '@/components/action-icon';
 import RecordPhotos from '../RecordPhotos';
 import {
@@ -83,6 +84,9 @@ export default function JobSmoothieView({
   const [pane, setPane] = useState<'jobs' | 'map'>('jobs');
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<JobTabId>('overview');
+  // Roving tabindex needs somewhere to send focus when an arrow moves the
+  // selection — see nextTabIndex.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [markerJob, setMarkerJob] = useState<string | null>(null);
 
   const backRef = useRef<HTMLButtonElement | null>(null);
@@ -167,6 +171,15 @@ export default function JobSmoothieView({
   // Arrowing past the last drawn row selects the next one anyway — selecting
   // always draws it — so the window opens under the keyboard rather than the
   // queue ending early for anyone not using a mouse.
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const next = nextTabIndex(event.key, JOB_TABS.findIndex((t) => t.id === tab), JOB_TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const id = JOB_TABS[next].id;
+    setTab(id);
+    tabRefs.current[id]?.focus();
+  }
+
   function onQueueKeyDown(event: React.KeyboardEvent) {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
@@ -480,7 +493,10 @@ export default function JobSmoothieView({
               </div>
 
               {/* 5 — the detail tabs, the same five Focus shows */}
-              <div className={focusStyles.tabs} role="tablist" aria-label="Job detail sections">
+              {/* The roving tabindex below was here from the start; the arrows
+                  that make it navigable were not, so every tab but the open one
+                  was unreachable from a keyboard. See nextTabIndex. */}
+              <div className={focusStyles.tabs} role="tablist" aria-label="Job detail sections" onKeyDown={onTabKeyDown}>
                 {JOB_TABS.map((entry) => (
                   <button
                     key={entry.id}
@@ -490,6 +506,7 @@ export default function JobSmoothieView({
                     aria-selected={tab === entry.id}
                     aria-controls="job-smoothie-tabpanel"
                     tabIndex={tab === entry.id ? 0 : -1}
+                    ref={(el) => { tabRefs.current[entry.id] = el; }}
                     className={`${focusStyles.tab}${tab === entry.id ? ` ${focusStyles.tabOn}` : ''}`}
                     onClick={() => setTab(entry.id)}
                   >

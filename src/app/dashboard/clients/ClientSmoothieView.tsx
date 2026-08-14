@@ -14,6 +14,7 @@ import {
 } from '@/lib/client-queue';
 import { hueFor } from '../RecordCover';
 import ClientsMap, { type ClientMapPin } from './ClientsMap';
+import { nextTabIndex } from '@/lib/tab-strip';
 import type { ClientRow } from './ClientsWorkspace';
 import { focusQueueRow, useQueueWindow } from '../use-queue-window';
 import { useClientDetail } from './use-client-detail';
@@ -70,6 +71,9 @@ export default function ClientSmoothieView({
   const [pane, setPane] = useState<'clients' | 'map'>('clients');
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<ClientTabId>('overview');
+  // Roving tabindex needs somewhere to send focus when an arrow moves the
+  // selection — see nextTabIndex.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const backRef = useRef<HTMLButtonElement | null>(null);
 
@@ -126,6 +130,15 @@ export default function ClientSmoothieView({
   // Arrowing past the last drawn row selects the next one anyway — selecting
   // always draws it — so the window opens under the keyboard rather than the
   // queue ending early for anyone not using a mouse.
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const next = nextTabIndex(event.key, CLIENT_TABS.findIndex((t) => t.id === tab), CLIENT_TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const id = CLIENT_TABS[next].id;
+    setTab(id);
+    tabRefs.current[id]?.focus();
+  }
+
   function onQueueKeyDown(event: React.KeyboardEvent) {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
@@ -417,7 +430,10 @@ export default function ClientSmoothieView({
               </div>
 
               {/* 5 — the detail tabs, the same four Focus shows */}
-              <div className={focusStyles.tabs} role="tablist" aria-label="Customer detail sections">
+              {/* The roving tabindex below was here from the start; the arrows
+                  that make it navigable were not, so every tab but the open one
+                  was unreachable from a keyboard. See nextTabIndex. */}
+              <div className={focusStyles.tabs} role="tablist" aria-label="Customer detail sections" onKeyDown={onTabKeyDown}>
                 {CLIENT_TABS.map((entry) => (
                   <button
                     key={entry.id}
@@ -427,6 +443,7 @@ export default function ClientSmoothieView({
                     aria-selected={tab === entry.id}
                     aria-controls="client-smoothie-tabpanel"
                     tabIndex={tab === entry.id ? 0 : -1}
+                    ref={(el) => { tabRefs.current[entry.id] = el; }}
                     className={`${focusStyles.tab}${tab === entry.id ? ` ${focusStyles.tabOn}` : ''}`}
                     onClick={() => setTab(entry.id)}
                   >

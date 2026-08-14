@@ -6,6 +6,7 @@ import type { ClientDetailDto } from '@/lib/client-detail';
 import { avatarTone } from '@/lib/avatar-tone';
 import { hueFor } from '../RecordCover';
 import ClientsMap, { type ClientMapPin } from './ClientsMap';
+import { nextTabIndex } from '@/lib/tab-strip';
 import type { ClientRow } from './ClientsWorkspace';
 import styles from '../focus.module.css';
 
@@ -63,6 +64,18 @@ export default function ClientFocusView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('overview');
+  // Roving tabindex needs somewhere to send focus when an arrow moves the
+  // selection — see nextTabIndex.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const next = nextTabIndex(event.key, TABS.findIndex((t) => t.id === tab), TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const id = TABS[next].id;
+    setTab(id);
+    tabRefs.current[id]?.focus();
+  }
 
   const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
   const wantRef = useRef<string | null>(null);
@@ -325,13 +338,26 @@ export default function ClientFocusView({
               </div>
             </header>
 
-            <div className={styles.tabs} role="tablist" aria-label="Customer detail sections">
+            {/* A tab with no panel behind it is a button wearing a tab's name.
+                The Smoothie view of this same detail has always been wired
+                properly; Focus declared the roles and stopped there, so a
+                screen reader was told "tab 3 of 5" and given nothing to move
+                into. Same shape as ClientSmoothieView, deliberately. */}
+            <div className={styles.tabs} role="tablist" aria-label="Customer detail sections" onKeyDown={onTabKeyDown}>
               {TABS.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   role="tab"
+                  id={`focus-client-tab-${t.id}`}
                   aria-selected={tab === t.id}
+                  aria-controls="focus-client-tabpanel"
+                  // One tab stop for the strip, arrows to move within it —
+                  // otherwise every tab is another Tab press on the way to the
+                  // content. The arrows are the other half of that and are not
+                  // optional: without them -1 just means unreachable.
+                  tabIndex={tab === t.id ? 0 : -1}
+                  ref={(el) => { tabRefs.current[t.id] = el; }}
                   className={`${styles.tab}${tab === t.id ? ` ${styles.tabOn}` : ''}`}
                   onClick={() => setTab(t.id)}
                 >
@@ -342,7 +368,14 @@ export default function ClientFocusView({
 
             {/* Keyed on the customer so switching remounts the panel and it
                 animates in. */}
-            <div className={styles.tabBody} key={selected.id}>
+            <div
+              className={styles.tabBody}
+              id="focus-client-tabpanel"
+              role="tabpanel"
+              aria-labelledby={`focus-client-tab-${tab}`}
+              tabIndex={0}
+              key={selected.id}
+            >
               {error ? (
                 <p className={styles.error}>{error}</p>
               ) : loading || !fresh ? (

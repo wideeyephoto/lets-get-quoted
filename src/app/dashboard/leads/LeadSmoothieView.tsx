@@ -8,6 +8,7 @@ import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
 import { mapEmptyNote, scopePinsToFilter } from '@/lib/map-pin-scope';
+import { nextTabIndex } from '@/lib/tab-strip';
 import RecordPhotos from '../RecordPhotos';
 import {
   QUEUE_SORTS,
@@ -94,6 +95,9 @@ export default function LeadSmoothieView({
   // both columns and ignores this.
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<LeadTabId>('overview');
+  // Roving tabindex needs somewhere to send focus when an arrow moves the
+  // selection — see nextTabIndex.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [markerLead, setMarkerLead] = useState<string | null>(null);
 
   const backRef = useRef<HTMLButtonElement | null>(null);
@@ -184,6 +188,15 @@ export default function LeadSmoothieView({
     selectRef.current(openRequest.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest?.nonce]);
+
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const next = nextTabIndex(event.key, LEAD_TABS.findIndex((t) => t.id === tab), LEAD_TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const id = LEAD_TABS[next].id;
+    setTab(id);
+    tabRefs.current[id]?.focus();
+  }
 
   // Keyboard traversal of the queue, matching Focus. Arrowing past the last
   // drawn row selects the next one anyway — selecting always draws it — so the
@@ -604,7 +617,10 @@ export default function LeadSmoothieView({
               </div>
 
               {/* 6 — the detail tabs */}
-              <div className={focusStyles.tabs} role="tablist" aria-label="Lead detail sections">
+              {/* The roving tabindex below was here from the start; the arrows
+                  that make it navigable were not, so every tab but the open one
+                  was unreachable from a keyboard. See nextTabIndex. */}
+              <div className={focusStyles.tabs} role="tablist" aria-label="Lead detail sections" onKeyDown={onTabKeyDown}>
                 {LEAD_TABS.map((entry) => (
                   <button
                     key={entry.id}
@@ -614,6 +630,7 @@ export default function LeadSmoothieView({
                     aria-selected={tab === entry.id}
                     aria-controls="smoothie-tabpanel"
                     tabIndex={tab === entry.id ? 0 : -1}
+                    ref={(el) => { tabRefs.current[entry.id] = el; }}
                     className={`${focusStyles.tab}${tab === entry.id ? ` ${focusStyles.tabOn}` : ''}`}
                     onClick={() => setTab(entry.id)}
                   >

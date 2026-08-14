@@ -255,13 +255,24 @@ export default function JobsWorkspace({
 
           {view !== 'board' ? (
             <div className={styles.bar}>
-              <div className={styles.tabs} role="tablist" aria-label="Filter jobs by status">
+              {/* A FILTER, WHICH IS WHAT ITS OWN LABEL SAYS. It was a tablist
+                  of tabs, and a tab is a promise: press me and a panel of
+                  content appears in place of another. These narrow the list
+                  that is already on screen — nothing is swapped, and there was
+                  no aria-controls on any of them because there is no panel to
+                  point at. On the Focus layout the page ended up announcing ten
+                  tabs, five of them these.
+
+                  Toggle buttons in a group, matching the stage chips in
+                  LeadSmoothieView, which have always been the right shape for
+                  the same job. aria-pressed also says the thing aria-selected
+                  could not: a filter is on or off, not chosen out of a set. */}
+              <div className={styles.tabs} role="group" aria-label="Filter jobs by status">
                 {STATUS_FILTERS.map((f) => (
                   <button
                     key={f.value}
                     type="button"
-                    role="tab"
-                    aria-selected={status === f.value}
+                    aria-pressed={status === f.value}
                     className={`${styles.tab}${status === f.value ? ` ${styles.tabOn}` : ''}`}
                     onClick={() => setStatus(f.value)}
                   >

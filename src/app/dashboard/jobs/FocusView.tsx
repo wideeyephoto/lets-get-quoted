@@ -8,6 +8,7 @@ import RecordPhotos from '../RecordPhotos';
 import ActionIcon from '@/components/action-icon';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
 import { useJobDetail } from './use-job-detail';
+import { nextTabIndex } from '@/lib/tab-strip';
 import styles from '../focus.module.css';
 
 // Master-detail view of the pipeline: one job open on the left, the whole list
@@ -63,6 +64,18 @@ export default function FocusView({
   const [pickedId, setPickedId] = useState<string | null>(jobs[0]?.id ?? null);
   const [tab, setTab] = useState<JobTabId>('overview');
   const paneRef = useRef<HTMLElement | null>(null);
+  // Roving tabindex needs somewhere to send focus when an arrow moves the
+  // selection — see nextTabIndex.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const next = nextTabIndex(event.key, JOB_TABS.findIndex((t) => t.id === tab), JOB_TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const id = JOB_TABS[next].id;
+    setTab(id);
+    tabRefs.current[id]?.focus();
+  }
 
   /**
    * THE FILTER MOVES AND THE SELECTION HAS TO MOVE WITH IT.
@@ -247,13 +260,26 @@ export default function FocusView({
               </div>
             </header>
 
-            <div className={styles.tabs} role="tablist" aria-label="Job detail sections">
+            {/* A tab with no panel behind it is a button wearing a tab's name.
+                The Smoothie view of this same detail has always been wired
+                properly; Focus declared the roles and stopped there, so a
+                screen reader was told "tab 3 of 6" and given nothing to move
+                into. Same shape as LeadSmoothieView, deliberately. */}
+            <div className={styles.tabs} role="tablist" aria-label="Job detail sections" onKeyDown={onTabKeyDown}>
               {JOB_TABS.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   role="tab"
+                  id={`focus-job-tab-${t.id}`}
                   aria-selected={tab === t.id}
+                  aria-controls="focus-job-tabpanel"
+                  // One tab stop for the strip, arrows to move within it —
+                  // otherwise six tabs are six Tab presses on the way to the
+                  // content. The arrows are the other half of that and are not
+                  // optional: without them -1 just means unreachable.
+                  tabIndex={tab === t.id ? 0 : -1}
+                  ref={(el) => { tabRefs.current[t.id] = el; }}
                   className={`${styles.tab}${tab === t.id ? ` ${styles.tabOn}` : ''}`}
                   onClick={() => setTab(t.id)}
                 >
@@ -262,7 +288,14 @@ export default function FocusView({
               ))}
             </div>
 
-            <div className={styles.tabBody} key={selected.id}>
+            <div
+              className={styles.tabBody}
+              id="focus-job-tabpanel"
+              role="tabpanel"
+              aria-labelledby={`focus-job-tab-${tab}`}
+              tabIndex={0}
+              key={selected.id}
+            >
               {error ? (
                 <p className={styles.error}>{error}</p>
               ) : loading || !fresh ? (
