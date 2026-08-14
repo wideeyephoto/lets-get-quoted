@@ -9,6 +9,7 @@ import SuiteFeaturePage, {
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import ShotVideo from './ShotVideo';
 import styles from './quotes.module.css';
 
 const SHOTS = '/media/quotes';
@@ -209,22 +210,16 @@ export default function QuotesFeaturePage() {
                       decoding="async"
                     />
                   ) : (
-                    /* controls and preload="none": nothing here autoplays, so
-                       there is no motion preference to respect and no reason to
-                       spend 400KB of somebody's data on a section they may never
-                       reach. The poster is what shows until they press it. */
-                    <video
-                      className={styles.shotVideo}
+                    /* Plays on its own and loops, but only once the section is
+                       actually on screen — the 400KB is not spent on visitors
+                       who never scroll this far, and it stays still for anyone
+                       who asked for no motion. See ShotVideo. */
+                    <ShotVideo
                       src={shot.media.src}
                       poster={shot.media.poster}
                       width={shot.media.width}
                       height={shot.media.height}
-                      aria-label={shot.media.label}
-                      controls
-                      muted
-                      loop
-                      playsInline
-                      preload="none"
+                      label={shot.media.label}
                     />
                   )}
                 </div>

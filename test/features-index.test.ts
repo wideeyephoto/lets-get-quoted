@@ -231,11 +231,18 @@ describe('the quote builder is shown, not drawn', () => {
   });
 
   it('costs nobody 400KB they did not ask for', () => {
-    // Nothing autoplays, so there is no motion preference to respect — and
-    // preload="none" behind a poster means the clip is fetched by the press.
-    expect(QUOTES).toContain('preload="none"');
-    expect(QUOTES).toContain('controls');
+    // The clip plays on its own and loops now — but not from the tag, and not
+    // on load. ShotVideo starts it the first time the section is on screen, so
+    // a visitor who never scrolls this far never fetches it. That component
+    // owns the motion preference and the pause control; asserted in full in
+    // test/quotes-shot-video.test.ts.
+    expect(QUOTES).toContain('<ShotVideo');
+    expect(QUOTES).not.toContain('<video');
     expect(QUOTES).not.toContain('autoPlay');
+    const SHOT_VIDEO = read('src/app/features/quotes/ShotVideo.tsx');
+    expect(SHOT_VIDEO).toContain('preload="none"');
+    expect(SHOT_VIDEO).toContain('IntersectionObserver');
+    expect(SHOT_VIDEO).toContain('controls');
   });
 
   it('says the numbers are invented and claims no customer', () => {
