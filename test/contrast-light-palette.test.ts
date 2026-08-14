@@ -2,7 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+/**
+ * Newlines normalized, as everywhere else in this suite.
+ *
+ * Not cosmetic here: "sits after .workspace-section-card" searches for a
+ * literal `{\n  background:`, so on a CRLF checkout — which is what git hands
+ * you on Windows with core.autocrlf, and what `git stash pop` leaves behind —
+ * it found nothing and reported the rule as missing rather than misplaced.
+ */
+const read = (...parts: string[]) =>
+  readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
 const GLOBALS = read('src', 'app', 'globals.css');
 const BANNER = read('src', 'app', 'dashboard', 'BlogReminderBanner.tsx');

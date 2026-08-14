@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 /**
@@ -129,6 +130,35 @@ describe('the lite sheet is a faithful subsequence of globals.css', () => {
       expect(full, marker).toContain(marker);
       expect(lite, marker).not.toContain(marker);
     }
+  });
+
+  /**
+   * AND IT IS REGENERATED, which nothing checked until this was written.
+   *
+   * Every other assertion in this file describes the RELATIONSHIP between the
+   * two sheets and all of them hold perfectly well on a lite sheet that is five
+   * commits behind — a stale subsequence is still a faithful subsequence of the
+   * globals.css it was built from. It just is not this one.
+   *
+   * That is not hypothetical. When this test was added, globals-lite.css had
+   * last been generated at 468cc80d while globals.css had changed in five
+   * commits since, so every public page was serving a stylesheet missing 256
+   * lines — including the -webkit-backdrop-filter that is the only thing making
+   * modal scrims frost on Safari, and .checkbox-row, which the generator itself
+   * says is NOT dashboard-only.
+   *
+   * Checked by fingerprint rather than by regenerating. `--check` is the
+   * authoritative answer and takes 15 seconds — it reads all of src/ to decide
+   * what is app-only — which would have doubled the runtime of the entire
+   * suite. The generator stamps a hash of its input into the header instead, so
+   * the same question costs a hash of one file.
+   */
+  it('is up to date with globals.css', () => {
+    const stamped = /source-sha256:\s*([0-9a-f]+)/.exec(lite)?.[1];
+    expect(stamped, 'no source-sha256 in the generated header').toBeTruthy();
+    // Hashed exactly as the generator reads it: utf8, newlines normalized.
+    const actual = createHash('sha256').update(full).digest('hex').slice(0, 16);
+    expect(stamped, 'globals-lite.css is stale — run: node scripts/build-css-subset.mjs').toBe(actual);
   });
 
   it('keeps what the public surfaces need', () => {

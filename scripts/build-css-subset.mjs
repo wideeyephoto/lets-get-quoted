@@ -39,6 +39,7 @@
  *         node scripts/build-css-subset.mjs --check  (fails if out of date)
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -192,8 +193,25 @@ const blocks = topLevelBlocks(css);
 const dropped = blocks.filter(blockIsAppOnly);
 const kept = blocks.filter((b) => !blockIsAppOnly(b));
 
+/**
+ * A fingerprint of the source this copy was cut from.
+ *
+ * Stamped so staleness can be detected in milliseconds. Every other property
+ * of this file — subsequence, strict subset, original order — holds perfectly
+ * well on a copy that is five commits behind, because a stale subsequence is
+ * still a faithful subsequence of the globals.css it was built from. It just is
+ * not this one, and that is the failure that actually happened: the sheet went
+ * five commits stale and every public page served CSS missing 256 lines.
+ *
+ * Re-running this script is the only honest way to answer the question, and it
+ * takes 15 seconds because it reads all of src/ to decide what is app-only.
+ * Hashing the input costs nothing and answers it just as well.
+ */
+const SOURCE_HASH = createHash('sha256').update(css).digest('hex').slice(0, 16);
+
 const HEADER = `/* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
+   source-sha256: ${SOURCE_HASH}
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import

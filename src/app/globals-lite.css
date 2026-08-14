@@ -1,5 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
+   source-sha256: 0ab8ba863eac68c1
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -5738,6 +5739,22 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   color: #b91c1c;
   font-weight: 600;
 }
+
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.checkbox-row input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 0.1rem;
+  accent-color: #ff8a3d;
+}
 /* Finished, proven, and nobody has asked to be paid for it. */
 .milestone-totals .is-ready strong { color: var(--ink-lime-1); }
 .milestone-tasks li.is-done { color: var(--mute-t50); text-decoration: line-through; }
@@ -7999,8 +8016,35 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   padding: 4vh 1rem 1rem;
   overflow-y: auto;
   background: rgba(4, 10, 18, 0.66);
+  /* Prefixed first, and present at all: Safari and iOS Safari need
+     -webkit-backdrop-filter, and without it every modal in the app was a flat
+     scrim there while looking frosted everywhere else. */
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: app-modal-fade 0.14s ease-out;
+}
+
+/**
+ * The backdrop for a dialog that must not leak the page behind it.
+ *
+ * Opt-in (ModalDialog's obscureBackdrop), because on every other modal the
+ * context behind is the point. Here it is the hazard: the texting-setup dialog
+ * opens over the inbox and gets screenshotted for a carrier 10DLC submission,
+ * and at 0.66 alpha over a 3px blur a customer's name and mobile number are
+ * still readable in the image.
+ *
+ * THE OPACITY IS THE GUARANTEE AND THE BLUR IS THE BELT, in that order — not
+ * the other way round. backdrop-filter is unsupported or disabled often enough
+ * (older Firefox, forced-colors, users who turn off compositing effects) that
+ * relying on the blur would mean the privacy property quietly evaporates on
+ * exactly the machines least likely to be checked. At 0.965 the text underneath
+ * is gone with no filter at all; the blur removes the remaining suggestion of
+ * shape.
+ */
+.app-modal-backdrop.is-private {
+  background: rgba(3, 8, 15, 0.965);
+  -webkit-backdrop-filter: blur(18px) saturate(0.35);
+  backdrop-filter: blur(18px) saturate(0.35);
 }
 
 .app-modal {
@@ -9136,6 +9180,7 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 }
 .intake-save { min-height: 1.2em; }
 .intake-save-saved { color: var(--ink-lime-1); }
+.intake-save-error { color: var(--ink-orange-1); }
 
 /* The homeowner's third option: ask, rather than confirm or say nothing. */
 .client-selection-ask { margin-top: 0.7rem; }
@@ -9313,6 +9358,14 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .margin-alert.is-loss { border-color: var(--cedge-red-3); background: rgba(255, 101, 101, 0.12); }
 .receipt-scan input[type='file'] { font-size: 0.85rem; }
 .field-hint.is-error { color: var(--ink-amber-1, var(--bad)); }
+
+.review-policy-note {
+  margin: 0.6rem 0 0;
+  max-width: 44rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mute-t55);
+}
 
 /* The two review routes. Laid out as equal columns on purpose: the public route
    and the private one are offered to every customer at the same size, in the
@@ -10738,6 +10791,67 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 /* ---- Smart Intake: estimate strategy & alerts (section 3) ------------- */
 .intake-ai-lead { margin: 0 0 1rem; }
+.intake-summary {
+  padding: .9rem 1rem; margin-bottom: 1.1rem; border-radius: 12px;
+  border: 1px solid var(--cedge-green-32); background: rgba(74, 222, 128, .06);
+}
+.intake-summary > strong { display: block; margin-bottom: .5rem; font-size: .92rem; color: var(--good); }
+.intake-summary ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.intake-summary li { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; font-size: .85rem; color: rgba(var(--tint), .72); }
+.intake-summary a { flex: none; font-size: .78rem; font-weight: 800; color: var(--ink-sky-1); }
+
+.intake-block { padding: 1rem 0; border-top: 1px solid var(--rule-t07); }
+.intake-block:first-of-type { border-top: 0; padding-top: 0; }
+.intake-block-head { margin-bottom: .7rem; }
+.intake-block-head strong { display: block; font-size: .95rem; color: var(--ink-neutral-2); }
+.intake-block-head small { display: block; margin-top: .15rem; font-size: .8rem; line-height: 1.45; color: var(--mute-t52); }
+
+.posture-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: .65rem; }
+.posture-card {
+  display: grid; gap: .3rem; text-align: left; cursor: pointer;
+  padding: .85rem .9rem; border-radius: 12px; color: inherit;
+  border: 1px solid var(--edge-t12); background: rgba(var(--tint), .03);
+  transition: border-color .16s ease, background .16s ease;
+}
+.posture-card:hover { border-color: var(--edge-t26); }
+.posture-card.on { border-color: var(--cedge-orange-14); background: rgba(255,122,33,.1); }
+.posture-card-mark { width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid var(--edge-t30); }
+.posture-card.on .posture-card-mark { border-color: #ff7a21; box-shadow: inset 0 0 0 3.5px #ff7a21; }
+.posture-card strong { display: flex; align-items: center; gap: .4rem; font-size: .9rem; color: #fff; }
+.posture-card em {
+  font-style: normal; padding: .08rem .38rem; border-radius: 999px; font-size: .58rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  background: rgba(255,122,33,.18); border: 1px solid var(--cedge-orange-51); color: var(--accent-ink);
+}
+.posture-card small { font-size: .78rem; line-height: 1.45; color: var(--mute-t58); }
+.posture-card:focus-visible { outline: 2px solid rgba(56,189,248,.75); outline-offset: 2px; }
+
+.intake-amount { display: flex; align-items: center; gap: .5rem; max-width: 15rem; }
+.intake-amount span { font-size: 1.15rem; font-weight: 800; color: var(--mute-t60); }
+.intake-amount input { flex: 1; font-size: 1.05rem; font-weight: 700; }
+
+.intake-field { display: grid; gap: .25rem; margin: .2rem 0 .6rem 3.3rem; max-width: 18rem; }
+.intake-field span { font-size: .82rem; color: var(--mute-t62); }
+
+.intake-savebar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 1rem; flex-wrap: wrap;
+  margin-top: 1.1rem; padding-top: .9rem; border-top: 1px solid var(--rule-t08);
+}
+.intake-savebar p { margin: 0; font-size: .83rem; color: var(--dim-amber-1-20); }
+.intake-save-ok { color: var(--good); font-weight: 700; }
+.intake-save-error { color: var(--bad); font-weight: 700; }
+/* Sticks to the bottom only while there's something to save. */
+.intake-savebar.stuck {
+  position: sticky; bottom: 0; z-index: 5;
+  margin: 1.1rem -1.05rem -1.05rem; padding: .8rem 1.05rem;
+  border-radius: 0 0 12px 12px;
+  background: rgba(var(--panel-rgb), .96); border-top: 1px solid var(--cedge-amber-31);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .posture-card, .intake-toggle-track, .intake-toggle-track > span { transition: none; }
+}
 
 /* ---------------------------------------------------------------------------
    Folded workspace panels
@@ -10904,6 +11018,12 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
    future chip agree, but a hue is not a sentence. */
 .sched-row.is-unapproved { border-left-color: var(--cap-busy); }
 .sched-row.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.1); }
+/* A missing duration is why a day can read as empty when it is not, and a job
+   with no crew is a job nobody has been told about. Both are named rather than
+   left blank, and dimmer than the facts that ARE known. */
+/* 3.82:1 at 12px, on a line that exists to warn you the hours are unknowable.
+   Not italic-and-faint: it is the row's most consequential fact. */
+.sched-row-missing { color: var(--mute-i62); font-style: italic; }
 /* The docked column keeps its place rather than collapsing — a third of the
    width appearing and disappearing as you click around the queue is worse than
    a column that says what it is for. */
@@ -10920,14 +11040,60 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 @media (min-width: 720px) {
   .sched-detail.is-sheet {
     inset: 0 0 0 auto;
-    width: min(26rem, 92vw);
+    /* A STABLE 440-520px, not a percentage of the viewport.
+       min(26rem, 92vw) was 416px at best and shrank with the window, so the
+       crew list and the slot rows reflowed while you were reading them. The
+       clamp holds the panel still between 440 and 520; the outer min() is only
+       the small-screen backstop, and below 720 this rule does not apply at
+       all. */
+    width: min(92vw, clamp(440px, 34vw, 520px));
     max-height: none;
     border-radius: 18px 0 0 18px;
     box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42);
   }
 }
+
+/**
+ * The header and the commit button stay put while the middle scrolls.
+ *
+ * The panel is one long scroll — suggestions, a manual picker, a crew list,
+ * then the confirmation — and both ends were scrolling away with it: on a
+ * short window you could not see whose job you were scheduling, and "Schedule
+ * job" was below the fold of a panel you had to scroll to the bottom of twice.
+ *
+ * Opaque backgrounds on both, for the same reason the panel itself needed one:
+ * a sticky element with a transparent background has the scrolling content
+ * pass through it.
+ */
+.sched-detail.is-sheet .sched-detail-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 0.6rem;
+  background: rgb(var(--panel-rgb));
+  border-bottom: 1px solid var(--edge-t08);
+}
+
+.sched-detail.is-sheet .sched-step-confirm {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  padding-bottom: 0.2rem;
+  background: rgb(var(--panel-rgb));
+  border-top: 1px solid var(--edge-t08);
+}
+.sched-duration-note.is-error { color: #f8a5a5; }
 .sched-mode-btn.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
 .sched-slot.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.12); }
+/* The chosen one is marked by fill AND weight, not by hue alone. */
+.sched-crew-role.is-on {
+  border-color: var(--cedge-orange-5);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--ink-orange-12);
+  font-weight: 800;
+}
 /* Selected is a fill AND a weight change, never the fill alone. */
 .sched-map-tab.is-on { background: var(--accent); color: var(--on-accent); font-weight: 850; }
 
@@ -14195,6 +14361,50 @@ select optgroup {
 }
 .sched-queue-bar.is-clear .sched-queue-bar-line { display: grid; gap: 0.1rem; }
 
+/* Collapsed: the list goes, the toggle stays. The panel is also marked `inert`
+   in the component — a column you can still Tab into while it is hidden is
+   worse than one that is simply there. */
+.sched-queue.is-collapsed .sched-queue-panel { display: none; }
+
+@media (min-width: 1280px) {
+  .sched-queue-collapse { display: inline-flex; }
+
+  /* Reclaim the column. Without this the rail keeps its 300px minimum and
+     collapsing hides the list without giving the calendar the room — which is
+     the only reason anybody would collapse it.
+     :has() is the whole mechanism; where it is unsupported the toggle still
+     works and the space simply is not reclaimed, which is a degradation rather
+     than a break. */
+  .schedule-workbench:has(.sched-queue.is-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+/* EVERY RECLAIM RULE MUST DECLARE AS MANY TRACKS AS THE WIDTH IT LANDS ON.
+ *
+ * The rule above used to be the only one, and above 1760 it did the opposite of
+ * what it exists for. At those widths the workbench holds THREE items — queue,
+ * calendar, docked detail rail — and two declared tracks put the third into an
+ * IMPLICIT ROW, underneath the collapsed toggle in column one. The auto track
+ * then sized to that panel instead of to the toggle, so collapsing the queue
+ * grew its column from 340px to 456px and pushed the calendar further right.
+ * Measured at 1800 and 1920; below 1760 the same rule was always correct,
+ * because there the detail rail is an overlay and there really are two items.
+ *
+ * So each breakpoint restates its own third track. Sharing one rule is what
+ * caused this. */
+@media (min-width: 1760px) {
+  .schedule-workbench:has(.sched-queue.is-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr) minmax(320px, 380px);
+  }
+}
+
+@media (min-width: 1860px) {
+  .schedule-workbench:has(.sched-queue.is-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr) minmax(340px, 400px);
+  }
+}
+
 /* Narrow: a real panel over the page, opened from the banner and dismissed with
    a Back button. NOT a fixed bottom dock -- that is what this replaces. The old
    one was pinned to the viewport bottom at every width under 1100px, so on a
@@ -16172,3 +16382,48 @@ select optgroup {
   color: var(--muted);
 }
 .feed-edited { opacity: 0.72; font-style: italic; }
+/* The phone's single aggregate chip. Hidden here, shown below 720. */
+.msg-setup-chips.is-compact { display: none; }
+
+/**
+ * TONE IS NEVER ONLY COLOR.
+ *
+ * Each state already carries its own word — Ready, Coming soon, Action
+ * required, Unavailable — so the color is the second signal rather than the
+ * only one, which is what keeps this readable for anybody who cannot separate
+ * the greens from the ambers.
+ */
+.msg-setup-chip.is-ready { border-color: rgba(46, 160, 87, 0.45); background: rgba(46, 160, 87, 0.13); }
+.msg-setup-chip.is-pending { border-color: var(--edge-t24); }
+.msg-setup-chip.is-attention { border-color: rgba(214, 138, 30, 0.5); background: rgba(214, 138, 30, 0.14); }
+.msg-setup-chip.is-unknown { border-color: var(--edge-t24); background: rgba(var(--tint), 0.03); color: var(--muted); }
+/* rgb(var(--ink-rgb)) and NOT var(--ink). There is no --ink in this file — only
+   --ink-rgb, the triple — and `var()` on an undeclared property is not a
+   fallback to something sensible, it is an invalid substitution that computes
+   the whole declaration to `unset`. These two lines would have silently done
+   nothing, which is the fourth time that has happened in this stylesheet. */
+.msg-setup-note.is-attention { color: rgb(var(--ink-rgb)); }
+.msg-setup-note.is-ready { color: rgb(var(--ink-rgb)); }
+.msg-setup-status.is-ready { border-color: rgba(46, 160, 87, 0.45); background: rgba(46, 160, 87, 0.1); }
+.msg-setup-status.is-attention { border-color: rgba(214, 138, 30, 0.5); background: rgba(214, 138, 30, 0.11); }
+.msg-setup-status.is-unknown { color: var(--muted); }
+
+/* ---- narrow ------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  /* One chip, and it reports the WORSE of the two — see aggregateChip. Swapped
+     rather than shrunk: two chips at this width wrap onto their own line and
+     the strip stops being one row, which is the only thing it had to be. */
+  .msg-setup-chips { display: none; }
+  .msg-setup-chips.is-compact { display: flex; }
+
+  .msg-setup-copy small { display: none; }
+  .msg-setup-manage { font-size: 0; gap: 0; }
+  /* The chevron alone, once the word is gone. The strip is one button with its
+     own accessible name, so nothing is lost by dropping the visual label. */
+  .msg-setup-manage i { font-size: 1.1rem; }
+
+  /* Full width, because a save button that is 40% of a phone's width sitting
+     under a form that is 100% of it reads as an afterthought. */
+  .msg-setup-submit { width: 100%; }
+}

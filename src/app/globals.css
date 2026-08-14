@@ -29730,6 +29730,31 @@ select optgroup {
     grid-template-columns: auto minmax(0, 1fr);
   }
 }
+
+/* EVERY RECLAIM RULE MUST DECLARE AS MANY TRACKS AS THE WIDTH IT LANDS ON.
+ *
+ * The rule above used to be the only one, and above 1760 it did the opposite of
+ * what it exists for. At those widths the workbench holds THREE items — queue,
+ * calendar, docked detail rail — and two declared tracks put the third into an
+ * IMPLICIT ROW, underneath the collapsed toggle in column one. The auto track
+ * then sized to that panel instead of to the toggle, so collapsing the queue
+ * grew its column from 340px to 456px and pushed the calendar further right.
+ * Measured at 1800 and 1920; below 1760 the same rule was always correct,
+ * because there the detail rail is an overlay and there really are two items.
+ *
+ * So each breakpoint restates its own third track. Sharing one rule is what
+ * caused this. */
+@media (min-width: 1760px) {
+  .schedule-workbench:has(.sched-queue.is-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr) minmax(320px, 380px);
+  }
+}
+
+@media (min-width: 1860px) {
+  .schedule-workbench:has(.sched-queue.is-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr) minmax(340px, 400px);
+  }
+}
 .sched-queue-scrim,
 .sched-queue-head { display: none; }
 
