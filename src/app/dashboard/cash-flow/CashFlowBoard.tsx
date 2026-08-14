@@ -74,6 +74,11 @@ type Props = {
 // a shop holding half a million in the bank shouldn't hit the end of the slider.
 // The dollar box beside it is there for anything the track is too coarse for.
 const BALANCE_SLIDER_MAX = 500_000;
+/* An overdraft is a real state of a real account, and the exact box above the
+   slider can now say so. Deliberately shallow against the max: the slider is
+   for "roughly where am I", and a symmetric range would spend half its travel
+   on balances almost nobody has. */
+const BALANCE_SLIDER_MIN = -50_000;
 
 // 'worst' is not in here any more. It was a second line drawn beside the first,
 // and reading a scenario off two overlapping curves is what the scenario tabs
@@ -712,30 +717,51 @@ export default function CashFlowBoard({
               <label htmlFor="cash-balance-exact">Money in the bank today</label>
               <div className="cash-amount-field">
                 <span aria-hidden="true">$</span>
+                {/* NO FLOOR AND NO STEP. This box is the one place the owner
+                    states a FACT about their own account, and it refused two
+                    true answers:
+
+                    min={0} made an overdraft unsayable — which is precisely the
+                    account this whole screen exists to help, and it silently
+                    clamped the typed number to zero rather than warning.
+
+                    step={100} is a validity rule on a number input, not a
+                    nudge: a real balance of 2,847.13 is not a multiple of 100,
+                    so the field went :invalid and the browser could refuse the
+                    submit. The slider below is where round hundreds belong. */}
                 <input
                   id="cash-balance-exact"
                   ref={balanceRef}
                   type="number"
-                  min={0}
-                  step={100}
+                  step="any"
                   // Clearing the box is 0, not "unset". The forecast starts
                   // from a number either way now, and a field that can hold a
                   // third state the page cannot show is a field that lies.
                   value={balance}
                   onChange={(event) => {
                     const raw = event.target.value.trim();
-                    setBalance(raw === '' ? 0 : Math.max(0, Number(raw) || 0));
+                    if (raw === '' || raw === '-') {
+                      setBalance(0);
+                      return;
+                    }
+                    const next = Number(raw);
+                    // NaN keeps the last good value rather than snapping to 0 —
+                    // a half-typed "1.2e" should not wipe the number.
+                    if (Number.isFinite(next)) setBalance(next);
                   }}
                 />
               </div>
             </div>
+            {/* The coarse control, and it reaches below zero too — otherwise an
+                overdrawn owner types -1,200 above and watches the slider under
+                it sit at 0, which reads as the number not having taken. */}
             <input
               className="cash-range"
               type="range"
-              min={0}
+              min={BALANCE_SLIDER_MIN}
               max={BALANCE_SLIDER_MAX}
               step={100}
-              value={Math.min(startingBalance, BALANCE_SLIDER_MAX)}
+              value={Math.min(Math.max(startingBalance, BALANCE_SLIDER_MIN), BALANCE_SLIDER_MAX)}
               aria-label="Starting bank balance"
               aria-valuetext={money(startingBalance)}
               onChange={(event) => setBalance(Number(event.target.value))}

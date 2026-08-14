@@ -288,3 +288,74 @@ describe('markerShape', () => {
     expect(markerShape(event({ dateKey: TODAY, amount: -300, repeating: true }))).toBe('circle');
   });
 });
+
+/**
+ * MONEY ALREADY LATE IS NOT MONEY ARRIVING TODAY.
+ *
+ * A $4,480 customer payment fifteen days overdue was forecast as landing today
+ * — in the Base scenario, whose whole promise is "everything lands when it says
+ * it will". For that invoice the day it said it would has been and gone.
+ *
+ * slotFor clamps anything in the past onto today, which is right for a BILL:
+ * you still owe it, and counting it early is the conservative direction. Used
+ * on a receivable it is the single most optimistic reading available, and it
+ * was propping up the headline.
+ */
+describe('overdue money in, versus overdue money out', () => {
+  const overdue = (daysLate: number, amount: number) =>
+    event({ dateKey: addDaysKey(TODAY, -daysLate), amount });
+
+  it('does not credit a fifteen-day-late invoice to today', () => {
+    const forecast = buildForecast([overdue(15, 4480)], options({ days: 30 }));
+    expect(forecast.days[0].incoming).toBe(0);
+    // Mirrored: fifteen days late is forecast fifteen days out.
+    expect(forecast.days[15].incoming).toBe(4480);
+  });
+
+  it('still pulls an overdue BILL onto today', () => {
+    // Unchanged, and deliberately so — you still owe last Tuesday's bill out of
+    // this month's money.
+    const forecast = buildForecast([overdue(15, -4480)], options({ days: 30 }));
+    expect(forecast.days[0].outgoing).toBe(4480);
+  });
+
+  it('leaves money that is not yet due exactly where it was', () => {
+    // The common path, untouched: this rule only ever fires on a past date.
+    const forecast = buildForecast([event({ dateKey: addDaysKey(TODAY, 6), amount: 4480 })], options({ days: 30 }));
+    expect(forecast.days[6].incoming).toBe(4480);
+    expect(forecast.days[0].incoming).toBe(0);
+  });
+
+  it('counts money due today as arriving today', () => {
+    // The boundary. Due today is not overdue.
+    const forecast = buildForecast([event({ dateKey: TODAY, amount: 4480 })], options({ days: 30 }));
+    expect(forecast.days[0].incoming).toBe(4480);
+  });
+
+  it('drops an invoice too late to land inside the window at all', () => {
+    // Ninety days overdue does not belong on a thirty-day chart, and parking it
+    // on day thirty would be the same lie in a different place.
+    const forecast = buildForecast([overdue(90, 4480)], options({ days: 30 }));
+    expect(forecast.days.every((day) => day.incoming === 0)).toBe(true);
+    expect(forecast.totals.incoming).toBe(0);
+  });
+
+  /**
+   * The headline is what this was distorting: an overdrawn month read as safe
+   * because four and a half thousand pounds of late money was counted on day
+   * zero.
+   */
+  it('no longer hides a dip the late money was papering over', () => {
+    const events = [overdue(15, 4480), event({ dateKey: addDaysKey(TODAY, 3), amount: -4000 })];
+    const forecast = buildForecast(events, options({ days: 30, startingBalance: 1000 }));
+    // Day 3: 1,000 - 4,000, with the late money not yet in.
+    expect(forecast.days[3].projected).toBe(-3000);
+    expect(forecast.lowest.balance).toBeLessThan(0);
+  });
+});
+
+function addDaysKey(key: string, delta: number): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + delta));
+  return dt.toISOString().slice(0, 10);
+}

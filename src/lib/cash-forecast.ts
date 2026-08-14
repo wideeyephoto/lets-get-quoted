@@ -141,11 +141,43 @@ function round(value: number): number {
  * bill from last Tuesday is still going to come out of this month's money, and
  * leaving it off the chart is how a forecast ends up cheerfully wrong. Anything
  * past the far edge falls off, which is what "a 30-day forecast" means.
+ *
+ * THAT REASONING IS ABOUT BILLS, and it was being applied to receivables too —
+ * see overdueIncomingSlot for the half it got wrong.
  */
 function slotFor(dateKey: string, todayKey: string, days: number): number | null {
   const offset = daysBetween(todayKey, dateKey);
   if (offset >= days) return null;
   return Math.max(0, offset);
+}
+
+/**
+ * Where money that is ALREADY LATE lands.
+ *
+ * A $4,480 customer payment fifteen days overdue was being forecast as arriving
+ * today, in the Base scenario, and the headline read as safe on the strength of
+ * it. Pulling an overdue event onto today is right for a bill — you still owe
+ * it, and counting it early is the conservative direction — and exactly wrong
+ * for an invoice, where it is the single most optimistic thing the forecast
+ * could say. An invoice that is fifteen days late is not more likely to arrive
+ * today than one that fell due this morning; it is considerably less.
+ *
+ * "Everything lands when it says it will" is Base's promise, and for this
+ * invoice that date has already been and gone. So the lateness is mirrored
+ * forward: an invoice fifteen days overdue is forecast fifteen days out. Not a
+ * prediction so much as a refusal to pretend — the best evidence about when a
+ * late payer pays is how late they already are, and the alternative is
+ * asserting "today" with no evidence at all.
+ *
+ * Falls off the end like anything else. A payment ninety days overdue does not
+ * belong on a thirty-day chart, and dropping it is more honest than parking it
+ * on day thirty.
+ */
+function overdueIncomingSlot(dateKey: string, todayKey: string, days: number): number | null {
+  const offset = daysBetween(todayKey, dateKey);
+  if (offset >= 0) return slotFor(dateKey, todayKey, days);
+  const mirrored = -offset;
+  return mirrored >= days ? null : mirrored;
 }
 
 export function buildForecast(events: CashEvent[], options: ForecastOptions): Forecast {
@@ -166,7 +198,13 @@ export function buildForecast(events: CashEvent[], options: ForecastOptions): Fo
   const totals = { incoming: 0, outgoing: 0, confirmedIn: 0, estimatedIn: 0, confirmedOut: 0, estimatedOut: 0, net: 0 };
 
   for (const event of events) {
-    const slot = slotFor(event.dateKey, todayKey, days);
+    /* Money OUT that is overdue lands on today — you still owe it, and early is
+       the conservative direction. Money IN that is overdue does not, because
+       "arrives today" is the most optimistic reading available and it was being
+       made in the Base scenario. See overdueIncomingSlot. */
+    const slot = isIncoming(event)
+      ? overdueIncomingSlot(event.dateKey, todayKey, days)
+      : slotFor(event.dateKey, todayKey, days);
     if (slot === null) continue;
 
     perDay[slot].push(event);
@@ -190,7 +228,10 @@ export function buildForecast(events: CashEvent[], options: ForecastOptions): Fo
     // window, it simply doesn't arrive in time — which is the point), and
     // outgoing we only ESTIMATED comes in heavier than we guessed.
     if (event.slips && event.amount > 0) {
-      const lateSlot = slotFor(addDays(event.dateKey, lateDays), todayKey, days);
+      // Same rule as the base placement: an already-late invoice pushed later
+      // still must not be clamped back onto today, which is what slotFor would
+      // do to a due date that is in the past even after lateDays is added.
+      const lateSlot = overdueIncomingSlot(addDays(event.dateKey, lateDays), todayKey, days);
       if (lateSlot !== null) worstDelta[lateSlot] += event.amount;
     } else if (event.amount < 0 && !event.confirmed) {
       worstDelta[slot] += event.amount * stress;
