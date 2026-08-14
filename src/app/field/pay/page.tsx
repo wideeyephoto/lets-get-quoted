@@ -44,7 +44,7 @@ function EntryRow({ line, note, showMoney }: { line: MyPayLine; note?: string; s
 }
 
 export default async function MyPayPage() {
-  const { supabase, accountId, crew, businessName } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName, businesses } = await requireCrewContext();
   const admin = createAdminClient();
 
   const [view, openShift] = await Promise.all([
@@ -70,7 +70,7 @@ export default async function MyPayPage() {
 
   return (
     <>
-      <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" />
+      <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" switchable={businesses.length > 1} />
       <main className="field-main">
         <h1 className="field-greeting">My pay</h1>
 

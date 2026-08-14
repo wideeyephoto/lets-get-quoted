@@ -3,9 +3,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToPushAction, unsubscribeFromPushAction } from './push-actions';
 
-// Registers the field-app service worker and offers a one-tap notifications
-// toggle. The public VAPID key is inlined at build time via NEXT_PUBLIC_*; when
-// it's absent (push not configured) the control hides itself entirely.
+// The field app's two browser capabilities, which are NOT the same capability.
+//
+// This used to gate service-worker registration on PushManager, Notification
+// AND a configured VAPID key. Every one of those is about notifications, and
+// none of them is about installing an app — but the registration was behind all
+// three, so a browser without push support (or a deploy without push keys) got
+// no service worker, and with no service worker there is no install prompt, no
+// home-screen app and, now, no offline cache. The crew member who most needs the
+// app on their home screen is the one on the phone that supports the least.
+//
+// So: registration happens whenever service workers exist. The notifications
+// toggle hides itself when push isn't available, and that is all it does.
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
@@ -19,29 +28,51 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 
 type State = 'unsupported' | 'loading' | 'default' | 'granted' | 'denied' | 'working';
 
+/** Push is a separate question from "can this be an app". */
+function pushSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window &&
+    Boolean(VAPID_PUBLIC_KEY)
+  );
+}
+
 export default function FieldPwa() {
   const [state, setState] = useState<State>('loading');
 
-  // Register the SW once, then reflect the current push-permission/subscription state.
   useEffect(() => {
-    const supported =
-      typeof window !== 'undefined' &&
-      'serviceWorker' in navigator &&
-      'PushManager' in window &&
-      'Notification' in window &&
-      Boolean(VAPID_PUBLIC_KEY);
-    if (!supported) {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       setState('unsupported');
       return;
     }
-    navigator.serviceWorker
-      .register('/sw.js', { scope: '/field' })
+
+    // Registration is unconditional, and its failure is not the toggle's
+    // business: a worker that won't install costs offline support, not the
+    // ability to ask about notifications.
+    const registration = navigator.serviceWorker.register('/sw.js', { scope: '/field' });
+    registration.catch((err) => console.error('Field service worker registration failed:', err));
+
+    if (!pushSupported()) {
+      setState('unsupported');
+      return;
+    }
+
+    let cancelled = false;
+    registration
       .then(async (reg) => {
+        if (cancelled) return;
         if (Notification.permission === 'denied') return setState('denied');
         const existing = await reg.pushManager.getSubscription();
-        setState(existing ? 'granted' : 'default');
+        if (!cancelled) setState(existing ? 'granted' : 'default');
       })
-      .catch(() => setState('unsupported'));
+      .catch(() => {
+        if (!cancelled) setState('unsupported');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const enable = useCallback(async () => {

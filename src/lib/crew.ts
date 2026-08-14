@@ -41,6 +41,14 @@ export type CrewMember = {
   can_share_location?: boolean | null;
   can_view_client_contact?: boolean | null;
   can_reschedule?: boolean | null;
+  // Where they are in the field-app invitation. Optional for the same
+  // pre-migration reason; lib/crew-invite resolves absent columns to exactly
+  // the three states the roster could describe before they existed.
+  invited_at?: string | null;
+  invite_expires_at?: string | null;
+  invite_count?: number | null;
+  last_signed_in_at?: string | null;
+  access_revoked_at?: string | null;
 };
 
 export type CrewInput = {
@@ -232,20 +240,45 @@ export async function updateCrewMember(
   return retry.data as CrewMember;
 }
 
-// Resolve the crew member linked to a logged-in auth user (for the field app).
-// Admin-scoped so it works before any RLS-visible membership is in place, and
-// returns the first active, non-deleted match.
-export async function getCrewByUserId(admin: SupabaseClient, userId: string): Promise<CrewMember | null> {
-  const { data } = await admin
+/**
+ * EVERY crew record linked to a logged-in auth user — one per business.
+ *
+ * Admin-scoped so it works before any RLS-visible membership is in place. The
+ * plural matters: one person can be on two contractors' rosters under the same
+ * email, and the field app used to resolve that by silently taking the oldest
+ * row. They'd open the app, see somebody else's jobs, and have no way to say
+ * "not this one". See lib/field-account for how the choice is made and kept.
+ *
+ * Revoked rows are excluded here rather than at the call site. An owner who
+ * takes the app away has made a decision that must hold everywhere, and a
+ * filter that has to be remembered is a filter that gets forgotten.
+ */
+export async function listCrewForUser(admin: SupabaseClient, userId: string): Promise<CrewMember[]> {
+  const { data, error } = await admin
     .from('crew')
     .select('*')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .eq('active', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return (data as CrewMember) ?? null;
+    .order('created_at', { ascending: true });
+
+  // Pre-migration the revocation column doesn't exist, so the filter is applied
+  // in code: `.is('access_revoked_at', null)` in the query would 42703 and take
+  // every crew row down with it, locking the whole field app out of a database
+  // that has simply not taken the migration yet.
+  if (error) return [];
+  return ((data ?? []) as CrewMember[]).filter((member) => !member.access_revoked_at);
+}
+
+// The crew record for one particular business, or the only one there is.
+export async function getCrewByUserId(
+  admin: SupabaseClient,
+  userId: string,
+  accountId?: string | null,
+): Promise<CrewMember | null> {
+  const rows = await listCrewForUser(admin, userId);
+  if (accountId) return rows.find((member) => member.account_id === accountId) ?? null;
+  return rows[0] ?? null;
 }
 
 // Job ids currently assigned to a crew member — the field app's "my jobs" set.

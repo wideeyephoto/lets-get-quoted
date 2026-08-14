@@ -14,6 +14,10 @@ const FIELD_ACTIONS = read('src', 'app', 'field', 'jobs', '[id]', 'actions.ts');
 const JOB_FEED = read('src', 'lib', 'job-feed.ts');
 const JOB_PAGE = read('src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx');
 const START_BUTTON = read('src', 'app', 'dashboard', 'jobs', '[id]', 'StartJobButton.tsx');
+// The crew's status write moved out of the field action and into one narrow
+// database function, because a crew session may no longer update `jobs` at all.
+const CREW_JOB_STATUS = read('src', 'lib', 'crew-job-status.ts');
+const SCHEMA = read('schema.sql');
 
 /**
  * Where a quote stops being a quote.
@@ -64,9 +68,21 @@ describe('every way out of the quote stage records the acceptance', () => {
    * calendar" from "underway" — the badge, the pipeline step, the late-arrival
    * sweep. The field app never set it, so a job the crew had started still
    * showed the owner a "Job started" button to press.
+   *
+   * IT IS NO LONGER STAMPED IN THIS FILE, and that is the fix rather than a
+   * regression. Writing status and started_at together through the crew's own
+   * client was refused outright by crew_jobs_update_guard, which permits crew
+   * `status` and nothing else — so the press that was supposed to stamp the
+   * column raised instead, and the job never started at all. Both facts now
+   * happen inside crew_set_job_status(), one statement, in the database.
    */
   it('the field app stamps the start time the owner’s surfaces read', () => {
-    expect(FIELD_ACTIONS).toContain("...(current?.started_at ? {} : { started_at: new Date().toISOString() })");
+    expect(FIELD_ACTIONS).toContain('setCrewJobStatus(');
+    expect(CREW_JOB_STATUS).toContain("rpc('crew_set_job_status'");
+    // Set on the way in and never re-dated, in the SQL and in the fallback the
+    // pre-migration deploy window uses.
+    expect(SCHEMA).toContain('started_at = coalesce(jobs.started_at, now())');
+    expect(CREW_JOB_STATUS).toContain('...(current.started_at ? {} : { started_at: new Date().toISOString() })');
   });
 
   it('never drags a job backwards, on any path', () => {

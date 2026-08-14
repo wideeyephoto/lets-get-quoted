@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/auth';
 import { DEFAULT_MIN_MARGIN_PCT, resolveBurdenPct } from '@/lib/cost-truth';
 
 /**
@@ -9,6 +10,16 @@ import { DEFAULT_MIN_MARGIN_PCT, resolveBurdenPct } from '@/lib/cost-truth';
  * historical margin the day an owner adjusted their comp rate — a job that
  * closed at 32% would quietly become a job that closed at 28%, and the P&L for
  * a finished year would move.
+ *
+ * THE ACCOUNT DEFAULT IS READ ADMIN-SIDE. It lives on `accounts`, and crew hold
+ * no select policy there — so called with a crew member's own client (which is
+ * exactly what the field app does, on every clock-out and every logged hour)
+ * the read returned no row, no error, and the default resolved to 0%. Hours
+ * logged from a phone were costed bare while identical hours keyed in by the
+ * owner carried burden, and the job's margin depended on who typed it. Same
+ * shape as the time-clock bug: an owner-only table read through a crew client,
+ * answering "unset" instead of failing. The account id is server-resolved by
+ * every caller, so there is nothing here for a request to point somewhere else.
  *
  * Defensive throughout: an un-migrated database, a missing crew member or a
  * failed read all mean 0% rather than a thrown error. Burden is an improvement
@@ -22,7 +33,10 @@ export async function resolveCrewBurdenPct(
 ): Promise<number> {
   try {
     const [{ data: account }, crewRow] = await Promise.all([
-      supabase.from('accounts').select('default_burden_pct').eq('id', accountId).maybeSingle(),
+      createAdminClient().from('accounts').select('default_burden_pct').eq('id', accountId).maybeSingle(),
+      // The crew row stays on the caller's client: a crew member can read their
+      // own (crew_self_read), an owner can read all, and neither should be able
+      // to reach one they aren't entitled to just because this helper could.
       crewId
         ? supabase.from('crew').select('burden_pct').eq('account_id', accountId).eq('id', crewId).maybeSingle()
         : Promise.resolve({ data: null }),

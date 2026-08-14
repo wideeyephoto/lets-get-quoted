@@ -6,10 +6,18 @@ export default function FieldHeader({
   businessName,
   crewName,
   backHref,
+  /**
+   * This person is on more than one roster. The business name stops being
+   * decoration and becomes the control that changes which one you're looking
+   * at — rendered ONLY in that case, because a "switch" affordance on a screen
+   * with nothing to switch to is a dead end wearing a button.
+   */
+  switchable = false,
 }: {
   businessName: string;
   crewName: string;
   backHref?: string;
+  switchable?: boolean;
 }) {
   return (
     <header className="field-header">
@@ -17,7 +25,14 @@ export default function FieldHeader({
         <Link href={backHref} className="field-back" aria-label="Back to my jobs">‹ Jobs</Link>
       ) : (
         <div className="field-header-id">
-          <span className="field-brand">{businessName}</span>
+          {switchable ? (
+            <Link href="/field/choose" className="field-brand field-brand-switch">
+              {businessName} <span aria-hidden="true">⇄</span>
+              <span className="sr-only">Switch business</span>
+            </Link>
+          ) : (
+            <span className="field-brand">{businessName}</span>
+          )}
           <span className="field-crew">{crewName}</span>
         </div>
       )}

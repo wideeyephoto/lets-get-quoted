@@ -6,9 +6,11 @@ import { createAdminClient } from '@/lib/auth';
 import { arrivalSettingsFromAccount, formatClockTime } from '@/lib/arrival';
 import { accountToday } from '@/lib/route-plan-day';
 import { departurePlans, type DeparturePlan } from '@/lib/departure-plan';
+import { KIND_EMOJI, KIND_LABEL, listDayRouteStops, type RouteStop as DayRouteStop } from '@/lib/route-stops';
 import NavigateButton from '@/components/navigate-button';
 import FieldHeader from './FieldHeader';
 import FieldPwa from './FieldPwa';
+import FieldOfflineWarm from './FieldOfflineWarm';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,14 +54,41 @@ function JobCard({ job }: { job: FieldJob }) {
   );
 }
 
-// A numbered stop in today's route: tap the body to open the job, tap Navigate
-// to launch turn-by-turn to the address.
+// TODAY'S ROUTE IS NOT JUST JOBS.
 //
+// The owner plans a day containing a supply run, a dump trip and fuel; those
+// stops carry real coordinates and real minutes and are already in the data
+// model (lib/route-stops). The field app showed jobs only, so the day a tech
+// saw on their phone was a different day from the one their office planned —
+// they'd finish stop two and drive straight past the yard they were supposed to
+// call at. These two types are interleaved into one numbered list, in time
+// order, because that is what a route is.
+type RouteItem =
+  | { kind: 'job'; id: string; time: string | null; lat: number | null; lng: number | null; job: FieldJob }
+  | { kind: 'stop'; id: string; time: string | null; lat: number | null; lng: number | null; stop: DayRouteStop };
+
+// Undated stops sort last, the same rule the job list uses — a stop with no
+// time isn't at 00:00, it's "sometime today".
+function byTimeAsc(a: RouteItem, b: RouteItem): number {
+  return `${a.time ?? '~'}`.localeCompare(`${b.time ?? '~'}`);
+}
+
 // The "leave by" line only appears when it's actionable — imminent or already
 // missed. A departure time on every row is a wall of numbers; on the one row
 // that matters it's the most useful thing on the screen.
+function LeaveBy({ plan, timeZone }: { plan?: DeparturePlan; timeZone: string }) {
+  if (!plan?.leaveBy || !(plan.overdue || plan.soon)) return null;
+  return (
+    <p className={`field-route-leave${plan.overdue ? ' is-overdue' : ''}`}>
+      {plan.overdue ? '⚠ Should have left by' : 'Leave by'} {formatClockTime(plan.leaveBy, timeZone)}
+      {plan.driveMinutes ? ` · ~${plan.driveMinutes} min drive` : ''}
+    </p>
+  );
+}
+
+// A numbered job stop: tap the body to open the job, tap Navigate to launch
+// turn-by-turn to the address.
 function RouteStop({ job, index, plan, timeZone }: { job: FieldJob; index: number; plan?: DeparturePlan; timeZone: string }) {
-  const showLeave = plan?.leaveBy && (plan.overdue || plan.soon);
   return (
     <div className="field-route-stop">
       <span className="field-route-num">{index + 1}</span>
@@ -69,12 +98,7 @@ function RouteStop({ job, index, plan, timeZone }: { job: FieldJob; index: numbe
           <span className="field-route-time">{formatJobTime(job.scheduled_time) || 'Anytime'}</span>
         </div>
         {job.address ? <p className="field-route-addr">{job.address}</p> : <p className="field-route-addr muted">No address on file</p>}
-        {showLeave ? (
-          <p className={`field-route-leave${plan.overdue ? ' is-overdue' : ''}`}>
-            {plan.overdue ? '⚠ Should have left by' : 'Leave by'} {formatClockTime(plan.leaveBy as Date, timeZone)}
-            {plan.driveMinutes ? ` · ~${plan.driveMinutes} min drive` : ''}
-          </p>
-        ) : null}
+        <LeaveBy plan={plan} timeZone={timeZone} />
         <span className={`field-status field-status-${job.status}`}>{STATUS_LABEL[job.status] ?? job.status}</span>
       </Link>
       {job.address || job.lat ? (
@@ -87,8 +111,51 @@ function RouteStop({ job, index, plan, timeZone }: { job: FieldJob; index: numbe
   );
 }
 
+// A stop that isn't a job. Deliberately NOT a link: there's no job page behind
+// it, nothing to clock into and nothing to mark complete. It's an errand with
+// an address, so the address and the Navigate button are the whole card.
+function RouteErrand({
+  stop,
+  index,
+  plan,
+  timeZone,
+}: {
+  stop: DayRouteStop;
+  index: number;
+  plan?: DeparturePlan;
+  timeZone: string;
+}) {
+  return (
+    <div className="field-route-stop is-errand">
+      <span className="field-route-num">{index + 1}</span>
+      <div className="field-route-body">
+        <div className="field-route-top">
+          <strong>
+            <span aria-hidden="true">{KIND_EMOJI[stop.kind]}</span> {stop.label}
+          </strong>
+          <span className="field-route-time">{formatJobTime(stop.scheduled_time) || 'Anytime'}</span>
+        </div>
+        {stop.address ? <p className="field-route-addr">{stop.address}</p> : <p className="field-route-addr muted">No address on file</p>}
+        <LeaveBy plan={plan} timeZone={timeZone} />
+        {stop.note ? <p className="field-route-note">{stop.note}</p> : null}
+        <span className="field-status field-status-errand">{KIND_LABEL[stop.kind]}</span>
+      </div>
+      {stop.address || stop.lat != null ? (
+        <NavigateButton
+          className="field-route-nav"
+          target={{
+            address: stop.address,
+            lat: stop.lat != null ? Number(stop.lat) : null,
+            lng: stop.lng != null ? Number(stop.lng) : null,
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export default async function FieldHomePage() {
-  const { supabase, accountId, crew, businessName } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName, businesses } = await requireCrewContext();
 
   const jobIds = await listJobIdsForCrew(supabase, accountId, crew.id);
   let jobs: FieldJob[] = [];
@@ -116,11 +183,39 @@ export default async function FieldHomePage() {
 
   const firstName = crew.name.trim().split(/\s+/)[0] || crew.name;
 
+  // The rest of the day: the supply run, the dump trip, the fuel stop. Assigned
+  // to this crew member or to nobody — an unassigned stop still has to be made
+  // by somebody, which is the same rule the owner's planner applies.
+  const dayStops = await listDayRouteStops(supabase, accountId, today, crew.id);
+
+  const routeItems: RouteItem[] = [
+    ...todayJobs.map<RouteItem>((job) => ({
+      kind: 'job',
+      id: job.id,
+      time: job.scheduled_time,
+      lat: job.lat,
+      lng: job.lng,
+      job,
+    })),
+    ...dayStops.map<RouteItem>((stop) => ({
+      kind: 'stop',
+      id: `stop:${stop.id}`,
+      time: stop.scheduled_time,
+      lat: stop.lat != null ? Number(stop.lat) : null,
+      lng: stop.lng != null ? Number(stop.lng) : null,
+      stop,
+    })),
+  ].sort(byTimeAsc);
+
   // When to set off for each of today's stops. Anchored at this crew member's
   // own start address when they have one — Plan my day already uses it, and a
   // route measured from the shop is wrong for anybody who leaves from home.
+  //
+  // Computed over the MERGED list: each stop's origin is the one before it, so
+  // leaving the dump run out didn't just hide a stop, it measured the next job's
+  // drive from the wrong place and told the tech to leave later than they could.
   const plans = departurePlans(
-    todayJobs.map((job) => ({ id: job.id, scheduledTime: job.scheduled_time, lat: job.lat, lng: job.lng })),
+    routeItems.map((item) => ({ id: item.id, scheduledTime: item.time, lat: item.lat, lng: item.lng })),
     {
       day: today,
       timeZone: arrivalSettings.timeZone,
@@ -134,10 +229,14 @@ export default async function FieldHomePage() {
 
   return (
     <>
-      <FieldHeader businessName={businessName} crewName={crew.name} />
+      <FieldHeader businessName={businessName} crewName={crew.name} switchable={businesses.length > 1} />
       <main className="field-main">
         <h1 className="field-greeting">Hi {firstName} 👋</h1>
         <FieldPwa />
+        {/* Pull today's job pages into the cache while there's still signal, so
+            the scope, address and checklist survive the drive into the valley
+            with no bars. See public/sw.js. */}
+        <FieldOfflineWarm urls={['/field', '/field/pay', ...todayJobs.map((job) => `/field/jobs/${job.id}`)]} />
 
         {/* Deliberately above the jobs. Somebody checking what they're owed
             shouldn't have to scroll past a week of work to find it. */}
@@ -149,17 +248,36 @@ export default async function FieldHomePage() {
           <span aria-hidden="true">›</span>
         </Link>
 
-        {jobs.length === 0 ? (
+        {/* routeItems, not jobs: a day can legitimately be one dump run and
+            nothing else, and "you have no assigned jobs" would have hidden the
+            only thing on it. */}
+        {jobs.length === 0 && routeItems.length === 0 ? (
           <p className="field-empty">You have no assigned jobs right now. When your manager assigns you to a job, it&apos;ll show up here.</p>
         ) : (
           <>
-            {todayJobs.length > 0 ? (
+            {routeItems.length > 0 ? (
               <section className="field-section">
-                <h2 className="field-section-title">Today&apos;s route · {todayJobs.length} stop{todayJobs.length === 1 ? '' : 's'}</h2>
+                <h2 className="field-section-title">Today&apos;s route · {routeItems.length} stop{routeItems.length === 1 ? '' : 's'}</h2>
                 <div className="field-route">
-                  {todayJobs.map((job, index) => (
-                    <RouteStop key={job.id} job={job} index={index} plan={planById.get(job.id)} timeZone={arrivalSettings.timeZone} />
-                  ))}
+                  {routeItems.map((item, index) =>
+                    item.kind === 'job' ? (
+                      <RouteStop
+                        key={item.id}
+                        job={item.job}
+                        index={index}
+                        plan={planById.get(item.id)}
+                        timeZone={arrivalSettings.timeZone}
+                      />
+                    ) : (
+                      <RouteErrand
+                        key={item.id}
+                        stop={item.stop}
+                        index={index}
+                        plan={planById.get(item.id)}
+                        timeZone={arrivalSettings.timeZone}
+                      />
+                    ),
+                  )}
                 </div>
               </section>
             ) : null}
@@ -185,7 +303,7 @@ export default async function FieldHomePage() {
               </section>
             ) : null}
 
-            {todayJobs.length === 0 && upcoming.length === 0 && other.length === 0 && completed.length === 0 ? (
+            {routeItems.length === 0 && upcoming.length === 0 && other.length === 0 && completed.length === 0 ? (
               <p className="field-empty">Nothing on your plate right now. Enjoy the breather.</p>
             ) : null}
           </>

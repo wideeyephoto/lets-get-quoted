@@ -453,6 +453,27 @@ alter table crew add column if not exists payroll_id text;
 create unique index if not exists crew_payroll_id_unique
   on crew (account_id, payroll_id) where payroll_id is not null and deleted_at is null;
 
+-- THE FIELD-APP INVITE, as a lifecycle rather than a boolean.
+--
+-- The roster used to derive a crew member's state from two facts — is user_id
+-- set, is there an email — which collapses five different situations into two.
+-- "Not invited" and "invited three weeks ago and the link died an hour later"
+-- looked identical to the owner, and the fix for one is not the fix for the
+-- other. See src/lib/crew-invite.ts for how these are read.
+--
+-- No backfill: somebody who signed in before these existed has a user_id and no
+-- last_signed_in_at, which reads as "signed in, date unknown" rather than as a
+-- timestamp nobody recorded.
+alter table crew add column if not exists invited_at timestamptz;
+alter table crew add column if not exists invite_expires_at timestamptz;
+alter table crew add column if not exists invite_count integer not null default 0;
+alter table crew add column if not exists last_signed_in_at timestamptz;
+-- Field-app access withdrawn, while the person stays on the roster. Distinct
+-- from active = false (archived, off the crew) and from deleted_at (gone).
+-- Clearing user_id alone would not hold: the next magic link would silently
+-- re-link them, so the revocation has to be a fact the linker can read.
+alter table crew add column if not exists access_revoked_at timestamptz;
+
 -- ----------------------------------------------------------------------------
 -- SITES  — the published website config for an account.
 -- ----------------------------------------------------------------------------
@@ -1661,16 +1682,24 @@ returns uuid language sql stable security definer set search_path = public as $$
   select account_id from jobs where id = j;
 $$;
 
--- Column-level guard for crew job UPDATEs. RLS can't restrict which columns a
--- policy lets through, and job_crew_update (needed so crew can flip status from
--- the field app) would otherwise let a crew member rewrite account_id (a tenant
--- move — the job vanishes from the real owner) or quoted_amount/quote_items
--- (margin + invoicing basis). This trigger constrains ONLY crew writers to
--- status-only updates; owners and the service-role/admin client (auth.uid() not
--- a crew member) pass through untouched.
+-- Column-level guard for crew job UPDATEs, kept as defence in depth now that
+-- crew hold no UPDATE policy on jobs at all (see below). RLS can't restrict
+-- which columns a policy lets through, so if one is ever re-granted this is
+-- what stops a crew member rewriting account_id (a tenant move — the job
+-- vanishes from the real owner) or quoted_amount/quote_items (margin +
+-- invoicing basis). Owners and the service-role/admin client (auth.uid() not a
+-- crew member) pass through untouched.
+--
+-- The transaction-local flag is how crew_set_job_status() writes the one thing
+-- a crew member legitimately changes. It is set by that function and by nothing
+-- else — there is no PostgREST route to set_config(), so a crew session cannot
+-- raise it on its own behalf.
 create or replace function crew_jobs_update_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
+  if coalesce(current_setting('app.crew_job_write', true), '') = 'on' then
+    return new;
+  end if;
   if is_crew(old.account_id)
      and (to_jsonb(new) - 'status') is distinct from (to_jsonb(old) - 'status') then
     raise exception 'crew may only change job status';
@@ -1681,6 +1710,55 @@ $$;
 drop trigger if exists crew_jobs_update_guard on jobs;
 create trigger crew_jobs_update_guard before update on jobs
   for each row execute function crew_jobs_update_guard();
+
+-- THE WHOLE of what a crew member may do to a job.
+--
+-- The field app's Start work writes status AND started_at — every owner-facing
+-- surface reads started_at to tell "on the calendar" from "underway" — while
+-- the guard above allowed crew `status` and nothing else. Those two facts
+-- cannot both be satisfied through a table grant, so the grant is gone and this
+-- is what replaced it: one function, two transitions, assignment checked here
+-- rather than trusted from the caller.
+--
+-- 'archived' and 'new_lead' are deliberately absent. Retiring a job or pushing
+-- it back to the quote stage are owner decisions, and a job already archived is
+-- not something a phone reopens.
+--
+-- started_at is stamped on the way in and NEVER re-dated: it records a thing
+-- that happened, and a second press must not move it.
+create or replace function crew_set_job_status(j uuid, new_status text)
+returns table (id uuid, status text, started_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+declare current_status text;
+begin
+  if new_status not in ('in_progress', 'complete') then
+    raise exception 'unsupported status %', new_status using errcode = 'check_violation';
+  end if;
+  if not crew_on_job(j) then
+    raise exception 'you are not assigned to this job' using errcode = 'insufficient_privilege';
+  end if;
+
+  select jobs.status into current_status from jobs where jobs.id = j;
+  if current_status is null then
+    raise exception 'job not found' using errcode = 'no_data_found';
+  end if;
+  if current_status = 'archived' then
+    raise exception 'that job has been archived' using errcode = 'check_violation';
+  end if;
+
+  perform set_config('app.crew_job_write', 'on', true);
+
+  return query
+    update jobs
+       set status = new_status,
+           started_at = coalesce(jobs.started_at, now())
+     where jobs.id = j
+    returning jobs.id, jobs.status, jobs.started_at;
+end;
+$$;
+
+revoke all on function crew_set_job_status(uuid, text) from public;
+grant execute on function crew_set_job_status(uuid, text) to authenticated;
 
 -- Short-lived soft holds for self-serve booking: closes the window where two
 -- DIFFERENT visitors grab the same slot between the availability check and the
@@ -1696,6 +1774,33 @@ create table if not exists booking_holds (
   created_at     timestamptz not null default now()
 );
 create unique index if not exists booking_holds_slot_unique on booking_holds (account_id, scheduled_for, scheduled_time);
+
+-- ----------------------------------------------------------------------------
+-- FIELD_SUBMISSIONS — what makes an offline replay safe to repeat.
+--
+-- The field app's service worker holds a clock-out, a note or a material in
+-- IndexedDB when the network drops, and sends it when signal returns. It cannot
+-- know whether a request it never got an answer to actually arrived: a reply
+-- lost on the way back looks exactly like a request lost on the way out. So it
+-- retries — and without this, a retry is a second labor cost on somebody's job
+-- and a second set of hours in their pay.
+--
+-- The unique index IS the lock. The insert either succeeds (first time this
+-- submission has been seen) or raises 23505 (it hasn't), with no window between
+-- checking and acting for a second attempt to slip through.
+-- ----------------------------------------------------------------------------
+create table if not exists field_submissions (
+  id          uuid primary key default gen_random_uuid(),
+  account_id  uuid not null references accounts(id) on delete cascade,
+  crew_id     uuid not null references crew(id) on delete cascade,
+  -- Generated on the phone before the first send attempt; identical on every
+  -- replay of the same tap.
+  key         text not null,
+  kind        text not null,
+  created_at  timestamptz not null default now()
+);
+create unique index if not exists field_submissions_key_unique on field_submissions (crew_id, key);
+create index if not exists field_submissions_account_idx on field_submissions (account_id, created_at desc);
 
 do $$
 declare t text;
@@ -1788,13 +1893,14 @@ create policy crew_self_read on crew for select using ( user_id = auth.uid() );
 -- need (branding comes from requireCrewContext).
 create policy site_owner on sites for all using ( is_owner(account_id) );
 
--- JOBS: owners full access; crew may READ and UPDATE (status from the field) only
--- the jobs they're assigned to. (RLS can't restrict columns, so a crew member can
--- technically change non-status fields on THEIR assigned job — the field app only
--- writes status; owners see all changes in the job feed.)
+-- JOBS: owners full access; crew may READ only the jobs they're assigned to,
+-- and may not UPDATE them at all. There WAS a job_crew_update policy — RLS
+-- can't restrict columns, so it handed a crew session every column on an
+-- assigned job and a trigger had to claw it back. crew_set_job_status() (above)
+-- is the replacement: one function, the two transitions the field app offers,
+-- assignment checked in the database.
 create policy job_owner       on jobs for all    using ( is_owner(account_id) );
 create policy job_crew_read   on jobs for select using ( crew_on_job(id) );
-create policy job_crew_update on jobs for update using ( crew_on_job(id) ) with check ( crew_on_job(id) );
 
 -- CREW_ASSIGNMENTS: owners manage; crew read only their OWN assignment rows
 -- (this is the "my jobs" list). Crew never write assignments.
@@ -1807,6 +1913,45 @@ create policy asg_crew_read on crew_assignments for select using ( crew_owns_cre
 create policy cost_owner       on costs for all    using ( is_owner(account_id) );
 create policy cost_crew_read   on costs for select using ( crew_owns_crew_row(crew_id) );
 create policy cost_crew_insert on costs for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
+
+-- ...and the money on a labor row is not theirs to write. The insert policy
+-- pins WHO and WHICH JOB but says nothing about the rate, so a crafted insert
+-- could log an hour at any figure it liked. The rate has to be the one on the
+-- roster, or one this person has actually clocked on this job (clockIn
+-- snapshots the rate at the start of a shift, and an owner who changes it
+-- mid-afternoon must not make clocking out fail). The amount has to be the
+-- arithmetic rather than a number of its own — a cent of tolerance because the
+-- app rounds in JavaScript and this rounds in Postgres.
+create or replace function crew_costs_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare pinned numeric;
+begin
+  if not is_crew(new.account_id) then return new; end if;
+  if new.type <> 'labor' then return new; end if;
+
+  select c.hourly_rate into pinned from crew c where c.id = new.crew_id;
+  if pinned is null then
+    raise exception 'labor has to be attributed to a crew member on this account';
+  end if;
+
+  if new.rate is distinct from pinned
+     and not exists (
+       select 1 from time_entries t
+        where t.crew_id = new.crew_id and t.job_id = new.job_id and t.rate = new.rate
+     ) then
+    raise exception 'crew may not set their own pay rate';
+  end if;
+
+  if new.hours is null or new.hours <= 0
+     or abs(coalesce(new.amount, 0) - round(new.hours * new.rate, 2)) > 0.01 then
+    raise exception 'labor amount must be hours x the rate on file';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists crew_costs_guard on costs;
+create trigger crew_costs_guard before insert or update on costs
+  for each row execute function crew_costs_guard();
 
 -- TIME_ENTRIES: owners full access (they close forgotten shifts). A crew member
 -- may open a shift on a job they're assigned to, attributed to themselves, and
@@ -1824,10 +1969,51 @@ create policy time_entry_crew_read   on time_entries for select using ( crew_own
 create policy time_entry_crew_insert on time_entries for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
 create policy time_entry_crew_update on time_entries for update using ( crew_owns_crew_row(crew_id) ) with check ( crew_owns_crew_row(crew_id) );
 
--- ROUTE STOPS + SAVED PLACES: owners manage both. Crew get READ on route stops,
--- and only ones assigned to them, so the field app can show a dump run without
--- exposing another truck's route. A stop with crew_id null is the owner's
--- planning surface only until the field app has somewhere to put it.
+-- ...and the policy above is "you may rewrite every column of your own shift",
+-- because RLS cannot restrict columns. That includes `rate` (what the hour is
+-- worth), `started_at` (backdating a shift to this morning), `job_id` (moving
+-- the hours onto somebody else's job) and `closed_by_owner` (laundering a
+-- guessed end time into a clocked one). The UI offers exactly one of those —
+-- clocking out — so that is what the database permits, and the rate is pinned
+-- to the owner's number on the way in.
+create or replace function crew_time_entries_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare pinned numeric;
+begin
+  -- Owners and the service-role client pass through untouched: closing somebody
+  -- else's forgotten shift at a corrected time is exactly their job.
+  if not is_crew(new.account_id) then return new; end if;
+
+  if tg_op = 'INSERT' then
+    select c.hourly_rate into pinned from crew c where c.id = new.crew_id;
+    new.rate := coalesce(pinned, 0);
+    -- A shift opens open. Inserting one already closed would skip the cost row
+    -- that is what makes the hours visible to anybody.
+    new.ended_at := null;
+    new.cost_id := null;
+    new.closed_by_owner := false;
+    return new;
+  end if;
+
+  if old.ended_at is not null then
+    raise exception 'that shift is already closed';
+  end if;
+  if (to_jsonb(new) - 'ended_at' - 'cost_id' - 'note')
+     is distinct from (to_jsonb(old) - 'ended_at' - 'cost_id' - 'note') then
+    raise exception 'crew may only close their own shift';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists crew_time_entries_guard on time_entries;
+create trigger crew_time_entries_guard before insert or update on time_entries
+  for each row execute function crew_time_entries_guard();
+
+-- ROUTE STOPS + SAVED PLACES: owners manage both. Crew get READ on route stops
+-- — their own, plus the day's UNASSIGNED ones — so the field app can show the
+-- dump run and the supply stop without exposing another truck's route. An
+-- unassigned stop belongs to whoever is out that day, which is the same rule
+-- the owner's planner already applies to it.
 alter table saved_places enable row level security;
 alter table route_stops enable row level security;
 drop policy if exists saved_place_owner on saved_places;
@@ -1835,7 +2021,16 @@ drop policy if exists route_stop_owner on route_stops;
 drop policy if exists route_stop_crew_read on route_stops;
 create policy saved_place_owner    on saved_places for all    using ( is_owner(account_id) );
 create policy route_stop_owner     on route_stops  for all    using ( is_owner(account_id) );
-create policy route_stop_crew_read on route_stops  for select using ( crew_id is not null and crew_owns_crew_row(crew_id) );
+create policy route_stop_crew_read on route_stops  for select using ( is_crew(account_id) and (crew_id is null or crew_owns_crew_row(crew_id)) );
+
+-- FIELD SUBMISSIONS: written only by the admin client on the offline-queue
+-- endpoint, which is why crew get nothing here — a crew session that could
+-- write its own idempotency keys could mark a submission as already handled and
+-- make the real one vanish. The owner policy exists so an owner can see what
+-- arrived from a phone that had been out of signal.
+alter table field_submissions enable row level security;
+drop policy if exists field_submission_owner on field_submissions;
+create policy field_submission_owner on field_submissions for all using ( is_owner(account_id) );
 
 -- ESTIMATE_OFFERS: the owner's own. Replies come in through the Twilio webhook
 -- on the service-role client, which bypasses RLS.

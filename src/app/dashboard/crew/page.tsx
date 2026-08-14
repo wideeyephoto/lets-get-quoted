@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
+import { fieldAppDetail, fieldAppState } from '@/lib/crew-invite';
 import { arrivalPermissionsFromCrew } from '@/lib/arrival';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { listJobs } from '@/lib/jobs';
@@ -229,7 +230,11 @@ export default async function CrewLaborPage({
       startAddress: member.start_address ?? null,
       permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
       active: member.active,
-      fieldApp: member.user_id ? 'linked' : member.email ? 'invitable' : 'no-email',
+      // The whole invitation, not "has a user_id". See lib/crew-invite for why
+      // three states derived from two booleans could not describe an invitation
+      // that had expired, or access that had been taken away.
+      fieldApp: fieldAppState(member),
+      fieldAppDetail: fieldAppDetail(member),
       jobs: jobsByCrew[member.id] ?? [],
       periodHours: bucket?.hours ?? 0,
       periodPay: bucket?.pay ?? 0,

@@ -8,18 +8,20 @@
 // Pure and dependency-free so the ranking can be tested without a roster, a
 // database, or a browser.
 
+import { needsInvite, type FieldAppState } from '@/lib/crew-invite';
+
 export type RosterMember = {
   id: string;
   name: string;
   active: boolean;
   hourlyRate: number;
-  fieldApp: 'linked' | 'invitable' | 'no-email';
+  fieldApp: FieldAppState;
   jobs: unknown[];
 };
 
 export type RosterStep = {
   /** Which gap this is, for the filter the card links to. */
-  id: 'rate' | 'invite' | 'email' | 'idle' | 'empty' | 'ready';
+  id: 'rate' | 'invite' | 'email' | 'revoked' | 'idle' | 'empty' | 'ready';
   title: string;
   body: string;
   /** Names to show under the instruction, so it's about people not a count. */
@@ -72,12 +74,20 @@ export function rosterNextStep(members: RosterMember[]): RosterStep {
     };
   }
 
-  const invitable = active.filter((member) => member.fieldApp === 'invitable');
+  // Never invited AND invite-expired, together: from the owner's side they are
+  // the same instruction — press the button — and separating them would leave
+  // the expired ones sitting under a card that says everybody is set up. An
+  // expired invitation used to read as "Not invited" and was indistinguishable
+  // from one that had never been sent.
+  const invitable = active.filter((member) => needsInvite(member.fieldApp));
   if (invitable.length > 0) {
+    const expired = invitable.filter((member) => member.fieldApp === 'expired').length;
     return {
       id: 'invite',
       title: `Invite ${invitable.length} to the field app`,
-      body: 'They can see their jobs and log their own hours from site, instead of you keying them in.',
+      body: expired > 0
+        ? `They can see their jobs and log their own hours from site. ${expired === invitable.length ? 'These invitations have' : `${expired} of these has`} expired — the link only lasts an hour.`
+        : 'They can see their jobs and log their own hours from site, instead of you keying them in.',
       names: invitable.map((member) => member.name),
       tone: 'warn',
     };
@@ -90,6 +100,22 @@ export function rosterNextStep(members: RosterMember[]): RosterStep {
       title: `${noEmail.length} ${noEmail.length === 1 ? 'person has' : 'people have'} no email`,
       body: 'An email address is what the field app invite goes to — without one they can only be texted job details.',
       names: noEmail.map((member) => member.name),
+      tone: 'warn',
+    };
+  }
+
+  // Below the setup gaps and above "nobody's on a job", because a revoked
+  // member is a DELIBERATE state — somebody chose it — so it is reported rather
+  // than treated as something to fix. It still earns a line: an owner who
+  // revoked access during a dispute that has since been settled has no other
+  // surface that would remind them.
+  const revoked = active.filter((member) => member.fieldApp === 'revoked');
+  if (revoked.length > 0) {
+    return {
+      id: 'revoked',
+      title: `${revoked.length} ${revoked.length === 1 ? 'person has' : 'people have'} no field-app access`,
+      body: 'They are still on the crew, but the app is shut to them. Invite them again to give it back.',
+      names: revoked.map((member) => member.name),
       tone: 'warn',
     };
   }

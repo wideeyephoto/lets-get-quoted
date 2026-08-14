@@ -16614,6 +16614,19 @@ a.ropsrow-fact:hover { text-decoration: underline; }
 .field-status-complete { background: rgba(163,230,53,0.16); color: var(--ink-lime-1); }
 .field-status-archived { background: rgba(161,161,170,0.16); color: var(--ink-neutral-7); }
 
+/* A stop that isn't a job — the dump, the supply house, fuel. Quieter than a  */
+/* job card and visibly not tappable, because there is no job page behind it.  */
+/* The number stays the same colour: it is stop 3 of 5 whatever kind it is,    */
+/* and re-colouring it would break the one thing the column is for.            */
+.field-route-stop.is-errand .field-route-body {
+  background: rgba(var(--tint), 0.02);
+  border-style: dashed;
+  cursor: default;
+}
+.field-route-stop.is-errand .field-route-top strong { font-size: 0.98rem; font-weight: 700; }
+.field-status-errand { background: rgba(var(--tint), 0.09); color: rgba(var(--tint), 0.72); }
+.field-route-note { margin: 0.35rem 0 0; font-size: 0.84rem; color: rgba(var(--tint), 0.68); line-height: 1.45; }
+
 /* -- Job detail -- */
 .field-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-top: 0.4rem; }
 .field-detail-head h1 { margin: 0; font-size: 1.5rem; }
@@ -16754,6 +16767,105 @@ a.ropsrow-fact:hover { text-decoration: underline; }
   font-size: 0.88rem;
 }
 .field-log-item span:last-child { color: var(--ink-lime-1); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* What the hours are worth. Not a field — the rate is the office's number —   */
+/* but not a secret either: it's on My pay, and hours with no visible value    */
+/* are hours nobody checks.                                                    */
+.field-log-rate { margin: 0; font-size: 0.82rem; color: rgba(var(--tint), 0.65); line-height: 1.45; }
+
+/* -- Field: held on the phone ------------------------------------- */
+/* Everything queued offline says so in the same voice, in the same    */
+/* colour, whether it came from the clock, a note or a material. Blue  */
+/* rather than green: this has NOT been saved yet, and dressing it as  */
+/* success is how somebody drives away believing it went.              */
+.field-queue-note {
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 11px;
+  background: rgba(56,189,248,0.1);
+  border: 1px solid var(--cedge-teal-8);
+  color: var(--ink-sky-1);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* -- Field: the offline fallback ---------------------------------- */
+.field-offline-lead { margin: 0 0 1.2rem; font-size: 1rem; line-height: 1.55; color: rgba(var(--tint), 0.78); }
+.field-offline-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.5rem; font-size: 0.92rem; line-height: 1.5; color: rgba(var(--tint), 0.75); }
+.field-offline-hint { margin: 1.1rem 0; font-size: 0.9rem; color: var(--mute-t55); }
+
+/* -- Field: choosing which business ------------------------------- */
+/* Only ever seen by somebody on two rosters. Full-width targets       */
+/* because it is the first thing they touch after a magic link, often  */
+/* one-handed, and picking the wrong firm shows them a stranger's day. */
+.field-choose-lead { margin: 0 0 1.3rem; font-size: 0.98rem; line-height: 1.55; color: rgba(var(--tint), 0.75); }
+.field-choose-list { display: flex; flex-direction: column; gap: 0.7rem; }
+.field-choose-option {
+  width: 100%;
+  min-height: 3.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.04);
+  color: inherit;
+  font-family: inherit;
+  font-size: 1.05rem;
+  text-align: left;
+  cursor: pointer;
+}
+.field-choose-option:active { background: rgba(var(--tint), 0.08); }
+.field-choose-option[aria-current] { border-color: var(--cedge-teal-8); background: rgba(56,189,248,0.1); }
+.field-choose-name { font-weight: 700; }
+.field-choose-out { margin-top: 2rem; }
+.field-brand-switch { text-decoration: none; color: inherit; }
+
+/* -- Field: photo uploads ----------------------------------------- */
+/* Each photo is its own row with its own progress and its own Retry,  */
+/* because "3 photos failed" is not something anybody can act on and   */
+/* "the second one failed, tap here" is.                               */
+.field-photos { display: grid; gap: 0.5rem; }
+.field-photos-pick { display: grid; gap: 0.3rem; }
+.field-photos-pick > span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mute-t50); }
+.field-photos-hint { font-size: 0.8rem; color: var(--mute-t50); line-height: 1.45; }
+.field-photos-list { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; gap: 0.45rem; }
+.field-photo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--edge-t10);
+}
+.field-photo-item.is-failed { border-color: var(--cedge-orange-41); background: rgba(255,122,33,0.09); }
+.field-photo-item.is-done { border-color: var(--cedge-green-7); }
+.field-photo-main { flex: 1; min-width: 0; display: grid; gap: 0.2rem; }
+.field-photo-main strong { font-size: 0.86rem; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field-photo-main span { font-size: 0.78rem; color: rgba(var(--tint), 0.7); line-height: 1.4; }
+.field-photo-item.is-failed .field-photo-main span { color: var(--ink-orange-1); }
+.field-photo-bar { height: 4px; border-radius: 999px; background: rgba(var(--tint), 0.12); overflow: hidden; }
+.field-photo-fill { height: 100%; background: var(--ink-sky-1); transition: width 0.2s ease; }
+.field-photo-retry,
+.field-photo-drop {
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.06);
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.field-photo-retry { border-color: var(--cedge-orange-41); color: var(--ink-orange-1); }
 
 .field-feed { display: flex; flex-direction: column; gap: 0.6rem; }
 .field-feed-item { background: rgba(var(--tint), 0.03); border: 1px solid var(--edge-t08); border-radius: 11px; padding: 0.75rem 0.9rem; }

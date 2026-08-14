@@ -14,7 +14,8 @@ import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
 import { arrivalPermissionsFromCrew, arrivalSettingsFromAccount, MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
 import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
 import { getActiveTracking, updateTechPosition } from '@/lib/job-tracking';
-import { clockIn, clockOut, getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
+import { clockIn, clockOut, getOpenShift } from '@/lib/time-clock-data';
+import { setCrewJobStatus } from '@/lib/crew-job-status';
 
 export async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
   if (!(await isJobAssignedToCrew(supabase, accountId, jobId, crewId))) {
@@ -37,13 +38,19 @@ export async function assertAssigned(supabase: SupabaseClient, accountId: string
  * that column to tell "on the calendar" from "underway" — the badge, the
  * pipeline step, the late-arrival sweep — so a job the crew had started still
  * showed the owner a "Job started" button to press.
+ *
+ * THE WRITE ITSELF is no longer an update from here. It went through the crew's
+ * own client against a table whose guard trigger permits crew `status` and
+ * nothing else, so writing started_at alongside it failed outright on any
+ * database carrying that trigger — the first press of Start work did nothing but
+ * raise. See lib/crew-job-status.
  */
 export async function setFieldJobStatusAction(jobId: string, status: 'in_progress' | 'complete') {
   const { supabase, accountId, crew } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
 
   const { data: current } = await supabase
-    .from('jobs').select('status, started_at').eq('account_id', accountId).eq('id', jobId).maybeSingle();
+    .from('jobs').select('status').eq('account_id', accountId).eq('id', jobId).maybeSingle();
 
   if (current?.status === 'new_lead') {
     try {
@@ -55,14 +62,15 @@ export async function setFieldJobStatusAction(jobId: string, status: 'in_progres
     }
   }
 
-  const { error } = await supabase
-    .from('jobs')
-    // Only ever set on the way in — started_at is a record of a thing that
-    // happened, and a second press must not re-date it.
-    .update({ status, ...(current?.started_at ? {} : { started_at: new Date().toISOString() }) })
-    .eq('account_id', accountId)
-    .eq('id', jobId);
-  if (error) throw error;
+  try {
+    await setCrewJobStatus(supabase, accountId, jobId, status);
+  } catch (error) {
+    // A tech in a driveway needs to be told, not shown a stack trace. The
+    // message is the database's own — "you are not assigned to this job",
+    // "that job has been archived" — and each is actionable.
+    const message = error instanceof Error ? error.message : 'Could not update this job.';
+    redirect(`/field/jobs/${jobId}?clock=${encodeURIComponent(message)}`);
+  }
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_update',
@@ -177,11 +185,13 @@ export async function setArrivalStatusFieldAction(jobId: string, formData: FormD
 // Start a shift. The rate is snapshotted now, so a rate change later doesn't
 // restate time that was already worked.
 export async function clockInFieldAction(jobId: string) {
-  const { supabase, accountId, crew } = await requireCrewContext();
+  const { supabase, accountId, crew, timeClockMode } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
 
-  const mode = await getTimeClockMode(supabase, accountId);
-  if (mode === 'off') redirect(`/field/jobs/${jobId}`);
+  // From the context, which resolved it with the admin client. Asking the crew
+  // member's own client would answer 'off' every time — they hold no read on
+  // `accounts` — which is how "required" quietly became "optional".
+  if (timeClockMode === 'off') redirect(`/field/jobs/${jobId}`);
 
   try {
     await clockIn(supabase, accountId, crew.id, jobId, Number(crew.hourly_rate) || 0);
@@ -216,24 +226,30 @@ export async function clockOutFieldAction(jobId: string, formData: FormData) {
   redirect(`/field/jobs/${jobId}?clocked=out&hours=${hours}`);
 }
 
-// Crew logs their hours on the job from the field. Amount is server-computed as
-// hours × rate (createCost never trusts a client amount for labor); the rate
-// defaults to the crew member's saved hourly rate but can be overridden.
+// Crew logs their hours on the job from the field.
+//
+// THE HOURS ARE THEIRS TO REPORT; THE RATE IS NOT. This action used to read a
+// "rate" field straight off the form, and the form put an editable "Rate ($/hr)"
+// box next to the hours — so a crew member could log four hours at any figure
+// they typed, and it landed in the owner's labor cost, their margin and their
+// pay run as if the owner had set it. The rate now comes from the crew row,
+// which only an owner can write, and the database refuses a labor cost carrying
+// any other figure (crew_costs_guard).
 export async function logFieldTimeAction(jobId: string, formData: FormData) {
-  const { supabase, accountId, crew } = await requireCrewContext();
+  const { supabase, accountId, crew, timeClockMode } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
 
   // With the clock required, typing hours is not a second way in — it's a way
   // around the thing the owner turned on. The UI hides the form; this is the
-  // check that means hiding it is enough.
-  if ((await getTimeClockMode(supabase, accountId)) === 'required') {
+  // check that means hiding it is enough. Read from the context, because the
+  // crew member's own client cannot see this setting at all.
+  if (timeClockMode === 'required') {
     redirect(`/field/jobs/${jobId}?clock=${encodeURIComponent('Clock in and out to log time on this job.')}`);
   }
 
   const hours = Number(formData.get('hours'));
   if (!Number.isFinite(hours) || hours <= 0) redirect(`/field/jobs/${jobId}?logged=time-invalid`);
-  const rawRate = Number(formData.get('rate'));
-  const rate = Number.isFinite(rawRate) && rawRate >= 0 ? rawRate : Number(crew.hourly_rate) || 0;
+  const rate = Number(crew.hourly_rate) || 0;
   const note = String(formData.get('description') ?? '').trim();
   const description = note || `${crew.name} — labor`;
 

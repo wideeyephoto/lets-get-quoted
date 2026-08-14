@@ -12,6 +12,21 @@ import { normalizeTimeClockMode, shiftHours, type OpenShift, type TimeClockMode 
 // throwing on the field app — which is the screen a crew member opens standing
 // on a roof.
 
+/**
+ * The account's clock setting.
+ *
+ * OWNER-SCOPED. `accounts` has no crew select policy — it holds Stripe ids,
+ * plan and billing state — so calling this with a crew member's own client
+ * returns no row, no error, and therefore 'off'. That is not a hypothetical:
+ * the field app did exactly that, and an owner who had set clocking to
+ * REQUIRED got crew screens offering the manual hours box instead, because
+ * "off" is also what a missing migration looks like and the two were
+ * indistinguishable here.
+ *
+ * The field app reads the mode off CrewContext (see lib/crew-auth), which
+ * resolves it with the admin client in the read it was already doing. Pass this
+ * an owner-scoped or admin client only.
+ */
 export async function getTimeClockMode(supabase: SupabaseClient, accountId: string): Promise<TimeClockMode> {
   try {
     const { data, error } = await supabase.from('accounts').select('time_clock_mode').eq('id', accountId).maybeSingle();
@@ -96,6 +111,13 @@ export async function clockIn(
   crewId: string,
   jobId: string,
   rate: number,
+  /**
+   * When the shift actually started, for a clock-in that was queued offline and
+   * is only now reaching the server. Omitted for the ordinary case, where the
+   * column default (now()) is the honest answer. Callers are responsible for
+   * bounding it — see resolveOfflineTime.
+   */
+  startedAt?: string,
 ): Promise<TimeEntryRow> {
   const existing = await getOpenShift(supabase, accountId, crewId);
   if (existing) {
@@ -108,7 +130,7 @@ export async function clockIn(
 
   const { data, error } = await supabase
     .from('time_entries')
-    .insert({ account_id: accountId, crew_id: crewId, job_id: jobId, rate })
+    .insert({ account_id: accountId, crew_id: crewId, job_id: jobId, rate, ...(startedAt ? { started_at: startedAt } : {}) })
     .select('*')
     .single();
 

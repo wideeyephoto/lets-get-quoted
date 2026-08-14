@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import SaveButton from '@/components/save-button';
+import { looksOffline, payloadFor, queueFieldSubmission } from '@/lib/field-offline-client';
 
 // The crew member's clock, on the job page in the field app.
 //
@@ -19,6 +20,7 @@ function elapsedFrom(startedAt: string): string {
 }
 
 export default function FieldClock({
+  jobId,
   clockIn,
   clockOut,
   startedAt,
@@ -39,6 +41,9 @@ export default function FieldClock({
 }) {
   // Server-rendered first so the number is right before hydration, then ticked.
   const [elapsed, setElapsed] = useState(elapsedLabel ?? '');
+  // Held on the phone because there was no signal at the moment of the tap.
+  const [held, setHeld] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => {
     if (!startedAt) return;
@@ -48,6 +53,46 @@ export default function FieldClock({
     const timer = setInterval(() => setElapsed(elapsedFrom(startedAt)), 30_000);
     return () => clearInterval(timer);
   }, [startedAt]);
+
+  /**
+   * THE CLOCK IS THE ONE CONTROL THAT CANNOT WAIT FOR SIGNAL.
+   *
+   * Everything else on this screen can be typed in later from memory; the clock
+   * cannot, because its entire value is that the time was recorded at the
+   * moment it happened. A dead "Clock out" button in a basement doesn't delay
+   * the record, it destroys it — the crew member writes 3:30 on a receipt and
+   * keys in 4:00 on Friday.
+   *
+   * Online this returns immediately and the server action runs untouched.
+   */
+  const offlineSubmit = useCallback(
+    (kind: 'clock-in' | 'clock-out', message: string) => (event: FormEvent<HTMLFormElement>) => {
+      if (!looksOffline()) return;
+      event.preventDefault();
+      const form = event.currentTarget;
+      setProblem(null);
+      void queueFieldSubmission(kind, jobId, payloadFor(kind, form)).then((outcome) => {
+        if (outcome.state === 'failed') {
+          setProblem(outcome.message);
+          return;
+        }
+        setHeld(outcome.state === 'queued' ? message : 'Saved ✓');
+        form.reset();
+      });
+    },
+    [jobId],
+  );
+
+  const notes = (
+    <>
+      {held ? (
+        <p className="field-queue-note" role="status">{held}</p>
+      ) : null}
+      {problem ? (
+        <p className="field-flash is-error" role="status">{problem}</p>
+      ) : null}
+    </>
+  );
 
   if (startedAt) {
     return (
@@ -59,12 +104,17 @@ export default function FieldClock({
             <span>Since {startedLabel} · {elapsed}</span>
           </div>
         </div>
-        <form action={clockOut} className="field-clock-form">
+        <form
+          action={clockOut}
+          onSubmit={offlineSubmit('clock-out', 'Clocked out at this time — held on your phone until you’re back in signal ✓')}
+          className="field-clock-form"
+        >
           <input name="description" type="text" placeholder="What you worked on (optional)" />
           <SaveButton className="btn primary" pendingLabel="Clocking out…" savedLabel="Clocked out ✓">
             Clock out
           </SaveButton>
         </form>
+        {notes}
       </div>
     );
   }
@@ -84,12 +134,16 @@ export default function FieldClock({
         </div>
       </div>
       {!busyElsewhere ? (
-        <form action={clockIn}>
+        <form
+          action={clockIn}
+          onSubmit={offlineSubmit('clock-in', 'Clocked in at this time — held on your phone until you’re back in signal ✓')}
+        >
           <SaveButton className="btn primary" pendingLabel="Clocking in…" savedLabel="Clocked in ✓">
             Clock in
           </SaveButton>
         </form>
       ) : null}
+      {notes}
     </div>
   );
 }

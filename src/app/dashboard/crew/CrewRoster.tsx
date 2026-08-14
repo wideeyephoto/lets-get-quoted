@@ -10,6 +10,7 @@ import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setCrewOverviewAction, setCrewSkinAction, setRosterViewAction } from '@/app/dashboard/view-actions';
 import type { CrewSkin, RosterView } from '@/lib/dashboard-views';
 import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
+import { FIELD_APP_LABEL, FIELD_APP_TITLE, needsInvite, type FieldAppState } from '@/lib/crew-invite';
 import type { PayType } from '@/lib/pay-types';
 import {
   SUB_STATUS_LABEL,
@@ -34,6 +35,7 @@ import {
   assignCrewToJobAction,
   deleteArchivedCrewAction,
   inviteCrewAction,
+  revokeCrewAccessAction,
   setCrewActiveAction,
   updateCrewAction,
   updateCrewPhotoAction,
@@ -92,7 +94,10 @@ export type CrewRow = {
   // What this person may do around an arrival — see lib/arrival.
   permissions: { send: boolean; shareLocation: boolean; viewContact: boolean; reschedule: boolean };
   active: boolean;
-  fieldApp: 'linked' | 'invitable' | 'no-email';
+  /** Where they are in the field-app invitation — see lib/crew-invite. */
+  fieldApp: FieldAppState;
+  /** The date behind the chip: "Invited 3 days ago · link expired". */
+  fieldAppDetail: string | null;
   jobs: { id: string; ref: string; clientName: string }[];
   periodHours: number;
   periodPay: number;
@@ -171,17 +176,25 @@ const COMPLIANCE_TONE: Record<string, string> = {
   missing: 'warn',
 };
 
-const FIELD_APP_LABEL: Record<CrewRow['fieldApp'], string> = {
-  linked: 'Field app',
-  invitable: 'Not invited',
-  'no-email': 'No email',
-};
-
-const FIELD_APP_TITLE: Record<CrewRow['fieldApp'], string> = {
-  linked: 'Signed in to the field app — they can see their jobs and log hours from site.',
-  invitable: 'Has an email but hasn\'t been invited to the field app yet.',
-  'no-email': 'Add an email address before they can be invited to the field app.',
-};
+/**
+ * The chip, with its date underneath it.
+ *
+ * The date is the half that was missing. "Not invited" and "invited a month ago
+ * and the link died an hour later" were one word on this roster, and the second
+ * one is the reason a crew member is standing outside the app wondering why
+ * nothing works. The title attribute carries the explanation; the small line
+ * carries the fact.
+ */
+function FieldAppChip({ row, withDetail = true }: { row: CrewRow; withDetail?: boolean }) {
+  return (
+    <span className={styles.appState}>
+      <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
+        {FIELD_APP_LABEL[row.fieldApp]}
+      </span>
+      {withDetail && row.fieldAppDetail ? <small className={styles.appDetail}>{row.fieldAppDetail}</small> : null}
+    </span>
+  );
+}
 
 export default function CrewRoster({
   rows,
@@ -432,9 +445,7 @@ export default function CrewRoster({
         ],
         note: (
           <>
-            <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
-              {FIELD_APP_LABEL[row.fieldApp]}
-            </span>
+            <FieldAppChip row={row} />
             {row.jobs.length > 0 ? (
               <>
                 {row.jobs.map((job) => (
@@ -539,8 +550,11 @@ export default function CrewRoster({
             <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)}>
               <option value="all">Any</option>
               <option value="linked">Signed in</option>
-              <option value="invitable">Not invited</option>
+              <option value="invited">Invited, waiting</option>
+              <option value="expired">Invite expired</option>
+              <option value="not-invited">Not invited</option>
               <option value="no-email">No email</option>
+              <option value="revoked">Access removed</option>
             </select>
           </label>
 
@@ -941,9 +955,16 @@ function CrewActions({
             <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
               Edit crew member
             </button>
-            {!readOnly && row.active && row.fieldApp === 'invitable' ? (
+            {/* Re-inviting is now offered for an EXPIRED invitation and for a
+                revoked one, not only for somebody who was never asked. An
+                expired link was the state that had no control anywhere on this
+                screen: the chip said "Not invited", the button had already been
+                pressed, and pressing it again was the fix nobody could see. */}
+            {!readOnly && row.active && (needsInvite(row.fieldApp) || row.fieldApp === 'revoked') ? (
               <form action={inviteCrewAction.bind(null, row.id)}>
-                <button type="submit" role="menuitem">Invite to field app</button>
+                <button type="submit" role="menuitem">
+                  {row.fieldApp === 'expired' ? 'Send a new invite' : row.fieldApp === 'revoked' ? 'Restore field-app access' : 'Invite to field app'}
+                </button>
               </form>
             ) : null}
             <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
@@ -952,11 +973,23 @@ function CrewActions({
             {/* Archive is destructive-adjacent, so it lives behind the menu and
                 below a divider rather than beside the everyday actions. */}
             {readOnly ? null : (
+            <>
+            {/* Taking the app away without archiving somebody: the case where a
+                phone is lost, or where a person is still on the crew but should
+                not be reading customer addresses this week. Archiving them
+                instead would take them off the roster and out of the schedule,
+                which is a much bigger claim than the one being made. */}
+            {row.active && row.fieldApp !== 'no-email' && row.fieldApp !== 'revoked' && row.workerType !== 'subcontractor' ? (
+              <form action={revokeCrewAccessAction.bind(null, row.id)} className={styles.menuDanger}>
+                <button type="submit" role="menuitem">Remove field-app access</button>
+              </form>
+            ) : null}
             <form action={setCrewActiveAction.bind(null, row.id, !row.active)} className={styles.menuDanger}>
               <button type="submit" role="menuitem">
                 {row.active ? 'Archive crew member' : 'Reactivate crew member'}
               </button>
             </form>
+            </>
             )}
           </div>
         ) : null}
@@ -1133,9 +1166,7 @@ function CrewRowItem({
 
         <span className={styles.rowContact}>
           {row.phoneLabel ? <span>{row.phoneLabel}</span> : <span className={styles.dim}>No phone</span>}
-          <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
-            {FIELD_APP_LABEL[row.fieldApp]}
-          </span>
+          <FieldAppChip row={row} />
         </span>
 
         <span className={styles.rowJobs}>
@@ -1217,9 +1248,7 @@ function CrewCardItem({
           <dt>Contact</dt>
           <dd>
             {row.phoneLabel ?? <span className={styles.dim}>No phone</span>}{' '}
-            <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
-              {FIELD_APP_LABEL[row.fieldApp]}
-            </span>
+            <FieldAppChip row={row} />
           </dd>
         </div>
       </dl>
@@ -1323,9 +1352,7 @@ function CrewTableRow({
         <td className={styles.num}>{row.rateLabel}</td>
         <td>{row.phoneLabel ?? <span className={styles.dim}>No phone</span>}</td>
         <td>
-          <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
-            {FIELD_APP_LABEL[row.fieldApp]}
-          </span>
+          <FieldAppChip row={row} withDetail={false} />
         </td>
         <td><CurrentJob row={row} /></td>
         <td className={styles.num}>{row.periodHours}</td>
@@ -1530,15 +1557,51 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
           {/* A subcontractor is never invited to the field app: it signs a
               person in to log hours against your payroll, which is exactly the
               relationship a subcontractor does not have with you. */}
-          {row.workerType === 'subcontractor' ? null : row.active && row.fieldApp === 'invitable' ? (
-            <form action={inviteCrewAction.bind(null, row.id)}>
-              <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Invite sent ✓">
-                Invite to field app
-              </SaveButton>
-            </form>
-          ) : row.fieldApp === 'no-email' ? (
-            <span className={styles.dim}>Add an email above to invite them to the field app.</span>
-          ) : null}
+          {/* THE WHOLE LIFECYCLE, in the one place an owner is already looking
+              when they wonder why somebody can't get in. Each state gets the
+              control that is actually its fix, and the date underneath says
+              which state it is — "Invited 3 days ago · link expired" is the
+              sentence that ends the phone call. */}
+          {row.workerType === 'subcontractor' ? null : (
+            <div className={styles.drawerApp}>
+              <FieldAppChip row={row} />
+              {row.active && (needsInvite(row.fieldApp) || row.fieldApp === 'revoked') ? (
+                <form action={inviteCrewAction.bind(null, row.id)}>
+                  <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Invite sent ✓">
+                    {row.fieldApp === 'expired'
+                      ? 'Send a new invite'
+                      : row.fieldApp === 'revoked'
+                        ? 'Restore access & re-invite'
+                        : 'Invite to field app'}
+                  </SaveButton>
+                </form>
+              ) : row.fieldApp === 'no-email' ? (
+                <span className={styles.dim}>Add an email above to invite them to the field app.</span>
+              ) : null}
+              {/* Resending to somebody who is waiting is deliberately offered
+                  too: the commonest reason a live invitation goes unused is
+                  that it went to spam, and the owner's only recourse used to be
+                  to wait an hour for it to expire. */}
+              {row.active && row.fieldApp === 'invited' ? (
+                <form action={inviteCrewAction.bind(null, row.id)}>
+                  <SaveButton className="btn ghost" pendingLabel="Sending…" savedLabel="Sent again ✓">
+                    Send it again
+                  </SaveButton>
+                </form>
+              ) : null}
+              {row.active && (row.fieldApp === 'linked' || row.fieldApp === 'invited') ? (
+                <ConfirmActionButton
+                  action={revokeCrewAccessAction.bind(null, row.id)}
+                  confirmMessage={`Remove ${row.name}'s field-app access? They stay on the crew — they just can't sign in.`}
+                  className="btn ghost"
+                  pendingLabel="Removing…"
+                  savedLabel="Removed ✓"
+                >
+                  Remove field-app access
+                </ConfirmActionButton>
+              ) : null}
+            </div>
+          )}
           <form action={setCrewActiveAction.bind(null, row.id, !row.active)}>
             <button type="submit" className="btn ghost">{row.active ? 'Archive' : 'Reactivate'}</button>
           </form>

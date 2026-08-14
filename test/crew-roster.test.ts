@@ -24,7 +24,7 @@ describe('rosterNextStep — what the roster should tell you to do', () => {
     // email, someone idle — and the rate still wins.
     const step = rosterNextStep([
       member({ name: 'Danny', hourlyRate: 0 }),
-      member({ name: 'Mike', fieldApp: 'invitable' }),
+      member({ name: 'Mike', fieldApp: 'not-invited' }),
       member({ name: 'Sarah', fieldApp: 'no-email' }),
       member({ name: 'Carlos', jobs: [] }),
     ]);
@@ -34,7 +34,7 @@ describe('rosterNextStep — what the roster should tell you to do', () => {
   });
 
   it('asks for the one-click invite before the one that needs a phone call', () => {
-    const step = rosterNextStep([member({ name: 'Mike', fieldApp: 'invitable' }), member({ name: 'Sarah', fieldApp: 'no-email' })]);
+    const step = rosterNextStep([member({ name: 'Mike', fieldApp: 'not-invited' }), member({ name: 'Sarah', fieldApp: 'no-email' })]);
     expect(step.id).toBe('invite');
     expect(step.names).toEqual(['Mike']);
   });

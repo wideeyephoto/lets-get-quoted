@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
 import { normalizePayType } from '@/lib/pay-types';
@@ -26,7 +26,7 @@ import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFi
 import { createCost, getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
-import { sendCrewMagicLink } from '@/lib/crew-auth';
+import { revokeCrewAccess, sendCrewMagicLink, stampCrewInvite } from '@/lib/crew-auth';
 
 function optionalText(value: FormDataEntryValue | null): string | undefined {
   const text = (value ?? '').toString().trim();
@@ -146,7 +146,12 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
       invite = 'no-email';
     } else if (wantsInvite && email) {
       try {
-        await sendCrewMagicLink(email, await loadBusinessName(supabase, accountId));
+        // Named business, and stamped — the same two things inviteCrewAction
+        // does. Add-and-invite is the commonest way a crew member is invited at
+        // all, so leaving it out of the lifecycle would mean most of the roster
+        // read "Not invited" the moment after being invited.
+        await sendCrewMagicLink(email, await loadBusinessName(supabase, accountId), accountId);
+        await stampCrewInvite(createAdminClient(), accountId, member.id);
         invite = 'sent';
       } catch (inviteError) {
         console.error(`Crew invite email failed for ${member.id}:`, inviteError);
@@ -293,6 +298,11 @@ export async function deleteArchivedCrewAction(crewId: string) {
 
 // Emails a crew member a magic link into the mobile field app. Requires an email
 // on their record; the link ties their sign-in to this roster entry.
+//
+// The invitation names THIS business. Somebody on two rosters under one email
+// used to land in whichever account the app happened to resolve first, which
+// meant an owner could invite a person and watch them open a competitor's job
+// list. The account rides in the callback URL and becomes the remembered choice.
 export async function inviteCrewAction(crewId: string) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -308,7 +318,39 @@ export async function inviteCrewAction(crewId: string) {
 
   const businessName = await loadBusinessName(supabase, accountId);
 
-  await sendCrewMagicLink(member.email as string, businessName);
+  await sendCrewMagicLink(member.email as string, businessName, accountId);
+  // Stamped AFTER the send, so a roster that says "invited" is only ever
+  // describing an email that actually left. It also clears any revocation:
+  // sending somebody a fresh link IS the decision to let them back in, and a
+  // link the session guard then refuses reads as the product being broken.
+  await stampCrewInvite(createAdminClient(), accountId, crewId);
+  revalidatePath('/dashboard/crew');
+}
+
+/**
+ * Shut the field app to somebody who is still on the crew.
+ *
+ * NOT archiving. Archiving takes a person off the roster, out of the assignable
+ * list and off the schedule — a far bigger claim than "this phone was stolen"
+ * or "they're on gardening leave for a fortnight". Until now those were the same
+ * button, so the smaller decision had to be made with the larger one.
+ *
+ * Their history stays: hours, costs, and the jobs they did are the business's
+ * records, not a permission.
+ */
+export async function revokeCrewAccessAction(crewId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: member } = await supabase
+    .from('crew')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (!member) throw new Error('Crew member not found.');
+
+  await revokeCrewAccess(createAdminClient(), accountId, crewId);
   revalidatePath('/dashboard/crew');
 }
 

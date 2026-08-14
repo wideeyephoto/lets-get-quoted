@@ -5,6 +5,7 @@ import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatMoney, listJobs } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
+import { fieldAppDetail, fieldAppState } from '@/lib/crew-invite';
 import { laborTotalsByCrew } from '@/lib/labor-data';
 import { shapeSubcontractorProfile, subDisplayName } from '@/lib/subcontractors';
 import type { CrewRow } from '@/app/dashboard/crew/CrewRoster';
@@ -113,7 +114,13 @@ export async function loadRosterData(
       startAddress: member.start_address ?? null,
       permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
       active: member.active,
-      fieldApp: member.user_id ? 'linked' : member.email ? 'invitable' : 'no-email',
+      // Was `user_id ? 'linked' : email ? 'invitable' : 'no-email'` — three
+      // states derived from two booleans, which is why the roster could not
+      // tell "never invited" from "invited a month ago and the link died an
+      // hour later", and had no word at all for access having been taken away.
+      // See lib/crew-invite.
+      fieldApp: fieldAppState(member),
+      fieldAppDetail: fieldAppDetail(member),
       jobs: jobsByCrew[member.id] ?? [],
       periodHours: bucket?.hours ?? 0,
       periodPay: bucket?.pay ?? 0,

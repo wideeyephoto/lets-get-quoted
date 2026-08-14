@@ -9,9 +9,11 @@ import FieldHeader from '../../FieldHeader';
 import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, updateArrivalPositionAction, clockInFieldAction, clockOutFieldAction } from './actions';
 import { raiseFieldChangeOrderAction } from './change-order-actions';
 import { addFieldMilestonePhotoAction } from './milestone-actions';
-import { getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
+import { getOpenShift } from '@/lib/time-clock-data';
 import { formatClock, formatElapsed } from '@/lib/time-clock';
 import FieldClock from './FieldClock';
+import FieldOfflineForm from '../../FieldOfflineForm';
+import FieldPhotos from '../../FieldPhotos';
 import ArrivalPanel from '@/components/arrival-panel';
 import NavigateButton from '@/components/navigate-button';
 import ArrivalTracker from '@/components/arrival-tracker';
@@ -37,7 +39,7 @@ function formatTime(value: string): string {
 
 
 export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string; clocked?: string; clock?: string; hours?: string; arrival?: string; sms?: string } }) {
-  const { supabase, accountId, crew, businessName } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName, timeClockMode, businesses } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {
     redirect('/field');
@@ -86,21 +88,34 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
   const loggedHours = loggedCosts.filter((c) => c.type === 'labor').reduce((sum, c) => sum + (Number(c.hours) || 0), 0);
   const loggedMaterials = loggedCosts.filter((c) => c.type === 'material').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
 
-  const loggedFlash =
-    searchParams.logged === 'time'
-      ? 'Time logged ✓'
-      : searchParams.logged === 'material'
-        ? 'Material logged ✓'
-        : searchParams.logged === 'time-invalid'
-          ? 'Enter hours greater than 0.'
-          : searchParams.logged === 'material-invalid'
-            ? 'Add what it was and a valid amount.'
-            : null;
-  const loggedFlashError = searchParams.logged === 'time-invalid' || searchParams.logged === 'material-invalid';
+  // Every outcome the actions on this page can redirect with.
+  //
+  // The photo and change-order results were MISSING, and both of those actions
+  // have always redirected with one — so attaching stage proof, or sending the
+  // office a find, produced a page that looked identical to not having pressed
+  // anything. On a screen whose whole job is "did that go?", silence is the one
+  // answer that isn't allowed.
+  const LOGGED_FLASH: Record<string, { text: string; error?: boolean }> = {
+    time: { text: 'Time logged ✓' },
+    material: { text: 'Material logged ✓' },
+    photo: { text: 'Photos attached to that stage ✓' },
+    'change-order': { text: 'Sent to the office ✓ They price it and ask the customer.' },
+    'time-invalid': { text: 'Enter hours greater than 0.', error: true },
+    'material-invalid': { text: 'Add what it was and a valid amount.', error: true },
+    'photo-invalid': { text: "That stage isn't on this job.", error: true },
+    'photo-failed': { text: 'None of those photos saved. Try attaching them again.', error: true },
+    'change-order-invalid': { text: 'Describe what you found before sending it.', error: true },
+    'change-order-busy': { text: "That's a lot of finds in an hour. Give it a few minutes.", error: true },
+  };
+  const logged = searchParams.logged ? LOGGED_FLASH[searchParams.logged] : undefined;
+  const loggedFlash = logged?.text ?? null;
+  const loggedFlashError = Boolean(logged?.error);
 
-  // The time clock. Read here so the page can show the running shift and, when
-  // the owner has made clocking required, drop the manual hours form entirely.
-  const clockMode = await getTimeClockMode(supabase, accountId);
+  // The time clock. Off the context, which resolved it with the admin client —
+  // crew hold no read on `accounts`, so asking with the session client here
+  // answered 'off' for everybody and put the manual hours form back on a screen
+  // where the owner had required clocking.
+  const clockMode = timeClockMode;
   const openShift = clockMode === 'off' ? null : await getOpenShift(supabase, accountId, crew.id);
   const shiftOnThisJob = openShift && openShift.job_id === params.id ? openShift : null;
   const clockFlash = searchParams.clock
@@ -135,7 +150,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
 
   return (
     <>
-      <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" />
+      <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" switchable={businesses.length > 1} />
       <main className="field-main">
         {arrivalFlash ? <div className={`field-flash${arrivalFlash.error ? ' is-error' : ''}`}>{arrivalFlash.text}</div> : null}
         {loggedFlash ? <div className={`field-flash${loggedFlashError ? ' is-error' : ''}`}>{loggedFlash}</div> : null}
@@ -223,8 +238,13 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
                   </label>
                 </div>
                 <input name="caption" maxLength={160} placeholder="What this shows (optional)" aria-label="Caption" />
-                <input type="file" name="photos" accept="image/*" capture="environment" multiple required aria-label="Photos" />
-                <SaveButton className="btn secondary" pendingLabel="Uploading…" savedLabel="Added ✓">
+                <FieldPhotos
+                  jobId={job.id}
+                  label="Photos"
+                  max={6}
+                  hint="Shrunk on your phone before they go, so a full-size camera shot isn't a two-minute upload."
+                />
+                <SaveButton className="btn secondary" pendingLabel="Attaching…" savedLabel="Added ✓">
                   Attach to this stage
                 </SaveButton>
               </form>
@@ -253,7 +273,12 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
               placeholder="Six sheets of decking are rotted through — won't hold a nail. Needs replacing before the new shingles go on."
               aria-label="Describe what you found"
             />
-            <input type="file" name="photos" accept="image/*" capture="environment" multiple aria-label="Photos of what you found" />
+            <FieldPhotos
+              jobId={job.id}
+              label="Photos of what you found"
+              max={3}
+              hint="Each one goes up on its own — if the signal drops, retry just that photo."
+            />
             <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">
               Send to the office
             </SaveButton>
@@ -394,24 +419,44 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
             />
           ) : null}
 
+          {/* HOURS ONLY. There was an editable "Rate ($/hr)" box here, and the
+              server took whatever it was sent — so a crew member could log four
+              hours at a rate of their own choosing, straight into the owner's
+              job cost and their own pay total. What they're paid is the owner's
+              number; the hours are the thing only the person who worked them
+              knows. The rate is shown, because it isn't a secret from them (it's
+              on My pay), and seeing what the hours are worth is the point. */}
           {clockMode !== 'required' ? (
-            <form action={logFieldTimeAction.bind(null, job.id)} className="field-log-form">
+            <FieldOfflineForm
+              action={logFieldTimeAction.bind(null, job.id)}
+              kind="time"
+              jobId={job.id}
+              className="field-log-form"
+              queuedLabel="Hours held on your phone — they'll send when you're back in signal ✓"
+            >
               <div className="field-log-row">
-                <label>
+                <label className="field-log-grow">
                   <span>Hours</span>
                   <input name="hours" type="number" min="0" step="0.25" inputMode="decimal" placeholder="0" required />
                 </label>
-                <label>
-                  <span>Rate ($/hr)</span>
-                  <input name="rate" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={Number(crew.hourly_rate) > 0 ? Number(crew.hourly_rate) : ''} placeholder="0" />
-                </label>
               </div>
               <input name="description" type="text" placeholder="What you worked on (optional)" />
+              <p className="field-log-rate">
+                {Number(crew.hourly_rate) > 0
+                  ? `Logged at ${formatMoney(Number(crew.hourly_rate))}/hr — the rate your office set.`
+                  : 'No hourly rate is set for you yet. Your hours are recorded either way — ask your office to add one.'}
+              </p>
               <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Logged ✓">Log time</SaveButton>
-            </form>
+            </FieldOfflineForm>
           ) : null}
 
-          <form action={logFieldMaterialAction.bind(null, job.id)} className="field-log-form">
+          <FieldOfflineForm
+            action={logFieldMaterialAction.bind(null, job.id)}
+            kind="material"
+            jobId={job.id}
+            className="field-log-form"
+            queuedLabel="Material held on your phone — it'll send when you're back in signal ✓"
+          >
             <div className="field-log-row">
               <label className="field-log-grow">
                 <span>Material / expense</span>
@@ -423,7 +468,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
               </label>
             </div>
             <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Added ✓">Add material</SaveButton>
-          </form>
+          </FieldOfflineForm>
 
           {loggedCosts.length > 0 ? (
             <div className="field-log-list">
@@ -439,14 +484,20 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
 
         <section className="field-block">
           <h2 className="field-block-title">Post an update</h2>
-          <form action={postFieldUpdateAction.bind(null, job.id)} className="field-update-form">
+          <FieldOfflineForm
+            action={postFieldUpdateAction.bind(null, job.id)}
+            kind="note"
+            jobId={job.id}
+            className="field-update-form"
+            queuedLabel="Update held on your phone — it'll post when you're back in signal ✓"
+          >
             <textarea name="body" rows={3} placeholder="On site, started demo. Running about an hour behind…" required />
             <label className="field-share">
               <input type="checkbox" name="share" />
               <span>Also share this with the customer</span>
             </label>
             <SaveButton className="btn secondary" pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
-          </form>
+          </FieldOfflineForm>
         </section>
 
         {(feed ?? []).length > 0 ? (

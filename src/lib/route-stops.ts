@@ -34,6 +34,17 @@ export const KIND_GLYPH: Record<RouteStopKind, string> = {
   estimate: 'pencilRuler',
 };
 
+// The field app's version. It runs on a phone with no icon sprite and speaks in
+// emoji everywhere else (📞 Call, 💬 Text, ⏱ time, 🧾 materials), so a supply run
+// in the middle of a route reads as a stop rather than as a broken glyph.
+export const KIND_EMOJI: Record<RouteStopKind, string> = {
+  supply: '🧰',
+  dump: '🗑',
+  fuel: '⛽',
+  other: '📦',
+  estimate: '📐',
+};
+
 export type RouteStop = {
   id: string;
   account_id: string;

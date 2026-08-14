@@ -210,7 +210,25 @@
 }
 /* Green only for a state that's genuinely done. */
 .appChip[data-state='linked'] { border-color: var(--cedge-green-50); background: rgba(72, 199, 142, 0.13); color: var(--good); }
-.appChip[data-state='invitable'] { border-color: var(--cedge-amber-3); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
+/* Amber for "waiting on somebody": an invitation that is out, and one that was
+   never sent. Both are one press from resolved. */
+.appChip[data-state='invited'] { border-color: var(--cedge-amber-3); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
+.appChip[data-state='not-invited'] { border-color: var(--cedge-amber-3); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
+/* An expired link is louder than an un-sent one, because it looks handled from
+   both sides — the owner pressed the button and the crew member got an email.
+   Nothing about the row said the link had since died. */
+.appChip[data-state='expired'] { border-color: var(--cedge-orange-41); background: rgba(255, 122, 33, 0.12); color: var(--ink-orange-1); }
+/* Revoked is a DECISION, not a fault: neutral, stated plainly, no alarm. */
+.appChip[data-state='revoked'] { border-color: var(--edge-g30); background: rgba(var(--grey-4), 0.08); color: rgba(var(--grey-4), 0.95); }
+
+/* The chip and the date under it. The date is the half that was missing —
+   "Invited" and "Invited 3 weeks ago · link expired" are different facts. */
+.appState { display: inline-grid; gap: 0.1rem; justify-items: start; }
+.appDetail { font-size: 0.66rem; color: var(--mute-g575); line-height: 1.3; }
+
+/* The field-app block in the drawer: state, then whichever control is actually
+   its fix. They sit together because "why can't they sign in" is one question. */
+.drawerApp { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
 
 .availablePill {
   justify-self: start;

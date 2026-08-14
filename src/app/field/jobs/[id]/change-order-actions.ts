@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/auth';
 import { requireCrewContext } from '@/lib/crew-auth';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { isJobPhotoFile, uploadJobPhoto } from '@/lib/job-photo-storage';
+import { isJobPhotoFile, ownedPhotoPaths, uploadJobPhoto } from '@/lib/job-photo-storage';
 import { raiseChangeOrder } from '@/lib/change-orders-data';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { assertAssigned } from './actions';
@@ -35,8 +35,14 @@ export async function raiseFieldChangeOrderAction(jobId: string, formData: FormD
   const note = String(formData.get('note') ?? '').trim();
   if (!note) redirect(`/field/jobs/${jobId}?logged=change-order-invalid`);
 
-  const photoPaths: string[] = [];
-  for (const entry of formData.getAll('photos').slice(0, MAX_PHOTOS)) {
+  // Already uploaded by FieldPhotos, one request each, before this form was
+  // submitted — so a photo that failed on a bad connection was retried on the
+  // spot instead of taking the write-up down with it. Validated against this
+  // account's prefix, because a storage path is a value from a client now.
+  const photoPaths = ownedPhotoPaths(accountId, formData.getAll('photoPaths')).slice(0, MAX_PHOTOS);
+
+  // The no-JavaScript path: the input is still a plain file field there.
+  for (const entry of formData.getAll('photos').slice(0, Math.max(0, MAX_PHOTOS - photoPaths.length))) {
     if (!isJobPhotoFile(entry)) continue;
     try {
       photoPaths.push(await uploadJobPhoto(accountId, entry));

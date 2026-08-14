@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireCrewContext } from '@/lib/crew-auth';
-import { isJobPhotoFile, uploadJobPhoto } from '@/lib/job-photo-storage';
+import { isJobPhotoFile, ownedPhotoPaths, uploadJobPhoto } from '@/lib/job-photo-storage';
 import { addMilestonePhoto } from '@/lib/milestones-data';
 import { assertAssigned } from './actions';
 
@@ -38,24 +38,45 @@ export async function addFieldMilestonePhotoAction(jobId: string, milestoneId: s
     redirect(`/field/jobs/${jobId}?logged=photo-invalid`);
   }
 
+  // The uploader has already sent these, one request each, with progress and a
+  // retry button against any that failed (see FieldPhotos). By the time the form
+  // is submitted they are storage paths — validated against this account's
+  // prefix, because a path is now a value arriving from a client.
+  const uploaded = ownedPhotoPaths(accountId, formData.getAll('photoPaths'));
+
+  // The raw-file branch survives for the no-JavaScript case, where the input is
+  // still a plain file field. It is the slow path on purpose; nothing routine
+  // goes through it any more.
+  const rawFiles = formData.getAll('photos').filter(isJobPhotoFile);
+
   let added = 0;
-  for (const entry of formData.getAll('photos').slice(0, MAX_PHOTOS)) {
-    if (!isJobPhotoFile(entry)) continue;
+  const attach = async (path: string) => {
+    await addMilestonePhoto(supabase, accountId, {
+      milestoneId,
+      jobId,
+      path,
+      phase,
+      // Only the first photo carries the caption — repeating it on six
+      // pictures of the same wall is noise on the owner's screen.
+      caption: added === 0 ? caption : null,
+    });
+    added += 1;
+  };
+
+  for (const path of uploaded.slice(0, MAX_PHOTOS)) {
     try {
-      const path = await uploadJobPhoto(accountId, entry);
-      await addMilestonePhoto(supabase, accountId, {
-        milestoneId,
-        jobId,
-        path,
-        phase,
-        // Only the first photo carries the caption — repeating it on six
-        // pictures of the same wall is noise on the owner's screen.
-        caption: added === 0 ? caption : null,
-      });
-      added += 1;
+      await attach(path);
     } catch (error) {
-      // One bad upload must not lose the others. A crew member on site gets a
+      // One bad row must not lose the others. A crew member on site gets a
       // partial success and can retry the rest.
+      console.error('Field milestone photo failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  for (const entry of rawFiles.slice(0, Math.max(0, MAX_PHOTOS - added))) {
+    try {
+      await attach(await uploadJobPhoto(accountId, entry));
+    } catch (error) {
       console.error('Field milestone photo failed:', error instanceof Error ? error.message : error);
     }
   }

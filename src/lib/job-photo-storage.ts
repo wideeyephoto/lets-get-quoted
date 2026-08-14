@@ -23,6 +23,31 @@ export function isJobPhotoFile(value: FormDataEntryValue | null): value is File 
   return value instanceof File && value.size > 0;
 }
 
+/**
+ * Storage paths posted back by the field app's uploader, filtered to ones this
+ * account could actually have written.
+ *
+ * The uploader sends photos ahead of the form and hands the action a list of
+ * paths, which means the action is now taking a storage key from a client. The
+ * shape is fixed and account-prefixed by uploadJobPhoto — `<account>/<uuid>.jpg`
+ * — so anything that doesn't match that exactly is discarded rather than
+ * queried. Without this, a hand-posted path could attach another tenant's
+ * photograph to a change order as evidence.
+ */
+export function ownedPhotoPaths(accountId: string, values: FormDataEntryValue[]): string[] {
+  const shape = new RegExp(`^${accountId}/[0-9a-fA-F-]{36}\\.(jpg|png|webp|avif)$`);
+  const seen = new Set<string>();
+  const paths: string[] = [];
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const path = value.trim();
+    if (!shape.test(path) || seen.has(path)) continue;
+    seen.add(path);
+    paths.push(path);
+  }
+  return paths;
+}
+
 export async function uploadJobPhoto(accountId: string, file: File): Promise<string> {
   if (!ALLOWED_TYPES.has(file.type)) throw new Error('Photos must be JPG, PNG, WebP, or AVIF.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be 6 MB or smaller.');
