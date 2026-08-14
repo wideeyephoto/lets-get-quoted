@@ -11,6 +11,9 @@ import {
   windowPartName,
   windowsForTimes,
 } from '@/lib/booking-availability';
+import { overrunningWindowTimes } from '@/lib/booking-availability';
+import { computeBookingDays } from '@/lib/booking';
+import { readFileSync } from 'node:fs';
 import { requestedWhenLabel } from '@/lib/booking-requests';
 
 describe('windowEndTime', () => {
@@ -145,5 +148,105 @@ describe('requestedWhenLabel', () => {
 
   it('returns the raw key rather than "Invalid Date" for junk', () => {
     expect(requestedWhenLabel('not-a-date', '08:00', '12:00')).toBe('not-a-date');
+  });
+});
+
+/**
+ * THE WINDOW THAT FINISHED AFTER WORK DID.
+ *
+ * Working hours ended at 6:00 PM and the live booking page offered
+ * "3:00 – 7:00 PM". computeBookingDays checked that a window STARTED inside the
+ * working day and never that it finished inside one, so a four-hour window
+ * beginning at three o'clock passed the filter — and a homeowner was promised
+ * an arrival window an hour after the contractor stops.
+ */
+describe('overrunningWindowTimes', () => {
+  it('catches the case that shipped', () => {
+    expect(overrunningWindowTimes(['08:00', '12:00', '15:00'], 240, '18:00')).toEqual(['15:00']);
+  });
+
+  it('lets a window that ends exactly on the bell through', () => {
+    // 2:00 PM + 4 hours is 6:00 PM, and a day that ends at 6:00 PM includes it.
+    // Anything stricter refuses to use the last window of the owner's own day.
+    expect(overrunningWindowTimes(['14:00'], 240, '18:00')).toEqual([]);
+  });
+
+  it('moves with the window length, not just the start', () => {
+    // The same 3:00 PM start is fine at two hours and not at four.
+    expect(overrunningWindowTimes(['15:00'], 120, '18:00')).toEqual([]);
+    expect(overrunningWindowTimes(['15:00'], 240, '18:00')).toEqual(['15:00']);
+  });
+
+  it('reports every offender, in the order they were given', () => {
+    expect(overrunningWindowTimes(['13:00', '16:00', '17:00'], 240, '18:00')).toEqual(['16:00', '17:00']);
+  });
+
+  it('says nothing when the working day is unreadable', () => {
+    // Better to offer the owner's configured windows than to close booking on
+    // a value we could not parse.
+    expect(overrunningWindowTimes(['15:00'], 240, 'not-a-time')).toEqual([]);
+  });
+});
+
+describe('computeBookingDays respects both ends of the working day', () => {
+  const availability = (over: Partial<Parameters<typeof computeBookingDays>[0]['availability']> = {}) =>
+    ({
+      enabled: true,
+      weekdays: [1, 2, 3, 4, 5],
+      windowTimes: ['08:00', '12:00', '15:00'],
+      windowMinutes: 240,
+      workdayStart: '08:00',
+      workdayEnd: '18:00',
+      maxPerDay: 10,
+      capacityHours: 100,
+      leadDays: 0,
+      timezone: 'America/Detroit',
+      ...over,
+    }) as Parameters<typeof computeBookingDays>[0]['availability'];
+
+  const offer = (over = {}) =>
+    computeBookingDays({
+      availability: availability(over),
+      countByDate: new Map(),
+      takenByDate: new Map(),
+      now: new Date('2026-08-10T15:00:00Z'), // a Monday
+    });
+
+  it('no longer offers 3:00 – 7:00 PM against a 6:00 PM finish', () => {
+    const times = offer()[0]?.slots.map((s) => s.time) ?? [];
+    expect(times).toContain('08:00');
+    expect(times).toContain('12:00');
+    expect(times).not.toContain('15:00');
+  });
+
+  it('offers it again once the day is long enough to hold it', () => {
+    const times = offer({ workdayEnd: '19:00' })[0]?.slots.map((s) => s.time) ?? [];
+    expect(times).toContain('15:00');
+  });
+
+  it('and once the window is short enough to fit', () => {
+    const times = offer({ windowMinutes: 120 })[0]?.slots.map((s) => s.time) ?? [];
+    expect(times).toContain('15:00');
+  });
+
+  it('still refuses a window that starts after the day ends', () => {
+    // The rule this replaces was not wrong, only incomplete.
+    const times = offer({ windowTimes: ['19:00'], windowMinutes: 60 })[0]?.slots.map((s) => s.time) ?? [];
+    expect(times).not.toContain('19:00');
+  });
+});
+
+/** The warning and the filter have to be the same rule, or a window vanishes
+ *  from the public page with nothing on the setup screen explaining it. */
+describe('booking setup names the windows it will not offer', () => {
+  const SETUP = readFileSync('src/app/dashboard/schedule/booking/BookingSetup.tsx', 'utf8');
+
+  it('uses the same function the offer filter does', () => {
+    expect(SETUP).toContain('overrunningWindowTimes(windowTimes, windowMinutes, workdayEnd)');
+  });
+
+  it('says which window, and what to change', () => {
+    expect(SETUP).toContain('after your working day ends at');
+    expect(SETUP).toMatch(/Shorten the window length, move the start earlier, or extend your working hours/);
   });
 });

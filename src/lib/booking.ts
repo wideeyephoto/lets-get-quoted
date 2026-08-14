@@ -61,12 +61,20 @@ export function computeBookingDays(opts: {
   if (!availability.enabled) return [];
   const lookahead = opts.lookaheadDays ?? LOOKAHEAD_DAYS;
   const maxOffered = opts.maxOfferedDays ?? MAX_OFFERED_DAYS;
-  // Only offer windows that start within the working-hours span.
+  /* Only offer windows that FIT INSIDE the working-hours span — both ends.
+     This used to check the start alone, which is how a workday ending at 6:00
+     PM came to offer a homeowner "3:00 – 7:00 PM": three o'clock is inside the
+     day, seven is an hour after the contractor stops.
+     `<= dayEnd` on the finish, because a window closing exactly at 6:00 PM
+     closes within a day that ends at 6:00 PM. A window that no longer fits is
+     dropped rather than shortened — trimming it would quietly change the
+     arrival promise the owner configured — and Booking setup names the dropped
+     ones so this is not a silent disappearance. */
   const dayStart = timeToMinutes(availability.workdayStart);
   const dayEnd = timeToMinutes(availability.workdayEnd);
   const windows = windowsForTimes(availability.windowTimes, availability.windowMinutes).filter((w) => {
     const t = timeToMinutes(w.time);
-    return t >= dayStart && t < dayEnd;
+    return t >= dayStart && t < dayEnd && timeToMinutes(w.endTime) <= dayEnd;
   });
   const weekdaySet = new Set(availability.weekdays);
   if (windows.length === 0 || weekdaySet.size === 0) return []; // booking closed

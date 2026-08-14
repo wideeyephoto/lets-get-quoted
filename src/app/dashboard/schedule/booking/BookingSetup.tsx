@@ -8,9 +8,11 @@ import {
   BOOKING_WINDOW_PRESET_TIMES,
   MAX_BOOKING_WINDOWS,
   WEEKDAY_LABELS,
+  formatWindowClock,
   formatWindowRange,
   isWindowTime,
   overlappingWindowTimes,
+  overrunningWindowTimes,
   windowPartName,
   type BookingAvailability,
 } from '@/lib/booking-availability';
@@ -301,6 +303,17 @@ export default function BookingSetup({
   // length so the warning appears the moment they widen past a clash.
   const overlaps = useMemo(() => overlappingWindowTimes(windowTimes, windowMinutes), [windowTimes, windowMinutes]);
 
+  /* Windows the public page will refuse to offer because they finish after the
+     working day. Same function the offer filter uses, so the warning and the
+     behavior cannot disagree. workdayEnd is the SAVED value — it is set in
+     Settings → Schedule, not on this screen, so there is no local state to
+     prefer over it. */
+  const workdayEnd = availability.workdayEnd;
+  const overruns = useMemo(
+    () => overrunningWindowTimes(windowTimes, windowMinutes, workdayEnd),
+    [windowTimes, windowMinutes, workdayEnd],
+  );
+
   const nextBlock = blocks[0] ?? null;
   const live = enabled && Boolean(bookingUrl) && weekdays.length > 0 && windowTimes.length > 0;
 
@@ -494,6 +507,21 @@ export default function BookingSetup({
                     <p className="bset-window-warn">
                       <Icon name="alert" /> {overlaps.map((t) => windowPartName(t)).join(' and ')} run into the next
                       window at this length. Customers will see two options covering the same hours.
+                    </p>
+                  ) : null}
+                  {/* A window that finishes after the working day is NOT
+                      offered — the public page used to offer "3:00 – 7:00 PM"
+                      against a day ending at 6:00 PM, which promises a
+                      homeowner an arrival window an hour after work stops. It
+                      is dropped rather than shortened, so this says which one
+                      and why: a window that silently stops appearing reads as
+                      the booking page being broken. */}
+                  {overruns.length > 0 ? (
+                    <p className="bset-window-warn">
+                      <Icon name="alert" /> {overruns.map((t) => windowPartName(t)).join(' and ')}{' '}
+                      {overruns.length === 1 ? 'finishes' : 'finish'} after your working day ends at{' '}
+                      {formatWindowClock(workdayEnd)}, so {overruns.length === 1 ? 'it is' : 'they are'} not offered.
+                      Shorten the window length, move the start earlier, or extend your working hours.
                     </p>
                   ) : null}
                   <AddWindow
