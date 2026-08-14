@@ -419,7 +419,13 @@ export default function BookingSetup({
             className="bset-section"
             ref={(el) => { sectionRefs.current.days = el; }}
           >
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('days')} aria-expanded={isOpen('days')}>
+            <button
+              type="button"
+              className="bset-section-head"
+              onClick={() => toggleSection('days')}
+              aria-expanded={isOpen('days')}
+              aria-controls={isOpen('days') ? 'booking-section-days' : undefined}
+            >
               <span className="bset-num">1</span>
               <span className="bset-section-copy">
                 <strong>When customers can book</strong>
@@ -429,7 +435,7 @@ export default function BookingSetup({
             </button>
 
             {isOpen('days') && (
-              <div className="bset-section-body">
+              <div id="booking-section-days" className="bset-section-body">
                 <div className="bset-field-group">
                   <p className="bset-group-title">Booking days</p>
                   <p className="bset-group-hint">Customers can request these days.</p>
@@ -553,7 +559,13 @@ export default function BookingSetup({
 
           {/* 2 — limits */}
           <section className="bset-section" ref={(el) => { sectionRefs.current.limits = el; }}>
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('limits')} aria-expanded={isOpen('limits')}>
+            <button
+              type="button"
+              className="bset-section-head"
+              onClick={() => toggleSection('limits')}
+              aria-expanded={isOpen('limits')}
+              aria-controls={isOpen('limits') ? 'booking-section-limits' : undefined}
+            >
               <span className="bset-num">2</span>
               <span className="bset-section-copy">
                 <strong>Booking limits</strong>
@@ -563,7 +575,7 @@ export default function BookingSetup({
             </button>
 
             {isOpen('limits') && (
-              <div className="bset-section-body">
+              <div id="booking-section-limits" className="bset-section-body">
                 <div className="bset-grid">
                   <label className="bset-field">
                     <span>Max bookings per day <Tip text="Once a day reaches this many jobs it stops offering slots." /></span>
@@ -598,7 +610,13 @@ export default function BookingSetup({
 
           {/* 3 — advanced, folded by default */}
           <section className="bset-section bset-section-quiet" ref={(el) => { sectionRefs.current.advanced = el; }}>
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('advanced')} aria-expanded={isOpen('advanced')}>
+            <button
+              type="button"
+              className="bset-section-head"
+              onClick={() => toggleSection('advanced')}
+              aria-expanded={isOpen('advanced')}
+              aria-controls={isOpen('advanced') ? 'booking-section-advanced' : undefined}
+            >
               <span className="bset-num">3</span>
               <span className="bset-section-copy">
                 <strong>Advanced booking rules</strong>
@@ -608,7 +626,7 @@ export default function BookingSetup({
             </button>
 
             {isOpen('advanced') && (
-              <div className="bset-section-body">
+              <div id="booking-section-advanced" className="bset-section-body">
                 <label className="bset-check">
                   <input type="checkbox" checked={instant.enabled} onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })} />
                   <span className="bset-switch-track small" aria-hidden="true"><span /></span>
@@ -664,7 +682,13 @@ export default function BookingSetup({
 
           {/* 4 — time off */}
           <section className="bset-section" ref={(el) => { sectionRefs.current.timeoff = el; }}>
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('timeoff')} aria-expanded={isOpen('timeoff')}>
+            <button
+              type="button"
+              className="bset-section-head"
+              onClick={() => toggleSection('timeoff')}
+              aria-expanded={isOpen('timeoff')}
+              aria-controls={isOpen('timeoff') ? 'booking-section-timeoff' : undefined}
+            >
               <span className="bset-num">4</span>
               <span className="bset-section-copy">
                 <strong>Time off &amp; blocked dates</strong>
@@ -674,7 +698,7 @@ export default function BookingSetup({
             </button>
 
             {isOpen('timeoff') && (
-              <div className="bset-section-body">
+              <div id="booking-section-timeoff" className="bset-section-body">
                 <TimeOff blocks={blocks} todayKey={todayKey} />
               </div>
             )}
@@ -998,12 +1022,13 @@ function TimeOff({ blocks, todayKey }: { blocks: AvailabilityBlock[]; todayKey: 
                     className="bset-dots"
                     aria-label={`Actions for ${formatBlockRange(block.start_date, block.end_date)}`}
                     aria-expanded={menuFor === block.id}
+                    aria-controls={menuFor === block.id ? `timeoff-menu-${block.id}` : undefined}
                     onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === block.id ? null : block.id); }}
                   >
                     <Icon name="dots" />
                   </button>
                   {menuFor === block.id && (
-                    <span className="bset-dots-pop" role="menu" onClick={(e) => e.stopPropagation()}>
+                    <span id={`timeoff-menu-${block.id}`} className="bset-dots-pop" role="menu" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => startTransition(async () => { await removeAvailabilityBlockAction(block.id); setMenuFor(null); router.refresh(); })}

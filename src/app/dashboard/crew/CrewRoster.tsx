@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { Suspense, createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
@@ -868,6 +868,9 @@ function hoursHrefFor(row: CrewRow, basePath = '/dashboard'): string {
 // tick the button is pressed, and the submit silently never happens.
 function useRowMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Per row, so every trigger names its own menu rather than all of them
+  // naming the first one.
+  const menuId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -886,27 +889,36 @@ function useRowMenu() {
     };
   }, [menuOpen]);
 
-  return { menuOpen, setMenuOpen, menuRef };
+  return { menuOpen, setMenuOpen, menuRef, menuId };
 }
 
 function CrewActions({
   row,
   assigning,
   setAssigning,
+  assignId,
   onOpen,
 }: {
   row: CrewRow;
   assigning: boolean;
   setAssigning: (next: (previous: boolean) => boolean) => void;
+  /** The assign form is a sibling rendered by the row, so its id comes from there. */
+  assignId: string;
   onOpen: () => void;
 }) {
-  const { menuOpen, setMenuOpen, menuRef } = useRowMenu();
+  const { menuOpen, setMenuOpen, menuRef, menuId } = useRowMenu();
   const { readOnly, basePath } = useRosterMode();
 
   return (
     <div className={styles.rowActions}>
       {!readOnly && row.active ? (
-        <button type="button" className={styles.rowBtn} onClick={() => setAssigning((v) => !v)} aria-expanded={assigning}>
+        <button
+          type="button"
+          className={styles.rowBtn}
+          onClick={() => setAssigning((v) => !v)}
+          aria-expanded={assigning}
+          aria-controls={assigning ? assignId : undefined}
+        >
           Assign job
         </button>
       ) : null}
@@ -918,13 +930,14 @@ function CrewActions({
           className={styles.rowBtn}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
+          aria-controls={menuOpen ? menuId : undefined}
           aria-label={`More actions for ${row.name}`}
           onClick={() => setMenuOpen((v) => !v)}
         >
           •••
         </button>
         {menuOpen ? (
-          <div className={styles.menu} role="menu">
+          <div id={menuId} className={styles.menu} role="menu">
             <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
               Edit crew member
             </button>
@@ -952,13 +965,13 @@ function CrewActions({
   );
 }
 
-function AssignForm({ row, assignableJobs }: { row: CrewRow; assignableJobs: JobOption[] }) {
+function AssignForm({ row, assignableJobs, id }: { row: CrewRow; assignableJobs: JobOption[]; id: string }) {
   const { readOnly } = useRosterMode();
   // Nothing to offer when the page cannot save it — and "Assign job" is the one
   // control on this roster somebody would most expect to work.
   if (readOnly) return null;
   return (
-    <form action={assignCrewToJobAction.bind(null, row.id)} className={styles.assignForm}>
+    <form id={id} action={assignCrewToJobAction.bind(null, row.id)} className={styles.assignForm}>
       {assignableJobs.length === 0 ? (
         <p className={styles.dim}>No open jobs to assign yet.</p>
       ) : (
@@ -1081,6 +1094,7 @@ function CrewRowItem({
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
+  const assignId = useId();
 
   return (
     <li className={`${styles.row}${row.active ? '' : ` ${styles.rowArchived}`}${justAdded ? ` ${styles.justAdded}` : ''}`}>
@@ -1134,9 +1148,9 @@ function CrewRowItem({
         </span>
       </button>
 
-      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
 
-      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} /> : null}
+      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} id={assignId} /> : null}
     </li>
   );
 }
@@ -1158,6 +1172,7 @@ function CrewCardItem({
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
+  const assignId = useId();
 
   return (
     <li className={`${styles.card}${row.active ? '' : ` ${styles.rowArchived}`}${justAdded ? ` ${styles.justAdded}` : ''}`}>
@@ -1209,9 +1224,9 @@ function CrewCardItem({
         </div>
       </dl>
 
-      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
 
-      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} /> : null}
+      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} id={assignId} /> : null}
     </li>
   );
 }
@@ -1233,6 +1248,7 @@ function CrewBoardItem({
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
+  const assignId = useId();
 
   return (
     <li className={`${styles.boardCard}${justAdded ? ` ${styles.justAdded}` : ''}`}>
@@ -1261,9 +1277,9 @@ function CrewBoardItem({
         </span>
       </button>
 
-      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
 
-      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} /> : null}
+      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} id={assignId} /> : null}
     </li>
   );
 }
@@ -1285,6 +1301,7 @@ function CrewTableRow({
   onOpen: () => void;
 }) {
   const [assigning, setAssigning] = useState(false);
+  const assignId = useId();
 
   return (
     <>
@@ -1314,7 +1331,7 @@ function CrewTableRow({
         <td className={styles.num}>{row.periodHours}</td>
         <td className={styles.num} title={periodTitle(periodLabel)}>{row.periodPayLabel}</td>
         <td>
-          <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+          <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
         </td>
       </tr>
       {/* A form inside a cell would break the column grid, so it gets its own
@@ -1322,7 +1339,7 @@ function CrewTableRow({
       {assigning ? (
         <tr className={styles.tableAssignRow}>
           <td colSpan={9}>
-            <AssignForm row={row} assignableJobs={assignableJobs} />
+            <AssignForm row={row} assignableJobs={assignableJobs} id={assignId} />
           </td>
         </tr>
       ) : null}

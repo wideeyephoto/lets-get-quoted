@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import {
   milestoneProgressPct, milestoneTotals, milestoneCoverage,
   MILESTONE_STATUS_LABEL, type MilestoneEntryView,
@@ -168,12 +168,19 @@ function MilestoneCard({
   actions: Parameters<typeof Milestones>[0]['actions'];
 }) {
   const [editing, setEditing] = useState(false);
+  const bodyId = useId();
   const progress = milestoneProgressPct(entry, entry);
   const settled = entry.status === 'paid';
 
   return (
     <div className={`milestone-card status-${entry.status}`}>
-      <button type="button" className="milestone-head" onClick={onToggle} aria-expanded={open}>
+      <button
+        type="button"
+        className="milestone-head"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={open ? bodyId : undefined}
+      >
         <span className="milestone-head-main">
           <span className="milestone-title">{entry.title}</span>
           {entry.scope ? <span className="milestone-scope">{entry.scope}</span> : null}
@@ -191,7 +198,7 @@ function MilestoneCard({
       ) : null}
 
       {open ? (
-        <div className="milestone-body">
+        <div id={bodyId} className="milestone-body">
           {editing ? (
             <MilestoneForm
               initial={entry}

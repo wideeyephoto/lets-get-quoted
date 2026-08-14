@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -125,6 +125,7 @@ function CalendarViewMenu({
 }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const viewMenuId = useId();
   const current = VIEW_OPTIONS.find((option) => option.id === value) ?? VIEW_OPTIONS[0];
   // The menu holds the other four now, so it only names a view when one of
   // those is the one you are in; otherwise it is just the way to the rest.
@@ -163,6 +164,7 @@ function CalendarViewMenu({
         className={`calendar-view-trigger${open ? ' open' : ''}${inMenu ? ' is-current' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? viewMenuId : undefined}
         aria-label={
           `${inMenu ? `Calendar view: ${current.label}. More views` : 'More calendar views'}${showDayColumns ? ' and day columns' : ''}`
         }
@@ -180,7 +182,7 @@ function CalendarViewMenu({
         </svg>
       </button>
       <FloatingPanel anchorRef={buttonRef} open={open} onClose={() => setOpen(false)} className="calendar-view-panel" width={264}>
-        <div role="menu" aria-label="More calendar views">
+        <div id={viewMenuId} role="menu" aria-label="More calendar views">
           {MENU_VIEW_OPTIONS.filter((option) => option.id !== 'timeline' || hasProjects || value === 'timeline').map((option) => (
             <button
               key={option.id}

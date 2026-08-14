@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Site } from '@/lib/sites';
 import {
@@ -53,6 +53,7 @@ type SiteNavLinksProps = {
 export default function SiteNavLinks({ site, links, className }: SiteNavLinksProps) {
   const navRef = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
+  const overlayId = useId();
   const [portalStyle, setPortalStyle] = useState<CSSProperties | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
 
@@ -112,6 +113,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
         className={styles.mobileNavToggle}
         data-edit="header"
         aria-expanded={open}
+        aria-controls={open ? overlayId : undefined}
         aria-label={open ? 'Close menu' : 'Open menu'}
         onClick={() => setOpen((value) => !value)}
       >
@@ -125,7 +127,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
           {open && (
             <>
             <div className={styles.mobileNavBackdrop} aria-hidden="true" onClick={() => setOpen(false)} />
-            <div className={styles.mobileNavOverlay} role="dialog" aria-modal="true" aria-label="Menu">
+            <div id={overlayId} className={styles.mobileNavOverlay} role="dialog" aria-modal="true" aria-label="Menu">
               <button type="button" className={styles.mobileNavClose} onClick={() => setOpen(false)} aria-label="Close menu">✕</button>
               <p className={styles.mobileNavBrand}>{site.company_name}</p>
               <nav className={styles.mobileNavLinks} aria-label="Menu links">

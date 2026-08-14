@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import styles from './dispatch.module.css';
 
@@ -20,6 +20,7 @@ import styles from './dispatch.module.css';
  */
 export default function AddPersonMenu({ employeeHref, subcontractorHref }: { employeeHref: string; subcontractorHref: string }) {
   const [open, setOpen] = useState(false);
+  const menuId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const firstItemRef = useRef<HTMLAnchorElement>(null);
 
@@ -51,12 +52,13 @@ export default function AddPersonMenu({ employeeHref, subcontractorHref }: { emp
         className="btn primary"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
         + Add person
       </button>
       {open ? (
-        <div className={styles.addPersonMenu} role="menu" aria-label="Add a person">
+        <div id={menuId} className={styles.addPersonMenu} role="menu" aria-label="Add a person">
           <Link
             href={employeeHref}
             role="menuitem"

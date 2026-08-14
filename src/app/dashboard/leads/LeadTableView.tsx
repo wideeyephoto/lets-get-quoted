@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QUEUE_STAGES, matchesQuery, queueStageLabel, type StageFilter } from '@/lib/lead-queue';
@@ -49,6 +49,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [chooserOpen, setChooserOpen] = useState(false);
+  const chooserId = useId();
   const [ready, setReady] = useState(false);
   const chooserRef = useRef<HTMLDivElement>(null);
 
@@ -214,12 +215,13 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
             className={styles.toolBtn}
             aria-haspopup="true"
             aria-expanded={chooserOpen}
+            aria-controls={chooserOpen ? chooserId : undefined}
             onClick={() => setChooserOpen((was) => !was)}
           >
             Columns <span className={styles.toolCount}>{visibleColumns.length}</span>
           </button>
           {chooserOpen ? (
-            <div className={styles.chooserPop} role="group" aria-label="Choose columns">
+            <div id={chooserId} className={styles.chooserPop} role="group" aria-label="Choose columns">
               {TABLE_COLUMNS.map((column) => {
                 const locked = column.id === LOCKED_COLUMN;
                 return (

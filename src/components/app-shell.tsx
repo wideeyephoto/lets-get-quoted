@@ -920,7 +920,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   className="mobilebar-new"
                   aria-haspopup="menu"
                   aria-expanded={newMenuAt === 'bar'}
-                  aria-controls="mobilebar-new-menu"
+                  // renderNewMenu only runs while this is open, so the id it
+                  // names exists only then — see the note on the rail's copy.
+                  aria-controls={newMenuAt === 'bar' ? 'mobilebar-new-menu' : undefined}
                   onClick={() => setNewMenuAt((at) => (at === 'bar' ? null : 'bar'))}
                 >
                   <span aria-hidden="true">+</span> New
@@ -969,7 +971,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   className="sidenav-new"
                   aria-haspopup="menu"
                   aria-expanded={newMenuAt === 'rail'}
-                  aria-controls="sidenav-new-menu"
+                  /* Conditional, because the menu is not rendered while shut.
+                     Chrome drops a controls relation whose target is missing
+                     OR hidden, so this reads identically in the tree either
+                     way — but written unconditionally the attribute names an
+                     element that is not in the document, which is the same
+                     dangling reference the labels in 6fe6f462 had. */
+                  aria-controls={newMenuAt === 'rail' ? 'sidenav-new-menu' : undefined}
                   onClick={() => setNewMenuAt((at) => (at === 'rail' ? null : 'rail'))}
                 >
                   <span className="sidenav-new-plus" aria-hidden="true">+</span> New

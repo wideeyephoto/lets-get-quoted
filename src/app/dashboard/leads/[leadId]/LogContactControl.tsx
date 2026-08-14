@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { logLeadContactAction } from '../actions';
 import styles from '../leads.module.css';
 
@@ -25,6 +25,7 @@ type LogContactControlProps = {
 
 export default function LogContactControl({ leadId, isFirst = false }: LogContactControlProps) {
   const [open, setOpen] = useState(false);
+  const popId = useId();
   const [outcome, setOutcome] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -73,11 +74,18 @@ export default function LogContactControl({ leadId, isFirst = false }: LogContac
 
   return (
     <div className={styles.logContact} ref={boxRef}>
-      <button type="button" className="btn secondary" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((value) => !value)}>
+      <button
+        type="button"
+        className="btn secondary"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-controls={open ? popId : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
         {isFirst ? 'Log first contact' : 'Log contact'}
       </button>
       {open ? (
-        <div className={styles.logContactPop} role="dialog" aria-label="Log contact">
+        <div id={popId} className={styles.logContactPop} role="dialog" aria-label="Log contact">
           <p className={styles.logContactTitle}>What happened?</p>
           <div className={styles.logContactChips}>
             {OUTCOMES.map((item) => (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import FloatingPanel from '@/components/floating-panel';
 
 type QuickDateOption = { label: string; value: string };
@@ -112,6 +112,9 @@ export default function ScheduledDatePicker({
   const selectedDate = value ?? internalDate;
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => dateFromKey(defaultValue) ?? new Date());
+  // Not derived from the `id` prop: that one belongs to the hidden input, and
+  // the panel needs an id of its own that no caller can collide with.
+  const calendarId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const quickDateOptions = quickOptions ?? buildQuickDateOptions(required);
   const calendarCells = buildCalendarCells(visibleMonth);
@@ -140,11 +143,12 @@ export default function ScheduledDatePicker({
             className="modern-date-button"
             aria-label="Choose scheduled date"
             aria-expanded={isCalendarOpen}
+            aria-controls={isCalendarOpen ? calendarId : undefined}
             onClick={() => setIsCalendarOpen((current) => !current)}
           >
             {selectedDate ? formatDateLabel(selectedDate) : 'Choose date'}
           </button>
-          <FloatingPanel anchorRef={buttonRef} open={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} className="modern-calendar-panel" width={312}>
+          <FloatingPanel id={calendarId} anchorRef={buttonRef} open={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} className="modern-calendar-panel" width={312}>
               <div className="modern-calendar-header">
                 <button type="button" aria-label="Previous month" onClick={() => setVisibleMonth((current) => addMonths(current, -1))}>
                   Prev

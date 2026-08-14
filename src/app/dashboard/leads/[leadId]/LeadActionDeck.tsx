@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import SaveButton from '@/components/save-button';
 import LeadTriageActions from './LeadTriageActions';
 import LogContactControl from './LogContactControl';
@@ -60,6 +60,7 @@ export default function LeadActionDeck({
 }: LeadActionDeckProps) {
   const [layout, setLayout] = useState<LayoutKey>(initialLayout);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuId = useId();
   const [, startTransition] = useTransition();
   const gearRef = useRef<HTMLDivElement>(null);
 
@@ -226,6 +227,7 @@ export default function LeadActionDeck({
           className={styles.deckGearBtn}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
+          aria-controls={menuOpen ? menuId : undefined}
           onClick={() => setMenuOpen((value) => !value)}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -237,7 +239,7 @@ export default function LeadActionDeck({
           </span>
         </button>
         {menuOpen ? (
-          <div className={styles.deckGearPop} role="menu">
+          <div id={menuId} className={styles.deckGearPop} role="menu">
             <p>Action layout</p>
             <button type="button" role="menuitemradio" aria-checked={layout === 'guided'} className={styles.deckGearOpt} onClick={() => choose('guided')}>
               Guided next step <small>Default</small>

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties, ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import styles from './SiteEditor.module.css';
 
 // Everything a card needs to be a drag-to-reorder row on the Page tab. Dragging
@@ -50,6 +50,7 @@ type SectionCardProps = {
 // scroll.
 export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, hint, hintTone, open, onToggleOpen, variant, reorder, children }: SectionCardProps) {
   const hasSwitch = typeof enabled === 'boolean' && Boolean(onToggleEnabled);
+  const bodyId = useId();
   const variantClass = variant === 'featured' ? ` ${styles.sectionCardFeatured}` : variant === 'linked' ? ` ${styles.sectionCardLinked}` : '';
   const reorderClass = reorder
     ? ` ${styles.sectionCardReorder}${reorder.active ? ` ${styles.sectionCardActive}` : ''}${reorder.dimmed ? ` ${styles.sectionCardDimmed}` : ''}${reorder.over ? ` ${styles.sectionCardOver}` : ''}`
@@ -70,7 +71,13 @@ export default function SectionCard({ title, description, evidence, enabled, onT
             <span className={styles.srOnly}>{enabled ? 'Disable' : 'Enable'} {title}</span>
           </label>
         )}
-        <button type="button" className={styles.sectionCardTrigger} onClick={onToggleOpen} aria-expanded={open}>
+        <button
+          type="button"
+          className={styles.sectionCardTrigger}
+          onClick={onToggleOpen}
+          aria-expanded={open}
+          aria-controls={open ? bodyId : undefined}
+        >
           <span className={styles.sectionCardTitle}>
             {title}
             {hasSwitch && (
@@ -84,7 +91,7 @@ export default function SectionCard({ title, description, evidence, enabled, onT
         </button>
       </div>
       {open && (
-        <div className={styles.sectionCardBody}>
+        <div id={bodyId} className={styles.sectionCardBody}>
           {description && <p className={styles.sectionCardDesc}>{description}</p>}
           {evidence && (
             <p className={styles.sectionCardEvidence}>

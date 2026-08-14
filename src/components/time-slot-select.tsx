@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import FloatingPanel from '@/components/floating-panel';
 
 type TimeSlotSelectProps = {
@@ -57,6 +57,7 @@ function buildTimeSlots() {
 export default function TimeSlotSelect({ id, name, defaultValue = '', value, onChange }: TimeSlotSelectProps) {
   const [innerTime, setInnerTime] = useState(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
+  const panelId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const timeSlots = buildTimeSlots();
   // Controlled when a `value` prop is present, uncontrolled otherwise — the
@@ -81,11 +82,12 @@ export default function TimeSlotSelect({ id, name, defaultValue = '', value, onC
         className="modern-time-button"
         aria-label="Choose scheduled time"
         aria-expanded={isOpen}
+        aria-controls={isOpen ? panelId : undefined}
         onClick={() => setIsOpen((current) => !current)}
       >
         {selectedLabel}
       </button>
-      <FloatingPanel anchorRef={buttonRef} open={isOpen} onClose={() => setIsOpen(false)} className="modern-time-panel" width={224}>
+      <FloatingPanel id={panelId} anchorRef={buttonRef} open={isOpen} onClose={() => setIsOpen(false)} className="modern-time-panel" width={224}>
         <div className="modern-time-quick" aria-label="Quick time choices">
           {QUICK_TIME_SLOTS.map((slot) => (
             <button

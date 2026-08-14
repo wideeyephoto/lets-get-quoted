@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { isApplePlatform, navigationLinks, type NavTarget } from '@/lib/navigation-links';
 
 // "Navigate" with a choice of map app.
@@ -14,6 +14,7 @@ import { isApplePlatform, navigationLinks, type NavTarget } from '@/lib/navigati
 export default function NavigateButton({ target, className }: { target: NavTarget; className?: string }) {
   const [platform, setPlatform] = useState<'ios' | 'other' | null>(null);
   const [open, setOpen] = useState(false);
+  const menuId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,11 +49,17 @@ export default function NavigateButton({ target, className }: { target: NavTarge
 
   return (
     <div className="nav-picker" ref={wrapRef}>
-      <button type="button" className={className} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <button
+        type="button"
+        className={className}
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
         🧭 Navigate
       </button>
       {open ? (
-        <div className="nav-picker-menu" role="menu">
+        <div id={menuId} className="nav-picker-menu" role="menu">
           {links.map((link) => (
             <a
               key={link.app}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { LEAD_DECLINE_REASONS } from '@/lib/leads';
 import { archiveLeadAction, blockLeadContactAction, declineLeadAction, snoozeLeadAction, unsnoozeLeadAction } from '../actions';
 import styles from '../leads.module.css';
@@ -34,6 +34,7 @@ type LeadTriageActionsProps = {
 export default function LeadTriageActions({ leadId, hasPhone, snoozed, archived, declinedReason, leadName, businessName }: LeadTriageActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [showDecline, setShowDecline] = useState(false);
+  const declineId = useId();
   const [reason, setReason] = useState<string | null>(null);
   const [notify, setNotify] = useState(hasPhone);
   const [note, setNote] = useState<string | null>(null);
@@ -67,7 +68,16 @@ export default function LeadTriageActions({ leadId, hasPhone, snoozed, archived,
         {declinedReason ? (
           <span className={styles.triageDone}>Declined — {DECLINE_LABELS[declinedReason] || declinedReason}</span>
         ) : (
-          <button type="button" className="btn secondary" disabled={isPending} onClick={() => setShowDecline((value) => !value)} aria-expanded={showDecline}>
+          <button
+            type="button"
+            className="btn secondary"
+            disabled={isPending}
+            onClick={() => setShowDecline((value) => !value)}
+            aria-expanded={showDecline}
+            // The panel is also gated on declinedReason, so the trigger must
+            // not claim to control something the render is withholding.
+            aria-controls={showDecline && !declinedReason ? declineId : undefined}
+          >
             🚫 Decline job
           </button>
         )}
@@ -92,7 +102,7 @@ export default function LeadTriageActions({ leadId, hasPhone, snoozed, archived,
       </div>
 
       {showDecline && !declinedReason ? (
-        <div className={styles.declinePop}>
+        <div id={declineId} className={styles.declinePop}>
           <p className={styles.declineTitle}>Why are you declining?</p>
           <div className={styles.declineReasons}>
             {Object.keys(LEAD_DECLINE_REASONS).map((key) => (

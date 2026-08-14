@@ -209,6 +209,10 @@ export default function QuickStopConfigurator({
               className="bset-section-head"
               onClick={() => toggleSection(section.key)}
               aria-expanded={isOpen(section.key)}
+              // Unconditional, unlike the menus elsewhere: this body is hidden
+              // rather than unmounted (see the note below), so the id it names
+              // is in the document whether the drawer is open or shut.
+              aria-controls={`qs-section-${section.key}`}
             >
               <span className="bset-num">{section.num}</span>
               <span className="bset-section-copy">
@@ -236,7 +240,7 @@ export default function QuickStopConfigurator({
                 your settings. Saving with only drawer 1 open zeroed the fee
                 band. (BookingSetup gets away with unmounting because it builds
                 its FormData from React state instead.) */}
-            <div className="bset-section-body" hidden={!isOpen(section.key)}>
+            <div id={`qs-section-${section.key}`} className="bset-section-body" hidden={!isOpen(section.key)}>
                 {/* Why the badge is on. Inside the drawer rather than beside the
                     badge, because the badge is a two-word summary and this is
                     the argument — and the drawer is where the control that

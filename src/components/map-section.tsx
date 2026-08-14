@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import PinMap, { type MapPin } from './pin-map';
 
 // Collapsible map section shared by Leads, Jobs, and Schedule. The Google Map
@@ -22,6 +22,7 @@ export default function MapSection({
 }) {
   const [open, setOpen] = useState(alwaysOpen);
   const shown = alwaysOpen || open;
+  const mapId = useId();
   return (
     <section className="panel workspace-section-card">
       <div className="map-section-head">
@@ -30,16 +31,24 @@ export default function MapSection({
           <h2>{title}</h2>
         </div>
         {alwaysOpen ? null : (
-          <button type="button" className="btn secondary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <button
+            type="button"
+            className="btn secondary"
+            aria-expanded={open}
+            aria-controls={shown ? mapId : undefined}
+            onClick={() => setOpen((o) => !o)}
+          >
             {open ? 'Hide map' : `Show map (${pins.length})`}
           </button>
         )}
       </div>
       {shown ? (
-        <>
+        // Wrapped so the toggle has one element to name. The fragment it used
+        // to be was two siblings and nothing aria-controls could point at.
+        <div id={mapId}>
           <p className="map-section-sub">{subtitle}</p>
           <PinMap pins={pins} />
-        </>
+        </div>
       ) : null}
     </section>
   );

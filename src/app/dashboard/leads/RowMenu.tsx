@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import styles from './rowmenu.module.css';
 
@@ -25,6 +25,8 @@ export type RowMenuItem =
 
 export default function RowMenu({ label, items }: { label: string; items: RowMenuItem[] }) {
   const [open, setOpen] = useState(false);
+  // One of these renders per row, so the menu's id has to be per-instance.
+  const menuId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,7 @@ export default function RowMenu({ label, items }: { label: string; items: RowMen
         className={styles.trigger}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         aria-label={label}
         onClick={() => setOpen((was) => !was)}
       >
@@ -70,7 +73,7 @@ export default function RowMenu({ label, items }: { label: string; items: RowMen
       </button>
 
       {open ? (
-        <div className={styles.pop} role="menu" ref={popRef} aria-label={label}>
+        <div id={menuId} className={styles.pop} role="menu" ref={popRef} aria-label={label}>
           {items.map((item) =>
             item.kind === 'link' ? (
               <Link key={item.key} role="menuitem" className={styles.item} href={item.href} onClick={() => setOpen(false)}>

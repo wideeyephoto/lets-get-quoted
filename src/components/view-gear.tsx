@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import styles from './view-gear.module.css';
 
@@ -79,6 +79,7 @@ export default function ViewGear<T extends string, S extends string = string>({
 }) {
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
+  const menuId = useId();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,12 +131,20 @@ export default function ViewGear<T extends string, S extends string = string>({
 
   return (
     <div className={styles.gear} ref={ref}>
-      <button type="button" className={styles.gearBtn} aria-haspopup="menu" aria-expanded={open} onClick={toggle} title="View settings">
+      <button
+        type="button"
+        className={styles.gearBtn}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        onClick={toggle}
+        title="View settings"
+      >
         <GearIcon />
         <span>{label ?? current?.label ?? 'View'}</span>
       </button>
       {open && (
-        <div className={`${styles.pop}${openUp ? ` ${styles.popUp}` : ''}`} role="menu">
+        <div id={menuId} className={`${styles.pop}${openUp ? ` ${styles.popUp}` : ''}`} role="menu">
           {showViews && (
             <>
               <p>View</p>

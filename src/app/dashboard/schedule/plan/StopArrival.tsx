@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import FloatingPanel from '@/components/floating-panel';
 import ArrivalPanel, { type ArrivalPanelJob, type ArrivalPanelTrip } from '@/components/arrival-panel';
 import type { WindowStyle } from '@/lib/arrival';
@@ -47,6 +47,7 @@ const PANEL_WIDTH = 372;
 export default function StopArrival(props: StopArrivalProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
+  const panelId = useId();
 
   const status = props.trip?.status ?? null;
   const live = status != null && status !== 'arrived';
@@ -59,12 +60,14 @@ export default function StopArrival(props: StopArrivalProps) {
         type="button"
         className={`btn secondary plan-stop-otw${live ? ' is-live' : ''}${arrived ? ' is-done' : ''}`}
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((current) => !current)}
       >
         {arrived ? 'Arrived' : live ? 'On the way' : 'Text an ETA'}
       </button>
 
       <FloatingPanel
+        id={panelId}
         anchorRef={buttonRef}
         open={open}
         onClose={() => setOpen(false)}

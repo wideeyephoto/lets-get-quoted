@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { circleMarkerContent, createAdvancedMarker } from '@/lib/advanced-markers';
 import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 import type { RouteStop } from '@/lib/quick-stop-route';
@@ -61,6 +61,7 @@ export default function QuickStopCoverageMap({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [theme, setTheme] = useState<MapTheme>('dark');
   const [menuOpen, setMenuOpen] = useState(false);
+  const gearMenuId = useId();
 
   // Read the saved choice after mount, never during render: reading
   // localStorage while rendering gives the server and the client different
@@ -290,6 +291,7 @@ export default function QuickStopCoverageMap({
                 className="qs-coverage-gear-btn"
                 aria-label="Map appearance"
                 aria-expanded={menuOpen}
+                aria-controls={menuOpen ? gearMenuId : undefined}
                 onClick={() => setMenuOpen((open) => !open)}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -298,7 +300,7 @@ export default function QuickStopCoverageMap({
                 </svg>
               </button>
               {menuOpen ? (
-                <div className="qs-coverage-gear-menu" role="group" aria-label="Map appearance">
+                <div id={gearMenuId} className="qs-coverage-gear-menu" role="group" aria-label="Map appearance">
                   <button type="button" className={theme === 'dark' ? 'is-active' : undefined} onClick={() => chooseTheme('dark')}>
                     Dark
                   </button>

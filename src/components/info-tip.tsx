@@ -93,6 +93,10 @@ export default function InfoTip({ label, children }: { label: string; children: 
         className="infotip-btn"
         aria-label={label}
         aria-expanded={open}
+        // Unconditional: the bubble is always in the document (CSS opens it),
+        // so this never names something that isn't there. describedby stays
+        // conditional — that one is read out, and only when it is showing.
+        aria-controls={bubbleId}
         aria-describedby={open ? bubbleId : undefined}
         onClick={() => {
           place();

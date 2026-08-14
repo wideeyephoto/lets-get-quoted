@@ -9,6 +9,13 @@ type FloatingPanelProps = {
   onClose: () => void;
   className?: string;
   width?: number;
+  /**
+   * So the trigger can name this panel in aria-controls. It matters more here
+   * than for a popup that renders next to its button: this one is portaled to
+   * the end of <body>, so nothing about the document's order says the two are
+   * related, and the attribute is the only thing that does.
+   */
+  id?: string;
   children: ReactNode;
 };
 
@@ -19,7 +26,7 @@ type Placement = { left: number; width: number; top?: number; bottom?: number; m
 // schedule modal, day-card grids), so the popup floats over everything instead
 // of being clipped and forcing the container to scroll. Flips above the anchor
 // when there's more room there. Closes on outside click / Escape.
-export default function FloatingPanel({ anchorRef, open, onClose, className, width, children }: FloatingPanelProps) {
+export default function FloatingPanel({ anchorRef, open, onClose, className, width, id, children }: FloatingPanelProps) {
   const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<Placement | null>(null);
@@ -94,7 +101,7 @@ export default function FloatingPanel({ anchorRef, open, onClose, className, wid
     : { position: 'fixed', top: -9999, left: -9999, visibility: 'hidden' };
 
   return createPortal(
-    <div ref={panelRef} className={className} style={style}>
+    <div ref={panelRef} id={id} className={className} style={style}>
       {children}
     </div>,
     document.body

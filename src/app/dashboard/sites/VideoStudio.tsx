@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MAX_VIDEO_ITEMS,
@@ -77,6 +77,7 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
   const [mounted, setMounted] = useState(false);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [advanced, setAdvanced] = useState(false);
+  const advancedId = useId();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Which row's "paste a link" field is open; null when none is.
@@ -459,12 +460,18 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
               <small className={styles.fieldHint}>How much the video is dimmed behind your words. Only the Hero layout puts text over the video.</small>
             </label>
 
-            <button type="button" className={styles.vsAdvancedToggle} aria-expanded={advanced} onClick={() => setAdvanced(!advanced)}>
+            <button
+              type="button"
+              className={styles.vsAdvancedToggle}
+              aria-expanded={advanced}
+              aria-controls={advanced ? advancedId : undefined}
+              onClick={() => setAdvanced(!advanced)}
+            >
               {advanced ? '▾' : '▸'} Advanced
             </button>
 
             {advanced && (
-              <div className={styles.vsAdvanced}>
+              <div id={advancedId} className={styles.vsAdvanced}>
                 <label className={styles.formField}>
                   <span>Button link</span>
                   <input value={content.ctaHref} maxLength={200} onChange={(event) => onChange({ ...content, ctaHref: event.target.value })} placeholder="#contact" />

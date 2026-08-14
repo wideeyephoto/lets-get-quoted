@@ -1741,13 +1741,14 @@ export default function HoursAndPay({
                               className={styles.rowBtn}
                               aria-haspopup="menu"
                               aria-expanded={menuFor === id}
+                              aria-controls={menuFor === id ? `hours-row-menu-${id}` : undefined}
                               aria-label={`Actions for ${row.name}`}
                               onClick={() => setMenuFor(menuFor === id ? null : id)}
                             >
                               ⋯
                             </button>
                             {menuFor === id ? (
-                              <div className={styles.menu} role="menu">
+                              <div id={`hours-row-menu-${id}`} className={styles.menu} role="menu">
                                 <button type="button" role="menuitem" onClick={() => row.crewId && setDrawer({ mode: 'crew', crewId: row.crewId })}>
                                   View hours &amp; entries
                                 </button>
@@ -2467,7 +2468,13 @@ function GroupedCrew({
         return (
           <section key={group.id} className={styles.group} data-tone={group.tone}>
             <header className={styles.groupHead}>
-              <button type="button" className={styles.groupTitle} onClick={() => onToggleGroup(group.id)} aria-expanded={isOpen}>
+              <button
+                type="button"
+                className={styles.groupTitle}
+                onClick={() => onToggleGroup(group.id)}
+                aria-expanded={isOpen}
+                aria-controls={isOpen ? `pay-group-${group.id}` : undefined}
+              >
                 <span className={styles.groupDot} aria-hidden="true" />
                 <strong>{group.label}</strong>
                 <span className={styles.groupCount}>
@@ -2505,7 +2512,9 @@ function GroupedCrew({
 
             {isOpen ? (
               members.length === 0 ? (
-                <p className={styles.groupEmpty}>
+                /* Either branch is the group's body, so both wear the id the
+                   header points at — only one of them is ever rendered. */
+                <p id={`pay-group-${group.id}`} className={styles.groupEmpty}>
                   {group.id === 'needs_review'
                     ? 'Nothing here needs sorting out.'
                     : group.id === 'unpaid'
@@ -2515,7 +2524,7 @@ function GroupedCrew({
                         : 'Every crew member has hours logged for this period.'}
                 </p>
               ) : (
-                <div className={styles.groupGrid}>
+                <div id={`pay-group-${group.id}`} className={styles.groupGrid}>
                   {members.map((row) => {
                     const id = rowKey(row);
                     const canSelect = row.eligible && row.hours > 0 && row.payment !== 'paid';

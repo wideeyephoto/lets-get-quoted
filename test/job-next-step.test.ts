@@ -99,8 +99,12 @@ describe('one next step, and a drawer for the rest', () => {
   it('closes the drawer on Escape and on a press outside it', () => {
     expect(MENU).toContain("event.key === 'Escape'");
     expect(MENU).toContain("document.addEventListener('pointerdown', onPointerDown)");
-    // Unmounted while closed, so nothing inside is tabbable behind it.
-    expect(MENU).toContain('{open ? <div className="job-actions-pop"');
+    // Unmounted while closed, so nothing inside is tabbable behind it. Matched
+    // as a pattern rather than a fixed string: the assertion is that the pop is
+    // rendered only while `open`, not that it carries a particular set of
+    // attributes in a particular order — it has since gained the id its trigger
+    // names in aria-controls.
+    expect(MENU).toMatch(/\{open \? <div[^>]*className="job-actions-pop"/);
   });
 });
 

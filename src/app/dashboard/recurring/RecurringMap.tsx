@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { circleMarkerContent, createAdvancedMarker } from '@/lib/advanced-markers';
 import { googleMapAppearance, loadGoogleMaps } from '@/lib/maps-loader';
 
@@ -66,6 +66,7 @@ export default function RecurringMap({
   // away one frame later.
   const [prefsRead, setPrefsRead] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const gearMenuId = useId();
   const gearRef = useRef<HTMLDivElement>(null);
 
   // Both preferences are read AFTER mount, never during render: reading
@@ -259,6 +260,7 @@ export default function RecurringMap({
             className="qs-coverage-gear-btn"
             aria-label="Map appearance"
             aria-expanded={menuOpen}
+            aria-controls={menuOpen ? gearMenuId : undefined}
             onClick={() => setMenuOpen((open) => !open)}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -267,7 +269,7 @@ export default function RecurringMap({
             </svg>
           </button>
           {menuOpen ? (
-            <div className="qs-coverage-gear-menu" role="group" aria-label="Map appearance">
+            <div id={gearMenuId} className="qs-coverage-gear-menu" role="group" aria-label="Map appearance">
               <button type="button" className={theme === 'dark' ? 'is-active' : undefined} onClick={() => chooseTheme('dark')}>
                 Dark
               </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { markJobCompleteAction, scheduleJobAction, toggleJobCrewAction } from '../jobs/actions';
 
@@ -47,6 +47,7 @@ export default function PlanActionsMenu({
   remindAction,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const menuId = useId();
   const [panel, setPanel] = useState<'move' | 'crew' | null>(null);
   const [assigned, setAssigned] = useState<string[]>(assignedCrewIds);
   const [moveTo, setMoveTo] = useState(visitScheduledFor ?? '');
@@ -89,13 +90,14 @@ export default function PlanActionsMenu({
         className="recurring-menu-btn"
         aria-label={`More actions for ${clientName}’s plan`}
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         onClick={() => { setOpen((was) => !was); setPanel(null); }}
       >
         <span aria-hidden="true">•••</span>
       </button>
 
       {open ? (
-        <div className="recurring-menu-pop" role="menu">
+        <div id={menuId} className="recurring-menu-pop" role="menu">
           {panel === null ? (
             <>
               {active ? (

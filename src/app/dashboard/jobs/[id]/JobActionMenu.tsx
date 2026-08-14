@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 /**
  * EVERYTHING THAT ISN'T THE NEXT STEP.
@@ -39,6 +39,7 @@ export default function JobActionMenu({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const menuId = useId();
   const shell = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function JobActionMenu({
         className="btn secondary job-actions-trigger"
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
       >
         {label}
@@ -79,7 +81,7 @@ export default function JobActionMenu({
       {/* Rendered only while open, so nothing inside it is tabbable behind a
           closed menu — and so the confirm dialogs some of these controls own
           are torn down with it rather than left mounted off-screen. */}
-      {open ? <div className="job-actions-pop" role="menu">{children}</div> : null}
+      {open ? <div id={menuId} className="job-actions-pop" role="menu">{children}</div> : null}
     </div>
   );
 }

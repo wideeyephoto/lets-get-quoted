@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { LeadStatus } from '@/lib/leads';
 import { queueStageLabel } from '@/lib/lead-queue';
@@ -221,6 +221,7 @@ function BoardCard({
   onDragEnd: () => void;
 }) {
   const [declining, setDeclining] = useState(false);
+  const declineId = useId();
   const allowed = boardActions(lead.status);
   const moveRef = useRef<HTMLSelectElement>(null);
 
@@ -270,7 +271,13 @@ function BoardCard({
           </button>
         ) : null}
         {allowed.includes('decline') ? (
-          <button type="button" className={styles.cardBtn} aria-expanded={declining} onClick={() => setDeclining((was) => !was)}>
+          <button
+            type="button"
+            className={styles.cardBtn}
+            aria-expanded={declining}
+            aria-controls={declining ? declineId : undefined}
+            onClick={() => setDeclining((was) => !was)}
+          >
             Decline
           </button>
         ) : null}
@@ -280,7 +287,7 @@ function BoardCard({
       </div>
 
       {declining ? (
-        <div className={styles.decline}>
+        <div id={declineId} className={styles.decline}>
           <p>Why decline?</p>
           <div className={styles.declineReasons}>
             {DECLINE_REASONS.map((reason) => (

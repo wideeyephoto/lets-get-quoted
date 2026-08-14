@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import FloatingPanel from '@/components/floating-panel';
 import SaveButton from '@/components/save-button';
@@ -1058,6 +1058,9 @@ function StopRow({
   onDrop: () => void;
 }) {
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  // One per stop, and the panel is portaled to the end of <body>, so the id is
+  // the only thing tying the two together.
+  const stopMenuId = useId();
   const stop = entry.stop;
   // A locked stop shows the time the customer agreed to; arrivalMinutes is when
   // we'd realistically get there, and the two disagreeing is the "tight" warning.
@@ -1271,11 +1274,12 @@ function StopRow({
           className="plan-stop-menu-btn"
           aria-label={`More actions for ${stop.label}`}
           aria-expanded={menuOpen}
+          aria-controls={menuOpen ? stopMenuId : undefined}
           onClick={() => onMenu(!menuOpen)}
         >
           ⋮
         </button>
-        <FloatingPanel anchorRef={menuButtonRef} open={menuOpen} onClose={() => onMenu(false)} className="plan-stop-menu" width={MENU_WIDTH}>
+        <FloatingPanel id={stopMenuId} anchorRef={menuButtonRef} open={menuOpen} onClose={() => onMenu(false)} className="plan-stop-menu" width={MENU_WIDTH}>
           {routeStop ? (
             // A supply stop has no job page to open and nothing to invoice. The
             // only thing to do with one is take it off the day.

@@ -58,6 +58,7 @@ export default function CampaignHistory({
                     type="button"
                     className="campaign-history-title"
                     aria-expanded={open}
+                    aria-controls={open ? `campaign-detail-${campaign.id}` : undefined}
                     onClick={() => setOpenId(open ? null : campaign.id)}
                   >
                     <strong>{title}</strong>
@@ -77,7 +78,7 @@ export default function CampaignHistory({
                 </div>
 
                 {open ? (
-                  <div className="campaign-history-body">
+                  <div id={`campaign-detail-${campaign.id}`} className="campaign-history-body">
                     {campaign.subject ? <strong>{campaign.subject}</strong> : null}
                     {campaign.body.split(/\n{2,}/).map((paragraph, index) => (
                       <p key={index}>{paragraph}</p>
