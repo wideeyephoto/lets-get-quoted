@@ -107,26 +107,24 @@ describe('buildCsp', () => {
     }
   });
 
-  it('lets WebAssembly compile in production, or every map falls back to raster', () => {
+  it('does not permit WebAssembly either, because nothing here compiles any', () => {
     /**
-     * Google's vector map renderer is a wasm module, and compiling one is
-     * governed by script-src. Without a token permitting it Chrome throws
-     * "Compiling or instantiating WebAssembly module violates the following
-     * Content Security Policy directive", the Maps SDK catches it, and logs
-     * "Attempted to load a Vector Map, but failed. Falling back to Raster."
+     * This token was added once, on the theory that Google's vector map is a
+     * wasm module and this policy was what broke it. Driven on a real GPU with
+     * WebAssembly.compile stubbed to throw, the vector map loads anyway; what
+     * decides it is whether the browser has usable WebGL, which headless
+     * Chromium does not. Nothing else in this app compiles wasm — no .wasm in
+     * src or the bundle.
      *
-     * The reason this survived is the assertion directly above: development
-     * ships 'unsafe-eval', and 'unsafe-eval' permits wasm as well. So the bug
-     * cannot occur in the only environment anybody debugs in. Asserted in
-     * production specifically, because that is the only build where it bites.
+     * So it is asserted absent rather than left unmentioned: the argument for
+     * adding it is plausible enough that it will be made again, and this is
+     * where to answer it. If something here genuinely needs wasm, change this
+     * assertion and name that thing in the message.
      */
     try {
       vi.stubEnv('NODE_ENV', 'production');
       const script = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('script-src')!;
-      expect(script).toContain("'wasm-unsafe-eval'");
-      // And it must stay the narrow token: this permits compiling wasm, not
-      // eval() of JavaScript strings.
-      expect(script).not.toContain("'unsafe-eval'");
+      expect(script).not.toContain("'wasm-unsafe-eval'");
     } finally {
       vi.unstubAllEnvs();
     }
