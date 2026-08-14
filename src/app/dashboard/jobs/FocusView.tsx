@@ -60,11 +60,33 @@ export default function FocusView({
   details?: Record<string, JobDetailDto>;
 }) {
   const base = basePath;
-  const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
+  const [pickedId, setPickedId] = useState<string | null>(jobs[0]?.id ?? null);
   const [tab, setTab] = useState<JobTabId>('overview');
   const paneRef = useRef<HTMLElement | null>(null);
 
-  const selected = useMemo(() => jobs.find((j) => j.id === selectedId) ?? null, [jobs, selectedId]);
+  /**
+   * THE FILTER MOVES AND THE SELECTION HAS TO MOVE WITH IT.
+   *
+   * `jobs` here is the FILTERED list. Filtering to "Complete 5" while an
+   * in-progress job was open left that job selected: the list showed five
+   * finished jobs and everything keyed off the selection still pointed at a
+   * sixth that was no longer in it — the detail request, the map centering, and
+   * the arrow keys, which searched a list the selection was not in and jumped
+   * to the top on the first press.
+   *
+   * Derived rather than corrected in an effect. An effect would render one
+   * frame of the wrong pane first and fire a detail fetch for a job that is
+   * about to be dropped; falling back during render means there is never a
+   * moment when the pane and the list disagree.
+   *
+   * `pickedId` is still what the visitor CHOSE, so returning to "All" reopens
+   * the job they had rather than the first row.
+   */
+  const selected = useMemo(() => {
+    if (jobs.length === 0) return null;
+    return jobs.find((j) => j.id === pickedId) ?? jobs[0];
+  }, [jobs, pickedId]);
+  const selectedId = selected?.id ?? null;
 
   // The cache, the debounce, the abort and the stale-response guard now live
   // in useJobDetail so Smoothie runs the same code rather than a second copy.
@@ -86,7 +108,7 @@ export default function FocusView({
   selectRef.current = select;
 
   function select(id: string) {
-    setSelectedId(id);
+    setPickedId(id);
     setTab('overview');
 
     // The pane sits below the map, so picking a job off the list could update
