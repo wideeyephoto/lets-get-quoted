@@ -80,15 +80,39 @@ describe('the example-site band sits directly under the hero', () => {
 
 describe('what the section claims', () => {
   it('carries the agreed copy, word for word', () => {
-    expect(PAGE_CODE).toContain('Example site created with Let’s Get Quoted');
-    expect(PAGE_CODE).toContain('From three answers to a complete contractor website.');
+    expect(PAGE_CODE).toContain('Instant website generation for contractors');
+    expect(PAGE_CODE).toContain('Your complete contractor website, generated instantly.');
     expect(PAGE_CODE).toContain(
-      'See how Lawn & Order brings its services, project gallery, trust signals and instant estimate together in one connected site.',
+      'Enter a few details about your business and Let’s Get Quoted creates your service pages, project gallery, trust signals and instant estimate—all connected and ready to customize.',
     );
     expect(PAGE_CODE).toContain('Visit the Lawn & Order example site ↗');
     expect(PAGE_CODE).toContain(
       'Service pages, project galleries, reviews and instant estimates—generated as one connected site.',
     );
+  });
+
+  /**
+   * THE EYEBROW STOPPED SAYING "EXAMPLE", SO THE LINK HAS TO.
+   *
+   * The heading now makes a product claim — your website, generated — where it
+   * used to introduce somebody else's published site. That is a fair claim, and
+   * it is the reason the word has to survive somewhere: lawnandorder is a real
+   * business with a real site, and a reader has to be able to tell that this
+   * band is showing an example rather than implying the visitor's own result.
+   * The link label is the only place left that says so, which makes it copy
+   * rather than decoration.
+   */
+  it('still calls the band an example, in the link if nowhere else', () => {
+    const band = PAGE_CODE.slice(PAGE_CODE.indexOf('afterHero'), PAGE_CODE.indexOf('storyId='));
+    expect(band).toMatch(/\bexample\b/i);
+  });
+
+  /* The eyebrow is stored in sentence case and uppercased by CSS. Several
+     screen readers spell an all-capital phrase out letter by letter, and the
+     rendered result is identical either way. */
+  it('keeps shouting out of the DOM', () => {
+    expect(PAGE_CODE).not.toContain('INSTANT WEBSITE GENERATION');
+    expect(CSS).toContain('text-transform: uppercase');
   });
 
   it('calls it an example site and never a customer', () => {

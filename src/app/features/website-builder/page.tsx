@@ -243,9 +243,12 @@ export default function WebsiteBuilderPage() {
          off showing one than describing it a fourth time.
 
          WHAT IT DOES NOT CLAIM. Not a customer story, not a testimonial, no
-         traffic or conversion number. "Example site created with Let's Get
-         Quoted" is the whole claim, and it is one we can stand behind by
-         pointing at the URL. */
+         traffic or conversion number. The heading claims the site was generated
+         — which is what the builder does, and what the hero above it has just
+         demonstrated — and the link underneath still calls it an example and
+         points at the URL, so a reader can check the claim rather than take it.
+         That link is load-bearing now that the eyebrow no longer says
+         "example": it is the only place the word appears. */
       /* FIRST THING UNDER THE HERO, because on this page the example IS the
          argument. It was passed to afterBenefits and landed 3,124px down on a
          phone with the video itself at 3,566 — three and a half screens of
@@ -254,9 +257,13 @@ export default function WebsiteBuilderPage() {
          case; they now make it to a reader who has already seen the thing. */
       afterHero={
         <ExampleSiteShowcase
-          eyebrow="Example site created with Let’s Get Quoted"
-          title="From three answers to a complete contractor website."
-          body="See how Lawn & Order brings its services, project gallery, trust signals and instant estimate together in one connected site."
+          /* Sentence case in the source, uppercase on screen — .eyebrow carries
+             text-transform. Storing the caps would put them in the DOM, where
+             several screen readers spell an all-capital phrase out letter by
+             letter. The rendered result is identical either way. */
+          eyebrow="Instant website generation for contractors"
+          title="Your complete contractor website, generated instantly."
+          body="Enter a few details about your business and Let’s Get Quoted creates your service pages, project gallery, trust signals and instant estimate—all connected and ready to customize."
           linkLabel="Visit the Lawn & Order example site ↗"
           support={{
             src: '/media/website-builder/lawn-and-order/lawn-and-order-project-gallery.jpg',
