@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSiteContent } from '@/lib/site-content';
+import type { EmailThemeId } from '@/emails/brand';
 
 // The 3 curated templates. Legacy sites may still hold a retired id in the DB;
 // getTemplate falls those back to Forge, so this narrow type is safe.
@@ -18,6 +19,9 @@ export type Site = {
   header_font: string | null;
   button_style: string | null;
   accent_override: string | null; // hex color like #1f2937
+  // Optional in the TypeScript shape so fixtures and a deploy briefly ahead of
+  // the migration still behave like legacy rows; the renderer defaults it.
+  email_theme?: EmailThemeId;
 
   company_name: string;
   headline: string | null;

@@ -57,6 +57,7 @@ import {
   sendChoiceReminderTestEmail,
   sendQuoteFollowupEmail,
 } from '@/lib/email';
+import { EMAIL_THEMES, normalizeEmailTheme } from '@/emails/brand';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -88,6 +89,26 @@ export async function updateBusinessBasicsAction(formData: FormData) {
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/sites');
+}
+
+/** Save the one layout used by every customer-facing email for this account. */
+export async function updateEmailThemeAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const requested = String(formData.get('emailTheme') ?? '');
+  if (!EMAIL_THEMES.some((theme) => theme.id === requested)) {
+    throw new Error('Choose one of the available email themes.');
+  }
+  const theme = normalizeEmailTheme(requested);
+  const { data, error } = await supabase
+    .from('sites')
+    .update({ email_theme: theme })
+    .eq('account_id', accountId)
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error('Could not save the email theme.');
+  if (!data) throw new Error('Create your website first to choose an email theme.');
+
+  revalidatePath('/dashboard/settings');
 }
 
 /**

@@ -29,7 +29,23 @@ export type EmailBrand = {
   siteUrl: string | null;
   /** Where a reply actually goes. */
   replyTo: string | null;
+  /** The owner's chosen layout. Missing/legacy values render as Studio. */
+  theme?: EmailThemeId;
 };
+
+export const EMAIL_THEMES = [
+  { id: 'studio', name: 'Studio', description: 'Quiet, polished, and easy to scan. The strongest all-purpose choice.' },
+  { id: 'letterhead', name: 'Letterhead', description: 'A crisp business-document look with a strong branded rule.' },
+  { id: 'neighborly', name: 'Neighborly', description: 'Warmer paper tones and softer type for a more personal note.' },
+  { id: 'blueprint', name: 'Blueprint', description: 'Structured, confident, and built for schedules, jobs, and details.' },
+  { id: 'spotlight', name: 'Spotlight', description: 'A bold color-led header for quotes, invoices, and big calls to action.' },
+] as const;
+
+export type EmailThemeId = (typeof EMAIL_THEMES)[number]['id'];
+
+export function normalizeEmailTheme(value: unknown): EmailThemeId {
+  return EMAIL_THEMES.some((theme) => theme.id === value) ? value as EmailThemeId : 'studio';
+}
 
 const NAVY = '#172033';
 const INK = '#1c2230';
@@ -90,13 +106,19 @@ export function contractorFrom(businessName: string): string {
  * be an empty box for most recipients — worse than a wordmark, which always
  * works and still carries the color.
  */
-function brandLockup(brand: EmailBrand): string {
+function brandLockup(
+  brand: EmailBrand,
+  options: { textColor?: string; logoPlate?: boolean } = {},
+): string {
   const accent = safeAccent(brand.accent);
   const name = escapeHtml(brand.businessName || 'Your contractor');
   if (brand.logoUrl) {
-    return `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" width="150" style="display:block;max-width:150px;height:auto;border:0;outline:none;text-decoration:none" />`;
+    const image = `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" width="150" style="display:block;max-width:150px;height:auto;border:0;outline:none;text-decoration:none" />`;
+    return options.logoPlate
+      ? `<div style="display:inline-block;padding:8px 12px;background:#ffffff;border-radius:7px">${image}</div>`
+      : image;
   }
-  return `<span style="font-size:20px;font-weight:700;color:${accent};letter-spacing:-0.01em">${name}</span>`;
+  return `<span style="font-size:20px;font-weight:700;color:${options.textColor ?? accent};letter-spacing:-0.01em">${name}</span>`;
 }
 
 /**
@@ -127,13 +149,93 @@ export type BrandedEmail = {
   footerHtml?: string;
 };
 
+type ThemePaint = {
+  page: string;
+  card: string;
+  cardStyle: string;
+  header: string;
+  headerStyle: string;
+  headerText: string;
+  logoPlate: boolean;
+  bodyStyle: string;
+  footer: string;
+  footerStyle: string;
+  eyebrow: string;
+  headingFont: string;
+  headingSize: string;
+  ctaRadius: string;
+  ctaBackground: string;
+  ctaText: string;
+};
+
+function tint(hexValue: string, whitePercent: number): string {
+  const hex = safeAccent(hexValue).slice(1);
+  const amount = Math.min(1, Math.max(0, whitePercent));
+  const channel = (offset: number) => {
+    const value = parseInt(hex.slice(offset, offset + 2), 16);
+    return Math.round(value + (255 - value) * amount).toString(16).padStart(2, '0');
+  };
+  return `#${channel(0)}${channel(2)}${channel(4)}`;
+}
+
+function themePaint(theme: EmailThemeId, accent: string): ThemePaint {
+  if (theme === 'letterhead') {
+    return {
+      page: '#ffffff', card: '#ffffff', cardStyle: 'border:1px solid #dfe3e8',
+      header: '#ffffff', headerStyle: `padding:26px 32px 22px;border-bottom:5px solid ${accent}`,
+      headerText: accent, logoPlate: false, bodyStyle: 'padding:28px 32px 10px',
+      footer: '#f8fafc', footerStyle: 'padding:22px 32px 26px;border-top:1px solid #e6e9ef',
+      eyebrow: accent, headingFont: 'Arial,sans-serif', headingSize: '23px',
+      ctaRadius: '3px', ctaBackground: NAVY, ctaText: '#ffffff',
+    };
+  }
+  if (theme === 'neighborly') {
+    return {
+      page: '#f5f0e8', card: '#fffdf9', cardStyle: `border-left:8px solid ${accent};border-radius:4px`,
+      header: '#fffdf9', headerStyle: 'padding:30px 34px 0', headerText: accent, logoPlate: false,
+      bodyStyle: 'padding:24px 34px 10px', footer: '#fffdf9', footerStyle: 'padding:24px 34px 30px',
+      eyebrow: accent, headingFont: 'Georgia,Times,serif', headingSize: '25px',
+      ctaRadius: '999px', ctaBackground: accent, ctaText: onAccent(accent),
+    };
+  }
+  if (theme === 'blueprint') {
+    return {
+      page: '#111827', card: '#ffffff', cardStyle: 'border-radius:2px',
+      header: NAVY, headerStyle: `padding:27px 32px 24px;border-top:5px solid ${accent}`,
+      headerText: '#ffffff', logoPlate: true, bodyStyle: 'padding:28px 32px 10px',
+      footer: '#f3f5f8', footerStyle: 'padding:22px 32px 27px;border-top:1px solid #dfe3e8',
+      eyebrow: accent, headingFont: 'Trebuchet MS,Arial,sans-serif', headingSize: '24px',
+      ctaRadius: '2px', ctaBackground: accent, ctaText: onAccent(accent),
+    };
+  }
+  if (theme === 'spotlight') {
+    return {
+      page: tint(accent, 0.9), card: '#ffffff', cardStyle: 'border-radius:16px',
+      header: accent, headerStyle: 'padding:30px 34px 27px', headerText: onAccent(accent), logoPlate: true,
+      bodyStyle: 'padding:30px 34px 12px', footer: '#ffffff', footerStyle: 'padding:24px 34px 30px',
+      eyebrow: accent, headingFont: 'Arial,sans-serif', headingSize: '27px',
+      ctaRadius: '8px', ctaBackground: accent, ctaText: onAccent(accent),
+    };
+  }
+  return {
+    page: '#f4f6f9', card: '#ffffff', cardStyle: 'border-radius:12px',
+    header: '#ffffff', headerStyle: `padding:28px 32px 0;border-top:4px solid ${accent}`,
+    headerText: accent, logoPlate: false, bodyStyle: 'padding:24px 32px 8px',
+    footer: '#ffffff', footerStyle: 'padding:24px 32px 28px', eyebrow: accent,
+    headingFont: 'Arial,sans-serif', headingSize: '22px', ctaRadius: '6px',
+    ctaBackground: accent, ctaText: onAccent(accent),
+  };
+}
+
 export function renderBrandedEmail(input: BrandedEmail): string {
   const { brand } = input;
   const accent = safeAccent(brand.accent);
   const name = escapeHtml(brand.businessName || 'your contractor');
+  const theme = normalizeEmailTheme(brand.theme);
+  const paint = themePaint(theme, accent);
 
   const eyebrow = input.eyebrow
-    ? `<p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${accent}">${escapeHtml(input.eyebrow)}</p>`
+    ? `<p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${paint.eyebrow}">${escapeHtml(input.eyebrow)}</p>`
     : '';
 
   const paragraphs = (input.paragraphs ?? [])
@@ -144,8 +246,8 @@ export function renderBrandedEmail(input: BrandedEmail): string {
   // plain button collapses to a bare link exactly where it matters most.
   const cta = input.cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 4px">
-         <tr><td align="center" bgcolor="${accent}" style="border-radius:6px">
-           <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:700;color:${onAccent(accent)};text-decoration:none;border-radius:6px">${escapeHtml(input.cta.label)}</a>
+         <tr><td align="center" bgcolor="${paint.ctaBackground}" style="border-radius:${paint.ctaRadius}">
+           <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:700;color:${paint.ctaText};text-decoration:none;border-radius:${paint.ctaRadius}">${escapeHtml(input.cta.label)}</a>
          </td></tr>
        </table>`
     : '';
@@ -157,21 +259,20 @@ export function renderBrandedEmail(input: BrandedEmail): string {
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${name}</title></head>
-<body style="margin:0;padding:0;background:#f4f6f9">
+<body style="margin:0;padding:0;background:${paint.page};font-family:Arial,sans-serif">
 ${preheaderBlock(input.preheader ?? '')}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6f9">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${paint.page}">
   <tr><td align="center" style="padding:24px 12px">
-    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden">
-      <tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>
-      <tr><td style="padding:28px 32px 0">${brandLockup(brand)}</td></tr>
-      <tr><td style="padding:24px 32px 8px">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:${paint.card};${paint.cardStyle};overflow:hidden">
+      <tr><td bgcolor="${paint.header}" style="${paint.headerStyle}">${brandLockup(brand, { textColor: paint.headerText, logoPlate: paint.logoPlate })}</td></tr>
+      <tr><td style="${paint.bodyStyle}">
         ${eyebrow}
-        <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;font-weight:700;color:${INK}">${escapeHtml(input.heading)}</h1>
+        <h1 style="margin:0 0 14px;font-family:${paint.headingFont};font-size:${paint.headingSize};line-height:1.25;font-weight:700;color:${INK}">${escapeHtml(input.heading)}</h1>
         ${paragraphs}
         ${input.bodyHtml ?? ''}
         ${cta}
       </td></tr>
-      <tr><td style="padding:24px 32px 28px">
+      <tr><td bgcolor="${paint.footer}" style="${paint.footerStyle}">
         <div style="border-top:1px solid ${HAIRLINE};padding-top:16px">
           <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED}">
             Sent by ${name}${contactBits ? `<br/>${contactBits}` : ''}
@@ -183,7 +284,7 @@ ${preheaderBlock(input.preheader ?? '')}
         </div>
       </td></tr>
     </table>
-    <p style="margin:14px 0 0;font-size:11px;color:#9099a6">Powered by Let&#39;s Get Quoted</p>
+    <p style="margin:14px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#9099a6">Powered by Let&#39;s Get Quoted</p>
   </td></tr>
 </table>
 </body></html>`;

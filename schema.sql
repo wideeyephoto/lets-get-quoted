@@ -467,6 +467,8 @@ create table if not exists sites (
   header_font       text,
   button_style      text,
   accent_override   text,
+  email_theme       text not null default 'studio'
+                    check (email_theme in ('studio', 'letterhead', 'neighborly', 'blueprint', 'spotlight')),
 
   company_name      text not null,
   headline          text,

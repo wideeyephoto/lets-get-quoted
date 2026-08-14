@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { EmailBrand } from '@/emails/brand';
+import { normalizeEmailTheme, type EmailBrand, type EmailThemeId } from '@/emails/brand';
 import { createAdminClient } from './auth';
 
 // Assembling a contractor's email brand from what they've already set up.
@@ -19,6 +19,7 @@ type BrandRow = {
   subdomain: string | null;
   custom_domain: string | null;
   custom_domain_verified_at: string | null;
+  email_theme: EmailThemeId | null;
 };
 
 /**
@@ -40,7 +41,7 @@ export async function loadEmailBrand(
   try {
     const { data } = await admin
       .from('sites')
-      .select('company_name, accent_override, logo_url, phone, subdomain, custom_domain, custom_domain_verified_at')
+      .select('company_name, accent_override, logo_url, phone, subdomain, custom_domain, custom_domain_verified_at, email_theme')
       .eq('account_id', accountId)
       .maybeSingle();
     row = (data as BrandRow) ?? null;
@@ -87,6 +88,7 @@ export async function loadEmailBrand(
     phone: (row?.phone ?? '').trim() || null,
     siteUrl: host ? `https://${host}` : null,
     replyTo,
+    theme: normalizeEmailTheme(row?.email_theme),
   };
 }
 
@@ -99,5 +101,6 @@ export function nameOnlyBrand(businessName: string): EmailBrand {
     phone: null,
     siteUrl: null,
     replyTo: null,
+    theme: 'studio',
   };
 }

@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { contractorFrom, escapeHtml, onAccent, renderBrandedEmail, safeAccent, type EmailBrand } from '../src/emails/brand';
+import {
+  EMAIL_THEMES,
+  contractorFrom,
+  escapeHtml,
+  normalizeEmailTheme,
+  onAccent,
+  renderBrandedEmail,
+  safeAccent,
+  type EmailBrand,
+} from '../src/emails/brand';
 
 const brand = (over: Partial<EmailBrand> = {}): EmailBrand => ({
   businessName: 'BrokePipes',
@@ -97,6 +106,32 @@ describe('renderBrandedEmail', () => {
     const html = renderBrandedEmail({ brand: brand(), heading: 'x' });
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html.trimEnd().endsWith('</html>')).toBe(true);
+  });
+
+  it('renders all five choices through the same email-safe shell', () => {
+    const documents = EMAIL_THEMES.map((theme) => renderBrandedEmail({
+      brand: brand({ theme: theme.id }),
+      heading: 'Your quote is ready',
+      cta: { label: 'View quote', url: 'https://example.test/quote' },
+    }));
+
+    expect(documents).toHaveLength(5);
+    expect(new Set(documents).size).toBe(5);
+    for (const html of documents) {
+      expect(html).toContain('BrokePipes');
+      expect(html).toContain('View quote');
+      expect(html).not.toMatch(/display\s*:\s*flex/i);
+      expect(html.trimEnd().endsWith('</html>')).toBe(true);
+    }
+  });
+
+  it('falls unknown and legacy theme values back to Studio', () => {
+    expect(normalizeEmailTheme('blueprint')).toBe('blueprint');
+    expect(normalizeEmailTheme('made-up')).toBe('studio');
+    expect(normalizeEmailTheme(null)).toBe('studio');
+    const legacy = renderBrandedEmail({ brand: brand(), heading: 'x' });
+    const explicit = renderBrandedEmail({ brand: brand({ theme: 'studio' }), heading: 'x' });
+    expect(legacy).toBe(explicit);
   });
 });
 
