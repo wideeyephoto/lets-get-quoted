@@ -55,10 +55,10 @@ const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon:
   { id: 'day', label: 'Day', hint: 'One day against the clock', icon: 'M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5ZM4.5 9h15M8 12.5h8M8 16h5' },
   { id: 'week', label: 'Week', hint: 'The week against the clock — sized by how long each job takes', icon: 'M3.5 5.5h17v13h-17zM3.5 9h17M8 9v9.5M12.5 9v9.5M17 9v9.5' },
   { id: 'month', label: 'Capacity', hint: 'How full each day of the month is — click a date to open it', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
-  { id: 'crew', label: 'Crew day', hint: 'One lane per person, for a single day', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
-  { id: 'agenda', label: 'Job list', hint: 'Every job this month as rows you can read', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
-  { id: 'timeline', label: 'Projects', hint: 'Multi-day work as one bar per job', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
-  { id: 'year', label: 'Year', hint: 'Twelve months of jobs, hours and value', icon: 'M4.5 5h6v6h-6zM13.5 5h6v6h-6zM4.5 13h6v6h-6zM13.5 13h6v6h-6z' },
+  { id: 'crew', label: 'Dispatch', hint: 'One lane per crew member for a single day', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
+  { id: 'agenda', label: 'Month list', hint: 'Every job this month as readable rows', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
+  { id: 'timeline', label: 'Project timeline', hint: 'Multi-day work as one bar per job', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
+  { id: 'year', label: 'Year overview', hint: 'Twelve months of jobs, hours and value', icon: 'M4.5 5h6v6h-6zM13.5 5h6v6h-6zM4.5 13h6v6h-6zM13.5 13h6v6h-6z' },
 ];
 
 /** The views laid out against a clock, which are the ones that step by day. */
@@ -205,6 +205,20 @@ function CalendarViewMenu({
               {option.id === value ? <span className="calendar-view-option-tick" aria-hidden="true">✓</span> : null}
             </button>
           ))}
+          <Link
+            href="/dashboard/schedule/plan"
+            role="menuitem"
+            className="calendar-view-option calendar-view-option-link"
+            onClick={() => setOpen(false)}
+          >
+            <svg className="calendar-view-option-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 18.5 9 6l6 12.5M7 13h10M16 5.5l3 3-3 3" />
+            </svg>
+            <span className="calendar-view-option-text">
+              <strong>Routes</strong>
+              <small>Plan stop order and driving</small>
+            </span>
+          </Link>
           {/* Underneath the views, not instead of them: this menu is now
               everything about what the grid draws, which is what stopped the
               toolbar needing a second row of controls. */}

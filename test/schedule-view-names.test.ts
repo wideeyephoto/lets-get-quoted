@@ -38,10 +38,10 @@ describe('the view names describe what you get', () => {
       { id: 'day', label: 'Day' },
       { id: 'week', label: 'Week' },
       { id: 'month', label: 'Capacity' },
-      { id: 'crew', label: 'Crew day' },
-      { id: 'agenda', label: 'Job list' },
-      { id: 'timeline', label: 'Projects' },
-      { id: 'year', label: 'Year' },
+      { id: 'crew', label: 'Dispatch' },
+      { id: 'agenda', label: 'Month list' },
+      { id: 'timeline', label: 'Project timeline' },
+      { id: 'year', label: 'Year overview' },
     ]);
   });
 
@@ -134,6 +134,16 @@ describe('the phone uses the desktop’s words', () => {
    *  churning them would be a rename for its own sake. */
   it('leaves the internal names alone', () => {
     expect(MOBILE).toContain("type MobileView = 'agenda' | 'month';");
+  });
+
+  /** The arrows used to keep stepping one day while Month was selected, while
+   * the real month links sat below the calendar and usually below the fold. */
+  it('makes the heading and arrows control the selected span', () => {
+    expect(MOBILE).toContain('function goToMonth(offset: number)');
+    expect(MOBILE).toContain("view === 'month' ? goToMonth(-1) : goToDay(");
+    expect(MOBILE).toContain("view === 'month' ? 'Previous month'");
+    expect(MOBILE).toContain('<h2 className="sched-mobile-date">{monthLabel}</h2>');
+    expect(MOBILE).not.toContain('className="sched-mini-foot"');
   });
 
   /** "The nearby-days strip remains visible above Month, creating two date

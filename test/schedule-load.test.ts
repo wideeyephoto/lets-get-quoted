@@ -190,7 +190,7 @@ describe('the schedule header', () => {
        six unestimated jobs come to three hours and the card went back to
        printing 2%. The question is whether anything in the window has been
        measured, which is a question about jobs. */
-    expect(PAGE).toContain('const loadUnmeasured = measuredNext30Days === 0 && unmeasuredNext30Days > 0;');
+    expect(PAGE).toContain("const loadUnmeasured = load.percent !== null && measuredNext30Days === 0 && unmeasuredNext30Days > 0;");
     expect(PAGE).not.toContain('load.bookedHours <= 0');
     expect(PAGE).toContain("const loadFigure = load.percent === null || loadUnmeasured ? '—' : `${load.percent}%`;");
     /* Counted per JOB, not per occurrence-day. countUnknownDurationByDate emits
@@ -201,6 +201,14 @@ describe('the schedule header', () => {
     expect(PAGE).not.toContain("<strong>{load.percent === null ? '—' : `${load.percent}%`}</strong>");
     // And the caption no longer leaves the span to the tooltip.
     expect(PAGE).not.toContain('<small>Booked · {scheduledNext30Days} jobs</small>');
+    expect(PAGE).toContain('Capacity unavailable');
+    expect(PAGE).toContain("href={loadUnmeasured ? '/dashboard/jobs' : '/dashboard/schedule/settings'}");
+    expect(PAGE).toContain('Add durations to {unmeasuredNext30Days} scheduled');
+  });
+
+  it('hides calm zero-action cards instead of making them compete with work', () => {
+    expect(PAGE).toContain('{unassignedThisWeek > 0 ? <Link');
+    expect(PAGE).toContain('{scatter.days > 0 ? <Link');
   });
 
   /**
