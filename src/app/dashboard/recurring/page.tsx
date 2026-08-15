@@ -53,7 +53,7 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
 export default async function RecurringPage({
   searchParams,
 }: {
-  searchParams: { flash?: string; job?: string; on?: string; then?: string };
+  searchParams: { flash?: string; job?: string; on?: string; then?: string; plan?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const mode = normalizeRecurringView(cookies().get(RECURRING_VIEW_COOKIE)?.value);
@@ -162,6 +162,7 @@ export default async function RecurringPage({
       }
       flash={flash}
       flashJobId={flashJobId}
+      focusPlanId={searchParams.plan ?? null}
     />
   );
 }

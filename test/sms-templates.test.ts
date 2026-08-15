@@ -137,13 +137,13 @@ describe('the review pill points at the right page', () => {
     const state = reviewPillState({ ...blocked, sendReview: undefined });
     expect(state.canAsk).toBe(false);
     if (state.canAsk) return;
-    expect(state.fix?.href).toBe('/dashboard/sites#google-business-profile');
+    expect(state.fix?.href).toBe('/dashboard/sites?open=reviews');
     expect(state.reason).not.toContain('Settings');
   });
 
-  // The anchor has to exist, or the link scrolls nowhere.
-  it('and the builder carries that anchor', () => {
-    expect(read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx')).toContain('id="google-business-profile"');
+  // The deep-link target has to map to the card that owns the review destination.
+  it('and the builder opens the review setup card', () => {
+    expect(read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx')).toContain("reviews: { tab: 'page', card: 'testimonials' }");
   });
 
   /**

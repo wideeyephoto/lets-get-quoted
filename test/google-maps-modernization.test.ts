@@ -47,4 +47,12 @@ describe('Google Maps modernization', () => {
     expect(mapsSource).not.toMatch(/\bgoogle\.maps\.Marker\b/);
     expect(mapsSource).not.toMatch(/\b(?:google\.maps|window\.google\.maps|g|markerLibrary)\.Marker\s*\(/);
   });
+
+  it('uses the current Routes API instead of the deprecated Directions service', () => {
+    const routeMap = source('src/app/dashboard/schedule/plan/RouteMap.tsx');
+    expect(routeMap).toContain('Route.computeRoutes(');
+    expect(routeMap).toContain("fields: ['legs']");
+    expect(routeMap).toContain("code === 'PERMISSION_DENIED'");
+    expect(routeMap).not.toContain('DirectionsService');
+  });
 });

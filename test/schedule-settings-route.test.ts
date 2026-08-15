@@ -8,6 +8,7 @@ const stripJs = (source: string) =>
 
 const PAGE = stripJs(read('src', 'app', 'dashboard', 'schedule', 'page.tsx'));
 const SETTINGS = read('src', 'app', 'dashboard', 'schedule', 'settings', 'page.tsx');
+const PLANNER = stripJs(read('src', 'app', 'dashboard', 'schedule', 'plan', 'DayPlanner.tsx'));
 const CSS = read('src', 'app', 'globals.css');
 
 /* ===========================================================================
@@ -23,6 +24,7 @@ describe('the schedule settings have their own route', () => {
   it('exists and is reachable from the calendar', () => {
     expect(existsSync(join(process.cwd(), 'src', 'app', 'dashboard', 'schedule', 'settings', 'page.tsx'))).toBe(true);
     expect(PAGE).toContain('href="/dashboard/schedule/settings"');
+    expect(PLANNER).toContain('href="/dashboard/schedule/settings"');
   });
 
   it('carries all four surfaces', () => {

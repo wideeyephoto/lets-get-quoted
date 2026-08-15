@@ -150,7 +150,7 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   // "not suspended" so this never breaks the dashboard before it's deployed.
   const { data: acct } = await supabase
     .from('accounts')
-    .select('suspended_at, terms_accepted_at, terms_version')
+    .select('suspended_at, terms_accepted_at, terms_version, timezone')
     .eq('id', membership.accountId)
     .maybeSingle();
   if (acct && (acct as { suspended_at?: string | null }).suspended_at) {
@@ -176,7 +176,13 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   // userEmail is who to write into an audit trail. Anything that records a
   // decision — approving hours, marking a crew member paid — has to name a
   // person, and "the account" isn't a person.
-  return { supabase, userId: user.id, userEmail: user.email ?? null, accountId: membership.accountId };
+  return {
+    supabase,
+    userId: user.id,
+    userEmail: user.email ?? null,
+    accountId: membership.accountId,
+    accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
+  };
 }
 
 // --- Internal staff console (/admin) -----------------------------------------

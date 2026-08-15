@@ -252,6 +252,26 @@ describe('the customer column is really hidden when it is meant to be', () => {
   });
 });
 
+describe('only a thread the owner chose is marked read', () => {
+  it('defers read state until the browser confirms the thread pane is visible', () => {
+    const marker = read('src', 'app', 'dashboard', 'messages', 'MarkVisibleThreadRead.tsx');
+    expect(PAGE_CODE).toContain('<MarkVisibleThreadRead');
+    expect(PAGE_CODE).not.toContain('await markThreadRead(');
+    expect(marker).toContain("window.matchMedia('(min-width: 821px)')");
+    expect(marker).toContain('!explicitlyChosen && !desktop.matches');
+  });
+
+  it('treats an explicit thread as visible and bounds the receipt to rendered messages', () => {
+    expect(PAGE_CODE).toContain('const threadChosen = Boolean(searchParams.thread);');
+    expect(PAGE_CODE).toContain("inbox-layout${threadChosen ? ' show-thread' : ' show-list'}");
+    expect(PAGE_CODE).toContain('readThrough={readThrough}');
+    expect(PAGE_CODE).toContain('explicitlyChosen={threadChosen}');
+    expect(PAGE_CODE).toContain('const hasRenderedUnread = messages.some(');
+    expect(PAGE_CODE).toContain('activePhone && readThrough && hasRenderedUnread');
+    expect(PAGE_CODE).not.toContain('activeConversation?.unread');
+  });
+});
+
 /* ===========================================================================
    6. What left the page
    ======================================================================== */

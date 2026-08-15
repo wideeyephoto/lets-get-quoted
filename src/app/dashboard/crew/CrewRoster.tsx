@@ -893,7 +893,7 @@ export default function CrewRoster({
               <ul className={styles.focusActions}>
                 <li>{readOnly ? null : <Link href={ADD_CREW_HREF}>Add crew member</Link>}</li>
                 <li><Link href="/dashboard/crew?tab=hours">Review hours &amp; pay</Link></li>
-                <li><Link href="/dashboard/crew?tab=labor">Labor by job</Link></li>
+                <li><Link href="/dashboard/crew?tab=jobs">Labor by job</Link></li>
                 <li><Link href="/dashboard/schedule/plan">Plan today&apos;s route</Link></li>
               </ul>
             </section>

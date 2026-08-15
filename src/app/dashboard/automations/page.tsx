@@ -89,6 +89,7 @@ import {
  * the old one.
  */
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Automations' };
 
 type AutomationStatus = { label: string; tone: 'on' | 'off' | 'neutral' };
 
