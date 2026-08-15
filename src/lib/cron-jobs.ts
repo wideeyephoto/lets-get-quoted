@@ -198,9 +198,20 @@ export function graceMs(intervalMs: number): number {
   return Math.min(intervalMs, HOUR);
 }
 
+/** A wrapper may finish while its own summary reports failed work. */
+export function cronSummaryHasFailures(summary: Record<string, unknown> | null | undefined): boolean {
+  if (!summary) return false;
+  return Object.entries(summary).some(([key, value]) => {
+    if (!/(^|_)(failed|failures|errors|error_count)$/i.test(key)) return false;
+    if (typeof value === 'number') return Number.isFinite(value) && value > 0;
+    if (typeof value === 'boolean') return value;
+    return typeof value === 'string' && value.trim() !== '' && value.trim() !== '0';
+  });
+}
+
 export function cronHealth(
   spec: CronJobSpec,
-  last: { started_at: string; finished_at: string | null; ok: boolean | null } | null,
+  last: { started_at: string; finished_at: string | null; ok: boolean | null; summary?: Record<string, unknown> | null } | null,
   lastSuccessAt: string | null,
   now: Date,
 ): CronHealth {
@@ -219,7 +230,7 @@ export function cronHealth(
     return 'running';
   }
 
-  if (last.ok === false) return 'failing';
+  if (last.ok === false || cronSummaryHasFailures(last.summary)) return 'failing';
 
   // Ran, and succeeded. The remaining question is whether it has run RECENTLY
   // enough — a job that succeeded once and then stopped firing altogether looks

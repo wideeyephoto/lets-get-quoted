@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
-import { getOpenDisputes, getPausedPayouts, getNotOnboardedCount } from '@/lib/admin-alerts';
+import { createAdminSignalDiagnostics, getOpenDisputes, getPausedPayouts, getNotOnboardedCount } from '@/lib/admin-alerts';
 import { fetchFeeWindow } from '@/lib/platform-fees';
 import { isDateRange, rangeWindow, type DateRange } from '@/lib/command-center-logic';
 import { StatCard } from '../StatCard';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Money' };
 
 function usd(dollars: number): string {
   return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -37,15 +38,16 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
   const now = new Date();
   const win = rangeWindow(range, now);
   const rangeLabel = RANGE_TABS.find((r) => r.key === range)?.label ?? '30 days';
+  const diagnostics = createAdminSignalDiagnostics();
 
   // The fee arithmetic — and the refund rows the table renders — come from the
   // one definition in lib/platform-fees.ts, which the Command Center shares.
   // They used to be two copies of the same query carrying the same defect.
   const [fees, disputes, pausedRows, notOnboardedCount] = await Promise.all([
     fetchFeeWindow(admin, win.currentStart, win.currentEnd),
-    getOpenDisputes(admin, { accountId }),
-    getPausedPayouts(admin),
-    getNotOnboardedCount(admin),
+    getOpenDisputes(admin, { accountId, diagnostics }),
+    getPausedPayouts(admin, { diagnostics }),
+    getNotOnboardedCount(admin, { diagnostics }),
   ]);
 
   // Deliberately not named *30 any more — the window is whatever `range` says,
@@ -53,6 +55,10 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
   // label survives the change that was supposed to remove it.
   const { grossFees, feesReversed, netFees, refunds, refundRows } = fees;
   const refundCount = refundRows.length;
+  const disputesAvailable = !diagnostics.failed.includes('disputes');
+  const payoutsAvailable = !diagnostics.failed.includes('pausedPayouts');
+  const onboardingAvailable = !diagnostics.failed.includes('notOnboarded');
+  const unavailableCount = diagnostics.failed.length + Number(!fees.availability.payments) + Number(!fees.availability.refunds);
 
   // Stitch display names (site company_name preferred) onto the dispute, paused
   // and refund rows in one pass.
@@ -62,11 +68,13 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
     ...refundRows.map((r) => r.account_id),
   ].filter(Boolean))];
   const nameMap = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
+  let namesAvailable = true;
   if (acctIds.length) {
     const [acctsRes, sitesRes] = await Promise.all([
       admin.from('accounts').select('id, business_name, account_number').in('id', acctIds),
       admin.from('sites').select('account_id, company_name').in('account_id', acctIds),
     ]);
+    if (acctsRes.error || sitesRes.error) namesAvailable = false;
     const siteNames = new Map<string, string | null>();
     for (const s of sitesRes.data ?? []) {
       const site = s as { account_id: string; company_name: string | null };
@@ -86,6 +94,13 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
         <p className={styles.lead}>Platform fees, refunds, disputes, and payout health. You&rsquo;re the merchant of record on Connect — this is the liability side of the ledger.</p>
       </header>
 
+      {unavailableCount > 0 ? (
+        <div className={`${styles.banner} ${styles.err}`} role="status">
+          <strong>Some money data is unavailable.</strong> Missing sources show an em dash and are not treated as zero or all-clear. Refresh to retry.
+        </div>
+      ) : null}
+      {!namesAvailable ? <div className={`${styles.banner} ${styles.err}`}>Money rows loaded, but some account names are unavailable.</div> : null}
+
       <div className={styles.filterTabs}>
         {RANGE_TABS.map((r) => (
           <Link key={r.key} href={`/admin/money?range=${r.key}`} className={`${styles.filterTab} ${range === r.key ? styles.on : ''}`}>{r.label}</Link>
@@ -98,36 +113,37 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
           link to the list that holds those records. */}
       <section className={styles.cardGrid} style={{ marginBottom: '1.4rem' }}>
         <StatCard
-          value={usd(netFees)}
+          value={fees.availability.payments && fees.availability.refunds ? usd(netFees) : '—'}
           label={`Platform fees (${rangeLabel})`}
           /* The arithmetic is shown rather than hidden. A net figure with no
              working is indistinguishable from the gross one that used to sit
              here, and the whole point of the fix is that they differ. */
-          note={feesReversed > 0 ? <>{usd(grossFees)} charged − {usd(feesReversed)} returned with refunds</> : null}
+          note={fees.availability.payments && fees.availability.refunds && feesReversed > 0 ? <>{usd(grossFees)} charged − {usd(feesReversed)} returned with refunds</> : null}
+          tone={!fees.availability.payments || !fees.availability.refunds ? 'warn' : undefined}
         />
         <StatCard
-          value={usd(refunds)}
+          value={fees.availability.refunds ? usd(refunds) : '—'}
           label={`Refunds issued (${rangeLabel})`}
-          tone={refunds > 0 ? 'warn' : undefined}
+          tone={!fees.availability.refunds || refunds > 0 ? 'warn' : undefined}
           href={refundCount > 0 ? '#refunds' : undefined}
           drill={refundCount > 0 ? `${refundCount} ${refundCount === 1 ? 'refund' : 'refunds'}` : undefined}
         />
         <StatCard
-          value={disputes.length}
+          value={disputesAvailable ? disputes.length : '—'}
           label="Open disputes"
-          tone={disputes.length > 0 ? 'bad' : undefined}
+          tone={!disputesAvailable || disputes.length > 0 ? 'bad' : undefined}
           href={disputes.length > 0 ? '#disputes' : undefined}
           drill="See them"
         />
         <StatCard
-          value={pausedRows.length}
+          value={payoutsAvailable ? pausedRows.length : '—'}
           label="Payouts paused"
-          tone={pausedRows.length > 0 ? 'warn' : undefined}
+          tone={!payoutsAvailable || pausedRows.length > 0 ? 'warn' : undefined}
           href={pausedRows.length > 0 ? '#paused' : undefined}
           drill="See them"
         />
         <StatCard
-          value={notOnboardedCount}
+          value={onboardingAvailable ? notOnboardedCount : '—'}
           label="Not onboarded"
           href={notOnboardedCount > 0 ? '/admin/accounts?filter=not_onboarded' : undefined}
           drill="Open the list"
@@ -135,8 +151,10 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
       </section>
 
       <section className={styles.panel} id="refunds">
-        <p className={styles.panelTitle}>Refunds issued ({rangeLabel})</p>
-        {refundRows.length === 0 ? (
+        <h2 className={styles.panelTitle}>Refunds issued ({rangeLabel})</h2>
+        {!fees.availability.refunds ? (
+          <p className={styles.emptyState}>Refund data is unavailable. Refresh to retry.</p>
+        ) : refundRows.length === 0 ? (
           <p className={styles.emptyState}>No refunds in the last {rangeLabel}.</p>
         ) : (
           <div className={styles.tableWrap}>
@@ -179,10 +197,10 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
       </section>
 
       <section className={styles.panel} id="disputes">
-        <p className={styles.panelTitle}>
+        <h2 className={styles.panelTitle}>
           Open disputes / chargebacks
           {accountId ? <span className={styles.muted} style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> — one account only</span> : null}
-        </p>
+        </h2>
         {accountId ? (
           <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.8rem' }}>
             <Link href={`/admin/accounts/${accountId}`} className={styles.rowLink}>Back to the account →</Link>
@@ -190,7 +208,9 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
             <Link href={`/admin/money?range=${range}`} className={styles.rowLink}>Show every account</Link>
           </p>
         ) : null}
-        {disputes.length === 0 ? (
+        {!disputesAvailable ? (
+          <p className={styles.emptyState}>Dispute data is unavailable. Refresh to retry.</p>
+        ) : disputes.length === 0 ? (
           <p className={styles.emptyState}>{accountId ? 'No open disputes on this account.' : 'No open disputes. 🎉'}</p>
         ) : (
           <div className={styles.tableWrap}>
@@ -226,8 +246,10 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
       </section>
 
       <section className={styles.panel} id="paused">
-        <p className={styles.panelTitle}>Payouts paused</p>
-        {pausedRows.length === 0 ? (
+        <h2 className={styles.panelTitle}>Payouts paused</h2>
+        {!payoutsAvailable ? (
+          <p className={styles.emptyState}>Payout status is unavailable. Refresh to retry.</p>
+        ) : pausedRows.length === 0 ? (
           <p className={styles.emptyState}>No accounts with paused payouts.</p>
         ) : (
           <div className={styles.tableWrap}>

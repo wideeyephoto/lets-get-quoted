@@ -1,5 +1,44 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * Best-effort queries still need an honest UI state.  Callers that render a
+ * collection can pass one collector through all of the independent fetchers;
+ * a failed query then remains isolated without being mistaken for a verified
+ * empty result.
+ */
+export type AdminSignalKey =
+  | 'cronTrouble'
+  | 'disputes'
+  | 'pausedPayouts'
+  | 'suspendedAccounts'
+  | 'notOnboarded'
+  | 'dunning'
+  | 'overdueQuickStops'
+  | 'failedSms'
+  | 'failedEmails'
+  | 'webhookFailures'
+  | 'incidents'
+  | 'casesNearSla'
+  | 'myCases';
+
+export type AdminSignalDiagnostics = { failed: AdminSignalKey[] };
+
+export function createAdminSignalDiagnostics(): AdminSignalDiagnostics {
+  return { failed: [] };
+}
+
+function signalFailed(
+  diagnostics: AdminSignalDiagnostics | undefined,
+  key: AdminSignalKey,
+  context: string,
+  error: unknown,
+) {
+  console.error(`${context} failed:`, error);
+  if (diagnostics && !diagnostics.failed.includes(key)) diagnostics.failed.push(key);
+}
+
+type SignalOptions = { diagnostics?: AdminSignalDiagnostics };
+
 // One fetcher per Command Center / Money-page signal. Every fetcher returns
 // the raw row shape its callers already render — this is a data layer, not a
 // presentation layer, so src/app/admin/money/page.tsx and
@@ -22,11 +61,12 @@ export type DisputeRow = {
 
 export async function getOpenDisputes(
   admin: SupabaseClient,
-  opts?: { limit?: number; accountId?: string },
+  opts?: SignalOptions & { limit?: number; accountId?: string },
 ): Promise<DisputeRow[]> {
   let q = admin
     .from('payments')
     .select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status, stripe_dispute_id, dispute_due_by')
+    .is('test_marker', null)
     .eq('status', 'disputed')
     .order('disputed_at', { ascending: false })
     .limit(opts?.limit ?? 50);
@@ -36,7 +76,7 @@ export async function getOpenDisputes(
   if (opts?.accountId) q = q.eq('account_id', opts.accountId);
   const { data, error } = await q;
   if (error) {
-    console.error('getOpenDisputes failed:', error);
+    signalFailed(opts?.diagnostics, 'disputes', 'getOpenDisputes', error);
     return [];
   }
   return (data ?? []) as DisputeRow[];
@@ -49,24 +89,25 @@ export type PausedPayoutRow = {
   connect_disabled_at: string | null;
 };
 
-export async function getPausedPayouts(admin: SupabaseClient, opts?: { limit?: number }): Promise<PausedPayoutRow[]> {
+export async function getPausedPayouts(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<PausedPayoutRow[]> {
   const { data, error } = await admin
     .from('accounts')
     .select('id, business_name, account_number, connect_disabled_at')
+    .is('test_marker', null)
     .not('connect_disabled_at', 'is', null)
     .order('connect_disabled_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
-    console.error('getPausedPayouts failed:', error);
+    signalFailed(opts?.diagnostics, 'pausedPayouts', 'getPausedPayouts', error);
     return [];
   }
   return (data ?? []) as PausedPayoutRow[];
 }
 
-export async function getNotOnboardedCount(admin: SupabaseClient): Promise<number> {
-  const { count, error } = await admin.from('accounts').select('id', { count: 'exact', head: true }).eq('connect_onboarded', false);
+export async function getNotOnboardedCount(admin: SupabaseClient, opts?: SignalOptions): Promise<number> {
+  const { count, error } = await admin.from('accounts').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('connect_onboarded', false);
   if (error) {
-    console.error('getNotOnboardedCount failed:', error);
+    signalFailed(opts?.diagnostics, 'notOnboarded', 'getNotOnboardedCount', error);
     return 0;
   }
   return count ?? 0;
@@ -79,15 +120,16 @@ export type NotOnboardedAccountRow = {
   created_at: string;
 };
 
-export async function getNotOnboardedAccounts(admin: SupabaseClient, opts?: { limit?: number }): Promise<NotOnboardedAccountRow[]> {
+export async function getNotOnboardedAccounts(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<NotOnboardedAccountRow[]> {
   const { data, error } = await admin
     .from('accounts')
     .select('id, business_name, account_number, created_at')
+    .is('test_marker', null)
     .eq('connect_onboarded', false)
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
-    console.error('getNotOnboardedAccounts failed:', error);
+    signalFailed(opts?.diagnostics, 'notOnboarded', 'getNotOnboardedAccounts', error);
     return [];
   }
   return (data ?? []) as NotOnboardedAccountRow[];
@@ -102,15 +144,16 @@ export type SuspendedAccountRow = {
   suspended_by: string | null;
 };
 
-export async function getSuspendedAccounts(admin: SupabaseClient, opts?: { limit?: number }): Promise<SuspendedAccountRow[]> {
+export async function getSuspendedAccounts(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<SuspendedAccountRow[]> {
   const { data, error } = await admin
     .from('accounts')
     .select('id, business_name, account_number, suspended_at, suspended_reason, suspended_by')
+    .is('test_marker', null)
     .not('suspended_at', 'is', null)
     .order('suspended_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
-    console.error('getSuspendedAccounts failed:', error);
+    signalFailed(opts?.diagnostics, 'suspendedAccounts', 'getSuspendedAccounts', error);
     return [];
   }
   return (data ?? []) as SuspendedAccountRow[];
@@ -130,15 +173,16 @@ export type DunningPaymentRow = {
   failed_at: string | null;
 };
 
-export async function getPaymentsNeedingAttention(admin: SupabaseClient, opts?: { limit?: number }): Promise<DunningPaymentRow[]> {
+export async function getPaymentsNeedingAttention(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<DunningPaymentRow[]> {
   const { data, error } = await admin
     .from('payments')
     .select('id, account_id, amount, label, dunning_state, failure_message, next_retry_at, failed_at')
+    .is('test_marker', null)
     .in('dunning_state', ['needs_card', 'exhausted'])
     .order('failed_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
-    console.error('getPaymentsNeedingAttention failed:', error);
+    signalFailed(opts?.diagnostics, 'dunning', 'getPaymentsNeedingAttention', error);
     return [];
   }
   return (data ?? []) as DunningPaymentRow[];
@@ -183,7 +227,7 @@ const EXPIRED_LOOKBACK_MS = 48 * 60 * 60 * 1000;
  * The pre-sweep states are still included. They are real while they last, and
  * dropping them would lose the one case the sweep has not reached yet.
  */
-export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit?: number; now?: Date }): Promise<OverdueQuickStopRow[]> {
+export async function getOverdueQuickStops(admin: SupabaseClient, opts?: SignalOptions & { limit?: number; now?: Date }): Promise<OverdueQuickStopRow[]> {
   const limit = opts?.limit ?? 50;
   const now = opts?.now ?? new Date();
   const nowIso = now.toISOString();
@@ -193,6 +237,7 @@ export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit
     admin
       .from('extra_stop_requests')
       .select(columns)
+      .is('test_marker', null)
       .eq('status', 'awaiting_customer_payment')
       .lt('payment_deadline_at', nowIso)
       .order('payment_deadline_at', { ascending: true })
@@ -200,6 +245,7 @@ export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit
     admin
       .from('extra_stop_requests')
       .select(columns)
+      .is('test_marker', null)
       .in('status', ['awaiting_contractor', 'more_information_requested'])
       .lt('response_deadline_at', nowIso)
       .order('response_deadline_at', { ascending: true })
@@ -207,14 +253,15 @@ export async function getOverdueQuickStops(admin: SupabaseClient, opts?: { limit
     admin
       .from('extra_stop_requests')
       .select(columns)
+      .is('test_marker', null)
       .eq('status', 'offer_expired')
       .gte('updated_at', sinceIso)
       .order('updated_at', { ascending: false })
       .limit(limit),
   ]);
-  if (awaitingPayment.error) console.error('getOverdueQuickStops (payment) failed:', awaitingPayment.error);
-  if (awaitingResponse.error) console.error('getOverdueQuickStops (response) failed:', awaitingResponse.error);
-  if (expired.error) console.error('getOverdueQuickStops (expired) failed:', expired.error);
+  if (awaitingPayment.error) signalFailed(opts?.diagnostics, 'overdueQuickStops', 'getOverdueQuickStops (payment)', awaitingPayment.error);
+  if (awaitingResponse.error) signalFailed(opts?.diagnostics, 'overdueQuickStops', 'getOverdueQuickStops (response)', awaitingResponse.error);
+  if (expired.error) signalFailed(opts?.diagnostics, 'overdueQuickStops', 'getOverdueQuickStops (expired)', expired.error);
   // Live ones first — they can still be saved. The expired are a record.
   const rows = [
     ...(awaitingPayment.data ?? []),
@@ -234,15 +281,16 @@ export type FailedSmsEventRow = {
   created_at: string;
 };
 
-export async function getFailedSmsEvents(admin: SupabaseClient, opts?: { limit?: number }): Promise<FailedSmsEventRow[]> {
+export async function getFailedSmsEvents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<FailedSmsEventRow[]> {
   const { data, error } = await admin
     .from('sms_events')
     .select('id, account_id, payment_id, event_type, phone_number, error_reason, created_at')
+    .is('test_marker', null)
     .eq('status', 'failed')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
-    console.error('getFailedSmsEvents failed:', error);
+    signalFailed(opts?.diagnostics, 'failedSms', 'getFailedSmsEvents', error);
     return [];
   }
   return (data ?? []) as FailedSmsEventRow[];
@@ -262,17 +310,18 @@ export type FailedEmailEventRow = {
 // A complaint is treated the same as a bounce here — both mean the send did
 // not land as a good transactional message, and either can indicate a client
 // contact detail gone bad.
-export async function getFailedEmailEvents(admin: SupabaseClient, opts?: { limit?: number }): Promise<FailedEmailEventRow[]> {
+export async function getFailedEmailEvents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<FailedEmailEventRow[]> {
   const { data, error } = await admin
     .from('email_events')
     .select('id, account_id, kind, recipient, status, error_reason, occurred_at')
+    .is('test_marker', null)
     .in('status', ['bounced', 'complained'])
     .order('occurred_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
     // Missing table (migration not yet applied) degrades to empty, same as
     // every other best-effort signal here.
-    console.error('getFailedEmailEvents failed:', error);
+    signalFailed(opts?.diagnostics, 'failedEmails', 'getFailedEmailEvents', error);
     return [];
   }
   return (data ?? []) as FailedEmailEventRow[];
@@ -287,15 +336,16 @@ export type WebhookFailureRow = {
   created_at: string;
 };
 
-export async function getUnresolvedWebhookFailures(admin: SupabaseClient, opts?: { limit?: number }): Promise<WebhookFailureRow[]> {
+export async function getUnresolvedWebhookFailures(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<WebhookFailureRow[]> {
   const { data, error } = await admin
     .from('webhook_failures')
     .select('id, source, event_type, reference_id, error_message, created_at')
+    .is('test_marker', null)
     .is('resolved_at', null)
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
-    console.error('getUnresolvedWebhookFailures failed:', error);
+    signalFailed(opts?.diagnostics, 'webhookFailures', 'getUnresolvedWebhookFailures', error);
     return [];
   }
   return (data ?? []) as WebhookFailureRow[];
@@ -311,16 +361,22 @@ export type PlatformIncidentRow = {
   resolved_at: string | null;
   /** Who wrote it down. These rows are hand-authored, so it always matters. */
   created_by: string | null;
+  owner: string | null;
+  affected_services: string[];
+  impact_summary: string | null;
+  root_cause: string | null;
+  resolution_summary: string | null;
+  external_url: string | null;
 };
 
-export async function getRecentIncidents(admin: SupabaseClient, opts?: { limit?: number }): Promise<PlatformIncidentRow[]> {
+export async function getRecentIncidents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<PlatformIncidentRow[]> {
   const { data, error } = await admin
     .from('platform_incidents')
-    .select('id, kind, title, description, severity, started_at, resolved_at, created_by')
+    .select('id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 8);
   if (error) {
-    console.error('getRecentIncidents failed:', error);
+    signalFailed(opts?.diagnostics, 'incidents', 'getRecentIncidents', error);
     return [];
   }
   return (data ?? []) as PlatformIncidentRow[];
@@ -354,20 +410,21 @@ const OPEN_CASE_STATUSES = '(resolved,closed)';
  */
 export async function getCasesNearSla(
   admin: SupabaseClient,
-  opts?: { limit?: number; withinMs?: number; now?: Date },
+  opts?: SignalOptions & { limit?: number; withinMs?: number; now?: Date },
 ): Promise<SupportCaseRow[]> {
   const now = opts?.now ?? new Date();
   const horizon = new Date(now.getTime() + (opts?.withinMs ?? 48 * 60 * 60 * 1000)).toISOString();
   const { data, error } = await admin
     .from('support_cases')
     .select(SUPPORT_CASE_ROW_COLUMNS)
+    .is('test_marker', null)
     .not('sla_due_at', 'is', null)
     .lt('sla_due_at', horizon)
     .not('status', 'in', OPEN_CASE_STATUSES)
     .order('sla_due_at', { ascending: true })
     .limit(opts?.limit ?? 20);
   if (error) {
-    console.error('getCasesNearSla failed:', error);
+    signalFailed(opts?.diagnostics, 'casesNearSla', 'getCasesNearSla', error);
     return [];
   }
   return (data ?? []) as SupportCaseRow[];
@@ -384,29 +441,31 @@ export async function getCasesNearSla(
  * overstatement rather than good news. Surfacing the number does not fix the
  * scheduling gap, but it stops the silence from reading as an all-clear.
  */
-export async function getCasesWithoutSlaCount(admin: SupabaseClient): Promise<number> {
+export async function getCasesWithoutSlaCount(admin: SupabaseClient, opts?: SignalOptions): Promise<number> {
   const { count, error } = await admin
     .from('support_cases')
     .select('id', { count: 'exact', head: true })
+    .is('test_marker', null)
     .is('sla_due_at', null)
     .not('status', 'in', OPEN_CASE_STATUSES);
   if (error) {
-    console.error('getCasesWithoutSlaCount failed:', error);
+    signalFailed(opts?.diagnostics, 'casesNearSla', 'getCasesWithoutSlaCount', error);
     return 0;
   }
   return count ?? 0;
 }
 
-export async function getMyAssignedCases(admin: SupabaseClient, staffEmail: string, opts?: { limit?: number }): Promise<SupportCaseRow[]> {
+export async function getMyAssignedCases(admin: SupabaseClient, staffEmail: string, opts?: SignalOptions & { limit?: number }): Promise<SupportCaseRow[]> {
   const { data, error } = await admin
     .from('support_cases')
     .select(SUPPORT_CASE_ROW_COLUMNS)
+    .is('test_marker', null)
     .eq('assigned_to', staffEmail)
     .not('status', 'in', OPEN_CASE_STATUSES)
     .order('sla_due_at', { ascending: true, nullsFirst: false })
     .limit(opts?.limit ?? 20);
   if (error) {
-    console.error('getMyAssignedCases failed:', error);
+    signalFailed(opts?.diagnostics, 'myCases', 'getMyAssignedCases', error);
     return [];
   }
   return (data ?? []) as SupportCaseRow[];

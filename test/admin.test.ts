@@ -42,11 +42,9 @@ describe('isAdminEmail', () => {
   });
 });
 
-// ADMIN_EMAILS is now the OUTER gate only: it decides who can reach /admin at
-// all, and the staff row decides what they can do once inside. The role token
-// here is a SEED for that row on first sign-in, never the authority itself —
-// once a staff row exists the database wins, and editing this variable changes
-// who gets in rather than what they can do.
+// ADMIN_EMAILS is the bootstrap and break-glass path. An active invited staff
+// row can also enter; for an allowlisted first sign-in, the role token here is
+// only the seed for that row. Once a row exists the database wins.
 //
 // 'admin' still resolves to full access (now spelled super_admin), and it must:
 // it is what every bare entry has always meant, and a security change that
@@ -88,8 +86,7 @@ describe('staffRoleFor', () => {
     expect(isAdminEmail('support@letsgetquoted.com')).toBe(true);
   });
 
-  // Never reached in practice — requireAdmin calls isAdminEmail first, and an
-  // unlisted email 404s before a role is ever asked for.
+  // Used only for allowlist provisioning; invited rows already carry a role.
   it('defaults to full access for an unlisted email', () => {
     delete process.env.ADMIN_EMAILS;
     expect(staffRoleFor('nobody@letsgetquoted.com')).toBe('super_admin');

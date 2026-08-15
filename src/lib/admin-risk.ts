@@ -75,24 +75,28 @@ export type RiskQueue = {
   windowDays: number;
   /** True when a row cap bit, which narrows the window rather than the set. */
   truncated: boolean;
+  available: boolean;
+  unavailableSources: string[];
 };
 
 export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): Promise<RiskQueue> {
   const since = new Date(now.getTime() - RISK_WINDOW_DAYS * DAY_MS).toISOString();
 
   const [acctRes, payRes, qsRes] = await Promise.all([
-    admin.from('accounts').select('id, business_name, account_number, created_at, suspended_at').limit(ROW_CAP),
+    admin.from('accounts').select('id, business_name, account_number, created_at, suspended_at').is('test_marker', null).limit(ROW_CAP),
     // Dated on paid_at OR disputed_at: a charge collected before the window can
     // still be disputed inside it, and that dispute is exactly what this queue
     // exists to surface. Filtering on paid_at alone would hide it.
     admin
       .from('payments')
       .select('account_id, status, amount, refunded_amount, disputed_at, dispute_status, paid_at')
+      .is('test_marker', null)
       .or(`paid_at.gte.${since},disputed_at.gte.${since}`)
       .limit(ROW_CAP),
     admin
       .from('extra_stop_requests')
       .select('account_id, status')
+      .is('test_marker', null)
       .eq('status', 'no_show_confirmed')
       .gte('created_at', since)
       .limit(ROW_CAP),
@@ -100,6 +104,7 @@ export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): P
   if (acctRes.error) console.error('buildRiskQueue (accounts) failed:', acctRes.error);
   if (payRes.error) console.error('buildRiskQueue (payments) failed:', payRes.error);
   if (qsRes.error) console.error('buildRiskQueue (quick stops) failed:', qsRes.error);
+  const unavailableSources = [acctRes.error ? 'accounts' : null, payRes.error ? 'payments' : null, qsRes.error ? 'Quick Stops' : null].filter((value): value is string => Boolean(value));
 
   const accounts = (acctRes.data ?? []) as AccountRow[];
   const payments = (payRes.data ?? []) as PaymentRow[];
@@ -174,5 +179,7 @@ export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): P
     accountsScanned: accounts.length,
     windowDays: RISK_WINDOW_DAYS,
     truncated: accounts.length >= ROW_CAP || payments.length >= ROW_CAP || noShows.length >= ROW_CAP,
+    available: unavailableSources.length === 0,
+    unavailableSources,
   };
 }

@@ -125,6 +125,15 @@ describe('grading a job', () => {
     expect(cronHealth(daily, done(2 * HOUR, false), ago(2 * DAY), now)).toBe('failing');
   });
 
+  it('is failing when a completed wrapper reports failed work in its summary', () => {
+    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { processed: 8, failed: 1 } }, ago(2 * HOUR), now)).toBe('failing');
+    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { errors: 2 } }, ago(2 * HOUR), now)).toBe('failing');
+  });
+
+  it('stays healthy when explicit failure counters are zero', () => {
+    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { processed: 8, failed: 0 } }, ago(2 * HOUR), now)).toBe('ok');
+  });
+
   // The case a last-run timestamp alone cannot catch: it succeeded, and then
   // the scheduler stopped calling it. Nothing is red; nothing has run.
   it('is overdue when it succeeded but has not been seen since', () => {

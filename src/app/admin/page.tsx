@@ -14,14 +14,14 @@ import {
   type CardKey,
   type DateRange,
 } from '@/lib/command-center-logic';
-import { permissionsFor } from '@/lib/staff';
+import { groupEmailFailures, groupSmsFailures, groupWebhookFailures } from '@/lib/admin-failure-groups';
 import { AlertCard, type AlertItem } from './AlertCard';
 import { CommandCenterBoard, type BoardCard } from './CommandCenterBoard';
 import { StatCard } from './StatCard';
-import { resolveWebhookFailureAction } from './actions';
 import styles from './admin.module.css';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Command Center' };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -35,6 +35,7 @@ function usd(dollars: number): string {
   return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 function fmtMetric(m: CommandCenterMetric): string {
+  if (!m.available) return '—';
   return m.format === 'usd' ? usd(m.value) : m.value.toLocaleString('en-US');
 }
 function trendClass(m: CommandCenterMetric): 'good' | 'bad' | 'flat' {
@@ -42,12 +43,16 @@ function trendClass(m: CommandCenterMetric): 'good' | 'bad' | 'flat' {
   return m.direction === m.goodDirection ? 'good' : 'bad';
 }
 function trendLabel(m: CommandCenterMetric): string {
+  if (!m.available) return 'Data unavailable';
   if (m.deltaPct === null) return 'No prior-period data';
   const sign = m.deltaPct > 0 ? '+' : '';
   return `${sign}${m.deltaPct.toFixed(0)}% vs. prior period`;
 }
 function cap(s: string): string {
   return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+function roleLabel(role: string): string {
+  return role.split('_').map(cap).join(' ');
 }
 
 /**
@@ -63,6 +68,8 @@ function metricHref(key: string, range: DateRange): string | undefined {
   switch (key) {
     case 'newAccounts':
       return `/admin/accounts?joined=${range}`;
+    case 'paymentsProcessed':
+      return `/admin/payments?range=${range}`;
     // Both land on Money, which now honours the same range. Fees go to the top,
     // where the gross-minus-returned working is; refunds go to the table of the
     // individual refunds that make up the total.
@@ -77,6 +84,7 @@ function metricHref(key: string, range: DateRange): string | undefined {
 
 const METRIC_DRILL: Record<string, string> = {
   newAccounts: 'See who',
+  paymentsProcessed: 'Open ledger',
   platformFees: 'See the working',
   refunds: 'See each one',
 };
@@ -269,48 +277,37 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     actionHref: `/admin/accounts/${row.id}`,
   }));
 
-  const failedSmsItems: AlertItem[] = data.failedSms.map((row) => ({
-    key: row.id,
+  const failedSmsItems: AlertItem[] = groupSmsFailures(data.failedSms).map((group) => ({
+    key: group.key,
     severity: 'warn',
-    status: cap(row.event_type.replace(/_/g, ' ')) || 'Failed',
-    title: row.phone_number,
-    subtitle: row.error_reason ?? undefined,
-    age: relativeAge(row.created_at, now),
+    status: `${cap(group.sample.event_type.replace(/_/g, ' ')) || 'Failed'} × ${group.count}`,
+    title: group.sample.phone_number,
+    subtitle: group.sample.error_reason ?? undefined,
+    age: relativeAge(group.latestAt, now),
     actionLabel: 'View account',
-    actionHref: `/admin/accounts/${row.account_id}`,
+    actionHref: `/admin/accounts/${group.sample.account_id}`,
   }));
 
-  const failedEmailItems: AlertItem[] = data.failedEmails.map((row) => ({
-    key: row.id,
+  const failedEmailItems: AlertItem[] = groupEmailFailures(data.failedEmails).map((group) => ({
+    key: group.key,
     severity: 'warn',
-    status: row.status === 'complained' ? 'Complaint' : 'Bounced',
-    title: row.recipient,
-    subtitle: row.error_reason ?? undefined,
-    age: relativeAge(row.occurred_at, now),
-    actionLabel: row.account_id ? 'View account' : undefined,
-    actionHref: row.account_id ? `/admin/accounts/${row.account_id}` : undefined,
+    status: `${group.sample.status === 'complained' ? 'Complaint' : 'Bounced'} × ${group.count}`,
+    title: group.sample.recipient,
+    subtitle: group.sample.error_reason ?? undefined,
+    age: relativeAge(group.latestAt, now),
+    actionLabel: group.sample.account_id ? 'View account' : undefined,
+    actionHref: group.sample.account_id ? `/admin/accounts/${group.sample.account_id}` : undefined,
   }));
 
-  // resolveWebhookFailureAction requires ops.manage, which only ops and
-  // super_admin hold. The button used to render for every role, and since
-  // requirePermission throws before anything else runs — with no error boundary
-  // under /app — a support user clicking it got Next's generic crash screen and
-  // lost their range selection. Hide the control, keep the server check.
-  const mayManageOps = permissionsFor(role).includes('ops.manage');
-  const webhookFailureItems: AlertItem[] = data.webhookFailures.map((row) => ({
-    key: row.id,
+  const webhookFailureItems: AlertItem[] = groupWebhookFailures(data.webhookFailures).map((group) => ({
+    key: group.key,
     severity: 'bad',
-    status: cap(row.source.replace(/_/g, ' ')),
-    title: row.event_type || row.reference_id || 'Webhook failure',
-    subtitle: row.error_message,
-    age: relativeAge(row.created_at, now),
-    actionNode: mayManageOps ? (
-      <form action={resolveWebhookFailureAction.bind(null, row.id)}>
-        <button type="submit" className={styles.rowLink} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>
-          Mark resolved →
-        </button>
-      </form>
-    ) : undefined,
+    status: `${cap(group.sample.source.replace(/_/g, ' '))} × ${group.count}`,
+    title: group.sample.event_type || group.sample.reference_id || 'Webhook failure',
+    subtitle: group.sample.error_message,
+    age: relativeAge(group.latestAt, now),
+    actionLabel: 'Investigate',
+    actionHref: '/admin/failures#webhooks',
   }));
 
   // A job that stops firing produces no errors, because nothing runs to produce
@@ -329,6 +326,7 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
     actionHref: '/admin/health',
   }));
 
+  const unavailableSignals = new Set<string>(data.unavailableSignals);
   const boardCards: BoardCard[] = [
     boardCard({
       key: 'cronTrouble',
@@ -344,7 +342,7 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
       key: 'incidents',
       title: 'Recent releases & incidents',
       items: incidentItems,
-      empty: 'Nothing logged yet — write one up on the Incidents page.',
+      empty: 'No recent incidents or releases have been recorded.',
       viewAllHref: '/admin/incidents',
       viewAllLabel: 'Releases & incidents',
     }),
@@ -418,23 +416,28 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
       title: 'Failed texts',
       items: failedSmsItems,
       empty: 'No failed payment or crew texts. Other kinds of text are not tracked here yet — see Webhook failures.',
+      viewAllHref: '/admin/failures#texts',
+      viewAllLabel: 'All grouped text failures',
     }),
-    boardCard({ key: 'failedEmails', title: 'Failed emails', items: failedEmailItems, empty: 'No bounced or complained emails.' }),
-    boardCard({ key: 'webhookFailures', title: 'Webhook failures', items: webhookFailureItems, empty: 'No unresolved webhook failures.' }),
-  ];
+    boardCard({ key: 'failedEmails', title: 'Failed emails', items: failedEmailItems, empty: 'No bounced or complained emails.', viewAllHref: '/admin/failures#emails', viewAllLabel: 'All grouped email failures' }),
+    boardCard({ key: 'webhookFailures', title: 'Webhook failures', items: webhookFailureItems, empty: 'No unresolved webhook failures.', viewAllHref: '/admin/failures#webhooks', viewAllLabel: 'All grouped webhook failures' }),
+  ].map((card) => ({ ...card, available: !unavailableSignals.has(card.key) }));
 
   return (
     <>
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Staff console</p>
         <h1 className={styles.title}>Command Center</h1>
-        <p className={styles.lead}>Exceptions and open work across every account. Whatever has nothing to report collapses into All clear at the bottom; the rest is ordered by default for the {role} role, and you can reorder it for how you work.</p>
+        <p className={styles.lead}>Exceptions and open work across every account. Verified clear checks collapse at the bottom; unavailable checks remain visible. The rest is ordered for the {roleLabel(role)} role, and you can reorder it for how you work.</p>
       </header>
 
-      <div className={styles.filterTabs}>
-        {RANGE_TABS.map((r) => (
-          <Link key={r.key} href={`/admin?range=${r.key}`} className={`${styles.filterTab} ${range === r.key ? styles.on : ''}`}>{r.label}</Link>
-        ))}
+      <div className={styles.filterGroup}>
+        <span className={styles.filterLabel}>Performance period</span>
+        <nav className={styles.filterTabs} aria-label="Performance period">
+          {RANGE_TABS.map((r) => (
+            <Link key={r.key} href={`/admin?range=${r.key}`} aria-current={range === r.key ? 'page' : undefined} className={`${styles.filterTab} ${range === r.key ? styles.on : ''}`}>{r.label}</Link>
+          ))}
+        </nav>
       </div>
 
       {/* Every metric that has rows behind it now opens them, carrying the
@@ -451,13 +454,14 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
             label={m.label}
             href={metricHref(m.key, range)}
             drill={METRIC_DRILL[m.key]}
+            tone={!m.available ? 'warn' : undefined}
           >
             <span className={`${styles.metricTrend} ${styles[trendClass(m)]}`}>{trendLabel(m)}</span>
           </StatCard>
         ))}
       </section>
 
-      <CommandCenterBoard role={role} cards={boardCards} defaultOrder={defaultCardOrder(role)} />
+      <CommandCenterBoard role={role} staffKey={adminEmail} cards={boardCards} defaultOrder={defaultCardOrder(role)} />
     </>
   );
 }

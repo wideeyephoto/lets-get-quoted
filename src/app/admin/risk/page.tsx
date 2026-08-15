@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { buildRiskQueue } from '@/lib/admin-risk';
 import { RISK_BAND_HELP, RISK_BAND_LABEL, type RiskBand, type RiskFactor } from '@/lib/risk-score';
+import { isRiskDisposition, latestRiskReviews, RISK_DISPOSITIONS, type RiskDisposition } from '@/lib/risk-reviews';
+import { staffCan } from '@/lib/staff';
+import { setRiskDispositionAction } from './actions';
 import styles from '../admin.module.css';
 
 /**
@@ -20,6 +23,7 @@ import styles from '../admin.module.css';
  */
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Review queue' };
 
 const BAND_CLASS: Record<RiskBand, string> = { high: 'bad', elevated: 'warn', normal: 'neutral' };
 
@@ -42,9 +46,14 @@ function FactorList({ factors, kind }: { factors: RiskFactor[]; kind: RiskFactor
   );
 }
 
-export default async function AdminRiskPage() {
-  const { admin } = await requireAdmin();
-  const queue = await buildRiskQueue(admin);
+export default async function AdminRiskPage({ searchParams }: { searchParams: { status?: string; done?: string; error?: string } }) {
+  const ctx = await requireAdmin();
+  const queue = await buildRiskQueue(ctx.admin);
+  const latest = await latestRiskReviews(ctx.admin, queue.rows.map((row) => row.accountId));
+  const status: RiskDisposition | 'all' = searchParams.status === 'all' ? 'all' : isRiskDisposition(searchParams.status) ? searchParams.status : 'open';
+  const dispositionFor = (accountId: string): RiskDisposition => latest.reviews.get(accountId)?.disposition ?? 'open';
+  const rows = status === 'all' ? queue.rows : queue.rows.filter((row) => dispositionFor(row.accountId) === status);
+  const canReview = staffCan(ctx.staff, 'account.enforce');
 
   return (
     <>
@@ -57,6 +66,12 @@ export default async function AdminRiskPage() {
         </p>
       </header>
 
+      {!queue.available || !latest.available ? (
+        <div className={`${styles.banner} ${styles.err}`}>Review data is incomplete. {queue.unavailableSources.length ? `Could not read ${queue.unavailableSources.join(', ')}.` : 'Could not read review dispositions.'} No empty state should be treated as clear.</div>
+      ) : null}
+      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>Review disposition recorded.</div> : null}
+      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Choose a disposition and enter a reason of at least four characters.</div> : null}
+
       {/* The stated principle, made structural rather than decorative: a
           dispute is a customer's assertion, not a finding against the
           contractor, and a high refund rate is often a business that makes
@@ -68,13 +83,18 @@ export default async function AdminRiskPage() {
         columns before doing anything.
       </div>
 
+      <nav className={styles.filterTabs} aria-label="Review disposition">
+        <Link href="/admin/risk?status=all" aria-current={status === 'all' ? 'page' : undefined} className={`${styles.filterTab} ${status === 'all' ? styles.on : ''}`}>All signals</Link>
+        {RISK_DISPOSITIONS.map((value) => <Link key={value} href={`/admin/risk?status=${value}`} aria-current={status === value ? 'page' : undefined} className={`${styles.filterTab} ${status === value ? styles.on : ''}`}>{value}</Link>)}
+      </nav>
+
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>
-          {queue.rows.length} {queue.rows.length === 1 ? 'account' : 'accounts'} flagged
+        <h2 className={styles.panelTitle}>
+          {rows.length} {rows.length === 1 ? 'account' : 'accounts'} with review signals
           <span className={styles.muted} style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
             {' '}· {queue.accountsScanned.toLocaleString('en-US')} scanned over {queue.windowDays} days
           </span>
-        </p>
+        </h2>
         {queue.truncated ? (
           <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.8rem' }}>
             A row cap was reached, so this covers the most recent activity rather than the whole window. Everything
@@ -82,10 +102,10 @@ export default async function AdminRiskPage() {
           </p>
         ) : null}
 
-        {queue.rows.length === 0 ? (
-          <p className={styles.emptyState}>
-            Nothing crossed a threshold in the last {queue.windowDays} days across {queue.accountsScanned.toLocaleString('en-US')} accounts.
-          </p>
+        {rows.length === 0 ? (
+          queue.available && latest.available ? <p className={styles.emptyState}>
+            No accounts match the {status} review filter in the last {queue.windowDays} days across {queue.accountsScanned.toLocaleString('en-US')} accounts.
+          </p> : null
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -93,6 +113,7 @@ export default async function AdminRiskPage() {
                 <tr>
                   <th>Account</th>
                   <th>Assessment</th>
+                  <th>Review status</th>
                   <th>Confirmed outcomes</th>
                   <th>Signals</th>
                   <th className="num">Collected</th>
@@ -100,7 +121,7 @@ export default async function AdminRiskPage() {
                 </tr>
               </thead>
               <tbody>
-                {queue.rows.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.accountId}>
                     <td>
                       <Link href={`/admin/accounts/${row.accountId}`} className={styles.rowLink}>{row.name}</Link>
@@ -117,6 +138,15 @@ export default async function AdminRiskPage() {
                         {RISK_BAND_HELP[row.assessment.band]}
                       </div>
                     </td>
+                    <td style={{ minWidth: '15rem' }}>
+                      <span className={`${styles.pill} ${dispositionFor(row.accountId) === 'escalated' ? styles.bad : dispositionFor(row.accountId) === 'monitor' ? styles.warn : dispositionFor(row.accountId) === 'cleared' ? styles.good : styles.neutral}`}>{dispositionFor(row.accountId)}</span>
+                      {latest.reviews.get(row.accountId) ? (
+                        <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '.25rem' }}>
+                          {latest.reviews.get(row.accountId)?.note}<br />
+                          {latest.reviews.get(row.accountId)?.created_by}{latest.reviews.get(row.accountId)?.review_on ? ` · review ${latest.reviews.get(row.accountId)?.review_on}` : ''}
+                        </div>
+                      ) : <div className={styles.muted} style={{ fontSize: '.72rem' }}>Not reviewed yet</div>}
+                    </td>
                     <td><FactorList factors={row.assessment.factors} kind="confirmed" /></td>
                     <td><FactorList factors={row.assessment.factors} kind="signal" /></td>
                     <td className="num" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -127,6 +157,20 @@ export default async function AdminRiskPage() {
                       {/* The only action, on purpose. Enforcement belongs where
                           the context is, not next to a score. */}
                       <Link href={`/admin/accounts/${row.accountId}`} className={styles.rowLink}>Open account →</Link>
+                      {canReview ? (
+                        <details className={styles.inlineDisclosure}>
+                          <summary>Set disposition</summary>
+                          <form action={setRiskDispositionAction.bind(null, row.accountId)} className={styles.formStack}>
+                            <label className={styles.srOnly} htmlFor={`risk-disposition-${row.accountId}`}>Disposition</label>
+                            <select id={`risk-disposition-${row.accountId}`} className={styles.compactInput} name="disposition" defaultValue={dispositionFor(row.accountId)}>{RISK_DISPOSITIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+                            <label className={styles.srOnly} htmlFor={`risk-note-${row.accountId}`}>Review note</label>
+                            <input id={`risk-note-${row.accountId}`} className={styles.compactInput} name="note" required minLength={4} placeholder="What you reviewed and why" />
+                            <label className={styles.srOnly} htmlFor={`risk-date-${row.accountId}`}>Review again on</label>
+                            <input id={`risk-date-${row.accountId}`} className={styles.compactInput} name="review_on" type="date" />
+                            <button className="btn secondary" type="submit">Save review</button>
+                          </form>
+                        </details>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -137,7 +181,7 @@ export default async function AdminRiskPage() {
       </section>
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>How this is worked out</p>
+        <h2 className={styles.panelTitle}>How this is worked out</h2>
         {/* Two staff members should read a queue position the same way, which
             needs the thresholds written down somewhere they will actually be
             found — next to the numbers, not in a runbook. */}

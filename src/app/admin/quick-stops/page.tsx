@@ -6,6 +6,7 @@ import { QUICK_STOP_STATUS_LABEL, centsToDollars, type QuickStopStatus } from '@
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Quick Stops' };
 
 const FILTERS: { key: string; label: string; statuses?: string[]; blurb?: string }[] = [
   { key: 'active', label: 'Active', statuses: ['awaiting_contractor', 'more_information_requested', 'contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'] },

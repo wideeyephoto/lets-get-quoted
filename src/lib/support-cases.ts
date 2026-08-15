@@ -44,6 +44,17 @@ export function visibilityFromForm(value: string | undefined | null): NoteVisibi
   return isNoteVisibility(value) ? value : 'internal';
 }
 
+const SLA_MS: Record<CasePriority, number> = {
+  low: 5 * 24 * 60 * 60 * 1000,
+  normal: 3 * 24 * 60 * 60 * 1000,
+  high: 24 * 60 * 60 * 1000,
+  urgent: 4 * 60 * 60 * 1000,
+};
+
+export function defaultCaseSla(priority: CasePriority, now = new Date()): string {
+  return new Date(now.getTime() + SLA_MS[priority]).toISOString();
+}
+
 export type SupportCase = {
   id: string;
   account_id: string | null;
@@ -74,11 +85,12 @@ const NOTE_COLUMNS = 'id, case_id, kind, visibility, body, created_by, created_a
 
 export async function listSupportCases(
   admin: SupabaseClient,
-  opts: { statuses?: CaseStatus[]; assignedTo?: string; accountId?: string; limit?: number } = {}
+  opts: { statuses?: CaseStatus[]; assignedTo?: string; accountId?: string; limit?: number; onError?: (error: unknown) => void } = {}
 ): Promise<SupportCase[]> {
   let query = admin
     .from('support_cases')
     .select(CASE_COLUMNS)
+    .is('test_marker', null)
     .order('created_at', { ascending: false })
     .limit(opts.limit ?? 100);
   if (opts.statuses?.length) query = query.in('status', opts.statuses);
@@ -87,6 +99,7 @@ export async function listSupportCases(
   const { data, error } = await query;
   if (error) {
     console.error('listSupportCases failed:', error);
+    opts.onError?.(error);
     return [];
   }
   return (data ?? []) as SupportCase[];
@@ -163,13 +176,13 @@ export async function addSupportCaseNote(
   caseId: string,
   body: string,
   visibility: NoteVisibility,
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await admin
     .from('support_case_notes')
     .insert({ case_id: caseId, kind: 'note', visibility, body, created_by: actor.adminEmail });
   if (error) {
     console.error('addSupportCaseNote failed:', error);
-    return;
+    return false;
   }
   await logAdminAction(admin, actor, {
     action: 'support_case_note',
@@ -177,13 +190,14 @@ export async function addSupportCaseNote(
     targetId: caseId,
     meta: { visibility },
   });
+  return true;
 }
 
-export async function updateSupportCaseStatus(admin: SupabaseClient, actor: AuditActor, caseId: string, status: CaseStatus): Promise<void> {
+export async function updateSupportCaseStatus(admin: SupabaseClient, actor: AuditActor, caseId: string, status: CaseStatus): Promise<boolean> {
   const { error } = await admin.from('support_cases').update({ status }).eq('id', caseId);
   if (error) {
     console.error('updateSupportCaseStatus failed:', error);
-    return;
+    return false;
   }
   // Internal. The contractor already sees the live status as a badge on their
   // own page, in their own words — 'pending' means "we are waiting on you",
@@ -196,13 +210,14 @@ export async function updateSupportCaseStatus(admin: SupabaseClient, actor: Audi
     created_by: actor.adminEmail,
   });
   await logAdminAction(admin, actor, { action: 'support_case_status_change', targetType: 'support_case', targetId: caseId, meta: { status } });
+  return true;
 }
 
-export async function assignSupportCase(admin: SupabaseClient, actor: AuditActor, caseId: string, assignedTo: string | null): Promise<void> {
+export async function assignSupportCase(admin: SupabaseClient, actor: AuditActor, caseId: string, assignedTo: string | null): Promise<boolean> {
   const { error } = await admin.from('support_cases').update({ assigned_to: assignedTo }).eq('id', caseId);
   if (error) {
     console.error('assignSupportCase failed:', error);
-    return;
+    return false;
   }
   // Always internal — it names a staff email, and who is handling a case is
   // not the contractor's business.
@@ -214,4 +229,5 @@ export async function assignSupportCase(admin: SupabaseClient, actor: AuditActor
     created_by: actor.adminEmail,
   });
   await logAdminAction(admin, actor, { action: 'support_case_assign', targetType: 'support_case', targetId: caseId, meta: { assignedTo } });
+  return true;
 }

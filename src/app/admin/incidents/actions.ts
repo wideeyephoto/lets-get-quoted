@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/auth';
+import { requireMfaPermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { isIncidentKind, isIncidentSeverity } from '@/lib/platform-incidents';
 
@@ -20,8 +20,18 @@ function back(query: string): never {
   redirect(`/admin/incidents?${query}`);
 }
 
+function externalHttpUrl(raw: string): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function logIncidentAction(formData: FormData) {
-  const ctx = await requirePermission('ops.manage');
+  const ctx = await requireMfaPermission('ops.manage');
   const { admin } = ctx;
 
   const title = String(formData.get('title') ?? '').trim().slice(0, 200);
@@ -29,9 +39,15 @@ export async function logIncidentAction(formData: FormData) {
   const kindRaw = String(formData.get('kind') ?? '');
   const severityRaw = String(formData.get('severity') ?? '');
   const startedRaw = String(formData.get('started_at') ?? '').trim();
+  const owner = String(formData.get('owner') ?? '').trim().slice(0, 320) || ctx.adminEmail;
+  const affectedServices = String(formData.get('affected_services') ?? '').split(',').map((value) => value.trim()).filter(Boolean).slice(0, 20);
+  const impactSummary = String(formData.get('impact_summary') ?? '').trim().slice(0, 2000) || null;
+  const externalRaw = String(formData.get('external_url') ?? '').trim().slice(0, 1000);
+  const externalUrl = externalHttpUrl(externalRaw);
 
   if (!title) back('error=title');
   if (!isIncidentKind(kindRaw)) back('error=kind');
+  if (externalRaw && !externalUrl) back('error=url');
 
   // A release is a point-in-time note and never carries a severity above
   // 'info' — the column allows it, but a "critical release" is a category
@@ -46,7 +62,7 @@ export async function logIncidentAction(formData: FormData) {
 
   const { data, error } = await admin
     .from('platform_incidents')
-    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail })
+    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail, owner, affected_services: affectedServices, impact_summary: impactSummary, external_url: externalUrl })
     .select('id')
     .single();
   if (error || !data) {
@@ -58,7 +74,7 @@ export async function logIncidentAction(formData: FormData) {
     action: 'platform_incident_log',
     targetType: 'platform_incident',
     targetId: data.id,
-    meta: { kind: kindRaw, severity, title },
+    meta: { kind: kindRaw, severity, title, owner, affectedServices, externalUrl },
   });
 
   revalidatePath('/admin/incidents');
@@ -66,15 +82,18 @@ export async function logIncidentAction(formData: FormData) {
   back('done=logged');
 }
 
-export async function resolveIncidentAction(incidentId: string) {
-  const ctx = await requirePermission('ops.manage');
+export async function resolveIncidentAction(incidentId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('ops.manage');
   const { admin } = ctx;
+  const resolutionSummary = String(formData.get('resolution_summary') ?? '').trim().slice(0, 4000);
+  const rootCause = String(formData.get('root_cause') ?? '').trim().slice(0, 4000) || null;
+  if (resolutionSummary.length < 4) back('error=resolution');
 
   // Only an unresolved incident, so a second click cannot move the resolution
   // time and quietly change how long an outage is on record as having lasted.
   const { data, error } = await admin
     .from('platform_incidents')
-    .update({ resolved_at: new Date().toISOString() })
+    .update({ resolved_at: new Date().toISOString(), resolution_summary: resolutionSummary, root_cause: rootCause })
     .eq('id', incidentId)
     .eq('kind', 'incident')
     .is('resolved_at', null)
@@ -90,6 +109,8 @@ export async function resolveIncidentAction(incidentId: string) {
     action: 'platform_incident_resolve',
     targetType: 'platform_incident',
     targetId: incidentId,
+    reason: resolutionSummary,
+    after: { resolution_summary: resolutionSummary, root_cause: rootCause },
   });
 
   revalidatePath('/admin/incidents');

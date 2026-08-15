@@ -116,7 +116,7 @@ export default async function AdminPaymentPage({
       <div className={styles.detailGrid}>
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>The money</p>
+            <h2 className={styles.panelTitle}>The money</h2>
             <dl className={styles.kv}>
               <dt>Charged</dt><dd>{usd(payment.amount)}</dd>
               <dt>Refunded so far</dt>
@@ -141,7 +141,7 @@ export default async function AdminPaymentPage({
 
           {payment.disputed_at ? (
             <section className={styles.panel} style={{ borderColor: 'rgba(252,165,165,0.4)' }}>
-              <p className={styles.panelTitle}>Dispute</p>
+              <h2 className={styles.panelTitle}>Dispute</h2>
               <dl className={styles.kv}>
                 <dt>Opened</dt><dd>{fmt(payment.disputed_at)}</dd>
                 <dt>Reason</dt><dd>{payment.dispute_reason || '—'}</dd>
@@ -167,7 +167,7 @@ export default async function AdminPaymentPage({
 
           {payment.dunning_state || payment.failed_at ? (
             <section className={styles.panel}>
-              <p className={styles.panelTitle}>Collection trouble</p>
+              <h2 className={styles.panelTitle}>Collection trouble</h2>
               <dl className={styles.kv}>
                 <dt>State</dt><dd>{payment.dunning_state || '—'}</dd>
                 <dt>Last failed</dt><dd className={styles.muted}>{fmt(payment.failed_at)}</dd>
@@ -177,7 +177,7 @@ export default async function AdminPaymentPage({
           ) : null}
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Staff actions on this payment</p>
+            <h2 className={styles.panelTitle}>Staff actions on this payment</h2>
             {paymentActions.length === 0 ? (
               <p className={styles.emptyState}>
                 Nothing recorded. A refund issued in the Stripe dashboard would not appear here — only one issued from
@@ -202,7 +202,7 @@ export default async function AdminPaymentPage({
 
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Refund</p>
+            <h2 className={styles.panelTitle}>Refund</h2>
             {!mayRefund ? (
               <p className={styles.muted} style={{ fontSize: '.82rem' }}>Issuing refunds needs the finance role.</p>
             ) : blocked ? (
@@ -238,7 +238,7 @@ export default async function AdminPaymentPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>References</p>
+            <h2 className={styles.panelTitle}>References</h2>
             <dl className={styles.kv}>
               <dt>Payment</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.id}</code></dd>
               <dt>Stripe intent</dt>

@@ -15,6 +15,8 @@ import {
   getCasesNearSla,
   getCasesWithoutSlaCount,
   getMyAssignedCases,
+  createAdminSignalDiagnostics,
+  type AdminSignalKey,
   type DisputeRow,
   type PausedPayoutRow,
   type SuspendedAccountRow,
@@ -44,6 +46,8 @@ export type CommandCenterMetric = {
   previousValue: number;
   deltaPct: number | null;
   direction: 'up' | 'down' | 'flat';
+  /** False means at least one query needed for this value or comparison failed. */
+  available: boolean;
 };
 
 export type CommandCenterData = {
@@ -66,6 +70,8 @@ export type CommandCenterData = {
   myCases: SupportCaseRow[];
   /** Scheduled jobs that are failing or overdue. See lib/cron-jobs.ts. */
   cronTrouble: CronTrouble[];
+  /** Signals whose source query failed; these must never enter All clear. */
+  unavailableSignals: AdminSignalKey[];
 };
 
 type MetricsWindow = {
@@ -74,6 +80,12 @@ type MetricsWindow = {
   /** NET of fees handed back with refunds issued in the same window. */
   platformFees: number;
   refunds: number;
+  availability: {
+    newAccounts: boolean;
+    paymentsProcessed: boolean;
+    platformFees: boolean;
+    refunds: boolean;
+  };
 };
 
 // One window's worth of the "core metrics" row. Never throws — a Postgres
@@ -89,7 +101,7 @@ type MetricsWindow = {
 // figure negative. One definition is the fix; see that file for the detail.
 async function fetchMetricsWindow(admin: SupabaseClient, startIso: string, endIso: string): Promise<MetricsWindow> {
   const [accountsRes, fees] = await Promise.all([
-    admin.from('accounts').select('id', { count: 'exact', head: true }).gte('created_at', startIso).lt('created_at', endIso),
+    admin.from('accounts').select('id', { count: 'exact', head: true }).is('test_marker', null).gte('created_at', startIso).lt('created_at', endIso),
     fetchFeeWindow(admin, startIso, endIso),
   ]);
   if (accountsRes.error) console.error('command center metrics (new accounts) failed:', accountsRes.error);
@@ -99,6 +111,12 @@ async function fetchMetricsWindow(admin: SupabaseClient, startIso: string, endIs
     paymentsProcessed: fees.paymentsProcessed,
     platformFees: fees.netFees,
     refunds: fees.refunds,
+    availability: {
+      newAccounts: !accountsRes.error,
+      paymentsProcessed: fees.availability.payments,
+      platformFees: fees.availability.payments && fees.availability.refunds,
+      refunds: fees.availability.refunds,
+    },
   };
 }
 
@@ -113,6 +131,8 @@ export async function buildCommandCenterData(
   const range = opts.range ?? '30d';
   const now = opts.now ?? new Date();
   const win = rangeWindow(range, now);
+  const diagnostics = createAdminSignalDiagnostics();
+  const withDiagnostics = { diagnostics };
 
   const [
     currentWindow,
@@ -135,33 +155,35 @@ export async function buildCommandCenterData(
   ] = await Promise.all([
     fetchMetricsWindow(admin, win.currentStart, win.currentEnd),
     fetchMetricsWindow(admin, win.previousStart, win.previousEnd),
-    getOpenDisputes(admin),
-    getPausedPayouts(admin),
-    getSuspendedAccounts(admin),
-    getNotOnboardedCount(admin),
-    getNotOnboardedAccounts(admin),
-    getPaymentsNeedingAttention(admin),
-    getOverdueQuickStops(admin),
-    getFailedSmsEvents(admin),
-    getFailedEmailEvents(admin),
-    getUnresolvedWebhookFailures(admin),
-    getRecentIncidents(admin),
-    getCasesNearSla(admin, { now }),
-    getCasesWithoutSlaCount(admin),
-    getMyAssignedCases(admin, opts.staffEmail),
-    getCronTrouble(admin, now),
+    getOpenDisputes(admin, withDiagnostics),
+    getPausedPayouts(admin, withDiagnostics),
+    getSuspendedAccounts(admin, withDiagnostics),
+    getNotOnboardedCount(admin, withDiagnostics),
+    getNotOnboardedAccounts(admin, withDiagnostics),
+    getPaymentsNeedingAttention(admin, withDiagnostics),
+    getOverdueQuickStops(admin, { now, ...withDiagnostics }),
+    getFailedSmsEvents(admin, withDiagnostics),
+    getFailedEmailEvents(admin, withDiagnostics),
+    getUnresolvedWebhookFailures(admin, withDiagnostics),
+    getRecentIncidents(admin, withDiagnostics),
+    getCasesNearSla(admin, { now, ...withDiagnostics }),
+    getCasesWithoutSlaCount(admin, withDiagnostics),
+    getMyAssignedCases(admin, opts.staffEmail, withDiagnostics),
+    getCronTrouble(admin, now, () => {
+      if (!diagnostics.failed.includes('cronTrouble')) diagnostics.failed.push('cronTrouble');
+    }),
   ]);
 
   const metrics: CommandCenterMetric[] = [
-    { key: 'newAccounts', label: 'New accounts', format: 'number', goodDirection: 'up', ...computeTrend(currentWindow.newAccounts, previousWindow.newAccounts) },
-    { key: 'paymentsProcessed', label: 'Payments processed', format: 'number', goodDirection: 'up', ...computeTrend(currentWindow.paymentsProcessed, previousWindow.paymentsProcessed) },
-    { key: 'platformFees', label: 'Platform fees', format: 'usd', goodDirection: 'up', ...computeTrend(currentWindow.platformFees, previousWindow.platformFees) },
-    { key: 'refunds', label: 'Refunds issued', format: 'usd', goodDirection: 'down', ...computeTrend(currentWindow.refunds, previousWindow.refunds) },
+    { key: 'newAccounts', label: 'New accounts', format: 'number', goodDirection: 'up', available: currentWindow.availability.newAccounts && previousWindow.availability.newAccounts, ...computeTrend(currentWindow.newAccounts, previousWindow.newAccounts) },
+    { key: 'paymentsProcessed', label: 'Payments processed', format: 'number', goodDirection: 'up', available: currentWindow.availability.paymentsProcessed && previousWindow.availability.paymentsProcessed, ...computeTrend(currentWindow.paymentsProcessed, previousWindow.paymentsProcessed) },
+    { key: 'platformFees', label: 'Platform fees', format: 'usd', goodDirection: 'up', available: currentWindow.availability.platformFees && previousWindow.availability.platformFees, ...computeTrend(currentWindow.platformFees, previousWindow.platformFees) },
+    { key: 'refunds', label: 'Refunds issued', format: 'usd', goodDirection: 'down', available: currentWindow.availability.refunds && previousWindow.availability.refunds, ...computeTrend(currentWindow.refunds, previousWindow.refunds) },
   ];
 
   return {
     range, metrics, disputes, pausedPayouts, suspendedAccounts, notOnboardedCount, notOnboardedAccounts,
     dunningPayments, overdueQuickStops, failedSms, failedEmails, webhookFailures, incidents, casesNearSla,
-    casesWithoutSla, myCases, cronTrouble,
+    casesWithoutSla, myCases, cronTrouble, unavailableSignals: diagnostics.failed,
   };
 }

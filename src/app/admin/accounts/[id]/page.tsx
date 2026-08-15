@@ -92,6 +92,7 @@ export default async function AdminAccountDetailPage({
           {paypaused ? <span className={`${styles.pill} ${styles.bad}`}>Payouts paused</span> : connected ? <span className={`${styles.pill} ${styles.good}`}>Payouts connected</span> : <span className={`${styles.pill} ${styles.neutral}`}>Payouts not set up</span>}
           {payoutsRestricted ? <span className={`${styles.pill} ${styles.bad}`}>Payouts restricted</span> : null}
           {lockedUntil ? <span className={`${styles.pill} ${styles.warn}`}>Quick Stop locked</span> : null}
+          {a.test_marker ? <span className={`${styles.pill} ${styles.warn}`}>Synthetic · excluded from production reporting</span> : null}
         </div>
       </header>
 
@@ -101,7 +102,7 @@ export default async function AdminAccountDetailPage({
       <div className={styles.detailGrid}>
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Profile</p>
+            <h2 className={styles.panelTitle}>Profile</h2>
             <dl className={styles.kv}>
               <dt>Owner email</dt><dd>{detail.ownerEmail ?? <span className={styles.muted}>unknown</span>}</dd>
               <dt>Phone</dt><dd>{detail.site?.phone || String(a.alert_phone || '') || <span className={styles.muted}>—</span>}</dd>
@@ -113,7 +114,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Payments & fee tier</p>
+            <h2 className={styles.panelTitle}>Payments & fee tier</h2>
             <dl className={styles.kv}>
               <dt>Payout status</dt>
               <dd>{paypaused ? 'Paused by Stripe' : connected ? 'Connected & active' : 'Not connected'}{a.connect_disabled_at ? ` (since ${fmtDate(a.connect_disabled_at)})` : ''}</dd>
@@ -139,9 +140,10 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Recent payments</p>
+            <h2 className={styles.panelTitle}>Recent payment records</h2>
+            <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.75rem' }}>Newest 12 by creation date. The paid total above uses settlement date across every payment. <Link href={`/admin/payments?range=30d&account=${params.id}`} className={styles.rowLink}>Reconcile in the ledger →</Link></p>
             {detail.recentPayments.length === 0 ? (
-              <p className={styles.emptyState}>No payments.</p>
+              <p className={styles.emptyState}>{detail.activity.paidVolume30dCents > 0 ? 'No production payment rows are in the newest-record preview. Use the ledger above to see the settled rows behind the 30-day total.' : 'No production payments.'}</p>
             ) : (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
@@ -163,7 +165,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Messages sent</p>
+            <h2 className={styles.panelTitle}>Messages sent</h2>
             {/* The coverage note is not a disclaimer, it is the point. Staff
                 read an absent row as "we never sent it" and tell the customer
                 so — and for reminder texts, and for any email sent without an
@@ -206,7 +208,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Login & security history</p>
+            <h2 className={styles.panelTitle}>Login & security history</h2>
             {detail.loginEvents.length === 0 ? (
               <p className={styles.emptyState}>No sign-ins recorded yet.</p>
             ) : (
@@ -235,7 +237,7 @@ export default async function AdminAccountDetailPage({
                 a panel headed "Activity (30 days)" was labelling the no-show
                 count — the one staff act on when applying a lock — as a 30-day
                 figure when its query has no date filter at all. */}
-            <p className={styles.panelTitle}>Activity</p>
+            <h2 className={styles.panelTitle}>Activity</h2>
             <dl className={styles.kv}>
               <dt>New leads (30 days)</dt><dd>{detail.activity.leads30d}</dd>
               <dt>Active jobs</dt><dd>{detail.activity.jobsActive}</dd>
@@ -266,7 +268,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Feature flags</p>
+            <h2 className={styles.panelTitle}>Feature flags</h2>
             {/* Toggles now, not pills. These are the owner's own settings —
                 writable from their settings page all along — so the console
                 showing which switch the customer is asking about and offering
@@ -309,7 +311,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Notes & tags</p>
+            <h2 className={styles.panelTitle}>Notes & tags</h2>
             <div className={styles.actionRow} style={{ marginTop: 0, marginBottom: detail.tags.length ? '0.8rem' : 0 }}>
               {detail.tags.map((t) => (
                 <form key={t.id} action={removeAccountTagAction.bind(null, params.id)} style={{ display: 'inline' }}>
@@ -344,7 +346,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Attachments</p>
+            <h2 className={styles.panelTitle}>Attachments</h2>
             {attachmentLinks.length === 0 ? (
               <p className={styles.emptyState}>No files uploaded.</p>
             ) : (
@@ -377,7 +379,7 @@ export default async function AdminAccountDetailPage({
 
           <section className={styles.panel}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.7rem' }}>
-              <p className={styles.panelTitle} style={{ margin: 0 }}>Support cases</p>
+              <h2 className={styles.panelTitle} style={{ margin: 0 }}>Support cases</h2>
               <Link href={`/admin/cases/new?account_id=${params.id}`} className={styles.rowLink}>New case →</Link>
             </div>
             {cases.length === 0 ? (
@@ -398,7 +400,7 @@ export default async function AdminAccountDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Privacy requests</p>
+            <h2 className={styles.panelTitle}>Privacy requests</h2>
             {detail.privacyRequests.length === 0 ? (
               <p className={styles.emptyState}>No privacy requests logged.</p>
             ) : (
@@ -446,10 +448,11 @@ export default async function AdminAccountDetailPage({
             businessName={displayName}
             plan={String(a.plan ?? 'free')}
             payoutsRestricted={payoutsRestricted}
+            synthetic={Boolean(a.test_marker)}
           />
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Staff actions on this account</p>
+            <h2 className={styles.panelTitle}>Staff actions on this account</h2>
             {actions.length === 0 ? (
               <p className={styles.emptyState}>None yet.</p>
             ) : (
@@ -481,7 +484,7 @@ const DONE_MESSAGES: Record<string, string> = {
   payouts_unrestricted: 'Payout restriction lifted.',
   plan_changed: 'Plan updated.',
   onboarding_resent: 'Onboarding link resent to the owner.',
-  signed_out: 'All sessions signed out.',
+  signed_out: 'New sign-ins and token refreshes are blocked for 24 hours. Existing short-lived access tokens expire naturally.',
   noted: 'Note added.',
   tagged: 'Tag added.',
   untagged: 'Tag removed.',
@@ -491,6 +494,8 @@ const DONE_MESSAGES: Record<string, string> = {
   privacy_resolved: 'Privacy request resolved.',
   flag_changed: 'Setting changed, and recorded against your name.',
   refunded: 'Refund issued.',
+  marked_synthetic: 'Account marked synthetic and removed from production reporting.',
+  marked_production: 'Account returned to production reporting.',
 };
 const ERROR_MESSAGES: Record<string, string> = {
   flag: 'That is not a setting this console can change.',
@@ -504,6 +509,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   tag: 'Enter a tag.',
   attachment: 'That file could not be uploaded.',
   privacy_kind: 'Choose a request type.',
+  reason_required: 'Enter a reason of at least four characters.',
+  update_failed: 'The account could not be updated. Try again.',
+  partial_signout: 'Some account members were blocked, but at least one update failed. Review the audit entry before retrying.',
 };
 
 function PaymentStatusPill({ status }: { status: string | null }) {

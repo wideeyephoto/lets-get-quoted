@@ -19,10 +19,12 @@ export type BoardCard = {
   quietNote: string;
   /** Where the strip entry leads, for the checks that have somewhere to go. */
   quietHref?: string;
+  /** False means the source query failed; this card must not read as clear. */
+  available?: boolean;
 };
 
-function storageKeyFor(role: string): string {
-  return `admin_command_center_order:${role}`;
+function storageKeyFor(role: string, staffKey: string): string {
+  return `admin_command_center_order:${role}:${staffKey.toLowerCase()}`;
 }
 
 // Merge whatever order was persisted against the card set this render
@@ -41,7 +43,7 @@ function reconcileOrder(stored: string[], defaultOrder: string[], knownKeys: Set
   return ordered;
 }
 
-export function CommandCenterBoard({ role, cards, defaultOrder }: { role: string; cards: BoardCard[]; defaultOrder: string[] }) {
+export function CommandCenterBoard({ role, staffKey, cards, defaultOrder }: { role: string; staffKey: string; cards: BoardCard[]; defaultOrder: string[] }) {
   // Seeded with the server-computed default so the first client render
   // matches SSR output exactly — localStorage only gets consulted a moment
   // later, after mount, avoiding a hydration mismatch.
@@ -52,18 +54,18 @@ export function CommandCenterBoard({ role, cards, defaultOrder }: { role: string
     const knownKeys = new Set(cards.map((c) => c.key));
     let stored: string[] = [];
     try {
-      const raw = window.localStorage.getItem(storageKeyFor(role));
+      const raw = window.localStorage.getItem(storageKeyFor(role, staffKey));
       stored = raw ? (JSON.parse(raw) as string[]) : [];
     } catch {
       stored = [];
     }
     setOrder(reconcileOrder(stored, defaultOrder, knownKeys));
-  }, [role, cards, defaultOrder]);
+  }, [role, staffKey, cards, defaultOrder]);
 
   function persist(next: string[]) {
     setOrder(next);
     try {
-      window.localStorage.setItem(storageKeyFor(role), JSON.stringify(next));
+      window.localStorage.setItem(storageKeyFor(role, staffKey), JSON.stringify(next));
     } catch {
       // Private-browsing / quota — order still applies for this render, just won't survive a reload.
     }
@@ -75,8 +77,9 @@ export function CommandCenterBoard({ role, cards, defaultOrder }: { role: string
   // The split that does the organizing: what needs attention gets a card, what
   // is clear gets a line. Quiet cards keep their slot in `order`, so a card
   // that lights up tomorrow comes back exactly where this staff member put it.
-  const active = ordered.filter((c) => c.rows > 0);
-  const quiet = ordered.filter((c) => c.rows === 0);
+  const unavailable = ordered.filter((c) => c.available === false);
+  const active = ordered.filter((c) => c.available !== false && c.rows > 0);
+  const quiet = ordered.filter((c) => c.available !== false && c.rows === 0);
   const activeKeys = active.map((c) => c.key);
 
   function move(key: string, direction: -1 | 1) {
@@ -95,6 +98,7 @@ export function CommandCenterBoard({ role, cards, defaultOrder }: { role: string
             <strong>Nothing needs attention</strong>
           )}
           {quiet.length > 0 ? <> · {quiet.length} clear</> : null}
+          {unavailable.length > 0 ? <> · {unavailable.length} unavailable</> : null}
         </p>
         <div className={styles.boardActions}>
           {customizing ? (
@@ -131,13 +135,29 @@ export function CommandCenterBoard({ role, cards, defaultOrder }: { role: string
         </div>
       ) : null}
 
+      {unavailable.length > 0 ? (
+        <section className={`${styles.panel} ${styles.dataUnavailable}`} aria-labelledby="unavailable-signals-title">
+          <h2 className={styles.panelTitle} id="unavailable-signals-title">Data unavailable ({unavailable.length})</h2>
+          <p className={styles.muted}>These checks could not complete. They are excluded from All clear until their data sources recover.</p>
+          <ul className={styles.allClearGrid}>
+            {unavailable.map((card) => (
+              <li key={card.key}>
+                <span className={styles.unavailableMark} aria-hidden="true">!</span>
+                <span className={styles.allClearName}>{card.title}</span>
+                <span className={styles.allClearNote}>Could not verify this signal. Retry by refreshing the page.</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {/* Not a footnote. It is the record that these checks ran and came back
           clean, and it keeps every caveat a quiet card was carrying — "no case
           is within 48 hours of its SLA" means much less without the count of
           cases that have no SLA to be near. */}
       {quiet.length > 0 ? (
         <section className={`${styles.panel} ${styles.allClear}`}>
-          <p className={styles.panelTitle}>All clear ({quiet.length})</p>
+          <h2 className={styles.panelTitle}>All clear ({quiet.length})</h2>
           <ul className={styles.allClearGrid}>
             {quiet.map((card) => (
               <li key={card.key}>
