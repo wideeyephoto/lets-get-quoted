@@ -16,6 +16,13 @@ type FloatingPanelProps = {
    * related, and the attribute is the only thing that does.
    */
   id?: string;
+  /**
+   * What this panel IS, and what to call it. Optional because two callers put
+   * the role on their own inner element (the calendar's view menu), and two
+   * roles nested is worse than one.
+   */
+  role?: 'dialog' | 'menu' | 'group' | 'listbox';
+  label?: string;
   children: ReactNode;
 };
 
@@ -26,10 +33,13 @@ type Placement = { left: number; width: number; top?: number; bottom?: number; m
 // schedule modal, day-card grids), so the popup floats over everything instead
 // of being clipped and forcing the container to scroll. Flips above the anchor
 // when there's more room there. Closes on outside click / Escape.
-export default function FloatingPanel({ anchorRef, open, onClose, className, width, id, children }: FloatingPanelProps) {
+export default function FloatingPanel({ anchorRef, open, onClose, className, width, id, role, label, children }: FloatingPanelProps) {
   const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<Placement | null>(null);
+  // One focus move per opening, not one per placement recalculation — `place`
+  // re-runs on every scroll and resize while the panel is open.
+  const movedFocus = useRef(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -81,6 +91,51 @@ export default function FloatingPanel({ anchorRef, open, onClose, className, wid
     };
   }, [open, anchorRef, onClose]);
 
+  /**
+   * FOCUS, WHICH IS THE WHOLE REASON A PORTAL NEEDS MINDING.
+   *
+   * This panel renders into document.body, so it is the LAST thing in the
+   * document no matter where its trigger sits. Tab from the button that opened
+   * it therefore walks the entire rest of the page before arriving — the
+   * calendar was reachable and unreachable in the same sense a menu with no
+   * keyboard handler is. So opening moves focus in.
+   *
+   * Waits for `placement`, because until it resolves the panel is rendered at
+   * -9999 with visibility:hidden, and a hidden element cannot take focus — the
+   * call silently does nothing and focus stays on the trigger.
+   */
+  useEffect(() => {
+    if (!open) { movedFocus.current = false; return; }
+    if (!placement || movedFocus.current) return;
+    const node = panelRef.current;
+    if (!node) return;
+    movedFocus.current = true;
+    const first = node.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    (first ?? node).focus();
+  }, [open, placement]);
+
+  /**
+   * And handing it back. Closing by choosing something — a date, a time slot —
+   * destroys the button that was focused, and focus lands on <body>: a keyboard
+   * user is dropped at the top of the document every time they pick a date.
+   *
+   * The condition is what keeps this from being obnoxious. Focus returns only
+   * when it was inside the panel (or has already been orphaned onto body),
+   * which covers Escape and selection. Clicking some other control leaves focus
+   * on that control, and this does not yank it away.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const node = panelRef.current;
+    return () => {
+      const active = document.activeElement;
+      const wasInside = !active || active === document.body || (node?.contains(active) ?? false);
+      if (wasInside) anchorRef.current?.focus();
+    };
+  }, [open, anchorRef]);
+
   if (!mounted || !open) return null;
 
   const style: CSSProperties = placement
@@ -101,7 +156,9 @@ export default function FloatingPanel({ anchorRef, open, onClose, className, wid
     : { position: 'fixed', top: -9999, left: -9999, visibility: 'hidden' };
 
   return createPortal(
-    <div ref={panelRef} id={id} className={className} style={style}>
+    // tabIndex -1 so the panel itself can take focus when it holds no control
+    // of its own to give it to.
+    <div ref={panelRef} id={id} className={className} style={style} role={role} aria-label={label} tabIndex={-1}>
       {children}
     </div>,
     document.body

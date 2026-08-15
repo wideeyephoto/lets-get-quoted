@@ -87,7 +87,16 @@ export default function TimeSlotSelect({ id, name, defaultValue = '', value, onC
       >
         {selectedLabel}
       </button>
-      <FloatingPanel id={panelId} anchorRef={buttonRef} open={isOpen} onClose={() => setIsOpen(false)} className="modern-time-panel" width={224}>
+      <FloatingPanel
+        id={panelId}
+        role="dialog"
+        label="Choose scheduled time"
+        anchorRef={buttonRef}
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        className="modern-time-panel"
+        width={224}
+      >
         <div className="modern-time-quick" aria-label="Quick time choices">
           {QUICK_TIME_SLOTS.map((slot) => (
             <button

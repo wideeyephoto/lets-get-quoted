@@ -3,7 +3,7 @@ import { expandRecurrence } from '@/lib/cash-forecast';
 import { DEMO_CASH_BILLS, DEMO_CASH_EVENTS, DEMO_CASH_SETTINGS, dateKeyFromNow } from '@/lib/demo-data';
 import DemoCashBoard from './DemoCashBoard';
 
-export const metadata = { title: 'Cash flow — demo' };
+export const metadata = { title: 'Cash flow — Live Demo' };
 export const dynamic = 'force-dynamic';
 
 // The forecast board itself is the REAL component, handed fictional events. That

@@ -1279,7 +1279,19 @@ function StopRow({
         >
           ⋮
         </button>
-        <FloatingPanel id={stopMenuId} anchorRef={menuButtonRef} open={menuOpen} onClose={() => onMenu(false)} className="plan-stop-menu" width={MENU_WIDTH}>
+        {/* group, not menu: these are links and submit buttons, and role="menu"
+            is a promise of menuitem children and arrow-key movement that none
+            of them keep. The name is the part that was missing. */}
+        <FloatingPanel
+          id={stopMenuId}
+          role="group"
+          label={`Actions for ${stop.label}`}
+          anchorRef={menuButtonRef}
+          open={menuOpen}
+          onClose={() => onMenu(false)}
+          className="plan-stop-menu"
+          width={MENU_WIDTH}
+        >
           {routeStop ? (
             // A supply stop has no job page to open and nothing to invoice. The
             // only thing to do with one is take it off the day.

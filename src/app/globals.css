@@ -899,7 +899,6 @@
 :root[data-theme='light'] .bset-dots-pop,
 :root[data-theme='light'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
-:root[data-theme='light'] .template-browser,
 /* .bset-tipcard shares a rule with .bset-recurring below (both paint
    `background: var(--bset-card)`, white on paper) but only the sibling was ever
    added to this list, so two boxes declared on the same line rendered with
@@ -1627,8 +1626,7 @@
 /* Modals sit over a scrim on the dark canvas, so they keep a heavier lift. */
 :root[data-theme='light'] .crew-assign-panel,
 :root[data-theme='light'] .client-modal,
-:root[data-theme='light'] .unsaved-guard-panel,
-:root[data-theme='light'] .template-browser {
+:root[data-theme='light'] .unsaved-guard-panel {
   border-color: #1f2a39;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
 }
@@ -5025,105 +5023,6 @@ li + li { margin-top: 0.45rem; }
 .template-card:hover .template-card-cta svg { transform: translateX(3px); }
 
 /* ---------------------------------------------------------------- */
-/* Homepage: featured-template angled deck                            */
-/* ---------------------------------------------------------------- */
-.template-deck { max-width: 640px; margin: 2.25rem auto 0; }
-
-.template-deck-stage { position: relative; width: min(560px, 100%); margin: 0 auto; }
-.template-deck-anchor { display: block; width: 74%; margin: 0 auto; visibility: hidden; }
-
-.template-browser {
-  display: block;
-  border-radius: 13px;
-  overflow: hidden;
-  border: 1px solid var(--edge-t16);
-  background: #0b0f15;
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.5);
-}
-.template-browser-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.65rem;
-  background: rgba(var(--tint), 0.06);
-  border-bottom: 1px solid var(--rule-t07);
-}
-.template-browser-bar i { width: 7px; height: 7px; border-radius: 50%; background: rgba(var(--tint), 0.25); }
-.template-browser-bar > span { margin-left: 0.35rem; flex: 1; height: 13px; border-radius: 999px; background: rgba(var(--tint), 0.06); }
-.template-browser-body { aspect-ratio: 16 / 10; overflow: hidden; background: rgba(var(--tint), 0.03); }
-.template-browser-body img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
-
-.template-deck-card {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 74%;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  transition: transform 0.55s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.55s ease, filter 0.55s ease;
-}
-.template-deck-card:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 4px; border-radius: 16px; }
-.template-deck-center { transform: translate(-50%, 0) rotate(0deg) scale(1); z-index: 3; opacity: 1; }
-.template-deck-left { transform: translate(-92%, 6%) rotate(-7deg) scale(0.86); z-index: 1; opacity: 0.6; filter: brightness(0.72) saturate(0.85); }
-.template-deck-right { transform: translate(-8%, 6%) rotate(7deg) scale(0.86); z-index: 1; opacity: 0.6; filter: brightness(0.72) saturate(0.85); }
-.template-deck-left:hover, .template-deck-right:hover { opacity: 0.9; filter: none; }
-.template-deck-hidden { opacity: 0; pointer-events: none; transform: translate(-50%, 0) scale(0.7); }
-
-.template-deck-arrow {
-  position: absolute;
-  top: 40%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid var(--edge-t20);
-  background: rgba(16, 19, 25, 0.82);
-  color: var(--fg);
-  cursor: pointer;
-  z-index: 5;
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-.template-deck-arrow:hover { border-color: var(--cedge-amber-4); background: rgba(16, 19, 25, 0.96); }
-.template-deck-arrow-prev { left: -6px; }
-.template-deck-arrow-next { right: -6px; }
-
-.template-deck-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.35rem;
-  margin-top: 1.5rem;
-}
-.template-deck-info strong { font-family: var(--font-display); font-size: 1.15rem; }
-
-.template-deck-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
-.template-deck-dot {
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: var(--line);
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-.template-deck-dot.active { background: var(--accent-2); transform: scale(1.25); }
-
-@media (max-width: 560px) {
-  .template-deck-left { transform: translate(-97%, 5%) rotate(-6deg) scale(0.8); }
-  .template-deck-right { transform: translate(-3%, 5%) rotate(6deg) scale(0.8); }
-  .template-deck-arrow-prev { left: 0; }
-  .template-deck-arrow-next { right: 0; }
-}
-@media (prefers-reduced-motion: reduce) { .template-deck-card { transition: none; } }
-
-/* ---------------------------------------------------------------- */
 /* Homepage: feature grid icons                                      */
 /* ---------------------------------------------------------------- */
 .feature-card-icon {
@@ -5573,9 +5472,9 @@ li + li { margin-top: 0.45rem; }
 }
 .trade-links-row a:hover { color: var(--text); border-color: var(--cedge-orange-8); }
 
-/* Dashboard jobs/leads map (shared MapSection + PinMap). */
-.map-section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.map-section-sub { margin: 0.7rem 0 0; color: var(--mute-i62); font-size: 0.9rem; }
+/* Dashboard jobs/leads map (PinMap). The .map-section-* rules that used to sit
+   here belonged to MapSection, which the view-gear map band replaced; the
+   component and its CSS went together. */
 .pin-map-shell { margin-top: 1rem; }
 .pin-map-wrap { position: relative; }
 .pin-map { width: 100%; height: clamp(320px, 46vh, 520px); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: rgba(var(--tint), 0.02); }

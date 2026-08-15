@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { DEMO_ROUTE } from '@/lib/demo-data';
 import DemoRouteMap from './DemoRouteMap';
 
-export const metadata = { title: 'Plan my day — demo' };
+export const metadata = { title: 'Plan my day — Live Demo' };
 export const dynamic = 'force-dynamic';
 
 // The live planner is drag-and-drop over a Google map with a live drive matrix

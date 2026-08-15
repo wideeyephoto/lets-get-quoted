@@ -191,37 +191,32 @@ export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
   const devEval = process.env.NODE_ENV === 'production' ? [] : ["'unsafe-eval'"];
 
   /**
-   * 'wasm-unsafe-eval' — THE MAPS ERROR NOBODY COULD REPRODUCE LOCALLY.
+   * NO 'wasm-unsafe-eval', DELIBERATELY, and it was briefly added on a wrong
+   * diagnosis — see the note on the commit that removed it again.
    *
-   * Google's vector map renderer is a WebAssembly module, and compiling one is
-   * governed by script-src. With neither 'unsafe-eval' nor this token, Chrome
-   * throws
+   * The reasoning that put it here was: Google's vector map logs "Attempted to
+   * load a Vector Map, but failed. Falling back to Raster.", vector rendering
+   * is WebAssembly, this policy blocks WebAssembly, therefore this policy is
+   * the cause. The first and third of those are true. The middle one is not.
+   * Driven on a real GPU with WebAssembly.compile stubbed to throw, the vector
+   * map still loads and still draws into its canvas.
    *
-   *   CompileError: Compiling or instantiating WebAssembly module violates
-   *   the following Content Security Policy directive
+   * What actually decides it is whether the browser has usable WebGL. Headless
+   * Chromium falls back to SwiftShader, which Google does not accept, so every
+   * headless run reports that error and every headed run on the same build,
+   * same CSP, does not. That is why it looked reproducible and unfixable at
+   * once.
    *
-   * the SDK catches it, and logs "Attempted to load a Vector Map, but failed.
-   * Falling back to Raster." Every map in the product silently drops to raster
-   * tiles — which also drops the Map ID's styling, so the maps come back
-   * unthemed as well as slower.
-   *
-   * IT NEVER HAPPENS IN DEVELOPMENT, which is the whole reason it survived:
-   * devEval above puts 'unsafe-eval' in the header, and 'unsafe-eval' permits
-   * wasm too. So the one environment anybody debugs in is the one environment
-   * where the bug cannot occur. Measured on all three headers rather than
-   * reasoned about — production as shipped BLOCKED, dev ALLOWED, production
-   * plus this token ALLOWED.
-   *
-   * Not gated on NODE_ENV: production is the only place it does anything, and
-   * a token that is only present where it is not needed is not a safeguard.
-   * It is also strictly narrower than 'unsafe-eval' — it permits compiling
-   * wasm and nothing else, in particular no eval() of JavaScript strings.
+   * Nothing else in this app compiles WebAssembly either — no .wasm anywhere in
+   * src or the bundle. So the token bought nothing and widened script-src, in a
+   * policy whose whole point is that production ships no eval of any kind. If
+   * something here ever does need wasm, add it back with that thing named; the
+   * assertion in test/csp.test.ts is where to change it.
    */
-  const wasm = "'wasm-unsafe-eval'";
 
   const directives: Array<[string, string[]]> = [
     ['default-src', ["'self'"]],
-    ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'", wasm, ...devEval]],
+    ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'", ...devEval]],
     // Next injects <style> tags and React writes inline style attributes, neither
     // of which a nonce covers. This is the standard, accepted compromise.
     // fonts.googleapis.com: the Google Maps SDK pulls its own stylesheets from

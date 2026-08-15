@@ -2,7 +2,7 @@ import { Icon } from '@/app/dashboard/schedule/booking/icons';
 import { WEEKDAY_LABELS, formatWindowClock } from '@/lib/booking-availability';
 import { DEMO_BOOKING, DEMO_SITE_HOST } from '@/lib/demo-data';
 
-export const metadata = { title: 'Online booking — demo' };
+export const metadata = { title: 'Online booking — Live Demo' };
 export const dynamic = 'force-dynamic';
 
 // A read-only mirror of the real booking screen. The live version is one client

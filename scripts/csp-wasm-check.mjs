@@ -1,18 +1,20 @@
 import { chromium } from 'playwright';
 
 /**
- * Does the CSP this app ships in production allow WebAssembly?
- *
- * Google Maps' vector renderer is a wasm module; if compilation is blocked the
- * API logs "Attempted to load a Vector Map, but failed. Falling back to
- * Raster." and every map in the product quietly drops to raster tiles.
- *
- * This exists as a script because the bug CANNOT be reproduced by loading the
- * app: development ships 'unsafe-eval' for Fast Refresh, and that permits wasm
- * as well, so the dev server is the one place the failure cannot happen. Each
- * header is served for real and WebAssembly.compile is called under it.
+ * What does each of our CSP variants permit WebAssembly to do?
  *
  *   node scripts/csp-wasm-check.mjs
+ *
+ * Kept because the question comes up and is easy to get wrong from reading:
+ * development ships 'unsafe-eval' for Fast Refresh and 'unsafe-eval' permits
+ * wasm too, so the dev server can never demonstrate what production does. Each
+ * header below is served for real and WebAssembly.compile is called under it.
+ *
+ * Production deliberately permits none of it — nothing in this app compiles
+ * wasm. This is the tool to re-run if that ever changes, or if someone
+ * proposes 'wasm-unsafe-eval' again. It answers "is wasm blocked", which is
+ * NOT the same question as "why did the map fall back to raster": that one is
+ * WebGL, and it needs a headed browser to see. See the note in src/lib/csp.ts.
  *
  * No dev server needed — the pages are fulfilled by the router.
  */
