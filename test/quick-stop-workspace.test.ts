@@ -105,7 +105,7 @@ describe('the demand funnel', () => {
      unaided it is "54 6 3 0", which is not the same information. */
   it('says the same thing in one sentence for a screen reader', () => {
     expect(quickStopFunnelSentence(quickStopFunnel(audited))).toBe(
-      '54 read, then 6 screened, then 3 passed every rule, then 0 countable',
+      '54 read, then 6 screened, then 3 passed every rule, then 0 with a length recorded',
     );
   });
 

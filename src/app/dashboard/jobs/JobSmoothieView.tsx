@@ -63,6 +63,8 @@ export default function JobSmoothieView({
   mapPins = [],
   mapTheme = 'dark',
   gear,
+  initialStage = 'all',
+  initialSort = 'soonest',
 }: {
   jobs: JobViewItem[];
   onSelect?: (jobId: string | null) => void;
@@ -75,12 +77,16 @@ export default function JobSmoothieView({
   mapPins?: MapPin[];
   mapTheme?: 'dark' | 'light';
   gear?: ReactNode;
+  /** Where a ?status= / ?owing=1 deep link wants the queue to open. Seeds, not
+      controls — the chips and the Sort menu own them from the first render on. */
+  initialStage?: StageFilter;
+  initialSort?: QueueSort;
 }) {
   const base = basePath;
 
-  const [stage, setStage] = useState<StageFilter>('all');
+  const [stage, setStage] = useState<StageFilter>(initialStage);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<QueueSort>('soonest');
+  const [sort, setSort] = useState<QueueSort>(initialSort);
   const [pane, setPane] = useState<'jobs' | 'map'>('jobs');
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<JobTabId>('overview');

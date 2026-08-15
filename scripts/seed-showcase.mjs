@@ -5,7 +5,7 @@ import pg from 'pg';
 // Fill one account with a full, believable year of work, so every screen in the
 // product can be looked at with real volume behind it instead of two rows.
 //
-// WHY THIS IS NOT scripts/remove-demo-data.mjs' TWIN. That script recognises
+// WHY THIS IS NOT scripts/remove-demo-data.mjs' TWIN. That script recognizes
 // demo rows by a J-DEMO- ref prefix. This seeder deliberately does NOT use one:
 // the entire point is to see what a busy account looks like, and a hundred jobs
 // all reading "J-DEMO-1043" shows you the seeder, not the product. Refs here
@@ -17,6 +17,13 @@ import pg from 'pg';
 // the manifest is ever lost, --undo --derive falls back to a rule that is true by
 // construction and invisible in the UI: every seeded job hangs off a seeded
 // client, and every seeded client has an @example.com address.
+//
+// On top of both, every client, lead, job, invoice and payment written here
+// carries test_marker = 'seed-showcase'. That is not a third removal rule — the
+// manifest is still the one --undo trusts — it is what the owner-facing lists
+// filter on, and the only marker an invoice or a payment can hold at all, since
+// neither has a name, an email or a phone to be recognized by. It needs
+// migrations/2026-08-24-test-record-marker.sql to have been applied.
 //
 // NOTHING HERE CAN REACH A REAL PERSON. It talks to Postgres directly and never
 // to a server action, so no send path is involved at all. Belt and braces on top
@@ -101,6 +108,9 @@ if (!ACCOUNT || typeof ACCOUNT !== 'string') {
 }
 
 const MANIFEST = new URL(`./.seed-showcase-${ACCOUNT}.json`, import.meta.url);
+
+// Stamped onto every customer-facing row this writes. See the header.
+const TEST_MARKER = 'seed-showcase';
 
 // Anchor date. Everything else is expressed as an offset from it, so the shape
 // of the year survives being seeded on a different day.
@@ -898,8 +908,8 @@ async function seed() {
     const clientId = {};
     for (const c of data.clients) {
       const { rows } = await db.query(
-        `insert into clients (account_id, name, phone, email, address, notes) values ($1,$2,$3,$4,$5,$6) returning id`,
-        [ACCOUNT, c.name, c.phone, c.email, c.address, c.notes]
+        `insert into clients (account_id, name, phone, email, address, notes, test_marker) values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+        [ACCOUNT, c.name, c.phone, c.email, c.address, c.notes, TEST_MARKER]
       );
       clientId[c.key] = rows[0].id;
     }
@@ -928,11 +938,12 @@ async function seed() {
         `insert into jobs
            (account_id, ref, client_id, client_name, client_phone, client_email, address, scope, status,
             lead_source, scheduled_for, scheduled_time, estimated_hours, quoted_amount,
-            recurring_plan_id, recurring_visit_date, lat, lng, created_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) returning id`,
+            recurring_plan_id, recurring_visit_date, lat, lng, created_at, test_marker)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) returning id`,
         [ACCOUNT, j.ref, clientId[j.clientKey], j.client.name, j.client.phone, j.client.email, j.address,
           j.scope, j.status, j.lead_source, j.scheduled_for, j.scheduled_time, j.estimated_hours,
-          j.quoted_amount, j.planKey ? planId[j.planKey] : null, j.recurring_visit_date, j.lat, j.lng, j.created_at]
+          j.quoted_amount, j.planKey ? planId[j.planKey] : null, j.recurring_visit_date, j.lat, j.lng, j.created_at,
+          TEST_MARKER]
       );
       jobId[j.key] = rows[0].id;
     }
@@ -984,9 +995,9 @@ async function seed() {
     const invoiceId = {};
     for (const inv of data.invoices) {
       const { rows } = await db.query(
-        `insert into invoices (account_id, job_id, ref, status, total, signed_at, signer_name, created_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
-        [ACCOUNT, jobId[inv.jobKey], inv.ref, inv.status, inv.total, inv.signed_at, inv.signer_name, inv.created_at]
+        `insert into invoices (account_id, job_id, ref, status, total, signed_at, signer_name, created_at, test_marker)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
+        [ACCOUNT, jobId[inv.jobKey], inv.ref, inv.status, inv.total, inv.signed_at, inv.signer_name, inv.created_at, TEST_MARKER]
       );
       invoiceId[inv.key] = rows[0].id;
     }
@@ -1000,10 +1011,10 @@ async function seed() {
     const paymentIds = [];
     for (const p of data.payments) {
       const { rows } = await db.query(
-        `insert into payments (account_id, job_id, invoice_id, kind, label, amount, status, requested_at, paid_at, recurring_plan_id)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+        `insert into payments (account_id, job_id, invoice_id, kind, label, amount, status, requested_at, paid_at, recurring_plan_id, test_marker)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
         [ACCOUNT, jobId[p.jobKey], p.invoiceKey ? invoiceId[p.invoiceKey] : null, p.kind, p.label,
-          p.amount, p.status, p.requested_at, p.paid_at, p.planKey ? planId[p.planKey] : null]
+          p.amount, p.status, p.requested_at, p.paid_at, p.planKey ? planId[p.planKey] : null, TEST_MARKER]
       );
       paymentIds.push(rows[0].id);
     }
@@ -1026,12 +1037,12 @@ async function seed() {
     for (const l of data.leads) {
       const { rows } = await db.query(
         `insert into leads (account_id, client_id, source, status, name, phone, email, address, project_type,
-            estimated_hours, message, source_page, converted_job, triage, lat, lng, created_at, updated_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) returning id`,
+            estimated_hours, message, source_page, converted_job, triage, lat, lng, created_at, updated_at, test_marker)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) returning id`,
         [ACCOUNT, l.clientKey ? clientId[l.clientKey] : null, l.source, l.status, l.name, l.phone, l.email,
           l.address, l.project_type, l.estimated_hours, l.message, l.source_page,
           l.convertedJobKey ? jobId[l.convertedJobKey] : null, JSON.stringify(l.triage), l.lat, l.lng,
-          l.created_at, l.updated_at]
+          l.created_at, l.updated_at, TEST_MARKER]
       );
       leadIds.push(rows[0].id);
     }

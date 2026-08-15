@@ -29,7 +29,7 @@ import { normalizeUsPhone } from '@/lib/phone';
  */
 
 /* -------------------------------------------------------------------------
-   Customer texting — the registration
+   A texting number of your own — the registration
    ---------------------------------------------------------------------- */
 
 /**
@@ -158,7 +158,14 @@ export function ownerAlertChip(alerts: OwnerAlerts): StatusChip {
 }
 
 /**
- * The customer-texting chip.
+ * The dedicated-number chip.
+ *
+ * WHAT IT IS ABOUT. A number of the contractor's own, and the carrier
+ * registration that number needs — not whether they may text customers at all.
+ * They may, today, on the shared platform number, first message included. The
+ * strip labels this chip with the number rather than with the capability,
+ * because a chip reading "Customer texting: Coming soon" over a working inbox
+ * announced that a shipped feature was missing.
  *
  * `not_started` reads "Coming soon" and not "Not started", because "Not
  * started" is an accusation — it says the contractor has something to do. They

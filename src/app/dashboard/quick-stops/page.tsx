@@ -23,6 +23,7 @@ import { loadScreeningSummary } from '@/lib/quick-stop-screenings';
 import { loadRecipients, matchesAudience } from '@/lib/campaigns';
 import { loadRefundTiers } from '@/lib/quick-stop-refunds';
 import { quickStopState, quickStopStateDetail, quickStopStateHeadline } from '@/lib/quick-stop-state';
+import { normalizeQuickStopTab } from '@/lib/quick-stop-tabs';
 
 /** How far back the demand panel looks. A quarter is enough to be a pattern. */
 const DEMAND_WINDOW_DAYS = 90;
@@ -68,7 +69,7 @@ export const dynamic = 'force-dynamic';
    this page was named after the homepage. */
 export const metadata = { title: 'Quick Stops' };
 
-export default async function QuickStopsPage() {
+export default async function QuickStopsPage({ searchParams }: { searchParams: { tab?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
 
   // Lazy expiry so the queue is current even between cron runs (releases lapsed
@@ -460,7 +461,18 @@ export default async function QuickStopsPage() {
   return (
     <main className="wide-shell workspace-shell bset">
       <QuickStopHead />
-      <QuickStopTabs today={todayPanel} settings={settingsPanel} insights={insightsPanel} />
+      {/* The tab strip has always written `?tab=` on every switch; nothing read
+          it back, so a refresh or a link somebody shared out of Insights opened
+          on Today. Normalized through the same list the strip renders from, so
+          a hand-typed value lands on Today rather than on no tab at all. A hash
+          still wins over this — the deep links into Settings sections are
+          answered on the client, after mount. */}
+      <QuickStopTabs
+        today={todayPanel}
+        settings={settingsPanel}
+        insights={insightsPanel}
+        initialTab={normalizeQuickStopTab(searchParams.tab)}
+      />
     </main>
   );
 }

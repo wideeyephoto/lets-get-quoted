@@ -3568,3 +3568,22 @@ alter table cron_runs enable row level security;
 -- because pg_cron is not enabled on this project and adding a scheduled job to
 -- watch the scheduled jobs has an obvious problem.
 create index if not exists cron_runs_started_idx on cron_runs (started_at);
+
+-- Rows written by a seeding or probe script, marked as such by the script that
+-- wrote them. See migrations/2026-08-24-test-record-marker.sql for the full
+-- reasoning; the short version is that seeded rows land in the same tables the
+-- owner's lists read, and a name/email heuristic cannot see an invoice or a
+-- payment at all.
+--
+-- Nullable, no default, no backfill: every row that predates the column reads
+-- as null, which means "real". The value is the writing script's own name
+-- ('seed-customers', 'test-rls') rather than a bare true, because "which script
+-- did this" is the question somebody actually asks of an unexpected row.
+alter table clients  add column if not exists test_marker text;
+alter table leads    add column if not exists test_marker text;
+alter table jobs     add column if not exists test_marker text;
+alter table invoices add column if not exists test_marker text;
+alter table payments add column if not exists test_marker text;
+
+-- No index: the filter is `test_marker is null`, which matches almost every row
+-- on a healthy account, so no planner would choose one.

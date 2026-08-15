@@ -1,5 +1,6 @@
 /**
- * The Smoothie lead queue: one set of stages, one set of counts, one sort.
+ * The Smoothie lead queue: one set of stages, one set of counts, one sort, and
+ * one answer to "does this lead still need somebody".
  *
  * Pure and structurally typed on purpose. The server page computes the waiting
  * labels (a clock read during render is a hydration mismatch waiting to happen)
@@ -70,6 +71,86 @@ export function stageCounts<T extends QueueLead>(leads: T[]): Record<StageFilter
   const counts: Record<StageFilter, number> = { all: leads.length, new: 0, contacted: 0, quoted: 0, won: 0, lost: 0 };
   for (const lead of leads) counts[lead.status] += 1;
   return counts;
+}
+
+/* --- one predicate for "this lead still needs you" -------------------------
+   Archive and Snooze write into the lead's `triage` blob and never touch
+   `status`, and for a long time the Leads list was the only code that read them
+   back. So a lead the owner had explicitly put down vanished from the page they
+   were looking at while the dashboard's follow-up card, the rail badge and the
+   "website leads are waiting" banner all went on counting it — for up to thirty
+   days, and clicking the badge landed on a page with nothing on it.
+
+   Four counters, four hand-written predicates, one lead. These three functions
+   are the only copy now. Structurally typed like the rest of this module, so
+   the server pages, the route handler and the client views can all reach them
+   without dragging @/lib/leads — which touches the database — into a bundle. */
+
+/** The fields of a lead's triage blob that decide whether it still counts. */
+export type TriageLike = {
+  score?: 'hot' | 'warm' | 'low';
+  archived?: boolean | null;
+  snoozedUntil?: string | null;
+};
+
+export type AttentionLead = { status: QueueStatus; triage: TriageLike };
+
+/**
+ * Put down on purpose: archived, or snoozed to a date still ahead of us.
+ *
+ * A snooze that has run out is not a snooze — the lead is back in the queue and
+ * the stored date is only history, which is why this compares against the clock
+ * rather than testing the field for presence.
+ */
+export function isSetAside(triage: TriageLike, now: Date = new Date()): boolean {
+  if (triage.archived) return true;
+  if (!triage.snoozedUntil) return false;
+  const until = new Date(triage.snoozedUntil).getTime();
+  return Number.isFinite(until) && until > now.getTime();
+}
+
+/** In the queue at all: still being worked, and not set aside. */
+export function isLeadActive(lead: AttentionLead, now?: Date): boolean {
+  if (lead.status === 'won' || lead.status === 'lost') return false;
+  return !isSetAside(lead.triage, now);
+}
+
+/**
+ * Nobody has answered them yet.
+ *
+ * No source test — see QUEUE_STAGES. A lead phoned in this morning needs a
+ * reply exactly as much as one that arrived through the form, and gating on
+ * source is what let two numbers under one "Needs response" label disagree.
+ *
+ * `muteLowQuality` is the account setting behind the rail badge and the alert
+ * banner, and it is an OPTION rather than a rule because those two are nags:
+ * the owner has said low-scored leads should not nag. The Leads page counts
+ * without it, because the page shows those leads and a chip must never claim a
+ * lead the list is not showing.
+ */
+export function needsResponse(
+  lead: AttentionLead,
+  options: { muteLowQuality?: boolean } = {},
+  now?: Date,
+): boolean {
+  if (lead.status !== 'new') return false;
+  if (!isLeadActive(lead, now)) return false;
+  return !(options.muteLowQuality && lead.triage.score === 'low');
+}
+
+/** Where a rail badge stops being a number and starts being "a lot". */
+export const ATTENTION_BADGE_MAX = 50;
+
+/**
+ * "7", or "50+" once the exact figure has stopped being the point.
+ *
+ * The badge used to be the LENGTH OF A CAPPED FETCH — fifty rows read, fifty
+ * rows counted — so past fifty it silently stuck while the page's own counts
+ * kept climbing, and there was no way to tell a stuck fifty from a real one.
+ * Capping the DISPLAY says the same thing honestly.
+ */
+export function attentionBadgeLabel(count: number): string {
+  return count > ATTENTION_BADGE_MAX ? `${ATTENTION_BADGE_MAX}+` : String(count);
 }
 
 /**

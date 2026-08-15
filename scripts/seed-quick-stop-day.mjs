@@ -19,8 +19,11 @@ import pg from 'pg';
  *   - Every phone is on the 555 exchange, which is permanently unassigned, so a
  *     number cannot be routed even by accident.
  *   - Every email is @example.com (RFC 2606 reserved).
- *   - Every ref carries a J-QS- prefix, so these are recognisable on sight and
+ *   - Every ref carries a J-QS- prefix, so these are recognizable on sight and
  *     cannot be confused with the account's real J-#### sequence.
+ *   - Every client and job carries test_marker = 'seed-quick-stop-day', so the
+ *     owner-facing lists can leave them out without guessing from a name.
+ *     Requires migrations/2026-08-24-test-record-marker.sql.
  *   - Every id written is recorded in a manifest beside this file, and --undo
  *     deletes precisely those rows and nothing else.
  *
@@ -43,6 +46,7 @@ const ACCOUNT = arg('account');
 const APPLY = process.argv.includes('--apply');
 const UNDO = process.argv.includes('--undo');
 const MANIFEST = new URL('./.seed-quick-stop-day.json', import.meta.url);
+const TEST_MARKER = 'seed-quick-stop-day';
 
 if (!ACCOUNT) {
   console.error('Usage: node scripts/seed-quick-stop-day.mjs --account <uuid> [--apply | --undo]');
@@ -133,16 +137,16 @@ try {
     const phone = `248555${String(1000 + STOPS.indexOf(stop)).slice(-4)}`;
     const email = `${stop.client.toLowerCase().replace(/[^a-z]+/g, '.')}@example.com`;
     const { rows: c } = await client.query(
-      `insert into clients (account_id, name, phone, email, address)
-       values ($1,$2,$3,$4,$5) returning id`,
-      [ACCOUNT, stop.client, phone, email, stop.address],
+      `insert into clients (account_id, name, phone, email, address, test_marker)
+       values ($1,$2,$3,$4,$5,$6) returning id`,
+      [ACCOUNT, stop.client, phone, email, stop.address, TEST_MARKER],
     );
     clientIds.push(c[0].id);
     const { rows: j } = await client.query(
       `insert into jobs
          (account_id, client_id, ref, client_name, client_phone, client_email, address, lat, lng,
-          scope, status, scheduled_for, scheduled_time, estimated_hours, quoted_amount)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'in_progress',current_date,$11,$12,$13)
+          scope, status, scheduled_for, scheduled_time, estimated_hours, quoted_amount, test_marker)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'in_progress',current_date,$11,$12,$13,$14)
        returning id, ref`,
       [
         ACCOUNT,
@@ -158,6 +162,7 @@ try {
         stop.time,
         stop.hours,
         stop.hours * 95,
+        TEST_MARKER,
       ],
     );
     jobIds.push(j[0].id);

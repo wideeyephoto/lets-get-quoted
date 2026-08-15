@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createJob, deleteJob, getJob, parseQuoteItems, type Job, type QuoteItem } from '@/lib/jobs';
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
+import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
 
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
@@ -458,16 +459,25 @@ export async function backfillLeadCoordinates(
   }
 }
 
+// `excludeTestRecords` leaves out the rows a seeding or probe script stamped as
+// its own — see src/lib/test-records.ts. OFF unless a caller asks, and nothing
+// asks yet: the marker column has to be in the database before a deployed query
+// names it. This is the seam the ticker, the funnel and getAverageRequestResponseMs
+// all sit behind, so turning it on here is what makes those numbers the owner's.
 export async function listLeads(
   supabase: SupabaseClient,
   accountId: string,
-  status?: LeadStatus
+  status?: LeadStatus,
+  options?: TestRecordOptions
 ): Promise<Lead[]> {
-  let query = supabase
-    .from('leads')
-    .select('*')
-    .eq('account_id', accountId)
-    .order('created_at', { ascending: false });
+  let query = applyTestRecordFilter(
+    supabase
+      .from('leads')
+      .select('*')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false }),
+    options
+  );
 
   if (status) query = query.eq('status', status);
   const { data, error } = await query;

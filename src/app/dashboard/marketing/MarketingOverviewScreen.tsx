@@ -135,9 +135,16 @@ export default function MarketingOverviewScreen({
                     {rec.postedId
                       ? 'Your blog draft is ready. Finish it, then turn it into a customer email.'
                       : rec.whyNow}
-                    {rec.reach != null && rec.reach > 0 && !rec.postedId ? (
+                    {/* A reach of 0 is an answer, not a missing number. Both used to
+                        render as nothing at all, so "we could not work this out" and
+                        "there is nobody to send this to" looked identical — and the
+                        second one is the constraint the account is actually under. */}
+                    {rec.reach == null || rec.postedId ? null : rec.reach > 0 ? (
                       <> {rec.reach} {rec.reach === 1 ? 'customer is' : 'customers are'} reachable by email.</>
-                    ) : null}
+                    ) : (
+                      <> Nobody can be emailed about this yet — no customer in its audience has an email
+                        address you can send to.</>
+                    )}
                   </p>
                   <div className="mkt-rec-actions">
                     {rec.actions.map((action) => (

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, useTransition, type ReactNode } from 'r
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JobStatus } from '@/lib/jobs';
+import type { QueueSort, StageFilter } from '@/lib/job-queue';
 import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { JobsView, MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
@@ -91,6 +92,8 @@ export default function JobsWorkspace({
   basePath = '/dashboard',
   readOnly = false,
   details,
+  initialStatus = 'all',
+  initialSort = 'soonest',
 }: {
   jobs: JobViewItem[];
   /**
@@ -107,6 +110,14 @@ export default function JobsWorkspace({
   toolbarAccessory?: ReactNode;
   basePath?: string;
   /**
+   * Where a deep link wants the workspace to open — ?status= for the stage,
+   * ?owing=1 for "Most owed". Seeds only: once here you can filter and sort
+   * freely, and the URL is not rewritten as you do. Both layouts get them,
+   * because Smoothie is the default and keeps its own chips and sort.
+   */
+  initialStatus?: StageFilter;
+  initialSort?: QueueSort;
+  /**
    * The logged-out demo. Nothing on this workspace writes customer data — the
    * only three actions here REMEMBER a layout choice in a cookie, and each one
    * starts with requireOwnerContext. Left alone, picking a view on the public
@@ -117,7 +128,15 @@ export default function JobsWorkspace({
   readOnly?: boolean;
 }) {
   const [view, setView] = useState<JobsView>(initialView);
-  const [status, setStatus] = useState<JobStatus | 'all'>('all');
+  /* Seeded only into the layouts whose toolbar actually drives it. Smoothie
+     keeps its own chips — it gets initialStage below and scopes its own pins
+     off them — and board deliberately lists everything and hides the toolbar.
+     In either one a seeded `status` would narrow scopedPins with no control on
+     screen to widen it again, so a deep link like ?status=complete would leave
+     the map empty and unrecoverable under a list showing every job. */
+  const [status, setStatus] = useState<JobStatus | 'all'>(
+    initialView === 'smoothie' || initialView === 'board' ? 'all' : initialStatus,
+  );
   // Which job the Focus pane has open, so the map can center on it.
   const [focusJobId, setFocusJobId] = useState<string | null>(null);
   // Stable identity: FocusView calls this from an effect, so a new function
@@ -214,6 +233,8 @@ export default function JobsWorkspace({
       <div className={pending ? styles.busy : undefined}>
         <JobSmoothieView
           jobs={jobs}
+          initialStage={initialStatus}
+          initialSort={initialSort}
           todayKey={todayKey}
           mapPins={scopedPins}
           mapTheme={effectiveMapTheme}

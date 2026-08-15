@@ -13,6 +13,15 @@ import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
+import { attentionBadgeLabel } from '@/lib/lead-queue';
+
+// The leads badge is the only one of the four fed by a capped scan (500 rows,
+// see the status route), so it is the only one whose digits can run away from
+// the box they sit in. They stop at "50+"; the label beside them keeps the
+// exact figure, which is where a precise number was ever any use.
+function attentionDigits(href: string, count: number): string {
+  return href === '/dashboard/leads' ? attentionBadgeLabel(count) : String(count);
+}
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
@@ -793,7 +802,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     // in the pipeline, so a quiet day reads as 0 needing you out of 12 open
     // rather than as an empty rail.
     const totalByHref: Record<string, { count: number; title: string }> = {
-      '/dashboard/leads': { count: openLeadCount, title: leadTitle ?? `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
+      '/dashboard/leads': { count: openLeadCount, title: leadTitle ?? `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won, lost, archived and snoozed not counted)` },
       '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} live job${activeJobCount === 1 ? '' : 's'}. Completed and archived jobs are not counted.` },
     };
     // "Something arrived here that you haven't opened yet." The numbers say how
@@ -874,7 +883,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           ) : null}
           {count > 0 ? (
             <span className="sidenav-count" title={navAttentionLabel(href, count) ?? undefined}>
-              <span aria-hidden="true">{count}</span>
+              <span aria-hidden="true">{attentionDigits(href, count)}</span>
               <span className="sr-only">{navAttentionLabel(href, count) ?? `${count} need your attention`}</span>
             </span>
           ) : null}
@@ -1458,7 +1467,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                     ].map(([href, n]) =>
                       item.href === href && (n as number) > 0 ? (
                         <span className="topnav-count" key={href as string} title={navAttentionLabel(href as string, n as number) ?? undefined}>
-                          <span aria-hidden="true">{n as number}</span>
+                          <span aria-hidden="true">{attentionDigits(href as string, n as number)}</span>
                           <span className="sr-only">{navAttentionLabel(href as string, n as number)}</span>
                         </span>
                       ) : null,

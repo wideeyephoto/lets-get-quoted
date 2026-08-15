@@ -38,6 +38,9 @@ try {
     client_phone: '+12485550117',
     status: 'new_lead',
     quoted_amount: 500,
+    // Owns up to itself even though the account is torn down afterwards.
+    // Needs migrations/2026-08-24-test-record-marker.sql.
+    test_marker: 'test-sms',
   }).select('id').single();
   if (jobError) throw jobError;
 
@@ -51,6 +54,7 @@ try {
     homeowner_phone: '+12485550117',
     sms_consent: true,
     sms_consent_at: new Date().toISOString(),
+    test_marker: 'test-sms',
   }).select('id, homeowner_phone, sms_consent').single();
   if (paymentError) throw paymentError;
   assert(payment.homeowner_phone === '+12485550117' && payment.sms_consent, 'Payment SMS snapshot was not persisted.');

@@ -10,8 +10,14 @@
 // history is three of its own test bookings was being shown "$300 of same-day
 // fees you missed", which is not a small error — it is the entire number.
 //
-// THERE IS NO FLAG TO READ. This codebase has no is_test or is_demo column and
-// no synthetic marker; adding one would be a migration in service of a panel.
+// THERE IS NOW A FLAG, AND IT DOES NOT REPLACE THIS. `test_marker` (see
+// migrations/2026-08-24-test-record-marker.sql and lib/test-records.ts) is set
+// by the seeding and probe scripts on the rows they write, and it is the right
+// filter for production because a column is the only thing an invoice or a
+// payment row can carry. But it can only speak for rows written after it
+// existed: everything already in the database reads null, and the owner's own
+// two test bookings from signup day are exactly those rows. So this heuristic
+// stays as the only thing that can classify what is already there.
 // The three markers below are not a convention anyone has to remember — they are
 // descriptive of how such rows actually look, and they are the same three
 // scripts/remove-demo-data.mjs already trusts enough to DELETE rows on:

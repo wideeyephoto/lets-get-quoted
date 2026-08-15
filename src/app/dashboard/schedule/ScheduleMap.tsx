@@ -29,8 +29,13 @@ import { setMapThemeAction, setMapViewAction } from '../view-actions';
  *
  * AND A MAP IS NOT THE ONLY WAY TO READ A TERRITORY. Pins answer "where",
  * badly for anything you need to compare — you cannot sort a map by value, or
- * scan it for the two jobs in one town. The list beside it is the same jobs as
+ * scan it for the two jobs in one town. The list beside it is scheduled work as
  * rows, sortable, and it is the only one of the two a screen reader can use.
+ *
+ * IT IS NOT THE SAME SET AS THE PINS, and it never was. The list is the month
+ * the calendar is on; the pins are every active job and lead there is, at any
+ * date. Each tab's own label carries its span — visibly, not only in its
+ * accessible name.
  */
 
 export type ScheduleMapJob = {
@@ -131,23 +136,30 @@ export default function ScheduleMap({
 
   return (
     <div className="sched-map-open-wrap" data-pending={pending || undefined}>
-      {/* TWO TABS, TWO DIFFERENT SETS, ONE UNLABELLED NUMBER EACH.
+      {/* TWO TABS, TWO DIFFERENT SETS, AND EACH LABEL SAYS WHICH.
           The list is this month — deliberately, see the comment on the prop in
-          page.tsx. The map is every active job and lead there is, which is what
-          a map of a territory is for. Presented as tabs under one heading, with
-          the tablist announcing itself as "how to read the month", they read as
-          two views of one thing that could not agree on how big it was: "List ·
-          12" beside 39 pins.
+          page.tsx. The map is every active job and lead there is, at any date,
+          which is what a map of a territory is for. Presented as tabs under one
+          heading with a bare count each, they read as two views of one thing
+          that could not agree on how big it was: "List · 12" beside 39 pins.
 
           NOT FIXED BY NARROWING THE MAP. Nobody filtered anything here — the
           month is the calendar's own state, not a control on this map — and the
           rule in lib/map-pin-scope is that an unfiltered map keeps its full
           picture, because that is the view worth having. Scoping to the month
           would also leave two of the three legend filters permanently dead, the
-          map having nothing but scheduled work left to show. So each tab's own
-          label says what it holds instead, and the contradiction goes with the
-          ambiguity. The line that said it on screen as well has been removed;
-          the tab labels still carry it. */}
+          map having nothing but scheduled work left to show.
+
+          So each tab's own label says what it holds instead — ON SCREEN, in the
+          same words as its accessible name. The scope used to be in the
+          aria-label alone, which left a sighted user the two counts and no way
+          to learn why they differ; the removed line under the map was the only
+          other place it had ever been said.
+
+          They differ on status as well as span, and on purpose: getMapPins
+          drops completed work from the pins, while the rows keep it so a past
+          month still has something to read. Both labels carry that, so the
+          difference is disclosed rather than deleted. */}
       <div className="sched-map-bar">
         <div className="sched-map-tabs" role="tablist" aria-label="Map or list">
           <button
@@ -160,7 +172,8 @@ export default function ScheduleMap({
             className={`sched-map-tab${tab === 'map' ? ' is-on' : ''}`}
             onClick={() => setTab('map')}
           >
-            Map <span aria-hidden="true">· {pins.length}</span>
+            Map <span aria-hidden="true">· {pins.length}</span>{' '}
+            <span className="sched-map-tab-scope" aria-hidden="true">active, any date</span>
           </button>
           <button
             type="button"
@@ -168,11 +181,12 @@ export default function ScheduleMap({
             id="sched-map-tab-list"
             aria-selected={tab === 'list'}
             aria-controls="sched-map-panel"
-            aria-label={`List — ${jobs.length} scheduled ${jobs.length === 1 ? 'job' : 'jobs'} in ${monthLabel}`}
+            aria-label={`List — ${jobs.length} scheduled ${jobs.length === 1 ? 'job' : 'jobs'} in ${monthLabel}, completed work included`}
             className={`sched-map-tab${tab === 'list' ? ' is-on' : ''}`}
             onClick={() => setTab('list')}
           >
-            List <span aria-hidden="true">· {jobs.length}</span>
+            List <span aria-hidden="true">· {jobs.length}</span>{' '}
+            <span className="sched-map-tab-scope" aria-hidden="true">in {monthLabel}</span>
           </button>
         </div>
         {/* Closing it lives in the gear ("Map → None") and nowhere else — the
@@ -206,7 +220,9 @@ export default function ScheduleMap({
             <span>{monthLabel}</span>
           </div>
           {sorted.length === 0 ? (
-            <p className="empty-state">Nothing scheduled this month.</p>
+            /* "Nothing scheduled" would be a lie in the month whose work is all
+               finished — completed jobs are off both halves of this pair. */
+            <p className="empty-state">Nothing outstanding scheduled this month.</p>
           ) : (
             <ol className="sched-map-rows">
               {sorted.map((job) => (

@@ -15,11 +15,17 @@ import pg from 'pg';
 // stage distribution, the money, a sample of rows — and writes nothing without
 // --apply. One transaction, so a failure halfway leaves no half-seeded account.
 //
-// REMOVABLE. Jobs carry the J-DEMO- ref prefix and people carry @example.com
-// emails and 555-01xx phones, which are the markers remove-demo-data.mjs
-// already matches. 555-01xx is the range reserved for fiction, so a seeded
-// number cannot collide with a real customer's, and it cannot be dialled or
-// texted by accident either.
+// REMOVABLE, AND IT SAYS SO. Every client, lead, job, invoice and payment
+// written here carries test_marker = 'seed-customers'. That is the one marker
+// an invoice or a payment can hold at all — they have no name, no email and no
+// phone to guess from — so it is what the owner-facing filters key on.
+//
+// The descriptive markers stay alongside it: jobs carry the J-DEMO- ref prefix
+// and people carry @example.com emails and 555-01xx phones, which is what
+// remove-demo-data.mjs matches and the only thing that can classify the rows
+// seeded before the column existed. 555-01xx is the range reserved for fiction,
+// so a seeded number cannot collide with a real customer's, and it cannot be
+// dialed or texted by accident either.
 //
 // NOTHING HERE CAN SEND ANYTHING. Seeding customers into a live account means
 // creating exactly the rows the automation sweeps look for, so this was checked
@@ -66,6 +72,12 @@ const SUBDOMAIN = arg('subdomain');
 const COUNT = Number(arg('count') ?? 100);
 const SEED = String(arg('seed') ?? 'lgq-pipeline');
 const APPLY = process.argv.includes('--apply');
+
+// Stamped onto every row this script writes, including the invoices and
+// payments that no name/email/phone heuristic can see. NULL means real, so
+// nothing that already exists is touched by this being here. Requires
+// migrations/2026-08-24-test-record-marker.sql.
+const TEST_MARKER = 'seed-customers';
 
 if ((!ACCOUNT_ARG && !SUBDOMAIN) || !Number.isFinite(COUNT) || COUNT < 1) {
   console.error('Usage: node scripts/seed-customers.mjs (--account <uuid> | --subdomain <name>) [--count 100] [--seed <string>] [--apply]');
@@ -509,9 +521,9 @@ try {
     const { person } = record;
 
     const { rows: [clientRow] } = await client.query(
-      `insert into clients (account_id, name, phone, email, address, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $6) returning id`,
-      [account.id, person.name, person.phone, person.email, person.address, record.createdAt],
+      `insert into clients (account_id, name, phone, email, address, created_at, updated_at, test_marker)
+       values ($1, $2, $3, $4, $5, $6, $6, $7) returning id`,
+      [account.id, person.name, person.phone, person.email, person.address, record.createdAt, TEST_MARKER],
     );
     clientsWritten += 1;
 
@@ -523,30 +535,30 @@ try {
       const { rows: [priorRow] } = await client.query(
         `insert into jobs (account_id, ref, client_id, client_name, client_phone, client_email, address, scope,
                            status, lead_source, quoted_amount, estimated_hours, scheduled_for, started_at,
-                           lat, lng, geocoded_at, created_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,'complete','referral',$9,$10,$11,$12,$13,$14,$15,$15) returning id`,
+                           lat, lng, geocoded_at, created_at, test_marker)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,'complete','referral',$9,$10,$11,$12,$13,$14,$15,$15,$16) returning id`,
         [
           account.id, ref, clientRow.id, person.name, person.phone, person.email, person.address,
           record.priorJob.service.scope, record.priorJob.amount, record.priorJob.service.hours[0],
           record.priorJob.scheduledFor, record.priorJob.startedAt,
-          person.lat, person.lng, record.priorJob.createdAt,
+          person.lat, person.lng, record.priorJob.createdAt, TEST_MARKER,
         ],
       );
       jobsWritten += 1;
       const priorInvoiceRef = `INV-DEMO-${invoiceSeq++}`;
       const { rows: [priorInvoice] } = await client.query(
-        `insert into invoices (account_id, job_id, ref, status, total, signed_at, signer_name, created_at)
-         values ($1,$2,$3,'paid',$4,$5,$6,$5) returning id`,
-        [account.id, priorRow.id, priorInvoiceRef, record.priorJob.amount, record.priorJob.invoiceCreatedAt, person.name],
+        `insert into invoices (account_id, job_id, ref, status, total, signed_at, signer_name, created_at, test_marker)
+         values ($1,$2,$3,'paid',$4,$5,$6,$5,$7) returning id`,
+        [account.id, priorRow.id, priorInvoiceRef, record.priorJob.amount, record.priorJob.invoiceCreatedAt, person.name, TEST_MARKER],
       );
       invoicesWritten += 1;
       await client.query(
-        `insert into payments (account_id, job_id, invoice_id, kind, label, amount, status, requested_at, paid_at, platform_fee, fee_rate)
-         values ($1,$2,$3,'final','Final payment',$4,'paid',$5,$6,$7,0.02)`,
+        `insert into payments (account_id, job_id, invoice_id, kind, label, amount, status, requested_at, paid_at, platform_fee, fee_rate, test_marker)
+         values ($1,$2,$3,'final','Final payment',$4,'paid',$5,$6,$7,0.02,$8)`,
         [
           account.id, priorRow.id, priorInvoice.id, record.priorJob.amount,
           record.priorJob.invoiceCreatedAt, record.priorJob.paidAt,
-          Number((record.priorJob.amount * 0.02).toFixed(2)),
+          Number((record.priorJob.amount * 0.02).toFixed(2)), TEST_MARKER,
         ],
       );
       paymentsWritten += 1;
@@ -557,13 +569,13 @@ try {
       const { rows: [jobRow] } = await client.query(
         `insert into jobs (account_id, ref, client_id, client_name, client_phone, client_email, address, scope,
                            status, lead_source, quoted_amount, estimated_hours, scheduled_for, scheduled_time,
-                           started_at, lat, lng, geocoded_at, created_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$18) returning id`,
+                           started_at, lat, lng, geocoded_at, created_at, test_marker)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$18,$19) returning id`,
         [
           account.id, ref, clientRow.id, person.name, person.phone, person.email, person.address,
           record.service.scope, record.job.status, record.leadSource, record.job.quotedAmount, record.hours,
           record.job.scheduledFor, record.job.scheduledTime, record.job.startedAt,
-          person.lat, person.lng, record.job.createdAt,
+          person.lat, person.lng, record.job.createdAt, TEST_MARKER,
         ],
       );
       jobId = jobRow.id;
@@ -586,22 +598,22 @@ try {
       if (record.invoice) {
         const invoiceRef = `INV-DEMO-${invoiceSeq++}`;
         const { rows: [invoiceRow] } = await client.query(
-          `insert into invoices (account_id, job_id, ref, status, total, signed_at, signer_name, created_at)
-           values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+          `insert into invoices (account_id, job_id, ref, status, total, signed_at, signer_name, created_at, test_marker)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
           [
             account.id, jobId, invoiceRef, record.invoice.status, record.invoice.total,
-            record.invoice.signedAt, record.invoice.signerName, record.invoice.createdAt,
+            record.invoice.signedAt, record.invoice.signerName, record.invoice.createdAt, TEST_MARKER,
           ],
         );
         invoicesWritten += 1;
 
         await client.query(
-          `insert into payments (account_id, job_id, invoice_id, kind, label, amount, status, requested_at, paid_at, platform_fee, fee_rate)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          `insert into payments (account_id, job_id, invoice_id, kind, label, amount, status, requested_at, paid_at, platform_fee, fee_rate, test_marker)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
           [
             account.id, jobId, invoiceRow.id, record.payment.kind, record.payment.label,
             record.payment.amount, record.payment.status, record.payment.requestedAt,
-            record.payment.paidAt, record.payment.platformFee, record.payment.feeRate,
+            record.payment.paidAt, record.payment.platformFee, record.payment.feeRate, TEST_MARKER,
           ],
         );
         paymentsWritten += 1;
@@ -613,12 +625,12 @@ try {
     // no origin.
     await client.query(
       `insert into leads (account_id, client_id, source, name, phone, email, address, message, project_type,
-                          status, converted_job, lat, lng, geocoded_at, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14,$14)`,
+                          status, converted_job, lat, lng, geocoded_at, created_at, updated_at, test_marker)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14,$14,$15)`,
       [
         account.id, clientRow.id, record.leadSource, person.name, person.phone, person.email,
         person.address, record.message, record.service.name, record.leadStatus, jobId,
-        person.lat, person.lng, record.createdAt,
+        person.lat, person.lng, record.createdAt, TEST_MARKER,
       ],
     );
     leadsWritten += 1;

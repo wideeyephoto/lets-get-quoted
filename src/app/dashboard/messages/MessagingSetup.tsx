@@ -61,7 +61,7 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
                 exist is one more than this needs. */}
             <span className="msg-setup-chips">
               <Chip prefix="LGQ alerts" label={alerts.label} tone={alerts.tone} />
-              <Chip prefix="Customer texting" label={registration.label} tone={registration.tone} />
+              <Chip prefix="Your texting number" label={registration.label} tone={registration.tone} />
             </span>
 
             {/* The phone's single chip. Same data, worst-of-the-two. */}
@@ -90,8 +90,9 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
             <p className="msg-setup-lead">
               Texts to <b>you</b> about your own Let&rsquo;s Get Quoted account &mdash; account, billing,
               support, and quote-request notifications, such as a high-value lead landing or a homeowner
-              accepting an estimate. <b>This does not text your customers</b> and does not set up customer
-              texting; that is separate, and it is the section beside this one.
+              accepting an estimate. <b>This does not text your customers</b> &mdash; texting them is the
+              inbox behind this dialog and needs no setup; the section beside this one is about the
+              number those texts go out from.
             </p>
             <OwnerAlertsForm
               phone={setup.alerts.kind === 'ok' ? setup.alerts.phone : null}
@@ -105,13 +106,21 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
 
           {/* Inactive, and stays inactive. Nothing in this section takes input,
               writes anything, or shares state with the consent form above it —
-              the two are adjacent on screen and unrelated everywhere else. */}
+              the two are adjacent on screen and unrelated everywhere else.
+
+              IT IS THE NUMBER THAT IS PENDING, NOT THE TEXTING. This heading
+              used to read "Customer texting — coming soon" above a working
+              two-way inbox, which told owners a thing they already have is
+              unavailable. Customer texting ships today on the shared platform
+              number, including the first text in a thread; what nobody can
+              start yet is a dedicated number of their own. */}
           <section className="msg-setup-section">
-            <h3>Customer texting &mdash; coming soon</h3>
+            <h3>Your own texting number &mdash; coming soon</h3>
             <p className="msg-setup-lead">
-              Texting your own customers needs a dedicated two-way number, and a number can only send to
-              them once your business is registered with the mobile carriers. That is a legal requirement
-              in the US, not our rule.
+              You can text customers from this inbox today &mdash; every account sends on a shared Let&rsquo;s
+              Get Quoted number. What is not open yet is a dedicated two-way number of your own, which needs
+              your business registered with the mobile carriers first. That is a legal requirement in the US,
+              not our rule.
             </p>
 
             <p className={`msg-setup-status is-${registration.tone}`}>

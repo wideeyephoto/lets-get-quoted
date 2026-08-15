@@ -26,8 +26,12 @@ import { isQuickStopSettingsAnchor, QUICK_STOP_TABS, type QuickStopTabId } from 
  *
  * 2. THE MAP MUST NOT BE BUILT INSIDE A HIDDEN CONTAINER. Google Maps measures
  *    its container at construction, so a map built while display:none renders
- *    as a grey square and stays grey. Today is the default tab and is therefore
- *    mounted visible on first paint, which is what makes this safe.
+ *    as a grey square and stays grey. The initial state is therefore ALWAYS
+ *    Today, whatever the link asked for: both ways of arriving somewhere else —
+ *    `?tab=` and `#anchor` — switch in a mount effect, after the map has been
+ *    constructed against a container with a real box. Seeding useState from
+ *    either one puts `hidden` on the Today panel in the SSR stream and the map
+ *    never recovers, because nothing in its deps changes when you come back.
  *
  * Server-rendered ReactNode props rather than children-with-context: the three
  * panels are built on the server, so switching tabs costs nothing and no data
@@ -44,8 +48,25 @@ export default function QuickStopTabs({
   insights: ReactNode;
   initialTab?: QuickStopTabId;
 }) {
-  const [active, setActive] = useState<QuickStopTabId>(initialTab);
+  const [active, setActive] = useState<QuickStopTabId>('today');
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  /**
+   * ?tab= lands — after first paint, never as the server's initial state.
+   *
+   * See constraint 2 above. The setup checklist links here with
+   * `?tab=settings#quick-stop-setup`, and `select` rewrites the URL on every
+   * tab click, so this param is on the ordinary route in rather than being a
+   * hand-typed edge case: seeding state from it would grey out the coverage map
+   * for anyone who had ever opened another tab and come back.
+   *
+   * Ahead of the hash effect so that a hash still wins when a link carries
+   * both — they are batched into one render and the later write is the one that
+   * sticks.
+   */
+  useEffect(() => {
+    setActive(initialTab);
+  }, [initialTab]);
 
   /**
    * Deep links still land.

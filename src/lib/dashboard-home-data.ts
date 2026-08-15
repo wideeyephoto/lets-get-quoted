@@ -2,7 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { expandScheduledJobs, formatMoney, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
-import { listLeads } from '@/lib/leads';
+import { getLeadTriage, listLeads } from '@/lib/leads';
+import { isLeadActive } from '@/lib/lead-queue';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { getAutomationActivity } from '@/lib/automation-activity';
 import { countRebookCandidates } from '@/lib/rebook';
@@ -11,7 +12,7 @@ import { getSiteContent } from '@/lib/site-content';
 import { leadNeedsYouBreakdown, leadSummary } from '@/lib/lead-summary';
 import { recommendBlogTopic } from '@/lib/blog-topics';
 import { collectSchedulingIssues, schedulingIssueBreakdown } from '@/lib/scheduling-issues';
-import { resolvePayPeriod } from '@/lib/labor';
+import { addZonedDays, resolvePayPeriod, startOfDay, zonedDateKey } from '@/lib/labor';
 import {
   collectedInWindow,
   outstandingInvoices,
@@ -164,10 +165,19 @@ export async function buildDashboardHome(
     scheduleDayHours,
     normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays),
   );
+  const now = new Date();
+
   // One lead figure with its parts, rather than three totals in three places.
   // See lib/lead-summary for why the split is "whose move is it" rather than
   // status.
-  const leadStats = leadSummary(leads);
+  //
+  // Counted over the ACTIVE leads. Archive and Snooze only write into the
+  // triage blob, so this used to count a lead the owner had put down — the card
+  // said "3 lead follow-ups", the Leads page it linked to showed none of them,
+  // and it did that for as long as the snooze ran. Same predicate the Leads
+  // page splits its board with; see lib/lead-queue.
+  const activeLeads = leads.filter((lead) => isLeadActive({ status: lead.status, triage: getLeadTriage(lead) }, now));
+  const leadStats = leadSummary(activeLeads);
   const [crew, assignmentsByJob, automation, rebookDue, privateFeedback] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
@@ -184,7 +194,6 @@ export async function buildDashboardHome(
     jobsByDate.set(key, bucket);
   }
 
-  const now = new Date();
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
   const next7Days = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
@@ -223,16 +232,22 @@ export async function buildDashboardHome(
 
   // -- Money -------------------------------------------------------------------
   //
-  // Four reads, three pure calculators, and a month boundary cut in the
-  // ACCOUNT'S zone rather than the server's — see lib/dashboard-money for why
-  // each definition is the one it is.
+  // Four reads, three pure calculators, and BOTH date windows — the calendar
+  // month and the 30-day booked horizon — cut in the ACCOUNT'S zone rather than
+  // the server's. See lib/dashboard-money for why each definition is the one it
+  // is.
+  //
+  // The horizon used to be read off the server clock while the month beside it
+  // was not. On a UTC server the two disagree for the last hours of a Pacific
+  // owner's day, and both edges of the window moved a day: it opened on tomorrow,
+  // dropping a job that is on today's calendar out of "booked", and closed on day
+  // 31. scheduledWorkValue compares date keys as strings and says its caller
+  // supplies days already cut in the account's zone — this is the caller doing it.
   const timeZone = (account?.timezone as string) || 'America/New_York';
   const thisMonth = resolvePayPeriod('monthly', 0, { now, timeZone });
-  const horizonKey = toDateKey(
-    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).getFullYear(),
-    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).getMonth(),
-    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30).getDate(),
-  );
+  const accountToday = startOfDay(now, timeZone);
+  const bookedFromKey = zonedDateKey(accountToday, timeZone);
+  const bookedToKey = zonedDateKey(addZonedDays(accountToday, 30, timeZone), timeZone);
 
   const [{ data: invoiceRows }, { data: paidRows }] = await Promise.all([
     supabase.from('invoices').select('id, total, status, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
@@ -244,7 +259,7 @@ export async function buildDashboardHome(
 
   const outstanding = outstandingInvoices((invoiceRows ?? []) as InvoiceRow[], (paidRows ?? []) as PaymentRow[]);
   const openQuotes = quotesAwaitingApproval(jobs as unknown as QuotedJobRow[]);
-  const bookedWork = scheduledWorkValue(jobs as unknown as QuotedJobRow[], todayKey, horizonKey);
+  const bookedWork = scheduledWorkValue(jobs as unknown as QuotedJobRow[], bookedFromKey, bookedToKey);
   const collectedThisMonth = collectedInWindow((paidRows ?? []) as PaymentRow[], thisMonth.startIso, thisMonth.endIso);
 
   // Setup tasks (Stripe, website) live in the onboarding checklist and the
@@ -301,7 +316,11 @@ export async function buildDashboardHome(
           key: 'unpaid',
           label: `${formatMoney(outstanding.total)} in unpaid invoices`,
           detail: `${outstanding.count} invoice${outstanding.count === 1 ? '' : 's'} still owed, after deposits and part-payments.`,
-          href: `${basePath}/jobs`,
+          // ?owing=1 opens the jobs queue on "Most owed" rather than on the
+          // date order, so the rows this figure is about are the rows at the
+          // top. A bare /jobs sent the reader to a list sorted by when the work
+          // is, where the invoices they came to chase are scattered through it.
+          href: `${basePath}/jobs?owing=1`,
           cta: 'Chase payment',
         }
       : null,

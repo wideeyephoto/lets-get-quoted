@@ -48,7 +48,14 @@ async function main() {
   const totals = { linked: 0, created: 0, skipped: 0 };
 
   // Find-or-create the client for one contact, dedup by phone then email.
-  async function resolveClientId(accountId, name, rawPhone, rawEmail, rawAddress) {
+  //
+  // testMarker is INHERITED from the job or lead being linked, never invented
+  // here. This script is a real backfill — most of what it creates are real
+  // customers — so stamping its own name on everything would hide them. But a
+  // client conjured out of a seeded job is as synthetic as the job was, and
+  // leaving it null would put it back on the owner's list under a different
+  // shape. Needs migrations/2026-08-24-test-record-marker.sql.
+  async function resolveClientId(accountId, name, rawPhone, rawEmail, rawAddress, testMarker) {
     const phone = normalizeUsPhone(rawPhone);
     const email = (rawEmail || '').trim().toLowerCase() || null;
     const cleanName = (name || '').trim();
@@ -63,30 +70,30 @@ async function main() {
       if (rows[0]) return rows[0].id;
     }
     const { rows } = await client.query(
-      'insert into clients (account_id, name, phone, email, address) values ($1,$2,$3,$4,$5) returning id',
-      [accountId, cleanName || 'Client', phone, email, (rawAddress || '').trim() || null],
+      'insert into clients (account_id, name, phone, email, address, test_marker) values ($1,$2,$3,$4,$5,$6) returning id',
+      [accountId, cleanName || 'Client', phone, email, (rawAddress || '').trim() || null, testMarker ?? null],
     );
     totals.created++;
     return rows[0].id;
   }
 
   const { rows: jobs } = await client.query(
-    `select id, account_id, client_name, client_phone, client_email, address
+    `select id, account_id, client_name, client_phone, client_email, address, test_marker
      from jobs where client_id is null order by account_id, created_at asc`,
   );
   for (const job of jobs) {
-    const clientId = await resolveClientId(job.account_id, job.client_name, job.client_phone, job.client_email, job.address);
+    const clientId = await resolveClientId(job.account_id, job.client_name, job.client_phone, job.client_email, job.address, job.test_marker);
     if (!clientId) { totals.skipped++; continue; }
     await client.query('update jobs set client_id=$1 where id=$2', [clientId, job.id]);
     totals.linked++;
   }
 
   const { rows: leads } = await client.query(
-    `select id, account_id, name, phone, email, address
+    `select id, account_id, name, phone, email, address, test_marker
      from leads where client_id is null order by account_id, created_at asc`,
   );
   for (const lead of leads) {
-    const clientId = await resolveClientId(lead.account_id, lead.name, lead.phone, lead.email, lead.address);
+    const clientId = await resolveClientId(lead.account_id, lead.name, lead.phone, lead.email, lead.address, lead.test_marker);
     if (!clientId) { totals.skipped++; continue; }
     await client.query('update leads set client_id=$1 where id=$2', [clientId, lead.id]);
     totals.linked++;

@@ -367,8 +367,14 @@ export default async function SchedulePage({
      of jobs to compute a subtraction that, on future work, was almost always
      revenue minus nothing — one round trip per page load for a figure that
      printed the figure above it. */
-  const in30Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
-  const next30Key = toDateKey(in30Days.getFullYear(), in30Days.getMonth(), in30Days.getDate());
+
+  /* THE SAME THIRTY DAYS THE PERCENTAGE COVERS. loadOverWindow counts thirty
+     days starting at today, so the last of them is today + 29. This was today +
+     30 — thirty-one days — so the caption's job count and the figure above it
+     described different spans, and a job on that last day was in one and not the
+     other. Same helper, and the same inclusive shape, as the seven-day crew
+     window below. */
+  const next30Key = addDaysToDateKey(todayKey, 29);
   const scheduledNext30DayJobs = scheduledJobs.filter((job) => {
     const dateKey = job.scheduled_for as string;
     return dateKey >= todayKey && dateKey <= next30Key;
@@ -582,6 +588,33 @@ export default async function SchedulePage({
     blockedDays: blockedOnlyDays,
   });
 
+  /* A RATIO NOBODY CAN STAND BEHIND IS NOT ZERO PERCENT.
+     Two ways for it to be unquotable, and "0%" is the wrong answer to both. No
+     working days in the window is one, and loadOverWindow already returns null
+     for it. The other is a window whose only work is work nobody has estimated:
+     computeHoursByDate contributes nothing for those — it has to, because the
+     same function decides which slots the public booking page offers — so an
+     account that has never set a duration read "0% booked" above six scheduled
+     jobs. The em dash is what the Year view prints in the same spot, and the
+     hours and the uncounted jobs are on the card below it so the reason is on
+     screen rather than in a tooltip. */
+  /* ASKED OF THE JOBS, BECAUSE BOTH SENTENCES ON THE CARD ARE ABOUT JOBS.
+     `load.unknownJobs` is the right input to the ratio and the wrong number to
+     print beside it: countUnknownDurationByDate counts OCCURRENCE-DAYS, so one
+     job booked Monday to Friday reads as five directly under "1 jobs". And
+     "nothing measurable is booked" cannot be tested as bookedHours <= 0 —
+     computeHoursByDate adds the account's job buffer to every scheduled job, so
+     on the default 30-minute buffer six unestimated jobs come to three hours and
+     the card goes back to claiming 2% over work nobody has estimated. Same
+     window and same population as the "N jobs · 30d" caption beside them. */
+  const measuredNext30Days = scheduledNext30DayJobs.filter((job) => {
+    const hours = Number(job.estimated_hours);
+    return Number.isFinite(hours) && hours > 0;
+  }).length;
+  const unmeasuredNext30Days = scheduledNext30Days - measuredNext30Days;
+  const loadUnmeasured = measuredNext30Days === 0 && unmeasuredNext30Days > 0;
+  const loadFigure = load.percent === null || loadUnmeasured ? '—' : `${load.percent}%`;
+
   /* SCATTER IS 15 STRAIGHT-LINE MILES, and that number is a flag rather than a
      measurement. The app's own city-driving fallback is two minutes a mile
      (minutesFromMiles, ~30mph door to door), so 15 miles between a day's two
@@ -740,7 +773,7 @@ export default async function SchedulePage({
                 so the same page printed 11 and 3 for the same question. The bar
                 below owns that number now, and says which is which. */}
             <p className="sched-sum" aria-hidden="true">
-              <span><strong>{load.percent === null ? '—' : `${load.percent}%`}</strong> booked</span>
+              <span><strong>{loadFigure}</strong> booked</span>
               <span><strong>{scheduledNext30Days}</strong> jobs · 30d</span>
               {unassignedThisWeek > 0 ? <span><strong>{unassignedThisWeek}</strong> need crew</span> : null}
             </p>
@@ -756,24 +789,43 @@ export default async function SchedulePage({
                 The jobs count rides in the caption rather than taking a card of
                 its own. It is the same window and the same work, and it was
                 answering "how much" with a number that says nothing about
-                whether it fits. */}
+                whether it fits.
+
+                THE NUMERATOR IS HOURS, AND THE CARD SAYS SO ON SCREEN NOW. The
+                denominator, the window and the jobs the hours could not include
+                lived in the title and the aria-label only, so a sighted mouse
+                user got "0% booked" over "6 jobs" and nothing to explain it.
+                Same shape the Year view and the month cells already use: the
+                ratio, then the hours it is made of, then the work it could not
+                measure. */}
             <Link
               className={`sched-stat${load.percent !== null && load.percent > 100 ? ' needs' : ''}`}
               href="/dashboard/schedule/settings"
               aria-label={
                 load.percent === null
                   ? `No working days in the next 30 days, so there is no capacity to book against. ${scheduledNext30Days} jobs are scheduled.`
-                  : `${load.percent} percent booked over the next 30 days: ${load.bookedHours} of ${load.capacityHours} hours across ${load.workingDays} working days, holding ${scheduledNext30Days} jobs.${load.unknownJobs > 0 ? ` ${load.unknownJobs} of them have no duration set and are not in that total.` : ''} Opens schedule settings, where the working week and the hours in a day are set.`
+                  : loadUnmeasured
+                    ? `No measurable hours are booked over the next 30 days: ${scheduledNext30Days} scheduled jobs, ${unmeasuredNext30Days} of them with no duration set, against ${load.capacityHours} hours of capacity. Opens schedule settings, where the working week and the hours in a day are set.`
+                    : `${load.percent} percent booked over the next 30 days: ${load.bookedHours} of ${load.capacityHours} hours across ${load.workingDays} working days, holding ${scheduledNext30Days} jobs.${unmeasuredNext30Days > 0 ? ` ${unmeasuredNext30Days} of them have no duration set and are not in that total.` : ''} Opens schedule settings, where the working week and the hours in a day are set.`
               }
+              /* Only the part that is NOT on the card: where the denominator
+                 comes from. The hours and the uncounted jobs used to live here
+                 and are printed below instead. */
               title={
                 load.percent === null
                   ? 'No working days in the next 30 days'
-                  : `${load.bookedHours} of ${load.capacityHours} hrs across ${load.workingDays} working days${load.unknownJobs > 0 ? ` · ${load.unknownJobs} ${load.unknownJobs === 1 ? 'job has' : 'jobs have'} no duration set, and are not counted` : ''}`
+                  : `${load.workingDays} working days in the next 30, at ${scheduleDayHours} hrs a day`
               }
             >
               <StatIcon shape="gauge" />
-              <strong>{load.percent === null ? '—' : `${load.percent}%`}</strong>
-              <small>Booked · {scheduledNext30Days} jobs</small>
+              <strong>{loadFigure}</strong>
+              <small>Booked · {scheduledNext30Days} jobs · 30d</small>
+              <small className="sched-stat-hours">{load.bookedHours} / {load.capacityHours} hrs</small>
+              {unmeasuredNext30Days > 0 ? (
+                <small className="sched-stat-unknown">
+                  {unmeasuredNext30Days} {unmeasuredNext30Days === 1 ? 'job has' : 'jobs have'} no duration set
+                </small>
+              ) : null}
             </Link>
 
             {/* WORK THIS WEEK WITH NOBODY ON IT. Amber only when there is some:
@@ -945,7 +997,7 @@ export default async function SchedulePage({
           pins={mapPins}
           mapView={mapView}
           mapTheme={mapTheme}
-          /* The same occurrences the calendar draws, as the list half. Pins
+          /* The scheduled occurrences the calendar draws, as the list half. Pins
              answer "where" and nothing else — you cannot sort a map by value,
              or scan one for the two jobs in a town, and a screen reader cannot
              use it at all.
@@ -953,9 +1005,18 @@ export default async function SchedulePage({
              FILTERED TO THE MONTH ON SCREEN. calendarJobs holds every scheduled
              occurrence there is, not a month's worth — the grid does the
              narrowing. Passing it whole put 124 rows under a heading reading
-             "August 2026", opening on three jobs from April, June and October. */
+             "August 2026", opening on three jobs from April, June and October.
+             The map is deliberately NOT narrowed this way; both tab labels say
+             which span they hold. */
           jobs={calendarJobs
             .filter((job) => job.scheduled_for.startsWith(monthPrefix))
+            /* COMPLETED WORK STAYS IN THE ROWS. getMapPins drops it from the
+               pins — a finished job is not "where the work is" — and matching
+               that here would empty the List tab for every past month, which is
+               the one thing a past month is worth opening for. So the two halves
+               differ by status as well as by span, and each tab label now says
+               so; the disagreement was never that they differed, it was that
+               nothing on screen admitted it. */
             .map((job) => ({
               id: job.id,
               client_name: job.client_name,

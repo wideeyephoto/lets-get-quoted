@@ -160,9 +160,60 @@ describe('the schedule header', () => {
     expect(PAGE).toContain('loadOverWindow(');
     expect(PAGE).toContain('daysWithScatter(');
     expect(PAGE).toContain('unassignedThisWeek');
-    expect(PAGE).toContain('<small>Booked · {scheduledNext30Days} jobs</small>');
+    expect(PAGE).toContain('<small>Booked · {scheduledNext30Days} jobs · 30d</small>');
     expect(PAGE).toContain('<small>Need crew · 7d</small>');
     expect(PAGE).toContain('<small>Spread out · 30d</small>');
+  });
+
+  /**
+   * "0% BOOKED" ABOVE "6 JOBS" WAS TRUE ARITHMETIC AND A FALSE SENTENCE.
+   *
+   * The numerator is HOURS, and computeHoursByDate contributes nothing for a job
+   * nobody has estimated — deliberately, because the same function decides which
+   * slots the public booking page offers and a made-up duration there closes days
+   * that are genuinely free. Nothing in the app sets estimated_hours on its own,
+   * so an account that has never typed one read 0% with a full month on screen.
+   *
+   * The denominator, the window and the uncounted jobs were all in the link's
+   * title and aria-label, which is to say nowhere for the person holding the
+   * mouse. The card prints the ratio it measured, names what it could not
+   * measure, and gives an em dash rather than a zero when it measured nothing —
+   * the same three moves the Year view and the month cells already make.
+   */
+  it('says what the percentage is a percentage of', () => {
+    expect(PAGE).toContain('{load.bookedHours} / {load.capacityHours} hrs');
+    expect(PAGE).toContain("{unmeasuredNext30Days === 1 ? 'job has' : 'jobs have'} no duration set");
+    /* Zero hours over work nobody has estimated is not zero percent booked —
+       and neither is the job buffer's worth of hours. computeHoursByDate adds
+       the buffer to every scheduled job, so `bookedHours <= 0` was only ever
+       true on an account with the buffer at zero: with the default 30 minutes,
+       six unestimated jobs come to three hours and the card went back to
+       printing 2%. The question is whether anything in the window has been
+       measured, which is a question about jobs. */
+    expect(PAGE).toContain('const loadUnmeasured = measuredNext30Days === 0 && unmeasuredNext30Days > 0;');
+    expect(PAGE).not.toContain('load.bookedHours <= 0');
+    expect(PAGE).toContain("const loadFigure = load.percent === null || loadUnmeasured ? '—' : `${load.percent}%`;");
+    /* Counted per JOB, not per occurrence-day. countUnknownDurationByDate emits
+       one per day a job runs, so a Monday-to-Friday job printed "5 jobs have no
+       duration set" directly under the caption's "1 jobs". */
+    expect(PAGE).toContain('const unmeasuredNext30Days = scheduledNext30Days - measuredNext30Days;');
+    // Both places the figure is drawn read the same one.
+    expect(PAGE).not.toContain("<strong>{load.percent === null ? '—' : `${load.percent}%`}</strong>");
+    // And the caption no longer leaves the span to the tooltip.
+    expect(PAGE).not.toContain('<small>Booked · {scheduledNext30Days} jobs</small>');
+  });
+
+  /**
+   * The header is pinned to the real today while the grid below it follows the
+   * month you have navigated to, so the cards have to name their own window.
+   * They also have to agree with each other: loadOverWindow counts thirty days
+   * from `fromKey` INCLUSIVE, so the last of them is today + 29. The caption
+   * counted to today + 30 — thirty-one days — and a job on that last day was in
+   * the count and not in the ratio.
+   */
+  it('captions the same span it measures', () => {
+    expect(PAGE).toContain('const next30Key = addDaysToDateKey(todayKey, 29);');
+    expect(PAGE).not.toContain('now.getDate() + 30');
   });
 
   it('no longer prices the calendar', () => {

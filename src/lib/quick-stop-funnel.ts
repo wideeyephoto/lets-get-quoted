@@ -113,7 +113,11 @@ export function quickStopFunnel(report: CandidateReport): FunnelStep[] {
     {
       key: 'matched',
       count: report.eligible.length,
-      label: 'countable',
+      /* "countable" was this app's word for it, not a contractor's, and the
+         screen-reader sentence below is built from the labels alone — so the
+         detail that made it obvious on screen is exactly what a reader does
+         not get. The label says the condition instead of naming it. */
+      label: 'with a length recorded',
       /* THE ONE THAT LOOKS LIKE A BUG AND IS NOT. Nothing in this app writes
          estimated_hours automatically, so on most accounts every record reaches
          the last step and stops here — the panel reports zero while the rows

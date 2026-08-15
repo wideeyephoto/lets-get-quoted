@@ -1,5 +1,6 @@
 import type { LeadScore, LeadStatus } from './leads';
 import type { JobStatus } from './jobs';
+import { queueStageLabel } from './lead-queue';
 
 // Display strings shared by the leads board, the Focus pane and the full lead
 // page. They lived in three files and had already drifted — the board printed
@@ -7,21 +8,32 @@ import type { JobStatus } from './jobs';
 // separate copy, and either could have been edited alone. Client-safe: pure
 // strings and formatting, no server imports.
 
-// Canonical lead-stage vocabulary. 'quoted' reads "Quote sent" because that is
-// what happened; the raw enum only makes sense to whoever wrote the schema.
+// Canonical lead-stage vocabulary, taken from lib/lead-queue rather than spelled
+// out a second time here. 'quoted' still reads "Quote sent" because that is what
+// happened; the raw enum only makes sense to whoever wrote the schema.
+//
+// It WAS a second map, and the two disagreed about 'new': the queue chip said
+// "Needs response" and the detail page's pill, drawn from here, said "New
+// request" — for the same lead, one click apart.
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
-  new: 'New request',
-  contacted: 'Contacted',
-  quoted: 'Quote sent',
-  won: 'Won',
-  lost: 'Lost',
+  new: queueStageLabel('new'),
+  contacted: queueStageLabel('contacted'),
+  quoted: queueStageLabel('quoted'),
+  won: queueStageLabel('won'),
+  lost: queueStageLabel('lost'),
 };
 
-// A website form that nobody has answered is the one state worth shouting
-// about, so it gets its own wording rather than the generic "New request".
-export function leadStageLabel(status: LeadStatus, source?: string): string {
-  if (status === 'new' && source === 'website_form') return 'Needs response';
-  return LEAD_STATUS_LABEL[status] ?? status;
+// One stage word per lead, from lib/lead-queue — the same function the Smoothie
+// chips, the board columns and the table already count and label with.
+//
+// This used to shout "Needs response" for a new WEBSITE lead and say "New
+// request" for every other new lead, which is how one lead came to badge two
+// different ways on one screen: the Smoothie chip above it counts on status
+// alone, so a lead phoned in an hour ago sat in the Needs-response bucket with
+// "New request" written on it. `_source` is still accepted so the callers that
+// pass it keep compiling; it no longer changes the answer.
+export function leadStageLabel(status: LeadStatus, _source?: string): string {
+  return queueStageLabel(status);
 }
 
 // The stage of the job a lead turned into. data-export.ts keeps its own copy of

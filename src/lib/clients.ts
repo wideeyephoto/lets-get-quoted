@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
+import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
 
 export type Client = {
   id: string;
@@ -68,18 +69,27 @@ export async function findOrCreateClientId(
   return data.id as string;
 }
 
+// `excludeTestRecords` leaves out the rows a seeding or probe script stamped as
+// its own — see src/lib/test-records.ts. It is OFF unless a caller asks, and no
+// caller asks yet: the marker column has to be in the database before a
+// deployed query names it, and a select on a missing column errors rather than
+// degrading. The jobs side is filtered too, because a seeded client's repeat
+// visits and quoted totals are the numbers that actually move.
 export async function listClientsWithStats(
   supabase: SupabaseClient,
   accountId: string,
-  options?: { todayKey?: string },
+  options?: { todayKey?: string } & TestRecordOptions,
 ): Promise<ClientWithStats[]> {
   const [{ data: clients }, { data: jobs }] = await Promise.all([
-    supabase.from('clients').select('*').eq('account_id', accountId),
-    supabase
-      .from('jobs')
-      .select('client_id, quoted_amount, created_at, scheduled_for')
-      .eq('account_id', accountId)
-      .not('client_id', 'is', null),
+    applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options),
+    applyTestRecordFilter(
+      supabase
+        .from('jobs')
+        .select('client_id, quoted_amount, created_at, scheduled_for')
+        .eq('account_id', accountId)
+        .not('client_id', 'is', null),
+      options,
+    ),
   ]);
 
   // The caller passes today so the split between "booked" and "been" is made

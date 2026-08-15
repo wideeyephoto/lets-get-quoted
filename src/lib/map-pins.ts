@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatMoney, listJobs } from '@/lib/jobs';
-import { formatElapsedTime, getLeadTriage, isLeadSnoozed, listLeads } from '@/lib/leads';
+import { formatElapsedTime, getLeadTriage, listLeads } from '@/lib/leads';
+import { isLeadActive } from '@/lib/lead-queue';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import type { MapPin, MapPinRow } from '@/components/pin-map';
 
@@ -42,13 +43,17 @@ export async function getMapPins(supabase: SupabaseClient, accountId: string): P
   const crewName = new Map<string, string>(crew.map((c) => [c.id, c.name]));
 
   const pins: MapPin[] = [];
+  // One clock for every pin, so a snooze expiring mid-loop cannot drop one lead
+  // and keep the next.
+  const now = new Date();
 
   for (const lead of leads) {
     if (lead.lat == null || lead.lng == null) continue;
-    if (lead.status === 'won' || lead.status === 'lost') continue;
     if (lead.converted_job) continue; // now a job — pinned below instead
     const triage = getLeadTriage(lead);
-    if (triage.archived || isLeadSnoozed(triage)) continue;
+    // Won, lost, archived and snoozed, judged by the shared predicate in
+    // lib/lead-queue rather than by a copy of it that lived here.
+    if (!isLeadActive({ status: lead.status, triage }, now)) continue;
 
     const rows: MapPinRow[] = [];
     const detail = lead.project_type || lead.message;

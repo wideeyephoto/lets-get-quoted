@@ -70,6 +70,14 @@ try {
   if (signedPhotoError) throw signedPhotoError;
   assert(Boolean(signedPhoto.signedUrl), 'Lead photo could not be signed for owner access.');
 
+  // The lead itself was written by the public endpoint — real application code,
+  // which never sets the marker — so this is the earliest the probe can own up
+  // to it. The account is torn down in `finally`, but a run that dies between
+  // here and there should not leave an anonymous lead behind.
+  // Needs migrations/2026-08-24-test-record-marker.sql.
+  const { error: markError } = await admin.from('leads').update({ test_marker: 'test-leads' }).eq('id', lead.id);
+  if (markError) throw markError;
+
   const { data: job, error: jobError } = await admin.from('jobs').insert({
     account_id: accountId,
     ref: `J-${suffix}`,
@@ -79,6 +87,7 @@ try {
     scope: lead.message,
     status: 'new_lead',
     quoted_amount: 12500,
+    test_marker: 'test-leads',
   }).select('id').single();
   if (jobError) throw jobError;
   const { error: convertError } = await admin.from('leads').update({ status: 'won', converted_job: job.id }).eq('id', lead.id);

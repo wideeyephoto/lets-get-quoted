@@ -137,17 +137,20 @@ export default function QuickStopCandidates({
           <li key={step.key} className="qs-funnel-step" data-drop={step.isBiggestDrop || undefined}>
             {/* The whole row is announced once, off the list's own label —
                 read individually these are "54 6 3 0", which is not the same
-                information. */}
+                information. The link is the exception and sits outside: a
+                focusable node inside aria-hidden is reachable by tab and has
+                no accessible name at all, so the funnel's only thing to do was
+                the one part of it a keyboard could reach and not hear. */}
             <span aria-hidden="true">
               <b className="qs-funnel-count">{step.count}</b>
               <span className="qs-funnel-label">{step.label}</span>
               {step.detail ? <span className="qs-funnel-detail">{step.detail}</span> : null}
-              {step.action ? (
-                <a className="qs-funnel-action" href={step.action.href}>
-                  {step.action.label} &rarr;
-                </a>
-              ) : null}
             </span>
+            {step.action ? (
+              <a className="qs-funnel-action" href={step.action.href}>
+                {step.action.label} <span aria-hidden="true">&rarr;</span>
+              </a>
+            ) : null}
           </li>
         ))}
       </ol>

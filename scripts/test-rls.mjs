@@ -48,12 +48,16 @@ async function main() {
     const accountB = accB[0].id;
 
     const { rows: jobB } = await client.query(
-      `insert into jobs (account_id, ref, client_name, quoted_amount) values ($1, 'J-TESTB', 'Other Contractor Client', 5000) returning id`,
+      `insert into jobs (account_id, ref, client_name, quoted_amount, test_marker) values ($1, 'J-TESTB', 'Other Contractor Client', 5000, 'test-rls') returning id`,
       [accountB]
     );
 
+    // accountA is a REAL account — this probe writes into somebody's live data
+    // and deletes it again at the end. The marker is what makes the row honest
+    // in between, and identifiable if the cleanup never runs.
+    // Needs migrations/2026-08-24-test-record-marker.sql.
     const { rows: jobA } = await client.query(
-      `insert into jobs (account_id, ref, client_name, quoted_amount) values ($1, 'J-TESTA', 'RLS Probe Client', 10000) returning id`,
+      `insert into jobs (account_id, ref, client_name, quoted_amount, test_marker) values ($1, 'J-TESTA', 'RLS Probe Client', 10000, 'test-rls') returning id`,
       [accountA]
     );
 
@@ -88,7 +92,7 @@ async function main() {
     try {
       await client.query('savepoint sp1');
       await client.query(
-        `insert into jobs (account_id, ref, client_name, quoted_amount) values ($1, 'J-HACK', 'Should be blocked', 1) `,
+        `insert into jobs (account_id, ref, client_name, quoted_amount, test_marker) values ($1, 'J-HACK', 'Should be blocked', 1, 'test-rls') `,
         [accountB]
       );
     } catch (err) {

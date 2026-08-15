@@ -28,14 +28,30 @@ describe('lead stage labels', () => {
     expect(LEAD_STATUS_LABEL.quoted).toBe('Quote sent');
   });
 
-  it('shouts only about an unanswered website request', () => {
+  /**
+   * REVERSED, DELIBERATELY.
+   *
+   * This used to assert that only a website form said "Needs response" and that
+   * a missed call or a hand-typed lead stayed the neutral "New request". The
+   * reasoning was sound on its own — nobody is sitting on a form — but it was
+   * the third copy of a source-gated rule, and the Smoothie chip that sits above
+   * the same row buckets on status alone and had already been changed the other
+   * way (see the note on QUEUE_STAGES). So one lead badged "New request" inside
+   * a column headed "Needs response", and the count and the word disagreed.
+   *
+   * These labels now come from lib/lead-queue. A lead phoned in an hour ago
+   * needs a reply exactly as much as one that arrived through the form.
+   */
+  it('calls every unanswered lead "Needs response", whatever it arrived on', () => {
     expect(leadStageLabel('new', 'website_form')).toBe('Needs response');
-    // A missed call or a manually typed lead is new, but nobody is sitting on a
-    // form waiting for a reply, so it stays the neutral wording.
-    expect(leadStageLabel('new', 'missed_call')).toBe('New request');
-    expect(leadStageLabel('new')).toBe('New request');
+    expect(leadStageLabel('new', 'missed_call')).toBe('Needs response');
+    expect(leadStageLabel('new')).toBe('Needs response');
     // Answered already — the badge must not keep demanding a response.
     expect(leadStageLabel('contacted', 'website_form')).toBe('Contacted');
+  });
+
+  it('gives the detail page the same word as the chip that led there', () => {
+    expect(LEAD_STATUS_LABEL.new).toBe(leadStageLabel('new'));
   });
 });
 

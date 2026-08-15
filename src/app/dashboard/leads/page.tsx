@@ -4,7 +4,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
-import { waitingFor } from '@/lib/lead-queue';
+import { isSetAside, stageCounts, waitingFor } from '@/lib/lead-queue';
 import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfterDaysAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
@@ -26,20 +26,32 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   await expireStaleLeads(supabase, accountId, leadLostAfterDays);
   const allLeads = await listLeads(supabase, accountId);
 
+  // One clock for the whole page. Called per lead it would drift across the
+  // list, so two leads that arrived in the same minute could report different
+  // waits — and a snooze expiring mid-render could land a lead in the board and
+  // in the drawer at once.
+  const now = new Date();
+
   // Snoozed/archived leads collapse into "Set aside" below the board; the
-  // board itself sorts each column Hot → Warm → Low so junk sinks.
+  // board itself sorts each column Hot → Warm → Low so junk sinks. The test for
+  // "set aside" is the shared one from lib/lead-queue, which is the same one the
+  // dashboard card, the rail badge and the alert banner now count with.
   const SCORE_ORDER = { hot: 0, warm: 1, low: 2 } as const;
   const triaged = allLeads.map((lead) => ({ lead, triage: getLeadTriage(lead) }));
-  const setAside = triaged.filter(({ lead, triage }) => !['won', 'lost'].includes(lead.status) && (triage.archived || isLeadSnoozed(triage)));
+  const setAside = triaged.filter(({ lead, triage }) => !['won', 'lost'].includes(lead.status) && isSetAside(triage, now));
   const setAsideIds = new Set(setAside.map(({ lead }) => lead.id));
   const leads = triaged
     .filter(({ lead }) => !setAsideIds.has(lead.id))
     .sort((a, b) => SCORE_ORDER[a.triage.score] - SCORE_ORDER[b.triage.score])
     .map(({ lead }) => lead);
 
+  // Inventory, so it counts won and lost too — "how much has the website ever
+  // brought in", not "what needs doing".
   const websiteRequests = allLeads.filter((lead) => lead.source === 'website_form').length;
-  const openRequests = allLeads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
-  const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
+  // Open work the owner can actually act on. Counted over `leads` rather than
+  // every row, so a lead they archived or snoozed is not still sitting in the
+  // total underneath a board that no longer shows it.
+  const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
   const mapView = normalizeMapView(cookies().get(mapViewCookie('leads'))?.value);
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
@@ -55,10 +67,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   // one query on a page that already runs several.
   const mapPins = await getMapPins(supabase, accountId);
 
-  // One clock for the whole page. Called per lead it would drift across the
-  // list, so two leads that arrived in the same minute could report different
-  // waits.
-  const now = new Date();
   const toViewItem = (lead: (typeof allLeads)[number]): LeadViewItem => {
     const triage = getLeadTriage(lead);
     const estimate = triage.estimate ?? null;
@@ -66,7 +74,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       id: lead.id,
       name: lead.name || 'Unnamed request',
       status: lead.status,
-      statusLabel: leadStageLabel(lead.status, lead.source),
+      statusLabel: leadStageLabel(lead.status),
       sourceLabel: formatLeadSource(lead.source),
       phone: lead.phone,
       email: lead.email,
@@ -106,6 +114,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   };
 
   const viewLeads: LeadViewItem[] = leads.map(toViewItem);
+
+  // The ticker's "Needs response" is now the SAME arithmetic as the Smoothie
+  // stage chip that sits a few hundred pixels above it — one call, on the array
+  // both of them render. They were two numbers under one label: this counted
+  // website forms only while the chip counted every new lead, and non-website
+  // new leads demonstrably exist (manual entry, missed calls).
+  const stages = stageCounts(viewLeads);
 
   // Snoozed leads, kept apart from the open queue but no longer only reachable
   // through a drawer at the foot of the page. They are not work you are doing
@@ -201,7 +216,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
 
       <div className={`stat-ticker panel ${styles.requestStats}`}>
         <div className={styles.urgentStat}>
-          <span className="stat-ticker-value">{needsResponse}</span>
+          <span className="stat-ticker-value">{stages.new}</span>
           <span className="stat-ticker-label">Needs response</span>
         </div>
         <div className="stat-ticker-item">
@@ -217,7 +232,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           <span className="stat-ticker-label">Avg response time</span>
         </div>
         <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{leads.filter((lead) => lead.status === 'won').length}</span>
+          <span className="stat-ticker-value">{stages.won}</span>
           <span className="stat-ticker-label">Won</span>
         </div>
       </div>

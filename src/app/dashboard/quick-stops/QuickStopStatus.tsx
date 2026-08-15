@@ -359,13 +359,18 @@ export function QuickStopHead() {
     <header className="bset-head">
       <div>
         {/* The logo IS the heading, so it stays inside the h1 rather than
-            replacing it: the alt text carries the page name for a screen reader
-            and for the document outline, which an <img> beside a removed h1
-            would have thrown away. */}
+            replacing it — an <img> beside a removed h1 throws the page name out
+            of the document outline. The name is now real text next to it rather
+            than alt text: alt satisfies a screen reader, but anything that
+            reads the text and not the tree — reader mode, translation, a
+            crawler, a page-title scraper — saw a top heading with no words in
+            it. sr-only, so nothing on screen moves, and the badge is decorative
+            once the name is spelled out beside it. */}
         <h1 className="qs-logo-head">
+          <span className="sr-only">Quick Stops</span>
           <Image
             src="/brand/quick-stops-badge.png"
-            alt="Quick Stops"
+            alt=""
             width={300}
             height={77}
             priority

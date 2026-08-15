@@ -469,7 +469,7 @@ describe('the dialog', () => {
 
   it('keeps the two sections apart, and stacks them on a phone', () => {
     expect(STRIP).toContain('Your Let&rsquo;s Get Quoted notifications');
-    expect(STRIP).toContain('Customer texting');
+    expect(STRIP).toContain('Your own texting number');
     const at = CSS.indexOf('\n.msg-setup-sections {');
     const base = CSS.slice(at, CSS.indexOf('}', at));
     // One column by default; two only where there is room.
@@ -607,12 +607,20 @@ describe('the description matches the traffic that is registered', () => {
     expect(STRIP).toContain('This does not text your customers');
   });
 
-  it('keeps customer texting labelled as coming soon and inactive', () => {
-    expect(STRIP).toContain('Customer texting &mdash; coming soon');
-    const customerSection = STRIP.slice(STRIP.indexOf('Customer texting &mdash; coming soon'));
-    expect(customerSection).not.toContain('<button');
-    expect(customerSection).not.toContain('<input');
-    expect(customerSection).not.toContain('<form');
+  /**
+   * THE NUMBER IS WHAT IS COMING, NOT THE TEXTING. This section used to be
+   * headed "Customer texting — coming soon" and sat above an inbox that
+   * two-way texts today, first message included — so it announced that a
+   * shipped feature was missing. Only the words changed: the registration is
+   * still `not_started`, still pending, and still offers nothing to press.
+   */
+  it('says the owner’s own number is what is pending, not the texting', () => {
+    expect(STRIP).toContain('Your own texting number &mdash; coming soon');
+    expect(STRIP).toContain('You can text customers from this inbox today');
+    const numberSection = STRIP.slice(STRIP.indexOf('Your own texting number &mdash; coming soon'));
+    expect(numberSection).not.toContain('<button');
+    expect(numberSection).not.toContain('<input');
+    expect(numberSection).not.toContain('<form');
   });
 });
 
@@ -655,11 +663,11 @@ describe('the screenshot must not leak the inbox behind it', () => {
   });
 });
 
-describe('customer texting claims nothing it cannot do', () => {
+describe('the dedicated number claims nothing it cannot do', () => {
   /* A "Start registration" button would open a form nobody can file — the
      provider has not confirmed the process for managed accounts. */
   it('offers no submit button while nobody can register', () => {
-    const section = STRIP.slice(STRIP.indexOf('Customer texting'));
+    const section = STRIP.slice(STRIP.indexOf('Your own texting number &mdash; coming soon'));
     for (const fake of ['Start registration', 'Submit registration', '<button', 'Register now']) {
       expect(section, fake).not.toContain(fake);
     }

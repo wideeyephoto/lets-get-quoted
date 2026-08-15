@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
-import { expireStaleLeads, getLeadTriage, type LeadStatus } from '@/lib/leads';
+import { expireStaleLeads, getLeadTriage, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { isLeadActive, needsResponse } from '@/lib/lead-queue';
 import { leadRailTitle, leadSummary } from '@/lib/lead-summary';
 import { listJobs } from '@/lib/jobs';
 import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
@@ -13,6 +14,12 @@ import { pickBusinessName } from '@/lib/business-name';
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
 // shell since this is fetched client-side.
+
+// How many unanswered leads we read in order to judge them. Ten times the old
+// figure, and deliberately unrelated to what the badge is willing to print —
+// see the query below, and attentionBadgeLabel in lib/lead-queue.
+const ATTENTION_LEAD_SCAN_LIMIT = 500;
+
 export async function GET() {
   const supabase = createSupabaseServerClient();
   const {
@@ -44,14 +51,29 @@ export async function GET() {
       .select('published, subdomain, custom_domain, custom_domain_verified_at, company_name')
       .eq('account_id', membership.accountId)
       .maybeSingle(),
+    // WHY THIS IS STILL ROWS AND NOT `head: true`.
+    //
+    // Two of the three things that disqualify a lead here — archived, snoozed,
+    // low-quality-and-muted — live inside the `triage` JSONB blob, and the
+    // account setting that decides the third is not known until the accounts
+    // read beside this one resolves. A head count would have to spell the whole
+    // predicate out again in PostgREST's JSON-path dialect, against unindexed
+    // keys, which is precisely the fifth copy this change exists to delete. So
+    // the rows come back and lib/lead-queue judges them in JS, once.
+    //
+    // The limit is a scan ceiling, not the badge's ceiling: it used to be 50,
+    // which was ALSO what the badge counted, so past fifty the number silently
+    // stuck while the Leads page's own totals kept climbing. Past 500 unanswered
+    // new leads the count under-reads — but the badge is rendering "50+" long
+    // before that, so the only thing lost is precision nobody was reading.
     admin
       .from('leads')
-      .select('id, created_at, triage')
+      .select('id, created_at, status, triage')
       .eq('account_id', membership.accountId)
       .eq('source', 'website_form')
       .eq('status', 'new')
       .order('created_at', { ascending: false })
-      .limit(50),
+      .limit(ATTENTION_LEAD_SCAN_LIMIT),
     // Pipeline inventory, not "needs you": every lead still being worked.
     // 'won' is excluded alongside 'lost' — a won lead IS the job sitting in the
     // Jobs total right beside it, so counting it here would bill the same work
@@ -61,9 +83,13 @@ export async function GET() {
     // the same function the dashboard's card uses. The rail and the dashboard
     // telling different lead stories is the thing lib/lead-summary exists to
     // stop, and it can only be stopped by them sharing the arithmetic.
+    //
+    // `triage` rides along because archived and snoozed leads are still 'new'
+    // in the status column — without it the rail's open count and its tooltip
+    // keep counting work the owner has explicitly put down.
     admin
       .from('leads')
-      .select('status, source')
+      .select('status, source, triage')
       .eq('account_id', membership.accountId)
       .not('status', 'in', '("won","lost")'),
       listJobs(admin, membership.accountId),
@@ -86,12 +112,29 @@ export async function GET() {
 
       // Muting low-quality leads (default on) keeps them off the dashboard nag —
       // the badge/banner only counts leads that actually deserve a response.
-      const muteLowLeads = account?.mute_low_quality_leads !== false;
+      // It stays an option on the shared predicate rather than a rule inside it:
+      // the Leads page counts without it, because that page SHOWS those leads
+      // and a total must never disagree with the list under it.
+      const muteLowQuality = account?.mute_low_quality_leads !== false;
+      // One clock for every lead in this response, so the badge and the tooltip
+      // cannot land on opposite sides of a snooze that expires mid-request.
+      const now = new Date();
       const attentionLeads = (newLeadRows ?? [])
-        .map((row) => ({ id: row.id as string, created_at: row.created_at as string, triage: getLeadTriage({ triage: (row as { triage: unknown }).triage as never }) }))
-        .filter((row) => !muteLowLeads || row.triage.score !== 'low');
+        .map((row) => ({
+          id: row.id as string,
+          created_at: row.created_at as string,
+          status: row.status as LeadStatus,
+          triage: getLeadTriage({ triage: (row as { triage: unknown }).triage as never }),
+        }))
+        // The badge used to be "status new + source website_form" and nothing
+        // else, so it went on counting a lead the owner had archived or snoozed
+        // for up to thirty days — and clicking it landed them on a Leads page
+        // that had already taken the lead off the board.
+        .filter((lead) => needsResponse(lead, { muteLowQuality }, now));
       const newQuoteRequestCount = attentionLeads.length;
-      const leadStats = leadSummary((openLeadRows ?? []) as { status: LeadStatus; source: string | null }[]);
+      const openLeads = ((openLeadRows ?? []) as { status: LeadStatus; source: string | null; triage: LeadTriage | null }[])
+        .filter((lead) => isLeadActive({ status: lead.status, triage: getLeadTriage(lead) }, now));
+      const leadStats = leadSummary(openLeads);
       const newestLead = attentionLeads[0] ?? null;
       const newestQuoteRequestHighValue = newestLead ? newestLead.triage.flags.includes('high_value') : false;
 

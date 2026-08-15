@@ -364,12 +364,24 @@ describe('the three tabs', () => {
 
   /**
    * Google Maps measures its container at construction, so a map built while
-   * display:none renders grey and stays grey. Today is the default tab, which
-   * is what makes hiding the others safe.
+   * display:none renders grey and stays grey — and nothing in the map's deps
+   * changes when you switch back, so it stays grey for the life of the page.
+   *
+   * The initial state must therefore be Today no matter what the link asked
+   * for. This used to hold only because nothing could ask: `?tab=` was inert.
+   * Once the page began forwarding it, `useState(initialTab)` let the setup
+   * checklist's own `?tab=settings` link emit `hidden` on the Today panel in
+   * the SSR stream. Both deep-link routes now switch in a mount effect instead,
+   * which is how the hash route always worked.
    */
   it('leaves the map on the tab that is visible first', () => {
     expect(TABS).toContain('initialTab = \'today\'');
     const todayPanel = PAGE.slice(PAGE.indexOf('const todayPanel'), PAGE.indexOf('const settingsPanel'));
     expect(todayPanel).toContain('<QuickStopCoverage');
+    // First paint is Today, whatever was asked for...
+    expect(TABS).toContain("useState<QuickStopTabId>('today')");
+    expect(TABS).not.toContain('useState<QuickStopTabId>(initialTab)');
+    // ...and the requested tab arrives after mount, like the hash does.
+    expect(TABS).toContain('setActive(initialTab);');
   });
 });

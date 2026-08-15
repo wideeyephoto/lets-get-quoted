@@ -16,6 +16,7 @@ import { createJobAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import { getMapPins } from '@/lib/map-pins';
 import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
+import { JOB_STAGES, type QueueSort, type StageFilter } from '@/lib/job-queue';
 import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
 import AutomationLink from '@/components/automation-link';
 
@@ -107,6 +108,20 @@ function buildPastClients(jobs: Job[], leads: Lead[]): PastClientOption[] {
   return clients;
 }
 
+// The deep links other pages already send here. `status` was declared below and
+// never read, so every "View open quotes" / "Bill finished jobs" link in
+// Insights landed on the unfiltered list; `owing` is what the dashboard's unpaid
+// invoices card uses to open the queue on the rows it counted. Both are
+// validated against the workspace's own vocabulary, so a hand-edited URL falls
+// back to the default rather than filtering everything away.
+function initialStageFrom(value: string | undefined): StageFilter {
+  return JOB_STAGES.some((stage) => stage.id === value) ? (value as StageFilter) : 'all';
+}
+
+function initialSortFrom(value: string | undefined): QueueSort {
+  return value === '1' ? 'owed' : 'soonest';
+}
+
 function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T[]> {
   return rows.reduce<Record<string, T[]>>((groups, row) => {
     groups[row.job_id] = [...(groups[row.job_id] ?? []), row];
@@ -117,7 +132,7 @@ function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; new?: string };
+  searchParams: { status?: string; new?: string; owing?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -229,6 +244,8 @@ export default async function JobsPage({
         <JobsWorkspace
           jobs={jobItems}
           initialView={jobsView}
+          initialStatus={initialStageFrom(searchParams.status)}
+          initialSort={initialSortFrom(searchParams.owing)}
           mapView={mapView}
           mapTheme={mapTheme}
           mapPins={mapPins}
