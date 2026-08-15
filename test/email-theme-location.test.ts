@@ -6,25 +6,27 @@ const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts),
 
 const MARKETING = read('src', 'app', 'dashboard', 'marketing', 'MarketingOverviewScreen.tsx');
 const PICKER = read('src', 'app', 'dashboard', 'marketing', 'EmailThemeSection.tsx');
+const THEME_PAGE = read('src', 'app', 'dashboard', 'marketing', 'email-theme', 'page.tsx');
 const SETTINGS = read('src', 'app', 'dashboard', 'settings', 'page.tsx');
 
 describe('email theme placement', () => {
-  it('lives on Marketing rather than Account settings', () => {
-    expect(MARKETING).toContain('<EmailThemeSection {...emailTheme} accordion />');
+  it('uses a dedicated Marketing subpage rather than expanding the overview', () => {
+    expect(MARKETING).not.toContain('<EmailThemeSection');
+    expect(MARKETING).toContain("'/dashboard/marketing/email-theme'");
+    expect(THEME_PAGE).toContain('<EmailThemeSection');
     expect(SETTINGS).not.toContain('EmailThemeSection');
     expect(SETTINGS).not.toContain("'email-theme'");
   });
 
-  it('is a closed-by-default native accordion', () => {
-    const disclosure = PICKER.slice(PICKER.indexOf('<details'), PICKER.indexOf('</details>'));
-    expect(disclosure).toContain('id="email-theme"');
-    expect(disclosure).toContain('<summary');
-    expect(disclosure).not.toMatch(/\bopen(?:=|\s|>)/);
+  it('keeps the full picker off the overview page', () => {
+    expect(PICKER).not.toContain('<details');
+    expect(PICKER).toContain('<section className="panel workspace-section-card" id="email-theme">');
   });
 
   it('keeps saving on the Marketing route', () => {
     const actions = read('src', 'app', 'dashboard', 'marketing', 'actions.ts');
     expect(actions).toContain('export async function updateEmailThemeAction');
     expect(actions).toContain("revalidatePath('/dashboard/marketing')");
+    expect(actions).toContain("revalidatePath('/dashboard/marketing/email-theme')");
   });
 });

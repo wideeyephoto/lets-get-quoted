@@ -29289,8 +29289,66 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   border-radius: 6px;
 }
 
-.mkt-overview-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap; }
-.mkt-hero-action { flex: 0 0 auto; }
+.mkt-overview-hero {
+  display: block;
+  padding-block: 1.35rem;
+}
+.mkt-overview-hero .workspace-title {
+  max-width: none;
+  margin: 0.15rem 0 0.25rem;
+  font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+  line-height: 1.06;
+}
+.mkt-overview-hero .workspace-lead { max-width: 68ch; margin: 0; }
+
+/* --- The one decision this page exists to make ---------------------------- */
+.mkt-priority {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 13rem);
+  gap: 1.5rem;
+  align-items: stretch;
+  border-color: var(--cedge-orange-14, var(--edge-t18));
+  background:
+    linear-gradient(120deg, rgba(255, 122, 33, 0.075), transparent 45%),
+    rgba(var(--panel-rgb), 0.88);
+}
+.mkt-priority-copy { align-self: center; min-width: 0; }
+.mkt-priority-copy .eyebrow { margin: 0 0 0.35rem; }
+.mkt-priority-copy h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.5vw, 1.85rem);
+  line-height: 1.16;
+  text-wrap: balance;
+}
+.mkt-priority-copy > p:not(.eyebrow) {
+  max-width: 70ch;
+  margin: 0.55rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.58;
+}
+.mkt-priority-actions { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-top: 1rem; }
+.mkt-priority-metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding-left: 1.35rem;
+  border-left: 1px solid var(--edge-t12);
+}
+.mkt-priority-metric span {
+  color: var(--mute-t58);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+.mkt-priority-metric strong {
+  margin-top: 0.25rem;
+  font-size: clamp(1.8rem, 3vw, 2.45rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.mkt-priority-metric small { margin-top: 0.25rem; color: var(--muted); font-size: 0.78rem; }
 
 /* --- The four tiles ------------------------------------------------------- */
 .mkt-tiles {
@@ -29319,6 +29377,19 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .mkt-tile-label { color: var(--mute-t58); font-size: 0.78rem; font-weight: 600; }
 .mkt-tile-value { font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
 .mkt-tile-note { color: var(--muted); font-size: 0.78rem; }
+
+/* Four distinct stages instead of repeating the same draft total in two
+   unrelated cards. The heading names the journey; each tile names one state. */
+.mkt-pipeline-section { display: grid; gap: 0.75rem; }
+.mkt-pipeline-section .mkt-section-head { margin-bottom: 0; }
+.mkt-pipeline-section .eyebrow { margin: 0 0 0.25rem; }
+.mkt-pipeline-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.mkt-pipeline-note { margin: 0; font-size: 0.84rem; }
+.mkt-pipeline-note a { color: var(--accent-ink); font-weight: 700; }
 
 /* --- Overview layout ------------------------------------------------------ */
 .mkt-overview-grid {
@@ -29395,7 +29466,30 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .mkt-coming-copy strong { font-size: 0.9rem; font-weight: 650; overflow-wrap: anywhere; }
 .mkt-coming-copy small { color: var(--mute-t58); font-size: 0.76rem; }
 
+.mkt-inline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+}
+.mkt-inline-empty p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.55; }
+.mkt-inline-empty .btn { padding-block: 0.65rem; }
+
 .mkt-blogsum-line { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.9rem; }
+
+.mkt-email-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding-block: 1.15rem;
+}
+.mkt-email-summary > div { min-width: 0; }
+.mkt-email-summary .eyebrow { margin: 0 0 0.2rem; }
+.mkt-email-summary h2 { margin: 0; font-size: 1.02rem; }
+.mkt-email-summary p:not(.eyebrow) { margin: 0.25rem 0 0; font-size: 0.82rem; line-height: 1.45; }
+.mkt-email-summary .btn { flex: 0 0 auto; }
 
 /* --- Status filters ------------------------------------------------------- */
 .mkt-filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.9rem 0 1rem; }
@@ -29557,6 +29651,7 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 @media (max-width: 1000px) {
   .mkt-overview-grid { grid-template-columns: minmax(0, 1fr); }
   .mkt-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mkt-pipeline-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
@@ -29566,9 +29661,14 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
   .mkt-tile { padding: 0.8rem 0.85rem; }
   .mkt-tile-value { font-size: 1.5rem; }
 
-  .mkt-overview-hero,
+  .mkt-overview-hero { padding-block: 1.1rem; }
+  .mkt-overview-hero .workspace-title { font-size: clamp(1.85rem, 9vw, 2.35rem); }
   .mkt-editor-hero { flex-direction: column; align-items: stretch; }
-  .mkt-hero-action .btn { width: 100%; justify-content: center; }
+
+  .mkt-priority { grid-template-columns: minmax(0, 1fr); gap: 1.15rem; }
+  .mkt-priority-metric { padding: 1rem 0 0; border-top: 1px solid var(--edge-t12); border-left: 0; }
+  .mkt-priority-actions { flex-direction: column; align-items: stretch; }
+  .mkt-priority-actions .btn { width: 100%; }
 
   .mkt-rec-actions,
   .mkt-status-actions { flex-direction: column; align-items: stretch; }
@@ -29577,10 +29677,16 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 
   .mkt-post-row { align-items: flex-start; }
   .mkt-coming-row { grid-template-columns: 3.6rem minmax(0, 1fr); }
+  .mkt-email-summary { align-items: stretch; flex-direction: column; }
+  .mkt-email-summary .btn { width: 100%; }
 }
 
 @media (max-width: 420px) {
   .mkt-tiles { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 360px) {
+  .mkt-pipeline-tiles { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* === Cash chart: grouped markers, selection, and the detail panel ==========
