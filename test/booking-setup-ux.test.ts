@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const SETUP = readFileSync('src/app/dashboard/schedule/booking/BookingSetup.tsx', 'utf8');
 const DEMO = readFileSync('src/app/demo/schedule/booking/page.tsx', 'utf8');
+const CSS = readFileSync('src/app/globals.css', 'utf8');
 
 describe('booking request setup language and hierarchy', () => {
   it('sets the request-and-confirm expectation before the settings', () => {
@@ -12,8 +13,11 @@ describe('booking request setup language and hierarchy', () => {
   });
 
   it('uses a compact three-part summary instead of four large dashboard cards', () => {
-    expect(SETUP.match(/className="bset-summary-item"/g)).toHaveLength(3);
+    expect(SETUP.match(/bset-summary-item/g)).toHaveLength(3);
     expect(SETUP).not.toContain('className="bset-cards"');
+    expect(SETUP).toContain('className={`bset-mobile-summary');
+    expect(CSS).toContain('.bset-summary { display: none; }');
+    expect(CSS).toContain('.bset-mobile-summary { display: block; }');
   });
 
   it('labels the preview as the time-selection step rather than the whole flow', () => {
@@ -25,15 +29,37 @@ describe('booking request setup language and hierarchy', () => {
 
 describe('booking request setup explains rules in owner language', () => {
   it('marks selected windows that customers cannot actually choose', () => {
-    expect(SETUP).toContain("unavailable ? <em className=\"is-warning\">Not offered</em>");
+    expect(SETUP).toContain("unavailable ? <em className=\"is-warning\">Selected, hidden</em>");
+    expect(SETUP).toContain("Deselect hidden {outside.length === 1 ? 'window' : 'windows'}");
+    expect(SETUP).toContain("`${outside.length} window${outside.length === 1 ? '' : 's'} hidden`");
     expect(SETUP).toContain('Edit working hours');
+  });
+
+  it('keeps warning icons compact and the preview free of a native date scrollbar', () => {
+    expect(CSS).toContain('.bset-window-warn > svg { width: 1rem; height: 1rem; flex: none;');
+    expect(SETUP).toContain('bookableDays.slice(0, 4)');
+    expect(CSS).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
+    expect(CSS).not.toContain('.bset-phone-days { display: flex;');
+  });
+
+  it('explains the immediate master switch and the manual schedule save', () => {
+    expect(SETUP).toContain('This switch applies immediately. Other changes wait for Save schedule.');
+    expect(SETUP).toContain('Schedule changes aren’t live yet');
+    expect(SETUP).toContain('Review your changes, then choose Save schedule.');
   });
 
   it('describes qualification outcomes without infrastructure jargon', () => {
     expect(SETUP).toContain('Qualify jobs before showing available times');
     expect(SETUP).toContain('Who can request a time');
+    expect(SETUP).toContain('A day is route-fit when an existing scheduled job is within');
     expect(SETUP).not.toContain('Distance Matrix API');
     expect(SETUP).not.toContain('geocoded');
+  });
+
+  it('uses semantic switches and keyboard-accessible information tips', () => {
+    expect(SETUP.match(/role="switch"/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(SETUP).toContain('import InfoTip');
+    expect(SETUP).toContain('<InfoTip label={text}>{text}</InfoTip>');
   });
 
   it('keeps recurring time off with the time-off controls, not the preview rail', () => {

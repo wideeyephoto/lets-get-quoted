@@ -20746,6 +20746,16 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-master-copy strong em.on { color: var(--bset-accent-ink); }
 .bset-master-copy strong em.off { color: var(--muted, var(--muted-2)); }
 .bset-master-copy small { font-size: 0.84rem; color: var(--muted, var(--muted-2)); }
+.bset-master-save-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.18rem;
+  color: var(--mute-t55);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.bset-master-save-note svg { width: 0.8rem; height: 0.8rem; flex: none; color: var(--ink-green-7); }
 
 .bset-master-status {
   flex: 1 1 15rem;
@@ -20772,6 +20782,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-master-status.live .bset-dot { background: #34c77b; box-shadow: 0 0 0 3px rgba(52, 199, 123, 0.18); }
 .bset-master-status.live p { color: var(--ink-green-2); }
+.bset-master-status.live.attention p { color: var(--ink-amber-1); }
 .bset-master-status small { font-size: 0.82rem; color: var(--muted, var(--muted-2)); line-height: 1.4; }
 
 .bset-pause { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
@@ -20893,6 +20904,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-summary-item:hover { border-color: var(--bset-line-strong); transform: translateY(-1px); }
 .bset-summary-item:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
+.bset-summary-item.has-warning { border-color: var(--cedge-amber-11); }
 .bset-summary-item.is-static { cursor: default; }
 .bset-summary-item.is-static:hover { border-color: var(--bset-line); transform: none; }
 
@@ -20921,7 +20933,67 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-summary-copy small { font-size: 0.72rem; color: var(--muted, var(--muted-2)); }
 .bset-summary-copy strong { overflow: hidden; font-size: 0.92rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .bset-summary-copy > span { overflow: hidden; font-size: 0.76rem; color: var(--muted, var(--muted-2)); text-overflow: ellipsis; white-space: nowrap; }
+.bset-summary-copy > span.is-warning { color: var(--ink-amber-1); font-weight: 700; }
 .bset-summary-chevron { width: 0.9rem; height: 0.9rem; flex: none; color: var(--muted, var(--muted-2)); }
+
+/* Phones get one read-back disclosure instead of three cards repeating the
+   accordion immediately below them. */
+.bset-mobile-summary { display: none; }
+.bset-mobile-summary > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 14px;
+  background: var(--bset-card);
+  cursor: pointer;
+  list-style: none;
+}
+.bset-mobile-summary > summary::-webkit-details-marker { display: none; }
+.bset-mobile-summary > summary > span:first-child { display: grid; gap: 0.08rem; min-width: 0; flex: 1; }
+.bset-mobile-summary > summary small { color: var(--muted, var(--muted-2)); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.bset-mobile-summary > summary strong { overflow: hidden; font-size: 0.86rem; text-overflow: ellipsis; white-space: nowrap; }
+.bset-mobile-summary > summary em {
+  flex: none;
+  padding: 0.18rem 0.4rem;
+  border: 1px solid var(--cedge-amber-11);
+  border-radius: 999px;
+  color: var(--ink-amber-1);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.bset-mobile-summary > summary > svg { width: 0.95rem; height: 0.95rem; flex: none; transition: transform 0.18s ease; }
+.bset-mobile-summary[open] > summary { border-radius: 14px 14px 0 0; }
+.bset-mobile-summary[open] > summary > svg { transform: rotate(180deg); }
+.bset-mobile-summary.has-warning > summary { border-color: var(--cedge-amber-11); }
+.bset-mobile-summary-actions {
+  display: grid;
+  border: 1px solid var(--bset-line);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: var(--bset-card);
+}
+.bset-mobile-summary-actions > * {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.65rem 0.85rem;
+  border: 0;
+  border-top: 1px solid var(--bset-line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.bset-mobile-summary-actions > button { cursor: pointer; }
+.bset-mobile-summary-actions > button:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: -2px; }
+.bset-mobile-summary-actions > * > span { flex: none; color: var(--muted, var(--muted-2)); font-size: 0.75rem; }
+.bset-mobile-summary-actions > * > strong { overflow: hidden; font-size: 0.78rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 
 /* --- two-column body --- */
 .bset-body {
@@ -21123,6 +21195,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   line-height: 1.45;
   color: var(--ink-amber-1, var(--mute-t55));
 }
+.bset-window-warn > svg { width: 1rem; height: 1rem; flex: none; margin-top: 0.08rem; }
 
 .bset-window {
   display: flex;
@@ -21140,8 +21213,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-window:hover { border-color: var(--bset-line-strong); }
 .bset-window:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
 .bset-window.on { border-color: var(--bset-accent-ink); background: rgba(255, 122, 41, 0.08); }
-.bset-window.unavailable { border-color: var(--cedge-amber-11); background: rgba(255, 209, 102, 0.06); }
-.bset-window.unavailable .bset-window-check { border-color: var(--cedge-amber-11); background: transparent; color: var(--gold-ink); }
+.bset-window.on.unavailable { border-color: var(--cedge-amber-11); background: rgba(255, 209, 102, 0.06); }
 
 .bset-window-icon { flex: none; color: var(--ink-amber-1); }
 .bset-window-icon svg { width: 1.2rem; height: 1.2rem; }
@@ -21174,6 +21246,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .bset-window.on .bset-window-check { background: var(--bset-accent); border-color: var(--bset-accent-ink); color: #10131a; }
+.bset-window.on.unavailable .bset-window-check { border-color: var(--cedge-amber-11); background: transparent; color: var(--gold-ink); }
 .bset-window-check svg { width: 0.8rem; height: 0.8rem; stroke-width: 3; }
 
 .bset-addwindow {
@@ -21207,7 +21280,21 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   font-size: 0.8rem;
   line-height: 1.45;
 }
-.bset-window-fix a { color: var(--gold-ink); font-weight: 700; }
+.bset-window-fix p { margin: 0; }
+.bset-window-fix > div { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem 0.8rem; margin-top: 0.45rem; }
+.bset-window-fix a,
+.bset-window-fix button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold-ink);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.bset-window-fix a:focus-visible,
+.bset-window-fix button:focus-visible { outline: 2px solid rgba(255, 209, 102, 0.7); outline-offset: 2px; }
 
 .bset-inline-tip {
   display: flex;
@@ -21318,10 +21405,6 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset select option,
 .bset select optgroup { background: var(--bg-3); color: var(--text); }
-
-.bset-tip { display: inline-grid; place-items: center; color: var(--mute-g570); cursor: help; }
-.bset-tip svg { width: 0.85rem; height: 0.85rem; }
-.bset-tip:hover { color: var(--bset-accent-ink); }
 
 /* $ lives in the field, so the label doesn't need "($)" and the number lines
    up with the currency mark rather than floating in an empty box. */
@@ -21563,17 +21646,16 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-phone-title { font-size: 0.98rem; font-weight: 650; }
 .bset-phone-sub { margin: -0.35rem 0 0.35rem; font-size: 0.8rem; color: var(--muted, var(--muted-2)); }
 
-.bset-phone-days { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.15rem; }
+.bset-phone-days { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
 
 .bset-phone-day {
-  flex: none;
   display: grid;
   gap: 0.1rem;
   justify-items: center;
-  padding: 0.5rem 0.65rem;
+  min-width: 0;
+  padding: 0.5rem 0.35rem;
   border: 1px solid var(--bset-line);
   border-radius: 10px;
-  min-width: 3rem;
 }
 
 .bset-phone-day small { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; color: var(--muted, var(--muted-2)); }
@@ -21729,13 +21811,13 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 @media (max-width: 640px) {
-  .bset-summary { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
-  .bset-summary-item { padding: 0.65rem 0.75rem; }
+  .bset-summary { display: none; }
+  .bset-mobile-summary { display: block; }
   .bset-daygrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bset-master { gap: 0.9rem; }
   .bset-master-status { padding-left: 0; border-left: 0; border-top: 1px solid var(--bset-line); padding-top: 0.75rem; }
   .bset-section-head { padding: 0.9rem 1rem; }
-  .bset-section-badge { display: none; }
+  .bset-section-badge { padding: 0.18rem 0.4rem; font-size: 0.6rem; }
   .bset-section-body { padding: 0.25rem 1rem 1.1rem; }
   .bset-workhours { align-items: flex-start; flex-wrap: wrap; }
   .bset-workhours a { flex-basis: 100%; padding-left: 2.7rem; }

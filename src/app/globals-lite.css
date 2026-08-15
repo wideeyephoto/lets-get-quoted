@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: e045c1ceb54f7531
+   source-sha256: f4ecb3c1e63faaa1
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -11536,6 +11536,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 #quick-stop-demand { scroll-margin-top: calc(var(--appbar-h) + 1.25rem); }
 .bset-summary-item.is-static { cursor: default; }
 .bset-summary-item.is-static:hover { border-color: var(--bset-line); transform: none; }
+.bset-summary-copy > span.is-warning { color: var(--ink-amber-1); font-weight: 700; }
 .bset-window-copy strong em.is-warning { border-color: var(--cedge-amber-11); color: var(--gold-ink); }
 
 .bset-tipcard,
