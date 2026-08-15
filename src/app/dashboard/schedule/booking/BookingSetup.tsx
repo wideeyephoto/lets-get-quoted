@@ -11,8 +11,10 @@ import {
   formatWindowClock,
   formatWindowRange,
   isWindowTime,
+  outsideWorkdayWindowTimes,
   overlappingWindowTimes,
-  overrunningWindowTimes,
+  timeToMinutes,
+  windowEndTime,
   windowPartName,
   type BookingAvailability,
 } from '@/lib/booking-availability';
@@ -105,6 +107,7 @@ export default function BookingSetup({
   sitePublished,
   openWindowCount,
   openDayCount,
+  bookableDays,
   timezoneOptions,
   todayKey,
 }: {
@@ -115,6 +118,8 @@ export default function BookingSetup({
   sitePublished: boolean;
   openWindowCount: number;
   openDayCount: number;
+  /** The days the public page is offering right now, in the order it offers them. */
+  bookableDays: { dateKey: string; dayLabel: string; times: string[] }[];
   timezoneOptions: { value: string; label: string }[];
   todayKey: string;
 }) {
@@ -258,31 +263,14 @@ export default function BookingSetup({
   }
 
   // --- live preview -------------------------------------------------------
-  // What the public page would offer with the settings as they stand, including
-  // unsaved ones. Blocked days drop out, so this matches what a customer sees.
-  const blockedSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const b of blocks) {
-      let cursor = b.start_date;
-      // Guard the walk: a corrupt row with end before start would loop forever.
-      for (let i = 0; i < 400 && cursor <= b.end_date; i += 1) {
-        set.add(cursor);
-        cursor = addDays(cursor, 1);
-      }
-    }
-    return set;
-  }, [blocks]);
-
-  const previewDays = useMemo(() => {
-    if (!enabled || weekdays.length === 0) return [];
-    const out: string[] = [];
-    let cursor = addDays(todayKey, leadDays);
-    for (let i = 0; i < 90 && out.length < 5; i += 1) {
-      if (weekdays.includes(weekdayOf(cursor)) && !blockedSet.has(cursor)) out.push(cursor);
-      cursor = addDays(cursor, 1);
-    }
-    return out;
-  }, [enabled, weekdays, leadDays, blockedSet, todayKey]);
+  /* The days the public page is actually offering, straight from the offer
+     engine. This used to walk the calendar here applying weekdays, lead time
+     and blocks — and nothing else, so a day already at its job limit or fully
+     taken still appeared, and the empty state said "blocked or full" about a
+     "full" it had never worked out. The cost of using the real answer is that
+     it reflects SAVED settings, so unsaved edits say so below rather than
+     showing a preview of an offer that does not exist yet. */
+  const previewDays = useMemo(() => bookableDays.slice(0, 5), [bookableDays]);
 
   const dayNames = useMemo(() => {
     if (weekdays.length === 0) return 'No days';
@@ -292,30 +280,86 @@ export default function BookingSetup({
     return sorted.map((d) => WEEKDAY_LABELS[d]).join(', ');
   }, [weekdays]);
 
-  // Deduped: a 7am and an 8am window are both "Morning", and listing it twice
-  // reads as a mistake rather than as two options.
-  const windowNames = useMemo(
-    () => [...new Set(windowTimes.map(windowPartName))].join(', ') || 'None',
-    [windowTimes],
-  );
-
   // Windows that swallow the next one at the current length. Recomputed with the
   // length so the warning appears the moment they widen past a clash.
   const overlaps = useMemo(() => overlappingWindowTimes(windowTimes, windowMinutes), [windowTimes, windowMinutes]);
 
-  /* Windows the public page will refuse to offer because they finish after the
-     working day. Same function the offer filter uses, so the warning and the
-     behavior cannot disagree. workdayEnd is the SAVED value — it is set in
-     Settings → Schedule, not on this screen, so there is no local state to
-     prefer over it. */
+  /* Windows the public page will refuse to offer because they fall outside the
+     working day at one end or the other. Same function the offer filter uses,
+     so the warning and the behavior cannot disagree. The workday is the SAVED
+     value — it is set in Settings → Schedule, not on this screen, so there is
+     no local state to prefer over it. */
+  const workdayStart = availability.workdayStart;
   const workdayEnd = availability.workdayEnd;
-  const overruns = useMemo(
-    () => overrunningWindowTimes(windowTimes, windowMinutes, workdayEnd),
-    [windowTimes, windowMinutes, workdayEnd],
+  const outside = useMemo(
+    () => outsideWorkdayWindowTimes(windowTimes, windowMinutes, workdayStart, workdayEnd),
+    [windowTimes, windowMinutes, workdayStart, workdayEnd],
+  );
+
+  /* What a customer is actually offered — the ticked windows minus the ones the
+     offer filter drops. Everything on this page that claims to describe the
+     public page reads this and not `windowTimes`, which is how the preview came
+     to show a green check beside a window the paragraph below it said was not
+     offered. */
+  const offeredTimes = useMemo(() => windowTimes.filter((t) => !outside.includes(t)), [windowTimes, outside]);
+
+  /* What the FIRST previewed day is really offering, from the engine that chose
+     the day. `offeredTimes` is this config's windows minus the ones the workday
+     drops; it knows nothing about that particular Monday's booked slots, so a
+     day the engine offered with Afternoon only was drawn leading with Morning
+     and the green check on it. While there are unsaved edits the local set is
+     the better guess, because the saved answer is the stale one — which is what
+     the note above the preview already says. */
+  const previewTimes = useMemo(
+    () => (dirty ? offeredTimes : previewDays[0]?.times ?? offeredTimes),
+    [dirty, offeredTimes, previewDays],
+  );
+
+  /* Which end each dropped window falls off, so the warning can say what to
+     change. Three cases, not two: `outside` also catches a window that OPENS
+     after the day is over, and rolling that into "finishes after your working
+     day ends" advised shortening it, which can never bring it back. They are
+     not exclusive either — a 4-hour window at 08:00 against a 09:00–10:00
+     workday falls off both ends, and "move the start later" alone sends
+     somebody to 09:00 where it still overruns. */
+  const startsEarly = useMemo(
+    () => outside.filter((t) => timeToMinutes(t) < timeToMinutes(workdayStart)),
+    [outside, workdayStart],
+  );
+  const startsAfterClose = useMemo(
+    () => outside.filter((t) => timeToMinutes(t) >= timeToMinutes(workdayEnd)),
+    [outside, workdayEnd],
+  );
+  const endsLate = useMemo(
+    () => outside.filter((t) => !startsAfterClose.includes(t) && timeToMinutes(windowEndTime(t, windowMinutes)) > timeToMinutes(workdayEnd)),
+    [outside, startsAfterClose, windowMinutes, workdayEnd],
+  );
+
+  // Deduped: a 7am and an 8am window are both "Morning", and listing it twice
+  // reads as a mistake rather than as two options.
+  const windowNames = useMemo(
+    () => [...new Set(offeredTimes.map(windowPartName))].join(', ') || 'None',
+    [offeredTimes],
   );
 
   const nextBlock = blocks[0] ?? null;
-  const live = enabled && Boolean(bookingUrl) && weekdays.length > 0 && windowTimes.length > 0;
+  /* Configured is not live. The header read "Live — customers can request an
+     available arrival window" straight above a card reading "0 open windows
+     across 0 days", because it asked the settings and never the offer engine.
+     Every self-serve booking is lost while that holds, so the real count
+     decides — and the in-between state is named rather than rounded to
+     whichever extreme is nearer. */
+  const configured = enabled && Boolean(bookingUrl) && weekdays.length > 0 && offeredTimes.length > 0;
+  const live = configured && openWindowCount > 0;
+  /* The offer counts were measured with booking as the SERVER last saw it. The
+     master switch commits locally before its round trip lands, and while
+     booking was paused computeBookingDays short-circuits — so `openWindowCount`
+     is 0 and `bookableDays` is empty because nobody asked, not because every day
+     is full. For the second between the click and the refresh that read as
+     "Nothing bookable · they are blocked, at their booking limit, or already
+     taken": a specific diagnosis of something that was never measured, directly
+     after the single most important click on the page. */
+  const countsPredateSwitch = enabled !== availability.enabled;
 
   return (
     <main className="wide-shell workspace-shell bset">
@@ -350,17 +394,26 @@ export default function BookingSetup({
         </label>
 
         <div className={`bset-master-status${live ? ' live' : ''}`}>
-          <p><span className="bset-dot" aria-hidden="true" />{live ? 'Live' : enabled ? 'Not live yet' : 'Paused'}</p>
+          <p>
+            <span className="bset-dot" aria-hidden="true" />
+            {live ? 'Live' : countsPredateSwitch ? 'Checking…' : configured ? 'Nothing bookable' : enabled ? 'Not live yet' : 'Paused'}
+          </p>
           <small>
             {!bookingUrl
               ? 'Publish your website to switch on self-serve booking.'
               : !enabled
                 ? 'Your booking page is turned off and not accepting requests.'
-                : weekdays.length === 0
+                : countsPredateSwitch
+                  ? 'Switching your booking page back on — working out which days it can offer.'
+                  : weekdays.length === 0
                   ? 'No days are open, so nothing is on offer.'
                   : windowTimes.length === 0
                     ? 'No arrival windows are offered, so nothing is on offer.'
-                    : 'Customers can request an available arrival window from your website.'}
+                    : offeredTimes.length === 0
+                      ? 'Every arrival window you offer falls outside your working hours, so nothing is on offer.'
+                      : live
+                        ? 'Customers can request an available arrival window from your website.'
+                        : 'Your settings are on, but no day in the next few weeks has a free window — they are blocked, at their booking limit, or already taken. Customers see “No windows on offer right now”.'}
           </small>
         </div>
 
@@ -383,7 +436,11 @@ export default function BookingSetup({
           <span className="bset-card-icon tone-time"><Icon name="clock" /></span>
           <span className="bset-card-label">Arrival options</span>
           <strong>{windowNames}</strong>
-          <small>Customers choose a preferred time window</small>
+          {/* The value can read "None" — windowNames counts what is OFFERED,
+              and every ticked window can fall outside the working day. "Customers
+              choose a preferred time window" under the word None is the card
+              contradicting itself. */}
+          <small>{offeredTimes.length === 0 ? 'No window is on offer right now' : 'Customers choose a preferred time window'}</small>
           <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
         </button>
 
@@ -402,11 +459,13 @@ export default function BookingSetup({
         <button type="button" className="bset-card" onClick={() => jumpTo('limits')}>
           <span className="bset-card-icon tone-link"><Icon name="link" /></span>
           <span className="bset-card-label">Booking page</span>
-          <strong>{live ? 'Live' : enabled ? 'Not live' : 'Paused'}</strong>
+          <strong>{live ? 'Live' : configured ? 'Nothing bookable' : enabled ? 'Not live' : 'Paused'}</strong>
           <small>
             {live
               ? `${openWindowCount} open window${openWindowCount === 1 ? '' : 's'} across ${openDayCount} day${openDayCount === 1 ? '' : 's'}`
-              : sitePublished ? 'Nothing on offer right now' : 'Publish your website first'}
+              : configured
+                ? 'Set up, but no open windows in the next few weeks'
+                : sitePublished ? 'Nothing on offer right now' : 'Publish your website first'}
           </small>
           <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
         </button>
@@ -515,18 +574,37 @@ export default function BookingSetup({
                       window at this length. Customers will see two options covering the same hours.
                     </p>
                   ) : null}
-                  {/* A window that finishes after the working day is NOT
-                      offered — the public page used to offer "3:00 – 7:00 PM"
-                      against a day ending at 6:00 PM, which promises a
-                      homeowner an arrival window an hour after work stops. It
-                      is dropped rather than shortened, so this says which one
-                      and why: a window that silently stops appearing reads as
-                      the booking page being broken. */}
-                  {overruns.length > 0 ? (
+                  {/* A window outside the working day is NOT offered — the
+                      public page used to offer "3:00 – 7:00 PM" against a day
+                      ending at 6:00 PM, which promises a homeowner an arrival
+                      window an hour after work stops. It is dropped rather than
+                      shortened, so this says which one and why: a window that
+                      silently stops appearing reads as the booking page being
+                      broken. Split by which end it falls off, because the fix
+                      differs — an early window moves later or the day starts
+                      earlier; a late one shortens or the day runs longer. */}
+                  {startsEarly.length > 0 ? (
                     <p className="bset-window-warn">
-                      <Icon name="alert" /> {overruns.map((t) => windowPartName(t)).join(' and ')}{' '}
-                      {overruns.length === 1 ? 'finishes' : 'finish'} after your working day ends at{' '}
-                      {formatWindowClock(workdayEnd)}, so {overruns.length === 1 ? 'it is' : 'they are'} not offered.
+                      <Icon name="alert" /> {startsEarly.map((t) => windowPartName(t)).join(' and ')}{' '}
+                      {startsEarly.length === 1 ? 'starts' : 'start'} before your working day begins at{' '}
+                      {formatWindowClock(workdayStart)}, so {startsEarly.length === 1 ? 'it is' : 'they are'} not
+                      offered. Move the start later, or start your working day earlier.
+                    </p>
+                  ) : null}
+                  {startsAfterClose.length > 0 ? (
+                    <p className="bset-window-warn">
+                      <Icon name="alert" /> {startsAfterClose.map((t) => windowPartName(t)).join(' and ')}{' '}
+                      {startsAfterClose.length === 1 ? 'starts' : 'start'} after your working day ends at{' '}
+                      {formatWindowClock(workdayEnd)}, so {startsAfterClose.length === 1 ? 'it is' : 'they are'} not
+                      offered. Move the start earlier, or extend your working hours — shortening the window
+                      won&rsquo;t help.
+                    </p>
+                  ) : null}
+                  {endsLate.length > 0 ? (
+                    <p className="bset-window-warn">
+                      <Icon name="alert" /> {endsLate.map((t) => windowPartName(t)).join(' and ')}{' '}
+                      {endsLate.length === 1 ? 'finishes' : 'finish'} after your working day ends at{' '}
+                      {formatWindowClock(workdayEnd)}, so {endsLate.length === 1 ? 'it is' : 'they are'} not offered.
                       Shorten the window length, move the start earlier, or extend your working hours.
                     </p>
                   ) : null}
@@ -537,12 +615,15 @@ export default function BookingSetup({
                   />
                 </div>
 
-                {/* The settings above, read back as a sentence. */}
-                <div className={`bset-live${weekdays.length === 0 || windowTimes.length === 0 ? ' warn' : ''}`}>
-                  <Icon name={weekdays.length === 0 || windowTimes.length === 0 ? 'alert' : 'checkCircle'} />
+                {/* The settings above, read back as a sentence — from what is
+                    actually offered, so a window named in the warning above
+                    cannot also be listed here as something a customer can
+                    choose. */}
+                <div className={`bset-live${weekdays.length === 0 || offeredTimes.length === 0 ? ' warn' : ''}`}>
+                  <Icon name={weekdays.length === 0 || offeredTimes.length === 0 ? 'alert' : 'checkCircle'} />
                   <div>
                     <strong>
-                      {weekdays.length === 0 || windowTimes.length === 0
+                      {weekdays.length === 0 || offeredTimes.length === 0
                         ? 'Customers can’t choose anything yet:'
                         : 'Customers can currently choose:'}
                     </strong>
@@ -708,32 +789,47 @@ export default function BookingSetup({
         <aside className="bset-rail">
           <section className="bset-preview">
             <h2>What customers will see</h2>
-            <p className="bset-preview-sub">This is how your booking looks to them.</p>
+            <p className="bset-preview-sub">
+              {dirty
+                ? 'The dates come from your live booking page — save to see your changes here.'
+                : 'This is how your booking looks to them.'}
+            </p>
 
             <div className="bset-phone" role="img" aria-label="Preview of your public booking page">
-              {previewDays.length === 0 || windowTimes.length === 0 ? (
+              {previewDays.length === 0 || previewTimes.length === 0 ? (
                 <div className="bset-phone-empty">
                   <Icon name="alert" />
-                  <strong>{enabled ? 'Nothing on offer' : 'Booking is paused'}</strong>
+                  <strong>{!enabled ? 'Booking is paused' : countsPredateSwitch ? 'Checking…' : 'Nothing on offer'}</strong>
                   <p>
                     {!enabled
                       ? 'Customers see a “request a callback” form instead of a calendar.'
-                      : weekdays.length === 0
-                        ? 'Pick at least one booking day above.'
-                        : windowTimes.length === 0
-                          ? 'Pick at least one arrival time option above.'
-                          : 'Every upcoming day is blocked or full.'}
+                      : !bookingUrl
+                        ? 'Publish your website and this becomes a live booking page.'
+                        : countsPredateSwitch
+                          ? 'Working out what your booking page can offer now that it is back on.'
+                          : weekdays.length === 0
+                            ? 'Pick at least one booking day above.'
+                            : windowTimes.length === 0
+                              ? 'Pick at least one arrival time option above.'
+                              : offeredTimes.length === 0
+                                ? 'Every window you offer falls outside your working hours, so none can be shown.'
+                                : 'Every upcoming day is blocked, at its booking limit, or already taken.'}
                   </p>
                 </div>
               ) : (
                 <>
                   <strong className="bset-phone-title">Choose a date &amp; time</strong>
                   <p className="bset-phone-sub">We’ll confirm your arrival window after reviewing the request.</p>
+                  {/* The month is spelled out, because "the 22nd" is not an
+                      answer to "when can somebody actually book me?" — which is
+                      the question this whole panel exists to answer and never
+                      did. */}
+                  <p className="bset-phone-label">Next available · {previewDays[0].dayLabel}</p>
                   <div className="bset-phone-days">
-                    {previewDays.map((key, i) => {
-                      const d = formatDay(key);
+                    {previewDays.map((day, i) => {
+                      const d = formatDay(day.dateKey);
                       return (
-                        <span className={`bset-phone-day${i === 0 ? ' on' : ''}`} key={key}>
+                        <span className={`bset-phone-day${i === 0 ? ' on' : ''}`} key={day.dateKey}>
                           <small>{d.dow}</small>
                           <strong>{d.num}</strong>
                         </span>
@@ -741,7 +837,7 @@ export default function BookingSetup({
                     })}
                   </div>
                   <p className="bset-phone-label">Preferred time</p>
-                  {windowTimes.map((time, i) => (
+                  {previewTimes.map((time, i) => (
                     <span className={`bset-phone-window${i === 0 ? ' on' : ''}`} key={time}>
                       <Icon name={Number(time.slice(0, 2)) < 12 ? 'sunrise' : 'sun'} />
                       <span>

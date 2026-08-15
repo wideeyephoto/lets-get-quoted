@@ -18,7 +18,14 @@
 
 import type { CashEvent, Forecast } from '@/lib/cash-forecast';
 
-export type CashFlagKind = 'contradictory_pair' | 'duplicate' | 'outsized' | 'stale_balance';
+export type CashFlagKind = 'contradictory_pair' | 'stale_balance';
+
+/** One side of a flag, and the page that side actually lives on. */
+export type CashFlagEntry = {
+  /** "$4,000 coming in" — which of the two entries this link opens. */
+  label: string;
+  href: string;
+};
 
 export type CashFlag = {
   kind: CashFlagKind;
@@ -28,6 +35,14 @@ export type CashFlag = {
   detail: string;
   /** Where it gets settled. */
   href: string | null;
+  /**
+   * The offending entries, one link each, when they do not live in the same
+   * place. A bill colliding with a payroll run or a customer payment is the
+   * common case, and `href` alone lands on the bills panel — which holds
+   * scheduled payments only, so it contains at most one side of the pair.
+   * Empty when a single link already reaches both.
+   */
+  entries: CashFlagEntry[];
 };
 
 export type CashConfidence = {
@@ -60,6 +75,8 @@ export function cashFlags(
     byName.set(key, bucket);
   }
 
+  const billsPanel = `${options.base}/cash-flow#cash-bills`;
+
   for (const bucket of byName.values()) {
     if (bucket.in.length === 0 || bucket.out.length === 0) continue;
     const inAmount = Math.abs(bucket.in[0].amount);
@@ -68,7 +85,8 @@ export function cashFlags(
       kind: 'contradictory_pair',
       question: `Is “${bucket.label}” money in or money out?`,
       detail: `Two entries share this name — one bringing in ${money(inAmount)} and one paying out ${money(outAmount)}. One of them has its direction, or its decimal point, wrong.`,
-      href: `${options.base}/cash-flow#cash-bills`,
+      href: billsPanel,
+      entries: pairEntries(bucket.in[0], inAmount, bucket.out[0], outAmount, billsPanel),
     });
   }
 
@@ -78,10 +96,39 @@ export function cashFlags(
       question: `Is ${options.balanceAgeDays} days ago still today's balance?`,
       detail: 'Every projection on this page is that number plus what has happened since. Open your banking app and put the current one in.',
       href: null,
+      entries: [],
     });
   }
 
   return flags;
+}
+
+/**
+ * A link per side, but only when the two sides are in different places.
+ *
+ * A scheduled payment has no page of its own and falls back to the bills panel;
+ * a job payment or a recurring plan does have one, and that is where the other
+ * half of a mismatched pair is actually edited. When both resolve to the same
+ * destination the pair of links is the same link twice, so one link says it
+ * better — but WHICH one matters. Falling back to the flag's own `href` is only
+ * right when the shared destination IS that fallback. Two entries on the same
+ * job — a plan installment and a job payment, one recorded incoming and one
+ * outgoing — share a real href, and dropping to the bills panel would send
+ * somebody to a list holding scheduled payments only, which is neither of them.
+ */
+function pairEntries(
+  incoming: CashEvent,
+  inAmount: number,
+  outgoing: CashEvent,
+  outAmount: number,
+  fallback: string,
+): CashFlagEntry[] {
+  const entries: CashFlagEntry[] = [
+    { label: `${money(inAmount)} coming in`, href: incoming.href ?? fallback },
+    { label: `${money(outAmount)} going out`, href: outgoing.href ?? fallback },
+  ];
+  if (entries[0].href !== entries[1].href) return entries;
+  return entries[0].href === fallback ? [] : [{ label: 'Check both entries', href: entries[0].href }];
 }
 
 /**

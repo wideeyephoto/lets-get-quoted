@@ -21,6 +21,7 @@ import {
   videoSectionKey,
   getSiteContent,
   getSlotImage,
+  projectShowcaseHeadings,
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
 import FilmstripScroller from './FilmstripScroller';
@@ -31,6 +32,7 @@ import SiteProcess from './SiteProcess';
 import SiteVideoSection from './SiteVideoSection';
 import SiteChatButton from './SiteChatButton';
 import SiteAnalytics from './SiteAnalytics';
+import SitePexelsAttribution from './SitePexelsAttribution';
 import { hasAnalytics } from '@/lib/analytics';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
@@ -77,16 +79,35 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
   // photos never go live where they aren't expected.
   const isHaven = site.template === 'handy';
   const projectContent = getSiteContent(site.content).projectShowcase;
-  const projectOwnItems = projectContent.items.filter((item) => item.url && item.alt);
+  const projectSavedItems = projectContent.items.filter((item) => item.url && item.alt);
   const projectShowcase =
-    projectContent.enabled && (isHaven || projectOwnItems.length > 0) ? projectContent : null;
-  const projectItems = projectOwnItems.length > 0
-    ? projectOwnItems.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
-    : isHaven
-      ? (galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES)
-          .slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS)
-          .map((item) => ({ id: item.id, url: item.url, alt: item.alt }))
+    projectContent.enabled && (isHaven || projectSavedItems.length > 0) ? projectContent : null;
+  // Haven's fallback, kept as photos rather than mapped straight down, because
+  // the heading below is a claim about whatever ends up in the band and it has
+  // to be read off the same list.
+  const projectFallbackItems =
+    isHaven && projectSavedItems.length === 0
+      ? (galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES).slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS)
       : [];
+  const projectItems = projectSavedItems.length > 0
+    ? projectSavedItems.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
+    : projectFallbackItems.map((item) => ({ id: item.id, url: item.url, alt: item.alt }));
+  // "Our finished work" is a claim about who did the job, so it takes an
+  // UPLOAD to earn it — a generated site's band is seeded with representative
+  // stock photos, and "an item exists" was true of those too. The photos still
+  // show; the heading just stops speaking for them.
+  //
+  // Read off the photos ON DISPLAY, not off the showcase card. On Haven an
+  // owner who never opens that card still gets a band, filled from their image
+  // library — and a contractor who uploaded eight photos of their own finished
+  // jobs there has earned "Recent Jobs" exactly as much as one who filled the
+  // card in. Judging the card alone told precisely that owner their own work
+  // was stock.
+  const projectShownItems = projectSavedItems.length > 0 ? projectSavedItems : projectFallbackItems;
+  const projectHeadings = projectShowcaseHeadings(
+    projectContent,
+    projectShownItems.some((item) => item.source === 'upload'),
+  );
 
   const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSections.length > 0);
 
@@ -99,7 +120,14 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
   // have no in-flow sections, or a brand-new site measures nothing and never
   // says why.
   const measuring = hasAnalytics(getSiteContent(site.content).analytics);
-  if (!hasInFlowSections && !stickyCallBar && !chatButton && !measuring) return null;
+  // Pexels asks for visible credit wherever its photos are used, and they can
+  // be anywhere on the page — the hero, the slot photos, either gallery — so
+  // the credit belongs to the page rather than to any one section. It is in
+  // this test for the same reason the chat button is: a site with no in-flow
+  // sections at all can still be showing a stock hero, and the credit is
+  // exactly what keeps those photos honest.
+  const creditingStock = getSiteContent(site.content).stockImages.some((image) => image.provider === 'pexels');
+  if (!hasInFlowSections && !stickyCallBar && !chatButton && !measuring && !creditingStock) return null;
 
   // Rating + credential proof now render in <SiteProofStrip> directly beside the
   // hero and contact forms (where proof converts), not mid-page. Financing stays
@@ -114,8 +142,8 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
     projectShowcase: projectShowcase && (
       <section className={isHaven ? styles.careWorks : styles.projectBand} id="project-showcase" aria-label="Project showcase">
         <ProjectShowcase
-          eyebrow={projectShowcase.eyebrow}
-          title={projectShowcase.title}
+          eyebrow={projectHeadings.eyebrow}
+          title={projectHeadings.title}
           style={projectShowcase.style}
           items={projectItems}
         />
@@ -342,6 +370,8 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           )}
         </div>
       )}
+
+      <SitePexelsAttribution site={site} />
 
       <SiteChatButton site={site} />
       <SiteAnalytics config={getSiteContent(site.content).analytics} />

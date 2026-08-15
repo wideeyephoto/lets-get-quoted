@@ -21,7 +21,7 @@ export default async function BookingSetupPage() {
     supabase
       .from('accounts')
       .select(
-        'timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, workday_start, workday_end, schedule_day_hours, job_buffer_minutes, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time',
+        'timezone, booking_enabled, booking_weekdays, booking_windows, booking_window_minutes, booking_max_per_day, booking_lead_days, workday_start, workday_end, schedule_day_hours, job_buffer_minutes, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time',
       )
       .eq('id', accountId)
       .maybeSingle(),
@@ -41,6 +41,19 @@ export default async function BookingSetupPage() {
   // "is this working", as opposed to "is the switch on".
   const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];
   const openWindowCount = bookingDays.reduce((sum, day) => sum + day.slots.length, 0);
+  // The dates themselves, not just how many. The preview strip used to re-derive
+  // them in the browser from weekdays, lead time and blocks alone, so it showed
+  // days this engine had already taken off the table for being at their limit or
+  // fully taken.
+  // The times come along too. Keeping the day and dropping its slots left the
+  // preview half server-truth and half local config: the strip highlighted the
+  // Monday the engine offered, and the list beside it led with a Morning the
+  // engine had already ruled out on that day, green check and all.
+  const bookableDays = bookingDays.map((day) => ({
+    dateKey: day.dateKey,
+    dayLabel: day.dayLabel,
+    times: day.slots.map((slot) => slot.time),
+  }));
 
   return (
     <BookingSetup
@@ -57,6 +70,7 @@ export default async function BookingSetupPage() {
       sitePublished={Boolean(site?.published)}
       openWindowCount={openWindowCount}
       openDayCount={bookingDays.length}
+      bookableDays={bookableDays}
       timezoneOptions={TIMEZONE_OPTIONS}
       todayKey={todayKey}
     />

@@ -14,7 +14,7 @@ import { loadBusinessName } from '@/lib/business-name';
 import { createLead, type Lead } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
-import { bookingAvailabilityFromAccount, windowsForTimes, timeToMinutes, type BookingAvailability } from '@/lib/booking-availability';
+import { bookingAvailabilityFromAccount, windowsForTimes, outsideWorkdayWindowTimes, type BookingAvailability } from '@/lib/booking-availability';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -64,18 +64,20 @@ export function computeBookingDays(opts: {
   /* Only offer windows that FIT INSIDE the working-hours span — both ends.
      This used to check the start alone, which is how a workday ending at 6:00
      PM came to offer a homeowner "3:00 – 7:00 PM": three o'clock is inside the
-     day, seven is an hour after the contractor stops.
-     `<= dayEnd` on the finish, because a window closing exactly at 6:00 PM
-     closes within a day that ends at 6:00 PM. A window that no longer fits is
-     dropped rather than shortened — trimming it would quietly change the
-     arrival promise the owner configured — and Booking setup names the dropped
-     ones so this is not a silent disappearance. */
-  const dayStart = timeToMinutes(availability.workdayStart);
-  const dayEnd = timeToMinutes(availability.workdayEnd);
-  const windows = windowsForTimes(availability.windowTimes, availability.windowMinutes).filter((w) => {
-    const t = timeToMinutes(w.time);
-    return t >= dayStart && t < dayEnd && timeToMinutes(w.endTime) <= dayEnd;
-  });
+     day, seven is an hour after the contractor stops. A window that no longer
+     fits is dropped rather than shortened — trimming it would quietly change
+     the arrival promise the owner configured — and Booking setup names the
+     dropped ones, using this same function, so this is not a silent
+     disappearance. */
+  const dropped = new Set(
+    outsideWorkdayWindowTimes(
+      availability.windowTimes,
+      availability.windowMinutes,
+      availability.workdayStart,
+      availability.workdayEnd,
+    ),
+  );
+  const windows = windowsForTimes(availability.windowTimes, availability.windowMinutes).filter((w) => !dropped.has(w.time));
   const weekdaySet = new Set(availability.weekdays);
   if (windows.length === 0 || weekdaySet.size === 0) return []; // booking closed
 
@@ -110,7 +112,7 @@ export function computeBookingDays(opts: {
 export async function getAvailableBookingDays(admin: SupabaseClient, accountId: string): Promise<BookingDay[]> {
   const { data: account } = await admin
     .from('accounts')
-    .select('schedule_day_hours, timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, workday_start, workday_end, job_buffer_minutes')
+    .select('schedule_day_hours, timezone, booking_enabled, booking_weekdays, booking_windows, booking_window_minutes, booking_max_per_day, booking_lead_days, workday_start, workday_end, job_buffer_minutes')
     .eq('id', accountId)
     .maybeSingle();
   const availability = bookingAvailabilityFromAccount(account);

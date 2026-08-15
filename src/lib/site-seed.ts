@@ -87,7 +87,8 @@ export function applyStockImages(
     // Also seed the Project showcase band with 4 of the same attributed stock
     // photos — but only when the owner hasn't added their own. They're the same
     // Pexels-credited, representative images as the gallery (source: 'stock'),
-    // never claimed as the contractor's real completed jobs.
+    // and the band's heading drops its "our finished work" claim while that is
+    // all it holds — see projectShowcaseHeadings.
     const ownProject = content.projectShowcase.items.filter((item) => item.source === 'upload' || !isStockUrl(stock, item.url));
     if (ownProject.length === 0) {
       contentUpdates.projectShowcase = {
@@ -135,13 +136,29 @@ export function applyGeneratedSiteText(current: Site, generated: GeneratedSiteTe
   if (generated.cities.length) {
     contentUpdates.serviceAreas = { enabled: true, title: content.serviceAreas.title || 'Areas we serve', intro: content.serviceAreas.intro, cities: generated.cities };
   }
-  // Testimonials seeded ON as editable examples — the owner is expected to
-  // swap these for real reviews before (or soon after) publishing.
-  if (generated.testimonials.length) {
-    contentUpdates.testimonials = { ...content.testimonials, enabled: true, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
+  // Example reviews and stats are seeded OFF, and every item is flagged
+  // `generated`.
+  //
+  // The model invents both: customers with names and star ratings who never
+  // wrote a word, and round numbers for jobs completed and years in business.
+  // Seeded ON, one click of Generate put fabricated social proof on a live site
+  // under a real contractor's business name. They are still worth seeding —
+  // an owner edits an example far more readily than they fill an empty form —
+  // they just have to be opted IN to. getUnreviewedGeneratedSections is what
+  // stops a flagged item reaching the public page.
+  //
+  // Skipped entirely once the owner has reviews or numbers of their own, so a
+  // second Generate can neither bury an imported Google feed behind examples
+  // nor switch off a section that is carrying real proof. The owner's
+  // sourceMode is preserved for the same reason: forcing it to 'manual' hid
+  // every Google review they had imported.
+  const ownReviews = content.testimonials.items.some((item) => !item.generated) || content.testimonials.googleReviews.length > 0;
+  if (generated.testimonials.length && !ownReviews) {
+    contentUpdates.testimonials = { ...content.testimonials, enabled: false, title: content.testimonials.title || 'What homeowners say', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '', generated: true })) };
   }
-  if (generated.stats.length) {
-    contentUpdates.stats = { enabled: true, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: `${s.value.toLocaleString('en-US')}${s.suffix}`, label: s.label })) };
+  const ownStats = content.stats.items.some((item) => !item.generated);
+  if (generated.stats.length && !ownStats) {
+    contentUpdates.stats = { ...content.stats, enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: `${s.value.toLocaleString('en-US')}${s.suffix}`, label: s.label, generated: true })) };
   }
   // Fold in auto-selected stock photos (hero, slots, gallery), preserving
   // any images the owner already set.
@@ -192,11 +209,17 @@ export function applyGeneratedSiteText(current: Site, generated: GeneratedSiteTe
  * condition; here there is nobody to confirm with, so an unsure answer means
  * don't. Any headline, tagline, or SEO text the owner has written makes this
  * false, and so does a gallery they've already filled.
+ *
+ * The section lists are as much "written" as the four text fields are. An owner
+ * with fifteen hand-written services, six FAQs and six real reviews but a blank
+ * headline had written most of a website, and this said the site was untouched.
  */
 export function siteIsUnwritten(site: Site): boolean {
   if (site.headline || site.tagline || site.seo_title || site.seo_description) return false;
   const content = getSiteContent(site.content);
   if (content.services.items.length > 0) return false;
   if (content.showcase.items.length > 0) return false;
+  if (content.faqs.items.length > 0) return false;
+  if (content.testimonials.items.length > 0) return false;
   return true;
 }

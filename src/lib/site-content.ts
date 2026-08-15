@@ -54,6 +54,13 @@ export type SiteTestimonialItem = {
   label: string;
   imageUrl: string;
   imageAlt: string;
+  // Written by the model when the site was generated and not yet touched by a
+  // person. Absent on everything an owner typed, which is the whole point: it
+  // is the only thing that can tell a named customer who never existed from a
+  // real one, and the publish gate reads it. Cleared the moment the owner edits
+  // the words — at that point they are the author. See
+  // getUnreviewedGeneratedSections.
+  generated?: boolean;
 };
 
 // A review imported from a Google Business Profile via the Places API. Displayed
@@ -236,6 +243,9 @@ export type SiteStatItem = {
   // The stat band animates the first run of digits and leaves the rest static.
   value: string;
   label: string;
+  // A figure the model invented, untouched by the owner. Same contract as
+  // SiteTestimonialItem.generated: seeded off, gated at publish, cleared on edit.
+  generated?: boolean;
 };
 
 export type SiteStatsContent = {
@@ -334,6 +344,10 @@ export type SiteProjectShowcaseContent = {
 
 export const DEFAULT_PROJECT_SHOWCASE_EYEBROW = 'Recent Jobs';
 export const DEFAULT_PROJECT_SHOWCASE_TITLE = 'See Our Work';
+// What the same band is headed while every photo in it is a representative
+// stock shot. See projectShowcaseHeadings.
+export const STOCK_PROJECT_SHOWCASE_EYEBROW = 'Work We Do';
+export const STOCK_PROJECT_SHOWCASE_TITLE = 'Services in Action';
 export const PROJECT_SHOWCASE_STYLES: { key: SiteProjectShowcaseStyle; label: string }[] = [
   { key: 'slideshow', label: 'Slideshow — full cross-fade with captions' },
   { key: 'coverflow', label: 'Coverflow — 3D angled carousel' },
@@ -1091,6 +1105,9 @@ function parseTestimonials(value: unknown): SiteTestimonialItem[] {
     label: toString(item.label),
     imageUrl: toString(item.imageUrl),
     imageAlt: toString(item.imageAlt),
+    // Only ever true or absent — a stored `false` would be indistinguishable
+    // from an owner-written item, which is what this field has to distinguish.
+    generated: item.generated === true ? true : undefined,
   }));
 }
 
@@ -1171,6 +1188,7 @@ function parseStats(value: unknown): SiteStatItem[] {
     id: toString(item.id, `stat-${index + 1}`),
     value: normalizeStatValue(item),
     label: toString(item.label),
+    generated: item.generated === true ? true : undefined,
   }));
 }
 
@@ -1810,6 +1828,27 @@ export function getWorkBand(
   };
 }
 
+// The Project showcase band's heading, told from what is actually in the band.
+//
+// Its default heading — "Recent Jobs" / "See Our Work" — says these photos are
+// this contractor's own finished jobs. A generated site seeds the band with
+// representative Pexels photos, so the claim was being made about stock. The
+// photos stay; only the claim goes, and only while the defaults are untouched,
+// so an owner who wrote their own heading keeps their wording either way.
+//
+// "Own" here means an upload. A stock photo the owner picked by hand in the
+// image picker is still a stock photo of somebody else's job.
+export function projectShowcaseHeadings(
+  projectShowcase: SiteProjectShowcaseContent,
+  hasOwnPhotos: boolean,
+): { eyebrow: string; title: string } {
+  if (hasOwnPhotos) return { eyebrow: projectShowcase.eyebrow, title: projectShowcase.title };
+  return {
+    eyebrow: projectShowcase.eyebrow === DEFAULT_PROJECT_SHOWCASE_EYEBROW ? STOCK_PROJECT_SHOWCASE_EYEBROW : projectShowcase.eyebrow,
+    title: projectShowcase.title === DEFAULT_PROJECT_SHOWCASE_TITLE ? STOCK_PROJECT_SHOWCASE_TITLE : projectShowcase.title,
+  };
+}
+
 // A trade-appropriate default brand glyph (a ServiceIcon key) inferred from the
 // contractor's field of work. Used as the fallback logo mark when no logo has
 // been uploaded, so an AI-generated site opens with an icon that fits the trade
@@ -2017,6 +2056,28 @@ export function getPublishedStats(content: Record<string, unknown> | null | unde
   const stats = getSiteContent(content).stats;
   const items = stats.items.filter((item) => item.label.trim() && statHasValue(item.value));
   return stats.enabled && items.length > 0 ? { ...stats, items } : null;
+}
+
+/**
+ * The sections that would publish model-written examples as fact.
+ *
+ * A generated site seeds example reviews and stats so the owner has something
+ * to edit instead of an empty form — but a named customer who never wrote a
+ * word and a job count nobody counted are not claims this product gets to make
+ * on a real contractor's behalf. They are seeded OFF and flagged `generated`,
+ * and the flag clears as soon as the owner edits the words. So a section that
+ * is enabled AND still holds a flagged item is one nobody has reviewed.
+ *
+ * Asked through the published-* resolvers so it agrees exactly with what a
+ * visitor would see: an example that is switched off, empty, or hidden by the
+ * review source mode is not blocking anything. Returns the builder's own names
+ * for the sections so the caller can say which ones; empty is the normal case.
+ */
+export function getUnreviewedGeneratedSections(content: Record<string, unknown> | null | undefined): string[] {
+  const sections: string[] = [];
+  if (getPublishedTestimonials(content)?.items.some((item) => item.generated)) sections.push('Customer reviews');
+  if (getPublishedStats(content)?.items.some((item) => item.generated)) sections.push('Animated stats');
+  return sections;
 }
 
 export function getPublishedBeforeAfter(content: Record<string, unknown> | null | undefined): SiteBeforeAfterContent | null {

@@ -16,7 +16,7 @@ import { siteToSeoInput } from '@/lib/seo/site-seo';
 import { generateStockImages, type StockImageResult } from '@/lib/stock/generate';
 import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
 import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
-import { getSiteContent, preserveIntakeSettings } from '@/lib/site-content';
+import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings } from '@/lib/site-content';
 import { preserveBlogPosts } from '@/lib/site-blog';
 import {
   getOrCreateSite,
@@ -37,13 +37,20 @@ export type SiteEditableInput = Pick<Site,
   'content' | 'seo_title' | 'seo_description'
 >;
 
+// One sentence for both gates. Saving to a live site and publishing are the
+// same refusal for the same reason, and an owner who is stopped on one should
+// not be told something different by the other.
+function unreviewedGeneratedMessage(sections: string[], action: string): string {
+  return `${sections.join(' and ')} still contain AI-written examples. Replace them with your real ones, or switch those sections off, before ${action}.`;
+}
+
 export async function updateSiteAction(updates: SiteEditableInput) {
   const { supabase, accountId } = await requireOwnerContext();
 
   // Get current site
   const { data: sites } = await supabase
     .from('sites')
-    .select('id, custom_domain, content')
+    .select('id, custom_domain, content, published')
     .eq('account_id', accountId)
     .limit(1);
 
@@ -90,6 +97,20 @@ export async function updateSiteAction(updates: SiteEditableInput) {
     seo_title: updates.seo_title,
     seo_description: updates.seo_description,
   };
+  // The publish gate again, because on a LIVE site this action is the deploy.
+  // updateSite writes the row the public page reads, so gating only the
+  // published/unpublished transition left the whole thing open: seed a site,
+  // publish it while the example reviews are off, then flip the section on and
+  // press "Save & update live site" — six invented customers with names and
+  // star ratings, live on a real business, without Publish ever being touched.
+  // Checked against the content being WRITTEN, not the row being replaced.
+  if (sites[0].published && contentWithBlogPreserved) {
+    const unreviewed = getUnreviewedGeneratedSections(contentWithBlogPreserved);
+    if (unreviewed.length > 0) {
+      throw new Error(unreviewedGeneratedMessage(unreviewed, 'updating your live site'));
+    }
+  }
+
   const domainChanged = editableUpdates.custom_domain !== (sites[0].custom_domain || null);
   const site = await updateSite(supabase, accountId, siteId, {
     ...editableUpdates,
@@ -106,7 +127,7 @@ export async function publishSiteAction(published: boolean) {
 
   const { data: sites } = await supabase
     .from('sites')
-    .select('id, subdomain, custom_domain, custom_domain_verified_at')
+    .select('id, subdomain, custom_domain, custom_domain_verified_at, content')
     .eq('account_id', accountId)
     .limit(1);
 
@@ -118,6 +139,15 @@ export async function publishSiteAction(published: boolean) {
 
   if (published && !sites[0].subdomain && (!sites[0].custom_domain || !sites[0].custom_domain_verified_at)) {
     throw new Error('Add a letsgetquoted.com subdomain or verify your custom domain before publishing.');
+  }
+
+  // A hard gate, and on the server rather than only in the builder, because the
+  // thing being prevented is a real business publishing invented reviews and
+  // invented numbers about itself. Reads the SAVED row: the builder saves
+  // before it publishes, so this sees exactly what would go live.
+  const unreviewed = published ? getUnreviewedGeneratedSections(sites[0].content as Record<string, unknown> | null) : [];
+  if (unreviewed.length > 0) {
+    throw new Error(unreviewedGeneratedMessage(unreviewed, 'publishing'));
   }
 
   await publishSite(supabase, accountId, siteId, published);
@@ -165,9 +195,10 @@ export type GeneratedSiteText = {
   showcase_intro: string;
   services: { icon: string; title: string; description: string }[];
   faqs: { question: string; answer: string }[];
-  // Generated as examples only; the caller seeds these into the site but leaves
-  // testimonials + stats DISABLED so no fabricated review/number publishes until
-  // the contractor replaces them with real ones and turns them on.
+  // Generated as examples only. The caller seeds them DISABLED and flags each
+  // item `generated`, and publishSiteAction refuses to publish a section that
+  // is switched on while a flagged item is still in it — so no invented review
+  // or number goes live until the contractor has replaced it with a real one.
   testimonials: { author: string; text: string; rating: number; label: string }[];
   stats: { value: number; suffix: string; label: string }[];
   // Auto-selected Pexels stock photos for the site's image roles. Always

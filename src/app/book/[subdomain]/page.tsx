@@ -192,7 +192,7 @@ export default async function BookingPage({
   // defensively so a pre-migration DB just serves the classic form.
   const { data: gate } = await admin
     .from('accounts')
-    .select(`instant_book_enabled, timezone, ${QUICK_STOP_SETTINGS_COLUMNS}`)
+    .select(`instant_book_enabled, timezone, connect_onboarded, stripe_connect_id, ${QUICK_STOP_SETTINGS_COLUMNS}`)
     .eq('id', site.account_id)
     .maybeSingle();
   // Quick Stop is only offered when enabled AND not locked (no-show escalation).
@@ -203,7 +203,15 @@ export default async function BookingPage({
   const quickStopDays = quickStopDayOptions(quickStopSettings, {
     timeZone: (gate as { timezone?: string } | null)?.timezone || 'America/New_York',
   });
-  const quickStopEnabled = quickStopSettings.available && quickStopDays.length > 0;
+  // …and only when the contractor can actually be paid. A Quick Stop is confirmed
+  // by the customer paying for it, so an account without payout setup cannot
+  // answer one: the offer action refuses to send an offer and the request sits
+  // until the sweeper expires it. Same rule the dashboard's offer action applies
+  // (dashboard/quick-stops/actions.ts) — checked here so a homeowner never fills
+  // the form in and hits the refusal at submit.
+  const connect = gate as { connect_onboarded?: boolean; stripe_connect_id?: string | null } | null;
+  const quickStopPayable = Boolean(connect?.connect_onboarded && connect?.stripe_connect_id);
+  const quickStopEnabled = quickStopSettings.available && quickStopDays.length > 0 && quickStopPayable;
   const quickStop = quickStopEnabled ? (
     <QuickStopFlow
       subdomain={params.subdomain}

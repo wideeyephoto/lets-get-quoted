@@ -8,7 +8,9 @@ import { join } from 'node:path';
  * 1. It says which starting point it is using. The forecast opens from $0 when
  *    no balance has been saved — a number a contractor can read and correct —
  *    and the page states that in the field and under the chart rather than
- *    withholding every figure until somebody goes and looks it up.
+ *    withholding every figure until somebody goes and looks it up. What it does
+ *    NOT do is dress that placeholder up as a finding: the figures that are
+ *    arithmetic on a bank balance wait for a bank balance.
  * 2. It does not report the edge of its own chart as a fact about the business.
  *    "First warning: None" was true of a 30-day window and false of the
  *    account, which went negative on day 33.
@@ -61,6 +63,12 @@ const mediaAround = (needle: string) => {
  *
  * What survives is the part that can be acted on: the field says nothing has
  * been saved, and the chart says which zero it is starting from.
+ *
+ * The line between the two decisions is what the zero can support. The SHAPE of
+ * the month is real without a balance, so the curve, the day list and the safe
+ * starting cash the movements imply are all drawn. A dated shortfall and a
+ * funding figure to the dollar are not — those are arithmetic on a number
+ * nobody gave, and they wait for it.
  */
 describe('the forecast starts from a number, and says which', () => {
   it('defaults the balance to 0 rather than to unknown', () => {
@@ -86,15 +94,62 @@ describe('the forecast starts from a number, and says which', () => {
   /** One line under the chart instead. It is worth saying the curve starts
    *  from a zero nobody confirmed; it is not worth blocking the page to say. */
   it('says which zero the line starts from, where the line is', () => {
-    expect(BOARD).toContain('{balanceSaved ? null : (');
+    // Gone the moment a number is typed, saved or not — the sentence names $0
+    // outright, and by then the curve above it starts somewhere else.
+    expect(BOARD).toContain('{balanceGiven ? null : (');
     expect(BOARD).toContain('cash-provisional-note');
     expect(BOARD).toContain('because no bank balance has been saved yet');
   });
 
-  it('stops printing an em-dash where a figure belongs', () => {
-    expect(BOARD).not.toContain('Cash movement preview');
-    expect(BOARD).not.toContain('Starting balance needed');
+  /**
+   * An em-dash where the figure would be a fiction, and only there.
+   *
+   * "Funding needed $8,412" beside a red "Shortfall projected" is a precise,
+   * alarming claim about an account nobody has described — it is `required`
+   * minus a placeholder. The card that reports what the MOVEMENTS need (safe
+   * starting cash) needs no balance and keeps its number.
+   */
+  it('withholds the figures that are arithmetic on a balance nobody gave', () => {
+    expect(BOARD).toContain('balanceKnown: balanceGiven');
+    expect(BOARD).not.toContain('balanceKnown: true');
     expect(BOARD).toContain('<dt>Funding needed</dt>');
+    expect(BOARD).toContain("{balanceGiven ? money(outlook.funding) : '—'}");
+    expect(BOARD).toContain('balanceGiven && outlook.funding > 0');
+    // The setup wall is still gone. The withholding is three figures, not the
+    // page: the chart, the day list and safe starting cash all still draw.
+    expect(BOARD).not.toContain('Cash movement preview');
+    expect(BOARD).toContain('{money(outlook.required)}');
+  });
+
+  /**
+   * WITHHELD IN ONE PLACE IS WITHHELD IN ALL OF THEM.
+   *
+   * A scenario tab's "$8,412 needed" is `required` minus the starting balance —
+   * the same subtraction the Funding needed card refuses to make without a
+   * balance, printed to the dollar a couple of hundred pixels under it. The
+   * warning DATE on the tab is not gated: that one comes off the shape.
+   */
+  it('gates the scenario tabs on the same question as the card above them', () => {
+    expect(BOARD).toContain('balanceGiven && summary.funding > 0');
+    expect(BOARD).not.toContain('{summary.funding > 0 ?');
+  });
+
+  /**
+   * THE DIAL HAS TO MOVE TOGETHER.
+   *
+   * The exact box, the slider and the chart's drag handle all feed the forecast
+   * directly, so a typed balance redraws the curve, the day balances and the
+   * warning date on the keystroke. Gating the verdict on `savedBalance` alone
+   * froze the status pill, the headroom and the funding figure at "Needs
+   * today's bank balance" while the chart moved under the reader's hands — the
+   * three figures they were dialling toward being the only three that stopped.
+   */
+  it('counts a balance typed this visit as given, not just a stored one', () => {
+    expect(BOARD).toContain('const balanceGiven = balanceSaved || balanceTouched;');
+    // The stored/typed distinction still exists where it is the actual
+    // question: what the database holds, and what Save is offering to do.
+    expect(BOARD).toContain('const balanceSaved = savedBalance !== null');
+    expect(BOARD).toContain('{dirty || !balanceSaved ?');
   });
 
   it('leaves the saved value nullable end to end', () => {
@@ -102,6 +157,48 @@ describe('the forecast starts from a number, and says which', () => {
     // null into a stored zero behind their back — saving is still a press.
     expect(BOARD).toContain('savedBalance: number | null;');
     expect(BOARD).toContain('{dirty || !balanceSaved ?');
+  });
+
+  /**
+   * ONE PRESS CANNOT CONFIRM A PLACEHOLDER.
+   *
+   * `balance !== savedBalance` is `0 !== null` on a fresh account, so Save was
+   * live on first paint and pressing it stored the placeholder as a confirmed,
+   * timestamped bank balance — which turned off the "starting from $0" note and
+   * seeded an accuracy snapshot from a number nobody had checked.
+   */
+  it('treats an untouched placeholder as clean rather than as an edit', () => {
+    expect(BOARD).toContain('const [balanceTouched, setBalanceTouched] = useState(false)');
+    expect(BOARD).toContain('balanceSaved ? balance !== savedBalance : balanceTouched');
+    expect(BOARD).not.toContain('const dirty = balance !== savedBalance');
+  });
+
+  it('leaves the balance out of the post until somebody has moved it', () => {
+    // A missing field is "no balance given" to the action, which is what keeps
+    // cash_balance, its timestamp and the snapshot untouched when only the
+    // buffer was saved.
+    expect(BOARD).toContain('{balanceGiven ? <input type="hidden" name="balance" value={balance} /> : null}');
+    // Every way in has to mark it: the exact box, the slider, and the chart
+    // handle. One still wired to the raw setter would save a zero silently.
+    expect(BOARD).toContain('onBalanceChange={changeBalance}');
+    expect(BOARD).toContain('changeBalance(Number(event.target.value))');
+    expect(BOARD).toContain('if (Number.isFinite(next)) changeBalance(next)');
+    expect(BOARD).not.toContain('onBalanceChange={setBalance}');
+  });
+
+  /**
+   * A GENUINE $0 HAS TO BE SAYABLE.
+   *
+   * Tracking the touch rather than the value was chosen so that an owner who is
+   * actually at zero could still save it — but the obvious path never armed the
+   * flag. The box already reads 0, the setup prompt selects it, they type 0,
+   * and React drops onChange because the value string did not change. The
+   * account this page exists for was the one it could not hear from.
+   */
+  it('arms the save on a keystroke, not only on a changed value', () => {
+    expect(BOARD).toContain('onKeyDown={(event) => {');
+    expect(BOARD).toContain("event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete'");
+    expect(BOARD).toContain('setBalanceTouched(true)');
   });
 });
 
@@ -225,6 +322,14 @@ describe('scenarios are a control, not a checkbox that draws a line', () => {
     expect(BOARD).toContain('${money(summary.funding)} needed');
   });
 
+  it('puts the assumption behind the date on the tab too', () => {
+    // It lived in a title tooltip and in a line inside the collapsed settings
+    // drawer, so on a phone "Warning Sep 10" was a date with no stated reason
+    // to believe it.
+    expect(BOARD).toContain('<small>{summary.hint}</small>');
+    expect(BOARD).not.toContain('title={summary.hint}');
+  });
+
   it('gives the tabs a real hit target', () => {
     expect(ruleFor('.cash-scenario')).toMatch(/min-height:\s*44px/);
   });
@@ -253,6 +358,15 @@ describe('the page says how much of itself to trust', () => {
   it('asks about contradictory entries rather than drawing them silently', () => {
     expect(BOARD).toContain('cashFlags(events');
     expect(BOARD).toContain('cash-flag-q');
+  });
+
+  it('links to each entry that made a flag, not to one panel holding half of them', () => {
+    // "Check the entries →" always landed in the bills panel, which holds
+    // scheduled payments only — so a bill colliding with a payroll run or a
+    // customer payment sent somebody to a list containing at most one side.
+    expect(BOARD).toContain('flag.entries.length > 0 ?');
+    expect(BOARD).toContain('flag.entries.map');
+    expect(BOARD).toContain('href={entry.href}');
   });
 
   it('reports confidence and when the balance was last updated', () => {

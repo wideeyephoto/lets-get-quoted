@@ -13,8 +13,11 @@
 // The second thing here is refusing to know what we don't. Until somebody has
 // entered a bank balance the projection starts from a placeholder zero, which
 // makes every balance on the curve a fiction — but the SHAPE is real, and so is
-// the starting balance the shape implies. Those survive `balanceKnown: false`;
-// balances and warnings do not.
+// the starting balance the shape implies. Those survive `balanceKnown: false`:
+// the dates and `required` still come back, and the sentence says what they are
+// dates about. What does not survive is the verdict — the status is `unknown`
+// rather than Safe or Shortfall, and `headroom` is null rather than a
+// placeholder measured against a real buffer.
 //
 // PURE and CLOCK-FREE, like cash-forecast.ts: `todayKey` comes in, nothing here
 // reads a clock, so all of it can be argued with in a test.
@@ -186,7 +189,15 @@ function outlookSentence(input: {
   const { status, risk, long, windowDays, longDays, buffer } = input;
 
   if (status === 'unknown') {
-    return `Enter today's bank balance and this becomes a dated warning instead of a shape.`;
+    // The dates ARE shown beside this sentence when there are any, so "this
+    // becomes a dated warning" read as a contradiction of the fact directly
+    // under it. What is missing is not the dates, it is whose account they are
+    // about. With nothing scheduled yet — the most common first visit — there
+    // are no dates to point at and the fact beside it reads "None in 90 days",
+    // so "these dates" would refer to nothing.
+    return risk
+      ? `Enter today's bank balance and these dates become a warning about your account rather than the shape of the month.`
+      : `Enter today's bank balance and this becomes a forecast of your account rather than the shape of the month.`;
   }
   if (!risk) {
     return buffer > 0

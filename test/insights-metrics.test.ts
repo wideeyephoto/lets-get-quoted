@@ -244,6 +244,39 @@ describe('buildRevenueTrend', () => {
     expect(trend.total).toBe(1800);
   });
 
+  it('clamps the first and last bucket to the period, so the chart totals the period', () => {
+    // A "last 30 days" preset starts mid-afternoon, and the first daily bucket is
+    // labeled with the whole day containing it. The bucket used to SUM that whole
+    // day too, so a payment taken the morning before the window opened landed on
+    // the chart and its total ran ahead of the Net Collected card above it.
+    const from = new Date(2026, 5, 10, 15, 0).getTime();
+    const to = new Date(2026, 5, 13, 15, 0).getTime();
+    const period = periodFromMs(from, to);
+    const paid: MetricPayment[] = [
+      { amount: 999, paid_at: new Date(2026, 5, 10, 9).toISOString() }, // before the window opens
+      { amount: 100, paid_at: new Date(2026, 5, 10, 18).toISOString() },
+      { amount: 400, paid_at: new Date(2026, 5, 13, 9).toISOString() },
+      { amount: 777, paid_at: new Date(2026, 5, 13, 18).toISOString() }, // after it closes
+    ];
+    const trend = buildRevenueTrend(paid, period);
+    expect(trend.points.map((p) => p.label)).toEqual(['Jun 10', 'Jun 11', 'Jun 12', 'Jun 13']);
+    expect(trend.points.map((p) => p.current)).toEqual([100, 0, 0, 400]);
+    expect(trend.total).toBe(500);
+  });
+
+  it('clamps a month-grouped chart to the period too', () => {
+    const from = new Date(2026, 0, 10).getTime();
+    const to = new Date(2026, 4, 20).getTime(); // ~130 days, so month buckets
+    const paid: MetricPayment[] = [
+      { amount: 800, paid_at: new Date(2026, 0, 3, 12).toISOString() }, // before Jan 10
+      { amount: 1000, paid_at: new Date(2026, 0, 20, 12).toISOString() },
+      { amount: 600, paid_at: new Date(2026, 4, 25, 12).toISOString() }, // after May 20
+    ];
+    const trend = buildRevenueTrend(paid, periodFromMs(from, to));
+    expect(trend.points.map((p) => p.current)).toEqual([1000, 0, 0, 0, 0]);
+    expect(trend.total).toBe(1000);
+  });
+
   it('reports no data (not a zero line) when nothing was collected either period', () => {
     const period = periodFromMs(new Date(2026, 5, 10).getTime(), new Date(2026, 5, 13).getTime());
     const trend = buildRevenueTrend([], period);

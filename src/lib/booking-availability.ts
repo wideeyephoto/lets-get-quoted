@@ -111,13 +111,7 @@ export function bookingWindowPresets(minutes: number = DEFAULT_WINDOW_MINUTES): 
 }
 
 /**
- * Start times whose windows run into the next one. Not an error — an owner may
- * genuinely want overlapping offers — but a public page showing "8:00 AM – 12:00
- * PM" next to "10:00 AM – 2:00 PM" reads as a mistake, so the settings screen
- * says so rather than letting them find out from a confused customer.
- */
-/**
- * Windows that would run past the end of the working day.
+ * Windows that fall outside the working day, at either end.
  *
  * THE FAILURE THIS EXISTS FOR. Working hours ended at 6:00 PM and the live
  * booking page offered "3:00 – 7:00 PM". The offer filter checked that a window
@@ -125,27 +119,44 @@ export function bookingWindowPresets(minutes: number = DEFAULT_WINDOW_MINUTES): 
  * four-hour window beginning at three o'clock passed — and a homeowner was
  * promised an arrival window an hour after the contractor stops work.
  *
- * The end is compared with `>` and not `>=`: a window finishing exactly at 6:00
- * PM finishes within a day that ends at 6:00 PM. That is the whole day used,
- * which is the point of setting it.
+ * The warning that followed then made the mirror-image mistake: it took only
+ * `workdayEnd`, so a 7:00 AM window against an 8:00 AM start showed as
+ * configured and checked on the setup screen and was never offered to anybody,
+ * with nothing on the page saying why.
+ *
+ * The full predicate, matching the offer filter exactly: a window must START
+ * within [workdayStart, workdayEnd) and FINISH by workdayEnd. The finish is
+ * compared with `>` and not `>=` because a window closing exactly at 6:00 PM
+ * closes within a day that ends at 6:00 PM — that is the whole day used, which
+ * is the point of setting it.
  *
  * Shared by the two places that must agree — the public offer filter drops
  * these, and Booking setup names them, so a window that stops being offered
  * says why instead of vanishing.
  */
-export function overrunningWindowTimes(times: string[], minutes: number, workdayEnd: string): string[] {
+export function outsideWorkdayWindowTimes(times: string[], minutes: number, workdayStart: string, workdayEnd: string): string[] {
   /* The shape is checked rather than the result. timeToMinutes coerces an
      unparseable value to 0 instead of NaN, so a Number.isFinite guard here is
-     always true and an unreadable end would report EVERY window as overrunning
-     — turning a bad setting into "none of your windows work". Reporting none is
-     the safe direction: normalizeWorkdayTime already guarantees a valid HH:MM
-     on the stored value, so this only ever catches a caller passing something
-     it should not. */
-  if (!/^\d{2}:\d{2}$/.test(workdayEnd)) return [];
+     always true and an unreadable workday would report EVERY window as outside
+     it — turning a bad setting into "none of your windows work". Reporting none
+     is the safe direction: normalizeWorkdayTime already guarantees a valid
+     HH:MM on the stored values, so this only ever catches a caller passing
+     something it should not. */
+  if (!/^\d{2}:\d{2}$/.test(workdayStart) || !/^\d{2}:\d{2}$/.test(workdayEnd)) return [];
+  const start = timeToMinutes(workdayStart);
   const end = timeToMinutes(workdayEnd);
-  return times.filter((time) => timeToMinutes(windowEndTime(time, minutes)) > end);
+  return times.filter((time) => {
+    const opens = timeToMinutes(time);
+    return opens < start || opens >= end || timeToMinutes(windowEndTime(time, minutes)) > end;
+  });
 }
 
+/**
+ * Start times whose windows run into the next one. Not an error — an owner may
+ * genuinely want overlapping offers — but a public page showing "8:00 AM – 12:00
+ * PM" next to "10:00 AM – 2:00 PM" reads as a mistake, so the settings screen
+ * says so rather than letting them find out from a confused customer.
+ */
 export function overlappingWindowTimes(times: string[], minutes: number): string[] {
   const sorted = [...times].sort();
   const clashing: string[] = [];

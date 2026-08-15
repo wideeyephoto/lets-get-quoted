@@ -269,7 +269,7 @@ export function computeKpis(input: KpiInput): InsightsKpis {
       deltaUnit: '%',
       upIsGood: false,
       spark: [],
-      hint: 'What customers owe you right now across unpaid invoices.',
+      hint: 'What customers owe you right now across unpaid invoices, after deposits and part-payments.',
       note: `${input.outstandingCount} unpaid invoice${input.outstandingCount === 1 ? '' : 's'} · current total, not a period change`,
     },
     newCustomers: {
@@ -310,6 +310,12 @@ export function chooseGrouping(days: number): RevenueGrouping {
   return 'month';
 }
 
+// Buckets are LABELED by the calendar month/day they belong to, which means the
+// first one starts before the period does (a 30-day window opens mid-day, a
+// quarter opens mid-month) and the last one ends after it. The window each bucket
+// SUMS is clamped back to the period, so the chart's total is the period's total
+// — unclamped, it quietly added the hours before the range and read higher than
+// the Net Collected card sitting directly above it.
 function trendBuckets(fromMs: number, toMs: number, grouping: RevenueGrouping): Array<{ key: string; label: string; startMs: number; endMs: number }> {
   const buckets: Array<{ key: string; label: string; startMs: number; endMs: number }> = [];
   if (grouping === 'month') {
@@ -318,7 +324,12 @@ function trendBuckets(fromMs: number, toMs: number, grouping: RevenueGrouping): 
     while (cursor < toMs) {
       const start = new Date(cursor);
       const end = new Date(start.getFullYear(), start.getMonth() + 1, 1).getTime();
-      buckets.push({ key: monthKey(start), label: start.toLocaleDateString('en-US', { month: 'short' }), startMs: cursor, endMs: end });
+      buckets.push({
+        key: monthKey(start),
+        label: start.toLocaleDateString('en-US', { month: 'short' }),
+        startMs: Math.max(cursor, fromMs),
+        endMs: Math.min(end, toMs),
+      });
       cursor = end;
     }
     return buckets;
@@ -329,8 +340,8 @@ function trendBuckets(fromMs: number, toMs: number, grouping: RevenueGrouping): 
     buckets.push({
       key: String(cursor),
       label: new Date(cursor).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      startMs: cursor,
-      endMs: cursor + step,
+      startMs: Math.max(cursor, fromMs),
+      endMs: Math.min(cursor + step, toMs),
     });
     cursor += step;
   }

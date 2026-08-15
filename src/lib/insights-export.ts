@@ -382,7 +382,7 @@ export function buildInsightsPdf(insights: Insights, meta: InsightsExportMeta): 
         .fontSize(7.5)
         .fillColor('#94a3b8')
         .text(
-          'Notes: Revenue by service is approximate, grouped from invoice line-item labels rather than a true service catalog. Payment health is age-based, not due-date-based — invoices carry no due date. Marketing shows what was sent and how it delivered; opens, clicks, replies and booked revenue are not tracked anywhere. The funnel is period volume, not a tracked cohort. Outstanding balance is a current snapshot with no period comparison.',
+          'Notes: Revenue by service is approximate, grouped from invoice line-item labels rather than a true service catalog. Payment health is age-based, not due-date-based — invoices carry no due date. Marketing shows what was sent and how it delivered; opens, clicks, replies and booked revenue are not tracked anywhere. The funnel is period volume, not a tracked cohort. Outstanding balance is a current snapshot, net of deposits and part-payments, with no period comparison.',
           PAGE_MARGIN,
           y,
           { width: CONTENT_WIDTH, align: 'left' },

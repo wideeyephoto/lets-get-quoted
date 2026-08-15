@@ -202,24 +202,47 @@ export default function CashFlowBoard({
     field.select();
   }, []);
   /**
-   * STARTS AT ZERO, AND SAYS SO IN THE FIELD.
+   * STARTS AT ZERO — AND EVERY FIGURE THAT WOULD BE A CLAIM ABOUT THE ACCOUNT
+   * RATHER THAN ABOUT THE MONTH WAITS FOR A REAL NUMBER.
    *
-   * This was null until somebody entered a number, and null propagated: a
-   * setup callout above the title, three readouts printing an em-dash, and
-   * "Starting balance needed" where "Funding needed" belonged. The reasoning
-   * was sound — a balance nobody gave is not a balance of zero, and printing
-   * fictions to the dollar beside the word "Overdrawn" is worse than printing
-   * nothing. But the cost landed on every visit before the one where somebody
-   * finally looked up their bank balance, and the page it was protecting them
-   * from is the page they came to see.
+   * This was null until somebody entered a number, and null propagated: a setup
+   * callout above the title, three readouts printing an em-dash, and "Starting
+   * balance needed" where "Funding needed" belonged. That cost landed on every
+   * visit before the one where somebody finally looked up their bank balance,
+   * and the page it was protecting them from is the page they came to see. So
+   * the forecast opens from $0. The SHAPE of the month — what leaves, what
+   * arrives, on which days — is real either way, and $0 is a starting point a
+   * contractor can read and correct.
    *
-   * So the forecast opens from $0, which is a starting point a contractor can
-   * read and correct, and the honesty moves to where it can be acted on: the
-   * hint under the field says nothing has been saved yet, and the field is one
-   * scroll away. `savedBalance` stays nullable end to end — nothing writes a
-   * zero to the database on their behalf (see the save block below).
+   * What the placeholder cannot carry came back. "Funding needed $8,412" and a
+   * red "Shortfall projected" are not facts about the shape; they are arithmetic
+   * on a balance nobody gave, stated to the dollar. So the status, the headroom
+   * and the funding figure go through `balanceSaved` and say they are waiting on
+   * the number instead of deriving a precise one from the zero — see the
+   * `cashOutlook` call below and the Funding needed card. Everything the
+   * movements alone support (the curve, the day list, safe starting cash) is
+   * unaffected, and no callout stands between the title and the chart.
+   *
+   * `savedBalance` stays nullable end to end — nothing writes a zero to the
+   * database on their behalf (see `balanceTouched` and the save block below).
    */
   const [balance, setBalance] = useState<number>(savedBalance ?? 0);
+  /**
+   * Whether this visit has MOVED the balance, which is not the same as what it
+   * currently reads.
+   *
+   * A fresh account opens at 0 with `savedBalance` null, so a value comparison
+   * called the page dirty before anybody had touched it — and the Save button
+   * that sat enabled underneath wrote that placeholder in as a confirmed,
+   * timestamped bank balance, flipped off the "starting from $0" note, and
+   * seeded a forecast-accuracy snapshot from it. Tracking the touch rather than
+   * the value also keeps a genuine $0 saveable: type it and you meant it.
+   */
+  const [balanceTouched, setBalanceTouched] = useState(false);
+  const changeBalance = useCallback((next: number) => {
+    setBalance(next);
+    setBalanceTouched(true);
+  }, []);
   const [buffer, setBuffer] = useState<number>(savedBuffer);
   const [creditLine, setCreditLine] = useState<number>(savedCreditLine);
   /**
@@ -245,9 +268,25 @@ export default function CashFlowBoard({
   });
 
   // Whether a HUMAN has ever given us this number, which is a different
-  // question from what the forecast is currently starting from. Only two things
-  // still ask: the hint under the field, and the Save button's label.
+  // question from what the forecast is currently starting from. What is stored
+  // is what the hint under the field and the Save button's label are about.
   const balanceSaved = savedBalance !== null;
+  /**
+   * Stored, or typed in this visit and not stored yet — "has somebody told us
+   * what is in the account", which is the question the withheld figures are
+   * actually asking.
+   *
+   * Gating them on `balanceSaved` alone split the page down the middle. This
+   * board is a dial: the exact box, the slider and the chart's own drag handle
+   * all feed `startingBalance`, so the moment a number goes in, the curve, the
+   * day balances, the lowest point and the warning date all redraw around it.
+   * The status pill, the headroom and the funding figure would have gone on
+   * saying "Needs today's bank balance" at a reader who had just typed it —
+   * the three figures they were dialling toward, frozen, beside a chart moving
+   * under their hands. A number nobody has pressed Save on is still a number
+   * they gave us.
+   */
+  const balanceGiven = balanceSaved || balanceTouched;
   const startingBalance = balance;
   const longHorizon = Math.max(horizonDays, longDays ?? horizonDays);
 
@@ -303,13 +342,15 @@ export default function CashFlowBoard({
         windowDays: horizonDays,
         longDays: longHorizon,
         buffer,
-        // Always true now: the board starts from $0 rather than from "unknown".
-        // cashOutlook keeps the flag because the demo and the tests still
-        // exercise the no-balance wording.
-        balanceKnown: true,
+        // The one input this page cannot work out for itself. Hardcoded true,
+        // it read the placeholder zero as a bank balance and reported a dated
+        // shortfall and a funding figure to the dollar off it. False keeps the
+        // status honest ("Starting balance needed") and the headroom and
+        // funding null — the curve and the movements are unaffected.
+        balanceKnown: balanceGiven,
         balance: startingBalance,
       }),
-    [longForecast, todayKey, horizonDays, longHorizon, buffer, startingBalance],
+    [longForecast, todayKey, horizonDays, longHorizon, buffer, balanceGiven, startingBalance],
   );
 
   const balanceAge = balanceAt && balanceSaved ? daysAgo(balanceAt) : null;
@@ -353,7 +394,13 @@ export default function CashFlowBoard({
   /** Where the window ends if every estimate turns out to be nothing. */
   const confirmedEnding = forecast.days[forecast.days.length - 1]?.confirmedOnly ?? 0;
 
-  const dirty = balance !== savedBalance || buffer !== savedBuffer || creditLine !== savedCreditLine;
+  // An untouched placeholder is not an edit. `savedBalance` is null on a fresh
+  // account and the board starts from 0, so `balance !== savedBalance` reported
+  // a change nobody had made and left Save live on first paint.
+  const dirty =
+    (balanceSaved ? balance !== savedBalance : balanceTouched) ||
+    buffer !== savedBuffer ||
+    creditLine !== savedCreditLine;
   const stale = balanceAge !== null && balanceAge >= 7;
 
   const activeDays = forecast.days.filter((day) => day.events.length > 0);
@@ -383,7 +430,7 @@ export default function CashFlowBoard({
         lines={lines}
         lateDays={scenarioDef.lateDays}
         onBufferChange={setBuffer}
-        onBalanceChange={setBalance}
+        onBalanceChange={changeBalance}
         selected={selected}
         onSelect={setSelected}
       />
@@ -501,11 +548,20 @@ export default function CashFlowBoard({
               </div>
               <div>
                 <dt>Funding needed</dt>
-                <dd className={outlook.funding > 0 ? 'is-risk' : ''}>{money(outlook.funding)}</dd>
+                {/* A gap is the difference between what the movements need and
+                    what is in the account, so with no balance saved there is no
+                    gap to state — only a placeholder subtracted from a real
+                    figure. Safe starting cash below is the half of it the
+                    movements alone do support. */}
+                <dd className={balanceGiven && outlook.funding > 0 ? 'is-risk' : ''}>
+                  {balanceGiven ? money(outlook.funding) : '—'}
+                </dd>
                 <small>
-                  {outlook.funding > 0
-                    ? 'Cash that has to arrive before the low point.'
-                    : 'Nothing needed — the movements clear the buffer on their own.'}
+                  {!balanceGiven
+                    ? 'Needs today’s bank balance.'
+                    : outlook.funding > 0
+                      ? 'Cash that has to arrive before the low point.'
+                      : 'Nothing needed — the movements clear the buffer on their own.'}
                 </small>
               </div>
             </dl>
@@ -560,7 +616,23 @@ export default function CashFlowBoard({
                 <div key={flag.kind + flag.question} className="cash-flag">
                   <p className="cash-flag-q">{flag.question}</p>
                   <p className="cash-flag-detail">{flag.detail}</p>
-                  {flag.href ? (
+                  {/* One link per side when the two sides live on different
+                      pages. "Check the entries →" always landed in the bills
+                      panel, which holds scheduled payments only — so a bill
+                      colliding with a payroll run or a customer payment sent
+                      somebody to a list containing at most half the question. */}
+                  {flag.entries.length > 0 ? (
+                    <p className="cash-flag-detail">
+                      {flag.entries.map((entry, index) => (
+                        <span key={entry.href}>
+                          {index > 0 ? ' · ' : ''}
+                          <Link href={entry.href} className="linklike">
+                            {entry.label} →
+                          </Link>
+                        </span>
+                      ))}
+                    </p>
+                  ) : flag.href ? (
                     <Link href={flag.href} className="linklike">
                       Check the entries →
                     </Link>
@@ -587,8 +659,11 @@ export default function CashFlowBoard({
             {chart}
             {/* One line under the chart rather than a callout above the title.
                 It is worth saying that the curve is starting from a zero nobody
-                confirmed — it is not worth blocking the page to say it. */}
-            {balanceSaved ? null : (
+                confirmed — it is not worth blocking the page to say it. It goes
+                as soon as a number is typed, saved or not: the sentence names
+                $0 outright, and by then the line above it starts somewhere
+                else. */}
+            {balanceGiven ? null : (
               <p className="cash-provisional-note">
                 Starting from <strong>$0</strong>, because no bank balance has been saved yet. Put today&rsquo;s number
                 in <button type="button" className="cash-inline-link" onClick={focusBalance}>below</button> and every
@@ -626,9 +701,9 @@ export default function CashFlowBoard({
             </div>
 
             {/* THE SCENARIOS, beside the horizon rather than buried below it.
-                Each tab carries what it would do — when the warning lands and
-                what it would take to cover — so the comparison is readable
-                without selecting all three in turn. */}
+                Each tab carries what it assumes and what that does — when the
+                warning lands and what it would take to cover — so the
+                comparison is readable without selecting all three in turn. */}
             <div className="cash-scenario-tabs" role="group" aria-label="Scenario">
               {scenarios.map((summary) => {
                 const delta = scenarioDelta(baseScenario, summary, todayKey);
@@ -639,17 +714,27 @@ export default function CashFlowBoard({
                     type="button"
                     className={`cash-scenario${isOn ? ' is-on' : ''}`}
                     aria-pressed={isOn}
-                    title={summary.hint}
                     onClick={() => setScenario(summary.key)}
                   >
                     <strong>{summary.label}</strong>
                     <small>
                       {summary.warningLabel ? `Warning ${summary.warningLabel}` : `No warning in ${longHorizon} days`}
-                      {summary.funding > 0 ? ` · ${money(summary.funding)} needed` : ''}
+                      {/* The same subtraction the Funding needed card refuses
+                          to print without a balance — `required` minus what is
+                          in the account — so with no balance given it is the
+                          withheld figure, to the dollar, 200px below the card
+                          that withheld it. The warning DATE stays: that comes
+                          off the shape of the month either way. */}
+                      {balanceGiven && summary.funding > 0 ? ` · ${money(summary.funding)} needed` : ''}
                       {summary.key !== 'base' && delta.daysEarlier && delta.daysEarlier > 0
                         ? ` · ${delta.daysEarlier} days sooner`
                         : ''}
                     </small>
+                    {/* The assumption, on the tab. It was a title tooltip and a
+                        line in the settings drawer — neither of which a touch
+                        reader can reach — so "Warning Sep 10" was a date with
+                        no stated reason to believe it. */}
+                    <small>{summary.hint}</small>
                   </button>
                 );
               })}
@@ -738,16 +823,29 @@ export default function CashFlowBoard({
                   // from a number either way now, and a field that can hold a
                   // third state the page cannot show is a field that lies.
                   value={balance}
+                  // A keystroke in this box is an answer, even when it does not
+                  // move the value. React drops onChange when the typed string
+                  // matches what the input already held, so an owner who is
+                  // genuinely at zero — select the placeholder 0, type 0 —
+                  // never reached changeBalance, the field stayed untouched,
+                  // and the one balance the page most needs to hear stayed
+                  // unsaveable. Editing keys only: Tab and Escape are leaving,
+                  // not answering.
+                  onKeyDown={(event) => {
+                    if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') {
+                      setBalanceTouched(true);
+                    }
+                  }}
                   onChange={(event) => {
                     const raw = event.target.value.trim();
                     if (raw === '' || raw === '-') {
-                      setBalance(0);
+                      changeBalance(0);
                       return;
                     }
                     const next = Number(raw);
                     // NaN keeps the last good value rather than snapping to 0 —
                     // a half-typed "1.2e" should not wipe the number.
-                    if (Number.isFinite(next)) setBalance(next);
+                    if (Number.isFinite(next)) changeBalance(next);
                   }}
                 />
               </div>
@@ -764,7 +862,7 @@ export default function CashFlowBoard({
               value={Math.min(Math.max(startingBalance, BALANCE_SLIDER_MIN), BALANCE_SLIDER_MAX)}
               aria-label="Starting bank balance"
               aria-valuetext={money(startingBalance)}
-              onChange={(event) => setBalance(Number(event.target.value))}
+              onChange={(event) => changeBalance(Number(event.target.value))}
             />
             <small className="field-hint">
               {balanceAt && balanceSaved ? (
@@ -776,6 +874,10 @@ export default function CashFlowBoard({
                 ) : (
                   <>Last saved {balanceAge === 0 ? 'today' : balanceAge === 1 ? 'yesterday' : `${balanceAge} days ago`}.</>
                 )
+              ) : balanceTouched ? (
+                // The page is already using this number. What is outstanding is
+                // the press that keeps it for next time, not the typing.
+                <>Not saved yet. Save it and the forecast opens from this number next time.</>
               ) : (
                 <>Nothing saved yet, so this page is starting from $0. Type what your account actually says and save it.</>
               )}
@@ -850,11 +952,14 @@ export default function CashFlowBoard({
 
           {settingsAvailable ? (
             <div className="cash-save">
-              {/* Whatever the board is currently starting from, including a $0
-                  nobody has changed. That is a deliberate save of a real
-                  answer — the button is a press, and savedBalance stays null
-                  until somebody makes it. */}
-              <input type="hidden" name="balance" value={balance} />
+              {/* Left out of the post entirely until somebody has moved it. The
+                  action reads a missing field as "no balance given" and leaves
+                  cash_balance, its timestamp and the accuracy snapshot alone —
+                  so saving a buffer on a fresh account cannot confirm the
+                  placeholder zero the forecast opened from. Once it has been
+                  touched, whatever it reads is a deliberate answer, $0
+                  included. */}
+              {balanceGiven ? <input type="hidden" name="balance" value={balance} /> : null}
               <input type="hidden" name="buffer" value={buffer} />
               <input type="hidden" name="creditLine" value={creditLine} />
               {/* "Saved" is only true if something ever was. On a fresh account
@@ -920,7 +1025,9 @@ export default function CashFlowBoard({
           <span className="workspace-metric-label">Safe starting cash</span>
           <strong className="workspace-metric-value">{money(outlook.required)}</strong>
           <p className="workspace-metric-note">
-            {outlook.funding > 0
+            {/* "More than you have today" needs a today. The figure itself is
+                read off the movements and stands without one. */}
+            {balanceGiven && outlook.funding > 0
               ? `${money(outlook.funding)} more than you have today.`
               : `What you need today to stay above the buffer for ${longHorizon} days.`}
           </p>

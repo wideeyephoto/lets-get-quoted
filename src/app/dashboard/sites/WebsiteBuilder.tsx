@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
+import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -15,7 +15,7 @@ import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from
 import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
 // automatic build after signup can never produce different sites.
-import { applyGeneratedSiteText, applyStockImages } from '@/lib/site-seed';
+import { applyGeneratedSiteText, applyStockImages, siteIsUnwritten } from '@/lib/site-seed';
 import type { PexelsPickPhoto } from '@/lib/stock/types';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
@@ -279,7 +279,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   // with it — rather than meeting a finished website nobody explained.
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     justBuilt
-      ? { type: 'success', text: 'Your site is written and saved — services, FAQs, the towns you serve and your Google listing, all from your trade and ZIP. The reviews and stats are examples: swap in real ones before you publish. Change anything here, then hit Publish.' }
+      ? { type: 'success', text: 'Your site is written and saved — services, FAQs, the towns you serve and your Google listing, all from your trade and ZIP. The reviews and stats are AI examples, so they are switched OFF: replace them with real ones to turn them on. Change anything here, then hit Publish.' }
       : null,
   );
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
@@ -358,6 +358,23 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
         : { hint: `${siteContent.blog.posts.length} ${siteContent.blog.posts.length === 1 ? 'draft' : 'drafts'}`, hintTone: 'ok' }
       : contentHint(siteContent.blog.enabled, 0, 'post');
 
+  // AI-written examples nobody has reviewed yet. The flag is set at generation
+  // and cleared the moment the owner edits the words, so these counts mean
+  // "still in the model's voice", not "generated at some point".
+  const generatedReviewCount = siteContent.testimonials.items.filter((item) => item.generated).length;
+  const generatedStatCount = siteContent.stats.items.filter((item) => item.generated).length;
+  // The publish gate, asked of the draft in the browser so the Publish tab can
+  // say what is wrong before the round trip. publishSiteAction enforces it, and
+  // updateSiteAction enforces it too once the site is live.
+  const unreviewedSections = getUnreviewedGeneratedSections(site.content);
+  // Which press the gate stops depends on whether the site is already up. On a
+  // live site the save IS the deploy, so "can't publish" was false in exactly
+  // the state this warning exists for — the owner has published, come back, and
+  // switched a seeded section on.
+  const gateSentence = site.published
+    ? 'Your live site won’t update while this section is on and an example is still in it.'
+    : 'Your site can’t publish while this section is on and an example is still in it.';
+
   // Review count for hints — mirrors getPublishedTestimonials exactly: manual
   // quotes are dropped in 'google' mode, Google reviews in 'manual' mode, and
   // empty-text Google reviews never render. Counting anything the public page
@@ -365,6 +382,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   const reviewCount =
     (siteContent.testimonials.sourceMode === 'google' ? 0 : siteContent.testimonials.items.filter((item) => item.text.trim()).length)
     + (siteContent.testimonials.sourceMode === 'manual' ? 0 : siteContent.testimonials.googleReviews.filter((review) => review.text.trim()).length);
+
+  // A count of unreviewed AI examples beats a count of reviews: "6 reviews" on
+  // a collapsed card reads as six customers, which is the impression these two
+  // sections must never give before somebody has looked at them.
+  const reviewHint: { hint?: string; hintTone?: 'ok' | 'warn' } = generatedReviewCount > 0
+    ? { hint: `${generatedReviewCount} AI ${generatedReviewCount === 1 ? 'example' : 'examples'}`, hintTone: 'warn' }
+    : contentHint(siteContent.testimonials.enabled, reviewCount, 'review');
+  const statsHint: { hint?: string; hintTone?: 'ok' | 'warn' } = generatedStatCount > 0
+    ? { hint: `${generatedStatCount} AI ${generatedStatCount === 1 ? 'example' : 'examples'}`, hintTone: 'warn' }
+    : contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat');
 
   // What to look their Business Profile up as, before they've typed anything.
   // Google's autocomplete wants a locality — the same company name in two towns
@@ -405,15 +432,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   // Launch checklist — mirrors the publish gates so first-time owners can see
   // what's missing before they hit Publish (instead of error-by-error). Each
   // unmet item deep-links to the tab/card/field where it gets fixed.
+  //
+  // Generated examples do NOT count toward "your site has content": an invented
+  // review is not a section the owner has filled in, and ticking the box for it
+  // told them they were done when they were one click from publishing it.
   const hasLiveSection =
     (siteContent.services.enabled && siteContent.services.items.some((svc) => svc.title.trim())) ||
     (siteContent.howItWorks.enabled && siteContent.howItWorks.steps.some((step) => step.title.trim())) ||
     (siteContent.showcase.enabled && siteContent.showcase.items.length > 0) ||
     (siteContent.projectShowcase.enabled && siteContent.projectShowcase.items.length > 0) ||
     (siteContent.faqs.enabled && siteContent.faqs.items.some((faq) => faq.question.trim() && faq.answer.trim())) ||
-    (siteContent.testimonials.enabled && siteContent.testimonials.items.some((item) => item.text.trim())) ||
+    // Mirrors getPublishedTestimonials, like reviewCount above: sourceMode
+    // decides which of the two lists renders, and an empty-text Google review
+    // never does. "At least one content section" ticking green over reviews the
+    // public page drops is the same false all-clear the generated-example
+    // exclusion is here to prevent.
+    (siteContent.testimonials.enabled && (
+      (siteContent.testimonials.sourceMode !== 'google' && siteContent.testimonials.items.some((item) => item.text.trim() && !item.generated))
+      || (siteContent.testimonials.sourceMode !== 'manual' && siteContent.testimonials.googleReviews.some((review) => review.text.trim()))
+    )) ||
     (siteContent.serviceAreas.enabled && siteContent.serviceAreas.cities.some((city) => city.trim())) ||
-    (siteContent.stats.enabled && siteContent.stats.items.some((item) => item.label.trim())) ||
+    (siteContent.stats.enabled && siteContent.stats.items.some((item) => item.label.trim() && !item.generated)) ||
     (siteContent.beforeAfter.enabled && siteContent.beforeAfter.items.some((pair) => pair.beforeUrl && pair.afterUrl)) ||
     (siteContent.blog.enabled && publishedPostCount > 0);
 
@@ -527,17 +566,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   }, []);
 
   const handleSave = useCallback(() => {
+    // On a live site the save is the deploy, so the publish gate applies to it
+    // and updateSiteAction will refuse. Asked here too, for the same reason
+    // handlePublish asks it here: the server can only throw a sentence, and
+    // what an owner needs is to be standing in front of the card it is about.
+    if (site.published && unreviewedSections.length > 0) {
+      jumpTo('page', unreviewedSections[0] === 'Customer reviews' ? 'testimonials' : 'stats');
+      setMessage({ type: 'error', text: `${unreviewedSections.join(' and ')} still contain AI-written examples — reviews from customers who never said them, numbers nobody counted. Replace them with your real ones, delete them, or switch those sections off before updating your live site.` });
+      return;
+    }
     startTransition(async () => {
       try {
         const updated = await updateSiteAction(siteUpdates(site));
         setSite(updated);
         setIsDirty(false);
-        setMessage({ type: 'success', text: 'Website changes saved.' });
+        // On a published site the save IS the deploy — sites.ts writes to the
+        // same row the public page reads. Say so rather than "saved", which
+        // suggests something still has to be pushed.
+        setMessage({ type: 'success', text: site.published ? 'Saved — your live site is updated.' : 'Website changes saved.' });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to save changes.' });
       }
     });
-  }, [site]);
+  }, [site, unreviewedSections, jumpTo]);
 
   // Per-item Save: collapse the editor and persist the whole draft.
   const saveItem = useCallback(() => {
@@ -716,8 +767,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   }, []);
 
   const handleGenerateText = useCallback(() => {
-    const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
-    if (hasExistingText && !window.confirm('This replaces your headline, tagline, SEO, hours, service area, and photo gallery heading, and fills the Services, FAQs, and Service-area sections with fresh AI examples. Example reviews and stats are generated too — replace them with your real ones before you publish. Continue?')) {
+    // siteIsUnwritten, not "are the four text fields empty". An owner with
+    // fifteen hand-written services, six FAQs and six real reviews but a blank
+    // headline was getting no confirmation at all before one click overwrote
+    // every one of them.
+    if (!siteIsUnwritten(site) && !window.confirm(
+      'Generate a new example site?\n\n'
+      + 'REPLACED: your headline, tagline, SEO title and description, hours, service area, photo gallery heading, and everything currently in your Services, FAQs and Cities-you-serve sections.\n\n'
+      + 'KEPT: your uploaded photos, your own reviews and stats, and everything else on the page.\n\n'
+      + 'Undo (Ctrl+Z) puts it back, until you save.',
+    )) {
       return;
     }
     setIsGeneratingText(true);
@@ -729,21 +788,36 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
         const genZip = getSiteContent(site.content).zip;
         const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: genZip ? undefined : (site.service_area ?? undefined), zip: genZip });
         // Same function the first-run seed uses, so the two can never diverge.
-        setSite((current) => applyGeneratedSiteText(current, generated));
+        const applied = applyGeneratedSiteText(site, generated);
+        setSite(applied);
         setIsDirty(true);
         const imagesNote = generated.images.ok
           ? ' Trade-relevant stock photos are added — replace any with your own anytime.'
           : generated.images.configured
             ? ' We couldn’t load stock photos right now — add your own, or use “Regenerate stock images” to retry.'
             : '';
-        setMessage({ type: 'success', text: `Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in.${imagesNote} The reviews & stats are examples — swap in your real ones, then publish!` });
+        // Read off what was actually seeded, not off what Generate usually does.
+        // Both branches are skipped once the owner has reviews or numbers of
+        // their own, so an owner with an imported Google feed was being told
+        // their reviews had just been switched off — untouched, and still live.
+        const appliedContent = getSiteContent(applied.content);
+        const seededReviews = !appliedContent.testimonials.enabled && appliedContent.testimonials.items.some((item) => item.generated);
+        const seededStats = !appliedContent.stats.enabled && appliedContent.stats.items.some((item) => item.generated);
+        const examplesNote = seededReviews && seededStats
+          ? ' Example reviews and stats are written but left switched OFF — invented customers, invented numbers. Replace them with real ones to turn them on.'
+          : seededReviews
+            ? ' Example reviews are written but left switched OFF: they name customers who never said anything. Replace them with real ones to turn them on.'
+            : seededStats
+              ? ' Example stats are written but left switched OFF: nobody counted those numbers. Replace them with real ones to turn them on.'
+              : ' Your own reviews and stats were left exactly as they are.';
+        setMessage({ type: 'success', text: `Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in.${imagesNote}${examplesNote}` });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example content.' });
       } finally {
         setIsGeneratingText(false);
       }
     });
-  }, [site.headline, site.tagline, site.seo_title, site.seo_description, site.content, site.company_name, site.service_area]);
+  }, [site]);
 
   // Regenerate only the SEO title + description from the contractor's real data
   // (no AI/API needed). Each click rotates to a different valid variation and
@@ -1046,6 +1120,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
     updateSiteContent({ testimonials });
   }, [updateSiteContent]);
 
+  // Edit one review in place. Rewriting the WORDS or the customer's name is the
+  // owner taking authorship of the quote, so it clears the `generated` flag —
+  // which is also how they get past the publish gate without a button that just
+  // means "publish it anyway". Changing the star rating or the project label
+  // isn't; the sentence is still the model's.
+  const editTestimonial = useCallback((id: string, patch: Partial<SiteTestimonialItem>) => {
+    const authored = typeof patch.text === 'string' || typeof patch.author === 'string';
+    updateTestimonials({
+      ...siteContent.testimonials,
+      items: siteContent.testimonials.items.map((item) => (
+        item.id === id ? { ...item, ...patch, generated: authored ? undefined : item.generated } : item
+      )),
+    });
+  }, [siteContent.testimonials, updateTestimonials]);
+
+  // Drop every unreviewed example at once — the answer for an owner who wants
+  // none of them, rather than deleting six invented reviews one at a time.
+  const removeGeneratedTestimonials = useCallback(() => {
+    updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((item) => !item.generated) });
+  }, [siteContent.testimonials, updateTestimonials]);
+
   const updateAnalytics = useCallback((analytics: SiteAnalyticsContent) => {
     updateSiteContent({ analytics });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1075,6 +1170,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   const updateStats = useCallback((stats: SiteStatsContent) => {
     updateSiteContent({ stats });
   }, [updateSiteContent]);
+
+  // Same contract as editTestimonial: typing over the figure or its label makes
+  // the number the owner's, and clears the generated flag.
+  const editStat = useCallback((id: string, patch: Partial<SiteStatItem>) => {
+    const authored = typeof patch.value === 'string' || typeof patch.label === 'string';
+    updateStats({
+      ...siteContent.stats,
+      items: siteContent.stats.items.map((item) => (
+        item.id === id ? { ...item, ...patch, generated: authored ? undefined : item.generated } : item
+      )),
+    });
+  }, [siteContent.stats, updateStats]);
+
+  const removeGeneratedStats = useCallback(() => {
+    updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((item) => !item.generated) });
+  }, [siteContent.stats, updateStats]);
 
   const updateBeforeAfter = useCallback((beforeAfter: SiteBeforeAfterContent) => {
     updateSiteContent({ beforeAfter });
@@ -1257,6 +1368,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   // The tiles the Project-showcase editor renders — real items or the gallery
   // fallback shown as editable placeholders (see projectBase).
   const projectPhotos = projectBase();
+  // Whether the band, AS THE PUBLIC PAGE WILL DRAW IT, is showing the owner's
+  // own photos — which decides whether it keeps the "Recent Jobs / See Our
+  // Work" heading. Mirrors SiteContentSections: with the card empty, Haven
+  // falls back to the image library, so an owner who uploaded eight photos of
+  // their finished jobs there has earned the heading without ever opening this
+  // card. Asking the card alone told exactly that owner their work was stock.
+  const projectBandOwnPhotos = (() => {
+    const saved = siteContent.projectShowcase.items.filter((item) => item.url && item.alt);
+    if (saved.length > 0) return saved.some((item) => item.source === 'upload');
+    if (site.template !== 'handy') return false;
+    // Only the photos that fit in the band — the same slice the template takes.
+    return galleryImages.slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS).some((item) => item.source === 'upload');
+  })();
   // Mirrors contentHint's contract, which the inline version ignored: a section
   // that is OFF makes no promise about showing, so it must not warn that photos
   // are missing. Care still falls back to placeholders when empty, so it never warns.
@@ -1323,11 +1447,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
       setMessage({ type: 'error', text: 'Add a letsgetquoted.com subdomain or verify your custom domain before publishing.' });
       return;
     }
+    // A block, not a warning, and the same one publishSiteAction enforces —
+    // this only gets to it first, and can point at the card that fixes it.
+    // There is a way through that isn't a "publish anyway" button: replace the
+    // words, delete the examples, or switch the section off.
+    if (nextPublished && unreviewedSections.length > 0) {
+      jumpTo('page', unreviewedSections[0] === 'Customer reviews' ? 'testimonials' : 'stats');
+      setMessage({ type: 'error', text: `${unreviewedSections.join(' and ')} still contain AI-written examples — reviews from customers who never said them, numbers nobody counted. Replace them with your real ones, delete them, or switch those sections off.` });
+      return;
+    }
 
     startTransition(async () => {
       try {
+        // Taking the site DOWN happens first, because updateSiteAction applies
+        // the same gate to a live site — and being unable to unpublish is the
+        // one way this block must never fail. Going up keeps the old order: the
+        // save has to land before the row is served.
+        if (!nextPublished) await publishSiteAction(false);
         const saved = await updateSiteAction(siteUpdates(site));
-        await publishSiteAction(nextPublished);
+        if (nextPublished) await publishSiteAction(true);
         setSite({ ...saved, published: nextPublished });
         setIsDirty(false);
         setMessage({ type: 'success', text: nextPublished ? 'Your website is live.' : 'Your website is now private.' });
@@ -1335,7 +1473,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to update publishing.' });
       }
     });
-  }, [domainStatus, site]);
+  }, [domainStatus, site, unreviewedSections, jumpTo]);
 
   const verifyCustomDomain = useCallback(() => {
     if (!site.custom_domain) {
@@ -1392,7 +1530,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
         <div>
           <p className={styles.builderEyebrow}>Website builder</p>
           <h1>{site.company_name || 'Your contractor website'}</h1>
-          <span className={styles.saveStatus}>{isDirty ? 'Unsaved changes' : 'All changes saved'}</span>
+          {/* On a published site there is no draft to hold changes back: a save
+              writes straight to the page homeowners are looking at. Saying "All
+              changes saved" describes a filing cabinet; this says what actually
+              happened. */}
+          <span className={styles.saveStatus}>{isDirty ? (site.published ? 'Unsaved changes — your live site still shows the last save' : 'Unsaved changes') : site.published ? 'Your live site is up to date' : 'All changes saved'}</span>
           {site.published && liveUrl && liveDomain ? (
             <a href={liveUrl} target="_blank" rel="noopener noreferrer" className={styles.liveStatusLink}>
               <span className={styles.liveStatusDot} aria-hidden="true" />
@@ -1404,7 +1546,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
           <button type="button" className="btn secondary" onClick={undo} disabled={historyRef.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo last change">↩ Undo</button>
           <button type="button" className="btn secondary" onClick={redo} disabled={historyRef.current.future.length === 0} title="Redo (Ctrl+Shift+Z)" aria-label="Redo change">↪ Redo</button>
           <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Site Preview</a>
-          <button type="button" className="btn primary" onClick={handleSave} disabled={isPending || !isDirty}>{isPending ? 'Saving...' : 'Save changes'}</button>
+          {/* Only rendered when there is something to save. A disabled primary
+              button beside "your live site is up to date" was one state drawn
+              twice, and the disabled style only fades it enough to look like a
+              button somebody could still press.
+              `isDirty` alone, not `isDirty || isPending`: `isPending` is the one
+              shared transition, so the subdomain availability check, the SEO
+              regenerate, an image upload and Publish all set it, and a clean
+              site got a primary button reading "Saving..." popping into the
+              header for something that was not a save. It buys nothing on the
+              save path either — isDirty is not cleared until the action has
+              returned, so the button stays mounted for the whole round trip. */}
+          {isDirty && (
+            <button type="button" className="btn primary" onClick={handleSave} disabled={isPending || !isDirty}>
+              {isPending ? 'Saving...' : site.published ? 'Save & update live site' : 'Save changes'}
+            </button>
+          )}
         </div>
       </header>
 
@@ -2079,8 +2236,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   </button>
                 )}
 
-                <SectionCard reorder={reorderProps('testimonials', 'Customer reviews')} title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, reviewCount, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
+                <SectionCard reorder={reorderProps('testimonials', 'Customer reviews')} title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...reviewHint} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
+                  {generatedReviewCount > 0 && (
+                    <div className={styles.warnNotice}>
+                      <strong>{generatedReviewCount === 1 ? 'One of these reviews was' : `${generatedReviewCount} of these reviews were`} written by AI as {generatedReviewCount === 1 ? 'an example' : 'examples'}.</strong>{' '}
+                      The names and the words are invented — no customer said them. Rewrite each one with a real customer&apos;s words, or delete them. {gateSentence}
+                      <div className={styles.imageSlotActions}>
+                        <button type="button" className={styles.secondaryAction} onClick={removeGeneratedTestimonials}>Delete the {generatedReviewCount === 1 ? 'example' : `${generatedReviewCount} examples`}</button>
+                      </div>
+                    </div>
+                  )}
                   {reviewCount === 0 && (
                     <div className={styles.reviewsPrompt}>
                       <strong>Fill this with real reviews.</strong> Connect your Google Business Profile below to pull in verified reviews automatically — the honest, one-click way. Never post reviews you didn&apos;t receive.
@@ -2135,12 +2301,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   </div>
                   <div className={styles.stackList}>
                     {siteContent.testimonials.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.author.trim() || `Testimonial ${index + 1}`} meta={`${item.rating}★`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>
+                      <StackItem key={item.id} title={item.author.trim() || `Testimonial ${index + 1}`} meta={item.generated ? `${item.rating}★ · AI example` : `${item.rating}★`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>
                         <div className={styles.formColumns}>
-                          <label className={styles.formField}><span>Customer</span><input value={item.author} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, author: event.target.value } : testimonial) })} /></label>
-                          <label className={styles.formField}><span>Rating</span><select value={item.rating} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, rating: Number(event.target.value) } : testimonial) })}>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label>
+                          <label className={styles.formField}><span>Customer</span><input value={item.author} onChange={(event) => editTestimonial(item.id, { author: event.target.value })} /></label>
+                          <label className={styles.formField}><span>Rating</span><select value={item.rating} onChange={(event) => editTestimonial(item.id, { rating: Number(event.target.value) })}>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label>
                         </div>
-                        <label className={styles.formField}><span>Project label</span><input value={item.label} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, label: event.target.value } : testimonial) })} placeholder="Kitchen remodel, deck build, emergency repair..." /></label>
+                        <label className={styles.formField}><span>Project label</span><input value={item.label} onChange={(event) => editTestimonial(item.id, { label: event.target.value })} placeholder="Kitchen remodel, deck build, emergency repair..." /></label>
                         <div className={styles.formColumns}>
                           <div className={styles.formField}>
                             <span>Photo (optional)</span>
@@ -2151,11 +2317,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                           </div>
                           <label className={styles.formField}><span>Choose image</span><select value={item.imageUrl} onChange={(event) => {
                             const image = selectableImages.find((candidate) => candidate.url === event.target.value);
-                            updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, imageUrl: event.target.value, imageAlt: image?.alt || testimonial.imageAlt || testimonial.author || 'Customer review image' } : testimonial) });
+                            editTestimonial(item.id, { imageUrl: event.target.value, imageAlt: image?.alt || item.imageAlt || item.author || 'Customer review image' });
                           }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
                         </div>
                         {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.author || 'Review image preview'} /></div>}
-                        <label className={styles.formField}><span>Review text</span><textarea rows={4} value={item.text} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, text: event.target.value } : testimonial) })} /></label>
+                        <label className={styles.formField}><span>Review text</span><textarea rows={4} value={item.text} onChange={(event) => editTestimonial(item.id, { text: event.target.value })} /></label>
                       </StackItem>
                     ))}
                   </div>
@@ -2189,8 +2355,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('faq'); updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id, question: '', answer: '' }] }); setEditingItemId(id); }}>Add FAQ</button>
                 </SectionCard>
 
-                <SectionCard reorder={reorderProps('stats', 'Animated stats')} title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} {...contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat')} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
+                <SectionCard reorder={reorderProps('stats', 'Animated stats')} title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} {...statsHint} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.stats.title} onChange={(event) => updateStats({ ...siteContent.stats, title: event.target.value })} /></label>
+                  {generatedStatCount > 0 && (
+                    <div className={styles.warnNotice}>
+                      <strong>{generatedStatCount === 1 ? 'One of these numbers was' : `${generatedStatCount} of these numbers were`} made up by AI as {generatedStatCount === 1 ? 'an example' : 'examples'}.</strong>{' '}
+                      Nobody counted them. Type your own figures over them, or delete them. {gateSentence}
+                      <div className={styles.imageSlotActions}>
+                        <button type="button" className={styles.secondaryAction} onClick={removeGeneratedStats}>Delete the {generatedStatCount === 1 ? 'example' : `${generatedStatCount} examples`}</button>
+                      </div>
+                    </div>
+                  )}
                   <div className={styles.imageSlot}>
                     <div className={styles.imageSlotHead}><strong>Section photo</strong><small>The photo behind the numbers.</small></div>
                     <div className={styles.heroSlotPreview}><img src={siteContent.images.stats || site.hero_url || STOCK_SITE_IMAGES[2].url} alt="Stats section photo" /></div>
@@ -2201,10 +2376,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   </div>
                   <div className={styles.stackList}>
                     {siteContent.stats.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.label.trim() || `Stat ${index + 1}`} meta={item.value} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>
+                      <StackItem key={item.id} title={item.label.trim() || `Stat ${index + 1}`} meta={item.generated ? `${item.value} · AI example` : item.value} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>
                         <div className={styles.formColumns}>
-                          <label className={styles.formField}><span>Value</span><input value={item.value} maxLength={12} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: event.target.value } : stat) })} placeholder="100+" /><small className={styles.fieldHint}>A short figure only — &ldquo;100+&rdquo;, &ldquo;$2M&rdquo;, &ldquo;24/7&rdquo;, &ldquo;4.9★&rdquo;. Put any words (like &ldquo;years&rdquo; or &ldquo;sq ft&rdquo;) in the label below, not here. Numbers count up on scroll.</small></label>
-                          <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, label: event.target.value } : stat) })} placeholder="Jobs completed" /></label>
+                          <label className={styles.formField}><span>Value</span><input value={item.value} maxLength={12} onChange={(event) => editStat(item.id, { value: event.target.value })} placeholder="100+" /><small className={styles.fieldHint}>A short figure only — &ldquo;100+&rdquo;, &ldquo;$2M&rdquo;, &ldquo;24/7&rdquo;, &ldquo;4.9★&rdquo;. Put any words (like &ldquo;years&rdquo; or &ldquo;sq ft&rdquo;) in the label below, not here. Numbers count up on scroll.</small></label>
+                          <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => editStat(item.id, { label: event.target.value })} placeholder="Jobs completed" /></label>
                         </div>
                       </StackItem>
                     ))}
@@ -2270,6 +2445,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                 <SectionCard reorder={reorderProps('projectShowcase', 'Additional image gallery')} title="Additional image gallery" description="An animated band of your best photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} {...projectShowcaseHint} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
                   <label className={styles.formField}><span>Title</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Recent Jobs" /></label>
                   <label className={styles.formField}><span>Heading</span><input value={siteContent.projectShowcase.title} maxLength={80} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, title: event.target.value })} placeholder="See Our Work" /></label>
+                  {/* The public page swaps the two DEFAULT headings while the
+                      band holds only stock photos — "See Our Work" over photos
+                      of somebody else's jobs is a claim the site can't make. The
+                      owner needs to know why the page doesn't match this box. */}
+                  {!projectBandOwnPhotos
+                    && siteContent.projectShowcase.eyebrow === DEFAULT_PROJECT_SHOWCASE_EYEBROW
+                    && siteContent.projectShowcase.title === DEFAULT_PROJECT_SHOWCASE_TITLE && (
+                    <p className={styles.fieldHint}>
+                      These are the default headings, and this band is showing stock photos, so your page currently reads &ldquo;{STOCK_PROJECT_SHOWCASE_EYEBROW} / {STOCK_PROJECT_SHOWCASE_TITLE}&rdquo; instead — those photos aren&apos;t your jobs. Upload one of your own, or write your own heading above, and yours is used.
+                    </p>
+                  )}
                   <label className={styles.formField}><span>Showcase style</span><select value={siteContent.projectShowcase.style} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, style: event.target.value as SiteProjectShowcaseContent['style'] })}>{PROJECT_SHOWCASE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
                   <div className={styles.contentSubhead}><strong>Project photos</strong><small>{projectPhotos.length}/{MAX_PROJECT_SHOWCASE_ITEMS} · shown in this order</small></div>
                   {siteContent.projectShowcase.items.length === 0 && (
@@ -2436,6 +2622,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   <button type="button" className={styles.publishHeroBtn} onClick={handlePublish} disabled={isPending}>{isPending ? 'Working…' : site.published ? 'Unpublish' : '🚀 Publish my website'}</button>
                 </div>
                 {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Setup tab.</p>}
+                {unreviewedSections.length > 0 && <p className={styles.publishRequirement}>{unreviewedSections.join(' and ')} still hold AI-written examples. Replace them with your real ones, delete them, or switch those sections off before {site.published ? 'saving to your live site' : 'publishing'}.</p>}
                 {site.published && liveUrl && <a className={styles.publicLink} href={liveUrl} target="_blank" rel="noopener noreferrer">Open live website ↗</a>}
 
                 <div className={styles.checklistCard}>
@@ -2601,7 +2788,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
       {isDirty && (
         <div className={styles.savePill}>
           <span>Unsaved changes</span>
-          <button type="button" onClick={handleSave} disabled={isPending}>{isPending ? 'Saving…' : 'Save now'}</button>
+          <button type="button" onClick={handleSave} disabled={isPending}>{isPending ? 'Saving…' : site.published ? 'Update live site' : 'Save now'}</button>
         </div>
       )}
 

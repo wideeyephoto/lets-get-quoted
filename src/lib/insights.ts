@@ -2,6 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { quickStopMetrics, type QuickStopMetrics } from './quick-stop-insights';
 import { listClientsWithStats } from './clients';
 import { bookingAvailabilityFromAccount } from './booking-availability';
+// "What customers owe you" is defined once, in dashboard-money, net of what has
+// already been banked. Insights used to sum invoice face value instead, so the
+// same account read $10,000 here and $6,000 on the dashboard after a $4k deposit.
+import { outstandingInvoices, type InvoiceRow, type PaymentRow } from './dashboard-money';
 import {
   computeKpis,
   buildRevenueTrend,
@@ -39,7 +43,7 @@ export type FunnelStage = { key: 'leads' | 'quoted' | 'won'; label: string; coun
 export type RevenueMonth = {
   key: string;
   label: string;
-  /** Collected in the month. Named `total` since the trend chart shipped with it. */
+  /** Collected in the month, net of refunds. Named `total` since the chart shipped with it. */
   total: number;
   /** Collected minus costs logged that month. */
   profit: number;
@@ -219,7 +223,15 @@ type JobRow = {
   lead_source: string | null;
 };
 /** Payments carry paid_at, NOT created_at — see the note in buildInsights. */
-type PaidRow = { amount: number | string; refunded_amount: number | string | null; paid_at: string; requested_at: string | null; job_id: string | null };
+type PaidRow = {
+  amount: number | string;
+  refunded_amount: number | string | null;
+  status: string;
+  paid_at: string;
+  requested_at: string | null;
+  job_id: string | null;
+  invoice_id: string | null;
+};
 type CostRow = { type: string; amount: number | string; created_at: string; job_id: string | null };
 
 type Rowset = {
@@ -282,7 +294,13 @@ export function metricsForRange(data: Rowset, fromMs: number, toMs: number): Win
       return sum + (Number(job?.quoted_amount) || 0);
     }, 0);
 
-  const collected = data.paid.filter((p) => inRange(p.paid_at)).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  // Net of refunds, so this agrees with the Net Collected KPI computed off the
+  // same rows. A FULL refund flips the payment to status 'refunded' and drops out
+  // of the query above entirely, so only partial refunds ever reach here — but
+  // half a job handed back is still half a job the business did not keep.
+  const collected = data.paid
+    .filter((p) => inRange(p.paid_at))
+    .reduce((sum, p) => sum + Math.max(0, (Number(p.amount) || 0) - (Number(p.refunded_amount) || 0)), 0);
 
   const costRows = data.costs.filter((c) => inRange(c.created_at));
   const laborCost = costRows.filter((c) => c.type === 'labor').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
@@ -317,7 +335,7 @@ export function metricsForRange(data: Rowset, fromMs: number, toMs: number): Win
 // value. Ignores the selected period so the trend is always a full run of
 // months — a 30-day window with one bar is not a trend.
 export function buildTrend(
-  paid: Array<{ amount: number | string; paid_at: string }>,
+  paid: Array<{ amount: number | string; refunded_amount?: number | string | null; paid_at: string }>,
   costs: Array<{ amount: number | string; created_at: string }>,
   jobs: Array<{ quoted_amount: number | string | null; created_at: string }>,
   months: number,
@@ -341,7 +359,9 @@ export function buildTrend(
 
   for (const payment of paid) {
     const slot = index.get(monthKey(new Date(payment.paid_at)));
-    if (slot !== undefined) buckets[slot].total += Number(payment.amount) || 0;
+    // Net of refunds, the same "money that stayed" every other collected figure
+    // on the page reports — otherwise this chart's months outrun the KPI above it.
+    if (slot !== undefined) buckets[slot].total += Math.max(0, (Number(payment.amount) || 0) - (Number(payment.refunded_amount) || 0));
   }
   for (const cost of costs) {
     const slot = index.get(monthKey(new Date(cost.created_at)));
@@ -385,21 +405,41 @@ export const AGING_BANDS: Array<{ key: string; label: string; tone: string; maxD
  * Age runs from when the invoice was raised. `invoices` has no due date, so
  * calling anything here "overdue" would be inventing terms the owner never
  * agreed with the customer — the bands say how OLD a bill is, which is a fact.
+ *
+ * Each band carries the balance STILL OWED, not the invoice's face value, so the
+ * bands add up to the Outstanding Balance card above them and the 30+ day total
+ * on the Payment Health card is money that can actually still be collected. The
+ * netting is `outstandingInvoices`, applied one invoice at a time, so there is no
+ * second opinion here about what a deposit does to a balance.
+ *
+ * Two things follow from routing through `outstandingInvoices` that a caller has
+ * to know. It counts only `sent` and `signed` invoices, so passing anything in
+ * another status yields empty bands rather than an error — the one caller
+ * pre-filters to exactly those two. And an invoice whose `created_at` will not
+ * parse has no age, so it is skipped here while still counting toward the
+ * Outstanding Balance card: the "bands add up" claim above holds for every
+ * invoice with a readable date, which is all of them in practice.
  */
 export function buildAging(
-  invoices: Array<{ total: number | string; created_at: string }>,
+  invoices: Array<InvoiceRow & { created_at: string }>,
+  payments: PaymentRow[],
   nowMs: number = Date.now(),
 ): AgingBucket[] {
   const buckets: AgingBucket[] = AGING_BANDS.map((band) => ({ key: band.key, label: band.label, tone: band.tone, total: 0, count: 0 }));
   for (const invoice of invoices) {
     const raised = new Date(invoice.created_at).getTime();
     if (!Number.isFinite(raised)) continue;
+    // An invoice already collected in full comes back with a count of 0 — it is
+    // not an aged balance, however long ago it was raised.
+    const owed = outstandingInvoices([invoice], payments);
+    if (owed.count === 0) continue;
     const ageDays = Math.max(0, Math.floor((nowMs - raised) / DAY_MS));
     const slot = AGING_BANDS.findIndex((band) => ageDays <= band.maxDays);
     const target = buckets[slot === -1 ? buckets.length - 1 : slot];
-    target.total += Number(invoice.total) || 0;
+    target.total += owed.total;
     target.count += 1;
   }
+  for (const bucket of buckets) bucket.total = round2(bucket.total);
   return buckets;
 }
 
@@ -730,9 +770,10 @@ export async function buildInsights(
     // old query 400'd and the `?? []` below turned that into "you collected $0" —
     // on every account, in every window, with no error anywhere. A payment also
     // belongs in the month the money ARRIVED, not the month it was asked for.
-    // refunded_amount rides along so Net Collected can subtract refunds without a
-    // second read; the existing collected/gross figures ignore it and are unchanged.
-    supabase.from('payments').select('amount, refunded_amount, paid_at, requested_at, job_id').eq('account_id', accountId).eq('status', 'paid'),
+    // refunded_amount rides along so every collected figure on the page subtracts
+    // refunds from the same rows; invoice_id and status let a deposit be credited
+    // against its own invoice for the outstanding balance.
+    supabase.from('payments').select('amount, refunded_amount, status, paid_at, requested_at, job_id, invoice_id').eq('account_id', accountId).eq('status', 'paid'),
     supabase.from('costs').select('type, amount, created_at, job_id').eq('account_id', accountId),
     supabase.from('invoices').select('id, total, status, created_at, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
     supabase.from('invoices').select('job_id, status').eq('account_id', accountId),
@@ -825,15 +866,18 @@ export async function buildInsights(
     },
   };
 
-  const openInvoices = (openInvoiceRows ?? []) as Array<{ id: string; total: number | string; created_at: string; job_id: string | null }>;
-  const outstanding = {
-    total: openInvoices.reduce((sum, invoice) => sum + (Number(invoice.total) || 0), 0),
-    count: openInvoices.length,
-  };
-  const aging = buildAging(openInvoices, nowMs);
+  const openInvoices = (openInvoiceRows ?? []) as Array<InvoiceRow & { created_at: string }>;
+  // Net of deposits and part-payments, through the dashboard's shared helper.
+  // `invoices.status` only flips to 'paid' at the full total, so summing face
+  // value told an owner with a $4k deposit banked that they were owed the whole
+  // $10k — while the dashboard tile, correctly, said $6k.
+  const outstanding = outstandingInvoices(openInvoices, data.paid);
+  const aging = buildAging(openInvoices, data.paid, nowMs);
   const oldestUnpaidDays = openInvoices.reduce((oldest, invoice) => {
     const raised = new Date(invoice.created_at).getTime();
     if (!Number.isFinite(raised)) return oldest;
+    // An invoice settled in full is not the oldest thing still to chase.
+    if (outstandingInvoices([invoice], data.paid).count === 0) return oldest;
     return Math.max(oldest, Math.floor((nowMs - raised) / DAY_MS));
   }, 0);
 

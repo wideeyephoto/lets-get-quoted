@@ -90,9 +90,9 @@ describe('metricsForRange', () => {
       { id: 'j3', ref: 'J-3', client_name: 'C', client_id: null, quoted_amount: 0, status: 'complete', created_at: '2026-06-12T00:00:00Z', scheduled_for: null, lead_source: null },
     ],
     paid: [
-      { amount: 500, refunded_amount: null, paid_at: '2026-06-11T00:00:00Z', requested_at: '2026-06-10T00:00:00Z', job_id: 'j1' },
-      { amount: '250.50', refunded_amount: null, paid_at: '2026-06-18T00:00:00Z', requested_at: null, job_id: null }, // string numeric
-      { amount: 999, refunded_amount: null, paid_at: '2026-01-01T00:00:00Z', requested_at: null, job_id: null }, // out of window
+      { amount: 500, refunded_amount: null, status: 'paid', paid_at: '2026-06-11T00:00:00Z', requested_at: '2026-06-10T00:00:00Z', job_id: 'j1', invoice_id: null },
+      { amount: '250.50', refunded_amount: null, status: 'paid', paid_at: '2026-06-18T00:00:00Z', requested_at: null, job_id: null, invoice_id: null }, // string numeric
+      { amount: 999, refunded_amount: null, status: 'paid', paid_at: '2026-01-01T00:00:00Z', requested_at: null, job_id: null, invoice_id: null }, // out of window
     ],
     costs: [
       { type: 'labor', amount: 100, created_at: '2026-06-11T00:00:00Z', job_id: 'j1' },
@@ -125,6 +125,20 @@ describe('metricsForRange', () => {
     // in every window, silently. This test is that bug written down.
     const m = metricsForRange(data, from, to);
     expect(m.collected).toBe(750.5);
+  });
+
+  it('nets partial refunds out of collected, so it agrees with the Net Collected KPI', () => {
+    // A full refund flips the row to status 'refunded' and never reaches here, so
+    // a partial refund is the only way the two figures could diverge — and they
+    // used to: the summary read gross while the KPI beside it read net, and
+    // profit and margin were driven off the gross one.
+    const refunded = {
+      ...data,
+      paid: [{ amount: 1000, refunded_amount: 400, status: 'paid', paid_at: '2026-06-11T00:00:00Z', requested_at: null, job_id: null, invoice_id: null }],
+    };
+    const m = metricsForRange(refunded, from, to);
+    expect(m.collected).toBe(600);
+    expect(m.grossProfit).toBe(425); // 600 − 175 of costs
   });
 
   it('averages and medians only quoted (amount > 0) jobs in window', () => {
@@ -201,39 +215,79 @@ describe('buildTrend', () => {
     const trend = buildTrend(paid, costs, jobs, 6, now);
     expect(trend.reduce((s, m) => s + m.total, 0)).toBe(1500); // Dec 2025's $200 dropped
   });
+
+  it('nets a partial refund out of the month the money landed in', () => {
+    const trend = buildTrend([{ amount: 1000, refunded_amount: 250, paid_at: '2026-06-05T00:00:00Z' }], [], [], 6, now);
+    expect(trend[5].total).toBe(750);
+    expect(trend[5].profit).toBe(750);
+  });
 });
 
 describe('buildAging', () => {
   const now = Date.parse('2026-08-04T12:00:00Z');
   const days = (n: number) => new Date(now - n * DAY_MS).toISOString();
+  const invoice = (id: string, total: number, ageDays: number) => ({ id, total, status: 'sent', created_at: days(ageDays) });
 
   it('drops each unpaid invoice into the band matching its age', () => {
     const bands = buildAging(
-      [
-        { total: 100, created_at: days(1) },
-        { total: 200, created_at: days(10) },
-        { total: 300, created_at: days(20) },
-        { total: 400, created_at: days(45) },
-        { total: 500, created_at: days(400) },
-      ],
+      [invoice('i1', 100, 1), invoice('i2', 200, 10), invoice('i3', 300, 20), invoice('i4', 400, 45), invoice('i5', 500, 400)],
+      [],
       now,
     );
     expect(bands.map((b) => b.total)).toEqual([100, 200, 300, 400, 500]);
     expect(bands.map((b) => b.count)).toEqual([1, 1, 1, 1, 1]);
   });
 
+  it('bands the balance still owed, not the face value, so it adds up to Outstanding', () => {
+    // A $10,000 invoice with a $4,000 deposit banked is $6,000 owed. Summing face
+    // value here put $10,000 in the band and disagreed with the card above it.
+    const bands = buildAging(
+      [invoice('i1', 10000, 20)],
+      [{ amount: 4000, status: 'paid', invoice_id: 'i1' }],
+      now,
+    );
+    expect(bands[2].total).toBe(6000);
+    expect(bands[2].count).toBe(1);
+  });
+
+  it('leaves an invoice out entirely once it has been collected in full', () => {
+    const bands = buildAging(
+      [invoice('i1', 500, 45)],
+      [
+        { amount: 300, status: 'paid', invoice_id: 'i1' },
+        { amount: 200, status: 'paid', invoice_id: 'i1' },
+      ],
+      now,
+    );
+    expect(bands.reduce((sum, b) => sum + b.total, 0)).toBe(0);
+    expect(bands.reduce((sum, b) => sum + b.count, 0)).toBe(0);
+  });
+
+  it('credits a refunded deposit back to the balance, and ignores other invoices’ payments', () => {
+    const bands = buildAging(
+      [invoice('i1', 1000, 3)],
+      [
+        { amount: 400, refunded_amount: 150, status: 'paid', invoice_id: 'i1' }, // net 250
+        { amount: 900, status: 'paid', invoice_id: 'other' },
+        { amount: 500, status: 'failed', invoice_id: 'i1' },
+      ],
+      now,
+    );
+    expect(bands[0].total).toBe(750);
+  });
+
   it('puts a boundary day in the lower band', () => {
-    const bands = buildAging([{ total: 50, created_at: days(7) }], now);
+    const bands = buildAging([invoice('i1', 50, 7)], [], now);
     expect(bands[0].total).toBe(50);
     expect(bands[1].total).toBe(0);
   });
 
   it('carries a CSS-safe tone, because "60+" cannot be a class name unescaped', () => {
-    expect(buildAging([], now).map((b) => b.tone)).toEqual(['fresh', 'recent', 'month', 'late', 'stale']);
+    expect(buildAging([], [], now).map((b) => b.tone)).toEqual(['fresh', 'recent', 'month', 'late', 'stale']);
   });
 
   it('ignores a row with an unreadable date rather than bucketing it as ancient', () => {
-    const bands = buildAging([{ total: 90, created_at: 'not a date' }], now);
+    const bands = buildAging([{ id: 'i1', total: 90, status: 'sent', created_at: 'not a date' }], [], now);
     expect(bands.reduce((sum, b) => sum + b.total, 0)).toBe(0);
   });
 });

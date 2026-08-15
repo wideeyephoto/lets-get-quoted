@@ -37,7 +37,11 @@ export async function saveCashSettingsAction(formData: FormData) {
   const buffer = optionalMoney(formData.get('buffer'));
   const creditLine = optionalMoney(formData.get('creditLine'));
 
-  if (balance !== null && balance < 0) throw new Error('The starting balance can’t be negative — use the credit line for an overdraft.');
+  // No floor on the balance. An overdrawn account is a real account — the one
+  // this whole page exists for — and both the exact box and the slider go below
+  // zero on purpose, so rejecting the number here threw away the buffer and the
+  // credit line they typed alongside it to refuse a true answer. cash_balance is
+  // a plain numeric column and every reader of it already treats it as signed.
   if (buffer !== null && buffer < 0) throw new Error('The safety buffer can’t be negative.');
   if (creditLine !== null && creditLine < 0) throw new Error('The credit line can’t be negative.');
 
@@ -46,7 +50,10 @@ export async function saveCashSettingsAction(formData: FormData) {
     cash_credit_line: creditLine ?? 0,
   };
   // Only re-stamp the date when a balance was actually submitted, or saving a
-  // buffer would silently make a stale balance look freshly checked.
+  // buffer would silently make a stale balance look freshly checked. The board
+  // omits the field entirely until somebody has moved the balance, so a fresh
+  // account saving a buffer leaves cash_balance null rather than confirming the
+  // placeholder zero the forecast opened from.
   if (balance !== null) {
     patch.cash_balance = balance;
     patch.cash_balance_at = new Date().toISOString();

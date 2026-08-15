@@ -385,11 +385,21 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
 
     const { data: accountRow } = await admin
       .from('accounts')
-      .select(`${QUICK_STOP_SETTINGS_COLUMNS}, business_name, timezone`)
+      .select(`${QUICK_STOP_SETTINGS_COLUMNS}, business_name, timezone, connect_onboarded, stripe_connect_id`)
       .eq('id', site.account_id)
       .maybeSingle();
     const settings = quickStopSettingsFromAccount(accountRow as Parameters<typeof quickStopSettingsFromAccount>[0]);
     if (!settings.available) return { ok: false, error: 'Quick Stop isn’t available right now.' };
+    // The page hides the form when the contractor can't take payment; this is the
+    // same rule for a direct POST. Without payout setup the offer action refuses
+    // to send an offer, so accepting the request here would only buy the customer
+    // an AI screening, an address on file, and a wait for an answer that cannot
+    // come. Worded identically to the line above — an anonymous visitor has no
+    // business being told which of the two it is.
+    const connect = accountRow as { connect_onboarded?: boolean; stripe_connect_id?: string | null } | null;
+    if (!connect?.connect_onboarded || !connect?.stripe_connect_id) {
+      return { ok: false, error: 'Quick Stop isn’t available right now.' };
+    }
 
     const name = (formData.get('name') ?? '').toString().trim();
     const phone = normalizeUsPhone((formData.get('phone') ?? '').toString());
