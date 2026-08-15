@@ -1,210 +1,1125 @@
-/* /pricing — the pricing-model comparison only.
- *
- * The discipline here is the one home-next.module.css states: the comparison
- * reuses globals' .compare-* chrome wholesale (scroll container, sticky row
- * labels, the accent spine on the winning column, the tone marks, the hover
- * rows, the reduced-motion handling). This file defines the two things globals
- * has no class for, and nothing else. If you find yourself re-declaring a
- * .compare-* rule below, the answer is to use the globals class instead.
- */
-
-/* globals sets .compare-table { min-width: 720px } — sized for the homepage's
- * four columns. This table has three, so it stops needing the scroll well
- * before 720px and forcing one there would make a phone swipe a table that
- * already fits. Below this width .compare-scroll still takes over, so the page
- * body never scrolls sideways either way. */
-.modelTable {
-  min-width: 34rem;
+.page {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
 }
 
-/* The Codex pricing page led with three oversized values — $0, Aligned, Lower
- * rate — and they carried the whole argument at a glance. Dropped into a table
- * cell they would flatten into the surrounding sentence, so they keep the
- * display face and lead their line. Inline rather than block on purpose: the
- * .compare-mark before them is vertical-align: middle, and a block here would
- * break it onto its own row. */
-.value {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text);
+.pageGlow {
+  top: 8rem;
+  right: -12vw;
+  width: min(48rem, 70vw);
+  height: min(48rem, 70vw);
+  background: radial-gradient(circle, rgba(255, 122, 33, 0.2), rgba(255, 209, 102, 0.08) 42%, transparent 72%);
 }
 
-/* Matches .pricing-tier-best .pricing-tier-rate a few sections up the page, so
- * the "this is the good number" signal is the same colour in both places. */
-.usValue {
+.page section[id] {
+  scroll-margin-top: 10rem;
+}
+
+.hero {
+  position: relative;
+  padding: clamp(2.5rem, 7vw, 5.5rem) 0 1.5rem;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 1rem -5vw 0;
+  border-radius: 3rem;
+  background:
+    linear-gradient(135deg, rgba(255, 122, 33, 0.09), transparent 42%),
+    radial-gradient(circle at 80% 20%, rgba(90, 220, 190, 0.08), transparent 35%);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: center;
+}
+
+.heroEyebrow,
+.sectionEyebrow,
+.miniEyebrow {
+  margin: 0 0 0.7rem;
   color: var(--gold-ink);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1.35;
+  text-transform: uppercase;
 }
 
-/* ============================================================
-   The $0 band — layout only
-   ============================================================
-   PriceZeroDial brings its own size, colour and type; this file only decides
-   where it sits. Do not set a width on it here, and do not put `overflow:
-   hidden` on this band: the dial's outer bloom is meant to bleed past the card
-   edge the way .cta-band's does, and a box-shadow creates no scrollable
-   overflow, so the page body stays put at 390px either way. */
-.zeroBand {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(1.5rem, 4vw, 2.75rem);
+.hero h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(2.8rem, 6.8vw, 6.2rem);
+  line-height: 0.94;
+  text-wrap: balance;
 }
 
-/* The dial, centred while it's stacked. */
-.zeroBand > :first-child {
-  justify-self: center;
+.heroLead {
+  max-width: 42rem;
+  margin: 1.25rem 0 0;
+  font-size: clamp(1rem, 1.6vw, 1.16rem);
 }
 
-/* Grid children default to min-content-sized, which lets the ledger's longest
- * unbreakable string set the column width. */
-.zeroCopy {
-  min-width: 0;
-}
-
-/* 900 is PriceZeroDial's own step-down breakpoint, so the dial shrinks in the
- * same frame that the row splits into two columns. */
-@media (min-width: 900px) {
-  .zeroBand {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-  }
-}
-
-/* globals centres .pricing-takehome and caps it at 30rem, sized for the
- * homepage where it stands alone under a chart. Here it is a grid column, so it
- * fills the one it's in. */
-.zeroLedger {
-  margin: 1.2rem 0 0;
-  max-width: none;
-}
-
-/* ============================================================
-   Where a single payment goes
-   ============================================================ */
-.payFrame {
-  margin-top: 1.4rem;
-}
-
-.payAnatomy {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.payTotal {
+.heroActions {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.4rem 0.8rem;
-  margin: 0;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
-/* The same mono/tracked label treatment as .pricing-takehome-h above, so the
- * two money cards on this page read as one family. */
-.payTotalLabel {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted-2);
+.primaryButton,
+.secondaryButton,
+.planButton {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.78rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
-.payTotalValue {
-  font-family: var(--font-display);
-  font-size: clamp(1.45rem, 5vw, 1.95rem);
-  font-weight: 700;
-  line-height: 1;
+.primaryButton {
+  border-color: rgba(255, 209, 102, 0.45);
+  background: linear-gradient(135deg, #ff7a29, #ffd166);
+  box-shadow: 0 12px 36px rgba(255, 122, 33, 0.2);
+  color: #1b1108;
+}
+
+.secondaryButton,
+.planButton {
+  border-color: var(--edge-t18);
+  background: rgba(var(--tint), 0.045);
   color: var(--text);
 }
 
-/* The one place on this page that states the fee's SIZE rather than its rate,
- * so both slices are true widths. There is deliberately no min-width floor on
- * the fee slice: a floor would draw the fee larger than it is, which is the
- * single lie this graphic is capable of telling. At the narrowest card the
- * slice is still ~4px of accent against a 44px-tall bar, which reads clearly. */
-.payBar {
+.primaryButton:hover,
+.secondaryButton:hover,
+.planButton:hover {
+  transform: translateY(-2px);
+}
+
+.secondaryButton:hover,
+.planButton:hover {
+  border-color: var(--edge-t40);
+  background: rgba(var(--tint), 0.08);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.planButton:focus-visible,
+.page button:focus-visible,
+.page summary:focus-visible,
+.sectionNav a:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+.heroProof {
   display: flex;
-  height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-  background: rgba(var(--tint), 0.03);
-}
-
-.payBarNet {
-  background: linear-gradient(180deg, rgba(var(--tint), 0.17), rgba(var(--tint), 0.09));
-}
-
-.payBarFee {
-  background: var(--accent);
-}
-
-.payRows {
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
   list-style: none;
+}
+
+.heroProof li {
+  margin: 0;
+  padding: 0.48rem 0.7rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.035);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.heroProof li::before {
+  content: '✓';
+  margin-right: 0.35rem;
+  color: #52d9ac;
+}
+
+.heroBoard {
+  position: relative;
+  overflow: hidden;
+  padding: 1.25rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(145deg, rgba(var(--tint), 0.06), rgba(var(--tint), 0.015)),
+    var(--bg-elevated);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.2);
+}
+
+.heroBoard::after {
+  content: '';
+  position: absolute;
+  right: -4rem;
+  bottom: -5rem;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 50%;
+  background: rgba(255, 122, 33, 0.14);
+  filter: blur(24px);
+}
+
+.boardLabel {
+  margin: 0 0 0.8rem;
+  color: var(--muted-2);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heroBoard ol {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.55rem;
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
-.payRows li {
+.heroBoard li {
+  --plan: #79a8ff;
   display: grid;
-  grid-template-columns: 0.7rem minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  align-items: baseline;
-  padding: 0.6rem 0;
-  border-top: 1px solid var(--line);
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--plan) 32%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--plan) 9%, transparent);
 }
 
-.payRows li:first-child {
-  border-top: 0;
+.heroBoard li[data-plan='solo'] { --plan: #ffd166; }
+.heroBoard li[data-plan='growth'] { --plan: #ff8a3d; }
+.heroBoard li[data-plan='scale'] { --plan: #52d9ac; }
+.heroBoard li span { color: var(--muted); font-size: 0.78rem; }
+.heroBoard li strong { color: var(--text); font-size: 0.92rem; }
+
+.boardNote {
+  position: relative;
+  z-index: 1;
+  margin: 0.9rem 0 0;
+  font-size: 0.75rem;
+}
+
+.previewNotice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.8rem;
+  margin-top: 1.6rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 0.9rem;
+  background: rgba(255, 209, 102, 0.07);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.previewNotice strong {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #ffd166;
+  color: #1c1208;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionNav {
+  position: sticky;
+  z-index: 15;
+  top: 82px;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  margin: 0 -0.5rem 1rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.13);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  scrollbar-width: none;
+}
+
+.sectionNav::-webkit-scrollbar { display: none; }
+
+.sectionNav a {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.65rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.sectionNav a:hover {
+  background: rgba(var(--tint), 0.07);
+  color: var(--text);
+}
+
+.plansSection,
+.calculatorSection,
+.voiceSection,
+.compareSection,
+.faqSection,
+.finalCta {
+  margin-top: 1rem;
+  padding: clamp(1.25rem, 3.5vw, 2.2rem);
+  border: 1px solid var(--edge-t10);
+  border-radius: clamp(1.4rem, 3vw, 2rem);
+  background: rgba(var(--tint), 0.024);
+}
+
+.sectionHeading,
+.sectionHeadingSplit {
+  max-width: 48rem;
+}
+
+.sectionHeadingSplit {
+  display: flex;
+  max-width: none;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.sectionHeadingSplit > div:first-child { max-width: 48rem; }
+
+.sectionHeading h2,
+.sectionHeadingSplit h2,
+.voiceSection h2,
+.faqSection h2,
+.finalCta h2 {
+  max-width: 18ch;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.sectionHeading p:last-child,
+.sectionHeadingSplit p:last-child {
+  margin: 0.8rem 0 0;
+}
+
+.billingToggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 0.85rem;
+  background: rgba(var(--tint), 0.035);
+}
+
+.billingToggle button {
+  min-height: 2.65rem;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.billingToggle button[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.billingToggle button span {
+  display: block;
+  margin-top: 0.1rem;
+  color: currentColor;
+  font-size: 0.58rem;
+  font-weight: 800;
+  opacity: 0.78;
+}
+
+.quickOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(255, 122, 33, 0.2);
+  border-radius: 1.1rem;
+  background: linear-gradient(135deg, rgba(255, 122, 33, 0.075), rgba(255, 209, 102, 0.025));
+}
+
+.quickOptions > button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.7rem;
+  align-items: center;
+  min-height: 4.2rem;
+  padding: 0.7rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 0.85rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.quickOptions > button:hover { border-color: var(--edge-t35); }
+
+.quickOptions > button.quickOptionSelected {
+  border-color: rgba(82, 217, 172, 0.52);
+  background: rgba(82, 217, 172, 0.08);
+  box-shadow: 0 0 0 1px rgba(82, 217, 172, 0.1) inset;
+}
+
+.quickOptions button > span:nth-child(2) { min-width: 0; }
+.quickOptions button strong { display: block; font-size: 0.9rem; }
+.quickOptions button small { display: block; margin-top: 0.18rem; color: var(--muted); font-size: 0.7rem; }
+.quickOptions button > b { color: #52d9ac; font-size: 1.2rem; }
+
+.quickIcon {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, rgba(255, 122, 33, 0.22), rgba(255, 209, 102, 0.12));
+  color: var(--gold-ink);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.quickOptions > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0 0.2rem;
+  font-size: 0.72rem;
+}
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.planCard,
+.costBarCard,
+.voiceGrid article {
+  --plan-color: #79a8ff;
+}
+
+.planCard[data-plan='solo'],
+.costBarCard[data-plan='solo'],
+.voiceGrid article[data-plan='solo'] { --plan-color: #ffd166; }
+.planCard[data-plan='growth'],
+.costBarCard[data-plan='growth'],
+.voiceGrid article[data-plan='growth'] { --plan-color: #ff8a3d; }
+.planCard[data-plan='scale'],
+.costBarCard[data-plan='scale'],
+.voiceGrid article[data-plan='scale'] { --plan-color: #52d9ac; }
+
+.planCard {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 1rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--plan-color) 7%, transparent), transparent 32%),
+    var(--bg-elevated);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.13);
+}
+
+.planCard:hover {
+  border-color: color-mix(in srgb, var(--plan-color) 48%, transparent);
+  box-shadow: 0 20px 55px color-mix(in srgb, var(--plan-color) 11%, transparent);
+}
+
+.featuredCard {
+  border-color: rgba(255, 138, 61, 0.45);
+  box-shadow: 0 20px 60px rgba(255, 122, 33, 0.12);
+}
+
+.planAccent {
+  position: absolute;
+  top: -1px;
+  right: 1.1rem;
+  left: 1.1rem;
+  height: 3px;
+  border-radius: 0 0 999px 999px;
+  background: var(--plan-color);
+}
+
+.featuredBadge {
+  align-self: flex-start;
+  margin: -0.25rem 0 0.55rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  background: #ff8a3d;
+  color: #1b0e06;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.planAudience {
+  margin: 0 0 0.35rem;
+  color: color-mix(in srgb, var(--plan-color) 78%, var(--text));
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.planCard h3 {
+  font-size: 1.45rem;
+}
+
+.planPromise {
+  min-height: 3.2rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+}
+
+.planPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin-top: 1rem;
+}
+
+.planPrice strong {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  line-height: 1;
+}
+
+.planPrice span { color: var(--muted); font-size: 0.75rem; }
+
+.billingDetail {
+  min-height: 2.2rem;
+  margin: 0.32rem 0 0;
+  color: var(--muted-2);
+  font-size: 0.65rem;
+}
+
+.feeLine {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.65rem;
+  padding: 0.62rem;
+  border: 1px solid color-mix(in srgb, var(--plan-color) 26%, transparent);
+  border-radius: 0.72rem;
+  background: color-mix(in srgb, var(--plan-color) 7%, transparent);
+  font-size: 0.7rem;
+}
+
+.feeLine > span { color: var(--muted); font-weight: 700; }
+.feeLine > strong { color: var(--plan-color); font-size: 0.95rem; }
+
+.infoBubble {
+  position: relative;
+}
+
+.infoBubble summary {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border: 1px solid var(--edge-t25);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  cursor: pointer;
+  list-style: none;
+}
+
+.infoBubble summary::-webkit-details-marker { display: none; }
+
+.infoBubble > div {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: min(17rem, 70vw);
+  padding: 0.75rem;
+  border: 1px solid var(--edge-t20);
+  border-radius: 0.75rem;
+  background: var(--bg-elevated);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.34);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.cardFeatures {
+  display: grid;
+  gap: 0.48rem;
+  margin: 0.9rem 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+}
+
+.cardFeatures li {
+  position: relative;
+  margin: 0;
+  padding-left: 1.05rem;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.cardFeatures li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--plan-color);
+  font-weight: 900;
+}
+
+.selectedOptions {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: auto;
   padding-top: 0.2rem;
 }
 
-.paySwatch {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 3px;
-  align-self: center;
+.selectedOptions > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.48rem 0.55rem;
+  border: 1px dashed var(--edge-t14);
+  border-radius: 0.65rem;
+  color: var(--muted-2);
+  font-size: 0.63rem;
 }
 
-.paySwatchNet {
-  background: rgba(var(--tint), 0.22);
+.selectedOptions > span[data-active='true'] {
+  border-style: solid;
+  border-color: rgba(82, 217, 172, 0.32);
+  background: rgba(82, 217, 172, 0.055);
+  color: var(--muted);
 }
 
-.paySwatchFee {
-  background: var(--accent);
+.selectedOptions b { color: var(--text); font-size: 0.66rem; }
+
+.planCard > .primaryButton,
+.planCard > .planButton {
+  width: 100%;
+  margin-top: 0.75rem;
 }
 
-/* Dashed and hollow because this row has no slice on the bar — the swatch says
- * "named here, not drawn above" before the caption has to. */
-.paySwatchOther {
-  border: 1px dashed var(--line);
-  background: transparent;
+.cardDetails {
+  margin-top: 0.65rem;
+  border-top: 1px solid var(--edge-t10);
 }
 
-.payRowLabel {
-  min-width: 0;
-  font-size: 0.92rem;
-  line-height: 1.4;
+.cardDetails summary {
+  padding-top: 0.65rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cardDetails ul {
+  margin: 0.65rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.66rem;
+}
+
+.enterpriseStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 0.9rem;
+  padding: 1.2rem;
+  border: 1px solid rgba(121, 168, 255, 0.24);
+  border-radius: 1rem;
+  background: linear-gradient(120deg, rgba(121, 168, 255, 0.09), rgba(82, 217, 172, 0.045));
+}
+
+.enterpriseStrip > div { max-width: 48rem; }
+.enterpriseStrip h3 { font-size: 1.25rem; }
+.enterpriseStrip p:last-child { margin: 0.5rem 0 0; font-size: 0.78rem; }
+.enterpriseStrip .secondaryButton { flex: 0 0 auto; }
+
+.calculatorSection {
+  background:
+    radial-gradient(circle at 88% 14%, rgba(82, 217, 172, 0.09), transparent 32%),
+    rgba(var(--tint), 0.024);
+}
+
+.calculatorOptionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 1.2rem 0 0.65rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.calculatorOptionRow button,
+.calculatorOptionRow strong {
+  padding: 0.42rem 0.65rem;
+  border: 1px solid var(--edge-t15);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
   color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
-.payRowLabel small {
+.calculatorOptionRow button { cursor: pointer; }
+.calculatorOptionRow button[aria-pressed='true'] { border-color: rgba(82, 217, 172, 0.45); background: rgba(82, 217, 172, 0.08); }
+
+.calculatorShell {
+  padding: 1rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 1.15rem;
+  background: var(--bg-elevated);
+}
+
+.calculatorControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 0.6fr);
+  gap: 1rem;
+}
+
+.volumeControl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem 1rem;
+  padding: 1rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 0.9rem;
+  background: rgba(var(--tint), 0.025);
+}
+
+.controlLabel { color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+.volumeOutput { color: var(--gold-ink); font-family: var(--font-display); font-size: 1.35rem; font-weight: 800; }
+.volumeControl input { grid-column: 1 / -1; width: 100%; accent-color: #ff8a3d; cursor: pointer; }
+
+.rangeEnds {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-2);
+  font-size: 0.64rem;
+}
+
+.calculatorAnswer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem;
+  border: 1px solid rgba(82, 217, 172, 0.28);
+  border-radius: 0.9rem;
+  background: rgba(82, 217, 172, 0.065);
+}
+
+.calculatorAnswer span { color: var(--muted); font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+.calculatorAnswer strong { margin-top: 0.2rem; color: #52d9ac; font-family: var(--font-display); font-size: 2rem; }
+.calculatorAnswer small { margin-top: 0.15rem; color: var(--muted); }
+
+.costBars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.costBarCard {
+  padding: 0.8rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 0.8rem;
+  background: rgba(var(--tint), 0.02);
+}
+
+.costBarWinner {
+  border-color: color-mix(in srgb, var(--plan-color) 48%, transparent);
+  background: color-mix(in srgb, var(--plan-color) 7%, transparent);
+}
+
+.costBarHeading {
+  display: flex;
+  min-height: 1.2rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.costBarHeading em {
+  color: var(--plan-color);
+  font-size: 0.54rem;
+  font-style: normal;
+  text-transform: uppercase;
+}
+
+.costBarCard > strong { display: block; margin-top: 0.35rem; color: var(--text); font-size: 1.1rem; }
+.costBarCard > small { display: block; margin-top: 0.35rem; color: var(--muted-2); font-size: 0.6rem; }
+
+.costBarTrack {
   display: block;
-  margin-top: 0.2rem;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--muted-2);
+  height: 0.35rem;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.07);
 }
 
-.payRowValue {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  white-space: nowrap;
+.costBarTrack > span { display: block; height: 100%; border-radius: inherit; background: var(--plan-color); }
+
+.crossoverGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 1.2rem;
+  margin-top: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 0.9rem;
+}
+
+.crossoverGrid h3 { margin-top: 0; }
+.crossoverGrid p:last-child { margin: 0.4rem 0 0; font-size: 0.72rem; }
+.crossoverGrid ol { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+.crossoverGrid li { display: flex; justify-content: space-between; gap: 0.75rem; margin: 0; padding: 0.58rem 0.65rem; border-radius: 0.65rem; background: rgba(var(--tint), 0.035); color: var(--muted); font-size: 0.7rem; }
+.crossoverGrid li strong { color: var(--text); }
+
+.calculatorFinePrint,
+.sectionFinePrint,
+.competitorNote {
+  margin: 0.8rem 0 0;
+  color: var(--muted-2);
+  font-size: 0.66rem;
+}
+
+.voiceSection {
+  background:
+    radial-gradient(circle at 90% 20%, rgba(121, 168, 255, 0.12), transparent 34%),
+    rgba(var(--tint), 0.024);
+}
+
+.voiceProof {
+  flex: 0 0 17rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(82, 217, 172, 0.27);
+  border-radius: 0.9rem;
+  background: rgba(82, 217, 172, 0.06);
+}
+
+.voiceProof strong,
+.voiceProof span { display: block; }
+.voiceProof strong { color: #52d9ac; font-size: 0.78rem; }
+.voiceProof span { margin-top: 0.25rem; color: var(--muted); font-size: 0.7rem; line-height: 1.45; }
+
+.voiceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.2rem;
+}
+
+.voiceGrid article {
+  padding: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--plan-color) 28%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--plan-color) 5%, transparent);
+}
+
+.voiceGrid article > span { color: var(--plan-color); font-size: 0.64rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.voiceGrid article > strong { display: block; margin-top: 0.4rem; color: var(--text); font-size: 0.86rem; }
+.voiceGrid article p { margin: 0.5rem 0 0; font-size: 0.7rem; }
+.voiceGrid article small { display: block; margin-top: 0.25rem; color: var(--muted-2); font-size: 0.62rem; }
+
+.disclosure {
+  overflow: clip;
+  margin-top: 0.75rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 0.95rem;
+  background: var(--bg-elevated);
+}
+
+.disclosure > summary {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary span { display: flex; flex-direction: column; gap: 0.18rem; }
+.disclosure > summary strong { color: var(--text); font-size: 0.88rem; }
+.disclosure > summary small { color: var(--muted); font-size: 0.66rem; }
+.disclosure > summary > b { color: var(--gold-ink); font-size: 1.2rem; transition: transform 160ms ease; }
+.disclosure[open] > summary > b { transform: rotate(45deg); }
+
+.disclosureGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: 0.75rem;
+}
+
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border-top: 1px solid var(--edge-t10);
+  outline: none;
+}
+
+.tableScroll:focus-visible { box-shadow: 0 0 0 2px var(--accent-2) inset; }
+
+.comparisonTable,
+.competitorTable {
+  width: 100%;
+  min-width: 48rem;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.competitorTable { min-width: 58rem; }
+
+.comparisonTable th,
+.comparisonTable td,
+.competitorTable th,
+.competitorTable td {
+  padding: 0.7rem;
+  border-bottom: 1px solid var(--edge-t08);
+  color: var(--muted);
+  text-align: left;
+  vertical-align: top;
+}
+
+.comparisonTable thead th,
+.competitorTable thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
   color: var(--text);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-/* Stripe's line carries no dollar figure and shouldn't look like it does. */
-.payRowAside .payRowValue {
-  font-weight: 600;
-  color: var(--muted-2);
+.comparisonTable tbody th,
+.competitorTable tbody th {
+  color: var(--text);
+  font-weight: 750;
+}
+
+.competitorTable a { color: var(--gold-ink); text-decoration: underline; text-underline-offset: 2px; }
+.competitorNote { padding: 0 1rem 0.9rem; }
+
+.addOnList {
+  border-top: 1px solid var(--edge-t10);
+}
+
+.addOnList > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--edge-t08);
+}
+
+.addOnList span { display: flex; flex-direction: column; }
+.addOnList strong { color: var(--text); font-size: 0.7rem; }
+.addOnList small { margin-top: 0.15rem; color: var(--muted-2); font-size: 0.6rem; }
+.addOnList > div > b { color: var(--gold-ink); font-size: 0.74rem; }
+
+.promiseSection {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.promiseSection > div {
+  padding: 0.9rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 0.85rem;
+  background: rgba(var(--tint), 0.025);
+}
+
+.promiseSection strong,
+.promiseSection span { display: block; }
+.promiseSection strong { color: var(--text); font-size: 0.75rem; }
+.promiseSection span { margin-top: 0.3rem; color: var(--muted); font-size: 0.66rem; line-height: 1.45; }
+
+.faqGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+
+.faqItem {
+  border: 1px solid var(--edge-t10);
+  border-radius: 0.8rem;
+  background: var(--bg-elevated);
+}
+
+.faqItem summary {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faqItem summary::-webkit-details-marker { display: none; }
+.faqItem summary span { color: var(--gold-ink); font-size: 1rem; transition: transform 160ms ease; }
+.faqItem[open] summary span { transform: rotate(45deg); }
+.faqItem p { margin: 0; padding: 0 0.8rem 0.9rem; font-size: 0.72rem; }
+
+.finalCta {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(255, 209, 102, 0.15), transparent 35%),
+    linear-gradient(135deg, rgba(255, 122, 33, 0.09), rgba(82, 217, 172, 0.04));
+}
+
+.finalCta h2 { max-width: 16ch; }
+.finalCta > p:not(.sectionEyebrow) { max-width: 48rem; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1080px) {
+  .planGrid,
+  .costBars,
+  .voiceGrid,
+  .promiseSection { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .planPromise { min-height: auto; }
+  .planCard { padding: 1.15rem; }
+}
+
+@media (max-width: 820px) {
+  .heroGrid,
+  .calculatorControls,
+  .crossoverGrid { grid-template-columns: 1fr; }
+
+  .hero h1 { max-width: 17ch; }
+  .heroBoard { max-width: 35rem; }
+
+  .sectionHeadingSplit {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .billingToggle { align-self: stretch; }
+  .billingToggle button { flex: 1; }
+
+  .enterpriseStrip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .disclosureGrid,
+  .faqGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .page section[id] { scroll-margin-top: 8.5rem; }
+  .sectionNav { top: 68px; }
+}
+
+@media (max-width: 620px) {
+  .page { margin-inline: -0.25rem; }
+  .hero { padding-top: 2.2rem; }
+  .hero h1 { font-size: clamp(2.55rem, 15vw, 4.5rem); }
+  .heroActions { align-items: stretch; flex-direction: column; }
+  .heroActions > a { width: 100%; }
+
+  .quickOptions,
+  .planGrid,
+  .costBars,
+  .voiceGrid,
+  .promiseSection { grid-template-columns: 1fr; }
+
+  .plansSection,
+  .calculatorSection,
+  .voiceSection,
+  .compareSection,
+  .faqSection,
+  .finalCta { padding: 1rem; border-radius: 1.2rem; }
+
+  .sectionNav { margin-inline: -0.75rem; border-radius: 0; }
+  .previewNotice { align-items: flex-start; flex-direction: column; }
+  .planCard { padding: 1rem; }
+  .planPrice strong { font-size: 2.4rem; }
+
+  .enterpriseStrip .secondaryButton { width: 100%; }
+  .volumeControl { grid-template-columns: 1fr; }
+  .volumeOutput { grid-row: 2; }
+  .volumeControl input { grid-row: 3; }
+  .rangeEnds { grid-row: 4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryButton,
+  .secondaryButton,
+  .planButton,
+  .disclosure > summary > b,
+  .faqItem summary span { transition: none; }
+
+  .primaryButton:hover,
+  .secondaryButton:hover,
+  .planButton:hover { transform: none; }
 }
