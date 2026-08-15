@@ -229,7 +229,7 @@ export function reviewPillState(input: CompleteJobWarningInput): ReviewPillState
     return {
       canAsk: false,
       reason: 'No Google review link saved yet — link your Google Business Profile and this turns on.',
-      fix: { href: '/dashboard/sites#google-business-profile', label: 'Link your profile →' },
+      fix: { href: '/dashboard/sites?open=reviews', label: 'Link your profile →' },
     };
   }
   if (input.alreadyRequested) {

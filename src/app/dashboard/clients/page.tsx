@@ -6,6 +6,7 @@ import { CLIENTS_VIEW_COOKIE, normalizeClientsView } from '@/lib/dashboard-views
 import { toClientRows } from '@/lib/client-rows';
 import { duplicateMemberKey, findDuplicateGroups } from '@/lib/client-duplicates';
 import { listDuplicateDismissals } from '@/lib/client-duplicates-data';
+import { todayIn } from '@/lib/quote-options';
 import { dismissDuplicateGroupAction, mergeClientsAction } from './actions';
 import ClientsScreen from './ClientsScreen';
 
@@ -18,10 +19,11 @@ export const metadata = { title: 'Clients' };
  * renders the same one.
  */
 export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string; merged?: string; dismissed?: string; dismissError?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId, accountTimeZone } = await requireOwnerContext();
+  const todayKey = todayIn(accountTimeZone);
   // One query for the whole book's coordinates, not one per customer.
   const [clients, pinsByClient, dismissed] = await Promise.all([
-    listClientsWithStats(supabase, accountId),
+    listClientsWithStats(supabase, accountId, { todayKey }),
     clientPins(supabase, accountId),
     listDuplicateDismissals(supabase, accountId),
   ]);
@@ -58,10 +60,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
       dismissError={searchParams.dismissError === 'schema'}
       mergedCount={Number(searchParams.merged) || 0}
       pins={[...pinsByClient.values()].map((pin) => ({ clientId: pin.clientId, lat: pin.lat, lng: pin.lng }))}
-      // 'YYYY-MM-DD' in the server's own zone. Decided here rather than in the
-      // browser so the follow-up bands cannot differ between two views on the
-      // same screen across a midnight.
-      todayKey={new Date().toLocaleDateString('en-CA')}
+      // One account-local day for the stats and the follow-up bands, so neither
+      // changes at the deployment server's midnight.
+      todayKey={todayKey}
       view={normalizeClientsView(cookies().get(CLIENTS_VIEW_COOKIE)?.value)}
       repeatCount={clients.filter((client) => client.jobCount > 1).length}
       showExistingFlash={Boolean(searchParams.existing)}

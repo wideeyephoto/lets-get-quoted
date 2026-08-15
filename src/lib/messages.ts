@@ -281,17 +281,28 @@ export async function countUnreadMessages(supabase: SupabaseClient, accountId: s
  * a text arriving while they read stays unread, which is the honest answer —
  * they have not seen it.
  */
-export async function markThreadRead(supabase: SupabaseClient, accountId: string, phone: string): Promise<void> {
+export async function markThreadRead(
+  supabase: SupabaseClient,
+  accountId: string,
+  phone: string,
+  readThrough?: string,
+): Promise<boolean> {
   try {
-    await supabase
+    let query = supabase
       .from('sms_messages')
       .update({ read_at: new Date().toISOString() })
       .eq('account_id', accountId)
       .eq('phone_number', phone)
       .eq('direction', 'inbound')
       .is('read_at', null);
+    if (readThrough) query = query.lte('created_at', readThrough);
+    // Ask for the touched IDs so a policy/schema mismatch that silently updates
+    // zero rows does not make the client refresh the same unread state forever.
+    const { data, error } = await query.select('id');
+    return !error && (data?.length ?? 0) > 0;
   } catch {
     // Pre-migration. The thread still opens; it just cannot be marked.
+    return false;
   }
 }
 

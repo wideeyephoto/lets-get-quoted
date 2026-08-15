@@ -579,7 +579,7 @@ export default function ScheduleCalendar({
     if (span === 3) return [0, 1, 2].map((offset) => shiftDateKey(anchorDayKey, offset));
 
     return weekDayKeys.filter((_, day) => (day !== 0 || days.sun) && (day !== 6 || days.sat));
-  }, [days.sat, days.sun, effectiveView, span, weekDayKeys]);
+  }, [anchorDayKey, days.sat, days.sun, effectiveView, span, weekDayKeys]);
 
   /**
    * How long each occurrence runs, and where it sits in a multi-day job.

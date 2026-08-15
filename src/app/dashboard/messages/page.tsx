@@ -6,7 +6,7 @@ import { conversationPreview, groupByDay, groupRuns, initialsFor, messageContext
 import { conversationLinkLabel, inboxEmptyState, type InboxFilter } from '@/lib/inbox-view';
 import { linkifyMessage } from '@/lib/message-linkify';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
+import { buildContactNameMap, getConversationMessages, listConversations } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
 import { starterRepliesFor } from '@/lib/starter-replies';
 import { loadMessagingSetup } from '@/lib/owner-sms';
@@ -16,6 +16,7 @@ import SavedReplies from './SavedReplies';
 import ComposeMessage from './ComposeMessage';
 import AddAsCustomer from './AddAsCustomer';
 import ScrollToLatest from './ScrollToLatest';
+import MarkVisibleThreadRead from './MarkVisibleThreadRead';
 import SaveButton from '@/components/save-button';
 
 export const metadata = { title: 'Messages' };
@@ -109,11 +110,17 @@ export default async function MessagesPage({
   // open to answer a text.
   const context = await messageContext(supabase, accountId, activePhone);
   const days = groupByDay(messages);
-
-  // Opening a thread IS reading it. Done after the messages are loaded so the
-  // ones being marked are the ones on screen, and after `conversations` so the
-  // list still shows the badge that was there when they clicked it.
-  if (activePhone) await markThreadRead(supabase, accountId, activePhone);
+  // Bound the read receipt to what this response actually rendered. A new text
+  // arriving during hydration must remain unread until it is on screen.
+  const readThrough = [...messages]
+    .reverse()
+    .find((message) => message.direction === 'inbound')?.created_at ?? null;
+  // The conversation list is intentionally capped for inbox speed, whereas the
+  // open thread is complete. Gate from the rendered rows so an older unread text
+  // (or a direct link outside that list slice) can still clear the exact nav badge.
+  const hasRenderedUnread = messages.some(
+    (message) => message.direction === 'inbound' && !message.read_at,
+  );
 
   // Everyone this account has a number for, for the compose picker. Reuses the
   // same name map the threads use, so a customer is called the same thing in
@@ -201,6 +208,13 @@ export default async function MessagesPage({
           the page reorganised itself around the fact that you had mistyped. The
           empty state now lives INSIDE the list, where the list would be. */}
       <section className={`inbox-layout${threadChosen ? ' show-thread' : ' show-list'}`}>
+        {activePhone && readThrough && hasRenderedUnread ? (
+          <MarkVisibleThreadRead
+            phone={activePhone}
+            readThrough={readThrough}
+            explicitlyChosen={threadChosen}
+          />
+        ) : null}
         <aside className="panel workspace-section-card inbox-list">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Conversations</p>

@@ -129,10 +129,11 @@ export default function FloatingPanel({ anchorRef, open, onClose, className, wid
   useEffect(() => {
     if (!open) return;
     const node = panelRef.current;
+    const anchor = anchorRef.current;
     return () => {
       const active = document.activeElement;
       const wasInside = !active || active === document.body || (node?.contains(active) ?? false);
-      if (wasInside) anchorRef.current?.focus();
+      if (wasInside) anchor?.focus();
     };
   }, [open, anchorRef]);
 

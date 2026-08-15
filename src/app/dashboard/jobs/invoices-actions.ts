@@ -46,7 +46,7 @@ export async function addInvoiceItemAction(jobId: string, invoiceId: string, for
   const description = (formData.get('description') ?? '').toString().trim() || 'Line item';
   const amount = Number(formData.get('amount'));
 
-  await addInvoiceItem(supabase, accountId, invoiceId, { description, amount });
+  await addInvoiceItem(supabase, accountId, invoiceId, { description, amount }, jobId);
 
   revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
 }
@@ -57,7 +57,7 @@ export async function updateInvoiceChargesAction(jobId: string, invoiceId: strin
   const discountPercent = Number(formData.get('discountPercent'));
   const taxRate = Number(formData.get('taxRate'));
 
-  await updateInvoiceCharges(supabase, accountId, invoiceId, {
+  await updateInvoiceCharges(supabase, accountId, jobId, invoiceId, {
     discountPercent: Number.isFinite(discountPercent) ? discountPercent : 0,
     taxRate: Number.isFinite(taxRate) ? taxRate : 0,
   });
@@ -68,7 +68,7 @@ export async function updateInvoiceChargesAction(jobId: string, invoiceId: strin
 export async function deleteInvoiceItemAction(jobId: string, invoiceId: string, itemId: string) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await deleteInvoiceItem(supabase, accountId, invoiceId, itemId);
+  await deleteInvoiceItem(supabase, accountId, jobId, invoiceId, itemId);
 
   revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
 }
@@ -77,21 +77,22 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
   const { supabase, accountId } = await requireOwnerContext();
 
   const status = (formData.get('status') as InvoiceStatus) || 'draft';
+  // Reject a forged nested route before any email, status, or feed side effect.
+  // From here on, the invoice row is the source of truth for the job context.
+  const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
+  if (!invoiceData) {
+    throw new Error('Invoice not found for this job.');
+  }
+  const { invoice, items } = invoiceData;
+  const verifiedJobId = invoice.job_id;
 
   // If status is changing to 'sent', send invoice email
   if (status === 'sent') {
     try {
-      const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId);
-      if (!invoiceData) {
-        throw new Error('Invoice not found');
-      }
-
-      const { invoice, items } = invoiceData;
-
       const businessName = await loadBusinessName(supabase, accountId);
 
       // Get job details
-      const job = await getJob(supabase, accountId, jobId);
+      const job = await getJob(supabase, accountId, verifiedJobId);
       if (!job) {
         throw new Error('Job not found');
       }
@@ -139,7 +140,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
           total: Number(invoice.total),
           channel,
           sentTo,
-          jobUrl: `${origin}/dashboard/jobs/${jobId}`,
+          jobUrl: `${origin}/dashboard/jobs/${verifiedJobId}`,
         });
       }
     } catch (err) {
@@ -148,49 +149,53 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
     }
   }
 
-  await updateInvoiceStatus(supabase, accountId, invoiceId, status);
+  await updateInvoiceStatus(supabase, accountId, verifiedJobId, invoiceId, status);
 
   if (status === 'sent' || status === 'paid' || status === 'signed') {
-    const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId);
-    await createJobFeedEvent(supabase, accountId, jobId, {
+    await createJobFeedEvent(supabase, accountId, verifiedJobId, {
       kind: status === 'paid' ? 'invoice_paid' : status === 'signed' ? 'invoice_signed' : 'invoice_sent',
       title: status === 'paid' ? 'Invoice paid' : status === 'signed' ? 'Invoice signed' : 'Invoice sent',
-      body: invoiceData?.invoice.ref ?? 'Invoice update',
+      body: invoice.ref,
       visibility: 'client_financial',
-      amount: Number(invoiceData?.invoice.total ?? 0),
+      amount: Number(invoice.total),
       sourceTable: 'invoices',
       sourceId: invoiceId,
       actionUrl: `/invoice/${invoiceId}`,
     });
   }
 
-  revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
+  revalidatePath(`/dashboard/jobs/${verifiedJobId}/invoices/${invoiceId}`);
 }
 
 export async function deleteInvoiceAction(jobId: string, invoiceId: string) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await deleteInvoice(supabase, accountId, invoiceId);
+  const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
+  if (!invoiceData) throw new Error('Invoice not found for this job.');
+  const verifiedJobId = invoiceData.invoice.job_id;
 
-  revalidatePath(`/dashboard/jobs/${jobId}`);
-  redirect(`/dashboard/jobs/${jobId}?open=payment#request-payment`);
+  await deleteInvoice(supabase, accountId, verifiedJobId, invoiceId);
+
+  revalidatePath(`/dashboard/jobs/${verifiedJobId}`);
+  redirect(`/dashboard/jobs/${verifiedJobId}?open=payment#request-payment`);
 }
 
 export async function cancelInvoiceAction(jobId: string, invoiceId: string) {
   const { supabase, accountId } = await requireOwnerContext();
-  const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId);
-  if (!invoiceData) throw new Error('Invoice not found for this account.');
+  const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
+  if (!invoiceData) throw new Error('Invoice not found for this job.');
   const { invoice } = invoiceData;
+  const verifiedJobId = invoice.job_id;
 
   if (invoice.status === 'paid') throw new Error('Paid invoices cannot be cancelled.');
   if (invoice.status === 'void') {
-    revalidatePath(`/dashboard/jobs/${jobId}`);
+    revalidatePath(`/dashboard/jobs/${verifiedJobId}`);
     return;
   }
 
-  await updateInvoiceStatus(supabase, accountId, invoiceId, 'void');
+  await updateInvoiceStatus(supabase, accountId, verifiedJobId, invoiceId, 'void');
 
-  await createJobFeedEvent(supabase, accountId, jobId, {
+  await createJobFeedEvent(supabase, accountId, verifiedJobId, {
     kind: 'invoice_voided',
     title: 'Invoice cancelled',
     body: invoice.ref,
@@ -198,6 +203,6 @@ export async function cancelInvoiceAction(jobId: string, invoiceId: string) {
     amount: Number(invoice.total),
   });
 
-  revalidatePath(`/dashboard/jobs/${jobId}`);
-  revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
+  revalidatePath(`/dashboard/jobs/${verifiedJobId}`);
+  revalidatePath(`/dashboard/jobs/${verifiedJobId}/invoices/${invoiceId}`);
 }

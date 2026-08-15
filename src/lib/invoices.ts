@@ -156,14 +156,24 @@ export function selectPrimaryInvoice(invoices: Invoice[]): Invoice | null {
 export async function getInvoiceWithItems(
   supabase: SupabaseClient,
   accountId: string,
-  invoiceId: string
+  invoiceId: string,
+  expectedJobId?: string,
 ): Promise<{ invoice: Invoice; items: InvoiceItem[] } | null> {
-  const { data: invoice, error } = await supabase
+  let invoiceQuery = supabase
     .from('invoices')
     .select('*')
     .eq('account_id', accountId)
-    .eq('id', invoiceId)
-    .maybeSingle();
+    .eq('id', invoiceId);
+
+  // Nested dashboard routes carry both a job id and an invoice id. Account
+  // ownership alone is not enough: without this constraint an invoice from a
+  // different job in the same account can be opened and then mutated under the
+  // URL job's customer/feed context.
+  if (expectedJobId !== undefined) {
+    invoiceQuery = invoiceQuery.eq('job_id', expectedJobId);
+  }
+
+  const { data: invoice, error } = await invoiceQuery.maybeSingle();
 
   if (error || !invoice) {
     return null;
@@ -279,18 +289,35 @@ export async function markInvoicePaidForPayment(supabase: SupabaseClient, invoic
     .eq('id', invoiceId);
 }
 
-async function recalculateInvoiceTotal(supabase: SupabaseClient, invoiceId: string): Promise<void> {
+async function recalculateInvoiceTotal(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  invoiceId: string,
+): Promise<void> {
   const [{ data: items, error }, { data: invoice, error: invoiceError }] = await Promise.all([
     supabase.from('invoice_items').select('amount').eq('invoice_id', invoiceId),
-    supabase.from('invoices').select('discount_percent, tax_rate').eq('id', invoiceId).maybeSingle(),
+    supabase
+      .from('invoices')
+      .select('discount_percent, tax_rate')
+      .eq('account_id', accountId)
+      .eq('job_id', jobId)
+      .eq('id', invoiceId)
+      .maybeSingle(),
   ]);
 
   if (error) throw error;
   if (invoiceError) throw invoiceError;
+  if (!invoice) throw new Error('Invoice not found for this job.');
 
-  const { total } = computeInvoiceTotals(items ?? [], Number(invoice?.discount_percent) || 0, Number(invoice?.tax_rate) || 0);
+  const { total } = computeInvoiceTotals(items ?? [], Number(invoice.discount_percent) || 0, Number(invoice.tax_rate) || 0);
 
-  const { error: updateError } = await supabase.from('invoices').update({ total }).eq('id', invoiceId);
+  const { error: updateError } = await supabase
+    .from('invoices')
+    .update({ total })
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('id', invoiceId);
 
   if (updateError) {
     throw updateError;
@@ -302,11 +329,12 @@ async function recalculateInvoiceTotal(supabase: SupabaseClient, invoiceId: stri
 export async function updateInvoiceCharges(
   supabase: SupabaseClient,
   accountId: string,
+  jobId: string,
   invoiceId: string,
   input: { discountPercent: number; taxRate: number },
 ): Promise<void> {
-  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId);
-  if (!existing) throw new Error('Invoice not found for this account.');
+  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
+  if (!existing) throw new Error('Invoice not found for this job.');
   if (existing.invoice.status === 'signed' || existing.invoice.status === 'paid' || existing.invoice.status === 'void') {
     throw new Error('This invoice is locked and can no longer be edited.');
   }
@@ -318,21 +346,23 @@ export async function updateInvoiceCharges(
     .from('invoices')
     .update({ discount_percent: discountPercent, tax_rate: taxRate })
     .eq('account_id', accountId)
+    .eq('job_id', jobId)
     .eq('id', invoiceId);
   if (error) throw error;
 
-  await recalculateInvoiceTotal(supabase, invoiceId);
+  await recalculateInvoiceTotal(supabase, accountId, existing.invoice.job_id, invoiceId);
 }
 
 export async function addInvoiceItem(
   supabase: SupabaseClient,
   accountId: string,
   invoiceId: string,
-  input: { description: string; amount: number }
+  input: { description: string; amount: number },
+  expectedJobId?: string,
 ): Promise<InvoiceItem> {
-  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId);
+  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, expectedJobId);
   if (!existing) {
-    throw new Error('Invoice not found for this account.');
+    throw new Error(expectedJobId === undefined ? 'Invoice not found for this account.' : 'Invoice not found for this job.');
   }
 
   if (input.amount <= 0) {
@@ -356,7 +386,7 @@ export async function addInvoiceItem(
     throw error ?? new Error('Unable to add line item');
   }
 
-  await recalculateInvoiceTotal(supabase, invoiceId);
+  await recalculateInvoiceTotal(supabase, accountId, existing.invoice.job_id, invoiceId);
 
   return data as InvoiceItem;
 }
@@ -364,12 +394,13 @@ export async function addInvoiceItem(
 export async function deleteInvoiceItem(
   supabase: SupabaseClient,
   accountId: string,
+  jobId: string,
   invoiceId: string,
   itemId: string
 ): Promise<void> {
-  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId);
+  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
   if (!existing) {
-    throw new Error('Invoice not found for this account.');
+    throw new Error('Invoice not found for this job.');
   }
 
   const { error } = await supabase.from('invoice_items').delete().eq('id', itemId).eq('invoice_id', invoiceId);
@@ -378,19 +409,26 @@ export async function deleteInvoiceItem(
     throw error;
   }
 
-  await recalculateInvoiceTotal(supabase, invoiceId);
+  await recalculateInvoiceTotal(supabase, accountId, existing.invoice.job_id, invoiceId);
 }
 
 export async function updateInvoiceStatus(
   supabase: SupabaseClient,
   accountId: string,
+  jobId: string,
   invoiceId: string,
   status: InvoiceStatus
 ): Promise<void> {
+  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
+  if (!existing) {
+    throw new Error('Invoice not found for this job.');
+  }
+
   const { error } = await supabase
     .from('invoices')
     .update({ status })
     .eq('account_id', accountId)
+    .eq('job_id', existing.invoice.job_id)
     .eq('id', invoiceId);
 
   if (error) {
@@ -398,8 +436,23 @@ export async function updateInvoiceStatus(
   }
 }
 
-export async function deleteInvoice(supabase: SupabaseClient, accountId: string, invoiceId: string): Promise<void> {
-  const { error } = await supabase.from('invoices').delete().eq('account_id', accountId).eq('id', invoiceId);
+export async function deleteInvoice(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  invoiceId: string,
+): Promise<void> {
+  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
+  if (!existing) {
+    throw new Error('Invoice not found for this job.');
+  }
+
+  const { error } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('job_id', existing.invoice.job_id)
+    .eq('id', invoiceId);
 
   if (error) {
     throw error;

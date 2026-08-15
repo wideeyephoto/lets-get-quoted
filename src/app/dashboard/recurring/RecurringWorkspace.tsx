@@ -89,6 +89,7 @@ export default function RecurringWorkspace({
   composer,
   gear,
   activeCount,
+  focusPlanId = null,
   view = 'cards',
   board = null,
   pins = [],
@@ -99,6 +100,8 @@ export default function RecurringWorkspace({
   composer: ReactNode;
   gear: ReactNode;
   activeCount: number;
+  /** Initial deep-link target supplied by the server's `?plan=` parameter. */
+  focusPlanId?: string | null;
   view?: 'cards' | 'ops';
   /** Operations only — Cards keeps the attention banner and the hero map. */
   board?: BoardModel | null;
@@ -114,7 +117,9 @@ export default function RecurringWorkspace({
   const [sort, setSort] = useState<SortKey>('next');
   // Set by a map pin or a board row; consumed one commit later, once the list it
   // scrolls to is actually in the DOM.
-  const [pendingJump, setPendingJump] = useState<string | null>(null);
+  const [pendingJump, setPendingJump] = useState<string | null>(() =>
+    focusPlanId && rows.some((row) => row.id === focusPlanId) ? focusPlanId : null,
+  );
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();

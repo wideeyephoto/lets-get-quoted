@@ -151,7 +151,7 @@ export function buildPayrollEvents(input: {
         // Payroll doesn't arrive late; it bounces.
         slips: false,
         repeating: true,
-        href: '/dashboard/crew?tab=pay',
+        href: '/dashboard/crew?tab=hours',
       });
       continue;
     }
@@ -171,7 +171,7 @@ export function buildPayrollEvents(input: {
         confirmed: false,
         slips: false,
         repeating: true,
-        href: '/dashboard/crew?tab=pay',
+        href: '/dashboard/crew?tab=hours',
       });
     }
   }

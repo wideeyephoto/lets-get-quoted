@@ -28,7 +28,7 @@ export default async function InvoiceDetailPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const result = await getInvoiceWithItems(supabase, accountId, params.invoiceId);
+  const result = await getInvoiceWithItems(supabase, accountId, params.invoiceId, params.id);
 
   if (!result) {
     return (
@@ -44,15 +44,16 @@ export default async function InvoiceDetailPage({
   }
 
   const { invoice, items } = result;
+  const jobId = invoice.job_id;
   const isLocked = invoice.status === 'signed' || invoice.status === 'paid' || invoice.status === 'void';
   const shareLink = `/invoice/${invoice.id}`;
   const pdfLink = `/api/invoices/${invoice.id}/pdf`;
   const totals = computeInvoiceTotals(items, Number(invoice.discount_percent) || 0, Number(invoice.tax_rate) || 0);
 
-  const boundAddItem = addInvoiceItemAction.bind(null, params.id, invoice.id);
-  const boundDeleteInvoice = deleteInvoiceAction.bind(null, params.id, invoice.id);
-  const boundUpdateStatus = updateInvoiceStatusAction.bind(null, params.id, invoice.id);
-  const boundUpdateCharges = updateInvoiceChargesAction.bind(null, params.id, invoice.id);
+  const boundAddItem = addInvoiceItemAction.bind(null, jobId, invoice.id);
+  const boundDeleteInvoice = deleteInvoiceAction.bind(null, jobId, invoice.id);
+  const boundUpdateStatus = updateInvoiceStatusAction.bind(null, jobId, invoice.id);
+  const boundUpdateCharges = updateInvoiceChargesAction.bind(null, jobId, invoice.id);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -67,7 +68,7 @@ export default async function InvoiceDetailPage({
             <span className="workspace-inline-note">{items.length} line item{items.length === 1 ? '' : 's'}</span>
           </div>
           <div className="actions workspace-actions">
-            <Link href={`/dashboard/jobs/${params.id}?open=payment#request-payment`} className="btn secondary">
+            <Link href={`/dashboard/jobs/${jobId}?open=payment#request-payment`} className="btn secondary">
               Back to job
             </Link>
             <a href={pdfLink} target="_blank" rel="noreferrer" className="btn secondary">Download PDF</a>
@@ -157,7 +158,7 @@ export default async function InvoiceDetailPage({
                     <div className="cost-item-actions">
                       <span className="cost-item-amount">{formatMoney(item.amount)}</span>
                       {!isLocked ? (
-                        <form action={deleteInvoiceItemAction.bind(null, params.id, invoice.id, item.id)}>
+                        <form action={deleteInvoiceItemAction.bind(null, jobId, invoice.id, item.id)}>
                           <button type="submit" className="icon-btn">
                             ✕
                           </button>

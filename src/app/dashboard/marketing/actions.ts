@@ -315,7 +315,8 @@ export async function sendTestEmailAction(formData: FormData) {
   await sendCampaignEmail({ recipientEmail: to, businessName, subject: `[Test] ${subject}`, body, accountId, mailingAddress });
 
   revalidatePath('/dashboard/marketing');
-  redirect('/dashboard/marketing?test=1');
+  revalidatePath('/dashboard/marketing/campaigns');
+  redirect('/dashboard/marketing/campaigns?test=1');
 }
 
 /**

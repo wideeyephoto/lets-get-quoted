@@ -57,6 +57,7 @@ export default function RecurringScreen({
   attentionAction = null,
   flash = null,
   flashJobId = null,
+  focusPlanId = null,
   basePath = '/dashboard',
 }: {
   view: RecurringView;
@@ -69,6 +70,8 @@ export default function RecurringScreen({
   attentionAction?: ReactNode;
   flash?: { tone: 'success' | 'info' | 'warn'; text: string } | null;
   flashJobId?: string | null;
+  /** A plan named by `?plan=`; the workspace scrolls to its existing anchor. */
+  focusPlanId?: string | null;
   basePath?: string;
 }) {
   const ops = mode === 'ops';
@@ -255,6 +258,7 @@ export default function RecurringScreen({
           the wire and still a mounted form. */}
       <RecurringWorkspace
         view={mode}
+        focusPlanId={focusPlanId}
         board={ops ? board : null}
         pins={ops ? planPins : []}
         totalPlans={plans.length}

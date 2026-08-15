@@ -13,18 +13,18 @@ export type MapStop = { id: string; label: string; lat: number; lng: number; loc
 // The day drawn on a map: the shop, the stops in the order they'll be driven, and
 // the actual road route between them.
 //
-// The route comes from the Directions service, which follows real roads — but it
-// needs Directions enabled on the API key and caps out at 25 waypoints. Neither
-// is guaranteed, so a straight-line polyline is drawn first and upgraded in place
-// when (if) directions come back. The contractor always sees a route.
+// The route comes from the Routes API, which follows real roads — but it needs
+// Routes enabled on the API key and caps out at 25 intermediate waypoints.
+// Neither is guaranteed, so a straight-line polyline is drawn first and upgraded
+// in place when (if) a road route comes back. The contractor always sees a route.
 
-const DIRECTIONS_MAX_WAYPOINTS = 23; // 25 minus origin and destination.
+const ROUTES_MAX_INTERMEDIATE_WAYPOINTS = 25;
 
-// Directions is a separate API that has to be enabled on the key, and a key
-// without it answers REQUEST_DENIED to every call. Remember that for the session
+// Routes is a separate API that has to be enabled on the key, and a key without
+// it rejects every call. Remember that for the session
 // so a contractor dragging stops around doesn't fire — and log — one doomed
 // request per drag. Straight lines are the answer for this key, permanently.
-let directionsUnavailable = false;
+let routesUnavailable = false;
 
 function markerSvg(text: string, color: string): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">
@@ -274,36 +274,47 @@ export default function RouteMap({
     setRoadRoute(false);
 
     // Upgrade to the real road route when we can get one.
-    if (path.length >= 2 && stops.length <= DIRECTIONS_MAX_WAYPOINTS && !directionsUnavailable && !deferRoute) {
+    const intermediateCount = Math.max(0, path.length - 2);
+    if (
+      path.length >= 2
+      && intermediateCount <= ROUTES_MAX_INTERMEDIATE_WAYPOINTS
+      && !routesUnavailable
+      && !deferRoute
+    ) {
       setRouting(true);
       void (async () => {
         try {
-          const routes = await loadMapsLibrary<google.maps.RoutesLibrary>(apiKey!, 'routes');
-          const service = new routes.DirectionsService();
-          const result = await service.route({
+          const routesLibrary = await loadMapsLibrary<google.maps.RoutesLibrary>(apiKey!, 'routes');
+          const result = await routesLibrary.Route.computeRoutes({
             origin: path[0],
             destination: path[path.length - 1],
-            waypoints: path.slice(1, -1).map((location) => ({ location, stopover: true })),
-            optimizeWaypoints: false, // The order is the contractor's; never reshuffle it.
+            intermediates: path.slice(1, -1).map((location) => ({ location })),
+            optimizeWaypointOrder: false, // The order is the contractor's; never reshuffle it.
             travelMode: window.google.maps.TravelMode.DRIVING,
+            fields: ['legs'],
           });
           // A newer order started drawing while this was in flight.
           if (drawId !== drawIdRef.current || !mapRef.current) return;
           // Per LEG, not the overview path: the overview is one line for the
           // whole day and can't be colored leg by leg.
-          const legs = result.routes[0]?.legs ?? [];
+          const legs = result.routes?.[0]?.legs ?? [];
           const legPaths = legs
-            .map((leg) => (leg.steps ?? []).flatMap((step) => step.path ?? []))
+            .map((leg) => leg.path ?? [])
             .filter((points) => points.length >= 2);
           if (legPaths.length === 0) return;
           clearLines(linesRef.current);
           linesRef.current = drawLegs(mapRef.current, legPaths, 0.9);
           setRoadRoute(true);
         } catch (error) {
-          // Directions not enabled on the key, over quota, or no route between two
+          // Routes not enabled on the key, over quota, or no route between two
           // points. The straight-line polyline is already drawn and stays.
           const message = error instanceof Error ? error.message : String(error);
-          if (/REQUEST_DENIED|not enabled|legacy API/i.test(message)) directionsUnavailable = true;
+          const code = error && typeof error === 'object' && 'code' in error
+            ? String(error.code)
+            : '';
+          if (code === 'PERMISSION_DENIED' || /REQUEST_DENIED|not (?:enabled|been used)|legacy API/i.test(message)) {
+            routesUnavailable = true;
+          }
         } finally {
           if (drawId === drawIdRef.current) setRouting(false);
         }
