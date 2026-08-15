@@ -199,7 +199,7 @@ function PriorityCard({
             ...(snoozedGroup
               ? []
               : [{ key: 'snooze', kind: 'button' as const, label: 'Snooze 3 days', onSelect: () => act(() => snoozeLeadAction(lead.id, 3)) }]),
-            { key: 'archive', kind: 'button', label: 'Archive (out of the queue)', onSelect: () => act(() => archiveLeadAction(lead.id, true)) },
+            { key: 'archive', kind: 'button', label: 'Archive', onSelect: () => act(() => archiveLeadAction(lead.id, true)) },
           ]}
         />
       </div>

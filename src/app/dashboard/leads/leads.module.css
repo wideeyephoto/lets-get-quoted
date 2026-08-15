@@ -568,6 +568,25 @@
 .lostAfter select { min-width: 12rem; }
 .lostAfterNote { flex-basis: 100%; margin: 0; color: var(--muted-2); font-size: .78rem; line-height: 1.45; }
 
+/* Administrative controls stay on the page, but no longer become hundreds of
+   pixels of mandatory reading between the working queue and its metrics. */
+.adminDetails { margin: 0; }
+.adminSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .35rem 1rem;
+  min-height: 48px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: .9rem;
+  font-weight: 750;
+}
+.adminSummary small { color: var(--muted-2); font-size: .76rem; font-weight: 500; }
+.adminDetails[open] .adminSummary { margin-bottom: .9rem; }
+.adminBody { padding-top: .1rem; }
+
 .setAsideList { display: grid; gap: .4rem; margin-top: .8rem; }
 .setAsideRow { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .5rem .75rem; border: 1px solid var(--edge-t09); border-radius: 8px; background: rgba(var(--tint), .03); }
 .setAsideName { font-weight: 700; color: inherit; }
@@ -707,8 +726,10 @@
 
 /* --- Score legend (bottom of the leads section) --- */
 .scoreChip[data-score='warm'] { background: rgba(255,209,102,.14); border-color: var(--cedge-amber-53); color: var(--warn); }
-.scoreLegend { display: grid; gap: .5rem; margin-top: 1.1rem; padding: .85rem 1rem; border: 1px solid var(--edge-t09); border-radius: 12px; background: rgba(var(--tint), .02); }
-.scoreLegendTitle { font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--mute-t50); }
+.scoreLegend { margin-top: 1.1rem; border: 1px solid var(--edge-t09); border-radius: 12px; background: rgba(var(--tint), .02); }
+.scoreLegendTitle { min-height: 44px; padding: .75rem 1rem; cursor: pointer; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mute-t60); }
+.scoreLegendTitle:hover { color: var(--text); }
+.scoreLegendBody { display: grid; gap: .5rem; padding: 0 1rem .9rem; }
 .scoreLegendRow { display: grid; grid-template-columns: max-content 1fr; gap: .65rem; align-items: start; font-size: .82rem; color: rgba(var(--tint), .72); line-height: 1.45; }
 .scoreLegendRow .scoreChip { white-space: nowrap; }
 /* The chip is `max-content` and the description takes the rest, which was the
@@ -718,6 +739,7 @@
 .scoreLegendRow > span:last-child { max-width: var(--read-note); }
 .scoreLegendNote { margin: .15rem 0 0; font-size: .76rem; color: var(--mute-t45); max-width: var(--read-note); }
 .scoreLegendNote a { color: var(--accent-ink); font-weight: 700; }
+
 
 /* Why the quote didn't send, in the server's own words. Replaces the digest
    crash page that three different ordinary mistakes all used to produce. */

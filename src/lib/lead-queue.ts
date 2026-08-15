@@ -57,7 +57,16 @@ export function queueStageLabel(status: QueueStatus): string {
   return STAGE_LABEL[status] ?? status;
 }
 
-export type StageFilter = QueueStatus | 'all';
+/**
+ * Pipeline filters plus the two operational groups people actually use.
+ *
+ * `open` is deliberately the queue default: won and lost leads are reference
+ * material, not work competing for the next phone call. `closed` keeps both
+ * terminal stages reachable without spending two permanent chips on them.
+ * `all` remains available to the Table, where inventory and export are real
+ * jobs rather than the default queue's job.
+ */
+export type StageFilter = QueueStatus | 'open' | 'closed' | 'all';
 
 /**
  * How many leads sit in each stage, plus the total.
@@ -68,9 +77,29 @@ export type StageFilter = QueueStatus | 'all';
  * empty from one that never existed.
  */
 export function stageCounts<T extends QueueLead>(leads: T[]): Record<StageFilter, number> {
-  const counts: Record<StageFilter, number> = { all: leads.length, new: 0, contacted: 0, quoted: 0, won: 0, lost: 0 };
-  for (const lead of leads) counts[lead.status] += 1;
+  const counts: Record<StageFilter, number> = {
+    all: leads.length,
+    open: 0,
+    closed: 0,
+    new: 0,
+    contacted: 0,
+    quoted: 0,
+    won: 0,
+    lost: 0,
+  };
+  for (const lead of leads) {
+    counts[lead.status] += 1;
+    counts[lead.status === 'won' || lead.status === 'lost' ? 'closed' : 'open'] += 1;
+  }
   return counts;
+}
+
+/** One definition of what each stage filter contains, shared by every view. */
+export function matchesStage(lead: Pick<QueueLead, 'status'>, filter: StageFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'open') return lead.status !== 'won' && lead.status !== 'lost';
+  if (filter === 'closed') return lead.status === 'won' || lead.status === 'lost';
+  return lead.status === filter;
 }
 
 /* --- one predicate for "this lead still needs you" -------------------------
@@ -283,8 +312,8 @@ export function waitingFor(
  * — it is relabelled, because sometimes you do have to ring.
  */
 export type ContactPlan = {
-  /** 'text' | 'call' — which action gets the primary treatment. */
-  primary: 'text' | 'call';
+  /** Which direct contact action gets the primary treatment. */
+  primary: 'text' | 'call' | 'email' | 'none';
   /** The sentence shown next to the buttons. */
   note: string;
   /** What the Call button says. */
@@ -292,19 +321,38 @@ export type ContactPlan = {
 };
 
 export function contactPlan(input: { textOnly: boolean; hasPhone: boolean; hasEmail: boolean }): ContactPlan {
-  if (input.textOnly) {
+  if (input.textOnly && input.hasPhone) {
     return {
       primary: 'text',
       note: 'They asked to be texted, not called.',
       callLabel: 'Call only if needed',
     };
   }
+  if (input.textOnly && input.hasEmail) {
+    return {
+      primary: 'email',
+      note: 'They asked for a text, but there is no usable mobile number. Email instead.',
+      callLabel: 'Call only if needed',
+    };
+  }
   if (!input.hasPhone) {
     return {
-      primary: 'text',
+      primary: input.hasEmail ? 'email' : 'none',
       note: input.hasEmail ? 'No phone on file — email is the only way to reach them.' : 'No phone or email on file.',
       callLabel: 'Call only if needed',
     };
   }
   return { primary: 'call', note: 'No contact preference given — a call is fine.', callLabel: 'Call' };
+}
+
+/**
+ * Whether a phone value is safe to turn into a Call or Text action.
+ *
+ * Imports and manual entry can contain placeholders or partial numbers. A
+ * two-digit value must not become a prominent `tel:` link just because it is a
+ * non-empty string. Seven digits is the shortest plausible local number; the
+ * real sending paths still perform their stricter normalization.
+ */
+export function isContactablePhone(phone: string | null | undefined): boolean {
+  return Boolean(phone && phone.replace(/\D/g, '').length >= 7);
 }

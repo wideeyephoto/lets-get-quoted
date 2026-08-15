@@ -152,6 +152,10 @@ describe('one context-aware primary action', () => {
     expect(action.kind).toBe('open');
     expect(action.href).toBe('/dashboard/leads/l1');
   });
+
+  it('does not expose a call action for a partial imported phone number', () => {
+    expect(primaryAction(lead({ phone: '74' })).kind).toBe('open');
+  });
 });
 
 describe('board actions match the stage', () => {

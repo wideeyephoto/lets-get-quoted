@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   QUEUE_STAGES,
   contactPlan,
+  isContactablePhone,
   matchesQuery,
+  matchesStage,
   queueStageLabel,
   sortQueue,
   stageCounts,
@@ -47,7 +49,7 @@ describe('one set of stages and counts', () => {
 
   it('counts every stage, including the empty ones', () => {
     const counts = stageCounts([lead({ id: 'a' }), lead({ id: 'b', status: 'won' })]);
-    expect(counts).toEqual({ all: 2, new: 1, contacted: 0, quoted: 0, won: 1, lost: 0 });
+    expect(counts).toEqual({ all: 2, open: 1, closed: 1, new: 1, contacted: 0, quoted: 0, won: 1, lost: 0 });
   });
 
   // The property that matters: the chips can never add up to something other
@@ -64,6 +66,17 @@ describe('one set of stages and counts', () => {
     const summed = QUEUE_STAGES.reduce((total, stage) => total + counts[stage.id], 0);
     expect(summed).toBe(counts.all);
     expect(counts.all).toBe(leads.length);
+    expect(counts.open).toBe(4);
+    expect(counts.closed).toBe(1);
+  });
+
+  it('groups operational work separately from closed reference records', () => {
+    expect(matchesStage(lead({ status: 'new' }), 'open')).toBe(true);
+    expect(matchesStage(lead({ status: 'quoted' }), 'open')).toBe(true);
+    expect(matchesStage(lead({ status: 'won' }), 'open')).toBe(false);
+    expect(matchesStage(lead({ status: 'won' }), 'closed')).toBe(true);
+    expect(matchesStage(lead({ status: 'lost' }), 'closed')).toBe(true);
+    expect(matchesStage(lead({ status: 'contacted' }), 'closed')).toBe(false);
   });
 });
 
@@ -209,8 +222,20 @@ describe('the contact preference decides the primary action', () => {
 
   it('does not point at a phone that is not on file', () => {
     const plan = contactPlan({ textOnly: false, hasPhone: false, hasEmail: true });
-    expect(plan.primary).toBe('text');
+    expect(plan.primary).toBe('email');
     expect(plan.note).toMatch(/No phone on file/);
+  });
+
+  it('does not turn partial phone data into a call action', () => {
+    expect(isContactablePhone('74')).toBe(false);
+    expect(isContactablePhone('(248) 555-0199')).toBe(true);
+    expect(isContactablePhone(null)).toBe(false);
+  });
+
+  it('falls back to email when text was requested but no usable phone exists', () => {
+    const plan = contactPlan({ textOnly: true, hasPhone: false, hasEmail: true });
+    expect(plan.primary).toBe('email');
+    expect(plan.note).toMatch(/no usable mobile number/i);
   });
 });
 
@@ -222,18 +247,16 @@ describe('the Leads view cookie', () => {
     expect(normalizeLeadsView('nonsense')).toBe('smoothie');
   });
 
-  // The whole point of the cookie: changing the default must not move anybody
-  // who already chose.
-  it('keeps every existing choice, Focus included', () => {
+  it('keeps the three purposeful layout choices', () => {
     for (const view of LEADS_VIEWS) {
       expect(normalizeLeadsView(view)).toBe(view);
     }
-    expect(normalizeLeadsView('focus')).toBe('focus');
   });
 
-  it('still offers every view that existed before', () => {
-    for (const view of ['board', 'inbox', 'table', 'split', 'focus']) {
-      expect(LEADS_VIEWS).toContain(view);
+  it('migrates overlapping legacy layouts to the consolidated Inbox', () => {
+    for (const view of ['inbox', 'split', 'focus']) {
+      expect(normalizeLeadsView(view)).toBe('smoothie');
+      expect(LEADS_VIEWS).not.toContain(view);
     }
   });
 });

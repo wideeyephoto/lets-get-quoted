@@ -107,10 +107,11 @@ describe('lead timestamps', () => {
 });
 
 describe('leads view cookie', () => {
-  it('accepts focus alongside the layouts that came before it', () => {
-    expect(LEADS_VIEWS).toContain('focus');
-    expect(normalizeLeadsView('focus')).toBe('focus');
-    expect(normalizeLeadsView('split')).toBe('split');
+  it('migrates the overlapping detail layouts into Inbox', () => {
+    expect(LEADS_VIEWS).not.toContain('focus');
+    expect(normalizeLeadsView('focus')).toBe('smoothie');
+    expect(normalizeLeadsView('split')).toBe('smoothie');
+    expect(normalizeLeadsView('inbox')).toBe('smoothie');
   });
 
   // The default moved from Focus to Smoothie. The PROPERTY this test was
@@ -121,11 +122,11 @@ describe('leads view cookie', () => {
     expect(normalizeLeadsView('kanban')).toBe('smoothie');
     expect(normalizeLeadsView(undefined)).toBe('smoothie');
     expect(normalizeLeadsView('')).toBe('smoothie');
-    expect(normalizeLeadsView('kanban')).not.toBe(LEADS_VIEWS[0]);
+    expect(normalizeLeadsView('kanban')).not.toBe('board');
   });
 
   it('leaves an explicit choice alone', () => {
-    // Changing the default must not move anyone who already picked a layout.
+    // Board and Table still have distinct operational jobs.
     expect(normalizeLeadsView('board')).toBe('board');
     expect(normalizeLeadsView('table')).toBe('table');
   });

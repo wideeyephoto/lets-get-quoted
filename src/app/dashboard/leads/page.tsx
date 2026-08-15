@@ -151,6 +151,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           lives at the top of it, and a setting that governs the whole queue
           cannot be reachable only once a lead has already been archived. */}
       <section className="panel workspace-section-card">
+        <details className={styles.adminDetails}>
+          <summary className={styles.adminSummary}>
+            <span>Lead settings &amp; archive</span>
+            <small>
+              Auto-close: {leadLostAfterLabel(leadLostAfterDays)} · {setAside.length} archived or snoozed
+            </small>
+          </summary>
+          <div className={styles.adminBody}>
         <form action={setLeadLostAfterDaysAction} className={styles.lostAfter}>
           <label htmlFor="leadLostAfterDays" className={styles.lostAfterLabel}>
             Mark a lead <strong>Lost</strong> after
@@ -212,6 +220,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
         ) : (
           <p className="empty-state">Nothing archived. Leads you set aside or snooze collect here.</p>
         )}
+          </div>
+        </details>
       </section>
 
       <div className={`stat-ticker panel ${styles.requestStats}`}>
@@ -221,11 +231,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{websiteRequests}</span>
-          <span className="stat-ticker-label">Website requests</span>
+          <span className="stat-ticker-label">Website leads · all time</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{openRequests}</span>
-          <span className="stat-ticker-label">Open requests</span>
+          <span className="stat-ticker-label">Open leads</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{averageResponse}</span>
@@ -246,15 +256,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           <form action={createLeadAction} className="form-grid">
             <div className="field">
               <label htmlFor="name">Name</label>
-              <input id="name" name="name" required placeholder="Sarah Whitfield" />
+              <input id="name" name="name" required autoComplete="name" placeholder="Sarah Whitfield" />
             </div>
             <div className="field">
               <label htmlFor="phone">Phone</label>
-              <input id="phone" name="phone" placeholder="(248) 555-0117" />
+              <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(248) 555-0117" />
             </div>
             <div className="field">
               <label htmlFor="email">Email</label>
-              <input id="email" name="email" type="email" placeholder="sarah@example.com" />
+              <input id="email" name="email" type="email" inputMode="email" autoComplete="email" placeholder="sarah@example.com" />
             </div>
             <div className="field">
               <label htmlFor="address">Address</label>

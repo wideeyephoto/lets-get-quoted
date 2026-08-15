@@ -78,15 +78,13 @@ export type LeadViewItem = {
   photoCount: number;
 };
 
-// Smoothie leads, because it's the default — the list in the menu should open
-// on the layout you are already looking at rather than making you find it.
+// Three layouts with distinct jobs. The legacy Focus, Split and Priority views
+// remain in the file for one migration window, but are no longer choices; old
+// cookies normalize to Inbox in lib/dashboard-views.
 const VIEWS: { id: LeadsView; label: string; hint: string }[] = [
-  { id: 'smoothie', label: 'Smoothie', hint: 'Queue first — search, filter, one lead open' },
-  { id: 'focus', label: 'Focus', hint: 'One lead open, list beside it' },
+  { id: 'smoothie', label: 'Inbox', hint: 'Prioritized queue with one lead open' },
   { id: 'board', label: 'Board', hint: 'Kanban by stage' },
-  { id: 'inbox', label: 'Priority inbox', hint: 'Hottest first' },
-  { id: 'table', label: 'Table', hint: 'Sort & scan' },
-  { id: 'split', label: 'Split view', hint: 'List + detail' },
+  { id: 'table', label: 'Table', hint: 'Filter, select, export and bulk edit' },
 ];
 
 function scoreText(item: LeadViewItem) {
@@ -97,22 +95,24 @@ function scoreText(item: LeadViewItem) {
 // the chips shown on every card.
 function ScoreLegend() {
   return (
-    <div className={styles.scoreLegend}>
-      <span className={styles.scoreLegendTitle}>How leads are scored</span>
-      <div className={styles.scoreLegendRow}>
-        <span className={styles.scoreChip} data-score="hot">🔥 Hot</span>
-        <span>Ready to hire — a clear job in your area, a realistic budget, and they want it soon (or it&rsquo;s high-value). Call these first.</span>
+    <details className={styles.scoreLegend}>
+      <summary className={styles.scoreLegendTitle}>How lead priority works</summary>
+      <div className={styles.scoreLegendBody}>
+        <div className={styles.scoreLegendRow}>
+          <span className={styles.scoreChip} data-score="hot">🔥 Hot</span>
+          <span>Ready to hire — a clear job in your area, a realistic budget, and they want it soon (or it&rsquo;s high-value). Contact these first.</span>
+        </div>
+        <div className={styles.scoreLegendRow}>
+          <span className={styles.scoreChip} data-score="warm">Warm</span>
+          <span>A real lead worth a follow-up, but something&rsquo;s unconfirmed — the timeline, the budget, or they&rsquo;re still comparing options.</span>
+        </div>
+        <div className={styles.scoreLegendRow}>
+          <span className={styles.scoreChip} data-score="low">Low</span>
+          <span>Probably not a fit yet — just researching, out of your area, below your minimum, or work you don&rsquo;t take on.</span>
+        </div>
+        <p className={styles.scoreLegendNote}>Smart Intake sets this from the homeowner&rsquo;s answers. Open any lead to change its score, or <Link href="/dashboard/automations#intake-ai">configure Smart Intake &rarr;</Link></p>
       </div>
-      <div className={styles.scoreLegendRow}>
-        <span className={styles.scoreChip} data-score="warm">Warm</span>
-        <span>A real lead worth a follow-up, but something&rsquo;s unconfirmed — the timeline, the budget, or they&rsquo;re still comparing options.</span>
-      </div>
-      <div className={styles.scoreLegendRow}>
-        <span className={styles.scoreChip} data-score="low">Low</span>
-        <span>Probably not a fit yet — just researching, out of your area, below your minimum, or work you don&rsquo;t take on.</span>
-      </div>
-      <p className={styles.scoreLegendNote}>Smart Intake sets this from the homeowner&rsquo;s answers. Open any lead to change its score, or <Link href="/dashboard/automations#intake-ai">configure Smart Intake &rarr;</Link></p>
-    </div>
+    </details>
   );
 }
 
@@ -275,7 +275,7 @@ export default function LeadsWorkspace({
       // thing. Its color is still a preference, so that stays.
       mapTheme={effectiveMapTheme}
       onSetMapTheme={setTheme}
-      label="View"
+      label="Layout"
       // Mirrors normalizeLeadsView / normalizeMapTheme — the values this page
       // renders for someone with no cookies at all.
       defaults={{ view: DEFAULT_LEADS_VIEW, mapTheme: 'dark' }}

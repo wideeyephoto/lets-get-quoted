@@ -144,7 +144,7 @@ describe('the leads queue filters its own map', () => {
   it('counts the stage chips and the search box as filters', () => {
     // Typing a town narrows the list; a map ignoring it is the same
     // contradiction with a different control on top.
-    expect(SMOOTHIE).toContain("const queueFiltered = stage !== 'all' || query.trim() !== ''");
+    expect(SMOOTHIE).toContain("const queueFiltered = stage !== 'open' || query.trim() !== ''");
   });
 
   it('scopes the pins to the leads the queue is showing', () => {
@@ -163,12 +163,12 @@ describe('the leads queue filters its own map', () => {
 
   it('explains an empty map, and stops describing an unfiltered one', () => {
     expect(SMOOTHIE).toContain("emptyNote={mapEmptyNote('lead', queueFiltered)}");
-    // The standing note promises "active leads and quotes out", which is not
+    // The standing note promises "open leads and quotes out", which is not
     // what a filtered map is showing — so it is now the unfiltered branch of a
     // choice rather than the only thing the pane can say.
     expect(SMOOTHIE.indexOf('styles.mapNote')).toBeGreaterThan(0);
-    expect(SMOOTHIE.indexOf('Active leads and quotes out')).toBeGreaterThan(0);
-    const note = SMOOTHIE.slice(SMOOTHIE.indexOf('styles.mapNote'), SMOOTHIE.indexOf('Active leads and quotes out'));
+    expect(SMOOTHIE.indexOf('Open leads and quotes out')).toBeGreaterThan(0);
+    const note = SMOOTHIE.slice(SMOOTHIE.indexOf('styles.mapNote'), SMOOTHIE.indexOf('Open leads and quotes out'));
     expect(note).toContain('queueFiltered');
   });
 });

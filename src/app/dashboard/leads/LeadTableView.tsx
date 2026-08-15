@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { QUEUE_STAGES, matchesQuery, queueStageLabel, type StageFilter } from '@/lib/lead-queue';
+import { QUEUE_STAGES, matchesQuery, matchesStage, queueStageLabel, type StageFilter } from '@/lib/lead-queue';
 import { primaryAction } from '@/lib/lead-priority';
 import {
   DEFAULT_COLUMNS,
@@ -43,7 +43,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
   const router = useRouter();
   const [columns, setColumns] = useState<TableColumnId[]>(DEFAULT_COLUMNS);
   const [query, setQuery] = useState('');
-  const [stage, setStage] = useState<StageFilter>('all');
+  const [stage, setStage] = useState<StageFilter>('open');
   const [heat, setHeat] = useState<'all' | 'hot' | 'warm' | 'low'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('waiting');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -100,7 +100,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
 
   const shown = useMemo(() => {
     const filtered = leads.filter((lead) => {
-      if (stage !== 'all' && lead.status !== stage) return false;
+      if (!matchesStage(lead, stage)) return false;
       if (heat !== 'all' && lead.score !== heat) return false;
       return matchesQuery(lead, query);
     });
@@ -112,7 +112,15 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
       else if (sortKey === 'stage') cmp = a.status.localeCompare(b.status);
       // "Waiting" ascending means the SHORTEST wait first, so the comparison is
       // on the timestamp the other way round.
-      else if (sortKey === 'waiting' || sortKey === 'received') cmp = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      else if (sortKey === 'waiting') {
+        // Won/lost rows have no waiting clock. They stay last in BOTH
+        // directions instead of sorting as very old open work.
+        const aWaits = Boolean(a.waitingShort);
+        const bWaits = Boolean(b.waitingShort);
+        if (aWaits !== bWaits) return aWaits ? -1 : 1;
+        cmp = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      else if (sortKey === 'received') cmp = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       else if (sortKey === 'value') cmp = (a.estimate?.max ?? -1) - (b.estimate?.max ?? -1);
       else if (sortKey === 'heat') cmp = rank[b.score] - rank[a.score];
       if (cmp === 0) cmp = a.id.localeCompare(b.id);
@@ -192,7 +200,9 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
         <label className={styles.filter}>
           <span className={styles.filterLabel}>Stage</span>
           <select value={stage} onChange={(event) => setStage(event.target.value as StageFilter)}>
-            <option value="all">All stages</option>
+            <option value="open">Open leads</option>
+            <option value="closed">Closed leads</option>
+            <option value="all">All leads</option>
             {QUEUE_STAGES.map((entry) => (
               <option key={entry.id} value={entry.id}>{entry.label}</option>
             ))}
