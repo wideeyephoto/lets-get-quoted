@@ -11,18 +11,24 @@ const ROSTER = stripJs(read('src', 'app', 'dashboard', 'crew', 'CrewRoster.tsx')
 const PAGE = stripJs(read('src', 'app', 'dashboard', 'crew', 'page.tsx'));
 const REQUESTS = stripJs(read('src', 'app', 'dashboard', 'crew', 'JobRequests.tsx'));
 const LABOR = stripJs(read('src', 'app', 'dashboard', 'crew', 'LaborByJob.tsx'));
+const HOURS = stripJs(read('src', 'app', 'dashboard', 'crew', 'HoursAndPay.tsx'));
 const CSS = stripCss(read('src', 'app', 'dashboard', 'crew', 'crew.module.css'));
 
 describe('the action-first roster', () => {
   it('puts availability and field-app setup before the directory', () => {
-    expect(ROSTER).toContain('aria-label="Crew availability"');
+    expect(ROSTER).toContain('role="group" aria-label="Crew availability filters"');
     expect(ROSTER).toContain('people need\'} field-app setup');
     expect(ROSTER).toContain('Finish setup');
     expect(ROSTER).toContain('<span>Needs setup</span>');
+    expect(ROSTER).toContain("showRosterSlice('active', 'all', 'needs-setup', 'employee')");
+    expect(ROSTER).toContain("setQuery('')");
+    expect(ROSTER).toContain("setRole('all')");
     expect(PAGE).not.toContain('stat-ticker panel');
   });
 
   it('makes the row action match the setup problem', () => {
+    const actions = ROSTER.slice(ROSTER.indexOf('function CrewActions'));
+    expect(actions.indexOf('Assign job')).toBeLessThan(actions.indexOf("row.workerType === 'employee' && row.fieldApp === 'no-email'"));
     expect(ROSTER).toContain("row.fieldApp === 'no-email'");
     expect(ROSTER).toContain('Add email');
     expect(ROSTER).toContain("needsInvite(row.fieldApp)");
@@ -38,6 +44,7 @@ describe('the action-first roster', () => {
     expect(options).not.toContain("id: 'cards'");
     expect(options).not.toContain("id: 'focus'");
     expect(ROSTER).not.toContain('skins={CREW_SKIN_OPTIONS}');
+    expect(ROSTER).not.toContain("void setRosterViewAction('rows')");
   });
 });
 
@@ -56,6 +63,9 @@ describe('the roster responds to the space it actually has', () => {
     expect(mobile).toContain('.filters { display: none; }');
     expect(mobile).toContain('.filtersOpen { display: grid;');
     expect(mobile).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    for (const id of ['people', 'requests', 'hours', 'jobs']) {
+      expect(PAGE).toContain(`id: '${id}'`);
+    }
   });
 });
 
@@ -73,5 +83,7 @@ describe('crew workflow exits are actionable and correctly routed', () => {
     expect(PAGE).toMatch(/\{tab === 'hours' \? \(\s*<TimeClockCard/);
     expect(PAGE).toContain('payView?.timeClockMode');
     expect(PAGE).toContain('payView?.openShifts');
+    expect(HOURS).toContain('href="/dashboard/crew?tab=hours#time-clock"');
+    expect(HOURS).toContain('href="/dashboard/crew?tab=people">People</Link>');
   });
 });
