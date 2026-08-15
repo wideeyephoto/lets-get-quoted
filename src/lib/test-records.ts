@@ -21,11 +21,17 @@
 // the count and the list different answers, which is the failure mode
 // scripts/remove-demo-data.mjs has a paragraph about.
 //
-// DEFAULTS TO OFF. Every read helper here takes the option and does nothing
-// unless it is explicitly true. The column has to land in the database before
-// any deployed code selects it — a select naming a missing column errors rather
-// than degrading — so the wiring ships first and inert, and turning it on is a
-// separate, reversible change.
+// DEFAULTS TO ON, as of the migration being applied and the existing rows being
+// stamped by scripts/backfill-test-markers.mjs. It shipped defaulting to OFF for
+// one release, because a select naming a column the database does not have
+// errors rather than degrading, so the wiring had to be able to land before the
+// column did. That ordering is now satisfied and the safe default is the other
+// one: a list that quietly includes 390 seeded personas is the bug this exists
+// to fix, and it should not need a caller to remember an option.
+//
+// The escape hatch is `excludeTestRecords: false`, spelled explicitly, for a
+// caller that genuinely wants everything — a support tool asking what is really
+// in the table, or the cleanup script's own accounting.
 
 /** The column the seeding and probe scripts stamp. */
 export const TEST_MARKER_COLUMN = 'test_marker';
@@ -39,8 +45,8 @@ export type TestMarkedRow = {
  * The read-path option, spelled the same way everywhere it is threaded.
  *
  * Named for what it does when true rather than for a mode, so a call site reads
- * as an instruction: `{ excludeTestRecords: true }`. Absent and false both mean
- * "list everything", which is what every caller does today.
+ * as an instruction: `{ excludeTestRecords: false }` to opt back in to seeing
+ * everything. Absent means excluded — see the header on why the default moved.
  */
 export type TestRecordOptions = {
   excludeTestRecords?: boolean;
@@ -99,13 +105,13 @@ export function excludeTestRecords<Q extends MarkerFilterable>(query: Q): Q {
 }
 
 /**
- * The one read paths call: filters only when asked, and returns the query
- * untouched otherwise.
+ * The one read paths call: filters unless a caller explicitly opts out.
  *
- * The untouched path matters more than the filtering one right now. It is what
- * makes this safe to deploy before the migration is applied — no caller passes
- * the option yet, so no deployed query names the column at all.
+ * The comparison is against `false` rather than a truthiness test, so only a
+ * deliberate `excludeTestRecords: false` sees marked rows. An options object
+ * threaded through for some other reason — `{ todayKey }` — cannot turn the
+ * filter off by omission, which is how it would have failed quietly.
  */
 export function applyTestRecordFilter<Q extends MarkerFilterable>(query: Q, options?: TestRecordOptions): Q {
-  return options?.excludeTestRecords ? excludeTestRecords(query) : query;
+  return options?.excludeTestRecords === false ? query : excludeTestRecords(query);
 }

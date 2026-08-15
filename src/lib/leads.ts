@@ -460,10 +460,11 @@ export async function backfillLeadCoordinates(
 }
 
 // `excludeTestRecords` leaves out the rows a seeding or probe script stamped as
-// its own — see src/lib/test-records.ts. OFF unless a caller asks, and nothing
-// asks yet: the marker column has to be in the database before a deployed query
-// names it. This is the seam the ticker, the funnel and getAverageRequestResponseMs
-// all sit behind, so turning it on here is what makes those numbers the owner's.
+// its own — see src/lib/test-records.ts. ON now that the column is in the
+// database and the rows already there have been stamped; pass it as `false` to
+// see everything. This is the seam the ticker, the funnel and
+// getAverageRequestResponseMs all sit behind, so this is what makes those
+// numbers the owner's rather than the seeder's.
 export async function listLeads(
   supabase: SupabaseClient,
   accountId: string,

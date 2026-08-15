@@ -90,18 +90,32 @@ describe('filtering in the query', () => {
   });
 });
 
-describe('applyTestRecordFilter defaults to off', () => {
-  it('leaves the query alone when the option is absent, empty or false', () => {
-    for (const options of [undefined, {}, { excludeTestRecords: false }]) {
-      const query = new RecordingQuery();
-      expect(applyTestRecordFilter(query, options)).toBe(query);
-      expect(query.filters).toEqual([]);
+// The default moved from off to on once migrations/2026-08-24-test-record-marker.sql
+// was applied and scripts/backfill-test-markers.mjs stamped the rows that
+// predated it. It shipped off for one release only because a select naming a
+// column the database lacks errors rather than degrading, so the wiring had to
+// be able to land before the column. These assertions pin the new direction.
+describe('applyTestRecordFilter defaults to on', () => {
+  it('filters when the option is absent or empty', () => {
+    for (const options of [undefined, {}]) {
+      const query = applyTestRecordFilter(new RecordingQuery(), options);
+      expect(query.filters).toEqual([{ column: 'test_marker', value: null }]);
     }
   });
 
-  it('filters only on an explicit true', () => {
+  it('filters on an explicit true', () => {
     const query = applyTestRecordFilter(new RecordingQuery(), { excludeTestRecords: true });
     expect(query.filters).toEqual([{ column: 'test_marker', value: null }]);
+  });
+
+  // Only a deliberate `false` opts out. An options object threaded through for
+  // an unrelated reason — `{ todayKey }` on listClients — must not be able to
+  // switch the filter off by merely not mentioning it, which a truthiness test
+  // would have allowed.
+  it('leaves the query alone only on an explicit false', () => {
+    const query = new RecordingQuery();
+    expect(applyTestRecordFilter(query, { excludeTestRecords: false })).toBe(query);
+    expect(query.filters).toEqual([]);
   });
 });
 

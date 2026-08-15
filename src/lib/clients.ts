@@ -70,10 +70,9 @@ export async function findOrCreateClientId(
 }
 
 // `excludeTestRecords` leaves out the rows a seeding or probe script stamped as
-// its own — see src/lib/test-records.ts. It is OFF unless a caller asks, and no
-// caller asks yet: the marker column has to be in the database before a
-// deployed query names it, and a select on a missing column errors rather than
-// degrading. The jobs side is filtered too, because a seeded client's repeat
+// its own — see src/lib/test-records.ts. It is ON now that the column is in the
+// database and the rows already there have been stamped; pass it as `false` to
+// see everything. The jobs side is filtered too, because a seeded client's repeat
 // visits and quoted totals are the numbers that actually move.
 export async function listClientsWithStats(
   supabase: SupabaseClient,
