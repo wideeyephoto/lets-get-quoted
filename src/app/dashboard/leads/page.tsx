@@ -4,7 +4,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadLostAfterDays, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LOST_AFTER_CHOICES, LEAD_LOST_NEVER, leadLostAfterLabel, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
-import { isSetAside, stageCounts, waitingFor } from '@/lib/lead-queue';
+import { autoCloseWarning, isSetAside, stageCounts, waitingFor } from '@/lib/lead-queue';
 import { archiveLeadAction, createLeadAction, deleteLeadAction, setLeadLostAfterDaysAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
@@ -98,6 +98,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
       projectType: lead.project_type,
       photoCount: (lead.photo_paths || []).length,
+      autoCloseLabel:
+        lead.status === 'won' || lead.status === 'lost'
+          ? null
+          : autoCloseWarning(lead.created_at, leadLostAfterDays, now),
       // Null once the lead is won or lost — see waitingFor. Nobody is waiting
       // on a closed lead, and the clock used to keep running under a Won badge.
       waitingLong: waitingFor({ status: lead.status, createdAt: lead.created_at }, now)?.long ?? null,
@@ -239,7 +243,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{averageResponse}</span>
-          <span className="stat-ticker-label">Avg response time</span>
+          <span className="stat-ticker-label">Avg logged response</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{stages.won}</span>

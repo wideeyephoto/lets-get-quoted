@@ -162,7 +162,7 @@ describe('the map tells you how to walk it', () => {
   });
 
   it('names the map and says how much is on it', () => {
-    expect(MAP).toContain("aria-label={`Map of leads and jobs, ${pins.length}");
+    expect(MAP).toContain("aria-label={`Map, ${visibleCount} visible");
   });
 });
 

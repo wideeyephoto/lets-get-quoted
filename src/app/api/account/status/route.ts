@@ -10,6 +10,7 @@ import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { countUnreadMessages } from '@/lib/messages';
 import { quickStopNavState, quickStopState } from '@/lib/quick-stop-state';
 import { pickBusinessName } from '@/lib/business-name';
+import { applyTestRecordFilter } from '@/lib/test-records';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -66,14 +67,15 @@ export async function GET() {
     // stuck while the Leads page's own totals kept climbing. Past 500 unanswered
     // new leads the count under-reads — but the badge is rendering "50+" long
     // before that, so the only thing lost is precision nobody was reading.
-    admin
-      .from('leads')
-      .select('id, created_at, status, triage')
-      .eq('account_id', membership.accountId)
-      .eq('source', 'website_form')
-      .eq('status', 'new')
-      .order('created_at', { ascending: false })
-      .limit(ATTENTION_LEAD_SCAN_LIMIT),
+    applyTestRecordFilter(
+      admin
+        .from('leads')
+        .select('id, created_at, status, triage')
+        .eq('account_id', membership.accountId)
+        .eq('status', 'new')
+        .order('created_at', { ascending: false })
+        .limit(ATTENTION_LEAD_SCAN_LIMIT),
+    ),
     // Pipeline inventory, not "needs you": every lead still being worked.
     // 'won' is excluded alongside 'lost' — a won lead IS the job sitting in the
     // Jobs total right beside it, so counting it here would bill the same work
@@ -87,11 +89,13 @@ export async function GET() {
     // `triage` rides along because archived and snoozed leads are still 'new'
     // in the status column — without it the rail's open count and its tooltip
     // keep counting work the owner has explicitly put down.
-    admin
-      .from('leads')
-      .select('status, source, triage')
-      .eq('account_id', membership.accountId)
-      .not('status', 'in', '("won","lost")'),
+    applyTestRecordFilter(
+      admin
+        .from('leads')
+        .select('status, source, triage')
+        .eq('account_id', membership.accountId)
+        .not('status', 'in', '("won","lost")'),
+    ),
       listJobs(admin, membership.accountId),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still

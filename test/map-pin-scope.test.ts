@@ -134,6 +134,8 @@ describe('the map says why it is empty', () => {
     expect(MAP.indexOf('Press Tab to reach the pins')).toBeGreaterThan(0);
     const help = MAP.slice(MAP.indexOf('-help`}'), MAP.indexOf('Press Tab to reach the pins'));
     expect(help).toContain('pins.length === 0');
+    expect(help).toContain('visibleCount === 0');
+    expect(help).toContain("{visibleCount} {visibleCount === 1 ? 'place' : 'places'}");
     expect(help).toContain('emptyNote ?? NOTHING_MAPPED');
   });
 });
@@ -141,14 +143,8 @@ describe('the map says why it is empty', () => {
 describe('the leads queue filters its own map', () => {
   const SMOOTHIE = read('src/app/dashboard/leads/LeadSmoothieView.tsx');
 
-  it('counts the stage chips and the search box as filters', () => {
-    // Typing a town narrows the list; a map ignoring it is the same
-    // contradiction with a different control on top.
-    expect(SMOOTHIE).toContain("const queueFiltered = stage !== 'open' || query.trim() !== ''");
-  });
-
   it('scopes the pins to the leads the queue is showing', () => {
-    expect(SMOOTHIE).toContain("scopePinsToFilter(mapPins, 'lead', shownLeadIds, queueFiltered)");
+    expect(SMOOTHIE).toContain("scopePinsToFilter(mapPins, 'lead', shownLeadIds, true)");
     expect(SMOOTHIE).toContain('new Set(shown.map((lead) => lead.id))');
   });
 
@@ -156,32 +152,26 @@ describe('the leads queue filters its own map', () => {
     expect(SMOOTHIE).toContain('pins={scopedPins}');
     // The pane switch reads "Map 7" off this; counting pins the map is not
     // drawing is how the mismatch was visible in the first place.
-    expect(SMOOTHIE).toContain("scopedPins.filter((pin) => pin.kind !== 'scheduled')");
+    expect(SMOOTHIE).toContain('const openPinCount = scopedPins.length');
     const body = SMOOTHIE.slice(SMOOTHIE.indexOf('const scopedPins'));
     expect(body).not.toContain('pins={mapPins}');
   });
 
-  it('explains an empty map, and stops describing an unfiltered one', () => {
-    expect(SMOOTHIE).toContain("emptyNote={mapEmptyNote('lead', queueFiltered)}");
-    // The standing note promises "open leads and quotes out", which is not
-    // what a filtered map is showing — so it is now the unfiltered branch of a
-    // choice rather than the only thing the pane can say.
+  it('explains its scope and both ways the queue map can be empty', () => {
+    expect(SMOOTHIE).toContain('Only leads visible in this queue with a mapped address.');
+    expect(SMOOTHIE).toContain('No leads match these filters.');
+    expect(SMOOTHIE).toContain('None of these leads has a mapped address yet.');
     expect(SMOOTHIE.indexOf('styles.mapNote')).toBeGreaterThan(0);
-    expect(SMOOTHIE.indexOf('Open leads and quotes out')).toBeGreaterThan(0);
-    const note = SMOOTHIE.slice(SMOOTHIE.indexOf('styles.mapNote'), SMOOTHIE.indexOf('Open leads and quotes out'));
-    expect(note).toContain('queueFiltered');
   });
 });
 
 describe('the leads map toggle says what its number counts', () => {
   const WORKSPACE = read('src/app/dashboard/leads/LeadsWorkspace.tsx');
 
-  it('labels the count on the five layouts that have no filter', () => {
-    // Board, inbox, table, split and focus never narrow anything, so the pins
-    // stay global and correct — the number was only ever unlabelled, sitting
-    // beside a list of a different length and counting jobs as well as leads.
-    expect(WORKSPACE).toContain('with an address`}');
-    expect(WORKSPACE).toContain('aria-label={`Map — ${mapPins.length}');
+  it('labels and renders the lead-only count', () => {
+    expect(WORKSPACE).toContain("scopePinsToFilter(mapPins, 'lead', visibleLeadIds, true)");
+    expect(WORKSPACE).toContain('pins={leadPins}');
+    expect(WORKSPACE).toContain('aria-label={`Map — ${leadPins.length} lead');
   });
 });
 

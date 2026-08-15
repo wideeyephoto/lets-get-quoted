@@ -401,9 +401,11 @@ export default function PinMap({
         <p className="sr-only" id={`${mapId}-help`}>
           {pins.length === 0 ? (
             emptyNote ?? NOTHING_MAPPED
+          ) : visibleCount === 0 ? (
+            'No pin types are currently shown. Turn one back on in the legend.'
           ) : (
             <>
-              {pins.length} {pins.length === 1 ? 'place' : 'places'} on this map. Press Tab to reach the pins, then the
+              {visibleCount} {visibleCount === 1 ? 'place' : 'places'} on this map. Press Tab to reach the pins, then the
               arrow keys to move between them and Enter to open one. Every place is also a row in the list beside the map.
             </>
           )}
@@ -412,7 +414,7 @@ export default function PinMap({
           ref={containerRef}
           className="pin-map"
           role="application"
-          aria-label={`Map of leads and jobs, ${pins.length} ${pins.length === 1 ? 'place' : 'places'}`}
+          aria-label={`Map, ${visibleCount} visible ${visibleCount === 1 ? 'location' : 'locations'}`}
           aria-describedby={`${mapId}-help`}
         />
         {selected ? (
