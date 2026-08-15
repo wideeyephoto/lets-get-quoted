@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { searchEverything, type SearchResult, type SearchResults } from '@/lib/admin-search';
+import { searchEverything, type SearchResult, type SearchSection } from '@/lib/admin-search';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Search' };
 
-const SECTIONS: { key: keyof SearchResults; label: string }[] = [
+const SECTIONS: { key: SearchSection; label: string }[] = [
   { key: 'accounts', label: 'Accounts' },
   { key: 'clients', label: 'Customers' },
   { key: 'quickStops', label: 'Quick Stops' },
@@ -54,19 +55,26 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
       </header>
 
       <form className={styles.searchRow} method="get">
-        <input className={styles.input} type="search" name="q" defaultValue={query} placeholder="Search everything…" autoFocus />
+        <label className={styles.srOnly} htmlFor="full-admin-search">Search accounts, customers, Quick Stops, and payments</label>
+        <input id="full-admin-search" className={styles.input} type="search" name="q" defaultValue={query} placeholder="Search everything…" autoFocus />
         <button type="submit" className="btn primary">Search</button>
         {query ? <Link href="/admin/search" className="btn secondary">Clear</Link> : null}
       </form>
 
+      {results?.unavailable.length ? (
+        <div className={`${styles.banner} ${styles.err}`} role="status">
+          Search is incomplete. {results.unavailable.map((key) => SECTIONS.find((section) => section.key === key)?.label ?? key).join(', ')} could not be searched.
+        </div>
+      ) : null}
+
       {!results ? (
         <p className={styles.emptyState}>Start typing to search across accounts, customers, Quick Stops, and payments.</p>
-      ) : totalCount === 0 ? (
+      ) : totalCount === 0 && results.unavailable.length === 0 ? (
         <p className={styles.emptyState}>No results for “{query}”.</p>
-      ) : (
+      ) : totalCount === 0 ? null : (
         SECTIONS.filter((s) => results[s.key].length > 0).map((s) => (
           <section key={s.key} className={styles.panel} style={{ marginBottom: '1.2rem' }}>
-            <p className={styles.panelTitle}>{s.label}</p>
+            <h2 className={styles.panelTitle}>{s.label}</h2>
             <ResultTable rows={results[s.key]} />
           </section>
         ))

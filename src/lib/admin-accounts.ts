@@ -32,10 +32,11 @@ export type AdminAccountRow = {
   suspended_reason: string | null;
   suspended_by: string | null;
   created_at: string;
+  test_marker: string | null;
 };
 
 const ACCOUNT_LIST_COLUMNS =
-  'id, account_number, business_name, plan, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at';
+  'id, account_number, business_name, plan, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at, test_marker';
 
 /**
  * Narrow a query to one of the named slices the console counts.
@@ -76,15 +77,28 @@ function applyAccountFilter(query: any, filter: AccountFilter | undefined, joine
  */
 export async function countAccountsForAdmin(
   admin: SupabaseClient,
-  opts: { filter?: AccountFilter; joinedSince?: string } = {},
+  opts: { filter?: AccountFilter; joinedSince?: string; includeTestRecords?: boolean; onError?: (context: string, error: unknown) => void } = {},
 ): Promise<number> {
+  let query = admin.from('accounts').select('id', { count: 'exact', head: true });
+  if (!opts.includeTestRecords) query = query.is('test_marker', null);
   const { count, error } = await applyAccountFilter(
-    admin.from('accounts').select('id', { count: 'exact', head: true }),
+    query,
     opts.filter,
     opts.joinedSince,
   );
   if (error) {
     console.error('countAccountsForAdmin failed:', error);
+    opts.onError?.('account count', error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+export async function countSyntheticAccounts(admin: SupabaseClient, onError?: (context: string, error: unknown) => void): Promise<number> {
+  const { count, error } = await admin.from('accounts').select('id', { count: 'exact', head: true }).not('test_marker', 'is', null);
+  if (error) {
+    console.error('countSyntheticAccounts failed:', error);
+    onError?.('synthetic account count', error);
     return 0;
   }
   return count ?? 0;
@@ -111,22 +125,24 @@ export function accountDisplayName(row: { company_name?: string | null; business
  * deployment that runs ahead of its migration degrades to the old
  * name-and-number search instead of breaking the accounts page outright.
  */
-export async function accountIdsByOwnerEmail(admin: SupabaseClient, term: string, limit = 50): Promise<string[]> {
+export async function accountIdsByOwnerEmail(admin: SupabaseClient, term: string, limit = 50, onError?: (context: string, error: unknown) => void): Promise<string[]> {
   const { data, error } = await admin.rpc('accounts_by_owner_email', { term, max_rows: limit });
   if (error) {
     console.error('accountIdsByOwnerEmail failed:', error);
+    onError?.('owner email lookup', error);
     return [];
   }
   return [...new Set(((data ?? []) as { account_id: string }[]).map((r) => r.account_id))];
 }
 
 /** Owner emails for a page of accounts, in one round trip rather than one per row. */
-export async function ownerEmailsForAccounts(admin: SupabaseClient, ids: string[]): Promise<Map<string, string>> {
+export async function ownerEmailsForAccounts(admin: SupabaseClient, ids: string[], onError?: (context: string, error: unknown) => void): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   if (!ids.length) return map;
   const { data, error } = await admin.rpc('owner_emails_for_accounts', { ids });
   if (error) {
     console.error('ownerEmailsForAccounts failed:', error);
+    onError?.('owner email hydration', error);
     return map;
   }
   for (const row of (data ?? []) as { account_id: string; email: string | null }[]) {
@@ -140,20 +156,25 @@ export async function ownerEmailsForAccounts(admin: SupabaseClient, ids: string[
 // actually arrives with.
 export async function listAccountsForAdmin(
   admin: SupabaseClient,
-  opts: { query?: string; limit?: number; filter?: AccountFilter; joinedSince?: string } = {},
+  opts: { query?: string; limit?: number; filter?: AccountFilter; joinedSince?: string; includeTestRecords?: boolean; onError?: (context: string, error: unknown) => void } = {},
 ): Promise<AdminAccountRow[]> {
   const limit = opts.limit ?? 50;
   const term = opts.query?.trim();
   const filter = opts.filter;
   // Every branch below narrows through this, so a search and a filter compose
   // rather than one silently winning.
-  const base = () => applyAccountFilter(admin.from('accounts').select(ACCOUNT_LIST_COLUMNS), filter, opts.joinedSince);
+  const base = () => {
+    let query = admin.from('accounts').select(ACCOUNT_LIST_COLUMNS);
+    if (!opts.includeTestRecords) query = query.is('test_marker', null);
+    return applyAccountFilter(query, filter, opts.joinedSince);
+  };
   let rows: AdminAccountRow[] = [];
 
   if (term) {
     const digits = term.replace(/[^0-9]/g, '');
     if (/^\d+$/.test(digits) && Number(digits) > 0) {
-      const { data } = await base().eq('account_number', Number(digits)).limit(limit);
+      const { data, error } = await base().eq('account_number', Number(digits)).limit(limit);
+      if (error) opts.onError?.('account number search', error);
       rows = (data ?? []) as AdminAccountRow[];
     } else {
       // Three ways in: the account's business_name, the site's company_name, or
@@ -165,8 +186,10 @@ export async function listAccountsForAdmin(
         // Skipped unless the term looks like part of an address. Every search
         // would otherwise pay for an auth.users scan, and a bare word matches
         // far too much of an email corpus to be a useful signal.
-        term.includes('@') || term.includes('.') ? accountIdsByOwnerEmail(admin, term, limit) : Promise.resolve([]),
+        term.includes('@') || term.includes('.') ? accountIdsByOwnerEmail(admin, term, limit, opts.onError) : Promise.resolve([]),
       ]);
+      if (byBiz.error) opts.onError?.('business name search', byBiz.error);
+      if (bySite.error) opts.onError?.('site name search', bySite.error);
       const found = (byBiz.data ?? []) as AdminAccountRow[];
       const haveIds = new Set(found.map((r) => r.id));
       const extraIds = [
@@ -178,14 +201,16 @@ export async function listAccountsForAdmin(
         // email lookup knows anything about onboarding or suspension, so
         // without this a name or address match could smuggle an account into a
         // filtered list it does not belong in.
-        const { data: extra } = await base().in('id', extraIds).limit(limit);
+        const { data: extra, error } = await base().in('id', extraIds).limit(limit);
+        if (error) opts.onError?.('account search hydration', error);
         rows = [...found, ...((extra ?? []) as AdminAccountRow[])];
       } else {
         rows = found;
       }
     }
   } else {
-    const { data } = await base().order('created_at', { ascending: false }).limit(limit);
+    const { data, error } = await base().order('created_at', { ascending: false }).limit(limit);
+    if (error) opts.onError?.('account list', error);
     rows = (data ?? []) as AdminAccountRow[];
   }
 
@@ -193,7 +218,8 @@ export async function listAccountsForAdmin(
   const ids = rows.map((r) => r.id);
   const nameMap = new Map<string, string | null>();
   if (ids.length) {
-    const { data } = await admin.from('sites').select('account_id, company_name').in('account_id', ids);
+    const { data, error } = await admin.from('sites').select('account_id, company_name').in('account_id', ids);
+    if (error) opts.onError?.('account name hydration', error);
     for (const s of data ?? []) {
       const row = s as { account_id: string; company_name: string | null };
       nameMap.set(row.account_id, row.company_name);
@@ -268,13 +294,14 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
     getAccountOwnerEmail(admin, id).catch(() => null),
     admin.from('sites').select('company_name, phone').eq('account_id', id).maybeSingle(),
     getTrailingVolume(id).catch(() => 0),
-    admin.from('leads').select('id', { count: 'exact', head: true }).eq('account_id', id).gte('created_at', since),
-    admin.from('jobs').select('id', { count: 'exact', head: true }).eq('account_id', id).in('status', ['new_lead', 'in_progress']),
-    admin.from('payments').select('amount').eq('account_id', id).eq('status', 'paid').gte('paid_at', since),
-    admin.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', id).eq('status', 'disputed'),
+    admin.from('leads').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).gte('created_at', since),
+    admin.from('jobs').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).in('status', ['new_lead', 'in_progress']),
+    admin.from('payments').select('amount').is('test_marker', null).eq('account_id', id).eq('status', 'paid').gte('paid_at', since),
+    admin.from('payments').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).eq('status', 'disputed'),
     admin
       .from('payments')
       .select('id, label, amount, status, kind, created_at, paid_at, refunded_amount')
+      .is('test_marker', null)
       .eq('account_id', id)
       .order('created_at', { ascending: false })
       .limit(12),

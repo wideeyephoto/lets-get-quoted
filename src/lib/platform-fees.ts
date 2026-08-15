@@ -47,6 +47,8 @@ export type FeeWindow = {
   /** Customer money returned in this window. */
   refunds: number;
   refundRows: FeeRefundRow[];
+  /** Which independent source queries returned a trustworthy result. */
+  availability: { payments: boolean; refunds: boolean };
 };
 
 const num = (v: unknown): number => Number(v) || 0;
@@ -58,7 +60,7 @@ const num = (v: unknown): number => Number(v) || 0;
 export function summarizeFeeWindow(
   paidRows: { platform_fee: number | null }[],
   refundRows: FeeRefundRow[],
-): Omit<FeeWindow, 'refundRows'> {
+): Omit<FeeWindow, 'refundRows' | 'availability'> {
   const grossFees = paidRows.reduce((s, r) => s + num(r.platform_fee), 0);
   const feesReversed = refundRows.reduce((s, r) => s + num(r.platform_fee_refunded), 0);
   return {
@@ -84,6 +86,7 @@ export async function fetchFeeWindow(admin: SupabaseClient, startIso: string, en
     admin
       .from('payments')
       .select('platform_fee')
+      .is('test_marker', null)
       .not('paid_at', 'is', null)
       .gte('paid_at', startIso)
       .lt('paid_at', endIso),
@@ -93,6 +96,7 @@ export async function fetchFeeWindow(admin: SupabaseClient, startIso: string, en
     admin
       .from('payments')
       .select('id, account_id, label, amount, refunded_amount, platform_fee_refunded, refunded_at')
+      .is('test_marker', null)
       .gt('refunded_amount', 0)
       .gte('refunded_at', startIso)
       .lt('refunded_at', endIso)
@@ -105,5 +109,6 @@ export async function fetchFeeWindow(admin: SupabaseClient, startIso: string, en
   return {
     ...summarizeFeeWindow((paidRes.data ?? []) as { platform_fee: number | null }[], refundRows),
     refundRows,
+    availability: { payments: !paidRes.error, refunds: !refundRes.error },
   };
 }

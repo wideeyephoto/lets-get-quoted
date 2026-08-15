@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/auth';
+import { requireMfaPermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { getPaymentForAdmin, refundBlockedReason } from '@/lib/admin-payments';
 import { refundPayment } from '@/lib/payments';
@@ -27,7 +27,7 @@ function backTo(id: string, query: string): never {
  * against an arbitrary charge, and "why" is the entire audit value.
  */
 export async function refundPaymentAction(paymentId: string, formData: FormData) {
-  const ctx = await requirePermission('money.refund');
+  const ctx = await requireMfaPermission('money.refund');
   const { admin } = ctx;
 
   const payment = await getPaymentForAdmin(admin, paymentId);

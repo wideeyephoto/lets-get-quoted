@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { listAccountsForAdmin, countAccountsForAdmin, ownerEmailsForAccounts, accountDisplayName, type AdminAccountRow } from '@/lib/admin-accounts';
+import { listAccountsForAdmin, countAccountsForAdmin, countSyntheticAccounts, ownerEmailsForAccounts, accountDisplayName, type AdminAccountRow } from '@/lib/admin-accounts';
 import {
   ACCOUNT_FILTERS,
   ACCOUNT_FILTER_INFO,
@@ -30,6 +30,7 @@ import styles from '../admin.module.css';
  */
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Accounts' };
 
 const PAGE_LIMIT = 50;
 
@@ -69,7 +70,7 @@ function stalledCell(row: AdminAccountRow, now: Date) {
 export default async function AdminAccountsPage({
   searchParams,
 }: {
-  searchParams: { q?: string; filter?: string; joined?: string; done?: string; error?: string; deleted?: string };
+  searchParams: { q?: string; filter?: string; joined?: string; include_test?: string; done?: string; error?: string; deleted?: string };
 }) {
   const ctx = await requireAdmin();
   const query = searchParams.q?.trim() ?? '';
@@ -80,18 +81,24 @@ export default async function AdminAccountsPage({
   const joined = isDateRange(searchParams.joined) ? searchParams.joined : undefined;
   const now = new Date();
   const joinedSince = joined ? joinedSinceDate(joined, now) : undefined;
+  const includeTestRecords = searchParams.include_test === '1';
+  let rowsAvailable = true;
+  let totalAvailable = true;
+  let syntheticAvailable = true;
+  let ownerEmailsAvailable = true;
 
-  const [rows, total] = await Promise.all([
-    listAccountsForAdmin(ctx.admin, { query, limit: PAGE_LIMIT, filter, joinedSince }),
+  const [rows, total, syntheticCount] = await Promise.all([
+    listAccountsForAdmin(ctx.admin, { query, limit: PAGE_LIMIT, filter, joinedSince, includeTestRecords, onError: () => { rowsAvailable = false; } }),
     // Only meaningful for an unsearched slice: a text search unions three
     // lookups, which no single count query reproduces. Asking for one anyway
     // would print a total that disagrees with the rows underneath it.
-    query ? Promise.resolve(null) : countAccountsForAdmin(ctx.admin, { filter, joinedSince }),
+    query ? Promise.resolve(null) : countAccountsForAdmin(ctx.admin, { filter, joinedSince, includeTestRecords, onError: () => { totalAvailable = false; } }),
+    countSyntheticAccounts(ctx.admin, () => { syntheticAvailable = false; }),
   ]);
   // Shown as a column because it is how staff identify an account when a
   // customer writes in, and because a search that matches on something
   // invisible looks broken — you would have no way to see WHY a row matched.
-  const ownerEmails = await ownerEmailsForAccounts(ctx.admin, rows.map((r) => r.id));
+  const ownerEmails = await ownerEmailsForAccounts(ctx.admin, rows.map((r) => r.id), () => { ownerEmailsAvailable = false; });
 
   const canResend = staffCan(ctx.staff, 'account.support');
   const showStalled = filter === 'not_onboarded' || filter === 'connect_incomplete';
@@ -99,6 +106,7 @@ export default async function AdminAccountsPage({
   if (filter) back.set('filter', filter);
   if (query) back.set('q', query);
   if (joined) back.set('joined', joined);
+  if (includeTestRecords) back.set('include_test', '1');
   const backValue = back.toString();
 
   function href(next: AccountFilter | null): string {
@@ -106,6 +114,7 @@ export default async function AdminAccountsPage({
     if (next) params.set('filter', next);
     if (query) params.set('q', query);
     if (joined) params.set('joined', joined);
+    if (includeTestRecords) params.set('include_test', '1');
     const s = params.toString();
     return s ? `/admin/accounts?${s}` : '/admin/accounts';
   }
@@ -144,6 +153,20 @@ export default async function AdminAccountsPage({
       {searchParams.deleted ? <div className={`${styles.banner} ${styles.ok}`}>Account deleted.</div> : null}
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {!rowsAvailable || !totalAvailable || !syntheticAvailable || !ownerEmailsAvailable ? (
+        <div className={`${styles.banner} ${styles.err}`}>Account data is incomplete. Missing results, totals, or owner emails are not being treated as empty.</div>
+      ) : null}
+
+      {syntheticAvailable && syntheticCount > 0 ? (
+        <div className={`${styles.banner} ${styles.ok}`}>
+          {includeTestRecords
+            ? `Showing production and ${syntheticCount} synthetic ${syntheticCount === 1 ? 'account' : 'accounts'}.`
+            : `${syntheticCount} synthetic ${syntheticCount === 1 ? 'account is' : 'accounts are'} excluded from production counts.`}{' '}
+          <Link href={includeTestRecords ? '/admin/accounts' : '/admin/accounts?include_test=1'} className={styles.rowLink}>
+            {includeTestRecords ? 'Hide synthetic accounts' : 'Include them'}
+          </Link>
+        </div>
+      ) : null}
 
       {/* The same slices the Command Center and Money pages count, reachable
           directly — so a number is not the only way in, and somebody who wants
@@ -160,7 +183,9 @@ export default async function AdminAccountsPage({
       <form className={styles.searchRow} method="get">
         {filter ? <input type="hidden" name="filter" value={filter} /> : null}
         {joined ? <input type="hidden" name="joined" value={joined} /> : null}
-        <input className={styles.input} type="search" name="q" defaultValue={query} placeholder="Business name, account #, or owner email…" autoFocus />
+        {includeTestRecords ? <input type="hidden" name="include_test" value="1" /> : null}
+        <label className={styles.srOnly} htmlFor="account-search">Search accounts</label>
+        <input id="account-search" className={styles.input} type="search" name="q" defaultValue={query} placeholder="Business name, account #, or owner email…" autoFocus />
         <button type="submit" className="btn primary">Search</button>
         {query ? <Link href={href(filter ?? null)} className="btn secondary">Clear</Link> : null}
       </form>
@@ -169,11 +194,11 @@ export default async function AdminAccountsPage({
         {/* Says the true size of the slice and admits the cap. A list that
             quietly stops at fifty reads as "there are fifty", which is the
             same lie the dead-end counts told. */}
-        <p className={styles.panelTitle}>
-          {typeof total === 'number' ? `${total.toLocaleString('en-US')} ${total === 1 ? 'account' : 'accounts'}` : `${rows.length} matching`}
+        <h2 className={styles.panelTitle}>
+          {!rowsAvailable ? 'Partial account results' : typeof total === 'number' && totalAvailable ? `${total.toLocaleString('en-US')} ${total === 1 ? 'account' : 'accounts'}` : `${rows.length} matching`}
           {truncated ? <span className={styles.muted} style={{ fontWeight: 400 }}> — showing the {rows.length} newest. Search to narrow it.</span> : null}
-        </p>
-        {rows.length === 0 ? (
+        </h2>
+        {rowsAvailable && rows.length === 0 ? (
           <p className={styles.emptyState}>
             {query
               ? `No accounts match “${query}”${filter ? ` in ${ACCOUNT_FILTER_INFO[filter].label.toLowerCase()}` : ''}.`
@@ -204,6 +229,7 @@ export default async function AdminAccountsPage({
                       <Link href={`/admin/accounts/${r.id}`} className={styles.rowLink}>
                         {accountDisplayName(r)}
                       </Link>
+                      {r.test_marker ? <span className={`${styles.pill} ${styles.warn}`} style={{ marginLeft: '.4rem' }}>Synthetic</span> : null}
                     </td>
                     <td className={styles.muted} style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {ownerEmails.get(r.id) ?? <span className={styles.muted}>—</span>}

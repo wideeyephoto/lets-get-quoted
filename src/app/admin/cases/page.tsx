@@ -5,6 +5,7 @@ import { accountDisplayName } from '@/lib/admin-accounts';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Cases' };
 
 const FILTERS: { key: string; label: string; statuses?: CaseStatus[] }[] = [
   { key: 'open', label: 'Open', statuses: ['open', 'pending'] },
@@ -24,13 +25,18 @@ function priorityPill(priority: string) {
 export default async function AdminCasesPage({ searchParams }: { searchParams: { f?: string } }) {
   const { admin } = await requireAdmin();
   const active = FILTERS.find((f) => f.key === searchParams.f) ?? FILTERS[0];
-  const cases = await listSupportCases(admin, { statuses: active.statuses, limit: 150 });
+  let available = true;
+  let namesAvailable = true;
+  const cases = await listSupportCases(admin, { statuses: active.statuses, limit: 150, onError: () => { available = false; } });
 
   const acctIds = [...new Set(cases.map((c) => c.account_id).filter((id): id is string => Boolean(id)))];
   const nameMap = new Map<string, { business_name: string | null; account_number: number | null }>();
   if (acctIds.length) {
     const { data: acctRows, error } = await admin.from('accounts').select('id, business_name, account_number').in('id', acctIds);
-    if (error) console.error('cases account name lookup failed:', error);
+    if (error) {
+      namesAvailable = false;
+      console.error('cases account name lookup failed:', error);
+    }
     for (const a of (acctRows ?? []) as { id: string; business_name: string | null; account_number: number | null }[]) {
       nameMap.set(a.id, a);
     }
@@ -54,9 +60,10 @@ export default async function AdminCasesPage({ searchParams }: { searchParams: {
           </Link>
         ))}
       </div>
+      {!available || !namesAvailable ? <div className={`${styles.banner} ${styles.err}`}>Case data is incomplete. A blank list or missing account names are not being treated as clear.</div> : null}
 
       <section className={styles.panel}>
-        {cases.length === 0 ? (
+        {available && cases.length === 0 ? (
           <p className={styles.emptyState}>No cases in this view.</p>
         ) : (
           <div className={styles.tableWrap}>

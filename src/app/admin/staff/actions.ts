@@ -2,8 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/auth';
-import { changeStaffAccess } from '@/lib/staff-directory';
+import { requireMfaPermission } from '@/lib/auth';
+import { changeStaffAccess, inviteStaff } from '@/lib/staff-directory';
 import { isStaffRole } from '@/lib/staff';
 
 function back(query: string): never {
@@ -11,7 +11,7 @@ function back(query: string): never {
 }
 
 export async function changeStaffAccessAction(staffId: string, formData: FormData) {
-  const ctx = await requirePermission('staff.manage');
+  const ctx = await requireMfaPermission('staff.manage');
 
   const roleRaw = String(formData.get('role') ?? '').trim();
   const activeRaw = String(formData.get('active') ?? '').trim();
@@ -37,4 +37,19 @@ export async function changeStaffAccessAction(staffId: string, formData: FormDat
 
   revalidatePath('/admin/staff');
   back('done=changed');
+}
+
+export async function inviteStaffAction(formData: FormData) {
+  const ctx = await requireMfaPermission('staff.manage');
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const displayName = String(formData.get('display_name') ?? '').trim() || null;
+  const role = String(formData.get('role') ?? '').trim();
+  const reason = String(formData.get('reason') ?? '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) back('error=email');
+  if (!isStaffRole(role)) back('error=role');
+  if (reason.length < 4) back('error=reason');
+  const result = await inviteStaff(ctx.admin, ctx, { email, displayName, role, reason });
+  if (!result.ok) back(`error=${result.error}`);
+  revalidatePath('/admin/staff');
+  back('done=invited');
 }

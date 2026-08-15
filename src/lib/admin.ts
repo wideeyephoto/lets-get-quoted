@@ -54,7 +54,7 @@ export async function logAdminAction(
   input: AdminActionInput,
 ): Promise<void> {
   try {
-    await admin.from('admin_actions').insert({
+    const { error } = await admin.from('admin_actions').insert({
       admin_email: actor.adminEmail,
       staff_id: actor.staff?.id || null,
       ip: actor.ip ?? null,
@@ -69,6 +69,7 @@ export async function logAdminAction(
       after_value: input.after ?? null,
       meta: input.meta ?? {},
     });
+    if (error) console.error('logAdminAction failed:', error.message);
   } catch (error) {
     console.error('logAdminAction failed:', error instanceof Error ? error.message : error);
   }
@@ -107,6 +108,28 @@ export async function listAdminActions(
   return data as AdminActionRow[];
 }
 
+export async function queryAdminActions(
+  admin: SupabaseClient,
+  opts: { actor?: string; action?: string; from?: string; to?: string; page?: number; pageSize?: number } = {},
+): Promise<{ rows: AdminActionRow[]; total: number; available: boolean }> {
+  const pageSize = Math.min(250, Math.max(1, opts.pageSize ?? 50));
+  const page = Math.max(1, opts.page ?? 1);
+  let query = admin
+    .from('admin_actions')
+    .select('id, admin_email, action, account_id, target_type, target_id, reason, before_value, after_value, ip, request_id, permission, meta, created_at', { count: 'exact' });
+  if (opts.actor) query = query.ilike('admin_email', `%${opts.actor.replace(/[%_]/g, '')}%`);
+  if (opts.action) query = query.ilike('action', `%${opts.action.replace(/[%_]/g, '')}%`);
+  if (opts.from) query = query.gte('created_at', opts.from);
+  if (opts.to) query = query.lte('created_at', opts.to);
+  const from = (page - 1) * pageSize;
+  const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+  if (error) {
+    console.error('queryAdminActions failed:', error);
+    return { rows: [], total: 0, available: false };
+  }
+  return { rows: (data ?? []) as AdminActionRow[], total: count ?? 0, available: true };
+}
+
 // Current credit balance for an account (sum of the signed ledger, in cents).
 export async function getAccountCreditBalanceCents(
   admin: SupabaseClient,
@@ -127,7 +150,7 @@ export async function issueAccountCredit(
   actor: AuditActor,
   input: { accountId: string; amountCents: number; reason: string; source?: string; meta?: Record<string, unknown> },
 ): Promise<void> {
-  await admin.from('account_credits').insert({
+  const { error } = await admin.from('account_credits').insert({
     account_id: input.accountId,
     amount_cents: Math.round(input.amountCents),
     reason: input.reason,
@@ -135,6 +158,7 @@ export async function issueAccountCredit(
     created_by: actor.adminEmail,
     meta: input.meta ?? {},
   });
+  if (error) throw error;
   await logAdminAction(admin, actor, {
     action: 'account_credit',
     accountId: input.accountId,

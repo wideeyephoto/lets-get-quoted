@@ -33,7 +33,7 @@ export default function QuickStopAdminActions({
 
   return (
     <section className={styles.panel}>
-      <p className={styles.panelTitle}>Governance</p>
+      <h2 className={styles.panelTitle}>Governance</h2>
 
       {!mayRefund ? (
         <p className={styles.muted} style={{ fontSize: '.82rem' }}>
@@ -46,9 +46,11 @@ export default function QuickStopAdminActions({
         </p>
       ) : canRefund ? (
         <form action={adminRefundQuickStopAction.bind(null, requestId)} className={styles.formStack}>
-          <label>Manual refund (blank = full remaining, fee was {feeLabel})</label>
+          <label htmlFor="quick-stop-refund-amount">Manual refund (blank = full remaining, fee was {feeLabel})</label>
           <div className={styles.searchRow} style={{ margin: 0 }}>
-            <input className={styles.input} name="amount" inputMode="decimal" placeholder="$ amount (optional)" style={{ minWidth: 0, flex: '0 0 150px' }} />
+            <input id="quick-stop-refund-amount" className={styles.input} name="amount" inputMode="decimal" placeholder="$ amount (optional)" style={{ minWidth: 0, flex: '0 0 150px' }} />
+            <label className={styles.srOnly} htmlFor="quick-stop-refund-reason">Refund reason</label>
+            <input id="quick-stop-refund-reason" className={styles.input} name="reason" required minLength={4} placeholder="Refund reason" />
             <button type="submit" className="btn secondary">Issue refund</button>
           </div>
         </form>
@@ -66,7 +68,8 @@ export default function QuickStopAdminActions({
           <select id="quick-stop-outcome" className={styles.input} name="outcome" defaultValue={outcomes[0]} style={{ minWidth: 0 }}>
             {outcomes.map((key) => <option key={key} value={key}>{QUICK_STOP_OUTCOME[key].label}</option>)}
           </select>
-          <input className={styles.input} name="reason" placeholder="Note (internal)" />
+          <label className={styles.srOnly} htmlFor="quick-stop-resolution-reason">Internal reason</label>
+          <input id="quick-stop-resolution-reason" className={styles.input} name="reason" required minLength={4} placeholder="Note (internal)" />
           <button type="submit" className="btn primary">Apply resolution</button>
         </form>
       )}

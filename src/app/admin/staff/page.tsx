@@ -3,6 +3,7 @@ import { activeSuperAdminCount, listStaff, listStaffRoleChanges } from '@/lib/st
 import { PERMISSIONS, ROLE_HELP, STAFF_ROLES, permissionsFor } from '@/lib/staff';
 import styles from '../admin.module.css';
 import StaffRowActions from './StaffRowActions';
+import { inviteStaffAction } from './actions';
 
 /**
  * Who works here, and what each of them may do.
@@ -19,8 +20,9 @@ import StaffRowActions from './StaffRowActions';
  */
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Staff' };
 
-const DONE: Record<string, string> = { changed: 'Access updated, and recorded below.' };
+const DONE: Record<string, string> = { changed: 'Access updated, and recorded below.', invited: 'Staff access provisioned and invitation sent.' };
 const ERRORS: Record<string, string> = {
   reason: 'Say why. This is the one change in the console that always needs a reason.',
   role: 'That is not a role this console knows.',
@@ -28,6 +30,9 @@ const ERRORS: Record<string, string> = {
   last_super_admin: 'That is the last active super admin. Grant somebody else the role first.',
   not_found: 'That staff member no longer exists.',
   failed: 'Could not save that. Try again in a moment.',
+  email: 'Enter a valid email address.',
+  exists: 'That email already has a staff row. Update it in the directory instead.',
+  invite_failed: 'Access was provisioned, but the invitation email failed. Verify delivery before sharing access.',
 };
 
 function fmt(v: string | null): string {
@@ -36,10 +41,13 @@ function fmt(v: string | null): string {
 
 export default async function AdminStaffPage({ searchParams }: { searchParams: { done?: string; error?: string } }) {
   const ctx = await requirePermission('staff.manage');
+  let directoryAvailable = true;
+  let historyAvailable = true;
+  let countAvailable = true;
   const [staff, changes, superAdmins] = await Promise.all([
-    listStaff(ctx.admin),
-    listStaffRoleChanges(ctx.admin, 100),
-    activeSuperAdminCount(ctx.admin),
+    listStaff(ctx.admin, () => { directoryAvailable = false; }),
+    listStaffRoleChanges(ctx.admin, 100, () => { historyAvailable = false; }),
+    activeSuperAdminCount(ctx.admin, () => { countAvailable = false; }),
   ]);
 
   return (
@@ -48,18 +56,35 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: {
         <p className={styles.eyebrow}>Access</p>
         <h1 className={styles.title}>Staff</h1>
         <p className={styles.lead}>
-          A staff row appears the first time somebody on <code>ADMIN_EMAILS</code> signs in, seeded with the role that
-          variable declares. After that this page is what governs — editing the variable changes who can get through
-          the door, never what they can do once inside.
+          Invite and govern staff here. <code>ADMIN_EMAILS</code> remains the break-glass bootstrap list; active directory
+          rows can sign in without a deploy.
         </p>
       </header>
 
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {!directoryAvailable || !historyAvailable || !countAvailable ? <div className={`${styles.banner} ${styles.err}`}>Staff access data is incomplete. Blank sections are not being treated as empty.</div> : null}
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>People</p>
-        {staff.length === 0 ? (
+        <h2 className={styles.panelTitle}>Invite staff</h2>
+        <form action={inviteStaffAction} className={styles.formStack}>
+          <div className={styles.searchRow} style={{ margin: 0 }}>
+            <label className={styles.srOnly} htmlFor="staff-name">Display name</label>
+            <input id="staff-name" className={styles.input} name="display_name" placeholder="Display name" />
+            <label className={styles.srOnly} htmlFor="staff-email">Email</label>
+            <input id="staff-email" className={styles.input} name="email" type="email" required placeholder="name@company.com" />
+            <label className={styles.srOnly} htmlFor="staff-role">Role</label>
+            <select id="staff-role" className={styles.input} name="role" defaultValue="read_only">{STAFF_ROLES.map((role) => <option key={role} value={role}>{role.replace('_', ' ')}</option>)}</select>
+          </div>
+          <label htmlFor="staff-invite-reason">Why this person needs access</label>
+          <input id="staff-invite-reason" className={styles.input} name="reason" required minLength={4} placeholder="Team and responsibility" />
+          <button className="btn primary" type="submit">Provision and send invite</button>
+        </form>
+      </section>
+
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>People</h2>
+        {directoryAvailable && staff.length === 0 ? (
           <p className={styles.emptyState}>Nobody has signed in to the console yet.</p>
         ) : (
           <div className={styles.tableWrap}>
@@ -73,6 +98,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: {
                     <td>
                       {person.email}
                       {person.id === ctx.staff.id ? <span className={styles.muted}> (you)</span> : null}
+                      {person.invited_at && !person.last_seen_at ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>Invited {fmt(person.invited_at)} by {person.invited_by ?? 'staff'} · not signed in yet</div> : null}
                     </td>
                     <td><span className={`${styles.pill} ${person.role === 'super_admin' ? styles.warn : styles.neutral}`}>{person.role.replace('_', ' ')}</span></td>
                     <td>
@@ -109,7 +135,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: {
       </section>
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>What each role can do</p>
+        <h2 className={styles.panelTitle}>What each role can do</h2>
         {/* Rendered from the same matrix the server enforces, so this cannot
             drift into describing permissions nobody actually has. A role list
             nobody can interpret gets everyone made a super admin within a
@@ -146,11 +172,11 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: {
       </section>
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>Access history</p>
+        <h2 className={styles.panelTitle}>Access history</h2>
         <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.8rem' }}>
           Append-only, enforced by the database. Nothing here can be edited or removed, including by a super admin.
         </p>
-        {changes.length === 0 ? (
+        {historyAvailable && changes.length === 0 ? (
           <p className={styles.emptyState}>No access changes recorded yet.</p>
         ) : (
           <ul className={styles.timeline}>
