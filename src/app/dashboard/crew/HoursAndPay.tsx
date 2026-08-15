@@ -757,7 +757,7 @@ export default function HoursAndPay({
         <div className={styles.owedLinks}>
           {outstanding.slice(0, 3).map((item) => (
             <Link key={item.key} href={periodHref({ offset: String(item.offset), from: null, to: null })}>
-              {item.rangeLabel}
+              <span>Review {item.rangeLabel}</span>
               <em>{payMoney(item.outstandingPay)}</em>
             </Link>
           ))}
@@ -1330,13 +1330,13 @@ export default function HoursAndPay({
           </p>
           <div className={styles.emptyActions}>
             <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>Add labor manually</button>
-            <Link href="/dashboard/crew?tab=crew" className="btn secondary">Invite crew to the field app</Link>
+            <Link href="/dashboard/crew?tab=people" className="btn secondary">Invite crew to the field app</Link>
           </div>
           <p className={styles.emptyNote}>
             {timeClockMode === 'off'
               ? 'Crew type their hours when the work is done. '
               : `Crew ${timeClockMode === 'required' ? 'must clock' : 'can clock'} in and out from the job in the field app. `}
-            <Link href="/dashboard/crew?tab=crew#time-clock">
+            <Link href="/dashboard/crew?tab=hours#time-clock">
               {timeClockMode === 'off' ? 'Turn on the time clock' : 'Change the time clock'}
             </Link>
             {' · '}
@@ -1772,7 +1772,7 @@ export default function HoursAndPay({
                                   </button>
                                 ) : null}
                                 {row.crewId ? (
-                                  <Link href={`/dashboard/crew?tab=crew`} role="menuitem">
+                                  <Link href="/dashboard/crew?tab=people" role="menuitem">
                                     Open crew member
                                   </Link>
                                 ) : null}
@@ -1924,7 +1924,7 @@ export default function HoursAndPay({
                   <button type="button" onClick={() => setAddOpen((value) => !value)}>Add labor manually</button>
                 </li>
                 <li>
-                  <Link href="/dashboard/crew?tab=crew">Invite crew to field app</Link>
+                  <Link href="/dashboard/crew?tab=people">Invite crew to field app</Link>
                 </li>
                 <li>
                   <button type="button" onClick={() => download()}>Export hours &amp; pay</button>
@@ -2036,7 +2036,7 @@ export default function HoursAndPay({
               been logged without it. A pointer rather than a duplicate: two
               controls for one setting can disagree. */}
           <p className={styles.settingHint}>
-            Clock in / clock out is on <Link href="/dashboard/crew?tab=crew#time-clock">Crew members</Link>
+            Clock in / clock out is under <Link href="/dashboard/crew?tab=hours#time-clock">Time clock</Link>
             {' — currently '}
             <strong>{TIME_CLOCK_MODES.find((mode) => mode.id === timeClockMode)?.label.toLowerCase()}</strong>.
           </p>
@@ -2082,7 +2082,7 @@ export default function HoursAndPay({
             never in it; that&apos;s your provider&apos;s job.
           </p>
           <p className={styles.settingsNote}>
-            How each person is paid lives on them — set it under <Link href="/dashboard/crew?tab=crew">Crew members</Link>,
+            How each person is paid lives on them — set it under <Link href="/dashboard/crew?tab=people">People</Link>,
             along with their payroll ID.
           </p>
           <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓">Save settings</SaveButton>
