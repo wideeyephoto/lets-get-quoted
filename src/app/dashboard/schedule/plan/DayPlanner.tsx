@@ -702,7 +702,7 @@ export default function DayPlanner({ payload, mapsApiKey, arrivalByJobId }: Prop
               {payload.crewId ? (
                 <li><Link href="/dashboard/crew">Set where this crew member starts</Link></li>
               ) : null}
-              <li><Link href="/dashboard/settings#schedule">Change your working hours</Link></li>
+              <li><Link href="/dashboard/schedule/settings">Change your working hours</Link></li>
             </ul>
           </section>
         </aside>

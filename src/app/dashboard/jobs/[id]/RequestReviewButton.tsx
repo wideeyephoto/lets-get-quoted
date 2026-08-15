@@ -30,7 +30,7 @@ export default function RequestReviewButton({
   if (!reviewConfigured) {
     return (
       <div className="review-request-block">
-        <Link href="/dashboard/sites?tab=page#testimonials" className="btn secondary">⭐ Set up review requests</Link>
+        <Link href="/dashboard/sites?open=reviews" className="btn secondary">⭐ Set up review requests</Link>
         <small className="review-request-hint">Link your Google Business Profile in the website builder so reviews have a destination.</small>
       </div>
     );

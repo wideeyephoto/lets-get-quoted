@@ -2,6 +2,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { bookingAvailabilityFromAccount, TIMEZONE_OPTIONS } from '@/lib/booking-availability';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import { getAvailableBookingDays } from '@/lib/booking';
+import { todayIn } from '@/lib/quote-options';
 import BookingSetup from './BookingSetup';
 
 export const metadata = { title: 'Booking requests' };
@@ -14,10 +15,7 @@ export const metadata = { title: 'Booking requests' };
 export default async function BookingSetupPage() {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const now = new Date();
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-  const [{ data: account }, { data: site }, blocks] = await Promise.all([
+  const [{ data: account }, { data: site }] = await Promise.all([
     supabase
       .from('accounts')
       .select(
@@ -26,12 +24,12 @@ export default async function BookingSetupPage() {
       .eq('id', accountId)
       .maybeSingle(),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
-    listUpcomingBlocks(supabase, accountId, todayKey),
   ]);
 
   const availability = bookingAvailabilityFromAccount(
     account as Parameters<typeof bookingAvailabilityFromAccount>[0],
   );
+  const todayKey = todayIn(availability.timezone);
 
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
@@ -39,7 +37,10 @@ export default async function BookingSetupPage() {
 
   // What the public page is actually offering right now — the honest version of
   // "is this working", as opposed to "is the switch on".
-  const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];
+  const [blocks, bookingDays] = await Promise.all([
+    listUpcomingBlocks(supabase, accountId, todayKey),
+    bookingUrl ? getAvailableBookingDays(supabase, accountId) : Promise.resolve([]),
+  ]);
   const openWindowCount = bookingDays.reduce((sum, day) => sum + day.slots.length, 0);
   // The dates themselves, not just how many. The preview strip used to re-derive
   // them in the browser from weekdays, lead time and blocks alone, so it showed

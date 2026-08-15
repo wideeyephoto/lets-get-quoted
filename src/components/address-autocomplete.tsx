@@ -228,20 +228,6 @@ export default function AddressAutocomplete({
     };
   }, []);
 
-  useEffect(() => {
-    const input = inputRef.current;
-    if (!input) return;
-
-    const syncSuggestions = () => queueSuggestions(input.value);
-    input.addEventListener('input', syncSuggestions);
-    input.addEventListener('focus', syncSuggestions);
-
-    return () => {
-      input.removeEventListener('input', syncSuggestions);
-      input.removeEventListener('focus', syncSuggestions);
-    };
-  }, [isReady]);
-
   async function selectSuggestion(suggestion: AddressSuggestion) {
     const selectedAddress = suggestion.label;
     setSuggestions([]);
@@ -323,8 +309,9 @@ export default function AddressAutocomplete({
         }}
         onChange={(event) => {
           onValueChange?.(event.currentTarget.value);
-          queueSuggestions(event.currentTarget.value);
         }}
+        // Keep suggestion fetching on one event path. React's onInput also
+        // receives the bubbled input events used by the app's quick-fill tools.
         onInput={(event) => queueSuggestions(event.currentTarget.value)}
         onFocus={(event) => queueSuggestions(event.currentTarget.value)}
         onKeyDown={handleKeyDown}

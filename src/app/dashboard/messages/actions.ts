@@ -203,12 +203,13 @@ export async function startConversationAction(formData: FormData) {
 }
 
 /** Opening a thread is what marks it read — see markThreadRead on why "as of now". */
-export async function markThreadReadAction(phone: string) {
+export async function markThreadReadAction(phone: string, readThrough?: string) {
   const { supabase, accountId } = await requireOwnerContext();
   const normalized = normalizeUsPhone(phone) ?? phone;
-  await markThreadRead(supabase, accountId, normalized);
+  const updated = await markThreadRead(supabase, accountId, normalized, readThrough);
   revalidatePath('/dashboard/messages');
   revalidatePath('/dashboard', 'layout');
+  return updated;
 }
 
 /**

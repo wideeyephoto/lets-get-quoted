@@ -53,16 +53,6 @@ function isPureRedirect(src: string): boolean {
   return /\bredirect\(/.test(src) && !/\breturn\s*\(/.test(src) && !/<[A-Z]/.test(src);
 }
 
-/**
- * Automations is the one dashboard screen still inheriting the marketing home
- * page's sentence. It needs the same two lines as the other thirty and nothing
- * more — but another session has uncommitted work in that file, and staging it
- * would sweep their changes into this commit under a message that does not
- * mention them. That has happened once already; see 2258b5fd. Delete this entry
- * with the fix.
- */
-const KNOWN_UNTITLED = ['src/app/dashboard/automations/page.tsx'];
-
 function untitled(): string[] {
   const bad: string[] = [];
   for (const file of PAGES) {
@@ -83,12 +73,7 @@ describe('every dashboard and demo route', () => {
   });
 
   it('names itself in the tab', () => {
-    expect(untitled().filter((p) => !KNOWN_UNTITLED.includes(p))).toEqual([]);
-  });
-
-  it('still knows about the one that is outstanding', () => {
-    // So adding its title fails here and takes the note with it.
-    expect(untitled()).toEqual(KNOWN_UNTITLED);
+    expect(untitled()).toEqual([]);
   });
 
   it('does not put a title on a page that only redirects', () => {

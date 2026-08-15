@@ -75,7 +75,10 @@ describe('FloatingPanel', () => {
     // the panel (or orphaned onto body), while clicking another control leaves
     // it on that control, which must not be stolen.
     expect(PANEL).toMatch(/active === document\.body/);
-    expect(PANEL).toMatch(/anchorRef\.current\?\.focus\(\)/);
+    // Capture the opening trigger before cleanup. Reading the ref during
+    // cleanup can focus a different element if the caller replaced it.
+    expect(PANEL).toMatch(/const anchor = anchorRef\.current/);
+    expect(PANEL).toMatch(/if \(wasInside\) anchor\?\.focus\(\)/);
   });
 });
 
