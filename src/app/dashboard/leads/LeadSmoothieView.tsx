@@ -14,6 +14,8 @@ import {
   QUEUE_SORTS,
   QUEUE_STAGES,
   contactPlan,
+  isContactablePhone,
+  matchesStage,
   matchesQuery,
   queueStageLabel,
   sortQueue,
@@ -55,7 +57,7 @@ import styles from '../smoothie.module.css';
  */
 
 const HEAT_HELP: Record<LeadViewItem['score'], string> = {
-  hot: 'Ready to hire — call first',
+  hot: 'Ready to hire — contact first',
   warm: 'Real lead, something unconfirmed',
   low: 'Probably not a fit yet',
 };
@@ -87,7 +89,7 @@ export default function LeadSmoothieView({
 }) {
   const base = basePath;
 
-  const [stage, setStage] = useState<StageFilter>('all');
+  const [stage, setStage] = useState<StageFilter>('open');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QueueSort>('priority');
   const [pane, setPane] = useState<'leads' | 'map'>('leads');
@@ -107,7 +109,7 @@ export default function LeadSmoothieView({
 
   const shown = useMemo(() => {
     const filtered = leads.filter(
-      (lead) => (stage === 'all' || lead.status === stage) && matchesQuery(lead, query),
+      (lead) => matchesStage(lead, stage) && matchesQuery(lead, query),
     );
     return sortQueue(filtered, sort);
   }, [leads, stage, query, sort]);
@@ -126,7 +128,7 @@ export default function LeadSmoothieView({
    * typing a town narrows the list, and a map that ignores it is the same
    * contradiction with a different control on top of it.
    */
-  const queueFiltered = stage !== 'all' || query.trim() !== '';
+  const queueFiltered = stage !== 'open' || query.trim() !== '';
   const shownLeadIds = useMemo(() => new Set(shown.map((lead) => lead.id)), [shown]);
   const scopedPins = useMemo(
     () => scopePinsToFilter(mapPins, 'lead', shownLeadIds, queueFiltered),
@@ -234,8 +236,9 @@ export default function LeadSmoothieView({
   }
 
   const fresh = detail && detail.id === selectedId ? detail : null;
+  const selectedHasPhone = isContactablePhone(selected?.phone);
   const plan = selected
-    ? contactPlan({ textOnly: selected.textOnly, hasPhone: Boolean(selected.phone), hasEmail: Boolean(selected.email) })
+    ? contactPlan({ textOnly: selected.textOnly, hasPhone: selectedHasPhone, hasEmail: Boolean(selected.email) })
     : null;
 
   return (
@@ -245,15 +248,9 @@ export default function LeadSmoothieView({
       data-screen={onDetailScreen ? 'detail' : 'list'}
     >
       {/* --- stage filters: one set of words, one set of numbers --- */}
-      <div className={styles.stageBar} role="group" aria-label="Filter by pipeline stage">
-        {/* "All leads", not "All open". This chip shows counts.all, which is
-            every lead in the account — Won and Lost included — while the
-            sidebar's "open" count deliberately means new + contacted + quoted.
-            Two numbers, both correct, one of them called by the other's name:
-            the page said "All open 12" beside a nav saying 7, and the missing
-            five were four Won and a Lost. */}
-        <StageChip id="all" label="All leads" count={counts.all} active={stage === 'all'} onPick={setStage} />
-        {QUEUE_STAGES.map((entry) => (
+      <div className={styles.stageBar} data-compact="true" role="group" aria-label="Filter by pipeline stage">
+        <StageChip id="open" label="Open leads" count={counts.open} active={stage === 'open'} onPick={setStage} />
+        {QUEUE_STAGES.filter((entry) => entry.id !== 'won' && entry.id !== 'lost').map((entry) => (
           <StageChip
             key={entry.id}
             id={entry.id}
@@ -263,6 +260,7 @@ export default function LeadSmoothieView({
             onPick={setStage}
           />
         ))}
+        <StageChip id="closed" label="Closed" count={counts.closed} active={stage === 'closed'} onPick={setStage} />
       </div>
 
       {/* --- search / sort / pane switch --- */}
@@ -306,6 +304,7 @@ export default function LeadSmoothieView({
             type="button"
             className={styles.paneBtn}
             aria-pressed={pane === 'map'}
+            aria-label={`Map, ${mapCount} active mapped ${mapCount === 1 ? 'location' : 'locations'}`}
             onClick={() => setPane('map')}
           >
             Map <span className={styles.paneCount}>{mapCount}</span>
@@ -357,7 +356,7 @@ export default function LeadSmoothieView({
 
           {shown.length === 0 ? (
             <p className={styles.emptyQueue}>
-              No leads match that. <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('all'); }}>Clear the filters</button>
+              No leads match that. <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('open'); }}>Clear the filters</button>
             </p>
           ) : (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
@@ -452,7 +451,7 @@ export default function LeadSmoothieView({
                 <p className={styles.mapNote}>
                   {queueFiltered
                     ? 'The leads matching your filter. Clear it to see every active lead and quote out.'
-                    : 'Active leads and quotes out. Scheduled jobs are switched off — turn them on in the legend.'}
+                    : 'Open leads and quotes out. Scheduled jobs are switched off — turn them on in the legend.'}
                 </p>
               </div>
               <PinMap
@@ -560,23 +559,31 @@ export default function LeadSmoothieView({
               <div className={styles.comms}>
                 <p className={styles.commsNote}>{plan.note}</p>
                 <div className={styles.commsRow}>
-                  {selected.phone ? (
+                  {selectedHasPhone && plan.primary === 'call' ? (
+                    <a className="btn primary" href={`tel:${selected.phone}`}>
+                      📞 Call customer
+                    </a>
+                  ) : null}
+                  {selectedHasPhone ? (
                     <a className={`btn ${plan.primary === 'text' ? 'primary' : 'secondary'}`} href={`sms:${selected.phone}`}>
                       💬 Text customer
                     </a>
                   ) : null}
+                  {selected.email && plan.primary === 'email' ? (
+                    <a className="btn primary" href={`mailto:${selected.email}`}>✉️ Email customer</a>
+                  ) : null}
                   <Link
-                    className={`btn ${plan.primary === 'text' ? 'secondary' : 'primary'}`}
+                    className={`btn ${plan.primary === 'none' ? 'primary' : 'secondary'}`}
                     href={`${base}/leads/${selected.id}#lead-estimate`}
                   >
                     Send quote
                   </Link>
-                  {selected.phone ? (
+                  {selectedHasPhone && plan.primary !== 'call' ? (
                     <a className={styles.callQuiet} href={`tel:${selected.phone}`}>
                       📞 {plan.callLabel}
                     </a>
                   ) : null}
-                  {selected.email ? (
+                  {selected.email && plan.primary !== 'email' ? (
                     <a className={styles.callQuiet} href={`mailto:${selected.email}`}>✉️ Email</a>
                   ) : null}
                 </div>
@@ -608,7 +615,7 @@ export default function LeadSmoothieView({
                     onClick={() => run(() => archiveLeadAction(selected.id, true))}
                     title="Archives the lead. It leaves the queue and moves to the Set aside drawer at the foot of this page, where you can restore it."
                   >
-                    Archive (out of the queue)
+                    Archive
                   </button>
                   <Link className={styles.quietLink} href={`${base}/leads/${selected.id}`}>
                     Open full lead →
