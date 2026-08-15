@@ -179,7 +179,10 @@ describe('unscored is not warm', () => {
   });
 
   it('does not expose a call action for a partial imported phone number', () => {
-    expect(primaryAction(lead({ phone: '74' })).kind).toBe('open');
+    expect(primaryAction(lead({ phone: '74' }))).toMatchObject({
+      kind: 'edit',
+      label: 'Add contact',
+    });
   });
 });
 
