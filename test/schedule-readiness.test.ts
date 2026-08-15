@@ -307,10 +307,10 @@ describe('the desktop queue collapses', () => {
   const QUEUE = stripJs(read('src', 'app', 'dashboard', 'schedule', 'UnscheduledQueue.tsx'));
 
   it('offers the toggle only where the queue is a permanent column', () => {
-    // Below 1280 the queue is an overlay and "collapse" is what Back does.
+    // Below 1024 the queue is an overlay and "collapse" is what Back does.
     expect(QUEUE).toContain('const showCollapseToggle = !isOverlay;');
     expect(ruleFor('.sched-queue-collapse')).toContain('display: none');
-    expect(CSS).toMatch(/@media \(min-width: 1280px\)[\s\S]{0,200}\.sched-queue-collapse \{ display: inline-flex; \}/);
+    expect(CSS).toMatch(/@media \(min-width: 1024px\)[\s\S]{0,200}\.sched-queue-collapse \{ display: inline-flex; \}/);
   });
 
   it('carries the count, so a closed rail says what is behind it', () => {

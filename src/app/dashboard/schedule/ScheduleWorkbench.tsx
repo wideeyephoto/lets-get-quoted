@@ -97,7 +97,7 @@ export default function ScheduleWorkbench({
   return (
     <div className="schedule-workbench">
       {/* selectedJobId is passed down so the queue can get out of the way of the
-          panel it just opened — below 1280 both are full-screen overlays, and
+          panel it just opened — below 1024 both are full-screen overlays, and
           the job's details opened behind the list. */}
       {jobs.length > 0 ? (
         <UnscheduledQueue count={jobs.length} selectedJobId={selectedId}>

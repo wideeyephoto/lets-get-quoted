@@ -19150,15 +19150,13 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
    overlay instead — see .sched-detail.is-sheet — because a third column carved
    out of 1280px leaves a calendar narrower than the rail beside it, which is
    the shape this layout exists to avoid. */
-/* Sticky, so the jobs stay level with the grid however far down the month you
-   scroll. THE HEIGHT CAP IS WHAT MAKES STICKY WORK: an element taller than the
-   screen cannot stick, it just scrolls until its bottom arrives. Capped to the
-   viewport, the list takes the slack and scrolls inside itself. */
-@media (min-width: 1280px) {
+/* Sticky while it fits, then naturally part of the page scroll when it does
+   not. The old viewport cap put a second scrollbar inside this rail; removing
+   it leaves the document as the only vertical scroll surface. */
+@media (min-width: 1024px) {
   .sched-queue-col {
     position: sticky;
     top: 1rem;
-    max-height: calc(100vh - 2rem);
     display: flex;
     flex-direction: column;
     padding: 0.9rem 0.85rem;
@@ -19166,18 +19164,19 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   .sched-queue-col .workspace-section-heading { margin-bottom: 0.6rem; }
   .sched-queue-col .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
 
-  /* The list is the part that scrolls; the heading and the foot link stay put.
-     min-height:0 is what lets a flex child shrink below its content at all. */
+  /* min-height keeps an empty rail useful without turning it into a scroller. */
   .sched-queue-col .sched-rows {
     flex: 1 1 auto;
     min-height: 6rem;
-    overflow-y: auto;
-    padding-right: 0.3rem;
   }
-  /* The rows must not shrink, or the scrolling above is decorative — a column
-     flex container makes its children shrinkable by default, and capped by the
-     rail's height they flatten instead of overflowing. */
+  /* A column flex container makes its children shrinkable by default. */
   .sched-queue-col .sched-rows > * { flex: 0 0 auto; }
+}
+
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  .sched-row { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .sched-row-go,
+  .sched-row-actions { grid-column: 2; justify-self: start; }
 }
 
 /* ---- one job per row, and one action on it -------------------------------
@@ -19771,7 +19770,8 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .sched-map-row-figures { display: flex; gap: 0.5rem; font-size: 0.78rem; }
 .sched-map-row-figures em { font-style: normal; font-weight: 700; }
 .sched-map-row-figures i { font-style: normal; color: var(--mute-i56); }
-.sched-map-row-crew { color: var(--mute-i62); font-size: 0.76rem; font-weight: 700; }
+.sched-map-row-crew { display: grid; gap: 0.08rem; color: var(--mute-i62); font-size: 0.76rem; font-weight: 700; }
+.schedule-map .pin-map-legend-item:disabled { display: none; }
 
 /* A phone has no room for four columns; the figures and the crew drop under
    the name rather than being squeezed into 40px each. */
@@ -20746,6 +20746,16 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-master-copy strong em.on { color: var(--bset-accent-ink); }
 .bset-master-copy strong em.off { color: var(--muted, var(--muted-2)); }
 .bset-master-copy small { font-size: 0.84rem; color: var(--muted, var(--muted-2)); }
+.bset-master-save-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.18rem;
+  color: var(--mute-t55);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.bset-master-save-note svg { width: 0.8rem; height: 0.8rem; flex: none; color: var(--ink-green-7); }
 
 .bset-master-status {
   flex: 1 1 15rem;
@@ -20772,6 +20782,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-master-status.live .bset-dot { background: #34c77b; box-shadow: 0 0 0 3px rgba(52, 199, 123, 0.18); }
 .bset-master-status.live p { color: var(--ink-green-2); }
+.bset-master-status.live.attention p { color: var(--ink-amber-1); }
 .bset-master-status small { font-size: 0.82rem; color: var(--muted, var(--muted-2)); line-height: 1.4; }
 
 .bset-pause { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
@@ -20893,6 +20904,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-summary-item:hover { border-color: var(--bset-line-strong); transform: translateY(-1px); }
 .bset-summary-item:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
+.bset-summary-item.has-warning { border-color: var(--cedge-amber-11); }
 .bset-summary-item.is-static { cursor: default; }
 .bset-summary-item.is-static:hover { border-color: var(--bset-line); transform: none; }
 
@@ -20921,7 +20933,67 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-summary-copy small { font-size: 0.72rem; color: var(--muted, var(--muted-2)); }
 .bset-summary-copy strong { overflow: hidden; font-size: 0.92rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .bset-summary-copy > span { overflow: hidden; font-size: 0.76rem; color: var(--muted, var(--muted-2)); text-overflow: ellipsis; white-space: nowrap; }
+.bset-summary-copy > span.is-warning { color: var(--ink-amber-1); font-weight: 700; }
 .bset-summary-chevron { width: 0.9rem; height: 0.9rem; flex: none; color: var(--muted, var(--muted-2)); }
+
+/* Phones get one read-back disclosure instead of three cards repeating the
+   accordion immediately below them. */
+.bset-mobile-summary { display: none; }
+.bset-mobile-summary > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 14px;
+  background: var(--bset-card);
+  cursor: pointer;
+  list-style: none;
+}
+.bset-mobile-summary > summary::-webkit-details-marker { display: none; }
+.bset-mobile-summary > summary > span:first-child { display: grid; gap: 0.08rem; min-width: 0; flex: 1; }
+.bset-mobile-summary > summary small { color: var(--muted, var(--muted-2)); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.bset-mobile-summary > summary strong { overflow: hidden; font-size: 0.86rem; text-overflow: ellipsis; white-space: nowrap; }
+.bset-mobile-summary > summary em {
+  flex: none;
+  padding: 0.18rem 0.4rem;
+  border: 1px solid var(--cedge-amber-11);
+  border-radius: 999px;
+  color: var(--ink-amber-1);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.bset-mobile-summary > summary > svg { width: 0.95rem; height: 0.95rem; flex: none; transition: transform 0.18s ease; }
+.bset-mobile-summary[open] > summary { border-radius: 14px 14px 0 0; }
+.bset-mobile-summary[open] > summary > svg { transform: rotate(180deg); }
+.bset-mobile-summary.has-warning > summary { border-color: var(--cedge-amber-11); }
+.bset-mobile-summary-actions {
+  display: grid;
+  border: 1px solid var(--bset-line);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: var(--bset-card);
+}
+.bset-mobile-summary-actions > * {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.65rem 0.85rem;
+  border: 0;
+  border-top: 1px solid var(--bset-line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.bset-mobile-summary-actions > button { cursor: pointer; }
+.bset-mobile-summary-actions > button:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: -2px; }
+.bset-mobile-summary-actions > * > span { flex: none; color: var(--muted, var(--muted-2)); font-size: 0.75rem; }
+.bset-mobile-summary-actions > * > strong { overflow: hidden; font-size: 0.78rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 
 /* --- two-column body --- */
 .bset-body {
@@ -21123,6 +21195,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   line-height: 1.45;
   color: var(--ink-amber-1, var(--mute-t55));
 }
+.bset-window-warn > svg { width: 1rem; height: 1rem; flex: none; margin-top: 0.08rem; }
 
 .bset-window {
   display: flex;
@@ -21140,8 +21213,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-window:hover { border-color: var(--bset-line-strong); }
 .bset-window:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
 .bset-window.on { border-color: var(--bset-accent-ink); background: rgba(255, 122, 41, 0.08); }
-.bset-window.unavailable { border-color: var(--cedge-amber-11); background: rgba(255, 209, 102, 0.06); }
-.bset-window.unavailable .bset-window-check { border-color: var(--cedge-amber-11); background: transparent; color: var(--gold-ink); }
+.bset-window.on.unavailable { border-color: var(--cedge-amber-11); background: rgba(255, 209, 102, 0.06); }
 
 .bset-window-icon { flex: none; color: var(--ink-amber-1); }
 .bset-window-icon svg { width: 1.2rem; height: 1.2rem; }
@@ -21174,6 +21246,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .bset-window.on .bset-window-check { background: var(--bset-accent); border-color: var(--bset-accent-ink); color: #10131a; }
+.bset-window.on.unavailable .bset-window-check { border-color: var(--cedge-amber-11); background: transparent; color: var(--gold-ink); }
 .bset-window-check svg { width: 0.8rem; height: 0.8rem; stroke-width: 3; }
 
 .bset-addwindow {
@@ -21207,7 +21280,21 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   font-size: 0.8rem;
   line-height: 1.45;
 }
-.bset-window-fix a { color: var(--gold-ink); font-weight: 700; }
+.bset-window-fix p { margin: 0; }
+.bset-window-fix > div { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem 0.8rem; margin-top: 0.45rem; }
+.bset-window-fix a,
+.bset-window-fix button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold-ink);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.bset-window-fix a:focus-visible,
+.bset-window-fix button:focus-visible { outline: 2px solid rgba(255, 209, 102, 0.7); outline-offset: 2px; }
 
 .bset-inline-tip {
   display: flex;
@@ -21318,10 +21405,6 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset select option,
 .bset select optgroup { background: var(--bg-3); color: var(--text); }
-
-.bset-tip { display: inline-grid; place-items: center; color: var(--mute-g570); cursor: help; }
-.bset-tip svg { width: 0.85rem; height: 0.85rem; }
-.bset-tip:hover { color: var(--bset-accent-ink); }
 
 /* $ lives in the field, so the label doesn't need "($)" and the number lines
    up with the currency mark rather than floating in an empty box. */
@@ -21563,17 +21646,16 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-phone-title { font-size: 0.98rem; font-weight: 650; }
 .bset-phone-sub { margin: -0.35rem 0 0.35rem; font-size: 0.8rem; color: var(--muted, var(--muted-2)); }
 
-.bset-phone-days { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.15rem; }
+.bset-phone-days { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
 
 .bset-phone-day {
-  flex: none;
   display: grid;
   gap: 0.1rem;
   justify-items: center;
-  padding: 0.5rem 0.65rem;
+  min-width: 0;
+  padding: 0.5rem 0.35rem;
   border: 1px solid var(--bset-line);
   border-radius: 10px;
-  min-width: 3rem;
 }
 
 .bset-phone-day small { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; color: var(--muted, var(--muted-2)); }
@@ -21729,13 +21811,13 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 @media (max-width: 640px) {
-  .bset-summary { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
-  .bset-summary-item { padding: 0.65rem 0.75rem; }
+  .bset-summary { display: none; }
+  .bset-mobile-summary { display: block; }
   .bset-daygrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bset-master { gap: 0.9rem; }
   .bset-master-status { padding-left: 0; border-left: 0; border-top: 1px solid var(--bset-line); padding-top: 0.75rem; }
   .bset-section-head { padding: 0.9rem 1rem; }
-  .bset-section-badge { display: none; }
+  .bset-section-badge { padding: 0.18rem 0.4rem; font-size: 0.6rem; }
   .bset-section-body { padding: 0.25rem 1rem 1.1rem; }
   .bset-workhours { align-items: flex-start; flex-wrap: wrap; }
   .bset-workhours a { flex-basis: 100%; padding-left: 2.7rem; }
@@ -29022,26 +29104,6 @@ a.ins-export-opt:focus-visible { outline: 2px solid rgba(255, 122, 33, 0.85); ou
   background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.4) 0 2px, transparent 2px 4px);
 }
 
-.sched-mini-foot {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin: 0.7rem 0 0;
-  font-size: 0.85rem;
-}
-
-.sched-mini-foot a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 0.7rem;
-  border: 1px solid var(--edge-t14);
-  border-radius: 10px;
-  color: var(--text);
-  font-weight: 700;
-  text-decoration: none;
-}
-
 /* --- paper ---------------------------------------------------------------- */
 
 :root[data-theme='light'] .panel .sched-strip-day,
@@ -29795,10 +29857,8 @@ select optgroup {
 
    THE BREAKPOINTS, AND WHAT EACH ONE IS FOR
 
-     >= 1280   desktop / laptop. Calendar takes everything the app rail leaves;
-               unscheduled queue is a permanent 360-420px column beside it.
-     1024-1279 landscape tablet. Same two columns at roughly 62/38, which is
-               where a 7-column grid stops being readable if you give it less.
+     >= 1024   desktop / landscape tablet. The compact unscheduled queue is a
+               permanent 250-300px column beside the calendar.
      768-1023  portrait tablet. One column. The queue becomes a panel you open
                from the banner, because two columns here means neither works.
      < 768     phone. A day planner (ScheduleMobileAgenda), not a month grid.
@@ -29833,19 +29893,16 @@ select optgroup {
    Single column is the default (phone and portrait tablet); columns arrive only
    once there is room for a readable grid beside them.
 
-   NO TWO-COLUMN LANDSCAPE TABLET, AND THE MEASUREMENT IS WHY.
-   The docked app nav is 244px plus its gutter, so a 1024x768 landscape tablet
-   has ~738px for this entire page. Splitting that gave the calendar 332px --
-   narrower than the rail beside it, and unusable for either job. Everything
-   below the desktop breakpoint gets the full width for the calendar and reaches
-   the queue through the bar. Measured one-column at 1024: 690px of calendar.
+   At 1024 the queue becomes a deliberately compact rail: its cards use two
+   fact columns and put actions below the facts, leaving the calendar the rest.
+   Below that the page returns to one column and opens the queue from the bar.
 
    THE QUEUE IS SIZED AGAINST WHAT IS LEFT, NOT AGAINST THE SCREEN.
    A 1366x768 laptop has ~1054px for this whole page. A flat 420px column there
    left the calendar 595px -- seven columns of 85px, which measured 36 clipped
    labels. It starts at 300px and only widens once the screen can pay for it.
 
-   1280 IS THE QUEUE'S OWN BREAKPOINT, not a new one: below it UnscheduledQueue
+   1024 IS THE QUEUE'S OWN BREAKPOINT, not a new one: below it UnscheduledQueue
    is a full-screen overlay, so a column reserved for it would be an empty gap.
 
    THE THIRD COLUMN STARTS AT 1760, AND THAT NUMBER IS MEASURED RATHER THAN
@@ -29868,9 +29925,9 @@ select optgroup {
   align-items: start;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .schedule-workbench {
-    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
     gap: 1.15rem;
   }
 
@@ -29908,7 +29965,7 @@ select optgroup {
    the calendar had drawn a date, and two of them counted a different population
    from the other two — so the page printed 11 and 3 for the same question.
 
-   It renders at every width. The banner used to appear only below 1280 on the
+   It renders at every width. The banner used to appear only below 1024 on the
    theory that the desktop rail said it already, which left the desktop with a
    button naming a count and nothing saying what the count was made of. */
 .sched-queue-bar {
@@ -29945,6 +30002,8 @@ select optgroup {
   margin: 0;
 }
 .sched-queue-bar-line strong { font-size: 0.95rem; font-weight: 750; }
+.sched-queue-bar-copy-mobile,
+.sched-queue-action-copy-mobile { display: none; }
 .sched-queue-bar-line span:not(.sched-queue-bar-count) {
   color: var(--mute-i56);
   font-size: 0.84rem;
@@ -30013,7 +30072,7 @@ select optgroup {
 .sched-queue.is-collapsed .sched-queue-panel { display: none; }
 
 .sched-queue-collapse {
-  display: none; /* Only the desktop rail collapses; see the 1280 block. */
+  display: none; /* Only the desktop rail collapses; see the 1024 block. */
   align-items: center;
   gap: 0.35rem;
   align-self: flex-start;
@@ -30031,7 +30090,7 @@ select optgroup {
 .sched-queue-collapse:hover { color: var(--text); border-color: var(--edge-t22); }
 .sched-queue-collapse:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .sched-queue-collapse { display: inline-flex; }
 
   /* Reclaim the column. Without this the rail keeps its 300px minimum and
@@ -30077,7 +30136,7 @@ select optgroup {
    one was pinned to the viewport bottom at every width under 1100px, so on a
    tablet and a phone it permanently covered the last row of dates and fought
    the job dialog for stacking order. */
-@media (max-width: 1279.98px) {
+@media (max-width: 1023.98px) {
   .sched-queue {
     display: block;
     position: fixed;
@@ -30186,7 +30245,7 @@ select optgroup {
 
 /* Portrait tablet and landscape tablet get a centred sheet rather than a full
    bleed -- a 420px job card stretched across 1024px is not a better card. */
-@media (min-width: 768px) and (max-width: 1279.98px) {
+@media (min-width: 768px) and (max-width: 1023.98px) {
   .sched-queue-panel {
     inset: 2.5rem;
     height: auto;
@@ -30335,11 +30394,6 @@ body[data-schedule-overlay="job"] .sched-queue {
 }
 .sched-settings-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
-/* --- tablet ---------------------------------------------------------------- */
-
-@media (min-width: 768px) and (max-width: 1279.98px) {
-}
-
 /* --- phone ----------------------------------------------------------------- */
 
 @media (max-width: 767.98px) {
@@ -30366,8 +30420,18 @@ body[data-schedule-overlay="job"] .sched-queue {
      a wrapping heading, and the count keeps its own line above them. */
   .schedule-bar { gap: 0.6rem; }
   .sched-queue-bar-line { flex: 1 1 100%; }
-  .sched-queue-bar-actions { flex: 1 1 100%; margin-left: 0; }
-  .sched-queue-bar-go { flex: 1 1 8rem; justify-content: center; }
+  .sched-queue-bar-copy,
+  .sched-queue-action-copy { display: none; }
+  .sched-queue-bar-copy-mobile,
+  .sched-queue-action-copy-mobile { display: inline; }
+  .sched-queue-bar-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    flex: 1 1 100%;
+    width: 100%;
+    margin-left: 0;
+  }
+  .sched-queue-bar-go { min-width: 0; justify-content: center; }
 
   .schedule-calendar-panel { padding: 0.9rem 0.8rem 1rem; }
 }
@@ -30417,6 +30481,70 @@ body[data-schedule-overlay="job"] .sched-queue {
   line-height: 1.25;
 }
 .schedule-shell .sched-stat { min-height: 44px; align-content: center; }
+.schedule-shell .sched-stat-message {
+  max-width: 17ch;
+  font-size: 1rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.schedule-shell .sched-stat-action { color: var(--accent-ink); font-weight: 800; }
+.sched-sum-alert strong { color: var(--ink-amber-1); }
+
+/* The schedule is an operational surface, so status earns color and ordinary
+   navigation does not. Removing the instrument-panel halos leaves the queue,
+   missing durations, and over-capacity states as the things that carry heat. */
+.schedule-shell .sched-stat,
+.schedule-shell .sched-stat:hover {
+  border-color: var(--edge-t16);
+  background: rgba(var(--tint), 0.035);
+  box-shadow: none;
+}
+.schedule-shell .sched-stat.needs,
+.schedule-shell .sched-stat.needs:hover {
+  border-color: var(--cedge-amber-7);
+  background: rgba(255, 209, 102, 0.075);
+  box-shadow: none;
+}
+.schedule-shell .sched-stat-icon,
+.schedule-shell .sched-stat.needs .sched-stat-icon { filter: none; }
+.schedule-shell .calendar-view-quick,
+.schedule-shell .calendar-view-trigger {
+  border-color: var(--edge-t16);
+  background: rgba(var(--tint), 0.035);
+}
+.calendar-view-option-link { text-decoration: none; }
+
+/* One page scroll. The range and view controls stay available while the axis
+   moves beneath them, but the timeline and queue no longer add their own
+   vertical scrollbars. */
+@media (min-width: 641px) {
+  .schedule-shell .calendar-toolbar-wrap {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 15;
+    margin: -0.35rem -0.35rem 0;
+    padding: 0.35rem;
+    border: 1px solid var(--edge-t10);
+    border-radius: 13px;
+    background: rgba(var(--panel-rgb), 0.94);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+@media (max-width: 640px) {
+  /* The site-wide floating switch sat on top of the first job card. Theme is
+     still available in Menu; on this task-heavy phone surface content wins. */
+  body:has(.schedule-shell) .theme-fab { display: none; }
+  .schedule-shell .sched-card-top { align-items: flex-start; }
+  .schedule-shell .sched-card-badge {
+    max-width: 62%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+    line-height: 1.25;
+  }
+}
 
 /* --- the chip stops truncating names ---------------------------------------
    .calendar-job-chip has carried `white-space: nowrap` since it was a one-line
@@ -30507,11 +30635,11 @@ body[data-schedule-overlay="job"] .sched-queue {
 .calendar-job-chip-sig { white-space: normal; }
 
 /* --- the queue's cards, in the overlay -------------------------------------
-   The rail gets a compact treatment above 1280 (stacked card, one-column form,
+   The rail gets a compact treatment above 1024 (stacked card, one-column form,
    inline popovers). The overlay never did, because until now the overlay was a
    bottom dock with its own rules. Same shape, same reasons: at these widths the
    row's name-beside-buttons layout has nowhere to go. */
-@media (max-width: 1279.98px) {
+@media (max-width: 1023.98px) {
   .sched-queue-body .sign-in-method-row {
     flex-direction: column;
     align-items: stretch;
@@ -30807,6 +30935,12 @@ body[data-schedule-overlay="job"] .sched-queue {
   touch-action: none;
 }
 .sched-tl-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.sched-tl-chip-untimed { align-items: flex-start; padding: 0.4rem 0.5rem; }
+.sched-tl-chip-lines { display: grid; gap: 0.08rem; min-width: 0; flex: 1 1 auto; }
+.sched-tl-chip-scope,
+.sched-tl-chip-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-tl-chip-scope { color: var(--text); font-size: 0.72rem; }
+.sched-tl-chip-meta { color: var(--mute-i60); font-size: 0.68rem; }
 .sched-tl-chip-note {
   margin-left: auto;
   flex: 0 0 auto;
@@ -30836,14 +30970,12 @@ body[data-schedule-overlay="job"] .sched-queue {
    The hour is 52px now (see HOUR_PX) and the box is exactly as tall as the
    hours it holds, so the axis always fits and this never scrolls. Thirteen
    hours at 52 is 676px — still under the old 720 cap, so the rail below has
-   not lost anything either. overflow-y stays `auto` rather than `visible`
-   because a block dragged past the last hour should be clipped, not drawn over
-   the settings underneath. */
+   not lost anything either. `clip` keeps a block dragged past the last hour
+   from drawing over the settings without creating another scroll surface. */
 .sched-tl-scroll {
   grid-column: 1 / -1;
   max-height: calc(var(--tl-hours) * var(--tl-hour-h));
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow-y: clip;
 }
 .sched-tl-body { min-height: calc(var(--tl-hours) * var(--tl-hour-h)); }
 

@@ -45,7 +45,7 @@ export default function DemoBookingPage() {
 
       <section className="bset-master">
         <span className="bset-master-switch">
-          <input type="checkbox" checked readOnly aria-label="Booking requests are on" />
+          <input type="checkbox" role="switch" checked readOnly aria-label="Booking requests are on" />
           <span className="bset-switch-track" aria-hidden="true"><span /></span>
           <span className="bset-master-copy">
             <strong>Booking requests</strong>
@@ -90,6 +90,21 @@ export default function DemoBookingPage() {
           </span>
         </div>
       </div>
+
+      <details className="bset-mobile-summary">
+        <summary>
+          <span>
+            <small>Current setup</small>
+            <strong>{dayNames} · {windowNames}</strong>
+          </span>
+          <Icon name="chevronDown" />
+        </summary>
+        <div className="bset-mobile-summary-actions">
+          <span><span>Availability</span><strong>{windowNames}</strong></span>
+          <span><span>Limits</span><strong>Up to {DEMO_BOOKING.maxPerDay} a day</strong></span>
+          <span><span>Time off</span><strong>{DEMO_BOOKING.blocks.length} upcoming</strong></span>
+        </div>
+      </details>
 
       {/* A booking is a REQUEST until the contractor says yes — the same rule the
           real product follows, and the reason nothing here is on the calendar. */}

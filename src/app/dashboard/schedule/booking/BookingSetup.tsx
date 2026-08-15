@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import InfoTip from '@/components/info-tip';
 import {
   BOOKING_WINDOW_PRESET_TIMES,
   MAX_BOOKING_WINDOWS,
@@ -92,11 +93,7 @@ function blockLength(start: string, end: string): string {
 
 // A short "why" beside a label, rather than a paragraph under every field.
 function Tip({ text }: { text: string }) {
-  return (
-    <span className="bset-tip" title={text} aria-label={text} role="img">
-      <Icon name="info" />
-    </span>
-  );
+  return <InfoTip label={text}>{text}</InfoTip>;
 }
 
 export default function BookingSetup({
@@ -267,7 +264,9 @@ export default function BookingSetup({
      "full" it had never worked out. The cost of using the real answer is that
      it reflects SAVED settings, so unsaved edits say so below rather than
      showing a preview of an offer that does not exist yet. */
-  const previewDays = useMemo(() => bookableDays.slice(0, 5), [bookableDays]);
+  // Four dates fit the preview rail without exposing a browser scrollbar. The
+  // full customer flow still shows every available date.
+  const previewDays = useMemo(() => bookableDays.slice(0, 4), [bookableDays]);
 
   const dayNames = useMemo(() => {
     if (weekdays.length === 0) return 'No days';
@@ -339,6 +338,15 @@ export default function BookingSetup({
     [offeredTimes],
   );
   const leadLabel = LEAD_OPTIONS.find((option) => option.value === leadDays)?.label ?? 'From tomorrow';
+  const availabilityAlert = weekdays.length === 0
+    ? 'Choose booking days'
+    : windowTimes.length === 0
+      ? 'Choose a window'
+      : outside.length > 0
+        ? `${outside.length} window${outside.length === 1 ? '' : 's'} hidden`
+        : overlaps.length > 0
+          ? `${overlaps.length} overlap${overlaps.length === 1 ? '' : 's'}`
+          : null;
 
   const nextBlock = blocks[0] ?? null;
   /* Configured is not live. The header read "Live — customers can request an
@@ -383,18 +391,31 @@ export default function BookingSetup({
           settings produce a real customer-facing offer. */}
       <section className="bset-master">
         <label className="bset-master-switch">
-          <input type="checkbox" checked={enabled} onChange={(e) => setMaster(e.target.checked)} disabled={pending} />
+          <input
+            type="checkbox"
+            role="switch"
+            checked={enabled}
+            onChange={(e) => setMaster(e.target.checked)}
+            disabled={pending}
+          />
           <span className="bset-switch-track" aria-hidden="true"><span /></span>
           <span className="bset-master-copy">
             <strong>Booking requests</strong>
             <small>{enabled ? 'Customers can request a preferred window online.' : 'Your website is not accepting time requests.'}</small>
+            <span className="bset-master-save-note">
+              <Icon name="checkCircle" /> This switch applies immediately. Other changes wait for Save schedule.
+            </span>
           </span>
         </label>
 
-        <div className={`bset-master-status${live ? ' live' : ''}`}>
+        <div className={`bset-master-status${live ? ' live' : ''}${live && outside.length > 0 ? ' attention' : ''}`}>
           <p>
             <span className="bset-dot" aria-hidden="true" />
-            {live ? 'Live' : countsPredateSwitch ? 'Checking…' : configured ? 'Nothing bookable' : enabled ? 'Not live yet' : 'Paused'}
+            {live
+              ? outside.length > 0
+                ? `Live · ${outside.length} selected window${outside.length === 1 ? '' : 's'} hidden`
+                : 'Live'
+              : countsPredateSwitch ? 'Checking…' : configured ? 'Nothing bookable' : enabled ? 'Not live yet' : 'Paused'}
           </p>
           <small>
             {!bookingUrl
@@ -410,19 +431,21 @@ export default function BookingSetup({
                     : offeredTimes.length === 0
                       ? 'Every arrival window you offer falls outside your working hours, so nothing is on offer.'
                       : live
-                        ? 'Customers can request an available arrival window. You confirm before it is booked.'
+                        ? outside.length > 0
+                          ? `Customers can still request available windows. ${outside.length === 1 ? 'One selected window is' : `${outside.length} selected windows are`} hidden until you fix or deselect ${outside.length === 1 ? 'it' : 'them'}.`
+                          : 'Customers can request an available arrival window. You confirm before it is booked.'
                         : 'Your settings are on, but no day in the next few weeks has a free window — they are blocked, at their booking limit, or already taken. Customers see “No windows on offer right now”.'}
           </small>
         </div>
       </section>
 
       <div className="bset-summary" aria-label="Booking request summary">
-        <button type="button" className="bset-summary-item" onClick={() => jumpTo('days')}>
+        <button type="button" className={`bset-summary-item${availabilityAlert ? ' has-warning' : ''}`} onClick={() => jumpTo('days')}>
           <span className="bset-summary-icon tone-days"><Icon name="calendar" /></span>
           <span className="bset-summary-copy">
             <small>Availability</small>
             <strong>{dayNames}</strong>
-            <span>{windowNames}</span>
+            <span className={availabilityAlert ? 'is-warning' : undefined}>{availabilityAlert ?? windowNames}</span>
           </span>
           <Icon name="chevronRight" className="bset-summary-chevron" />
         </button>
@@ -452,6 +475,31 @@ export default function BookingSetup({
         </button>
       </div>
 
+      <details className={`bset-mobile-summary${availabilityAlert ? ' has-warning' : ''}`}>
+        <summary>
+          <span>
+            <small>Current setup</small>
+            <strong>{dayNames} · {windowNames}</strong>
+          </span>
+          {availabilityAlert ? <em>{availabilityAlert}</em> : null}
+          <Icon name="chevronDown" />
+        </summary>
+        <div className="bset-mobile-summary-actions">
+          <button type="button" onClick={() => jumpTo('days')}>
+            <span>Availability</span>
+            <strong>{availabilityAlert ?? windowNames}</strong>
+          </button>
+          <button type="button" onClick={() => jumpTo('limits')}>
+            <span>Limits</span>
+            <strong>Up to {maxPerDay} a day · {leadLabel}</strong>
+          </button>
+          <button type="button" onClick={() => jumpTo('timeoff')}>
+            <span>Time off</span>
+            <strong>{blocks.length === 0 ? 'No days blocked' : `${blocks.length} upcoming`}</strong>
+          </button>
+        </div>
+      </details>
+
       <div className="bset-body">
         <div className="bset-main">
           {/* Availability */}
@@ -471,9 +519,7 @@ export default function BookingSetup({
                 <strong>Availability</strong>
                 <small>{dayNames} · {windowNames}</small>
               </span>
-              {weekdays.length === 0 || offeredTimes.length === 0 || outside.length > 0 || overlaps.length > 0 ? (
-                <span className="bset-section-badge">Check settings</span>
-              ) : null}
+              {availabilityAlert ? <span className="bset-section-badge">{availabilityAlert}</span> : null}
               <Icon name="chevronDown" className={`bset-chev${isOpen('days') ? ' open' : ''}`} />
             </button>
 
@@ -553,6 +599,7 @@ export default function BookingSetup({
                           key={time}
                           className={`bset-window${on ? ' on' : ''}${unavailable ? ' unavailable' : ''}`}
                           aria-pressed={on}
+                          aria-label={`${windowPartName(time)}, ${formatWindowRange(time, windowMinutes)}${unavailable ? ', selected but hidden from customers' : on ? ', selected' : ''}`}
                           onClick={() => toggleWindow(time)}
                         >
                           <span className="bset-window-icon"><Icon name={Number(time.slice(0, 2)) < 12 ? 'sunrise' : 'sun'} /></span>
@@ -560,11 +607,13 @@ export default function BookingSetup({
                             <strong>
                               {windowPartName(time)}
                               {custom ? <em>Custom</em> : null}
-                              {unavailable ? <em className="is-warning">Not offered</em> : null}
+                              {unavailable ? <em className="is-warning">Selected, hidden</em> : null}
                             </strong>
                             <small>{formatWindowRange(time, windowMinutes)}</small>
                           </span>
-                          <span className="bset-window-check" aria-hidden="true">{on ? <Icon name="check" /> : null}</span>
+                          <span className="bset-window-check" aria-hidden="true">
+                            {unavailable ? <Icon name="alert" /> : on ? <Icon name="check" /> : null}
+                          </span>
                         </button>
                       );
                     })}
@@ -610,10 +659,20 @@ export default function BookingSetup({
                     </p>
                   ) : null}
                   {outside.length > 0 ? (
-                    <p className="bset-window-fix">
-                      Selected windows marked “Not offered” will stay hidden from customers.{' '}
-                      <Link href="/dashboard/schedule/settings">Edit working hours</Link>
-                    </p>
+                    <div className="bset-window-fix">
+                      <p>
+                        {outside.length === 1 ? 'One selected window is' : `${outside.length} selected windows are`} hidden from customers.
+                      </p>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setWindowTimes((times) => times.filter((time) => !outside.includes(time)))}
+                        >
+                          Deselect hidden {outside.length === 1 ? 'window' : 'windows'}
+                        </button>
+                        <Link href="/dashboard/schedule/settings">Edit working hours</Link>
+                      </div>
+                    </div>
                   ) : null}
                   <AddWindow
                     disabled={windowTimes.length >= MAX_BOOKING_WINDOWS}
@@ -722,7 +781,12 @@ export default function BookingSetup({
             {isOpen('advanced') && (
               <div id="booking-section-advanced" className="bset-section-body">
                 <label className="bset-check">
-                  <input type="checkbox" checked={instant.enabled} onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })} />
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={instant.enabled}
+                    onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })}
+                  />
                   <span className="bset-switch-track small" aria-hidden="true"><span /></span>
                   <span className="bset-check-copy">
                     <strong>Qualify jobs before showing available times</strong>
@@ -740,7 +804,7 @@ export default function BookingSetup({
                         <MoneyInput value={instant.minAmount} onChange={(n) => setInstant({ ...instant, minAmount: n })} />
                       </label>
                       <label className="bset-field">
-                        <span>Nearby radius (miles) <Tip text="How close another job must be to count as already in the area that day." /></span>
+                        <span>Distance from an existing job (miles) <Tip text="How close a scheduled job must be for that day to count as already on your route." /></span>
                         <input
                           type="number"
                           min="1"
@@ -761,7 +825,12 @@ export default function BookingSetup({
                     </div>
 
                     <label className="bset-check">
-                      <input type="checkbox" checked={instant.driveTime} onChange={(e) => setInstant({ ...instant, driveTime: e.target.checked })} />
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        checked={instant.driveTime}
+                        onChange={(e) => setInstant({ ...instant, driveTime: e.target.checked })}
+                      />
                       <span className="bset-switch-track small" aria-hidden="true"><span /></span>
                       <span className="bset-check-copy">
                         <strong>Use road travel time</strong>
@@ -774,8 +843,9 @@ export default function BookingSetup({
                       <div>
                         <strong>Who can request a time</strong>
                         <p>
-                          Jobs estimated at {instant.minAmount > 0 ? `$${instant.minAmount.toLocaleString('en-US')} or more` : 'any value'},
-                          within {instant.radiusMiles} miles. {instant.geoMode === 'restrict' ? 'Only route-fit days are shown.' : 'Nearby days are shown first.'}
+                          Jobs estimated at {instant.minAmount > 0 ? `$${instant.minAmount.toLocaleString('en-US')} or more` : 'any value'}.
+                          A day is route-fit when an existing scheduled job is within {instant.radiusMiles} miles.{' '}
+                          {instant.geoMode === 'restrict' ? 'Only route-fit days are shown.' : 'Route-fit days are shown first.'}
                         </p>
                       </div>
                     </div>
@@ -904,8 +974,8 @@ export default function BookingSetup({
           <p aria-live="polite">
             <Icon name={saveError ? 'alert' : 'checkCircle'} />
             <span>
-              <strong>{saveError ? 'Couldn’t save' : 'You have unsaved changes'}</strong>
-              <small>{saveError ?? 'Don’t forget to save your schedule.'}</small>
+              <strong>{saveError ? 'Couldn’t save' : 'Schedule changes aren’t live yet'}</strong>
+              <small>{saveError ?? 'Review your changes, then choose Save schedule.'}</small>
             </span>
           </p>
           <div>
