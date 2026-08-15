@@ -41,6 +41,15 @@ const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];
 // map itself passes `emptyNote` instead — see the prop.
 const NOTHING_MAPPED = 'No mapped locations yet — addresses are geocoded as leads and jobs come in.';
 
+function detachMarker(marker: google.maps.marker.AdvancedMarkerElement) {
+  try {
+    marker.map = null;
+  } catch {
+    // Google can leave an AdvancedMarker half-mounted when its map script or
+    // renderer fails. Cleanup must still let React switch dashboard layouts.
+  }
+}
+
 // A Material-style teardrop pin (24×27, tip at 12,27) — far more visible on a
 // light map than a small circle, with a dark ring so even the gold pins pop.
 // Keeping the original SVG geometry avoids a visual size jump during the move
@@ -255,7 +264,7 @@ export default function PinMap({
         mapRef.current = map;
 
         const bounds = new g.LatLngBounds();
-        for (const { marker } of markersRef.current) marker.map = null;
+        for (const { marker } of markersRef.current) detachMarker(marker);
         markersRef.current = [];
         for (const pin of pins) {
           const position = { lat: pin.lat, lng: pin.lng };
@@ -314,7 +323,7 @@ export default function PinMap({
       mapClickListener?.remove();
       for (const listener of idleListeners) listener.remove();
       for (const removeListener of markerListenerCleanups) removeListener();
-      for (const { marker } of markersRef.current) marker.map = null;
+      for (const { marker } of markersRef.current) detachMarker(marker);
       markersRef.current = [];
       mapRef.current = null;
     };

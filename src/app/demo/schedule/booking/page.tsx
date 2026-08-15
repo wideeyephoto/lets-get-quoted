@@ -2,14 +2,14 @@ import { Icon } from '@/app/dashboard/schedule/booking/icons';
 import { WEEKDAY_LABELS, formatWindowClock } from '@/lib/booking-availability';
 import { DEMO_BOOKING, DEMO_SITE_HOST } from '@/lib/demo-data';
 
-export const metadata = { title: 'Online booking — Live Demo' };
+export const metadata = { title: 'Booking requests — Live Demo' };
 export const dynamic = 'force-dynamic';
 
 // A read-only mirror of the real booking screen. The live version is one client
 // component wired straight to its server actions, so it cannot be reused here —
 // but the summary layer is the part that sells the feature, and that is what
-// this reproduces: the master switch, whether it is actually live, and the four
-// cards that say what the public page is offering right now.
+// this reproduces: the master switch, whether it is actually live, and the
+// compact read-back of the settings that shape customer requests.
 
 function dayLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -34,9 +34,9 @@ export default function DemoBookingPage() {
       <header className="bset-head">
         <div>
           <h1>
-            Online booking <Icon name="calendar" />
+            Booking requests <Icon name="calendar" />
           </h1>
-          <p>Control when customers can book and how your time is managed.</p>
+          <p>Customers request a preferred arrival window. You confirm the final time.</p>
         </div>
         <span className="btn secondary bset-head-cta" aria-disabled="true">
           View booking page <Icon name="external" />
@@ -45,10 +45,11 @@ export default function DemoBookingPage() {
 
       <section className="bset-master">
         <span className="bset-master-switch">
+          <input type="checkbox" checked readOnly aria-label="Booking requests are on" />
           <span className="bset-switch-track" aria-hidden="true"><span /></span>
           <span className="bset-master-copy">
-            <strong>Online booking is <em className="on">ON</em></strong>
-            <small>Customers can request available dates from your website.</small>
+            <strong>Booking requests</strong>
+            <small>Customers can request a preferred window online.</small>
           </span>
         </span>
 
@@ -61,33 +62,32 @@ export default function DemoBookingPage() {
         </div>
       </section>
 
-      <div className="bset-cards">
-        <div className="bset-card">
-          <span className="bset-card-icon tone-days"><Icon name="calendar" /></span>
-          <span className="bset-card-label">Open days</span>
-          <strong>{dayNames}</strong>
-          <small>Customers can book {weekdays.length} days a week</small>
+      <div className="bset-summary" aria-label="Booking request summary">
+        <div className="bset-summary-item is-static">
+          <span className="bset-summary-icon tone-days"><Icon name="calendar" /></span>
+          <span className="bset-summary-copy">
+            <small>Availability</small>
+            <strong>{dayNames}</strong>
+            <span>{windowNames}</span>
+          </span>
         </div>
 
-        <div className="bset-card">
-          <span className="bset-card-icon tone-time"><Icon name="clock" /></span>
-          <span className="bset-card-label">Arrival options</span>
-          <strong>{windowNames}</strong>
-          <small>Customers choose a preferred time window</small>
+        <div className="bset-summary-item is-static">
+          <span className="bset-summary-icon tone-time"><Icon name="clock" /></span>
+          <span className="bset-summary-copy">
+            <small>Limits</small>
+            <strong>Up to {DEMO_BOOKING.maxPerDay} jobs a day</strong>
+            <span>{DEMO_BOOKING.leadDays} day of notice</span>
+          </span>
         </div>
 
-        <div className="bset-card">
-          <span className="bset-card-icon tone-off"><Icon name="briefcase" /></span>
-          <span className="bset-card-label">Time off</span>
-          <strong>{DEMO_BOOKING.blocks.length} upcoming</strong>
-          <small>{nextBlock ? `Next: ${dayLabel(nextBlock.dateKey)} · ${nextBlock.reason}` : 'No days blocked off'}</small>
-        </div>
-
-        <div className="bset-card">
-          <span className="bset-card-icon tone-link"><Icon name="link" /></span>
-          <span className="bset-card-label">Booking page</span>
-          <strong>{DEMO_SITE_HOST}</strong>
-          <small>Published and taking requests</small>
+        <div className="bset-summary-item is-static">
+          <span className="bset-summary-icon tone-off"><Icon name="briefcase" /></span>
+          <span className="bset-summary-copy">
+            <small>Time off</small>
+            <strong>{DEMO_BOOKING.blocks.length} upcoming</strong>
+            <span>{nextBlock ? `Next: ${dayLabel(nextBlock.dateKey)}` : 'No days blocked off'}</span>
+          </span>
         </div>
       </div>
 

@@ -885,8 +885,10 @@
 :root[data-theme='light'] .feature-card,
 :root[data-theme='light'] .bset-master,
 :root[data-theme='light'] .bset-card,
+:root[data-theme='light'] .bset-summary-item,
 :root[data-theme='light'] .bset-section,
 :root[data-theme='light'] .bset-preview,
+:root[data-theme='light'] .bset-preview-toggle,
 :root[data-theme='light'] .bset-recurring,
 :root[data-theme='light'] .schedule-popover-panel,
 :root[data-theme='light'] .schedule-crew-picker-panel,
@@ -20864,6 +20866,63 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-card-edit svg { width: 0.85rem; height: 0.85rem; }
 
+/* Booking requests use a compact read-back instead of four dashboard cards.
+   The values stay editable jump targets, but the actual controls now begin in
+   the first viewport on a phone instead of several cards later. */
+.bset-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.bset-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 14px;
+  background: var(--bset-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.bset-summary-item:hover { border-color: var(--bset-line-strong); transform: translateY(-1px); }
+.bset-summary-item:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
+.bset-summary-item.is-static { cursor: default; }
+.bset-summary-item.is-static:hover { border-color: var(--bset-line); transform: none; }
+
+.bset-summary-icon,
+.bset-section-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 10px;
+}
+
+.bset-summary-icon svg,
+.bset-section-icon svg { width: 1.05rem; height: 1.05rem; }
+.bset-summary-icon.tone-days,
+.bset-section-icon.tone-days { color: var(--bset-accent-ink); background: rgba(255, 122, 41, 0.12); }
+.bset-summary-icon.tone-time,
+.bset-section-icon.tone-time { color: var(--ink-amber-1); background: rgba(255, 176, 32, 0.12); }
+.bset-summary-icon.tone-off,
+.bset-section-icon.tone-off { color: var(--ink-violet-1); background: rgba(150, 110, 255, 0.14); }
+.bset-summary-icon.tone-link,
+.bset-section-icon.tone-link { color: var(--ink-green-7); background: rgba(52, 199, 123, 0.13); }
+
+.bset-summary-copy { display: grid; gap: 0.08rem; min-width: 0; flex: 1; }
+.bset-summary-copy small { font-size: 0.72rem; color: var(--muted, var(--muted-2)); }
+.bset-summary-copy strong { overflow: hidden; font-size: 0.92rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.bset-summary-copy > span { overflow: hidden; font-size: 0.76rem; color: var(--muted, var(--muted-2)); text-overflow: ellipsis; white-space: nowrap; }
+.bset-summary-chevron { width: 0.9rem; height: 0.9rem; flex: none; color: var(--muted, var(--muted-2)); }
+
 /* --- two-column body --- */
 .bset-body {
   display: grid;
@@ -20920,6 +20979,20 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-section-copy { display: grid; gap: 0.12rem; flex: 1; min-width: 0; }
 .bset-section-copy strong { font-size: 1.08rem; font-weight: 650; letter-spacing: -0.01em; }
 .bset-section-copy small { font-size: 0.84rem; color: var(--muted, var(--muted-2)); }
+
+.bset-section-badge {
+  flex: none;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--cedge-amber-11);
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--gold-ink);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 
 .bset-chev { width: 1.1rem; height: 1.1rem; flex: none; color: var(--muted, var(--muted-2)); transition: transform 0.18s ease; }
 .bset-chev.open { transform: rotate(180deg); }
@@ -20991,6 +21064,25 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-day.on .bset-day-check { background: var(--bset-accent); border-color: var(--bset-accent-ink); color: #10131a; }
 .bset-day-check svg { width: 0.75rem; height: 0.75rem; stroke-width: 3; }
 
+.bset-workhours {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 12px;
+  background: var(--bset-inner);
+}
+.bset-workhours-icon { display: grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 9px; background: rgba(255, 176, 32, 0.1); color: var(--ink-amber-1); }
+.bset-workhours-icon svg { width: 1rem; height: 1rem; }
+.bset-workhours > span:not(.bset-workhours-icon) { display: grid; gap: 0.05rem; min-width: 0; flex: 1; }
+.bset-workhours small { font-size: 0.7rem; color: var(--muted, var(--muted-2)); text-transform: uppercase; letter-spacing: 0.05em; }
+.bset-workhours strong { font-size: 0.88rem; font-weight: 700; }
+.bset-workhours em { font-size: 0.76rem; font-style: normal; color: var(--muted, var(--muted-2)); }
+.bset-workhours a { flex: none; color: var(--bset-accent-ink); font-size: 0.8rem; font-weight: 700; text-decoration: none; }
+.bset-workhours a:hover { text-decoration: underline; }
+
 /* --- arrival windows --- */
 .bset-windows {
   display: grid;
@@ -21017,9 +21109,10 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   cursor: pointer;
   transition: border-color 0.16s ease, background 0.16s ease;
 }
-.bset-length strong { font-size: 0.95rem; }
+.bset-length strong { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.95rem; }
 .bset-length small { font-size: 0.74rem; line-height: 1.35; color: var(--mute-t55); }
 .bset-length.on { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.12); }
+.bset-recommended { padding: 0.1rem 0.35rem; border-radius: 999px; background: rgba(255, 176, 32, 0.12); color: var(--ink-amber-1); font-size: 0.6rem; font-style: normal; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; }
 
 .bset-window-warn {
   display: flex;
@@ -21047,6 +21140,8 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-window:hover { border-color: var(--bset-line-strong); }
 .bset-window:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
 .bset-window.on { border-color: var(--bset-accent-ink); background: rgba(255, 122, 41, 0.08); }
+.bset-window.unavailable { border-color: var(--cedge-amber-11); background: rgba(255, 209, 102, 0.06); }
+.bset-window.unavailable .bset-window-check { border-color: var(--cedge-amber-11); background: transparent; color: var(--gold-ink); }
 
 .bset-window-icon { flex: none; color: var(--ink-amber-1); }
 .bset-window-icon svg { width: 1.2rem; height: 1.2rem; }
@@ -21065,6 +21160,7 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   border: 1px solid var(--bset-line-strong);
   color: var(--muted, var(--muted-2));
 }
+.bset-window-copy strong em.is-warning { border-color: var(--cedge-amber-11); color: var(--gold-ink); }
 .bset-window-copy small { font-size: 0.78rem; color: var(--muted, var(--muted-2)); }
 
 .bset-window-check {
@@ -21100,6 +21196,33 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 .bset-addwindow:hover:not(:disabled) { color: var(--bset-accent-ink); border-color: var(--cedge-orange-60); }
 .bset-addwindow:disabled { opacity: 0.5; cursor: not-allowed; }
 .bset-addwindow svg { width: 0.9rem; height: 0.9rem; }
+
+.bset-window-fix {
+  margin: 0.6rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--cedge-amber-11);
+  border-radius: 10px;
+  background: rgba(255, 209, 102, 0.06);
+  color: var(--muted, var(--muted-2));
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.bset-window-fix a { color: var(--gold-ink); font-weight: 700; }
+
+.bset-inline-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 10px;
+  background: var(--bset-inner);
+  color: var(--muted, var(--muted-2));
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.bset-inline-tip svg { width: 1rem; height: 1rem; flex: none; margin-top: 0.08rem; color: var(--ink-amber-1); }
 
 .bset-addwindow-form {
   display: flex;
@@ -21249,6 +21372,21 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   border-left: 2px solid var(--cedge-orange-61);
 }
 
+.bset-rule-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--cedge-green-34);
+  border-radius: 12px;
+  background: rgba(52, 199, 123, 0.06);
+}
+.bset-rule-summary > svg { width: 1.05rem; height: 1.05rem; flex: none; margin-top: 0.08rem; color: var(--ink-green-7); }
+.bset-rule-summary > div { min-width: 0; }
+.bset-rule-summary strong { font-size: 0.84rem; color: var(--ink-green-2); }
+.bset-rule-summary p { margin: 0.2rem 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--muted, var(--muted-2)); }
+
 /* --- time off --- */
 .bset-timeoff-actions {
   display: flex;
@@ -21378,6 +21516,27 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 /* --- right rail --- */
 .bset-rail { display: grid; gap: 1rem; min-width: 0; position: sticky; top: 1rem; }
 
+.bset-preview-toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 14px;
+  background: var(--bset-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bset-preview-toggle > span { display: grid; gap: 0.08rem; }
+.bset-preview-toggle small { color: var(--muted, var(--muted-2)); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.bset-preview-toggle strong { font-size: 0.9rem; }
+.bset-preview-toggle > svg { width: 1rem; height: 1rem; transition: transform 0.18s ease; }
+.bset-preview-toggle > svg.open { transform: rotate(180deg); }
+
 .bset-preview {
   padding: 1.15rem 1.2rem 1.3rem;
   border: 2px solid var(--bset-line-strong);
@@ -21387,6 +21546,10 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-preview h2 { margin: 0; font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em; }
 .bset-preview-sub { margin: 0.2rem 0 1rem; font-size: 0.82rem; color: var(--muted, var(--muted-2)); }
+.bset-preview-context { margin: 0.8rem 0 0; font-size: 0.78rem; line-height: 1.45; color: var(--muted, var(--muted-2)); }
+.bset-preview-link { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.65rem; color: var(--bset-accent-ink); font-size: 0.82rem; font-weight: 700; text-decoration: none; }
+.bset-preview-link:hover { text-decoration: underline; }
+.bset-preview-link svg { width: 0.85rem; height: 0.85rem; }
 
 .bset-phone {
   display: grid;
@@ -21475,6 +21638,8 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   background: var(--bset-card);
 }
 
+.bset-section-body > .bset-recurring { margin-top: 1rem; }
+
 .bset-tipcard > svg,
 .bset-recurring > svg { width: 1.25rem; height: 1.25rem; flex: none; color: var(--ink-amber-1); margin-top: 0.1rem; }
 .bset-recurring > svg { color: var(--ink-violet-1); }
@@ -21549,9 +21714,12 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 
 @media (max-width: 1080px) {
   .bset-body { grid-template-columns: minmax(0, 1fr); }
-  /* The preview stops being a side-by-side reference once it's stacked, so let
-     it scroll away rather than pin a tall card to the top of a phone screen. */
-  .bset-rail { position: static; }
+  /* Preview becomes a disclosure above the settings instead of a full replica
+     below the longest accordion. */
+  .bset-rail { position: static; order: -1; }
+  .bset-preview-toggle { display: flex; }
+  .bset-preview { display: none; }
+  .bset-preview.mobile-open { display: block; }
 }
 
 @media (max-width: 860px) {
@@ -21561,19 +21729,23 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 @media (max-width: 640px) {
+  .bset-summary { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+  .bset-summary-item { padding: 0.65rem 0.75rem; }
   .bset-daygrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bset-master { gap: 0.9rem; }
   .bset-master-status { padding-left: 0; border-left: 0; border-top: 1px solid var(--bset-line); padding-top: 0.75rem; }
-  .bset-pause { flex: 1 1 100%; justify-content: center; }
   .bset-section-head { padding: 0.9rem 1rem; }
+  .bset-section-badge { display: none; }
   .bset-section-body { padding: 0.25rem 1rem 1.1rem; }
+  .bset-workhours { align-items: flex-start; flex-wrap: wrap; }
+  .bset-workhours a { flex-basis: 100%; padding-left: 2.7rem; }
   .bset-savebar { position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; }
   .bset-savebar > div { flex: 1 1 100%; }
   .bset-savebar > div .btn { flex: 1; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bset-card, .bset-day, .bset-window, .bset-chev, .bset-switch-track, .bset-switch-track > span { transition: none; }
+  .bset-card, .bset-summary-item, .bset-day, .bset-window, .bset-chev, .bset-preview-toggle > svg, .bset-switch-track, .bset-switch-track > span { transition: none; }
 }
 
 /* Applied for ~1.5s by revealRow() when a map pin points at a record, so the

@@ -1,4 +1,4 @@
-import { waitingLabel, type QueueLead } from '@/lib/lead-queue';
+import { isContactablePhone, waitingLabel, type QueueLead } from '@/lib/lead-queue';
 
 /**
  * What to do next, in order — the logic behind the Priority inbox.
@@ -168,8 +168,8 @@ export function rankLeads<T extends PriorityLead>(
 export type LeadAction = { kind: 'text' | 'call' | 'open'; label: string; href: string };
 
 export function primaryAction(lead: PriorityLead, base = '/dashboard'): LeadAction {
-  if (lead.phone && lead.textOnly) return { kind: 'text', label: 'Text', href: `sms:${lead.phone}` };
-  if (lead.phone) return { kind: 'call', label: 'Call', href: `tel:${lead.phone}` };
+  if (isContactablePhone(lead.phone) && lead.textOnly) return { kind: 'text', label: 'Text', href: `sms:${lead.phone}` };
+  if (isContactablePhone(lead.phone)) return { kind: 'call', label: 'Call', href: `tel:${lead.phone}` };
   return { kind: 'open', label: 'Open', href: `${base}/leads/${lead.id}` };
 }
 

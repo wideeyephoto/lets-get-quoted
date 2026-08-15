@@ -78,11 +78,11 @@ export default async function DemoLeadsScreen({ initialLeadId }: { initialLeadId
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{websiteRequests}</span>
-          <span className="stat-ticker-label">Website requests</span>
+          <span className="stat-ticker-label">Website leads · all time</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{openRequests}</span>
-          <span className="stat-ticker-label">Open requests</span>
+          <span className="stat-ticker-label">Open leads</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{averageResponse}</span>

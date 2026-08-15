@@ -278,7 +278,7 @@ function BoardCard({
             aria-controls={declining ? declineId : undefined}
             onClick={() => setDeclining((was) => !was)}
           >
-            Decline
+            Mark lost
           </button>
         ) : null}
         {lead.convertedJob ? (
@@ -288,7 +288,7 @@ function BoardCard({
 
       {declining ? (
         <div id={declineId} className={styles.decline}>
-          <p>Why decline?</p>
+          <p>Why mark this lead lost?</p>
           <div className={styles.declineReasons}>
             {DECLINE_REASONS.map((reason) => (
               <button

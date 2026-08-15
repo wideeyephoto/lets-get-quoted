@@ -131,7 +131,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 0.9rem;
   border: 0;
   border-radius: 999px;
@@ -472,6 +472,19 @@
 /* --- phones --------------------------------------------------------------- */
 
 @media (max-width: 920px) {
+  /* Leads has five operational groups. Keep them on one swipeable row so the
+     first lead begins near the top instead of under wrapped filter rows. The
+     data attribute keeps Jobs and Clients on their existing layouts. */
+  .stageBar[data-compact='true'] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  .stageBar[data-compact='true']::-webkit-scrollbar { display: none; }
+  .stageBar[data-compact='true'] > button { flex: 0 0 auto; scroll-snap-align: start; }
+
   .body { grid-template-columns: minmax(0, 1fr); }
 
   /* Default is the list. The detail is a screen you go TO, not a slab under a
