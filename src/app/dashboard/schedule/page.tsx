@@ -612,7 +612,7 @@ export default async function SchedulePage({
     return Number.isFinite(hours) && hours > 0;
   }).length;
   const unmeasuredNext30Days = scheduledNext30Days - measuredNext30Days;
-  const loadUnmeasured = measuredNext30Days === 0 && unmeasuredNext30Days > 0;
+  const loadUnmeasured = load.percent !== null && measuredNext30Days === 0 && unmeasuredNext30Days > 0;
   const loadFigure = load.percent === null || loadUnmeasured ? '—' : `${load.percent}%`;
 
   /* SCATTER IS 15 STRAIGHT-LINE MILES, and that number is a flag rather than a
@@ -680,7 +680,26 @@ export default async function SchedulePage({
   // Read server-side so the calendar renders in the right shape on the first
   // paint — and, more to the point, so stepping a month doesn't reset it.
   const calendarView = normalizeCalendarView(cookies().get(CALENDAR_VIEW_COOKIE)?.value);
-  const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
+  /* Map and list are two presentations of the SAME month now. The map used to
+     show every active lead and job at any date while the adjacent list showed
+     only scheduled work in the selected month. A tab switch silently changed
+     the population as well as the presentation. Filter the pins to the job ids
+     already represented by this month's calendar occurrences; jobs without a
+     geocoded address remain in the list and the map label discloses that gap. */
+  const monthLocationJobs = Array.from(
+    calendarJobs
+      .filter((job) =>
+        job.scheduled_for.startsWith(monthPrefix) && job.status !== 'complete' && job.status !== 'archived')
+      /* A multi-day job has one calendar occurrence per day but one location.
+         Keep its first occurrence in the month so the list and map count jobs,
+         not painted day cells. */
+      .reduce((byId, job) => byId.has(job.id) ? byId : byId.set(job.id, job), new Map<string, (typeof calendarJobs)[number]>()),
+  ).map(([, job]) => job);
+  const monthScheduledJobIds = new Set(monthLocationJobs.map((job) => job.id));
+  const mapPins = mapView !== 'off'
+    ? (await getMapPins(supabase, accountId)).filter((pin) =>
+        pin.kind === 'scheduled' && pin.id.startsWith('job-') && monthScheduledJobIds.has(pin.id.slice(4)))
+    : [];
 
   /* A SECOND accounts SELECT USED TO SIT HERE. Eleven booking columns, fetched
      on every load of the calendar, feeding one folded status pill at the very
@@ -773,7 +792,12 @@ export default async function SchedulePage({
                 so the same page printed 11 and 3 for the same question. The bar
                 below owns that number now, and says which is which. */}
             <p className="sched-sum" aria-hidden="true">
-              <span><strong>{loadFigure}</strong> booked</span>
+              {loadUnmeasured ? (
+                <>
+                  <span className="sched-sum-alert"><strong>Capacity unavailable</strong></span>
+                  <span><strong>{unmeasuredNext30Days}</strong> need duration</span>
+                </>
+              ) : <span><strong>{loadFigure}</strong> booked</span>}
               <span><strong>{scheduledNext30Days}</strong> jobs · 30d</span>
               {unassignedThisWeek > 0 ? <span><strong>{unassignedThisWeek}</strong> need crew</span> : null}
             </p>
@@ -799,13 +823,13 @@ export default async function SchedulePage({
                 ratio, then the hours it is made of, then the work it could not
                 measure. */}
             <Link
-              className={`sched-stat${load.percent !== null && load.percent > 100 ? ' needs' : ''}`}
-              href="/dashboard/schedule/settings"
+              className={`sched-stat${loadUnmeasured || (load.percent !== null && load.percent > 100) ? ' needs' : ''}${loadUnmeasured ? ' sched-stat-data' : ''}`}
+              href={loadUnmeasured ? '/dashboard/jobs' : '/dashboard/schedule/settings'}
               aria-label={
                 load.percent === null
                   ? `No working days in the next 30 days, so there is no capacity to book against. ${scheduledNext30Days} jobs are scheduled.`
                   : loadUnmeasured
-                    ? `No measurable hours are booked over the next 30 days: ${scheduledNext30Days} scheduled jobs, ${unmeasuredNext30Days} of them with no duration set, against ${load.capacityHours} hours of capacity. Opens schedule settings, where the working week and the hours in a day are set.`
+                    ? `Capacity is unavailable for the next 30 days because all ${unmeasuredNext30Days} scheduled ${unmeasuredNext30Days === 1 ? 'job needs' : 'jobs need'} a duration. Opens the jobs list to add durations.`
                     : `${load.percent} percent booked over the next 30 days: ${load.bookedHours} of ${load.capacityHours} hours across ${load.workingDays} working days, holding ${scheduledNext30Days} jobs.${unmeasuredNext30Days > 0 ? ` ${unmeasuredNext30Days} of them have no duration set and are not in that total.` : ''} Opens schedule settings, where the working week and the hours in a day are set.`
               }
               /* Only the part that is NOT on the card: where the denominator
@@ -818,21 +842,31 @@ export default async function SchedulePage({
               }
             >
               <StatIcon shape="gauge" />
-              <strong>{loadFigure}</strong>
-              <small>Booked · {scheduledNext30Days} jobs · 30d</small>
-              <small className="sched-stat-hours">{load.bookedHours} / {load.capacityHours} hrs</small>
-              {unmeasuredNext30Days > 0 ? (
-                <small className="sched-stat-unknown">
-                  {unmeasuredNext30Days} {unmeasuredNext30Days === 1 ? 'job has' : 'jobs have'} no duration set
-                </small>
-              ) : null}
+              {loadUnmeasured ? (
+                <>
+                  <strong className="sched-stat-message">Capacity unavailable</strong>
+                  <small>Add durations to {unmeasuredNext30Days} scheduled {unmeasuredNext30Days === 1 ? 'job' : 'jobs'}</small>
+                  <small className="sched-stat-action">Open jobs →</small>
+                </>
+              ) : (
+                <>
+                  <strong>{loadFigure}</strong>
+                  <small>Booked · {scheduledNext30Days} jobs · 30d</small>
+                  <small className="sched-stat-hours">{load.bookedHours} / {load.capacityHours} hrs</small>
+                  {unmeasuredNext30Days > 0 ? (
+                    <small className="sched-stat-unknown">
+                      {unmeasuredNext30Days} {unmeasuredNext30Days === 1 ? 'job has' : 'jobs have'} no duration set
+                    </small>
+                  ) : null}
+                </>
+              )}
             </Link>
 
             {/* WORK THIS WEEK WITH NOBODY ON IT. Amber only when there is some:
                 the card that is asking for something should not look like the
                 ones that are not. */}
-            <Link
-              className={`sched-stat${unassignedThisWeek > 0 ? ' needs' : ''}`}
+            {unassignedThisWeek > 0 ? <Link
+              className="sched-stat needs"
               href="/dashboard/crew"
               aria-label={
                 unassignedThisWeek > 0
@@ -843,13 +877,13 @@ export default async function SchedulePage({
               <StatIcon shape="people" />
               <strong>{unassignedThisWeek}</strong>
               <small>Need crew · 7d</small>
-            </Link>
+            </Link> : null}
 
             {/* DAYS WHOSE STOPS ARE A LONG WAY APART. Straight-line, said out
                 loud, and pointed at the planner that can do better than a
                 straight line. */}
-            <Link
-              className={`sched-stat${scatter.days > 0 ? ' needs' : ''}`}
+            {scatter.days > 0 ? <Link
+              className="sched-stat needs"
               href="/dashboard/schedule/plan"
               aria-label={
                 scatter.days > 0
@@ -868,7 +902,7 @@ export default async function SchedulePage({
               <StatIcon shape="route" />
               <strong>{scatter.days}</strong>
               <small>Spread out · 30d</small>
-            </Link>
+            </Link> : null}
             {/* NO WEATHER CARD, AND IT IS THE ONE THING ON THE LIST THAT IS
                 MISSING. A forecast is a network call per load, on a page that
                 just gave one up — and the weather panel it would duplicate is on
@@ -882,7 +916,7 @@ export default async function SchedulePage({
             button, the attention banner, the summary-line counter and the
             fourth stat card — four controls, two different numbers, one
             destination. It renders at every width: the banner used to appear
-            only below 1280 on the theory that the desktop rail said it already,
+            only below 1024 on the theory that the desktop rail said it already,
             which left the desktop with a button that named a count and no
             statement of what the count was made of. */}
         <ScheduleQueueBar
@@ -992,7 +1026,7 @@ export default async function SchedulePage({
           page ran ~2,700px on a desktop. They are now their own route; see
           /dashboard/schedule/settings. */}
       <section className="sched-settings" id="schedule-map" aria-labelledby="schedule-map-h">
-        <h2 className="sched-settings-h" id="schedule-map-h">Where the work is</h2>
+        <h2 className="sched-settings-h" id="schedule-map-h">Jobs by location</h2>
         <ScheduleMap
           pins={mapPins}
           mapView={mapView}
@@ -1002,21 +1036,11 @@ export default async function SchedulePage({
              or scan one for the two jobs in a town, and a screen reader cannot
              use it at all.
 
-             FILTERED TO THE MONTH ON SCREEN. calendarJobs holds every scheduled
-             occurrence there is, not a month's worth — the grid does the
-             narrowing. Passing it whole put 124 rows under a heading reading
-             "August 2026", opening on three jobs from April, June and October.
-             The map is deliberately NOT narrowed this way; both tab labels say
-             which span they hold. */
-          jobs={calendarJobs
-            .filter((job) => job.scheduled_for.startsWith(monthPrefix))
-            /* COMPLETED WORK STAYS IN THE ROWS. getMapPins drops it from the
-               pins — a finished job is not "where the work is" — and matching
-               that here would empty the List tab for every past month, which is
-               the one thing a past month is worth opening for. So the two halves
-               differ by status as well as by span, and each tab label now says
-               so; the disagreement was never that they differed, it was that
-               nothing on screen admitted it. */
+             FILTERED TO THE SAME ACTIVE JOBS IN THE MONTH ON SCREEN. Completed
+             and archived work stays in the calendar, where it belongs in the
+             historical record, but this location view is for work still being
+             run. A missing geocode is now the only reason the counts differ. */
+          jobs={monthLocationJobs
             .map((job) => ({
               id: job.id,
               client_name: job.client_name,
@@ -1026,6 +1050,8 @@ export default async function SchedulePage({
               value_label: job.value_label,
               hours_label: job.hours_label,
               crew_initials: job.crew_initials,
+              scope_label: job.scope_label ?? null,
+              status_label: job.badge_label,
             }))}
           monthLabel={monthLabel}
         />

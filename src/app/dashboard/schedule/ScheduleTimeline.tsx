@@ -467,25 +467,39 @@ export default function ScheduleTimeline({
           <div className="sched-tl-anytime-label" aria-hidden="true">Any time</div>
           {columns.map((column) => (
             <div className="sched-tl-anytime-col" key={column.dateKey} data-date-key={column.dateKey}>
-              {column.untimed.map((job) => (
-                <button
-                  type="button"
-                  key={job.occurrence_key}
-                  className={`sched-tl-chip status-${job.status} ${statusColor(job.status)}`}
-                  onPointerDown={(event) => beginDrag(
-                    { jobId: job.id, jobName: job.client_name, time: '', sourceDateKey: job.scheduled_for },
-                    event,
-                    () => onOpenJob(job.occurrence_key),
-                  )}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpenJob(job.occurrence_key); }
-                  }}
-                  title={`${job.client_name} — no start time set`}
-                >
-                  <span className="sched-tl-chip-name">{job.short_name}</span>
-                  <span className="sched-tl-chip-note">No time</span>
-                </button>
-              ))}
+              {column.untimed.map((job) => {
+                const assigned = (assignments[job.id] ?? [])
+                  .map((id) => crew.find((member) => member.id === id)?.name)
+                  .filter((name): name is string => Boolean(name));
+                const facts = [
+                  job.city_label,
+                  job.hours_label ? `${job.hours_label} est.` : 'Duration needed',
+                  assigned.length > 0 ? assigned.join(', ') : 'No crew',
+                ].filter((fact): fact is string => Boolean(fact));
+                return (
+                  <button
+                    type="button"
+                    key={job.occurrence_key}
+                    className={`sched-tl-chip sched-tl-chip-untimed status-${job.status} ${statusColor(job.status)}`}
+                    onPointerDown={(event) => beginDrag(
+                      { jobId: job.id, jobName: job.client_name, time: '', sourceDateKey: job.scheduled_for },
+                      event,
+                      () => onOpenJob(job.occurrence_key),
+                    )}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpenJob(job.occurrence_key); }
+                    }}
+                    title={`${job.client_name} — ${job.scope_label ?? 'scope not set'} — ${facts.join(' — ')} — no start time set`}
+                  >
+                    <span className="sched-tl-chip-lines">
+                      <strong className="sched-tl-chip-name">{job.short_name}</strong>
+                      {job.scope_label ? <span className="sched-tl-chip-scope">{job.scope_label}</span> : null}
+                      <span className="sched-tl-chip-meta">{facts.join(' · ')}</span>
+                    </span>
+                    <span className="sched-tl-chip-note">No time</span>
+                  </button>
+                );
+              })}
               {column.planned.map((visit) => (
                 <Link
                   key={`${visit.planId}-${visit.dateKey}`}

@@ -54,7 +54,10 @@ describe('the map is opened rather than dismissed', () => {
 
   /** Nor fetch the pins for a map nobody asked for. */
   it('does not fetch pins for it either', () => {
-    expect(PAGE).toContain("const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];");
+    const assignment = PAGE.slice(PAGE.indexOf('const mapPins ='), PAGE.indexOf('return (', PAGE.indexOf('const mapPins =')));
+    expect(assignment).toContain("const mapPins = mapView !== 'off'");
+    expect(assignment).toContain('await getMapPins(supabase, accountId)');
+    expect(assignment).toContain(': [];');
   });
 
   /** "Show map" alone does not say whether there is anything on it, and opening
@@ -105,7 +108,9 @@ describe('the same month, as rows', () => {
    * jobs from April, June and October.
    */
   it('shows the month it says it is showing', () => {
-    expect(PAGE).toContain('.filter((job) => job.scheduled_for.startsWith(monthPrefix))');
+    expect(PAGE).toContain('job.scheduled_for.startsWith(monthPrefix)');
+    expect(PAGE).toContain('const monthLocationJobs = Array.from(');
+    expect(PAGE).toContain('new Map<string, (typeof calendarJobs)[number]>()');
     expect(MAP).toContain('monthLabel');
   });
 });

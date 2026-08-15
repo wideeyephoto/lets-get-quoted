@@ -203,9 +203,9 @@ describe('the customer bands filter the customer map', () => {
 
 describe('the schedule states which set each tab holds', () => {
   const MAP = read('src/app/dashboard/schedule/ScheduleMap.tsx');
+  const PAGE = read('src/app/dashboard/schedule/page.tsx');
 
-  it('stops calling the pair two readings of the month', () => {
-    // The map is the whole territory; only the list is the month.
+  it('calls both tabs two readings of the selected month', () => {
     expect(MAP).not.toContain('How to read the month');
     expect(MAP).toContain('aria-label="Map or list"');
   });
@@ -213,8 +213,9 @@ describe('the schedule states which set each tab holds', () => {
   it('gives both tabs a count and says what each one counts', () => {
     expect(MAP).toContain('Map <span aria-hidden="true">· {pins.length}</span>');
     expect(MAP).toContain('List <span aria-hidden="true">· {jobs.length}</span>');
-    expect(MAP).toContain('active ${pins.length === 1');
-    expect(MAP).toContain('scheduled ${jobs.length === 1');
+    expect(MAP).toContain('${pins.length} of ${jobs.length} active scheduled');
+    expect(MAP).toContain('mapped in {monthLabel}');
+    expect(MAP).toContain('all in {monthLabel}');
     expect(MAP).toContain('in ${monthLabel}');
   });
 
@@ -226,10 +227,11 @@ describe('the schedule states which set each tab holds', () => {
     expect(MAP).not.toContain('sched-map-scope');
   });
 
-  it('leaves the map itself unnarrowed', () => {
-    // Nobody filtered this map — the month is the calendar's state, not a
-    // control here — and an unfiltered map keeps its full picture. Narrowing it
-    // would also leave two of the three legend filters permanently dead.
+  it('narrows the map to the same scheduled jobs as the list', () => {
+    expect(PAGE).toContain('const monthScheduledJobIds = new Set(');
+    expect(PAGE).toContain("job.status !== 'complete' && job.status !== 'archived'");
+    expect(PAGE).toContain("pin.kind === 'scheduled'");
+    expect(PAGE).toContain('monthScheduledJobIds.has(pin.id.slice(4))');
     expect(MAP).toContain('<PinMap pins={pins}');
     expect(MAP).not.toContain('scopePinsToFilter');
   });

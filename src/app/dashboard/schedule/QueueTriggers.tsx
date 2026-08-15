@@ -87,6 +87,10 @@ export function ScheduleQueueBar({ approved, unapproved, firstUnapprovedId }: Sc
     approved > 0 ? `${approved} ${approved === 1 ? 'job' : 'jobs'} ready to schedule` : null,
     unapproved > 0 ? `${unapproved} awaiting approval` : null,
   ].filter(Boolean);
+  const compactParts = [
+    approved > 0 ? `${approved} ready` : null,
+    unapproved > 0 ? `${unapproved} blocked` : null,
+  ].filter(Boolean);
 
   return (
     <div className="sched-queue-bar" data-tone={approved > 0 ? 'ready' : 'waiting'}>
@@ -98,12 +102,16 @@ export function ScheduleQueueBar({ approved, unapproved, firstUnapprovedId }: Sc
             exists to remove. With two it is the sum of a split, which neither
             half states. */}
         {parts.length > 1 ? <span className="sched-queue-bar-count" aria-hidden="true">{total}</span> : null}
-        <strong>{parts.join(' · ')}</strong>
+        <strong aria-label={parts.join(' · ')}>
+          <span className="sched-queue-bar-copy" aria-hidden="true">{parts.join(' · ')}</span>
+          <span className="sched-queue-bar-copy-mobile" aria-hidden="true">{compactParts.join(' · ')}</span>
+        </strong>
       </p>
       <div className="sched-queue-bar-actions">
         {approved > 0 ? (
           <button type="button" className="btn primary sched-queue-bar-go" onClick={() => openQueue()}>
-            Schedule {approved === 1 ? '1 job' : `${approved} jobs`}
+            <span className="sched-queue-action-copy">Schedule {approved === 1 ? '1 job' : `${approved} jobs`}</span>
+            <span className="sched-queue-action-copy-mobile" aria-hidden="true">Schedule</span>
           </button>
         ) : null}
 
@@ -117,7 +125,8 @@ export function ScheduleQueueBar({ approved, unapproved, firstUnapprovedId }: Sc
               className={`btn ${approved > 0 ? 'secondary' : 'primary'} sched-queue-bar-go`}
               href={`/dashboard/jobs/${firstUnapprovedId}`}
             >
-              Review unapproved job
+              <span className="sched-queue-action-copy">Review unapproved job</span>
+              <span className="sched-queue-action-copy-mobile" aria-hidden="true">Review quote</span>
             </Link>
           ) : (
             <button
@@ -125,7 +134,8 @@ export function ScheduleQueueBar({ approved, unapproved, firstUnapprovedId }: Sc
               className={`btn ${approved > 0 ? 'secondary' : 'primary'} sched-queue-bar-go`}
               onClick={() => openQueue(firstUnapprovedId ?? undefined)}
             >
-              Review {unapproved} unapproved
+              <span className="sched-queue-action-copy">Review {unapproved} unapproved</span>
+              <span className="sched-queue-action-copy-mobile" aria-hidden="true">Review</span>
             </button>
           )
         ) : null}

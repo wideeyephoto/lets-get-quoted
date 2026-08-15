@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 1bc52b1c8326c310
+   source-sha256: e045c1ceb54f7531
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -14567,7 +14567,7 @@ select optgroup {
    worse than one that is simply there. */
 .sched-queue.is-collapsed .sched-queue-panel { display: none; }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .sched-queue-collapse { display: inline-flex; }
 
   /* Reclaim the column. Without this the rail keeps its 300px minimum and
@@ -14611,7 +14611,7 @@ select optgroup {
    one was pinned to the viewport bottom at every width under 1100px, so on a
    tablet and a phone it permanently covered the last row of dates and fought
    the job dialog for stacking order. */
-@media (max-width: 1279.98px) {
+@media (max-width: 1023.98px) {
   .sched-queue {
     display: block;
     position: fixed;
@@ -14745,11 +14745,6 @@ select optgroup {
   overflow-wrap: anywhere;
 }
 .calendar-job-chip-main { font-size: 0.75rem; line-height: 1.25; }
-
-/* --- tablet ---------------------------------------------------------------- */
-
-@media (min-width: 768px) and (max-width: 1279.98px) {
-}
 
 /* --- the chip stops truncating names ---------------------------------------
    .calendar-job-chip has carried `white-space: nowrap` since it was a one-line
