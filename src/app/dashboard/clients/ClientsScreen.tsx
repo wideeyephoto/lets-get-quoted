@@ -5,6 +5,8 @@ import type { DuplicateMember } from './DuplicateGroupForm';
 import type { ClientMapPin } from './ClientsMap';
 import type { ClientsView } from '@/lib/dashboard-views';
 import type { DuplicateGroup } from '@/lib/client-duplicates';
+import pageStyles from './clients-page.module.css';
+import ClientHeaderActions from './ClientHeaderActions';
 
 /**
  * The customer book, given its rows.
@@ -48,20 +50,26 @@ export default function ClientsScreen({
   basePath?: string;
   readOnly?: boolean;
 }) {
+  const clientLabel = `${rows.length} customer${rows.length === 1 ? '' : 's'}`;
+
   return (
-    <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Clients</p>
-          <h1 className="workspace-title">Your customers</h1>
-          <p className="workspace-lead">
-            One profile per customer, with their complete job history in one place, so repeat business is easy to spot.
-          </p>
-          <div className="workspace-inline-row">
-            <span className="status-badge status-in_progress">{rows.length} client{rows.length === 1 ? '' : 's'}</span>
-            {repeatCount > 0 ? <span className="status-badge status-complete">{repeatCount} repeat</span> : null}
+    <main className={`wide-shell workspace-shell ${pageStyles.screen}`}>
+      <section className={`panel ${pageStyles.hero}`} aria-labelledby="clients-title">
+        <div className={pageStyles.heroCopy}>
+          <p className={`eyebrow ${pageStyles.eyebrow}`}>Clients</p>
+          <div className={pageStyles.titleRow}>
+            <h1 id="clients-title" className={pageStyles.title}>Customers</h1>
+            <span className={pageStyles.customerCount}>{clientLabel}</span>
+            {repeatCount > 0 ? <span className={pageStyles.repeatCount}>{repeatCount} repeat</span> : null}
           </div>
+          <p className={pageStyles.lead}>Find a customer, see what is next, and take action without leaving the list.</p>
         </div>
+
+        {readOnly ? null : (
+          <div className={pageStyles.heroActions}>
+            <ClientHeaderActions basePath={basePath} />
+          </div>
+        )}
       </section>
 
       {showExistingFlash ? (
@@ -85,16 +93,16 @@ export default function ClientsScreen({
         dismissError={dismissError}
       />
 
-      <section className="panel workspace-section-card">
+      <section className={`panel workspace-section-card ${pageStyles.workspaceCard}`}>
         {rows.length === 0 ? (
           <p className="empty-state">
-            No clients yet. Add your first customer below, or{' '}
+            No clients yet. Add your first customer above, or{' '}
             <Link href={`${basePath}/clients/import`}>import your existing customer list</Link>. Every job you create adds
             its customer here automatically too.
           </p>
         ) : null}
-        {/* Rendered even with an empty book: the Add button lives in here, and a
-            list you can't add to is the problem this page had. */}
+        {/* Rendered even with an empty book so search, layout preferences and
+            the post-add dialog keep one stable owner. */}
         <ClientsWorkspace
           clients={rows}
           pins={pins}
@@ -106,11 +114,6 @@ export default function ClientsScreen({
         />
       </section>
 
-      {readOnly ? null : (
-        <div className="actions" style={{ marginTop: '1.25rem' }}>
-          <Link href={`${basePath}/clients/import`} className="btn secondary">Import customers</Link>
-        </div>
-      )}
     </main>
   );
 }

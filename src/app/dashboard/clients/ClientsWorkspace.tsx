@@ -13,8 +13,12 @@ import ClientFocusView from './ClientFocusView';
 import ClientSmoothieView from './ClientSmoothieView';
 import type { ClientMapPin } from './ClientsMap';
 import { createClientAction } from './actions';
+import { OPEN_ADD_CLIENT_EVENT } from './ClientHeaderActions';
 
-// The customer list, five ways.
+// The customer list offers two deliberate layouts: the working queue and a
+// comparison table. The legacy renderers remain below so an old saved cookie
+// never produces a blank page; the compact picker gives everyone a direct route
+// back to one of the supported layouts.
 //
 // One dataset, five shapes, because "who are my customers" is several different
 // questions: skim the whole book (List), recognize a face (Cards), compare and
@@ -53,12 +57,8 @@ export type ClientRow = {
 };
 
 const VIEWS: ViewOption<ClientsView>[] = [
-  { id: 'smoothie', label: 'Smoothie', hint: 'The book first, one customer beside it' },
-  { id: 'list', label: 'List', hint: 'The classic stacked list' },
-  { id: 'cards', label: 'Cards', hint: 'Bigger, with initials and totals' },
-  { id: 'table', label: 'Table', hint: 'Sort & compare' },
-  { id: 'focus', label: 'Focus', hint: 'One customer open, list beside it' },
-  { id: 'followup', label: 'Follow up', hint: 'Who has gone quiet' },
+  { id: 'smoothie', label: 'Workspace', hint: 'Customer queue with details' },
+  { id: 'table', label: 'Table', hint: 'Compare customers in rows' },
 ];
 
 type SortKey = 'name' | 'jobs' | 'total' | 'last';
@@ -124,6 +124,12 @@ export default function ClientsWorkspace({
     listRef.current?.scrollTo({ top: 0 });
   }, [query, view]);
 
+  useEffect(() => {
+    const open = () => setAdding(true);
+    window.addEventListener(OPEN_ADD_CLIENT_EVENT, open);
+    return () => window.removeEventListener(OPEN_ADD_CLIENT_EVENT, open);
+  }, []);
+
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const terms = needle ? needle.split(/\s+/) : [];
@@ -161,7 +167,7 @@ export default function ClientsWorkspace({
     setSort((current) => ({ key, dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc' }));
   }
 
-  const viewGear = <ViewGear views={VIEWS} activeView={view} onPickView={pickView} label="View" defaults={{ view: DEFAULT_CLIENTS_VIEW }} />;
+  const viewGear = <ViewGear views={VIEWS} activeView={view} onPickView={pickView} label="Layout" defaults={{ view: DEFAULT_CLIENTS_VIEW }} />;
 
   const gear = (
     <div className="clients-toolbar">
@@ -184,14 +190,6 @@ export default function ClientsWorkspace({
         <input type="checkbox" checked={repeatOnly} onChange={(event) => setRepeatOnly(event.currentTarget.checked)} />
         <span>Repeat only</span>
       </label>
-      {/* Withheld in the demo rather than disabled: the dialog saves through a
-          server action a logged-out visitor cannot call, so the button would
-          open a form that fails on submit. */}
-      {readOnly ? null : (
-        <button type="button" className="btn primary" onClick={() => setAdding(true)}>
-          + Add new client
-        </button>
-      )}
       {viewGear}
     </div>
   );
@@ -206,10 +204,8 @@ export default function ClientsWorkspace({
     ) : null;
 
   if (view === 'smoothie') {
-    // Smoothie owns its own search, its own filters, its own Add button and its
-    // own map pane, so the shared toolbar above is not drawn — rendering it as
-    // well would put two search boxes and two Add buttons on the page. Only the
-    // picker travels across, so there is still a way back out of the view.
+    // Workspace owns its own search, filters and map pane, so the shared toolbar
+    // above is not drawn. Only the layout picker travels across.
     return (
       <>
         <ClientSmoothieView
@@ -218,8 +214,9 @@ export default function ClientsWorkspace({
           todayKey={todayKey}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          onAdd={() => setAdding(true)}
+          basePath={basePath}
           gear={viewGear}
+          readOnly={readOnly}
         />
         {adding ? <AddClientDialog onClose={() => setAdding(false)} /> : null}
       </>
