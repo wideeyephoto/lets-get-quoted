@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { LeadDetailDto } from '@/lib/lead-detail';
-import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import type { MapPin } from '@/components/pin-map';
 import PinMap from '@/components/pin-map';
 import { pinRecordId } from '@/lib/reveal-row';
-import { mapEmptyNote, scopePinsToFilter } from '@/lib/map-pin-scope';
+import { scopePinsToFilter } from '@/lib/map-pin-scope';
+import { priorityLabel, priorityTone } from '@/lib/lead-priority';
 import { nextTabIndex } from '@/lib/tab-strip';
 import RecordPhotos from '../RecordPhotos';
 import {
@@ -89,7 +89,9 @@ export default function LeadSmoothieView({
 }) {
   const base = basePath;
 
-  const [stage, setStage] = useState<StageFilter>('open');
+  const initialLead = initialLeadId ? leads.find((lead) => lead.id === initialLeadId) : null;
+  const initialStage: StageFilter = initialLead && (initialLead.status === 'won' || initialLead.status === 'lost') ? 'closed' : 'open';
+  const [stage, setStage] = useState<StageFilter>(initialStage);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QueueSort>('priority');
   const [pane, setPane] = useState<'leads' | 'map'>('leads');
@@ -114,25 +116,12 @@ export default function LeadSmoothieView({
     return sortQueue(filtered, sort);
   }, [leads, stage, query, sort]);
 
-  /**
-   * THE STAGE CHIPS DID NOT REACH THE MAP.
-   *
-   * They filter the queue and nothing else, so pressing "Lost 1" left one row in
-   * the list beside a map still drawing seven active leads — and the pane switch
-   * beside it still counting them. Two panels answering different questions
-   * under one toolbar, both printing a number.
-   *
-   * A filter filters the page. The rule and the reasoning are in
-   * lib/map-pin-scope, shared with the jobs workspace and the month's map on the
-   * schedule. Search counts as a filter for the same reason the chips do:
-   * typing a town narrows the list, and a map that ignores it is the same
-   * contradiction with a different control on top of it.
-   */
-  const queueFiltered = stage !== 'open' || query.trim() !== '';
+  // This is the geographic version of the queue, so it always receives the
+  // currently shown lead IDs and never the jobs carried by the shared query.
   const shownLeadIds = useMemo(() => new Set(shown.map((lead) => lead.id)), [shown]);
   const scopedPins = useMemo(
-    () => scopePinsToFilter(mapPins, 'lead', shownLeadIds, queueFiltered),
-    [mapPins, shownLeadIds, queueFiltered],
+    () => scopePinsToFilter(mapPins, 'lead', shownLeadIds, true),
+    [mapPins, shownLeadIds],
   );
 
   // Opens on the head of the QUEUE, not on leads[0]. The list arrives newest
@@ -143,6 +132,14 @@ export default function LeadSmoothieView({
     (initialLeadId && leads.some((lead) => lead.id === initialLeadId) ? initialLeadId : shown[0]?.id) ?? null,
   );
   const selected = useMemo(() => leads.find((lead) => lead.id === selectedId) ?? null, [leads, selectedId]);
+
+  useEffect(() => {
+    const firstVisibleId = shown[0]?.id ?? null;
+    if (selectedId !== null && shown.some((lead) => lead.id === selectedId)) return;
+    setSelectedId(firstVisibleId);
+    setTab('overview');
+    if (firstVisibleId === null) setOnDetailScreen(false);
+  }, [shown, selectedId]);
 
   // How much of the queue is drawn. The whole thing was, which at a hundred
   // leads is a column several times the height of the pane beside it.
@@ -157,12 +154,9 @@ export default function LeadSmoothieView({
 
   const { detail, loading, error, armPrefetch, cancelPrefetch } = useLeadDetail({ selectedId, leads, details });
 
-  // Only the opportunities: leads and quotes out. A scheduled job is work
-  // already won, and on a busy territory it buries the two kinds you came here
-  // to act on. Still one legend click away — see PinMap's initialHidden.
-  const openPinCount = useMemo(() => scopedPins.filter((pin) => pin.kind !== 'scheduled').length, [scopedPins]);
+  const openPinCount = scopedPins.length;
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
-  const mapCount = visiblePins ?? openPinCount;
+  const mapCount = pane === 'map' ? (visiblePins ?? openPinCount) : openPinCount;
 
   useEffect(() => {
     onSelect?.(selectedId);
@@ -273,7 +267,7 @@ export default function LeadSmoothieView({
             className={styles.search}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search customer, project or town"
+            placeholder="Search leads"
           />
         </div>
 
@@ -304,7 +298,7 @@ export default function LeadSmoothieView({
             type="button"
             className={styles.paneBtn}
             aria-pressed={pane === 'map'}
-            aria-label={`Map, ${mapCount} active mapped ${mapCount === 1 ? 'location' : 'locations'}`}
+            aria-label={`Map, ${mapCount} visible lead ${mapCount === 1 ? 'location' : 'locations'}`}
             onClick={() => setPane('map')}
           >
             Map <span className={styles.paneCount}>{mapCount}</span>
@@ -374,7 +368,7 @@ export default function LeadSmoothieView({
                       onMouseEnter={() => armPrefetch(lead.id)}
                       onMouseLeave={cancelPrefetch}
                     >
-                      <span className={`${leadStyles.heatDot} ${styles.rowDot}`} data-score={lead.score} aria-hidden="true" />
+                      <span className={`${leadStyles.heatDot} ${styles.rowDot}`} data-score={priorityTone(lead)} aria-hidden="true" />
                       <span className={styles.rowMain}>
                         <span className={styles.rowTop}>
                           <strong className={styles.rowName}>
@@ -382,7 +376,7 @@ export default function LeadSmoothieView({
                             {lead.city ? <span className={styles.rowCity}> ({lead.city})</span> : null}
                           </strong>
                           {/* Heat as a word, not only a coloured dot. */}
-                          <span className={styles.rowHeat} data-score={lead.score}>{leadScoreLabel(lead.score)}</span>
+                          <span className={styles.rowHeat} data-score={priorityTone(lead)}>{priorityLabel(lead)}</span>
                         </span>
                         <span className={styles.rowDetail}>{lead.detail}</span>
                         <span className={styles.rowMeta}>
@@ -392,6 +386,7 @@ export default function LeadSmoothieView({
                               sat in the queue reading "12m waiting" beside its
                               own Won badge. */}
                           {lead.waitingShort ? <span className={styles.rowWait}>{lead.waitingShort}</span> : null}
+                          {lead.autoCloseLabel ? <span className={leadStyles.autoCloseWarning}>{lead.autoCloseLabel}</span> : null}
                           {lead.textOnly ? <span className={styles.rowPref}>Text only</span> : null}
                         </span>
                       </span>
@@ -445,26 +440,21 @@ export default function LeadSmoothieView({
           {pane === 'map' ? (
             <div className={styles.mapPane}>
               <div className={styles.mapHead}>
-                <h2 className={styles.paneTitle}>Where the work is</h2>
-                {/* The standing note describes the UNFILTERED map, and stopped
-                    being true the moment the map started obeying the chips. */}
-                <p className={styles.mapNote}>
-                  {queueFiltered
-                    ? 'The leads matching your filter. Clear it to see every active lead and quote out.'
-                    : 'Open leads and quotes out. Scheduled jobs are switched off — turn them on in the legend.'}
-                </p>
+                <h2 className={styles.paneTitle}>Where the leads are</h2>
+                <p className={styles.mapNote}>Only leads visible in this queue with a mapped address.</p>
               </div>
               <PinMap
                 pins={scopedPins}
                 theme={mapTheme}
-                initialHidden={['scheduled']}
-                emptyNote={mapEmptyNote('lead', queueFiltered)}
+                emptyNote={shown.length === 0
+                  ? 'No leads match these filters.'
+                  : 'None of these leads has a mapped address yet. Add a street address to place one on the map.'}
                 spreadOverlap
                 onVisibleCountChange={setVisiblePins}
                 focusPinId={selectedId ? `lead-${selectedId}` : null}
                 onPinClick={(pin) => {
                   const id = pinRecordId(pin.id, 'lead');
-                  if (!id) return; // job pins belong to the jobs page
+                  if (!id) return;
                   if (!leads.some((lead) => lead.id === id)) return; // filtered out
                   select(id);
                   setMarkerLead(id);
@@ -515,15 +505,18 @@ export default function LeadSmoothieView({
 
                 {/* 2 — heat, stage, contact preference */}
                 <div className={styles.detailChips}>
-                  {selected.hasTriage ? (
-                    <span className={leadStyles.scoreChip} data-score={selected.score} title={HEAT_HELP[selected.score]}>
-                      {leadScoreLabel(selected.score)}
-                    </span>
-                  ) : null}
+                  <span
+                    className={leadStyles.scoreChip}
+                    data-score={priorityTone(selected)}
+                    title={selected.hasTriage ? HEAT_HELP[selected.score] : 'No Smart Intake score yet.'}
+                  >
+                    {priorityLabel(selected)}
+                  </span>
                   <span className={styles.detailStage} data-stage={selected.status}>
                     {queueStageLabel(selected.status)}
                   </span>
                   {selected.textOnly ? <span className={leadStyles.textOnlyChip}>💬 Text only</span> : null}
+                  {selected.autoCloseLabel ? <span className={leadStyles.autoCloseWarning}>{selected.autoCloseLabel}</span> : null}
                   {selected.flags.slice(0, 3).map((flag) => (
                     <span className={leadStyles.flagChip} key={flag.key}>{flag.label}</span>
                   ))}
@@ -572,11 +565,19 @@ export default function LeadSmoothieView({
                   {selected.email && plan.primary === 'email' ? (
                     <a className="btn primary" href={`mailto:${selected.email}`}>✉️ Email customer</a>
                   ) : null}
+                  {plan.primary === 'none' ? (
+                    <Link
+                      className="btn primary"
+                      href={`${base}/leads/${selected.id}?edit=client#lead-edit-modal`}
+                    >
+                      Add contact details
+                    </Link>
+                  ) : null}
                   <Link
-                    className={`btn ${plan.primary === 'none' ? 'primary' : 'secondary'}`}
+                    className="btn secondary"
                     href={`${base}/leads/${selected.id}#lead-estimate`}
                   >
-                    Send quote
+                    {plan.primary === 'none' ? 'Create quote' : 'Send quote'}
                   </Link>
                   {selectedHasPhone && plan.primary !== 'call' ? (
                     <a className={styles.callQuiet} href={`tel:${selected.phone}`}>

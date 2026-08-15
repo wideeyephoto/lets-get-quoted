@@ -330,11 +330,17 @@ export function leadOverdueLabel(lead: Pick<Lead, 'status' | 'created_at'>, now 
 }
 
 export function getRequestResponseMs(lead: Lead): number | null {
-  if (lead.status === 'new') return null;
   const createdAt = new Date(lead.created_at).getTime();
-  const updatedAt = new Date(lead.updated_at).getTime();
-  if (!Number.isFinite(createdAt) || !Number.isFinite(updatedAt) || updatedAt <= createdAt) return null;
-  return updatedAt - createdAt;
+  if (!Number.isFinite(createdAt)) return null;
+
+  // updated_at also moves for score edits, photos and other bookkeeping. A
+  // response metric must come from an actual logged contact, or say there was
+  // no response rather than crediting an unrelated edit.
+  const firstContactAt = (getLeadTriage(lead).contactLog ?? [])
+    .map((entry) => new Date(entry.at).getTime())
+    .filter((at) => Number.isFinite(at) && at > createdAt)
+    .sort((a, b) => a - b)[0];
+  return firstContactAt === undefined ? null : firstContactAt - createdAt;
 }
 
 export function formatDuration(ms: number | null): string {

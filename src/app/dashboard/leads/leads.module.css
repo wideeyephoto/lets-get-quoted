@@ -539,9 +539,11 @@
 .scoreChip { display: inline-flex; align-items: center; gap: .25rem; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 800; letter-spacing: .02em; border: 1px solid var(--edge-t16); color: var(--muted); }
 .scoreChip[data-score='hot'] { background: rgba(255,122,33,.18); border-color: var(--cedge-orange-25); color: var(--accent-ink); }
 .scoreChip[data-score='low'] { background: rgba(var(--tint), .05); color: var(--ink-mod-grey-17); }
+.scoreChip[data-score='unscored'] { background: rgba(var(--tint), .04); border-color: var(--edge-t12); color: var(--muted-2); }
 .flagChip { display: inline-flex; align-items: center; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(255,196,80,.12); border: 1px solid var(--cedge-orange-75); color: var(--warn); }
 .verifiedChip { display: inline-flex; align-items: center; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(72,199,142,.12); border: 1px solid var(--cedge-green-49); color: var(--good); }
 .textOnlyChip { display: inline-flex; align-items: center; gap: .25rem; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(94,158,255,.12); border: 1px solid var(--cedge-sky-21); color: var(--info); }
+.autoCloseWarning { display: inline-flex; align-items: center; width: fit-content; padding: .16rem .48rem; border-radius: 999px; border: 1px solid rgba(245, 158, 11, .38); background: rgba(245, 158, 11, .1); color: var(--warn); font-size: .68rem; font-weight: 750; white-space: nowrap; }
 
 .triageBox { display: grid; gap: .45rem; margin-top: .7rem; padding: .7rem .8rem; border: 1px solid var(--edge-t10); border-radius: 10px; background: rgba(var(--tint), .03); }
 .triageRow { display: flex; flex-wrap: wrap; gap: .45rem; }
@@ -607,6 +609,7 @@
 .heatDot[data-score='hot'] { background: #ff8a3d; box-shadow: 0 0 8px rgba(255,122,33,.8); }
 .heatDot[data-score='warm'] { background: #ffd166; }
 .heatDot[data-score='low'] { background: #5f6c7d; }
+.heatDot[data-score='unscored'] { background: #93a1b3; box-shadow: none; }
 
 /* --- Priority inbox --- */
 .inbox { display: flex; flex-direction: column; gap: .45rem; }
