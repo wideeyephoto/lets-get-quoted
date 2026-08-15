@@ -20,6 +20,10 @@
 
 .pageHeadActions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
+/* Rows respond to the room the sidebar leaves them, not to the browser window.
+   A 1150px app window can still leave this panel only about 775px wide. */
+.crewPanel { container-type: inline-size; }
+
 /* --- tabs --- */
 
 .tabs {
@@ -67,6 +71,56 @@
   margin-bottom: 0.9rem;
 }
 
+.toolbarTop { display: grid; gap: 0.5rem; }
+.mobileTools { display: none; }
+
+.setupBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--cedge-amber-55);
+  border-radius: 13px;
+  background: rgba(255, 209, 102, 0.07);
+}
+.setupBanner > div { display: grid; gap: 0.15rem; min-width: 0; }
+.setupBanner strong { font-size: 0.9rem; color: var(--warn); }
+.setupBanner span { font-size: 0.76rem; color: var(--muted); }
+.setupBanner > button { flex: none; }
+
+.rosterSummary {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.rosterSummary button {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.32rem;
+  min-height: 2.35rem;
+  padding: 0.38rem 0.65rem;
+  border: 1px solid var(--edge-g24);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.035);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.rosterSummary button:hover, .rosterSummary button[aria-pressed='true'] {
+  border-color: var(--cedge-orange-64);
+  background: rgba(255, 122, 41, 0.11);
+  color: var(--text);
+}
+.rosterSummary button:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 1px; }
+.rosterSummary button:disabled { opacity: 0.45; cursor: default; }
+.rosterSummary strong { font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.rosterSummary span { font-size: 0.76rem; font-weight: 650; }
+
 .search {
   display: flex;
   align-items: center;
@@ -89,6 +143,29 @@
 }
 
 .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; }
+.filtersToggle {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--edge-g26);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.mobileSort select {
+  min-height: 2.5rem;
+  max-width: 9.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--edge-g26);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.mobileSort option { background: var(--bg-3); color: var(--text); }
 
 .filter { display: grid; gap: 0.2rem; min-width: 0; }
 .filter > span {
@@ -242,6 +319,7 @@
 }
 
 .rowActions { display: flex; align-items: center; gap: 0.3rem; }
+.rowActions form { display: contents; }
 
 .rowBtn {
   padding: 0.34rem 0.6rem;
@@ -258,6 +336,12 @@
 }
 .rowBtn:hover { background: rgba(var(--tint), 0.09); color: var(--text); }
 .rowBtn:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 1px; }
+.rowBtnPrimary {
+  border-color: var(--cedge-orange-64);
+  background: rgba(255, 122, 41, 0.13);
+  color: var(--accent-ink);
+}
+.rowBtnPrimary:hover { background: rgba(255, 122, 41, 0.2); color: var(--text); }
 
 .menuWrap { position: relative; }
 
@@ -879,8 +963,6 @@
 }
 .groupOn { background: linear-gradient(135deg, #ff5a1f, #ff8a3d); color: #fff; }
 
-.rosterStats { margin-top: 0 !important; }
-
 /* --- drawer --- */
 
 .drawerBackdrop { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: flex-end; }
@@ -956,7 +1038,48 @@
   .rowOpen { grid-template-columns: minmax(0, 1fr) max-content; row-gap: 0.4rem; }
   .rowContact, .rowJobs { grid-column: 1 / -1; }
   .row { grid-template-columns: minmax(0, 1fr); }
-  .rowActions { justify-content: flex-end; }
+  .rowActions { justify-content: flex-end; flex-wrap: wrap; }
+}
+
+/* The sidebar can make the roster narrow while the viewport is still wider
+   than the media query above. This is the rule that prevents the period total
+   from occupying the same pixels as the row actions in that middle state. */
+@container (max-width: 800px) {
+  .rowHead { display: none; }
+  .rowOpen { grid-template-columns: minmax(0, 1fr) max-content; row-gap: 0.4rem; }
+  .rowContact, .rowJobs { grid-column: 1 / -1; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .rowActions { justify-content: flex-end; flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    overflow: visible;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .tab {
+    display: grid;
+    place-items: center;
+    min-height: 2.75rem;
+    padding: 0.45rem 0.3rem;
+    border: 1px solid var(--edge-g28);
+    border-radius: 10px;
+    text-align: center;
+    white-space: normal;
+  }
+  .setupBanner { align-items: stretch; flex-direction: column; }
+  .setupBanner > button { align-self: start; }
+  .toolbarTop { gap: 0.45rem; }
+  .mobileTools { display: flex; gap: 0.45rem; justify-content: space-between; }
+  .filters { display: none; }
+  .filtersOpen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+  .filtersOpen .filter select { width: 100%; max-width: none; }
+  .desktopSort { display: none; }
+  .filterGear { grid-column: 1 / -1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

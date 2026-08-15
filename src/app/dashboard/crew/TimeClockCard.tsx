@@ -4,28 +4,12 @@ import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import { setTimeClockModeAction } from './settings-actions';
 import styles from './crew.module.css';
 
-// Clock in / clock out, as a setting you can find.
+// Clock in / clock out, beside the hours it creates.
 //
-// WHERE THIS USED TO LIVE, and why that was a bug rather than a preference.
-//
-// The only control was a <select> inside the "Labor settings" panel on the
-// Hours & pay tab — and that panel sits in the rail, which lives in the ELSE
-// branch of `rows.length === 0`. With no crew hours logged for the current pay
-// period the whole layout is replaced by an empty state, so the rail is not
-// rendered at all.
-//
-// That made it a catch-22: the clock is HOW crew log hours, and the only way to
-// switch it on was a control that appears once hours have already been logged
-// some other way. Because the check is per PAY PERIOD, an account with a year of
-// history lost the setting again during any week nobody had logged time yet.
-//
-// So it moved here, to the Crew members tab, which renders with zero crew and
-// zero hours. It also belongs here on the merits: this changes what a crew
-// member's PHONE does, and it was filed among overtime thresholds and rounding
-// rules — pay arithmetic, which only means anything once there is pay.
-//
-// THREE VISIBLE OPTIONS, not a dropdown. "Optional" is the mode most contractors
-// actually want, and inside a <select> it was invisible until you opened it.
+// This card intentionally remains outside HoursAndPay's rows/no-rows branch.
+// That keeps it reachable in a brand-new or empty pay period, while filing the
+// setting in the workflow where owners review the result. Three visible options
+// keep the recommended Optional mode discoverable without opening a dropdown.
 
 export default function TimeClockCard({
   mode,
