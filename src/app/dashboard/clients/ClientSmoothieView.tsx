@@ -6,6 +6,7 @@ import { BAND_LABEL, bandFor, whenHeading, whenLabel } from '@/lib/client-follow
 import {
   CLIENT_SORTS,
   CLIENT_STAGES,
+  countMappedClients,
   matchesQuery,
   sortQueue,
   stageCounts,
@@ -21,6 +22,7 @@ import { useClientDetail } from './use-client-detail';
 import ClientDetailTabs, { CLIENT_TABS, ClientDetailSkeleton, type ClientTabId } from './ClientDetailTabs';
 import focusStyles from '../focus.module.css';
 import styles from '../smoothie.module.css';
+import pageStyles from './clients-page.module.css';
 
 /**
  * Smoothie on Clients — the book led by who needs calling.
@@ -47,9 +49,9 @@ export default function ClientSmoothieView({
   todayKey,
   selectedId,
   onSelect,
-  onAdd,
   basePath = '/dashboard',
   gear,
+  readOnly = false,
 }: {
   clients: ClientRow[];
   pins?: ClientMapPin[];
@@ -58,14 +60,14 @@ export default function ClientSmoothieView({
   /** Owned by the workspace, so search and the other views stay in step. */
   selectedId: string | null;
   onSelect: (clientId: string) => void;
-  /** Opens the workspace's own add-customer dialog rather than a second one. */
-  onAdd?: () => void;
   basePath?: string;
   gear?: ReactNode;
+  readOnly?: boolean;
 }) {
   const base = basePath;
 
   const [stage, setStage] = useState<StageFilter>('all');
+  const [missingContactOnly, setMissingContactOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QueueSort>('silence');
   const [pane, setPane] = useState<'clients' | 'map'>('clients');
@@ -81,10 +83,19 @@ export default function ClientSmoothieView({
 
   const shown = useMemo(() => {
     const filtered = clients.filter(
-      (client) => (stage === 'all' || bandFor(client, todayKey) === stage) && matchesQuery(client, query),
+      (client) =>
+        (stage === 'all' || bandFor(client, todayKey) === stage) &&
+        (!missingContactOnly || (!client.phone && !client.email)) &&
+        matchesQuery(client, query),
     );
     return sortQueue(filtered, sort, todayKey);
-  }, [clients, stage, query, sort, todayKey]);
+  }, [clients, stage, missingContactOnly, query, sort, todayKey]);
+
+  const missingContactCount = useMemo(
+    () => clients.filter((client) => !client.phone && !client.email).length,
+    [clients],
+  );
+  const mappedLocationCount = useMemo(() => countMappedClients(shown, pins), [shown, pins]);
 
   const selected = useMemo(
     () => clients.find((client) => client.id === selectedId) ?? null,
@@ -101,8 +112,9 @@ export default function ClientSmoothieView({
   const win = useQueueWindow({
     total: shown.length,
     selectedIndex,
-    resetKey: `${stage}|${sort}|${query}`,
+    resetKey: `${stage}|${missingContactOnly ? 'missing-contact' : 'all-contact'}|${sort}|${query}`,
     plural: 'customers',
+    pageSize: 15,
   });
   const visible = useMemo(() => shown.slice(0, win.end), [shown, win.end]);
 
@@ -173,9 +185,9 @@ export default function ClientSmoothieView({
   const fresh = detail && detail.id === selectedId ? detail : null;
 
   return (
-    <div className={styles.smoothie} data-pane={pane} data-screen={onDetailScreen ? 'detail' : 'list'}>
+    <div className={`${styles.smoothie} ${pageStyles.workspace}`} data-pane={pane} data-screen={onDetailScreen ? 'detail' : 'list'}>
       {/* --- the four follow-up bands, as filters --- */}
-      <div className={styles.stageBar} role="group" aria-label="Filter customers by when you last saw them">
+      <div className={`${styles.stageBar} ${pageStyles.stageBar}`} data-compact="true" role="group" aria-label="Filter customers">
         <StageChip id="all" label="Everyone" count={counts.all} active={stage === 'all'} onPick={setStage} />
         {CLIENT_STAGES.map((entry) => (
           <StageChip
@@ -187,11 +199,21 @@ export default function ClientSmoothieView({
             onPick={setStage}
           />
         ))}
+        <button
+          type="button"
+          className={styles.stageChip}
+          aria-pressed={missingContactOnly}
+          disabled={missingContactCount === 0 && !missingContactOnly}
+          onClick={() => setMissingContactOnly((current) => !current)}
+        >
+          Missing contact
+          <span className={styles.stageCount}>{missingContactCount}</span>
+        </button>
       </div>
 
       {/* --- search / sort / pane switch --- */}
-      <div className={styles.toolbar}>
-        <div className={styles.searchWrap}>
+      <div className={`${styles.toolbar} ${pageStyles.toolbar}`}>
+        <div className={`${styles.searchWrap} ${pageStyles.searchWrap}`}>
           <label className={styles.srOnly} htmlFor="client-smoothie-search">Search customers by name, phone, email or address</label>
           <input
             id="client-smoothie-search"
@@ -203,7 +225,7 @@ export default function ClientSmoothieView({
           />
         </div>
 
-        <div className={styles.sortWrap}>
+        <div className={`${styles.sortWrap} ${pageStyles.sortWrap}`}>
           <label className={styles.sortLabel} htmlFor="client-smoothie-sort">Sort</label>
           <select
             id="client-smoothie-sort"
@@ -217,20 +239,16 @@ export default function ClientSmoothieView({
           </select>
         </div>
 
-        <div className={styles.paneSwitch} role="group" aria-label="Show customers or the map">
+        <div className={`${styles.paneSwitch} ${pageStyles.paneSwitch}`} role="group" aria-label="Show customer list or locations map">
           <button type="button" className={styles.paneBtn} aria-pressed={pane === 'clients'} onClick={() => setPane('clients')}>
             Customers
           </button>
           <button type="button" className={styles.paneBtn} aria-pressed={pane === 'map'} onClick={() => setPane('map')}>
-            Map <span className={styles.paneCount}>{pins.length}</span>
+            Map <span className={`${styles.paneCount} ${pageStyles.mapCount}`}>{mappedLocationCount} location{mappedLocationCount === 1 ? '' : 's'}</span>
           </button>
         </div>
 
-        {gear ? <div className={styles.gearSlot}>{gear}</div> : null}
-
-        {onAdd ? (
-          <button type="button" className={styles.addLead} onClick={onAdd}>+ Add customer</button>
-        ) : null}
+        {gear ? <div className={`${styles.gearSlot} ${pageStyles.gearSlot}`}>{gear}</div> : null}
       </div>
 
       {/* Filter results only — the window count moves on every arrow keypress
@@ -240,9 +258,9 @@ export default function ClientSmoothieView({
         {shown.length} of {clients.length} customers match.
       </p>
 
-      <div className={styles.body}>
+      <div className={`${styles.body} ${pageStyles.body}`}>
         {/* --- the queue --- */}
-        <section className={styles.queue} aria-label="Customer queue">
+        <section className={`${styles.queue} ${pageStyles.queue}`} aria-label="Customer queue">
           <div className={styles.queueHead}>
             <h2 className={styles.queueTitle}>Customers</h2>
             <span className={styles.queueCount}>
@@ -253,7 +271,7 @@ export default function ClientSmoothieView({
           {shown.length === 0 ? (
             <p className={styles.emptyQueue}>
               Nobody matches that.{' '}
-              <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('all'); }}>
+              <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('all'); setMissingContactOnly(false); }}>
                 Clear the filters
               </button>
             </p>
@@ -321,7 +339,7 @@ export default function ClientSmoothieView({
         </section>
 
         {/* --- the right pane: the selected customer, or the map --- */}
-        <section className={styles.detail} aria-label={pane === 'map' ? 'Customer map' : 'Selected customer'}>
+        <section className={`${styles.detail} ${pageStyles.detail}`} aria-label={pane === 'map' ? 'Customer map' : 'Selected customer'}>
           <button type="button" ref={backRef} className={styles.backBtn} onClick={() => setOnDetailScreen(false)}>
             ← Back to customers
           </button>
@@ -360,7 +378,7 @@ export default function ClientSmoothieView({
             <>
               {/* 1 — who */}
               <header className={styles.detailHead}>
-                <div className={styles.recordHeadLayout}>
+                <div className={`${styles.recordHeadLayout} ${pageStyles.recordHeadLayout}`}>
                   {/* A customer has no photos, so the monogram IS the cover —
                       same hue function as a job's, so the two panes sit
                       together without looking like different apps. */}
@@ -419,12 +437,14 @@ export default function ClientSmoothieView({
               </header>
 
               {/* 4 — how you reach them */}
-              <div className={styles.comms}>
+              <div className={`${styles.comms} ${pageStyles.comms}`}>
                 <p className={styles.commsNote}>{selected.contactLine || 'No phone or email on file.'}</p>
                 <div className={styles.commsRow}>
-                  {selected.phone ? <a className="btn primary" href={`tel:${selected.phone}`}>📞 Call</a> : null}
+                  {readOnly ? null : <Link className="btn primary" href="/dashboard/jobs?new=1#new-job">+ New job</Link>}
+                  {selected.phone ? <a className="btn secondary" href={`tel:${selected.phone}`}>📞 Call</a> : null}
                   {selected.phone ? <a className="btn secondary" href={`sms:${selected.phone}`}>💬 Text</a> : null}
                   {selected.email ? <a className="btn secondary" href={`mailto:${selected.email}`}>✉️ Email</a> : null}
+                  {readOnly ? null : <Link className="btn secondary" href={`${base}/clients/${selected.id}#client-profile`}>Edit</Link>}
                   <Link className={styles.quietLink} href={`${base}/clients/${selected.id}`}>Open full profile →</Link>
                 </div>
               </div>
@@ -514,7 +534,14 @@ function StageChip({
   onPick: (next: StageFilter) => void;
 }) {
   return (
-    <button type="button" className={styles.stageChip} aria-pressed={active} onClick={() => onPick(id)}>
+    <button
+      type="button"
+      className={styles.stageChip}
+      aria-pressed={active}
+      disabled={count === 0 && !active}
+      title={count === 0 ? 'No customers in this group' : undefined}
+      onClick={() => onPick(id)}
+    >
       {label}
       <span className={styles.stageCount}>{count}</span>
     </button>

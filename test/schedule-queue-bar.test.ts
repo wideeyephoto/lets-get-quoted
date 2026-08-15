@@ -109,7 +109,7 @@ describe('the bar lands you on the job it named', () => {
 
   /**
    * MEASURED IN THE BROWSER: desktop landed on the job, tablet and phone landed
-   * on the panel. Below 1280 the queue is a modal and useModal focuses
+   * on the panel. Below 1024 the queue is a modal and useModal focuses
    * `[data-autofocus]` on its own timeout, which ran after this and took focus
    * straight back off the card — so "Review the unapproved one" opened a list
    * of nine and pointed at none of them.

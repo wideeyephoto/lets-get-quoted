@@ -5,7 +5,7 @@ import { loadBlogWorkspace } from '@/lib/site-blog';
 import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import { countStates, needsAttention, postState, shortDate, todayKeyOf } from '@/lib/marketing-status';
 import { overviewSummary, prepareRecommendations, type Recommendation } from '@/lib/marketing-overview';
-import { marketingCalendarAction, updateEmailThemeAction } from './actions';
+import { marketingCalendarAction } from './actions';
 import MarketingOverviewScreen from './MarketingOverviewScreen';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +36,7 @@ export default async function MarketingPage() {
     loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
     supabase
       .from('sites')
-      .select('accent_override, logo_url, email_theme')
+      .select('email_theme')
       .eq('account_id', accountId)
       .maybeSingle(),
   ]);
@@ -90,11 +90,7 @@ export default async function MarketingPage() {
       hasBlog={Boolean(blogData)}
       rebookDue={rebookCandidates.filter((c) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
       emailTheme={{
-        businessName: view.businessName,
-        accent: (emailSite?.accent_override as string | null) ?? null,
-        logoUrl: (emailSite?.logo_url as string | null) ?? null,
         currentTheme: (emailSite?.email_theme as string | null) ?? null,
-        saveAction: updateEmailThemeAction,
       }}
     />
   );

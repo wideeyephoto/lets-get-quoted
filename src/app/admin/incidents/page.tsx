@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
-import { getRecentIncidents } from '@/lib/admin-alerts';
+import { createAdminSignalDiagnostics, getRecentIncidents } from '@/lib/admin-alerts';
 import {
   INCIDENT_KINDS,
   INCIDENT_SEVERITIES,
@@ -24,6 +24,7 @@ import ResolveIncidentButton from './ResolveIncidentButton';
  */
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Incidents' };
 
 const DONE: Record<string, string> = {
   logged: 'Logged. It is on the Command Center now.',
@@ -34,6 +35,8 @@ const ERRORS: Record<string, string> = {
   kind: 'Pick whether this is a release or an incident.',
   already_resolved: 'That one was already resolved.',
   failed: 'Could not save that. Try again in a moment.',
+  resolution: 'Add a short resolution summary before closing the incident.',
+  url: 'Use a complete http or https URL for the external incident link.',
 };
 
 function fmt(v: string | null): string {
@@ -42,7 +45,8 @@ function fmt(v: string | null): string {
 
 export default async function AdminIncidentsPage({ searchParams }: { searchParams: { done?: string; error?: string } }) {
   const ctx = await requireAdmin();
-  const incidents = await getRecentIncidents(ctx.admin, { limit: 50 });
+  const diagnostics = createAdminSignalDiagnostics();
+  const incidents = await getRecentIncidents(ctx.admin, { limit: 50, diagnostics });
   const now = new Date();
   const open = incidents.filter((i) => i.kind === 'incident' && !i.resolved_at);
   // Both write surfaces on this page call requirePermission('ops.manage'),
@@ -66,10 +70,11 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
 
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {diagnostics.failed.includes('incidents') ? <div className={`${styles.banner} ${styles.err}`}>Incident history is unavailable. A blank list is not an all-clear.</div> : null}
 
       {open.length > 0 ? (
         <section className={styles.panel} style={{ borderColor: 'rgba(252,165,165,0.4)' }}>
-          <p className={styles.panelTitle}>Open right now</p>
+          <h2 className={styles.panelTitle}>Open right now</h2>
           <ul className={styles.timeline}>
             {open.map((i) => (
               <li key={i.id}>
@@ -93,14 +98,14 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
       <div className={styles.detailGrid}>
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Recent</p>
+            <h2 className={styles.panelTitle}>Recent</h2>
             {incidents.length === 0 ? (
-              <p className={styles.emptyState}>Nothing logged yet.</p>
+              diagnostics.failed.includes('incidents') ? null : <p className={styles.emptyState}>Nothing logged yet.</p>
             ) : (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
-                    <tr><th>Started</th><th>Kind</th><th>Title</th><th>Severity</th><th>Lasted</th><th>By</th></tr>
+                    <tr><th>Started</th><th>Kind</th><th>Title &amp; impact</th><th>Severity</th><th>Lasted</th><th>Owner</th></tr>
                   </thead>
                   <tbody>
                     {incidents.map((i) => (
@@ -110,6 +115,10 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
                         <td>
                           {i.title}
                           {i.description ? <div className={styles.muted} style={{ fontSize: '.8rem' }}>{i.description}</div> : null}
+                          {i.impact_summary ? <div style={{ fontSize: '.78rem' }}><strong>Impact:</strong> {i.impact_summary}</div> : null}
+                          {i.affected_services.length ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>{i.affected_services.join(', ')}</div> : null}
+                          {i.resolution_summary ? <div style={{ fontSize: '.78rem' }}><strong>Resolution:</strong> {i.resolution_summary}</div> : null}
+                          {i.external_url ? <div><a className={styles.rowLink} href={i.external_url} target="_blank" rel="noreferrer">Deploy / incident link →</a></div> : null}
                         </td>
                         <td>
                           <span className={`${styles.pill} ${i.severity === 'critical' ? styles.bad : i.severity === 'warning' ? styles.warn : styles.neutral}`}>
@@ -119,7 +128,7 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
                         {/* A release is a point in time and has no duration; an
                             unresolved incident is still counting. */}
                         <td>{i.kind === 'release' ? '—' : incidentDuration(i.started_at, i.resolved_at, now)}{i.kind === 'incident' && !i.resolved_at ? ' (open)' : ''}</td>
-                        <td className={styles.muted}>{i.created_by ?? '—'}</td>
+                        <td className={styles.muted}>{i.owner ?? i.created_by ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -131,7 +140,7 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
 
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Log one</p>
+            <h2 className={styles.panelTitle}>Log one</h2>
             {!mayManage ? (
               <p className={styles.muted} style={{ fontSize: '.82rem' }}>
                 Logging releases and incidents needs the ops role. The log itself is readable by everyone — if something
@@ -169,6 +178,18 @@ export default async function AdminIncidentsPage({ searchParams }: { searchParam
 
               <label htmlFor="description">What happened</label>
               <textarea id="description" name="description" className={styles.input} rows={4} maxLength={4000} placeholder="What broke, who it hit, what was done." />
+
+              <label htmlFor="impact_summary">Customer impact</label>
+              <textarea id="impact_summary" name="impact_summary" className={styles.input} rows={3} maxLength={2000} placeholder="Who was affected and what could they not do?" />
+
+              <label htmlFor="affected_services">Affected services</label>
+              <input id="affected_services" name="affected_services" className={styles.input} placeholder="payments, booking, SMS (comma separated)" />
+
+              <label htmlFor="incident_owner">Incident owner</label>
+              <input id="incident_owner" name="owner" className={styles.input} defaultValue={ctx.adminEmail} />
+
+              <label htmlFor="external_url">Deploy, status, or incident URL (optional)</label>
+              <input id="external_url" name="external_url" className={styles.input} type="url" placeholder="https://…" />
 
               <button type="submit" className="btn primary">Log it</button>
             </form>

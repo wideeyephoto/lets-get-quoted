@@ -212,11 +212,11 @@ describe('queue, calendar, open job — three columns', () => {
     expect(BENCH).toContain("window.matchMedia('(min-width: 1760px)')");
   });
 
-  /** 1280 is UnscheduledQueue's own breakpoint: below it the queue is a
+  /** 1024 is UnscheduledQueue's own breakpoint: below it the queue is a
    *  full-screen overlay, so a column reserved for it is an empty gap. */
   it('starts the queue column where the queue stops being an overlay', () => {
-    expect(CSS).toContain('@media (min-width: 1280px) {\n  .schedule-workbench {\n    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);');
-    expect(read('src', 'app', 'dashboard', 'schedule', 'UnscheduledQueue.tsx')).toContain("'(max-width: 1279.98px)'");
+    expect(CSS).toContain('@media (min-width: 1024px) {\n  .schedule-workbench {\n    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);');
+    expect(read('src', 'app', 'dashboard', 'schedule', 'UnscheduledQueue.tsx')).toContain("'(max-width: 1023.98px)'");
   });
 
   it('is a region when docked and a dialog when it is not', () => {
@@ -359,7 +359,7 @@ describe('texting the crew is a choice, not a side effect', () => {
  * TWO FULL-SCREEN OVERLAYS, AND PRESSING A BUTTON IN ONE OPENED THE OTHER
  * UNDERNEATH IT.
  *
- * Below 1280 the unscheduled-job queue is an overlay, and so is the job panel.
+ * Below 1024 the unscheduled-job queue is an overlay, and so is the job panel.
  * Pressing "Schedule" on a card set the selection and left the queue exactly
  * where it was — so the customer's details opened behind the list they had just
  * been pressed from. Worse than invisible: the queue's focus trap marks

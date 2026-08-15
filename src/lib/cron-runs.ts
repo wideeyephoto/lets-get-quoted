@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { CRON_JOBS, cronHealth, type CronHealth } from '@/lib/cron-jobs';
+import { CRON_JOBS, cronHealth, cronSummaryHasFailures, type CronHealth } from '@/lib/cron-jobs';
 
 /**
  * The one shape every scheduled route now has.
@@ -120,8 +120,12 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
 
     try {
       const summary = await run();
-      await finishRun(admin, runId, { ok: true, durationMs: Date.now() - startedMs, summary });
+      const logicalFailure = cronSummaryHasFailures(asJson(summary));
+      await finishRun(admin, runId, { ok: !logicalFailure, durationMs: Date.now() - startedMs, summary });
       if (Math.floor(Math.random() * PRUNE_ODDS) === 0) await pruneOldRuns(admin);
+      if (logicalFailure) {
+        return NextResponse.json({ error: `${job} reported failed work`, summary }, { status: 500 });
+      }
       return NextResponse.json(summary ?? { ok: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -156,10 +160,11 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
 export async function loadCronStatus(
   admin: SupabaseClient,
   jobs: string[],
-): Promise<{ last: Map<string, CronRunRow>; lastSuccessAt: Map<string, string> }> {
+): Promise<{ last: Map<string, CronRunRow>; lastSuccessAt: Map<string, string>; failedJobs: string[] }> {
   const last = new Map<string, CronRunRow>();
   const lastSuccessAt = new Map<string, string>();
-  if (!jobs.length) return { last, lastSuccessAt };
+  const failedJobs: string[] = [];
+  if (!jobs.length) return { last, lastSuccessAt, failedJobs };
 
   const results = await Promise.all(
     jobs.map(async (job) => {
@@ -178,6 +183,7 @@ export async function loadCronStatus(
       if (successRes.error) console.error(`loadCronStatus (${job} success) failed:`, successRes.error);
       return {
         job,
+        failed: Boolean(lastRes.error || successRes.error),
         last: (lastRes.data as CronRunRow | null) ?? null,
         successAt: (successRes.data as { started_at: string } | null)?.started_at ?? null,
       };
@@ -185,10 +191,11 @@ export async function loadCronStatus(
   );
 
   for (const row of results) {
+    if (row.failed) failedJobs.push(row.job);
     if (row.last) last.set(row.job, row.last);
     if (row.successAt) lastSuccessAt.set(row.job, row.successAt);
   }
-  return { last, lastSuccessAt };
+  return { last, lastSuccessAt, failedJobs };
 }
 
 export type CronTrouble = {
@@ -210,8 +217,13 @@ export type CronTrouble = {
  * alert would train everyone to dismiss this card before it ever meant
  * anything. The health page shows it; the alert does not.
  */
-export async function getCronTrouble(admin: SupabaseClient, now = new Date()): Promise<CronTrouble[]> {
-  const { last, lastSuccessAt } = await loadCronStatus(admin, CRON_JOBS.map((j) => j.job));
+export async function getCronTrouble(
+  admin: SupabaseClient,
+  now = new Date(),
+  onUnavailable?: (failedJobs: string[]) => void,
+): Promise<CronTrouble[]> {
+  const { last, lastSuccessAt, failedJobs } = await loadCronStatus(admin, CRON_JOBS.map((j) => j.job));
+  if (failedJobs.length) onUnavailable?.(failedJobs);
   const trouble: CronTrouble[] = [];
   for (const spec of CRON_JOBS) {
     const run = last.get(spec.job) ?? null;
@@ -238,7 +250,7 @@ export async function getCronTrouble(admin: SupabaseClient, now = new Date()): P
 }
 
 /** Recent runs of one job, for the detail strip under its row. */
-export async function listCronRuns(admin: SupabaseClient, job: string, limit = 20): Promise<CronRunRow[]> {
+export async function listCronRuns(admin: SupabaseClient, job: string, limit = 20): Promise<{ runs: CronRunRow[]; available: boolean }> {
   const { data, error } = await admin
     .from('cron_runs')
     .select(COLUMNS)
@@ -247,7 +259,7 @@ export async function listCronRuns(admin: SupabaseClient, job: string, limit = 2
     .limit(limit);
   if (error) {
     console.error('listCronRuns failed:', error);
-    return [];
+    return { runs: [], available: false };
   }
-  return (data ?? []) as CronRunRow[];
+  return { runs: (data ?? []) as CronRunRow[], available: true };
 }

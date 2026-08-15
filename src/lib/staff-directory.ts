@@ -20,11 +20,39 @@ export type StaffRow = {
   deactivated_by: string | null;
   last_seen_at: string | null;
   created_at: string;
+  invited_at: string | null;
+  invited_by: string | null;
 };
 
-const COLUMNS = 'id, email, role, display_name, active, deactivated_at, deactivated_by, last_seen_at, created_at';
+const COLUMNS = 'id, email, role, display_name, active, deactivated_at, deactivated_by, last_seen_at, created_at, invited_at, invited_by';
 
-export async function listStaff(admin: SupabaseClient): Promise<StaffRow[]> {
+export type InviteStaffResult = { ok: true } | { ok: false; error: 'exists' | 'failed' | 'invite_failed' };
+
+export async function inviteStaff(
+  admin: SupabaseClient,
+  actor: AuditActor,
+  input: { email: string; role: StaffRole; displayName?: string | null; reason: string },
+): Promise<InviteStaffResult> {
+  const email = input.email.trim().toLowerCase();
+  const { data: existing } = await admin.from('staff').select('id').ilike('email', email).maybeSingle();
+  if (existing) return { ok: false, error: 'exists' };
+  const invitedAt = new Date().toISOString();
+  const { data: row, error } = await admin.from('staff').insert({ email, role: input.role, display_name: input.displayName?.trim() || null, active: true, invited_at: invitedAt, invited_by: actor.adminEmail }).select('id').single();
+  if (error || !row) {
+    console.error('inviteStaff insert failed:', error);
+    return { ok: false, error: 'failed' };
+  }
+  const origin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, origin ? { redirectTo: `${origin}/auth/callback?next=/admin` } : undefined);
+  await logAdminAction(admin, actor, { action: 'staff_invite', targetType: 'staff', targetId: row.id, reason: input.reason, after: { email, role: input.role, active: true }, meta: { inviteDelivered: !inviteError } });
+  if (inviteError) {
+    console.error('inviteStaff email failed:', inviteError);
+    return { ok: false, error: 'invite_failed' };
+  }
+  return { ok: true };
+}
+
+export async function listStaff(admin: SupabaseClient, onError?: (error: unknown) => void): Promise<StaffRow[]> {
   const { data, error } = await admin
     .from('staff')
     .select(COLUMNS)
@@ -34,6 +62,7 @@ export async function listStaff(admin: SupabaseClient): Promise<StaffRow[]> {
     .order('email', { ascending: true });
   if (error) {
     console.error('listStaff failed:', error);
+    onError?.(error);
     return [];
   }
   return ((data ?? []) as StaffRow[]).map((row) => ({ ...row, role: parseStaffRole(row.role, 'read_only') }));
@@ -51,7 +80,7 @@ export type StaffRoleChange = {
   created_at: string;
 };
 
-export async function listStaffRoleChanges(admin: SupabaseClient, limit = 100): Promise<StaffRoleChange[]> {
+export async function listStaffRoleChanges(admin: SupabaseClient, limit = 100, onError?: (error: unknown) => void): Promise<StaffRoleChange[]> {
   const { data, error } = await admin
     .from('staff_role_changes')
     .select('id, staff_email, from_role, to_role, from_active, to_active, reason, changed_by, created_at')
@@ -59,6 +88,7 @@ export async function listStaffRoleChanges(admin: SupabaseClient, limit = 100): 
     .limit(limit);
   if (error) {
     console.error('listStaffRoleChanges failed:', error);
+    onError?.(error);
     return [];
   }
   return (data ?? []) as StaffRoleChange[];
@@ -72,7 +102,7 @@ export async function listStaffRoleChanges(admin: SupabaseClient, limit = 100): 
  * lockout that cannot be undone from inside the product: it needs somebody with
  * database access to repair, at exactly the moment nobody can grant that.
  */
-export async function activeSuperAdminCount(admin: SupabaseClient): Promise<number> {
+export async function activeSuperAdminCount(admin: SupabaseClient, onError?: (error: unknown) => void): Promise<number> {
   const { count, error } = await admin
     .from('staff')
     .select('id', { count: 'exact', head: true })
@@ -80,6 +110,7 @@ export async function activeSuperAdminCount(admin: SupabaseClient): Promise<numb
     .eq('active', true);
   if (error) {
     console.error('activeSuperAdminCount failed:', error);
+    onError?.(error);
     // Fail as though this were the last one. Refusing a legitimate change is
     // recoverable; permitting the one that locks everybody out is not.
     return 1;

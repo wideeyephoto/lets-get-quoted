@@ -189,7 +189,7 @@ export function bandFor(score: number): RiskBand {
 export const RISK_BAND_LABEL: Record<RiskBand, string> = {
   high: 'Worth a look now',
   elevated: 'Worth a look',
-  normal: 'Nothing standing out',
+  normal: 'Signal noted',
 };
 
 /**
@@ -200,7 +200,7 @@ export const RISK_BAND_LABEL: Record<RiskBand, string> = {
 export const RISK_BAND_HELP: Record<RiskBand, string> = {
   high: 'Several signals at once, or an adjudicated loss. Open it before deciding anything.',
   elevated: 'One signal above the level where it stops being noise.',
-  normal: 'Nothing here crossed a threshold.',
+  normal: 'A review signal exists, but the score is below the escalation threshold.',
 };
 
 /** Only accounts with something to say. Everything else is not a queue item. */

@@ -78,9 +78,6 @@ export default async function DemoMarketingPage() {
       hasBlog={Boolean(blogData)}
       rebookDue={rebookCandidates.filter((c) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
       emailTheme={{
-        businessName: view.businessName,
-        accent: (DEMO_SITE_ROW.accent_override as string | null) ?? null,
-        logoUrl: (DEMO_SITE_ROW.logo_url as string | null) ?? null,
         currentTheme: (DEMO_SITE_ROW.email_theme as string | null) ?? null,
       }}
       basePath="/demo"

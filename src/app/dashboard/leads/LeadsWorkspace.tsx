@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore } from '@/lib/leads';
@@ -12,6 +12,7 @@ import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import ViewGear from '@/components/view-gear';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
+import { scopePinsToFilter } from '@/lib/map-pin-scope';
 import LeadFocusView from './LeadFocusView';
 import LeadSmoothieView from './LeadSmoothieView';
 import LeadPriorityView from './LeadPriorityView';
@@ -76,6 +77,8 @@ export type LeadViewItem = {
   // for (picks the trade glyph) and whether a real photo is on its way.
   projectType: string | null;
   photoCount: number;
+  /** Short warning shown only during the final week before automatic closure. */
+  autoCloseLabel?: string | null;
 };
 
 // Three layouts with distinct jobs. The legacy Focus, Split and Priority views
@@ -185,6 +188,13 @@ export default function LeadsWorkspace({
   // Local map color, so the demo's picker works with no cookie behind it.
   const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
   const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
+  const visibleLeadIds = useMemo(() => new Set(leads.map((lead) => lead.id)), [leads]);
+  // A Leads map maps leads. The global pin query also carries jobs for other
+  // workspaces; letting those through made the toggle disagree with the queue.
+  const leadPins = useMemo(
+    () => scopePinsToFilter(mapPins, 'lead', visibleLeadIds, true),
+    [mapPins, visibleLeadIds],
+  );
 
   function run(fn: () => Promise<unknown>) {
     // The one chokepoint every lead action goes through. Swallowed rather than
@@ -293,7 +303,7 @@ export default function LeadsWorkspace({
           details={details}
           initialLeadId={initialLeadId}
           basePath={basePath}
-          mapPins={mapPins}
+          mapPins={leadPins}
           mapTheme={effectiveMapTheme}
           gear={gear}
         />
@@ -313,30 +323,27 @@ export default function LeadsWorkspace({
           className={styles.mapToggle}
           aria-pressed={mapOpen}
           aria-controls="leads-map-panel"
-          // A bare number beside a list of a different length invites arithmetic
-          // that does not work. These five layouts have no filter of their own —
-          // unlike Smoothie's stage chips, which the map now follows — so the
-          // count is right and only unlabelled: it counts jobs as well as leads,
-          // which is the point of the map and not visible in "Map 39".
-          aria-label={`Map — ${mapPins.length} ${mapPins.length === 1 ? 'lead or job' : 'leads and jobs'} with an address`}
+          // A Leads control counts lead locations from this page. Job pins from
+          // the shared map query belong in the Jobs and Schedule workspaces.
+          aria-label={`Map — ${leadPins.length} lead ${leadPins.length === 1 ? 'location' : 'locations'}`}
           onClick={toggleMap}
         >
           <span aria-hidden="true">🗺</span> Map
-          <span className={styles.mapToggleCount}>{mapPins.length}</span>
+          <span className={styles.mapToggleCount}>{leadPins.length}</span>
         </button>
       </div>
 
       {mapOpen ? (
         <div className="workspace-embedded-map" id="leads-map-panel">
           <PinMap
-            pins={mapPins}
+            pins={leadPins}
             theme={mapTheme}
             focusPinId={view === 'focus' && focusLeadId ? `lead-${focusLeadId}` : null}
             // A pin is the same lead as the row below it; clicking one should
             // take you to the other rather than making you hunt for it.
             onPinClick={(pin) => {
               const id = pinRecordId(pin.id, 'lead');
-              if (!id) return; // job pins live on the jobs page
+              if (!id) return;
               // Split and Focus show one lead at a time, so "go to it" means
               // open it; the other layouts are lists, so it means scroll to its
               // row.

@@ -57,6 +57,22 @@ export function matchesQuery(client: QueueClient, query: string): boolean {
   return terms.every((term) => client.search.includes(term));
 }
 
+/**
+ * Number shown beside the Clients map toggle.
+ *
+ * Pins can outlive the rows currently visible to a filter, and defensive
+ * de-duplication keeps a bad/stale pin set from claiming there are more mapped
+ * customers than customers in the queue. The map component applies the same
+ * client-id scope before drawing.
+ */
+export function countMappedClients(
+  clients: Array<Pick<QueueClient, 'id'>>,
+  pins: Array<{ clientId: string }>,
+): number {
+  const visibleIds = new Set(clients.map((client) => client.id));
+  return new Set(pins.filter((pin) => visibleIds.has(pin.clientId)).map((pin) => pin.clientId)).size;
+}
+
 export type QueueSort = 'silence' | 'name' | 'billed' | 'jobs';
 
 export const CLIENT_SORTS: { id: QueueSort; label: string }[] = [

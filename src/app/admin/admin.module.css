@@ -100,7 +100,7 @@
   border-radius: 0.9rem;
   padding: 1.1rem 1.2rem;
 }
-.panel + .panel { margin-top: 1rem; }
+.main > .panel + .panel, .detailGrid > div > .panel + .panel { margin-top: 1rem; }
 .panelTitle {
   font-size: 0.7rem;
   font-weight: 800;
@@ -151,6 +151,30 @@
 .rowLink { color: var(--text); font-weight: 600; }
 .rowLink:hover { color: var(--accent-2, #ffd166); }
 .muted { color: var(--ink-mod-grey-2); }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.sidebarTop { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; }
+.sidebarContents { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 1.1rem; }
+.mobileMenuButton {
+  display: none;
+  border: 1px solid var(--edge-t14);
+  border-radius: 0.5rem;
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  padding: 0.42rem 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
 
 .pill {
   display: inline-flex;
@@ -178,11 +202,15 @@
   padding: 0.55rem 0.7rem;
   font-size: 0.9rem;
   min-width: 240px;
-  flex: 1 1 260px;
+  width: 100%;
+  flex: 0 1 auto;
 }
+.searchRow > .input, .actionRow > .input { width: auto; flex: 1 1 260px; }
 .input:focus { outline: 2px solid rgba(255, 122, 33, 0.5); outline-offset: 1px; }
 
-.filterTabs { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.filterGroup { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.filterLabel { color: var(--ink-mod-grey-2); font-size: 0.72rem; font-weight: 700; }
+.filterTabs { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .filterTab {
   font-size: 0.78rem;
   font-weight: 600;
@@ -201,13 +229,18 @@
 .detailGrid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .nav { flex-direction: row; flex-wrap: wrap; }
-  .sidebarFoot { display: none; }
+  .sidebar { position: sticky; z-index: 50; height: auto; padding: 0.8rem 1rem; gap: 0; }
+  .sidebarTop { width: 100%; }
+  .mobileMenuButton { display: inline-flex; }
+  .sidebarContents { display: none; padding-top: 0.85rem; }
+  .sidebarContentsOpen { display: flex; }
+  .nav { max-height: min(52vh, 28rem); overflow-y: auto; }
+  .sidebarFoot { display: block; margin-top: 0; }
   .detailGrid { grid-template-columns: 1fr; }
 }
 
 .actionRow { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.9rem; }
+.pagination { display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 1rem; }
 .backLink { font-size: 0.82rem; color: var(--ink-mod-grey-6); display: inline-flex; gap: 0.3rem; margin-bottom: 0.8rem; }
 .backLink:hover { color: var(--text); }
 
@@ -223,7 +256,17 @@
 .dangerZone { border-color: var(--cedge-red-31); background: rgba(248, 113, 113, 0.04); }
 
 .formStack { display: flex; flex-direction: column; gap: 0.6rem; }
-.formStack label { font-size: 0.78rem; color: var(--ink-mod-grey-6); font-weight: 600; }
+.formStack label, .formLabel { font-size: 0.78rem; color: var(--ink-mod-grey-6); font-weight: 600; }
+.formLabel { margin: 0; }
+.fieldHint { margin: -0.25rem 0 0; color: var(--ink-mod-grey-2); font-size: 0.74rem; }
+.confirmRow { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; color: var(--gold-ink); font-size: 0.78rem; }
+.compactForm { display: flex; align-items: center; gap: 0.4rem; min-width: 17rem; }
+.compactInput { min-width: 0; flex: 1; border: 1px solid var(--edge-t14); border-radius: 0.45rem; background: rgba(var(--tint), 0.05); color: var(--text); padding: 0.42rem 0.5rem; }
+.inlineDisclosure { margin-top: 0.45rem; min-width: 15rem; }
+.inlineDisclosure summary { cursor: pointer; color: var(--ink-mod-grey-4); font-size: 0.75rem; font-weight: 700; }
+.inlineDisclosure[open] summary { margin-bottom: 0.5rem; }
+.mfaSetup { margin: 1rem 0; }
+.mfaSetup img { display: block; margin: 0.7rem 0; border-radius: 0.5rem; background: white; padding: 0.4rem; }
 .emptyState { text-align: center; padding: 2.4rem 1rem; color: var(--ink-mod-grey-2); font-size: 0.9rem; }
 
 /* Universal Search (sidebar SearchBox + its live dropdown) */
@@ -389,6 +432,9 @@
 .allClearTick { grid-row: 1 / span 2; color: var(--good); font-weight: 800; line-height: 1.4; }
 .allClearName { font-weight: 700; }
 .allClearNote { color: var(--ink-mod-grey-2); line-height: 1.35; }
+.dataUnavailable { margin-top: 0.9rem; border-color: var(--cedge-amber-7); background: rgba(255, 209, 102, 0.045); }
+.dataUnavailable > .muted { margin: -0.2rem 0 0.8rem; font-size: 0.8rem; }
+.unavailableMark { grid-row: 1 / span 2; color: var(--gold-ink); font-weight: 900; line-height: 1.4; }
 
 .moveBtns { display: flex; gap: 0.3rem; position: absolute; top: 1.1rem; right: 1.2rem; }
 .moveBtn {

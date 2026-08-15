@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requirePermission, requirePermissions } from '@/lib/auth';
+import { requireMfaPermission, requireMfaPermissions, requirePermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { QUICK_STOP_OUTCOME, isQuickStopOutcome } from '@/lib/quick-stop-outcomes';
 import { getQuickStopRequestById, logQuickStopEvent } from '@/lib/quick-stop-requests';
@@ -17,11 +17,13 @@ function backTo(id: string, query: string): never {
 // remaining balance. Writes both the admin audit trail and the request's own
 // event log, and flips the request to 'refunded' when fully refunded.
 export async function adminRefundQuickStopAction(requestId: string, formData: FormData) {
-  const ctx = await requirePermission('money.refund');
+  const ctx = await requireMfaPermission('money.refund');
   const { admin } = ctx;
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) backTo(requestId, 'error=notfound');
   if (!req.payment_id || !req.paid_at) backTo(requestId, 'error=nopayment');
+  const reason = String(formData.get('reason') ?? '').trim();
+  if (reason.length < 4) backTo(requestId, 'error=reason');
 
   const raw = String(formData.get('amount') ?? '').replace(/[^0-9.]/g, '').trim();
   const amountDollars = raw ? Number(raw) : undefined;
@@ -39,15 +41,19 @@ export async function adminRefundQuickStopAction(requestId: string, formData: Fo
   }
 
   const nowIso = new Date().toISOString();
-  await admin
+  const { error: stateError } = await admin
     .from('extra_stop_requests')
     .update({ refund_cents: refundedTotalCents, ...(isFull ? { status: 'refunded' } : {}), updated_at: nowIso })
     .eq('id', requestId);
 
   await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', meta: { adminRefund: true, refundedTotalCents, by: ctx.adminEmail } });
-  await logAdminAction(admin, ctx, { action: 'extra_stop_refund', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, meta: { amountDollars: amountDollars ?? 'full', refundedTotalCents, isFull } });
+  await logAdminAction(admin, ctx, { action: 'extra_stop_refund', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, reason, meta: { amountDollars: amountDollars ?? 'full', refundedTotalCents, isFull, stateUpdateFailed: Boolean(stateError) } });
 
   revalidatePath(`/admin/quick-stops/${requestId}`);
+  if (stateError) {
+    console.error('Admin Quick Stop refund state update failed:', stateError);
+    backTo(requestId, 'error=refund_state');
+  }
   backTo(requestId, 'done=refunded');
 }
 
@@ -70,9 +76,10 @@ export async function adminResolveQuickStopAction(requestId: string, formData: F
     backTo(requestId, 'error=outcome');
   }
 
-  const ctx = await requirePermissions(...QUICK_STOP_OUTCOME[outcome].permissions);
+  const ctx = await requireMfaPermissions(...QUICK_STOP_OUTCOME[outcome].permissions);
   const { admin } = ctx;
-  const reason = String(formData.get('reason') ?? '').trim() || `Resolved by ${ctx.adminEmail}`;
+  const reason = String(formData.get('reason') ?? '').trim();
+  if (reason.length < 4) backTo(requestId, 'error=reason');
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) backTo(requestId, 'error=notfound');
 
@@ -88,10 +95,18 @@ export async function adminResolveQuickStopAction(requestId: string, formData: F
       actor: ctx,
     });
   } else if (outcome === 'completed') {
-    await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId);
+    const { error } = await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId);
+    if (error) {
+      console.error('Quick Stop completed resolution failed:', error);
+      backTo(requestId, 'error=state');
+    }
     await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'completed', meta: { adminForced: true, by: ctx.adminEmail } });
   } else if (outcome === 'disputed') {
-    await admin.from('extra_stop_requests').update({ status: 'disputed', updated_at: nowIso }).eq('id', requestId);
+    const { error } = await admin.from('extra_stop_requests').update({ status: 'disputed', updated_at: nowIso }).eq('id', requestId);
+    if (error) {
+      console.error('Quick Stop disputed resolution failed:', error);
+      backTo(requestId, 'error=state');
+    }
     await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'disputed', meta: { adminForced: true, reason, by: ctx.adminEmail } });
   } else {
     backTo(requestId, 'error=outcome');

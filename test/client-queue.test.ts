@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CLIENT_SORTS,
   CLIENT_STAGES,
+  countMappedClients,
   matchesQuery,
   sortQueue,
   stageCounts,
@@ -78,6 +79,19 @@ describe('search reads the same string the other views match on', () => {
 
   it('matches everything on an empty query', () => {
     expect(matchesQuery(client(), '')).toBe(true);
+  });
+});
+
+describe('the map count means mapped customers in the current queue', () => {
+  it('drops pins outside the current filter and counts a customer once', () => {
+    const clients = [client({ id: 'visible-a' }), client({ id: 'visible-b' })];
+    const pins = [
+      { clientId: 'visible-a' },
+      { clientId: 'visible-a' },
+      { clientId: 'filtered-out' },
+    ];
+
+    expect(countMappedClients(clients, pins)).toBe(1);
   });
 });
 

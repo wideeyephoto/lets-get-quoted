@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { primaryAction, rankLeads, type RankedLead } from '@/lib/lead-priority';
+import { primaryAction, priorityTone, rankLeads, type RankedLead } from '@/lib/lead-priority';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { archiveLeadAction, snoozeLeadAction, unsnoozeLeadAction, updateLeadStatusAction } from './actions';
 import RowMenu from './RowMenu';
@@ -159,7 +159,7 @@ function PriorityCard({
             order, and the order has to be legible without asking anybody to
             interpret a color. */}
         <p className={styles.reason}>
-          <span className={`${leadStyles.heatDot} ${styles.reasonDot}`} data-score={lead.score} aria-hidden="true" />
+          <span className={`${leadStyles.heatDot} ${styles.reasonDot}`} data-score={priorityTone(lead)} aria-hidden="true" />
           {snoozedGroup && lead.snoozedUntilLabel ? `Snoozed until ${lead.snoozedUntilLabel} · ` : ''}
           {entry.reason}
         </p>
@@ -178,13 +178,13 @@ function PriorityCard({
           >
             Wake up now
           </button>
-        ) : action.kind === 'open' ? (
+        ) : action.kind === 'edit' ? (
           <Link className={`btn primary ${styles.primaryBtn}`} href={action.href}>
-            Open lead
+            Add contact details
           </Link>
         ) : (
           <a className={`btn primary ${styles.primaryBtn}`} href={action.href}>
-            {action.kind === 'text' ? '💬 Text' : '📞 Call'} {lead.name.split(/\s+/)[0]}
+            {action.kind === 'text' ? '💬 Text' : action.kind === 'email' ? '✉️ Email' : '📞 Call'} {lead.name.split(/\s+/)[0]}
           </a>
         )}
 

@@ -12,6 +12,7 @@ import {
 } from '@/lib/cron-jobs';
 import { loadCronStatus, type CronRunRow } from '@/lib/cron-runs';
 import {
+  createAdminSignalDiagnostics,
   getUnresolvedWebhookFailures,
   getFailedEmailEvents,
   getFailedSmsEvents,
@@ -40,6 +41,7 @@ const PROVIDER_LABEL: Record<SmsProviderId, string> = {
  */
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Service health' };
 
 const IMPORTANCE_LABEL: Record<CronImportance, string> = {
   money: 'Collects money',
@@ -92,12 +94,13 @@ function summaryLine(summary: Record<string, unknown> | null): string {
 export default async function AdminHealthPage() {
   const { admin } = await requireAdmin();
   const now = new Date();
+  const diagnostics = createAdminSignalDiagnostics();
 
-  const [{ last, lastSuccessAt }, webhookFailures, failedEmails, failedSms] = await Promise.all([
+  const [{ last, lastSuccessAt, failedJobs }, webhookFailures, failedEmails, failedSms] = await Promise.all([
     loadCronStatus(admin, CRON_JOBS.map((j) => j.job)),
-    getUnresolvedWebhookFailures(admin),
-    getFailedEmailEvents(admin),
-    getFailedSmsEvents(admin),
+    getUnresolvedWebhookFailures(admin, { diagnostics }),
+    getFailedEmailEvents(admin, { diagnostics }),
+    getFailedSmsEvents(admin, { diagnostics }),
   ]);
 
   // Pure env read, no await — the provider is configuration, not state.
@@ -116,6 +119,7 @@ export default async function AdminHealthPage() {
 
   const unwell = rows.filter((r) => r.health === 'failing' || r.health === 'stale');
   const neverSeen = rows.filter((r) => r.health === 'unknown');
+  const moneyJobCount = CRON_JOBS.filter((job) => job.importance === 'money').length;
 
   return (
     <>
@@ -123,13 +127,17 @@ export default async function AdminHealthPage() {
         <p className={styles.eyebrow}>Operations</p>
         <h1 className={styles.title}>Service health</h1>
         <p className={styles.lead}>
-          Fourteen scheduled jobs keep this product running, and three of them collect money. Until each one recorded
+          {CRON_JOBS.length} scheduled jobs keep this product running, and {moneyJobCount} of them collect money. Until each one recorded
           its own runs, a job that stopped firing was invisible — it produces no errors, because nothing runs to produce
           them. This is that record.
         </p>
       </header>
 
-      {unwell.length > 0 ? (
+      {failedJobs.length > 0 ? (
+        <div className={`${styles.banner} ${styles.err}`}>
+          <strong>Health data is incomplete.</strong> Could not read {failedJobs.length} {failedJobs.length === 1 ? 'job' : 'jobs'} from the run log. Unknown rows are not an all-clear.
+        </div>
+      ) : unwell.length > 0 ? (
         <div className={`${styles.banner} ${styles.err}`}>
           <strong>{unwell.length} {unwell.length === 1 ? 'job needs' : 'jobs need'} attention.</strong>{' '}
           {unwell.map((r) => r.spec.label).join(', ')}.
@@ -147,7 +155,7 @@ export default async function AdminHealthPage() {
       )}
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>Scheduled jobs</p>
+        <h2 className={styles.panelTitle}>Scheduled jobs</h2>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -167,7 +175,7 @@ export default async function AdminHealthPage() {
                 return (
                   <tr key={spec.job}>
                     <td>
-                      <strong>{spec.label}</strong>
+                      <Link href={`/admin/health/${spec.job}`} className={styles.rowLink}>{spec.label}</Link>
                       <div className={styles.muted} style={{ fontSize: '.72rem' }}>
                         <code>{spec.job}</code> · {IMPORTANCE_LABEL[spec.importance]}
                       </div>
@@ -228,7 +236,7 @@ export default async function AdminHealthPage() {
           cutover it is the only place that tells you, in one glance, whether
           inbound texts from BOTH providers will validate. */}
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>Messaging provider</p>
+        <h2 className={styles.panelTitle}>Messaging provider</h2>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <tbody>
@@ -295,24 +303,25 @@ export default async function AdminHealthPage() {
       </section>
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>Delivery &amp; integration failures</p>
+        <h2 className={styles.panelTitle}>Delivery &amp; integration failures</h2>
+        {diagnostics.failed.length ? <div className={`${styles.banner} ${styles.err}`}>Some delivery checks are unavailable. Their totals are shown as an em dash, not zero.</div> : null}
         <div className={styles.cardGrid}>
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={webhookFailures.length ? { color: '#fca5a5' } : undefined}>
-              {webhookFailures.length}
+              {diagnostics.failed.includes('webhookFailures') ? '—' : webhookFailures.length}
             </span>
             <span className={styles.statLabel}>Unresolved webhook failures</span>
-            <Link href="/admin" className={styles.rowLink} style={{ fontSize: '.75rem' }}>Resolve on Command Center →</Link>
+            <Link href="/admin/failures#webhooks" className={styles.rowLink} style={{ fontSize: '.75rem' }}>Investigate grouped failures →</Link>
           </div>
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={failedEmails.length ? { color: '#ffd166' } : undefined}>
-              {failedEmails.length}
+              {diagnostics.failed.includes('failedEmails') ? '—' : failedEmails.length}
             </span>
             <span className={styles.statLabel}>Bounced or complained emails</span>
           </div>
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={failedSms.length ? { color: '#ffd166' } : undefined}>
-              {failedSms.length}
+              {diagnostics.failed.includes('failedSms') ? '—' : failedSms.length}
             </span>
             <span className={styles.statLabel}>Failed texts</span>
             {/* Says what it covers. Only the payment and crew senders write
@@ -327,7 +336,7 @@ export default async function AdminHealthPage() {
       </section>
 
       <section className={styles.panel}>
-        <p className={styles.panelTitle}>What this page cannot tell you</p>
+        <h2 className={styles.panelTitle}>What this page cannot tell you</h2>
         {/* Stated openly, because the gap between "everything green" and
             "everything fine" is exactly where a monitoring page does its
             damage. */}
@@ -335,9 +344,9 @@ export default async function AdminHealthPage() {
           <li>
             <time>Coverage</time>
             <span>
-              A job is graded on whether it <em>ran</em> and whether it <em>threw</em>. A run that completed while doing
-              the wrong thing — skipping every account on a bad filter, say — reports healthy. The
-              &ldquo;what it reported&rdquo; column is where that shows up, and only if you read it.
+              A job is graded on whether it ran, finished, stayed on cadence, and reported an explicit failed or error
+              count. A logically wrong result with no failure counter can still look healthy, so unusual processed or
+              skipped totals still require investigation.
             </span>
           </li>
           <li>

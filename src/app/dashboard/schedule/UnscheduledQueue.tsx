@@ -12,10 +12,10 @@ import { useModal } from './use-modal';
  * (they carry server actions and a crew form each), so this wraps them rather
  * than re-rendering them and only decides where the box sits:
  *
- *   >= 1280px   the desktop rail, permanently visible beside the calendar. The
+ *   >= 1024px   the desktop rail, permanently visible beside the calendar. The
  *               wrapper is `display: contents`, so the section is a rail child
  *               as if this component were not in the tree at all.
- *   <  1280px   a full-screen panel, opened from the "jobs need dates" banner
+ *   <  1024px   a full-screen panel, opened from the "jobs need dates" banner
  *               and dismissed with a real Back button.
  *
  * WHAT THIS REPLACES. The old ScheduleDock was a `position: fixed` bar pinned to
@@ -58,7 +58,7 @@ export default function UnscheduledQueue({
   const { armedJob } = useScheduleDrag();
 
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1279.98px)');
+    const query = window.matchMedia('(max-width: 1023.98px)');
     const sync = () => setIsOverlay(query.matches);
     sync();
     query.addEventListener('change', sync);
@@ -102,7 +102,7 @@ export default function UnscheduledQueue({
    * The banner and the mobile agenda both ask for this by name.
    *
    * AND ON A DESKTOP IT HAS TO DO SOMETHING TOO. `setOpen(true)` is the whole
-   * answer only while this is an overlay. Above 1280 the queue is already
+   * answer only while this is an overlay. Above 1024 the queue is already
    * docked and visible, so pressing "Schedule a job" set a boolean nothing was
    * reading and the page did not move — reported, correctly, as a button that
    * does nothing. Here it takes you to the top of the list and puts focus on
@@ -165,7 +165,7 @@ export default function UnscheduledQueue({
   /**
    * COLLAPSING THE DESKTOP RAIL.
    *
-   * Only meaningful above 1280, where the queue is a permanent column rather
+   * Only meaningful above 1024, where the queue is a permanent column rather
    * than an overlay you have already dismissed. It is a real toggle rather
    * than a CSS-only trick because the collapsed rail has to leave the tab
    * order — a hidden column you can still Tab into is worse than one that is
@@ -245,7 +245,7 @@ export default function UnscheduledQueue({
 
       {/* The collapsed rail's only control. It carries the count, because a
           closed column that does not say how much is behind it is a column you
-          forget you closed. Rendered only on the desktop rail — below 1280 the
+          forget you closed. Rendered only on the desktop rail — below 1024 the
           queue is an overlay and "collapse" is what the Back button does. */}
       {showCollapseToggle ? (
         <button

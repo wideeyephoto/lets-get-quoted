@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { SearchResult, SearchResults } from '@/lib/admin-search';
+import type { SearchResult, SearchResults, SearchSection } from '@/lib/admin-search';
 import styles from './admin.module.css';
 
 const RECENT_KEY = 'admin_recent_searches';
 const RECENT_MAX = 8;
-const EMPTY_RESULTS: SearchResults = { accounts: [], clients: [], quickStops: [], payments: [] };
-const SECTIONS: { key: keyof SearchResults }[] = [{ key: 'accounts' }, { key: 'clients' }, { key: 'quickStops' }, { key: 'payments' }];
+const EMPTY_RESULTS: SearchResults = { accounts: [], clients: [], quickStops: [], payments: [], unavailable: [] };
+const SECTIONS: { key: SearchSection }[] = [{ key: 'accounts' }, { key: 'clients' }, { key: 'quickStops' }, { key: 'payments' }];
 
 function loadRecent(): string[] {
   if (typeof window === 'undefined') return [];
@@ -44,9 +44,11 @@ export default function SearchBox() {
   const [recent, setRecent] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
+  const listboxId = useId();
 
   useEffect(() => setRecent(loadRecent()), []);
 
@@ -63,18 +65,29 @@ export default function SearchBox() {
     if (!term) {
       setResults(EMPTY_RESULTS);
       setLoading(false);
+      setUnavailable(false);
       return;
     }
     setLoading(true);
+    setUnavailable(false);
     const id = ++requestId.current;
     const timer = setTimeout(() => {
       fetch(`/api/admin/search?q=${encodeURIComponent(term)}`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error(`Search returned ${res.status}`);
+          return res.json();
+        })
         .then((data: SearchResults) => {
-          if (id === requestId.current) setResults(data);
+          if (id === requestId.current) {
+            setResults(data);
+            setUnavailable(data.unavailable.length > 0);
+          }
         })
         .catch(() => {
-          if (id === requestId.current) setResults(EMPTY_RESULTS);
+          if (id === requestId.current) {
+            setResults(EMPTY_RESULTS);
+            setUnavailable(true);
+          }
         })
         .finally(() => {
           if (id === requestId.current) setLoading(false);
@@ -137,15 +150,25 @@ export default function SearchBox() {
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
         aria-label="Search accounts, customers, Quick Stops, and payments"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open && (list.length > 0 || loading || unavailable)}
+        aria-controls={listboxId}
+        aria-activedescendant={highlight >= 0 ? `${listboxId}-option-${highlight}` : undefined}
       />
-      {open && (list.length > 0 || loading) ? (
-        <div className={styles.searchDropdown}>
+      {open && (list.length > 0 || loading || unavailable) ? (
+        <div className={styles.searchDropdown} id={listboxId} role="listbox" aria-label="Search suggestions">
           {showingRecent ? <p className={styles.searchDropdownLabel}>Recent</p> : null}
           {!list.length && loading ? <p className={styles.searchDropdownEmpty}>Searching…</p> : null}
+          {!loading && unavailable ? <p className={styles.searchDropdownEmpty} role="status">Search is unavailable. Press Enter to try the full search page.</p> : null}
           {list.map((item, i) => (
             <button
               key={`${item.href}-${i}`}
+              id={`${listboxId}-option-${i}`}
               type="button"
+              role="option"
+              aria-selected={i === highlight}
+              tabIndex={-1}
               className={`${styles.searchResult} ${i === highlight ? styles.searchResultActive : ''}`}
               onMouseEnter={() => setHighlight(i)}
               onClick={() => goTo(item.href, item.term)}

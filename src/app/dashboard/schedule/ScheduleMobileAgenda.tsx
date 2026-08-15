@@ -170,6 +170,15 @@ export default function ScheduleMobileAgenda({
   const relative = relativeDayLabel(selected, todayKey);
   const blockedReason = blockedDays[selected] ?? null;
   const strip = dayStrip(selected, 5);
+  const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(
+    new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1, 1),
+  );
+
+  function goToMonth(offset: number) {
+    const base = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1 + offset, 1);
+    const nextMonth = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`;
+    router.push(`/dashboard/schedule?month=${nextMonth}`);
+  }
 
   return (
     <div className="sched-mobile">
@@ -208,28 +217,39 @@ export default function ScheduleMobileAgenda({
         </button>
       </div>
 
-      {/* One day, named in full, with an arrow either side of it. */}
+      {/* The navigation follows the selected view. Month used to keep showing
+          the selected DAY and day arrows above a month grid, then put the real
+          month navigation below the fold. */}
       <div className="sched-nav">
         <button
           type="button"
           className="sched-nav-btn sched-nav-prev"
-          onClick={() => goToDay(shiftDateKey(selected, -1))}
-          aria-label={`Previous day, ${shortDateLabel(shiftDateKey(selected, -1))}`}
+          onClick={() => view === 'month' ? goToMonth(-1) : goToDay(shiftDateKey(selected, -1))}
+          aria-label={view === 'month' ? 'Previous month' : `Previous day, ${shortDateLabel(shiftDateKey(selected, -1))}`}
         >
           <span aria-hidden="true">←</span>
         </button>
         <div className="sched-nav-date">
-          <h2 className="sched-mobile-date">{longDateLabel(selected)}</h2>
-          <p className="sched-nav-sub">
-            {relative ? <span className="sched-nav-rel">{relative}</span> : null}
-            <span>{jobCountLabel(dayCount)}</span>
-          </p>
+          {view === 'month' ? (
+            <>
+              <h2 className="sched-mobile-date">{monthLabel}</h2>
+              <p className="sched-nav-sub"><span>Pick a day to open it</span></p>
+            </>
+          ) : (
+            <>
+              <h2 className="sched-mobile-date">{longDateLabel(selected)}</h2>
+              <p className="sched-nav-sub">
+                {relative ? <span className="sched-nav-rel">{relative}</span> : null}
+                <span>{jobCountLabel(dayCount)}</span>
+              </p>
+            </>
+          )}
         </div>
         <button
           type="button"
           className="sched-nav-btn sched-nav-next"
-          onClick={() => goToDay(shiftDateKey(selected, 1))}
-          aria-label={`Next day, ${shortDateLabel(shiftDateKey(selected, 1))}`}
+          onClick={() => view === 'month' ? goToMonth(1) : goToDay(shiftDateKey(selected, 1))}
+          aria-label={view === 'month' ? 'Next month' : `Next day, ${shortDateLabel(shiftDateKey(selected, 1))}`}
         >
           <span aria-hidden="true">→</span>
         </button>
@@ -361,7 +381,7 @@ export default function ScheduleMobileAgenda({
         </div>
       ) : (
         <div className="sched-mobile-panel" data-view="month" id="sched-panel" role="tabpanel" aria-labelledby="sched-tab-month">
-          <p className="sched-mini-hint">Pick a day to see what is on it.</p>
+          <p className="sched-mini-hint">Bands show daily capacity; hatched dates still need durations.</p>
           {/* THE SAME RAMP THE DESKTOP DRAWS, at the size a picker can carry.
               This grid used to show a bare count, so the phone could tell you a
               day had four jobs on it and not whether that was a full day or an
@@ -418,10 +438,6 @@ export default function ScheduleMobileAgenda({
               );
             })}
           </div>
-          <p className="sched-mini-foot">
-            <Link href={`/dashboard/schedule?month=${monthKeyOf(shiftDateKey(`${monthKey}-01`, -1))}`}>← Previous month</Link>
-            <Link href={`/dashboard/schedule?month=${monthKeyOf(shiftDateKey(`${monthKey}-28`, 7))}`}>Next month →</Link>
-          </p>
         </div>
       )}
     </div>

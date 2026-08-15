@@ -68,10 +68,10 @@ export function AlertCard({
   return (
     <>
       <div className={styles.cardHead}>
-        <p className={styles.panelTitle}>
+        <h2 className={styles.panelTitle}>
           {title}
           {shownCount > 0 ? ` (${shownCount}${truncated ? ` — showing ${items.length}` : ''})` : ''}
-        </p>
+        </h2>
         {headerExtra}
       </div>
 

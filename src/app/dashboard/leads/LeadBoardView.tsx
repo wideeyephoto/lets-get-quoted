@@ -3,8 +3,8 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { LeadStatus } from '@/lib/leads';
-import { queueStageLabel } from '@/lib/lead-queue';
-import { BOARD_CLOSED, BOARD_COLUMNS, boardActions } from '@/lib/lead-priority';
+import { isContactablePhone, queueStageLabel } from '@/lib/lead-queue';
+import { BOARD_CLOSED, BOARD_COLUMNS, boardActions, priorityLabel, priorityTone } from '@/lib/lead-priority';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { declineLeadAction, updateLeadStatusAction } from './actions';
 import styles from './board.module.css';
@@ -223,6 +223,7 @@ function BoardCard({
   const [declining, setDeclining] = useState(false);
   const declineId = useId();
   const allowed = boardActions(lead.status);
+  const canContact = isContactablePhone(lead.phone) || Boolean(lead.email);
   const moveRef = useRef<HTMLSelectElement>(null);
 
   return (
@@ -248,9 +249,10 @@ function BoardCard({
       <p className={styles.cardProject}>{lead.detail}</p>
 
       <p className={styles.cardMeta}>
-        <span className={`${leadStyles.heatDot} ${styles.cardDot}`} data-score={lead.score} aria-hidden="true" />
-        <span className={styles.cardHeat} data-score={lead.score}>{lead.scoreLabel}</span>
+        <span className={`${leadStyles.heatDot} ${styles.cardDot}`} data-score={priorityTone(lead)} aria-hidden="true" />
+        <span className={styles.cardHeat} data-score={priorityTone(lead)}>{priorityLabel(lead)}</span>
         {lead.waitingShort ? <span className={styles.cardWait}>{lead.waitingShort}</span> : null}
+        {lead.autoCloseLabel ? <span className={leadStyles.autoCloseWarning}>{lead.autoCloseLabel}</span> : null}
         {lead.estimateLabel ? <span className={styles.cardValue}>{lead.estimateLabel}</span> : null}
       </p>
 
@@ -261,8 +263,13 @@ function BoardCard({
           </button>
         ) : null}
         {allowed.includes('quote') ? (
-          <Link className={styles.cardBtn} href={`/dashboard/leads/${lead.id}#lead-estimate`}>
-            Send quote
+          <Link
+            className={styles.cardBtn}
+            href={canContact
+              ? `/dashboard/leads/${lead.id}#lead-estimate`
+              : `/dashboard/leads/${lead.id}?edit=client#lead-edit-modal`}
+          >
+            {canContact ? 'Send quote' : 'Add contact details'}
           </Link>
         ) : null}
         {allowed.includes('won') ? (

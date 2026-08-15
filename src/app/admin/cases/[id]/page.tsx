@@ -3,10 +3,12 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { getSupportCase, listSupportCaseNotes } from '@/lib/support-cases';
 import { accountDisplayName } from '@/lib/admin-accounts';
+import { listStaff } from '@/lib/staff-directory';
 import styles from '../../admin.module.css';
 import CaseActions from './CaseActions';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Case detail' };
 
 const DONE_MESSAGES: Record<string, string> = {
   created: 'Case created.',
@@ -18,6 +20,9 @@ const DONE_MESSAGES: Record<string, string> = {
 const ERROR_MESSAGES: Record<string, string> = {
   note: 'Enter a note before submitting.',
   status: 'Pick a valid status.',
+  assignee: 'Choose an active staff member.',
+  save: 'That change could not be saved. Try again.',
+  initial_note: 'The case was created, but its initial note could not be saved.',
 };
 
 function statusPill(status: string) {
@@ -40,7 +45,11 @@ export default async function AdminCaseDetailPage({
   const supportCase = await getSupportCase(admin, params.id);
   if (!supportCase) notFound();
 
-  const notes = await listSupportCaseNotes(admin, params.id);
+  let staffAvailable = true;
+  const [notes, staff] = await Promise.all([
+    listSupportCaseNotes(admin, params.id),
+    listStaff(admin, () => { staffAvailable = false; }),
+  ]);
   type CaseAccountRow = { id: string; business_name: string | null; account_number: number | null };
   let account: CaseAccountRow | null = null;
   if (supportCase.account_id) {
@@ -67,11 +76,12 @@ export default async function AdminCaseDetailPage({
 
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE_MESSAGES[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {!staffAvailable ? <div className={`${styles.banner} ${styles.err}`}>The staff directory is unavailable, so assignment choices are incomplete.</div> : null}
 
       <div className={styles.detailGrid}>
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Summary</p>
+            <h2 className={styles.panelTitle}>Summary</h2>
             <dl className={styles.kv}>
               <dt>Account</dt>
               <dd>{account ? <Link href={`/admin/accounts/${account.id}`} className={styles.rowLink}>{accountDisplayName(account)}</Link> : <span className={styles.muted}>General / platform case</span>}</dd>
@@ -89,7 +99,7 @@ export default async function AdminCaseDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Thread</p>
+            <h2 className={styles.panelTitle}>Thread</h2>
             {/* Staff see the whole thread; the customer sees only the rows
                 marked Shared. Marking every row means the distinction is read
                 off the note in front of you rather than inferred from who wrote
@@ -117,7 +127,7 @@ export default async function AdminCaseDetailPage({
         </div>
 
         <div>
-          <CaseActions caseId={supportCase.id} status={supportCase.status} assignedTo={supportCase.assigned_to} />
+          <CaseActions caseId={supportCase.id} status={supportCase.status} assignedTo={supportCase.assigned_to} staff={staff.filter((person) => person.active)} />
         </div>
       </div>
     </>

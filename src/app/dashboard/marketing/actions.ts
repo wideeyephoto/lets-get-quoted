@@ -41,6 +41,7 @@ export async function updateEmailThemeAction(formData: FormData) {
   if (!data) throw new Error('Create your website first to choose an email theme.');
 
   revalidatePath('/dashboard/marketing');
+  revalidatePath('/dashboard/marketing/email-theme');
 }
 
 /**

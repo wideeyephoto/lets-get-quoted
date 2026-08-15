@@ -245,6 +245,7 @@
 .rowHeat[data-score='hot'] { color: var(--ink-orange-3); }
 .rowHeat[data-score='warm'] { color: var(--gold-ink); }
 .rowHeat[data-score='low'] { color: var(--muted); }
+.rowHeat[data-score='unscored'] { color: var(--muted-2); }
 
 .rowDetail {
   font-size: 0.8rem;
@@ -478,9 +479,11 @@
   .stageBar[data-compact='true'] {
     flex-wrap: nowrap;
     overflow-x: auto;
-    padding-bottom: 0.2rem;
+    padding: 0 1.1rem 0.2rem 0;
     scrollbar-width: none;
     scroll-snap-type: x proximity;
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
   }
   .stageBar[data-compact='true']::-webkit-scrollbar { display: none; }
   .stageBar[data-compact='true'] > button { flex: 0 0 auto; scroll-snap-align: start; }

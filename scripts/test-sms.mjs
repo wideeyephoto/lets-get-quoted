@@ -27,7 +27,7 @@ const suffix = randomUUID().slice(0, 8);
 let accountId;
 
 try {
-  const { data: account, error: accountError } = await admin.from('accounts').insert({ business_name: `SMS test ${suffix}` }).select('id').single();
+  const { data: account, error: accountError } = await admin.from('accounts').insert({ business_name: `SMS test ${suffix}`, test_marker: 'test-sms' }).select('id').single();
   if (accountError) throw accountError;
   accountId = account.id;
 
@@ -75,6 +75,7 @@ try {
     phone_number: '+12485550117',
     status: 'sent',
     body: 'Test payment link',
+    test_marker: 'test-sms',
   };
   const { error: firstEventError } = await admin.from('sms_events').insert(event);
   if (firstEventError) throw firstEventError;

@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/auth';
+import { requireMfaPermission, requirePermission } from '@/lib/auth';
 import { logAdminAction, issueAccountCredit } from '@/lib/admin';
 import { getAccountOwnerEmail } from '@/lib/email';
 import { sendMagicLinkEmail } from '@/lib/magic-link';
@@ -25,16 +25,31 @@ function backTo(id: string, query: string): never {
   redirect(`/admin/accounts/${id}?${query}`);
 }
 
+function actionReason(accountId: string, formData: FormData): string {
+  const reason = String(formData.get('reason') ?? '').trim();
+  if (reason.length < 4) backTo(accountId, 'error=reason_required');
+  return reason;
+}
+
+function requireConfirmation(accountId: string, formData: FormData, expected: string) {
+  if (String(formData.get('confirm') ?? '') !== expected) backTo(accountId, 'error=confirm');
+}
+
 export async function suspendAccountAction(accountId: string, formData: FormData) {
-  const ctx = await requirePermission('account.enforce');
+  const ctx = await requireMfaPermission('account.enforce');
   const { admin } = ctx;
-  const reason = String(formData.get('reason') ?? '').trim() || null;
+  const reason = actionReason(accountId, formData);
+  requireConfirmation(accountId, formData, 'SUSPEND');
   const nowIso = new Date().toISOString();
   // Read first so the trail can say what it WAS. "Suspended" with no prior
   // state cannot distinguish a first suspension from re-suspending somebody
   // who was already blocked, and those are different conversations later.
   const { data: was } = await admin.from('accounts').select('suspended_at, suspended_reason').eq('id', accountId).maybeSingle();
-  await admin.from('accounts').update({ suspended_at: nowIso, suspended_reason: reason, suspended_by: ctx.adminEmail }).eq('id', accountId);
+  const { error: updateError } = await admin.from('accounts').update({ suspended_at: nowIso, suspended_reason: reason, suspended_by: ctx.adminEmail }).eq('id', accountId);
+  if (updateError) {
+    console.error('suspendAccountAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
   await logAdminAction(admin, ctx, {
     action: 'account_suspend', accountId, targetType: 'account', targetId: accountId,
     reason,
@@ -45,48 +60,68 @@ export async function suspendAccountAction(accountId: string, formData: FormData
   backTo(accountId, 'done=suspended');
 }
 
-export async function unsuspendAccountAction(accountId: string) {
-  const ctx = await requirePermission('account.enforce');
+export async function unsuspendAccountAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
   const { admin } = ctx;
+  const reason = actionReason(accountId, formData);
   const { data: was } = await admin.from('accounts').select('suspended_at, suspended_reason').eq('id', accountId).maybeSingle();
-  await admin.from('accounts').update({ suspended_at: null, suspended_reason: null, suspended_by: null }).eq('id', accountId);
+  const { error: updateError } = await admin.from('accounts').update({ suspended_at: null, suspended_reason: null, suspended_by: null }).eq('id', accountId);
+  if (updateError) {
+    console.error('unsuspendAccountAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
   await logAdminAction(admin, ctx, {
     action: 'account_unsuspend', accountId, targetType: 'account', targetId: accountId,
     before: (was as Record<string, unknown> | null) ?? null,
     after: { suspended_at: null, suspended_reason: null },
+    reason,
   });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=unsuspended');
 }
 
 export async function issueAccountCreditAction(accountId: string, formData: FormData) {
-  const ctx = await requirePermission('money.credit');
+  const ctx = await requireMfaPermission('money.credit');
   const { admin } = ctx;
   const dollars = Number(String(formData.get('amount') ?? '').replace(/[^0-9.]/g, ''));
-  const reason = String(formData.get('reason') ?? '').trim() || 'Staff credit';
+  const reason = actionReason(accountId, formData);
   if (!Number.isFinite(dollars) || dollars <= 0) backTo(accountId, 'error=amount');
-  await issueAccountCredit(admin, ctx, { accountId, amountCents: Math.round(dollars * 100), reason, source: 'admin' });
+  try {
+    await issueAccountCredit(admin, ctx, { accountId, amountCents: Math.round(dollars * 100), reason, source: 'admin' });
+  } catch (error) {
+    console.error('issueAccountCreditAction failed:', error);
+    backTo(accountId, 'error=update_failed');
+  }
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=credit');
 }
 
 export async function lockQuickStopAction(accountId: string, formData: FormData) {
-  const ctx = await requirePermission('account.enforce');
+  const ctx = await requireMfaPermission('account.enforce');
   const { admin } = ctx;
   const days = Math.max(1, Math.min(365, Math.round(Number(formData.get('days') ?? 10)) || 10));
-  const reason = String(formData.get('reason') ?? '').trim() || 'No-show penalty';
+  const reason = actionReason(accountId, formData);
   const until = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
-  await admin.from('accounts').update({ extra_stop_locked_until: until, extra_stop_lock_reason: reason }).eq('id', accountId);
+  const { error: updateError } = await admin.from('accounts').update({ extra_stop_locked_until: until, extra_stop_lock_reason: reason }).eq('id', accountId);
+  if (updateError) {
+    console.error('lockQuickStopAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
   await logAdminAction(admin, ctx, { action: 'extra_stop_lock', accountId, targetType: 'account', targetId: accountId, reason, meta: { days, until } });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=es_locked');
 }
 
-export async function unlockQuickStopAction(accountId: string) {
-  const ctx = await requirePermission('account.enforce');
+export async function unlockQuickStopAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
   const { admin } = ctx;
-  await admin.from('accounts').update({ extra_stop_locked_until: null, extra_stop_lock_reason: null }).eq('id', accountId);
-  await logAdminAction(admin, ctx, { action: 'extra_stop_unlock', accountId, targetType: 'account', targetId: accountId });
+  const reason = actionReason(accountId, formData);
+  const { error: updateError } = await admin.from('accounts').update({ extra_stop_locked_until: null, extra_stop_lock_reason: null }).eq('id', accountId);
+  if (updateError) {
+    console.error('unlockQuickStopAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
+  await logAdminAction(admin, ctx, { action: 'extra_stop_unlock', accountId, targetType: 'account', targetId: accountId, reason });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=es_unlocked');
 }
@@ -94,21 +129,32 @@ export async function unlockQuickStopAction(accountId: string) {
 // Clears the Connect identity so the owner has to redo onboarding from
 // scratch. There are no separate identity/KYC columns to reset — this is the
 // full scope of "reset verification" against today's schema.
-export async function resetVerificationAction(accountId: string) {
-  const ctx = await requirePermission('account.enforce');
+export async function resetVerificationAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
   const { admin } = ctx;
-  await admin.from('accounts').update({ stripe_connect_id: null, connect_onboarded: false }).eq('id', accountId);
-  await logAdminAction(admin, ctx, { action: 'account_reset_verification', accountId, targetType: 'account', targetId: accountId });
+  const reason = actionReason(accountId, formData);
+  requireConfirmation(accountId, formData, 'RESET');
+  const { error: updateError } = await admin.from('accounts').update({ stripe_connect_id: null, connect_onboarded: false }).eq('id', accountId);
+  if (updateError) {
+    console.error('resetVerificationAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
+  await logAdminAction(admin, ctx, { action: 'account_reset_verification', accountId, targetType: 'account', targetId: accountId, reason });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=reset_verification');
 }
 
 export async function restrictPayoutsAction(accountId: string, formData: FormData) {
-  const ctx = await requirePermission('money.payouts');
+  const ctx = await requireMfaPermission('money.payouts');
   const { admin } = ctx;
-  const reason = String(formData.get('reason') ?? '').trim() || null;
+  const reason = actionReason(accountId, formData);
+  requireConfirmation(accountId, formData, 'RESTRICT');
   const nowIso = new Date().toISOString();
-  await admin.from('accounts').update({ payouts_restricted_at: nowIso, payouts_restricted_reason: reason, payouts_restricted_by: ctx.adminEmail }).eq('id', accountId);
+  const { error: updateError } = await admin.from('accounts').update({ payouts_restricted_at: nowIso, payouts_restricted_reason: reason, payouts_restricted_by: ctx.adminEmail }).eq('id', accountId);
+  if (updateError) {
+    console.error('restrictPayoutsAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
   await logAdminAction(admin, ctx, {
     action: 'account_restrict_payouts', accountId, targetType: 'account', targetId: accountId,
     reason,
@@ -118,11 +164,16 @@ export async function restrictPayoutsAction(accountId: string, formData: FormDat
   backTo(accountId, 'done=payouts_restricted');
 }
 
-export async function unrestrictPayoutsAction(accountId: string) {
-  const ctx = await requirePermission('money.payouts');
+export async function unrestrictPayoutsAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('money.payouts');
   const { admin } = ctx;
-  await admin.from('accounts').update({ payouts_restricted_at: null, payouts_restricted_reason: null, payouts_restricted_by: null }).eq('id', accountId);
-  await logAdminAction(admin, ctx, { action: 'account_unrestrict_payouts', accountId, targetType: 'account', targetId: accountId });
+  const reason = actionReason(accountId, formData);
+  const { error: updateError } = await admin.from('accounts').update({ payouts_restricted_at: null, payouts_restricted_reason: null, payouts_restricted_by: null }).eq('id', accountId);
+  if (updateError) {
+    console.error('unrestrictPayoutsAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
+  await logAdminAction(admin, ctx, { action: 'account_unrestrict_payouts', accountId, targetType: 'account', targetId: accountId, reason });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=payouts_unrestricted');
 }
@@ -131,17 +182,23 @@ export async function unrestrictPayoutsAction(accountId: string) {
 // plan_tier enum's legacy 'suspended' value must never be reachable here;
 // account suspension is the separate suspended_at/_reason/_by triple above.
 export async function changePlanAction(accountId: string, formData: FormData) {
-  const ctx = await requirePermission('money.plan');
+  const ctx = await requireMfaPermission('money.plan');
   const { admin } = ctx;
   const plan = String(formData.get('plan') ?? '').trim();
+  const reason = actionReason(accountId, formData);
   if (!isPlanTarget(plan)) backTo(accountId, 'error=plan');
   // What they were on is the whole question when a bill is disputed.
   const { data: was } = await admin.from('accounts').select('plan').eq('id', accountId).maybeSingle();
-  await admin.from('accounts').update({ plan }).eq('id', accountId);
+  const { error: updateError } = await admin.from('accounts').update({ plan }).eq('id', accountId);
+  if (updateError) {
+    console.error('changePlanAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
   await logAdminAction(admin, ctx, {
     action: 'account_change_plan', accountId, targetType: 'account', targetId: accountId,
     before: { plan: (was as { plan?: string } | null)?.plan ?? null },
     after: { plan },
+    reason,
   });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=plan_changed');
@@ -161,23 +218,57 @@ export async function resendOnboardingAction(accountId: string) {
   backTo(accountId, 'done=onboarding_resent');
 }
 
+export async function setAccountSyntheticAction(accountId: string, formData: FormData) {
+  const ctx = await requirePermission('account.support');
+  const reason = String(formData.get('reason') ?? '').trim();
+  const synthetic = String(formData.get('synthetic') ?? '') === 'true';
+  if (reason.length < 4) backTo(accountId, 'error=reason_required');
+  const { data: was } = await ctx.admin.from('accounts').select('test_marker').eq('id', accountId).maybeSingle();
+  const testMarker = synthetic ? `staff:${ctx.adminEmail}` : null;
+  const { error } = await ctx.admin.from('accounts').update({ test_marker: testMarker }).eq('id', accountId);
+  if (error) backTo(accountId, 'error=update_failed');
+  await logAdminAction(ctx.admin, ctx, {
+    action: synthetic ? 'account_mark_synthetic' : 'account_mark_production',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    reason,
+    before: { test_marker: (was as { test_marker?: string | null } | null)?.test_marker ?? null },
+    after: { test_marker: testMarker },
+  });
+  revalidatePath('/admin');
+  revalidatePath('/admin/accounts');
+  revalidatePath(`/admin/accounts/${accountId}`);
+  backTo(accountId, synthetic ? 'done=marked_synthetic' : 'done=marked_production');
+}
+
 // Bans every member's user id for 24h, which blocks their next token refresh —
 // it does NOT retroactively revoke an already-issued access token still inside
 // its own short lifetime. The UI says this explicitly so staff don't treat it
 // as an instant kill switch.
-export async function signOutAllSessionsAction(accountId: string) {
-  const ctx = await requirePermission('account.enforce');
+export async function signOutAllSessionsAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
   const { admin } = ctx;
-  const { data: members } = await admin.from('memberships').select('user_id').eq('account_id', accountId);
+  const reason = actionReason(accountId, formData);
+  requireConfirmation(accountId, formData, 'SIGN OUT');
+  const { data: members, error: membershipError } = await admin.from('memberships').select('user_id').eq('account_id', accountId);
+  if (membershipError) {
+    console.error('signOutAllSessions membership read failed:', membershipError);
+    backTo(accountId, 'error=update_failed');
+  }
   const userIds = (members ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
+  const failedUserIds: string[] = [];
   for (const userId of userIds) {
     try {
-      await admin.auth.admin.updateUserById(userId, { ban_duration: '24h' });
+      const { error } = await admin.auth.admin.updateUserById(userId, { ban_duration: '24h' });
+      if (error) throw error;
     } catch (error) {
       console.error('signOutAllSessions ban failed:', error instanceof Error ? error.message : error);
+      failedUserIds.push(userId);
     }
   }
-  await logAdminAction(admin, ctx, { action: 'account_sign_out_all', accountId, targetType: 'account', targetId: accountId, meta: { userCount: userIds.length } });
+  await logAdminAction(admin, ctx, { action: 'account_sign_out_all', accountId, targetType: 'account', targetId: accountId, reason, meta: { userCount: userIds.length, failedCount: failedUserIds.length } });
+  if (failedUserIds.length) backTo(accountId, 'error=partial_signout');
   backTo(accountId, 'done=signed_out');
 }
 
@@ -319,7 +410,7 @@ export async function resolvePrivacyRequestAction(accountId: string, formData: F
 // owner's auth user if they belong to no other account (a real data-deletion
 // request), best-effort.
 export async function deleteAccountAction(accountId: string, formData: FormData) {
-  const ctx = await requirePermission('account.delete');
+  const ctx = await requireMfaPermission('account.delete');
   const { admin } = ctx;
   const typed = String(formData.get('confirm') ?? '').trim();
 

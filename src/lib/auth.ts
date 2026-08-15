@@ -180,15 +180,12 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
 }
 
 // --- Internal staff console (/admin) -----------------------------------------
-// TWO GATES, and both must permit.
+// Bootstrap allowlist plus a database-managed directory.
 //
-//   1. ADMIN_EMAILS decides whether you can reach /admin at all. Still an env
-//      var on purpose: a database row must never be able to grant console
-//      access — that turns any write vulnerability into a staff account — and
-//      the first staff member has to get in before there is a table to read.
-//      It also keeps "who works here" out of the data a contractor could ever
-//      see.
-//   2. The `staff` row decides what you can DO once inside. Role is now a real
+//   1. ADMIN_EMAILS bootstraps the first staff rows and remains a break-glass
+//      route. It is not the day-to-day provisioning interface.
+//   2. The service-role-only `staff` row decides who can enter and what they can
+//      do. Role is a real
 //      authorization boundary (src/lib/staff.ts holds the matrix), and an
 //      inactive row denies everything even while the env still allows entry,
 //      because revoking access has to work faster than a redeploy.
@@ -275,6 +272,7 @@ export type AdminContext = {
 async function resolveStaff(
   admin: ReturnType<typeof createAdminClient>,
   email: string,
+  allowProvision = true,
 ): Promise<StaffRecord> {
   const columns = 'id, email, role, active, display_name';
   const { data: existing } = await admin.from('staff').select(columns).ilike('email', email).maybeSingle();
@@ -288,6 +286,8 @@ async function resolveStaff(
     );
     return { ...row, role: parseStaffRole(row.role, 'read_only') };
   }
+
+  if (!allowProvision) return { id: '', email, role: 'read_only', active: false, display_name: null };
 
   const seeded = staffRoleFor(email);
   const { data: created, error } = await admin
@@ -309,8 +309,8 @@ async function resolveStaff(
   return { id: '', email, role: 'read_only', active: false, display_name: null };
 }
 
-// Guard for every /admin route. Requires a logged-in user whose email is on the
-// staff allowlist; ANYONE else — logged out or a normal contractor — gets a 404
+// Guard for every /admin route. Requires a logged-in user whose email has an
+// active staff row or is allowed to bootstrap one; everyone else gets a 404
 // so the console never reveals it exists. Returns the service-role client (the
 // console works across all accounts) plus who is acting, for the audit trail.
 export async function requireAdmin(): Promise<AdminContext> {
@@ -319,13 +319,13 @@ export async function requireAdmin(): Promise<AdminContext> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || !isAdminEmail(user.email)) {
+  if (!user?.email) {
     notFound();
   }
 
   const adminEmail = user.email!.toLowerCase();
   const admin = createAdminClient();
-  const staff = await resolveStaff(admin, adminEmail);
+  const staff = await resolveStaff(admin, adminEmail, isAdminEmail(adminEmail));
 
   // A deactivated staff member gets the same 404 as a stranger. Letting them in
   // to a read-only console would confirm the console exists and tell them their
@@ -385,4 +385,22 @@ export async function requirePermissions(...permissions: Permission[]): Promise<
   // permissions understates what was authorised, which is the thing the column
   // exists to make reviewable.
   return { ...context, permission: permissions.join(' + ') };
+}
+
+async function requireMfa(context: AdminContext): Promise<AdminContext> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error || data.currentLevel !== 'aal2') {
+    redirect(`/admin/security?step_up=1&permission=${encodeURIComponent(context.permission ?? '')}`);
+  }
+  return context;
+}
+
+/** High-impact staff mutations require an authenticator-verified session. */
+export async function requireMfaPermission(permission: Permission): Promise<AdminContext> {
+  return requireMfa(await requirePermission(permission));
+}
+
+export async function requireMfaPermissions(...permissions: Permission[]): Promise<AdminContext> {
+  return requireMfa(await requirePermissions(...permissions));
 }

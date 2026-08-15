@@ -36,6 +36,9 @@ const ERR: Record<string, string> = {
   nopayment: 'This request has no captured payment.',
   outcome: 'Pick a resolution.',
   notfound: 'Request not found.',
+  reason: 'Enter an internal reason of at least four characters.',
+  state: 'The request could not be updated. Nothing was reported as completed.',
+  refund_state: 'The refund succeeded, but the Quick Stop record did not update. Do not refund again; reconcile this request from the payment detail.',
 };
 
 export default async function AdminQuickStopDetailPage({
@@ -76,7 +79,7 @@ export default async function AdminQuickStopDetailPage({
       <div className={styles.detailGrid}>
         <div>
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Request</p>
+            <h2 className={styles.panelTitle}>Request</h2>
             <dl className={styles.kv}>
               <dt>Job</dt><dd>{r.ai_summary || <span className={styles.muted}>—</span>}</dd>
               <dt>Customer</dt><dd>{r.client_name || '—'}{r.client_phone ? ` · ${r.client_phone}` : ''}{r.client_email ? ` · ${r.client_email}` : ''}</dd>
@@ -88,7 +91,7 @@ export default async function AdminQuickStopDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Payment & verification</p>
+            <h2 className={styles.panelTitle}>Payment & verification</h2>
             <dl className={styles.kv}>
               <dt>Payment status</dt><dd>{detail.payment ? <span className={`${styles.pill} ${detail.payment.status === 'paid' ? styles.good : detail.payment.status === 'refunded' ? styles.warn : styles.neutral}`}>{detail.payment.status}</span> : <span className={styles.muted}>none</span>}</dd>
               <dt>Paid at</dt><dd>{fmtDateTime(r.paid_at)}</dd>
@@ -100,7 +103,7 @@ export default async function AdminQuickStopDetailPage({
           </section>
 
           <section className={styles.panel}>
-            <p className={styles.panelTitle}>Timeline</p>
+            <h2 className={styles.panelTitle}>Timeline</h2>
             {detail.events.length === 0 ? (
               <p className={styles.emptyState}>No recorded events.</p>
             ) : (

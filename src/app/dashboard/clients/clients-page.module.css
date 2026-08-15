@@ -1,0 +1,279 @@
+.screen {
+  gap: 0.85rem;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.1rem 1.35rem;
+  background:
+    linear-gradient(120deg, rgba(255, 122, 33, 0.1), transparent 38%),
+    rgba(var(--panel-rgb), 0.92);
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin-bottom: 0.3rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem 0.7rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.customerCount,
+.repeatCount {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.08);
+  color: var(--mute-t60);
+  font-size: 0.76rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.repeatCount {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--ink-green-1);
+}
+
+.lead {
+  max-width: 44rem;
+  margin: 0.38rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: none;
+}
+
+.heroActions :global(.btn) {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.workspaceCard {
+  padding: 1rem;
+}
+
+.workspace {
+  margin-bottom: 0;
+}
+
+.stageBar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.15rem;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.stageBar::-webkit-scrollbar {
+  display: none;
+}
+
+.stageBar > button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  scroll-snap-align: start;
+}
+
+.stageBar > button:disabled {
+  cursor: default;
+  opacity: 0.46;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.7rem;
+}
+
+.searchWrap,
+.sortWrap,
+.paneSwitch,
+.gearSlot {
+  min-width: 0;
+}
+
+.sortWrap {
+  white-space: nowrap;
+}
+
+.paneSwitch {
+  white-space: nowrap;
+}
+
+.mapCount {
+  white-space: nowrap;
+}
+
+.body {
+  gap: 0.75rem;
+}
+
+.queue,
+.detail {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 138, 61, 0.34) transparent;
+}
+
+.queue::-webkit-scrollbar,
+.detail::-webkit-scrollbar {
+  width: 9px;
+}
+
+.queue::-webkit-scrollbar-thumb,
+.detail::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 138, 61, 0.3);
+  background-clip: content-box;
+}
+
+.recordHeadLayout :global(figure) {
+  width: 7.25rem;
+  min-height: 7.25rem;
+  aspect-ratio: 1;
+}
+
+@media (min-width: 921px) {
+  .body {
+    height: clamp(34rem, calc(100vh - 19rem), 46rem);
+    align-items: stretch;
+  }
+
+  .body .queue,
+  .body .detail {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .comms {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    backdrop-filter: blur(14px);
+  }
+}
+
+@media (max-width: 720px) {
+  .hero {
+    align-items: flex-start;
+    padding: 0.95rem 1rem;
+  }
+
+  .lead {
+    display: none;
+  }
+
+  .heroActions {
+    align-items: stretch;
+  }
+
+  .toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .searchWrap,
+  .sortWrap {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .paneSwitch {
+    grid-column: 1;
+  }
+
+  .gearSlot {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 520px) {
+  .screen {
+    gap: 0.65rem;
+  }
+
+  .hero {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.85rem;
+  }
+
+  .heroCopy {
+    flex: 1 1 100%;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActions :global(.btn) {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .title {
+    font-size: 1.55rem;
+  }
+
+  .customerCount,
+  .repeatCount {
+    min-height: 1.5rem;
+    padding-inline: 0.45rem;
+    font-size: 0.7rem;
+  }
+
+  .repeatCount {
+    display: none;
+  }
+
+  .heroActions :global(.btn) {
+    min-height: 40px;
+    padding-inline: 0.65rem;
+    font-size: 0.8rem;
+  }
+
+  .workspaceCard {
+    padding: 0.75rem;
+  }
+
+  .stageBar {
+    margin-inline: -0.15rem;
+    padding-inline: 0.15rem;
+  }
+
+  .recordHeadLayout :global(figure) {
+    width: 5rem;
+    min-height: 5rem;
+    aspect-ratio: 1;
+  }
+}

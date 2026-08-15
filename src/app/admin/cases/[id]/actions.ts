@@ -27,7 +27,8 @@ export async function addNoteAction(caseId: string, formData: FormData) {
   // note only staff can see; the harmful one is working notes reaching the
   // customer they are about.
   const visibility = visibilityFromForm(String(formData.get('visibility') ?? ''));
-  await addSupportCaseNote(admin, ctx, caseId, body, visibility);
+  const saved = await addSupportCaseNote(admin, ctx, caseId, body, visibility);
+  if (!saved) backTo(caseId, 'error=save');
 
   if (visibility === 'customer') {
     // Nobody watches a support page waiting for a reply to appear — the email
@@ -53,7 +54,8 @@ export async function changeStatusAction(caseId: string, formData: FormData) {
   const { admin } = ctx;
   const status = String(formData.get('status') ?? '').trim();
   if (!isCaseStatus(status)) backTo(caseId, 'error=status');
-  await updateSupportCaseStatus(admin, ctx, caseId, status);
+  const saved = await updateSupportCaseStatus(admin, ctx, caseId, status);
+  if (!saved) backTo(caseId, 'error=save');
   revalidatePath(`/admin/cases/${caseId}`);
   backTo(caseId, 'done=status');
 }
@@ -62,7 +64,12 @@ export async function assignCaseAction(caseId: string, formData: FormData) {
   const ctx = await requirePermission('account.support');
   const { admin } = ctx;
   const assignedTo = String(formData.get('assigned_to') ?? '').trim() || null;
-  await assignSupportCase(admin, ctx, caseId, assignedTo);
+  if (assignedTo) {
+    const { data, error } = await admin.from('staff').select('id').ilike('email', assignedTo).eq('active', true).maybeSingle();
+    if (error || !data) backTo(caseId, 'error=assignee');
+  }
+  const saved = await assignSupportCase(admin, ctx, caseId, assignedTo);
+  if (!saved) backTo(caseId, 'error=save');
   revalidatePath(`/admin/cases/${caseId}`);
   backTo(caseId, 'done=assigned');
 }

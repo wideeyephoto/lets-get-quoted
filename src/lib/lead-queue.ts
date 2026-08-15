@@ -302,6 +302,24 @@ export function waitingFor(
   return waitingLabel(lead.createdAt, now);
 }
 
+/** Warn during the final week before the account's automatic Lost rule runs. */
+export function autoCloseWarning(
+  createdAt: string,
+  windowDays: number,
+  now: Date = new Date(),
+): string | null {
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+  const created = new Date(createdAt).getTime();
+  if (!Number.isFinite(created)) return null;
+
+  const remainingMs = created + Math.round(windowDays) * 86_400_000 - now.getTime();
+  if (remainingMs < 0) return null;
+  const days = Math.ceil(remainingMs / 86_400_000);
+  if (days > 7) return null;
+  if (days === 0) return 'Auto-closes today';
+  return `Auto-closes in ${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
 /**
  * What the communication buttons should do, given how the homeowner asked to be
  * contacted.

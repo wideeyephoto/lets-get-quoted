@@ -67,6 +67,7 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
   const { data, error } = await admin
     .from('payments')
     .select('amount, imported, stripe_payment_intent')
+    .is('test_marker', null)
     .eq('account_id', accountId)
     .eq('status', 'paid')
     .not('stripe_payment_intent', 'is', null)
@@ -76,6 +77,7 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
     const fallback = await admin
       .from('payments')
       .select('amount, stripe_payment_intent')
+      .is('test_marker', null)
       .eq('account_id', accountId)
       .eq('status', 'paid')
       .not('stripe_payment_intent', 'is', null)
