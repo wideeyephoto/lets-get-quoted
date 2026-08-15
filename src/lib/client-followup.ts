@@ -21,7 +21,7 @@ export const BAND_LABEL: Record<FollowUpBand, string> = {
   booked: 'On the calendar',
   recent: 'Just done',
   drifting: 'Going quiet',
-  unbooked: 'Nothing on the books',
+  unbooked: 'No visit booked',
 };
 
 export const BAND_NOTE: Record<FollowUpBand, string> = {
