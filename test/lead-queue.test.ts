@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   QUEUE_STAGES,
+  autoCloseWarning,
   contactPlan,
   isContactablePhone,
   matchesQuery,
@@ -203,6 +204,23 @@ describe('the waiting clock stops when the lead closes', () => {
     // Every consumer has to decide what to show instead — the detail pane shows
     // the lead's age, the rows show nothing, the CSV cell is empty.
     expect(at('won')).not.toBe('');
+  });
+});
+
+describe('automatic closure becomes visible before it happens', () => {
+  it('warns only during the final week', () => {
+    expect(autoCloseWarning(hoursAgo(24 * 20), 30, now)).toBeNull();
+    expect(autoCloseWarning(hoursAgo(24 * 26), 30, now)).toBe('Auto-closes in 4 days');
+    expect(autoCloseWarning(hoursAgo(24 * 29), 30, now)).toBe('Auto-closes in 1 day');
+  });
+
+  it('stays silent when automatic closure is disabled or the date is invalid', () => {
+    expect(autoCloseWarning(hoursAgo(24 * 29), 0, now)).toBeNull();
+    expect(autoCloseWarning('not-a-date', 30, now)).toBeNull();
+  });
+
+  it('does not keep warning after the deadline has passed', () => {
+    expect(autoCloseWarning(hoursAgo(24 * 31), 30, now)).toBeNull();
   });
 });
 

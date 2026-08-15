@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   ATTENTION_BADGE_MAX,
   QUEUE_STAGES,
@@ -199,5 +200,13 @@ describe('one stage word per lead', () => {
       expect(leadStageLabel(stage.id, 'website_form')).toBe(queueStageLabel(stage.id));
       expect(leadStageLabel(stage.id, 'missed_call')).toBe(queueStageLabel(stage.id));
     }
+  });
+});
+
+describe('the shell and Leads page count the same production records', () => {
+  it('applies the test-record filter to both shell lead queries', () => {
+    const route = readFileSync('src/app/api/account/status/route.ts', 'utf8');
+    expect(route.match(/applyTestRecordFilter\(/g)).toHaveLength(2);
+    expect(route).not.toContain(".eq('source', 'website_form')");
   });
 });

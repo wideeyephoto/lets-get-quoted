@@ -3,6 +3,8 @@ import {
   OVERDUE_AFTER_DAYS,
   boardActions,
   isClosed,
+  priorityLabel,
+  priorityTone,
   primaryAction,
   rankLeads,
   type PriorityLead,
@@ -147,10 +149,33 @@ describe('one context-aware primary action', () => {
     expect(primaryAction(lead({ textOnly: false })).kind).toBe('call');
   });
 
-  it('falls back to opening the lead when there is no phone at all', () => {
+  it('falls back to fixing contact details when no contact route exists', () => {
     const action = primaryAction(lead({ phone: null }));
-    expect(action.kind).toBe('open');
-    expect(action.href).toBe('/dashboard/leads/l1');
+    expect(action.kind).toBe('edit');
+    expect(action.label).toBe('Add contact');
+    expect(action.href).toBe('/dashboard/leads/l1?edit=client#lead-edit-modal');
+  });
+
+  it('does not expose a call action for a partial imported phone number', () => {
+    expect(primaryAction(lead({ phone: '74' })).kind).toBe('edit');
+  });
+
+  it('uses email when the phone is unusable but email exists', () => {
+    expect(primaryAction(lead({ phone: '74', email: 'dana@example.com' })).kind).toBe('email');
+  });
+});
+
+describe('unscored is not warm', () => {
+  it('keeps the fallback score out of the user-facing label and tone', () => {
+    const unscored = lead({ hasTriage: false, score: 'warm' });
+    expect(priorityLabel(unscored)).toBe('Unscored');
+    expect(priorityTone(unscored)).toBe('unscored');
+  });
+
+  it('preserves a real triage result', () => {
+    const scored = lead({ hasTriage: true, score: 'warm' });
+    expect(priorityLabel(scored)).toBe('Warm');
+    expect(priorityTone(scored)).toBe('warm');
   });
 
   it('does not expose a call action for a partial imported phone number', () => {

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { LeadDetailDto } from '@/lib/lead-detail';
+import { isContactablePhone } from '@/lib/lead-queue';
 import type { LeadViewItem } from './LeadsWorkspace';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
@@ -59,6 +60,7 @@ export default function LeadDetailTabs({
   const H = headingLevel;
 
   if (tab === 'overview') {
+    const contactablePhone = isContactablePhone(detail.phoneDigits);
     return (
       <div className={styles.grid}>
         <section className={styles.card}>
@@ -66,7 +68,13 @@ export default function LeadDetailTabs({
           <dl className={styles.defs}>
             <div>
               <dt>Phone</dt>
-              <dd>{detail.phoneDigits ? <a href={`tel:${detail.phoneDigits}`}>{detail.phone}</a> : 'Not on file'}</dd>
+              <dd>
+                {contactablePhone ? (
+                  <a href={`tel:${detail.phoneDigits}`}>{detail.phone}</a>
+                ) : detail.phone ? (
+                  <>{detail.phone} <Link href={`${base}/leads/${detail.id}?edit=client#lead-edit-modal`}>Fix phone</Link></>
+                ) : 'Not on file'}
+              </dd>
             </div>
             <div>
               <dt>Email</dt>
@@ -81,7 +89,7 @@ export default function LeadDetailTabs({
         <section className={styles.card}>
           <Head level={H}>What the AI read</Head>
           <dl className={styles.defs}>
-            <div><dt>Score</dt><dd>{detail.hasTriage ? detail.scoreLabel : 'Not scored'}</dd></div>
+            <div><dt>Score</dt><dd>{detail.hasTriage ? detail.scoreLabel : 'Unscored'}</dd></div>
             <div><dt>Est. value</dt><dd>{detail.estimateLabel ?? 'No number given'}</dd></div>
             <div><dt>Timeline</dt><dd>{detail.timeline || 'Not said'}</dd></div>
             <div><dt>Est. labor</dt><dd>{detail.estimatedHours ? `${detail.estimatedHours} hrs` : 'Not set'}</dd></div>

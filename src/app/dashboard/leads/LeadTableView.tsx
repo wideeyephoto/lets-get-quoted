@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QUEUE_STAGES, matchesQuery, matchesStage, queueStageLabel, type StageFilter } from '@/lib/lead-queue';
-import { primaryAction } from '@/lib/lead-priority';
+import { primaryAction, priorityLabel, priorityTone } from '@/lib/lead-priority';
 import {
   DEFAULT_COLUMNS,
   LOCKED_COLUMN,
@@ -35,6 +35,7 @@ import leadStyles from './leads.module.css';
 
 const STORE_COLUMNS = 'lgq_leads_table_columns';
 const STORE_FILTERS = 'lgq_leads_table_filters';
+const TABLE_FILTERS_VERSION = 2;
 
 type SortKey = TableColumnId;
 type SortDir = 'asc' | 'desc';
@@ -62,8 +63,12 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
       if (savedColumns) setColumns(normalizeColumns(JSON.parse(savedColumns)));
       const savedFilters = window.localStorage.getItem(STORE_FILTERS);
       if (savedFilters) {
-        const parsed = JSON.parse(savedFilters) as { stage?: StageFilter; heat?: typeof heat; sortKey?: SortKey; sortDir?: SortDir };
-        if (parsed.stage) setStage(parsed.stage);
+        const parsed = JSON.parse(savedFilters) as { version?: number; stage?: StageFilter; heat?: typeof heat; sortKey?: SortKey; sortDir?: SortDir };
+        // Version 1 defaulted to All. Migrate it once so existing accounts get
+        // the same open-first queue as a new account; subsequent choices save
+        // with this version and remain the user's choice.
+        if (parsed.version === TABLE_FILTERS_VERSION && parsed.stage) setStage(parsed.stage);
+        else setStage('open');
         if (parsed.heat) setHeat(parsed.heat);
         if (parsed.sortKey) setSortKey(parsed.sortKey);
         if (parsed.sortDir) setSortDir(parsed.sortDir);
@@ -78,7 +83,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
     if (!ready) return;
     try {
       window.localStorage.setItem(STORE_COLUMNS, JSON.stringify(columns));
-      window.localStorage.setItem(STORE_FILTERS, JSON.stringify({ stage, heat, sortKey, sortDir }));
+      window.localStorage.setItem(STORE_FILTERS, JSON.stringify({ version: TABLE_FILTERS_VERSION, stage, heat, sortKey, sortDir }));
     } catch {
       // Not worth surfacing — the table still works, it just forgets.
     }
@@ -101,7 +106,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
   const shown = useMemo(() => {
     const filtered = leads.filter((lead) => {
       if (!matchesStage(lead, stage)) return false;
-      if (heat !== 'all' && lead.score !== heat) return false;
+      if (heat !== 'all' && (!lead.hasTriage || lead.score !== heat)) return false;
       return matchesQuery(lead, query);
     });
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -194,7 +199,7 @@ export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; r
           className={styles.search}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search customer, project or town"
+          placeholder="Search leads"
         />
 
         <label className={styles.filter}>
@@ -419,7 +424,7 @@ function cellNode(lead: LeadViewItem, id: TableColumnId) {
   if (id === 'heat') {
     return (
       <span className={styles.tHeat}>
-        <span className={leadStyles.heatDot} data-score={lead.score} aria-hidden="true" /> {lead.scoreLabel}
+        <span className={leadStyles.heatDot} data-score={priorityTone(lead)} aria-hidden="true" /> {priorityLabel(lead)}
       </span>
     );
   }
@@ -451,7 +456,7 @@ function cellText(lead: LeadViewItem, id: TableColumnId): string {
     case 'next':
       return primaryAction(lead).label;
     case 'heat':
-      return lead.scoreLabel;
+      return priorityLabel(lead);
     case 'location':
       return lead.address || lead.location || '';
     case 'received':

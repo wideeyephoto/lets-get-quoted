@@ -21,6 +21,8 @@ export type PriorityLead = QueueLead & {
   textOnly: boolean;
   phone: string | null;
   email: string | null;
+  /** False when the score is only the triage fallback, not an actual result. */
+  hasTriage?: boolean;
   /** ISO timestamp of the last logged touchpoint; null if nobody has reached out. */
   lastTouchAt: string | null;
 };
@@ -56,6 +58,16 @@ const TIER_RANK: Record<PriorityTier, number> = {
 
 const HEAT_RANK: Record<QueueLead['score'], number> = { hot: 0, warm: 1, low: 2 };
 const HEAT_WORD: Record<QueueLead['score'], string> = { hot: 'Hot', warm: 'Warm', low: 'Low' };
+
+export type PriorityTone = QueueLead['score'] | 'unscored';
+
+export function priorityTone(lead: Pick<PriorityLead, 'hasTriage' | 'score'>): PriorityTone {
+  return lead.hasTriage === false ? 'unscored' : lead.score;
+}
+
+export function priorityLabel(lead: Pick<PriorityLead, 'hasTriage' | 'score'>): string {
+  return lead.hasTriage === false ? 'Unscored' : HEAT_WORD[lead.score];
+}
 
 /**
  * How long a lead may sit after somebody has touched it before it counts as
@@ -129,7 +141,7 @@ export function rankLeads<T extends PriorityLead>(
       quietDays,
       // Three facts, in the order they decided the position: why it is in this
       // tier, how hot it is, how long it has been sitting.
-      reason: `${TIER_LABEL[tier]} · ${HEAT_WORD[lead.score]} · ${waitingPhrase(waiting.long)}`,
+      reason: `${TIER_LABEL[tier]} · ${priorityLabel(lead)} · ${waitingPhrase(waiting.long)}`,
     };
   };
 
@@ -165,12 +177,13 @@ export function rankLeads<T extends PriorityLead>(
  * row, which on a phone left about 42px for the name — and it offered a Call
  * button to a lead who had explicitly asked not to be called.
  */
-export type LeadAction = { kind: 'text' | 'call' | 'open'; label: string; href: string };
+export type LeadAction = { kind: 'text' | 'call' | 'email' | 'edit'; label: string; href: string };
 
 export function primaryAction(lead: PriorityLead, base = '/dashboard'): LeadAction {
   if (isContactablePhone(lead.phone) && lead.textOnly) return { kind: 'text', label: 'Text', href: `sms:${lead.phone}` };
   if (isContactablePhone(lead.phone)) return { kind: 'call', label: 'Call', href: `tel:${lead.phone}` };
-  return { kind: 'open', label: 'Open', href: `${base}/leads/${lead.id}` };
+  if (lead.email) return { kind: 'email', label: 'Email', href: `mailto:${lead.email}` };
+  return { kind: 'edit', label: 'Add contact', href: `${base}/leads/${lead.id}?edit=client#lead-edit-modal` };
 }
 
 /**
