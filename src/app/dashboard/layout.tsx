@@ -32,19 +32,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     return <>{children}</>;
   }
 
-  const { supabase, accountId } = await requireOwnerContext();
-
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('connect_onboarded')
-    .eq('id', accountId)
-    .maybeSingle();
-
-  const onboarded = account?.connect_onboarded ?? false;
+  // No read of its own: requireOwnerContext already fetches this account row to
+  // check the suspension and terms gates, and now selects connect_onboarded with
+  // it. This layout used to issue a second single-row query for that one column,
+  // on every dashboard page.
+  const { connectOnboarded } = await requireOwnerContext();
 
   return (
     <>
-      {!onboarded ? (
+      {!connectOnboarded ? (
         // The whole bar starts the Stripe connect itself — landing on Settings
         // and hunting for the same button is a step that does nothing.
         <StripeAlertBanner connectAction={connectStripeFromBannerAction} />

@@ -123,15 +123,42 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // ── getSession, NOT getUser ───────────────────────────────────────────────
+  // getUser() calls /auth/v1/user over the network EVERY time. This middleware
+  // runs on every request the matcher accepts, and that includes the RSC
+  // prefetches the App Router fires for the links in the viewport — the sidebar
+  // alone has 22 of them — so opening one dashboard page was worth a burst of
+  // round trips to Supabase Auth before any of its own data was read.
+  //
+  // getSession() reads the session out of the cookie and makes NO network call
+  // while the access token is still inside its expiry margin. The cookie refresh
+  // survives: both entry points go through the same __loadSession(), which calls
+  // _callRefreshToken() once the token is near expiry, and the setAll handler
+  // above writes the rotated cookies onto the response exactly as before. That
+  // refresh is load-bearing — supabase-server.ts cannot write cookies from a
+  // Server Component render and relies on this middleware for it.
+  //
+  // What is given up is JWT signature verification, and it costs nothing here
+  // because NONE of the three decisions below is a security boundary. Each one
+  // only picks a destination, and every destination re-checks for itself:
+  // requireOwnerContext() calls the verified getUser(), and every /dashboard
+  // route reaches it — 42 of the 44 pages call it directly, and the two that do
+  // not are bare redirects sitting under a layout that does. Server actions call
+  // it themselves, which is the check that actually matters, since an action is
+  // a public endpoint that no middleware verdict protects. A forged cookie buys
+  // a redirect to a page that then rejects it.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  // Presence only. Reading session.user.<prop> on the server trips supabase-js's
+  // "insecure user object" warning proxy, and nothing here needs a claim.
+  const signedIn = Boolean(session);
 
   // A signed-in contractor who lands on the marketing homepage wants their
   // workspace, not the sales page — send them straight to the dashboard so the
   // nav, live Leads/Jobs counts and website status are all there immediately,
   // instead of relying on a client-side rail swap on a statically-served page.
-  if (user && request.nextUrl.pathname === '/') {
+  if (signedIn && request.nextUrl.pathname === '/') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -151,7 +178,7 @@ export async function middleware(request: NextRequest) {
   // cookie does not reach and be shown "Build my free site" — the marketing
   // header reads the session client-side, and a session cookie is host-only.
   // Crawlers are never signed in, so they always get the redirect.
-  if (!user && (request.method === 'GET' || request.method === 'HEAD') && isMarketingPath(request.nextUrl.pathname)) {
+  if (!signedIn && (request.method === 'GET' || request.method === 'HEAD') && isMarketingPath(request.nextUrl.pathname)) {
     const apex = marketingHostFor(rootDomain, request.headers.get('x-forwarded-host') || request.headers.get('host'));
     if (apex) {
       const target = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${apex}`);
@@ -160,7 +187,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    if (!user) {
+    if (!signedIn) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }

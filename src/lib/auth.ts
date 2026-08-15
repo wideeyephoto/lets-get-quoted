@@ -1,6 +1,23 @@
 import { randomUUID } from 'node:crypto';
+import { cache } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
+
+/**
+ * React's per-request memoization, where it exists.
+ *
+ * `cache` lives in the copy of React that Next vendors for the server, which is
+ * what `react` resolves to in a Next build. It is NOT exported by the react
+ * 18.3.1 in node_modules, which is what Vitest resolves — so under the test
+ * runner this import is undefined and calling it threw at module load, taking
+ * down 29 test files that only import this module in passing.
+ *
+ * Falling back to the identity wrapper is safe: it means no memoization, which
+ * is exactly how every one of these call sites behaved before. Deduplication is
+ * a performance property, never a correctness one — nothing here may depend on
+ * being called once.
+ */
+const perRequest: typeof cache = typeof cache === 'function' ? cache : (fn) => fn;
 import { notFound, redirect } from 'next/navigation';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -119,10 +136,22 @@ export async function ensureAccountMembership(userId: string) {
   return { account_id: newAccount.id, role: 'owner' };
 }
 
-// Shared guard for server components/actions that require a logged-in owner.
-// Returns a session-scoped (RLS-respecting) Supabase client plus the resolved
-// user + account context. Redirects to /login if any check fails.
-export async function requireOwnerContext(options: { skipFirstRunGate?: boolean } = {}) {
+/**
+ * The body of requireOwnerContext, memoized for the lifetime of ONE request.
+ *
+ * Every dashboard page is rendered under a layout that needs the same context,
+ * so this ran twice per page load — two verified `getUser()` round trips, two
+ * membership reads and two `accounts` reads for one screen. React's `cache()`
+ * is keyed per request, so the layout pays for it and the page gets it free.
+ *
+ * Keyed on a BOOLEAN, not the options object: `cache()` compares arguments by
+ * identity, and a fresh `{}` literal at each call site would miss every time.
+ *
+ * Outside a render — a Route Handler, say — React has no cache dispatcher and
+ * `cache()` documents that it simply calls through, so those callers behave
+ * exactly as they did before.
+ */
+const loadOwnerContext = perRequest(async (skipFirstRunGate: boolean) => {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -132,26 +161,39 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
     redirect('/login');
   }
 
+  // ONE membership read, not two. ensureAccountMembership already resolves the
+  // oldest OWNER membership — finding it or creating it — and getCurrentMembership
+  // then re-read the same table and applied the same "prefer owner, oldest first"
+  // rule to reach the same row. It is still exported for the callers that have
+  // only a user id and no guarantee an owner membership exists.
+  let membership: { account_id: string | null; role: string | null };
   try {
-    await ensureAccountMembership(user.id);
+    membership = await ensureAccountMembership(user.id);
   } catch (error) {
     console.error('ensureAccountMembership error:', error);
     throw error;
   }
 
-  const membership = await getCurrentMembership(user.id);
+  const accountId = membership.account_id ?? null;
 
-  if (!membership.accountId || membership.role !== 'owner') {
+  // Defensive: ensureAccountMembership only ever returns an owner row or throws,
+  // so this is unreachable today. Kept because it is the check that decides who
+  // reaches the owner surface, and it should not depend on a helper's internals.
+  if (!accountId || membership.role !== 'owner') {
     redirect('/login');
   }
 
   // Staff-suspended accounts are blocked from the owner surface until lifted.
   // Defensive: a missing column (pre-migration) or read error is treated as
   // "not suspended" so this never breaks the dashboard before it's deployed.
+  //
+  // connect_onboarded rides along because the dashboard layout renders the
+  // Stripe banner from it and was issuing a second read of this very row to get
+  // it. One more column on a row already being fetched is free.
   const { data: acct } = await supabase
     .from('accounts')
-    .select('suspended_at, terms_accepted_at, terms_version, timezone')
-    .eq('id', membership.accountId)
+    .select('suspended_at, terms_accepted_at, terms_version, timezone, connect_onboarded')
+    .eq('id', accountId)
     .maybeSingle();
   if (acct && (acct as { suspended_at?: string | null }).suspended_at) {
     redirect('/account-suspended');
@@ -169,7 +211,7 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   // turn one mis-ordered deploy into every owner locked out of their dashboard,
   // and this exists to have an agreement on file — not as a security boundary.
   const hasTermsColumns = acct !== null && acct !== undefined && 'terms_accepted_at' in acct;
-  if (!options.skipFirstRunGate && hasTermsColumns && needsFirstRun(acct as FirstRunAccount)) {
+  if (!skipFirstRunGate && hasTermsColumns && needsFirstRun(acct as FirstRunAccount)) {
     redirect('/welcome');
   }
 
@@ -180,9 +222,17 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
     supabase,
     userId: user.id,
     userEmail: user.email ?? null,
-    accountId: membership.accountId,
+    accountId,
     accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
+    connectOnboarded: (acct as { connect_onboarded?: boolean | null } | null)?.connect_onboarded ?? false,
   };
+});
+
+// Shared guard for server components/actions that require a logged-in owner.
+// Returns a session-scoped (RLS-respecting) Supabase client plus the resolved
+// user + account context. Redirects to /login if any check fails.
+export async function requireOwnerContext(options: { skipFirstRunGate?: boolean } = {}) {
+  return loadOwnerContext(options.skipFirstRunGate === true);
 }
 
 // --- Internal staff console (/admin) -----------------------------------------
