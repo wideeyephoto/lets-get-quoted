@@ -15,8 +15,6 @@ type Props = {
   logoUrl: string | null;
   currentTheme: string | null | undefined;
   saveAction?: (formData: FormData) => Promise<void>;
-  /** Marketing uses a folded utility card; the standalone comparison page does not. */
-  accordion?: boolean;
 };
 
 function previewHtml(theme: EmailThemeId, props: Pick<Props, 'businessName' | 'accent' | 'logoUrl'>): string {
@@ -112,24 +110,6 @@ function ThemePicker(props: Props) {
 }
 
 export default function EmailThemeSection(props: Props) {
-  if (props.accordion) {
-    return (
-      <details className={`panel workspace-section-card ${styles.accordion}`} id="email-theme">
-        <summary className={styles.summary}>
-          <span className={styles.summaryHeading}>
-            <span className="eyebrow">Outgoing email</span>
-            <strong>Choose your email look</strong>
-          </span>
-          <span className={styles.summaryCopy}>Preview and set the design used for outgoing email.</span>
-          <span className={styles.chevron} aria-hidden="true">⌄</span>
-        </summary>
-        <div className={styles.accordionBody}>
-          <ThemePicker {...props} />
-        </div>
-      </details>
-    );
-  }
-
   return (
     <section className="panel workspace-section-card" id="email-theme">
       <div className="section-heading workspace-section-heading compact-heading">

@@ -52,7 +52,9 @@ export default function MarketingNav({
   // Overview is the only exact match. Everything else owns its sub-paths, so a
   // post editor at /blog/<id> keeps Blog lit rather than lighting nothing.
   const isActive = (href: string) =>
-    href === root ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+    href === root
+      ? pathname === href || pathname === `${root}/email-theme`
+      : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <nav className="mkt-nav" aria-label="Marketing sections">

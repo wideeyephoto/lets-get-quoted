@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chooseOverviewPriority,
   overviewSummary,
   prepareRecommendation,
   prepareRecommendations,
@@ -87,8 +88,56 @@ describe('exactly one primary action per card', () => {
     expect(primary(beat())).toBe('Create email campaign');
   });
 
+  it('leads with publishing when the reachable email audience is one or smaller', () => {
+    expect(labels(beat({ reach: 1 }))).toEqual(['Create blog post', 'Create email campaign']);
+    expect(primary(beat({ reach: 1 }))).toBe('Create blog post');
+    expect(primary(beat({ reach: 0 }))).toBe('Create blog post');
+  });
+
+  it('grows the audience before an email-only idea with nobody to receive it', () => {
+    const emailOnly = beat({ channels: ['email'], reach: 0 });
+    expect(labels(emailOnly)).toEqual(['Add customer emails', 'Create email campaign']);
+    expect(primary(emailOnly)).toBe('Add customer emails');
+  });
+
   it('leads with the blog post when the topic is blog-only', () => {
     expect(primary(beat({ channels: ['blog'] }))).toBe('Create blog post');
+  });
+});
+
+describe('the overview chooses one account-aware priority', () => {
+  const input = {
+    mailingAddressReady: true,
+    emailReachable: 12,
+    attentionCount: 0,
+    rebookDue: 0,
+    recommendation: prepareRecommendation(beat()),
+    hasBlog: true,
+  };
+
+  it('surfaces the legal setup blocker before suggesting a campaign', () => {
+    const priority = chooseOverviewPriority({ ...input, mailingAddressReady: false });
+    expect(priority.title).toBe('Add your mailing address');
+    expect(priority.primary.href).toBe('/dashboard/settings');
+  });
+
+  it('grows a tiny audience before spending time in the composer', () => {
+    const priority = chooseOverviewPriority({ ...input, emailReachable: 1, attentionCount: 4 });
+    expect(priority.title).toBe('Grow your email audience');
+    expect(priority.primary).toMatchObject({ label: 'Add customer emails', href: '/dashboard/clients' });
+    expect(priority.secondary?.label).toBe('Create blog post');
+  });
+
+  it('finishes existing work before starting another idea', () => {
+    const priority = chooseOverviewPriority({ ...input, attentionCount: 4 });
+    expect(priority.title).toBe('Finish what you started');
+    expect(priority.primary.href).toContain('status=draft');
+  });
+
+  it('uses the seasonal recommendation when setup and queues are healthy', () => {
+    const priority = chooseOverviewPriority(input);
+    expect(priority.title).toBe('Book a heating tune-up before the first cold snap');
+    expect(priority.primary.label).toBe('Create email campaign');
   });
 });
 
