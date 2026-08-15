@@ -20,6 +20,7 @@ import { headers } from 'next/headers';
 const perRequest: typeof cache = typeof cache === 'function' ? cache : (fn) => fn;
 import { notFound, redirect } from 'next/navigation';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
+import { signingKeys } from '@/lib/auth-jwks';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { clientIpFrom } from '@/lib/rate-limit';
 import { deniedMessage, parseStaffRole, staffCan, type Permission, type StaffRole } from '@/lib/staff';
@@ -136,6 +137,93 @@ export async function ensureAccountMembership(userId: string) {
   return { account_id: newAccount.id, role: 'owner' };
 }
 
+type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
+
+/**
+ * Who is asking, verified LOCALLY.
+ *
+ * `getUser()` posts the access token to /auth/v1/user and waits for the Auth
+ * server on every single call — on a page load, on every server action. This
+ * project signs its tokens with ES256 (see the ki<d> in /auth/v1/.well-known/
+ * jwks.json), so the signature can be checked here with WebCrypto against a
+ * cached public key and no network at all. `getClaims` is supabase-js's own
+ * supported path for that, and it still reads the session through getSession(),
+ * so the near-expiry refresh is untouched.
+ *
+ * WHAT THIS GIVES UP, precisely: a cryptographically valid, unexpired token is
+ * now accepted without asking the Auth server whether that user has since been
+ * banned or deleted. That is a real change and it is bounded by the access
+ * token's own lifetime.
+ *
+ * It is survivable here because the sharp instrument is not the ban. Staff lock
+ * an account out with `suspended_at`, which is a column read on every single
+ * request a few lines below and is completely unaffected. The ban path —
+ * signOutAllSessionsAction — is already documented, in its own comment and in
+ * the UI it drives, as blocking the next token REFRESH rather than killing a
+ * live token, so it was never the instant kill switch.
+ *
+ * requireAdmin() deliberately keeps calling getUser(). The staff console is a
+ * higher-value target on a fraction of the traffic, so it has nothing to gain
+ * here and something to lose.
+ */
+async function verifiedUser(
+  supabase: SupabaseServerClient,
+): Promise<{ id: string; email: string | null } | null> {
+  const read = async (keys: Awaited<ReturnType<typeof signingKeys>>) =>
+    supabase.auth.getClaims(undefined, keys ? { keys } : {});
+
+  let { data, error } = await read(await signingKeys());
+  if (error) {
+    // A rotated key is the one failure worth a second look: refetch the set and
+    // try once more before treating it as "not signed in". Any other error is
+    // still just a failed verification, and a second attempt costs one fetch.
+    ({ data, error } = await read(await signingKeys({ force: true })));
+  }
+  if (error || !data?.claims?.sub) return null;
+
+  const claims = data.claims as { sub: string; email?: unknown };
+  return { id: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : null };
+}
+
+/**
+ * The owner membership AND its account row, in ONE round trip.
+ *
+ * These were two: a memberships lookup, then an accounts lookup keyed on what
+ * it returned — strictly serial, because the second needs the first's answer.
+ * PostgREST can follow the memberships.account_id foreign key itself, so the
+ * join happens in the database and the second round trip disappears.
+ *
+ * `accounts(*)` rather than a column list, for the same reason the automations
+ * page selects `*`: naming a column the database has not migrated yet fails the
+ * WHOLE query, which here would mean every owner bounced to /login. Embedding
+ * everything cannot fail that way, and a column that does not exist simply is
+ * not on the object — which is exactly what the gates below already test for.
+ */
+type OwnerContextRow = { account_id: string | null; role: string | null; accounts: unknown };
+
+async function readOwnerRow(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<OwnerContextRow | null> {
+  const { data } = await admin
+    .from('memberships')
+    .select('account_id, role, accounts(*)')
+    .eq('user_id', userId)
+    .eq('role', 'owner')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data ?? null) as OwnerContextRow | null;
+}
+
+/** A to-one embed comes back as an object; tolerate an array in case it does not. */
+function embeddedAccount(row: OwnerContextRow | null): Record<string, unknown> | null {
+  const raw = row?.accounts;
+  if (!raw) return null;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return (value as Record<string, unknown>) ?? null;
+}
+
 /**
  * The body of requireOwnerContext, memoized for the lifetime of ONE request.
  *
@@ -153,33 +241,35 @@ export async function ensureAccountMembership(userId: string) {
  */
 const loadOwnerContext = perRequest(async (skipFirstRunGate: boolean) => {
   const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await verifiedUser(supabase);
 
   if (!user) {
     redirect('/login');
   }
 
-  // ONE membership read, not two. ensureAccountMembership already resolves the
-  // oldest OWNER membership — finding it or creating it — and getCurrentMembership
-  // then re-read the same table and applied the same "prefer owner, oldest first"
-  // rule to reach the same row. It is still exported for the callers that have
-  // only a user id and no guarantee an owner membership exists.
-  let membership: { account_id: string | null; role: string | null };
-  try {
-    membership = await ensureAccountMembership(user.id);
-  } catch (error) {
-    console.error('ensureAccountMembership error:', error);
-    throw error;
+  // ONE read for the membership and the account together. This was three round
+  // trips — getUser over the network, a memberships lookup, then an accounts
+  // lookup keyed on its result — and every dashboard page paid all three.
+  const admin = createAdminClient();
+  let row = await readOwnerRow(admin, user.id);
+
+  // Only a brand-new user reaches this, and only once: no owner membership
+  // exists, so provision one and read it back. Everyone else took a single
+  // round trip to get here. ensureAccountMembership stays the sole owner of
+  // that provisioning, races included.
+  if (!row) {
+    try {
+      await ensureAccountMembership(user.id);
+    } catch (error) {
+      console.error('ensureAccountMembership error:', error);
+      throw error;
+    }
+    row = await readOwnerRow(admin, user.id);
   }
 
-  const accountId = membership.account_id ?? null;
+  const accountId = row?.account_id ?? null;
 
-  // Defensive: ensureAccountMembership only ever returns an owner row or throws,
-  // so this is unreachable today. Kept because it is the check that decides who
-  // reaches the owner surface, and it should not depend on a helper's internals.
-  if (!accountId || membership.role !== 'owner') {
+  if (!accountId || row?.role !== 'owner') {
     redirect('/login');
   }
 
@@ -187,14 +277,11 @@ const loadOwnerContext = perRequest(async (skipFirstRunGate: boolean) => {
   // Defensive: a missing column (pre-migration) or read error is treated as
   // "not suspended" so this never breaks the dashboard before it's deployed.
   //
-  // connect_onboarded rides along because the dashboard layout renders the
-  // Stripe banner from it and was issuing a second read of this very row to get
-  // it. One more column on a row already being fetched is free.
-  const { data: acct } = await supabase
-    .from('accounts')
-    .select('suspended_at, terms_accepted_at, terms_version, timezone, connect_onboarded')
-    .eq('id', accountId)
-    .maybeSingle();
+  // Read through the admin client now, as part of the membership query, rather
+  // than separately through the session client. That is if anything stricter:
+  // an RLS refusal used to surface as a null row, which skips the suspension
+  // check entirely.
+  const acct = embeddedAccount(row);
   if (acct && (acct as { suspended_at?: string | null }).suspended_at) {
     redirect('/account-suspended');
   }
