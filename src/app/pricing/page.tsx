@@ -48,13 +48,6 @@ const included = [
   'Insights, tax reports & QuickBooks export',
 ];
 
-// The $0 ledger beside the dial. Every line is a "$0" this page already asserts
-// in prose — the hero's "no setup fee and no monthly subscription" above, and
-// "no per-seat pricing, no premium tier, no feature paywall" below. The ledger
-// only restates those as line items; it introduces no fifth claim, and there is
-// no figure here that isn't the literal number zero.
-const ZERO_LINES = ['Software subscription', 'Per-seat charges', 'Setup fee', 'Premium feature tiers'];
-
 // ---- "Where a single payment goes" -----------------------------------------
 // The tier chart states rates and the calculator states yearly totals; neither
 // shows one payment, which is the FAQ's own question further down ("When am I
@@ -235,101 +228,118 @@ const pricingJsonLd = {
 
 export default function PricingPage() {
   return (
-    <main className="marketing-shell" id="main-content">
+    <main className={`${styles.page} marketing-shell`} id="main-content">
       <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
+      <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
-      <section className="section-block features-hero">
-        <div className="section-heading">
-          <p className="eyebrow">Pricing</p>
-          {/* The page's own title, so it's the h1. Pricing is a page people
-              land on from search and navigate by heading; it started at h2,
-              which left it with no name at all. See .section-heading h1. */}
-          <h1>No subscription. You only pay when you get paid.</h1>
-          {/* No "+" after a generated count. FEATURE_COUNT is ALL_FEATURES.length,
-              so the number is exact — "74+" hedges a figure we know precisely and
-              reads as marketing rounding. */}
-          <p>
-            All {FEATURE_COUNT} features are included from day one. There&apos;s no setup fee and no monthly
-            subscription to cancel — just a small platform fee when a homeowner actually pays you, and it drops as you
-            grow.
-          </p>
+      <section className={`${styles.hero} section-block features-hero`}>
+        <div className={styles.heroCopy}>
+          <div className="section-heading">
+            <p className="eyebrow">Simple, growth-aligned pricing</p>
+            <h1>
+              The whole platform. <span className="gradient-text">$0 until you get paid.</span>
+            </h1>
+            <p className={styles.heroLead}>
+              All {FEATURE_COUNT} features are included from day one. There&apos;s no setup fee, monthly subscription,
+              or paid feature maze — just a platform fee when a homeowner actually pays you.
+            </p>
+          </div>
+          <div className="actions">
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site <span aria-hidden="true">&rarr;</span></a>
+            <Link href="/demo" className="btn secondary">Explore the demo</Link>
+          </div>
+          <ul className={styles.heroTrust} aria-label="Pricing promises">
+            <li><span aria-hidden="true">✓</span> No setup fee</li>
+            <li><span aria-hidden="true">✓</span> No per-seat pricing</li>
+            <li><span aria-hidden="true">✓</span> No feature tiers</li>
+          </ul>
         </div>
-        <div className="actions">
-          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
-          <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
-        </div>
-      </section>
 
-      {/* The page's lead graphic. /pricing carried no visual at all, so the first
-          thing under an h1 about "no subscription" was a bar chart of the fee
-          that DOES apply. Read in order it now goes: the zero → the fee that
-          isn't zero → the calculator. The dial states a price of $0; the chart
-          below states four rates that are not $0. Different numbers, different
-          claims, no overlap — the chart and calculator are untouched.
-
-          The dial does not stand alone: a circle in an empty card is decoration.
-          The ledger beside it itemises what the zero covers, so the band carries
-          information rather than ornament.
-
-          Deliberately NOT wrapped in ExampleFrame. Every product mock on these
-          pages takes the frame because it shows invented data; this is the real
-          price, and an "Example" badge on it would read as a hedge on the
-          number itself. */}
-      <section className="section-block" aria-labelledby="zero-title">
-        <div className={styles.zeroBand}>
-          <PriceZeroDial variant="lead" />
-          <div className={styles.zeroCopy}>
-            <div className="section-heading">
-              <p className="eyebrow">Before a homeowner pays you</p>
-              <h2 id="zero-title">Nothing is due until money lands.</h2>
-            </div>
-            {/* .pricing-takehome and its rows are existing globals (the homepage
-                uses the same card), so the mono label, tabular values and gold
-                total row come for free rather than being re-declared here. */}
-            <div className={`pricing-takehome ${styles.zeroLedger}`}>
-              <p className="pricing-takehome-h">What the software costs you each month</p>
-              <ul className="pricing-takehome-rows">
-                {ZERO_LINES.map((line) => (
-                  <li key={line}><span>{line}</span><span className="v">$0</span></li>
-                ))}
-                <li className="keep"><span>Total billed each month</span><span className="v">$0</span></li>
-              </ul>
-              <p className="pricing-takehome-note">
-                The only charge is the platform fee below, and only on a payment a homeowner actually makes to you.
-                Standard Stripe processing ({STRIPE_PROCESSING_NOTE}) applies separately and goes to Stripe, not to us.
-              </p>
-            </div>
+        <div className={styles.heroVisual} aria-label="Starting price and platform fee">
+          <div className={styles.heroVisualTop}>
+            <span>Start here</span>
+            <span>No contract</span>
+          </div>
+          <PriceZeroDial variant="lead" className={styles.heroDial} />
+          <div className={styles.heroFeeSummary}>
+            <span>Then, only when a homeowner pays</span>
+            <p>
+              <strong>{FIRST_TIER_RATE}</strong>
+              <small>starting platform fee</small>
+            </p>
+            <span>Automatically steps down to {LAST_TIER_RATE} as your volume grows.</span>
           </div>
         </div>
+
+        <ul className={styles.heroMetrics} aria-label="Pricing at a glance">
+          <li><strong>{FEATURE_COUNT}</strong><span>features included</span></li>
+          <li><strong>$0</strong><span>in a slow month</span></li>
+          <li><strong>{LAST_TIER_RATE}</strong><span>lowest marginal fee</span></li>
+        </ul>
       </section>
 
-      <section className="section-block pricing-band">
-        <div className="section-heading">
-          <p className="eyebrow">The more you grow, the less you pay</p>
-          <h2>One simple fee, four tiers.</h2>
-          <p>The platform fee is marginal across your trailing 12-month volume &mdash; each bracket bills at a lower rate.</p>
+      <nav className={styles.sectionNav} aria-label="Pricing sections">
+        <a href="#rates"><span>01</span> Rates</a>
+        <a href="#calculator"><span>02</span> Calculator</a>
+        <a href="#included"><span>03</span> What&apos;s included</a>
+        <a href="#compare"><span>04</span> Compare</a>
+        <a href="#questions"><span>05</span> Questions</a>
+      </nav>
+
+      <section className={`${styles.rateSection} section-block`} id="rates" aria-labelledby="rates-title">
+        <div className={styles.sectionTop}>
+          <div className="section-heading">
+            <p className="eyebrow">The more you grow, the less you pay</p>
+            <h2 id="rates-title">One simple fee. Four automatic steps down.</h2>
+            <p>
+              The platform fee is marginal across your trailing 12-month volume. Each new bracket is charged at a
+              lower rate, without a sales call or plan change.
+            </p>
+          </div>
+          <div className={styles.slowMonthCard}>
+            <span>Your platform bill in a slow month</span>
+            <strong>$0</strong>
+            <small>No homeowner payment means no platform fee.</small>
+          </div>
         </div>
-        <div className="pricing-tiers">
+        <div className={styles.tierGrid}>
           {FEE_TIERS.map((tier, index) => (
-            <div className={`pricing-tier${tier.tier === 4 ? ' pricing-tier-best' : ''}`} key={tier.tier}>
-              <div className="pricing-tier-chart">
-                <span className="pricing-tier-rate">{tier.rate}</span>
-                <span className="pricing-tier-bar" style={{ height: `${BAR_HEIGHTS[index]}px` }} />
+            <article className={styles.tierCard} data-best={tier.tier === 4 ? 'true' : undefined} key={tier.tier}>
+              <div className={styles.tierMeta}>
+                <span>Tier {tier.tier}</span>
+                {tier.tier === 4 ? <em>Lowest rate</em> : null}
               </div>
-              <span className="pricing-tier-label">Tier {tier.tier}</span>
-              <span className="pricing-tier-range">{tier.rangeLabel}</span>
-            </div>
+              <div className={styles.tierVisual}>
+                <strong>{tier.rate}</strong>
+                <span className={styles.tierTrack} aria-hidden="true">
+                  <span style={{ height: `${BAR_HEIGHTS[index]}px` }} />
+                </span>
+              </div>
+              <p>{tier.rangeLabel}</p>
+            </article>
           ))}
         </div>
-        <p className="pricing-footnote">Platform fee only. Standard Stripe processing ({STRIPE_PROCESSING_NOTE}) applies separately.</p>
+        <p className={styles.rateFootnote}>
+          <span aria-hidden="true">i</span>
+          Platform fee only. Standard Stripe processing ({STRIPE_PROCESSING_NOTE}) applies separately and goes to Stripe.
+        </p>
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <p className="eyebrow">Run the numbers</p>
-          <h2>See exactly what you&apos;d pay.</h2>
-          <p>Drag to your yearly volume &mdash; the fee is figured across brackets, the way you&apos;d actually be billed.</p>
+      <section className={`${styles.calculatorSection} section-block`} id="calculator" aria-labelledby="calculator-title">
+        <div className={styles.calculatorIntro}>
+          <div className="section-heading">
+            <p className="eyebrow">Run your real numbers</p>
+            <h2 id="calculator-title">Know the cost before you commit.</h2>
+            <p>
+              Set your yearly volume and a typical job. The calculator applies every bracket and shows what lands in
+              your bank after both platform and Stripe fees.
+            </p>
+          </div>
+          <p className={styles.calculatorPromise}>
+            <span>Live estimate</span>
+            <strong>No email. No sales call.</strong>
+          </p>
         </div>
         <PricingCalculator />
       </section>
@@ -343,7 +353,7 @@ export default function PricingPage() {
           would mean typing a percentage this page has no source for — exactly
           the invented precision we don't ship. The bar therefore shows only the
           split we can compute exactly, and the note says so. */}
-      <section className="section-block" aria-labelledby="one-payment-title">
+      <section className={`${styles.paymentSection} section-block`} aria-labelledby="one-payment-title">
         <div className="section-heading">
           <p className="eyebrow">One job, one payment</p>
           <h2 id="one-payment-title">Where a single payment goes.</h2>
@@ -406,19 +416,24 @@ export default function PricingPage() {
         </ExampleFrame>
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <p className="eyebrow">All in, no add-ons</p>
-          <h2>Everything&apos;s included in that one fee.</h2>
-          <p>No per-seat pricing, no premium tier, no feature paywall &mdash; the whole toolkit ships to every account.</p>
-        </div>
-        <ul className="pricing-included">
-          {included.map((item) => (
-            <li key={item}><span className="feat-mark" aria-hidden="true">&#10003;</span><span>{item}</span></li>
-          ))}
-        </ul>
-        <div className="mid-cta">
-          <Link href="/features" className="btn secondary">See all {FEATURE_COUNT} features &rarr;</Link>
+      <section className={`${styles.includedSection} section-block`} id="included" aria-labelledby="included-title">
+        <div className={styles.includedLayout}>
+          <div className="section-heading">
+            <p className="eyebrow">All in, no add-ons</p>
+            <h2 id="included-title">Everything&apos;s included in that one fee.</h2>
+            <p>No per-seat pricing, no premium tier, no feature paywall &mdash; every account gets the whole toolkit.</p>
+            <Link href="/features" className={`${styles.textLink} btn secondary`}>
+              See all {FEATURE_COUNT} features <span aria-hidden="true">&rarr;</span>
+            </Link>
+          </div>
+          <ul className={styles.includedGrid}>
+            {included.map((item, index) => (
+              <li key={item}>
+                <span className={styles.includedIcon} aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -426,10 +441,10 @@ export default function PricingPage() {
           paywall" has been asserted above and before the FAQ, because that
           sentence is the setup and this table is the evidence for it. Putting
           it earlier would make that line an echo of a point already proved. */}
-      <section className="section-block compare-band">
+      <section className={`${styles.compareSection} section-block compare-band`} id="compare" aria-labelledby="compare-title">
         <div className="section-heading">
           <p className="eyebrow">One model from one truck to ten crews</p>
-          <h2>When business is slow, <span className="gradient-text">your software bill is $0.</span></h2>
+          <h2 id="compare-title">When business is slow, <span className="gradient-text">your software bill is $0.</span></h2>
           <p>
             The business just starting out gets the same operational foundation as the company doing $2 million a year.
             The conventional way to buy contractor software is a monthly subscription per seat, billed the same in a
@@ -496,35 +511,39 @@ export default function PricingPage() {
         </p>
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <p className="eyebrow">Pricing questions</p>
-        </div>
-        <div className="faq-list">
-          {pricingFaqs.map((item) => (
-            <details className="faq-item" key={item.q}>
-              <summary>{item.q}</summary>
-              <p>{item.a}</p>
-            </details>
-          ))}
+      <section className={`${styles.faqSection} section-block`} id="questions" aria-labelledby="questions-title">
+        <div className={styles.faqLayout}>
+          <div className={`${styles.faqIntro} section-heading`}>
+            <p className="eyebrow">The fine print, in plain English</p>
+            <h2 id="questions-title">Questions contractors actually ask.</h2>
+            <p>Clear answers about payments, refunds, rates, and what happens as your business changes.</p>
+            <p className={styles.faqContact}>Still unsure? <Link href="/contact">Talk to a real person &rarr;</Link></p>
+          </div>
+          <div className={`faq-list ${styles.faqList}`}>
+            {pricingFaqs.map((item) => (
+              <details className="faq-item" key={item.q}>
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="cta-band">
+      <section className={`${styles.closingCta} cta-band`}>
         <div className="cta-band-inner">
-          <p className="eyebrow">Ready when you are</p>
-          <h2>Start free &mdash; the first quote costs you nothing.</h2>
+          <p className="eyebrow">Your next quote can start here</p>
+          <h2>Start free. Keep the same system as you grow.</h2>
           <p>No subscription. No setup fee. You only pay our platform fee when a homeowner actually pays you.</p>
           <div className="actions">
-            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
-            <Link href="/faq" className="btn secondary">Read the FAQ</Link>
+            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site <span aria-hidden="true">&rarr;</span></a>
+            <Link href="/demo" className="btn secondary">Explore the demo</Link>
           </div>
-          {/* THE ONE CHECKABLE THING ON THE BAND.
-              A closing CTA on a pricing page is the moment somebody decides
-              whether to hand over their business, and this one closed on our
-              own assurances. These are facts a reader can go and confirm
-              somewhere other than here: who holds the card data, and a page
-              that sets out the rest in detail. */}
+          <ul className={styles.ctaChecks} aria-label="Reasons to start">
+            <li><span aria-hidden="true">✓</span> No contract</li>
+            <li><span aria-hidden="true">✓</span> Export your data</li>
+            <li><span aria-hidden="true">✓</span> Stripe-powered payouts</li>
+          </ul>
           <p className="cta-trust">
             <span aria-hidden="true">◉</span> Card payments are handled entirely by{' '}
             <strong>Stripe Checkout</strong>, so card numbers never reach our servers, and payouts go to your own
