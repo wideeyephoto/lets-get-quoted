@@ -8,6 +8,9 @@ export type ArticleBlock =
   | { type: 'h2'; text: string }
   | { type: 'ul'; items: string[] };
 
+/** A contextual link out of an article, into the product or another guide. */
+export type ArticleLink = { href: string; label: string; blurb: string };
+
 export type Article = {
   slug: string;
   title: string;
@@ -15,13 +18,30 @@ export type Article = {
   category: string;
   readMinutes: number;
   datePublished: string; // ISO date
+  /**
+   * ISO date, set BY HAND when an article is genuinely revised.
+   *
+   * Deliberately optional and deliberately not defaulted to `new Date()`: the
+   * article JSON-LD falls back to datePublished when this is absent, because a
+   * computed "modified today" would restamp all four articles as fresh on
+   * every single request. That is the one thing this field must never claim.
+   */
+  dateModified?: string;
   body: ArticleBlock[];
+  /**
+   * Where to go next inside the product. The audit's finding on these four
+   * articles was that they had "almost no contextual internal links" — each one
+   * argues for a practice the product implements and then dead-ends. Rendered
+   * as a block under the body, not woven into sentences, so the advice still
+   * reads as advice rather than as an ad with paragraphs around it.
+   */
+  featureLinks?: ArticleLink[];
 };
 
 export const ARTICLES: Article[] = [
   {
     slug: 'price-a-job-for-real-margin',
-    title: 'How to price a contracting job so you actually keep the margin',
+    title: 'How to price a contracting job and keep the margin',
     excerpt:
       'Most contractors quote the labor and materials, win the job, and wonder where the profit went. Here’s how to price so the margin survives to the bank.',
     category: 'Pricing & profit',
@@ -42,6 +62,11 @@ export const ARTICLES: Article[] = [
       { type: 'h2', text: 'Track cost against the quote — every job' },
       { type: 'p', text: 'The only way to price better next time is to know what happened this time. Log materials and labor against the job as you go, so you can see the real margin before the invoice goes out — not discover it at tax time. A few jobs of honest tracking will tell you exactly which kinds of work make you money and which quietly don’t.' },
       { type: 'p', text: 'Let’s Get Quoted tracks labor and materials against every job and shows the margin live, and its quotes are itemized so you can price from your real costs. But the discipline matters more than the tool: quote from cost, keep margin instead of adding markup, and check the number afterward.' },
+    ],
+    featureLinks: [
+      { href: '/features/quotes', label: 'Itemized quotes', blurb: 'Price from a saved cost book, line by line, and get it e-signed.' },
+      { href: '/features/cash-flow', label: 'Cash flow & margin', blurb: 'Watch labor and materials land against the quote while the job runs.' },
+      { href: '/pricing', label: 'What the platform costs', blurb: 'The fee that comes off a payment, with a calculator.' },
     ],
   },
   {
@@ -70,10 +95,15 @@ export const ARTICLES: Article[] = [
       { type: 'p', text: 'Your warmest leads are people who already paid you. A simple reminder to a customer whose last job was months ago costs very little and books work no ad can match.' },
       { type: 'p', text: 'You don’t need a tool to fix most of these — you need a habit. But if you want the habits handled for you, instant estimates, lead sorting, follow-ups, self-scheduling, and rebook reminders are all part of Let’s Get Quoted.' },
     ],
+    featureLinks: [
+      { href: '/features/ai-intake', label: 'AI intake & lead scoring', blurb: 'Qualify a request at 8pm and rank it before you read it.' },
+      { href: '/how-it-works', label: 'How lead ranking works', blurb: 'What decides that a job deserves an answer now.' },
+      { href: '/features/scheduling', label: 'Self-scheduling', blurb: 'Let a customer take an open window instead of trading calls.' },
+    ],
   },
   {
     slug: 'deposits-and-payment-plans',
-    title: 'Deposits and payment plans: get paid without scaring the customer',
+    title: 'Deposits and payment plans that don’t scare customers',
     excerpt:
       'Asking for money up front feels awkward until you frame it right. How to use deposits and installments to protect your cash and win bigger jobs.',
     category: 'Getting paid',
@@ -95,10 +125,19 @@ export const ARTICLES: Article[] = [
       ] },
       { type: 'p', text: 'Let’s Get Quoted handles all of this on Stripe — deposits, stage payments, and 0%-interest payment plans that auto-charge — with the money paying out straight to your bank. But the principle stands on its own: ask for a fair deposit, gate the schedule on it, and make big jobs easy to say yes to.' },
     ],
+    featureLinks: [
+      { href: '/features/payments', label: 'Deposits & payment plans', blurb: 'Stage payments and 0%-interest installments on a saved card.' },
+      { href: '/features/scheduling', label: 'Gate the calendar on a deposit', blurb: 'A booking that is not confirmed until the deposit clears.' },
+      { href: '/features/cash-flow', label: 'Cash flow', blurb: 'What is owed, what has cleared, and what is due next.' },
+    ],
   },
   {
     slug: 'more-google-reviews',
-    title: 'How to get more 5-star Google reviews (the honest way)',
+    // "more 5-star reviews" promised the rating rather than the ask, on the one
+    // article whose whole argument is that you must not sort customers by how
+    // they feel before showing them the public link. The title was making the
+    // implication the body spends four paragraphs refusing.
+    title: 'How to get more Google reviews (the honest way)',
     excerpt:
       'Reviews are the cheapest marketing you have. Here’s how to earn more of them without gaming the system or annoying your customers.',
     category: 'Reputation',
@@ -123,11 +162,48 @@ export const ARTICLES: Article[] = [
       { type: 'p', text: 'A single review push gives you a bump; a routine gives you a reputation. Ask after every completed job and it compounds. Automating the ask — a message that goes out on completion — is the difference between meaning to and actually doing it.' },
       { type: 'p', text: 'Let’s Get Quoted sends review requests automatically after a job and offers every customer both routes — the public review page and a private note to you — with no branching on what they rated. However you do it, the formula is the same: ask everyone, ask fast, make it one tap, and never fake it.' },
     ],
+    featureLinks: [
+      { href: '/features/reviews', label: 'Automatic review requests', blurb: 'The same neutral ask to every customer, on completion.' },
+      { href: '/features/client-portal', label: 'The customer’s side', blurb: 'Where the ask lands, and what it looks like on a phone.' },
+      { href: '/features/recurring', label: 'Rebook the ones who are due', blurb: 'Standing plans and reminders for work that repeats.' },
+    ],
   },
 ];
 
 export function getArticle(slug: string): Article | undefined {
   return ARTICLES.find((article) => article.slug === slug);
+}
+
+/**
+ * Every category that has at least one article, in the order the articles are
+ * declared. Derived rather than typed out, so filing a new article under a new
+ * category cannot leave the index's filter list one category short.
+ */
+export const ARTICLE_CATEGORIES: string[] = ARTICLES.reduce<string[]>((seen, article) => {
+  if (!seen.includes(article.category)) seen.push(article.category);
+  return seen;
+}, []);
+
+/**
+ * What to read next: same category first, then the rest, newest first, never
+ * the article you are on.
+ *
+ * With four articles this is close to "the other three" — which is the point.
+ * A library this small has no excuse for a dead end at the bottom of a page,
+ * and the ordering is written to still be right at forty.
+ */
+export function relatedArticles(slug: string, limit = 3): Article[] {
+  const current = getArticle(slug);
+  if (!current) return ARTICLES.slice(0, limit);
+
+  return ARTICLES.filter((article) => article.slug !== slug)
+    .sort((a, b) => {
+      const aSame = a.category === current.category ? 0 : 1;
+      const bSame = b.category === current.category ? 0 : 1;
+      if (aSame !== bSame) return aSame - bSame;
+      return b.datePublished.localeCompare(a.datePublished);
+    })
+    .slice(0, limit);
 }
 
 export function formatArticleDate(iso: string): string {

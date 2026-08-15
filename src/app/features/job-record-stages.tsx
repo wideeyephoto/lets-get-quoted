@@ -218,11 +218,21 @@ const STAGES: Stage[] = [
         action: 'See the campaign',
       },
     ],
+    /* THE LABEL NOW MATCHES WHERE THE LINK GOES.
+       "Campaigns + blog" pointed at /features/website-builder, which is the
+       site builder — it covers the blog and says nothing about campaigns, so
+       half the label was a promise the destination did not keep. Campaigns are
+       described on /features/reviews, which the tool above already links, so
+       the two are split along the same line the product is. */
     tools: [
-      { name: 'Reviews + growth', body: 'Follow-ups, review requests and AI-assisted marketing.', href: '/features/reviews' },
       {
-        name: 'Campaigns + blog',
-        body: 'Email and text campaigns, a blog that publishes to your site, and what each one did.',
+        name: 'Reviews + campaigns',
+        body: 'Follow-ups, review requests, and email or text campaigns to past, repeat and lapsed customers.',
+        href: '/features/reviews',
+      },
+      {
+        name: 'A blog on your own site',
+        body: 'Posts that publish straight to your website, so it keeps earning between jobs.',
         href: '/features/website-builder',
       },
     ],

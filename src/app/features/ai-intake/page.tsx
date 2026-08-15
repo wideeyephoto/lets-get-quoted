@@ -158,6 +158,7 @@ const FAQ: { q: string; a: string }[] = [
 export default function AIIntakePage() {
   return (
     <FeatureDetailLayout
+      breadcrumb={{ name: 'AI intake', path: '/features/ai-intake' }}
       eyebrow="AI intake for contractors"
       /* The old headline was about the ALERT ("worth the interruption"), which
          is the third thing this does. What a contractor searching for lead

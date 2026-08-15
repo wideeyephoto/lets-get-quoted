@@ -112,6 +112,7 @@ export const metadata: Metadata = {
 export default function QuotesFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Quotes', path: '/features/quotes' }}
       eyebrow="Quotes + e-signature"
       title={
         <>

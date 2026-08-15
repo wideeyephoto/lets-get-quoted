@@ -35,6 +35,7 @@ export const metadata: Metadata = {
 export default function RecurringFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Recurring', path: '/features/recurring' }}
       eyebrow="Recurring work + auto-billing"
       /* "It books and bills itself" was one word too strong. Each cycle does
          create its own scheduled job and its own charge with nobody touching

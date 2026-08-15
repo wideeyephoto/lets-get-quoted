@@ -124,6 +124,7 @@ const FAQ: { q: string; a: string }[] = [
 export default function WebsiteBuilderPage() {
   return (
     <FeatureDetailLayout
+      breadcrumb={{ name: 'Website builder', path: '/features/website-builder' }}
       /* VIDEO IS NOT THE HEADLINE, and it was for one release.
          The studio is real and worth selling — six layouts, your own footage,
          checks that tell you when a clip will show a blank player — so it had

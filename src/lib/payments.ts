@@ -10,7 +10,14 @@ import { sendPaymentSmsEvent } from '@/lib/sms';
 // capped fee ($5 at Stripe) beats the card percentage badly on large payments,
 // so a big deposit / final balance / invoice is far cheaper by bank transfer.
 // Small payments stay card-only (ACH's multi-day settlement isn't worth it).
-export const ACH_MIN_AMOUNT = 1000;
+//
+// The value MOVED to lib/pricing.ts and is re-exported here so every existing
+// importer is unaffected. It had to move because the /pricing calculator is a
+// client component and needs it: importing it from this module would have
+// bundled the Supabase admin client, the Stripe SDK and the SMS sender into the
+// marketing page. lib/pricing has no imports.
+export { ACH_MIN_AMOUNT } from '@/lib/pricing';
+import { ACH_MIN_AMOUNT } from '@/lib/pricing';
 
 export type PaymentKind = 'deposit' | 'stage' | 'final' | 'plan_installment';
 export type PaymentStatus = 'requested' | 'processing' | 'paid' | 'failed' | 'refunded' | 'disputed' | 'canceled';

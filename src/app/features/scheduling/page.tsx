@@ -36,6 +36,7 @@ export const metadata: Metadata = {
 export default function SchedulingFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Scheduling', path: '/features/scheduling' }}
       eyebrow="Scheduling + online booking"
       title={
         <>

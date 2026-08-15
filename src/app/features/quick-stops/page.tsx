@@ -209,6 +209,7 @@ export default function QuickStopsPage() {
 
   return (
     <FeatureDetailLayout
+      breadcrumb={{ name: 'Quick Stops', path: '/features/quick-stops' }}
       eyebrow="Customers pay more to be seen sooner"
       /* WHAT THE MONEY IS FOR, IN THE FIRST SENTENCE.
          This page used to be headed "Fill schedule gaps with prepaid jobs

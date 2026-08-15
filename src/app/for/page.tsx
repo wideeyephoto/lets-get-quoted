@@ -4,6 +4,7 @@ import { TRADES } from '@/lib/trades';
 import { COMMON_TRADE_SLUGS, tradesBySlugs } from '@/lib/trade-categories';
 import { FEE_TIERS } from '@/lib/pricing';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { titleWithBrand } from '@/lib/seo/marketing-seo';
 import SiteFooter from '@/components/site-footer';
 import TradeFinder from './TradeFinder';
 import HeroIntakeSimulator from './HeroIntakeSimulator';
@@ -11,12 +12,13 @@ import styles from './for.module.css';
 
 export const metadata: Metadata = {
   /* `absolute`, because the root layout's title template appends "· Let's Get
-     Quoted" to every page title — and this title already carries the brand, so
-     without it the tab and the search result both read
-     "… | Let's Get Quoted · Let's Get Quoted". */
-  title: { absolute: 'Contractor Website & Quoting Software by Trade | Let’s Get Quoted' },
+     Quoted" to every page title — and this title used to carry the brand a
+     second time, so the tab and the search result both read
+     "… | Let's Get Quoted · Let's Get Quoted", at 65 characters. titleWithBrand
+     puts the brand back exactly once and only while it fits inside 60. */
+  title: { absolute: titleWithBrand('Contractor Website & Software by Trade') },
   description:
-    'A website, a 24/7 AI Estimator, quotes, scheduling, and Stripe payments — tailored to your trade. Browse all 49 contractor trades Let’s Get Quoted is built for. Free to start, no monthly subscription.',
+    'A website, a 24/7 AI Estimator, quotes, scheduling, and Stripe payments — tailored to your trade. Browse all 49 trades. Free to start, no subscription.',
   alternates: { canonical: 'https://letsgetquoted.com/for' },
   /* Next replaces the parent's `openGraph` object wholesale rather than merging
      into it, so everything this card needs has to be here — including the image,

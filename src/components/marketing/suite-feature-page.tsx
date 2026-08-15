@@ -4,6 +4,7 @@ import FeatureDetailLayout, {
   type FeatureProofPoint,
 } from './feature-detail-layout';
 import FaqList from './faq-list';
+import type { Crumb } from '@/lib/seo/breadcrumbs';
 import { FEATURE_CATEGORIES } from '@/lib/features';
 import styles from './suite-feature-page.module.css';
 
@@ -33,6 +34,8 @@ import styles from './suite-feature-page.module.css';
 export type SuiteFaq = { q: string; a: ReactNode };
 
 export type SuiteFeaturePageProps = {
+  /** Passed straight through in `...layout`. See FeatureDetailLayout. */
+  breadcrumb?: Crumb;
   eyebrow: string;
   title: ReactNode;
   lede: ReactNode;

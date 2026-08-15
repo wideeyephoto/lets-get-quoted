@@ -560,6 +560,7 @@ function dayLabel(dateKey: string): string {
 export default function BackOfficePage() {
   return (
     <FeatureDetailLayout
+      breadcrumb={{ name: 'Back office', path: '/features/back-office' }}
       eyebrow="The rest of the job is already connected"
       /* The old headline led with the span of the thing ("from accepted quote
          to final payment") and put the differentiator second. One job record

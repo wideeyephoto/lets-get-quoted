@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { TRADES, getTrade } from '@/lib/trades';
+import { TRADES, getTrade, indefiniteArticle, lowerTradeName, tradePayer } from '@/lib/trades';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { titleWithBrand } from '@/lib/seo/marketing-seo';
+import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
+import { cspNonce } from '@/lib/csp-nonce';
 import SiteFooter from '@/components/site-footer';
 
 export function generateStaticParams() {
@@ -15,12 +18,13 @@ export function generateMetadata({ params }: { params: { trade: string } }): Met
   const trade = getTrade(params.trade);
   if (!trade) return {};
   return {
-    // No brand here — the root layout's title template appends "· Let's Get
-    // Quoted" to every page title, so carrying it produced
-    // "Pricing — Let's Get Quoted · Let's Get Quoted" in the tab and in search
-    // results. openGraph.title below keeps it, because the template does not
-    // apply there.
-    title: trade.metaTitle,
+    /* `absolute` + titleWithBrand, not the root layout's title template.
+       The template appends "· Let's Get Quoted" unconditionally, which is why
+       29 of these 49 titles rendered past the ~60 characters Google shows —
+       "Website & Software for Water Damage Restoration Companies" is 57 on its
+       own and 76 with the brand, so the brand was the part being truncated.
+       titleWithBrand adds it back on every trade short enough to keep it. */
+    title: { absolute: titleWithBrand(trade.metaTitle) },
     description: trade.metaDescription,
     alternates: { canonical: `https://letsgetquoted.com/for/${trade.slug}` },
     openGraph: {
@@ -39,19 +43,33 @@ export default function TradePage({ params }: { params: { trade: string } }) {
     .map((id) => AVAILABLE_TEMPLATES.find((template) => template.id === id))
     .filter((template): template is NonNullable<typeof template> => Boolean(template));
 
+  // "hvac contractors" and "a appliance repair business" were both produced
+  // here, on every one of the 49 pages. See the notes on these helpers.
+  const name = lowerTradeName(trade.name);
+  const an = indefiniteArticle(trade.work);
+  const payer = tradePayer(trade);
+
+  // Home › For your trade › Roofers, in place of the bare slug, on all 49.
+  const breadcrumbs = breadcrumbJsonLd([
+    HOME_CRUMB,
+    { name: 'For your trade', path: '/for' },
+    { name: trade.name, path: `/for/${trade.slug}` },
+  ]);
+
   return (
     <main className="marketing-shell" id="main-content">
+      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <section className="hero-copy trade-hero">
-        <p className="eyebrow">For {trade.name.toLowerCase()}</p>
+        <p className="eyebrow">For {name}</p>
         <h1>{trade.headline}</h1>
         <p className="hero-text">{trade.subhead}</p>
         <div className="actions">
           <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
-        <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a homeowner pays you.</p>
+        <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a {payer} pays you.</p>
         <ul className="trade-services" aria-label={`Built for ${trade.work} work`}>
           {trade.services.map((service) => (
             <li key={service}>{service}</li>
@@ -62,7 +80,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       <section className="section-block">
         <div className="section-heading">
           <p className="eyebrow">Made for the way you work</p>
-          <h2>Built around what {trade.name.toLowerCase()} actually struggle with.</h2>
+          <h2>Built around what {name} actually struggle with.</h2>
         </div>
         <div className="feature-grid">
           {trade.pains.map((pain) => (
@@ -82,7 +100,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
               roofer business" — the practitioner where the trade belongs.
               `work` is already the noun for the work itself ("plumbing",
               "roofing", "landscaping & lawn care"). */}
-          <h2>Everything a {trade.work} business needs to run.</h2>
+          <h2>Everything {an} {trade.work} business needs to run.</h2>
           <p>One login for your site, leads, quotes, scheduling, and getting paid &mdash; a slice of the {FEATURE_COUNT} features that come standard.</p>
         </div>
         <div className="feature-grid fav-grid">
@@ -103,7 +121,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
         <section className="section-block">
           <div className="section-heading">
             <p className="eyebrow">Your storefront</p>
-            <h2>Templates built for {trade.name.toLowerCase()}.</h2>
+            <h2>Templates built for {name}.</h2>
             <p>Pick a look, drop in your photos, and publish to your own domain in minutes &mdash; no developer.</p>
           </div>
           <div className="feature-grid">
@@ -123,8 +141,8 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       <section className="cta-band">
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
-          <h2>Start free &mdash; you only pay when a homeowner pays you.</h2>
-          <p>No subscription. No setup fee. Everything a {trade.work} business needs, from your first quote.</p>
+          <h2>Start free &mdash; you only pay when a {payer} pays you.</h2>
+          <p>No subscription. No setup fee. Everything {an} {trade.work} business needs, from your first quote.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>

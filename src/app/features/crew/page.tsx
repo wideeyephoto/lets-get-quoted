@@ -35,6 +35,7 @@ export const metadata: Metadata = {
 export default function CrewFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Crew & labor', path: '/features/crew' }}
       eyebrow="Crew, labor + the field app"
       title={
         <>

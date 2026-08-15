@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { PageCTA, SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
 import type { MarketingCtaProps } from './marketing-cta';
 import { APP_SIGNUP_URL, FEATURES_URL, SECONDARY_SIGNUP_LABEL } from './links';
+import { breadcrumbJsonLd, HOME_CRUMB, type Crumb } from '@/lib/seo/breadcrumbs';
+import { cspNonce } from '@/lib/csp-nonce';
 import styles from '@/components/flagship/flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 
@@ -20,6 +22,12 @@ export type FeatureDetailCard = {
 };
 
 export type FeatureDetailLayoutProps = {
+  /**
+   * This page's own crumb, for the Home › Features › … trail in search
+   * results. Optional only so an unfinished page still compiles; every one of
+   * the twelve live feature routes passes it.
+   */
+  breadcrumb?: Crumb;
   eyebrow: string;
   title: ReactNode;
   lede: ReactNode;
@@ -168,6 +176,7 @@ const DEFAULT_BACK_LINK = { href: FEATURES_URL, label: 'All features' };
  * these routes (OWN_CHROME_MARKETING_ROUTES).
  */
 export default function FeatureDetailLayout({
+  breadcrumb,
   eyebrow,
   title,
   lede,
@@ -204,6 +213,19 @@ export default function FeatureDetailLayout({
 
   return (
     <main className={`${styles.root} inner-site`}>
+      {/* Home › Features › this page, so a result for one of these twelve
+          shows where it sits instead of a bare /features/<slug>. */}
+      {breadcrumb ? (
+        <script
+          type="application/ld+json"
+          nonce={cspNonce()}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              breadcrumbJsonLd([HOME_CRUMB, { name: 'Features', path: FEATURES_URL }, breadcrumb]),
+            ),
+          }}
+        />
+      ) : null}
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>

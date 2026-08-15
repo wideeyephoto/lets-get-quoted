@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { TRADES } from '@/lib/trades';
 import { TRADE_CATEGORIES } from '@/lib/trade-categories';
+import { TITLE_MAX, titleWithBrand } from '@/lib/seo/marketing-seo';
 
 /**
  * /for is the hub, and the hub is its links.
@@ -129,13 +130,16 @@ describe('/for keeps its place in search', () => {
     expect(og).toContain('height: 881');
   });
 
-  /* The root layout appends "· Let's Get Quoted" to every title. This one
-     already carries the brand, so without `absolute` the tab reads
-     "… | Let's Get Quoted · Let's Get Quoted". */
-  it('sets the title absolutely, so the brand is not said twice', () => {
-    expect(PAGE).toContain(
-      "title: { absolute: 'Contractor Website & Quoting Software by Trade | Let’s Get Quoted' }",
-    );
+  /* The root layout appends "· Let's Get Quoted" to every title, so this page
+     needs `absolute` or the tab reads the brand twice — it used to carry the
+     brand in the string as well, at 65 characters.
+     titleWithBrand is now what appends it, and only while the result fits
+     inside the ~60 Google renders. Asserted through the helper rather than
+     against a literal, because the literal is exactly what went stale. */
+  it('sets the title absolutely, so the brand is not said twice or truncated', () => {
+    expect(PAGE).toContain('title: { absolute: titleWithBrand(');
+    expect(PAGE).not.toContain('by Trade | Let’s Get Quoted');
+    expect(titleWithBrand('Contractor Website & Software by Trade').length).toBeLessThanOrEqual(TITLE_MAX);
   });
 
   it('still mounts the one public header, and still ends on the shared footer', () => {

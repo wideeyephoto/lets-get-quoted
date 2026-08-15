@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isOwnChromeRoute, OWN_CHROME_MARKETING_ROUTES } from '@/lib/marketing-chrome';
+import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
 
 /**
  * The homepage is now a marketing page that draws its own header, so '/' is on
@@ -137,11 +138,29 @@ describe('the marketing nav', () => {
   const NAV_BLOCK = CHROME.slice(CHROME.indexOf('const NAV = ['), CHROME.indexOf('] as const;'));
   const entries = [...NAV_BLOCK.matchAll(/\['([^']+)', '([^']+)'\]/g)].map((m) => ({ href: m[1], label: m[2] }));
 
-  it('is one list, not three', () => {
-    // Three separate arrays is how the header once said "Product" where the
-    // footer said "Features" and the page was titled "Features".
+  it('is one list across the header and the drawer', () => {
+    // Separate arrays is how the header once said "Product" where the footer
+    // said "Features" and the page was titled "Features".
     expect(entries.length).toBeGreaterThan(4);
-    expect(CHROME.match(/NAV\.map\(/g)?.length).toBe(3);
+    expect(CHROME.match(/NAV\.map\(/g)?.length).toBe(2);
+  });
+
+  /* THE FOOTER LEFT NAV, AND THAT IS THE FIX.
+     NAV is a six-item bar with a width limit; a footer has none. Rendering NAV
+     down there meant this footer — the one under the homepage, /features and
+     /how-it-works — was the only one on the site with no path to Resources,
+     the FAQ, Security or the SMS terms, while /pricing and the trade pages
+     listed all twelve. It now renders the shared list in
+     components/marketing/footer-nav, which the other footer renders too, so the
+     two can differ in markup but not in where they let somebody go. */
+  it('draws its footer from the shared list, not from the header nav', () => {
+    expect(CHROME).toContain('FOOTER_PRIMARY.map(');
+    expect(CHROME).toContain('FOOTER_LEGAL.map(');
+
+    for (const href of ['/resources', '/faq', '/security', '/sms-terms']) {
+      const inFooterNav = [...FOOTER_PRIMARY, ...FOOTER_LEGAL].some(([h]) => h === href);
+      expect(inFooterNav, `${href} is missing from the shared footer list`).toBe(true);
+    }
   });
 
   it('carries a website link, and names the destination', () => {

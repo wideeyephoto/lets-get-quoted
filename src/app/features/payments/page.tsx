@@ -39,6 +39,7 @@ const ACH_LABEL = `$${ACH_MIN_AMOUNT.toLocaleString('en-US')}`;
 export default function PaymentsFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Payments', path: '/features/payments' }}
       eyebrow="Payments through Stripe"
       title={
         <>

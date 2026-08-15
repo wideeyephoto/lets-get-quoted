@@ -39,40 +39,66 @@ const FEATURE_SLUGS = [
  * cannot be made again by reaching for the variable that was already in scope.
  * The middleware now 308s the same paths off the app host (isMarketingPath).
  */
+/**
+ * WHEN THE MARKETING COPY LAST CHANGED. Bump this when you change it.
+ *
+ * Every entry below except the four articles had no `lastmod` at all, so a
+ * crawler had nothing to recrawl on. The fix has to be a date that is TRUE,
+ * which rules out the two obvious shortcuts:
+ *
+ *   - `new Date()` would restamp all 70 URLs as modified on every single
+ *     request. lastmod is the one field in this file a crawler will stop
+ *     believing if it is wrong, and "everything changed, again" is how you
+ *     teach it to ignore the whole document.
+ *   - A file mtime is unavailable: this renders on a serverless host from a
+ *     bundle, with no git history and no meaningful timestamps on disk.
+ *
+ * So it is written down by hand, and the failure mode is deliberately the safe
+ * one. Forget to bump it and the date is merely OLD, which costs a little
+ * recrawl latency on a page that changed. The alternative fails the other way.
+ *
+ * The articles keep their own datePublished (and dateModified once one is
+ * edited), because those are genuinely per-URL.
+ */
+const MARKETING_REVISED = '2026-08-14';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = marketingOrigin(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com');
+  const lastModified = MARKETING_REVISED;
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: origin, changeFrequency: 'monthly', priority: 1 },
-    { url: `${origin}/pricing`, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${origin}/features`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: origin, lastModified, changeFrequency: 'monthly', priority: 1 },
+    { url: `${origin}/pricing`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${origin}/features`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
     ...FEATURE_SLUGS.map((slug) => ({
       url: `${origin}/features/${slug}`,
+      lastModified,
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
-    { url: `${origin}/how-it-works`, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${origin}/for`, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${origin}/faq`, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${origin}/security`, changeFrequency: 'yearly', priority: 0.5 },
-    { url: `${origin}/resources`, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${origin}/how-it-works`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${origin}/for`, lastModified, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${origin}/faq`, lastModified, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${origin}/security`, lastModified, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${origin}/resources`, lastModified, changeFrequency: 'weekly', priority: 0.6 },
     ...TRADES.map((trade) => ({
       url: `${origin}/for/${trade.slug}`,
+      lastModified,
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
     ...ARTICLES.map((article) => ({
       url: `${origin}/resources/${article.slug}`,
-      lastModified: article.datePublished,
+      lastModified: article.dateModified ?? article.datePublished,
       changeFrequency: 'yearly' as const,
       priority: 0.5,
     })),
-    { url: `${origin}/contact`, changeFrequency: 'yearly', priority: 0.4 },
-    { url: `${origin}/founder`, changeFrequency: 'yearly', priority: 0.4 },
-    { url: `${origin}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${origin}/contact`, lastModified, changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${origin}/founder`, lastModified, changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${origin}/privacy`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
     // Shipped with the signup terms gate and never added here.
-    { url: `${origin}/terms`, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${origin}/sms-terms`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${origin}/terms`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${origin}/sms-terms`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
   ];
   /* CONTRACTOR SITES ARE NOT LISTED HERE, AND THAT IS THE FIX, NOT AN OMISSION.
      ------------------------------------------------------------------------

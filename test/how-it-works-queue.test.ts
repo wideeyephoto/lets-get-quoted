@@ -322,7 +322,12 @@ describe('metadata', () => {
   it('describes the ranked queue rather than the old five stages', () => {
     expect(PAGE).toContain("canonical: 'https://letsgetquoted.com/how-it-works'");
     expect(PAGE).toContain('Your best jobs rise to the top.');
-    expect(PAGE).toMatch(/title: 'How Let’s Get Quoted Works — your best jobs rise to the top'/);
+    /* `absolute` + titleWithBrand: the root template's " · Let's Get Quoted"
+       pushed this to 77 characters, and the brand is already the third word of
+       the title itself. */
+    expect(PAGE).toMatch(
+      /title: \{ absolute: titleWithBrand\('How Let’s Get Quoted Works — your best jobs rise to the top'\) \}/,
+    );
     expect(PAGE).not.toContain('Five stages');
     expect(PAGE).toContain("card: 'summary_large_image'");
   });

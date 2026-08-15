@@ -199,9 +199,37 @@ function Glare({ tone = 'dark' }: { tone?: 'dark' | 'cream' | 'orange' }) {
   return <i className="glare" data-tone={tone} aria-hidden="true" />;
 }
 
+/**
+ * THE MOCKUPS ARE PICTURES, AND NOW THEY SAY SO.
+ *
+ * Each of the four frames below draws a product screen out of real markup —
+ * real <button> elements, at 7–9px, in orange on white. That made them
+ * focusable: tabbing through the homepage stopped on "Yes", "No", "Send offer",
+ * "Generate full site with AI" and five others, each a control that does
+ * nothing, several of them below the 4.5:1 contrast minimum and far below any
+ * sensible target size. The `aria-label` they carried did nothing at all —
+ * aria-label is ignored on a plain <div> with no role — so a screen reader
+ * walked the whole fake dashboard as if it were the page.
+ *
+ * `role="img"` + the label fixes both halves: the frame is announced once, as
+ * the illustration it is, and its innards leave the accessibility tree.
+ * role="img" does NOT remove anything from the tab order, so every decorative
+ * control also takes tabIndex={-1}.
+ *
+ * They stay <button>s rather than becoming <span>s because the stylesheet is
+ * generated (flagship.module.css, from scripts/generate-flagship-css.mjs) and
+ * selects on the element name in a dozen places. Changing the tag here would
+ * silently unstyle them; changing it in the generator is a bigger edit than the
+ * bug warrants.
+ *
+ * WHAT THIS DOES NOT FIX: the text is still 7–9px. It is now text inside a
+ * picture rather than an interactive control, which is the audit's own
+ * suggested remedy ("make illustrative UI inert"), but a genuinely legible
+ * version means redrawing the frames larger.
+ */
 function SiteBuilderVisual() {
   return (
-    <div className="product-frame builder-frame" aria-label="AI website builder product demonstration">
+    <div className="product-frame builder-frame" role="img" aria-label="Illustration: the AI website builder generating a contractor site from a business name, trade and service area.">
       <div className="frame-top">
         <span className="frame-dots"><i /><i /><i /></span>
         <span>Website builder</span>
@@ -213,7 +241,7 @@ function SiteBuilderVisual() {
           <div className="fake-field"><small>Company</small><strong>Brightline Electric</strong></div>
           <div className="fake-field"><small>Trade</small><strong>Electrician</strong></div>
           <div className="fake-field"><small>Service area</small><strong>Royal Oak, MI</strong></div>
-          <button className="generate-button"><span>✦</span> Generate full site with AI</button>
+          <button className="generate-button" tabIndex={-1}><span>✦</span> Generate full site with AI</button>
           <div className="generation-status"><span /><span /><span /></div>
         </aside>
         <div className="site-preview">
@@ -228,7 +256,7 @@ function SiteBuilderVisual() {
                 to stop asserting them by default. */}
             <p>ELECTRICIAN · ROYAL OAK, MI</p>
             <p className="preview-headline">Power your home.<br />Protect what matters.</p>
-            <button>Get an instant estimate →</button>
+            <button tabIndex={-1}>Get an instant estimate →</button>
           </div>
           {/* Three things the generated site genuinely ships with, in place
               of a "4.9★ Local rating" and "12 yrs Experience" belonging to a
@@ -243,7 +271,7 @@ function SiteBuilderVisual() {
 
 function IntakeVisual() {
   return (
-    <div className="product-frame intake-frame" aria-label="AI smart intake product demonstration">
+    <div className="product-frame intake-frame" role="img" aria-label="Illustration: a homeowner answering the AI intake about a drain backup, and the scored lead it produces for the contractor.">
       <div className="frame-top">
         <span className="frame-dots"><i /><i /><i /></span>
         <span>Smart intake</span>
@@ -256,14 +284,14 @@ function IntakeVisual() {
           <p className="intake-headline">What do you need done?</p>
           <div className="message-bubble">My basement drain is backing up and water is spreading.</div>
           <p className="ai-question"><span>✦</span> Is wastewater actively entering the room?</p>
-          <div className="choice-row"><button>Yes</button><button>No</button></div>
+          <div className="choice-row"><button tabIndex={-1}>Yes</button><button tabIndex={-1}>No</button></div>
           <div className="step-meter"><span /></div>
         </div>
         <div className="lead-card">
           <div className="lead-card-head"><span className="avatar">AM</span><div><small>NEW WEBSITE REQUEST</small><strong>Emergency drain backup</strong></div><b>HOT</b></div>
           <div className="ai-summary"><span>✦ AI SUMMARY</span><p>Active indoor backup. In service area, wants help today, photos included.</p></div>
           <div className="lead-grid"><span><small>ESTIMATE</small><b>$450–$780</b></span><span><small>SERVICE AREA</small><b>In your area</b></span><span><small>URGENCY</small><b>Today</b></span><span><small>CONTACT</small><b>Text first</b></span></div>
-          <button className="alert-button">Call this lead first →</button>
+          <button className="alert-button" tabIndex={-1}>Call this lead first →</button>
         </div>
       </div>
     </div>
@@ -272,7 +300,7 @@ function IntakeVisual() {
 
 function QuickStopVisual() {
   return (
-    <div className="product-frame route-frame" aria-label="Quick Stops route matching product demonstration">
+    <div className="product-frame route-frame" role="img" aria-label="Illustration: a same-day Quick Stop request 0.7 miles off today’s route, with the fee and the arrival window the contractor would offer.">
       <div className="frame-top">
         <span className="frame-dots"><i /><i /><i /></span>
         <span>Plan my day</span>
@@ -293,7 +321,7 @@ function QuickStopVisual() {
           <QuickStopsMark width={116} />
           <div className="quick-title"><div><p className="quick-headline">Leaking shutoff valve</p><p>Royal Oak · same-day request</p></div></div>
           <div className="quick-metrics"><span><small>ADDED DRIVE</small><b>6 min</b></span><span><small>OPEN WINDOW</small><b>2:15–4:15</b></span></div>
-          <div className="offer-row"><div><small>YOUR QUICK STOP FEE</small><strong>$149</strong></div><button>Send offer</button></div>
+          <div className="offer-row"><div><small>YOUR QUICK STOP FEE</small><strong>$149</strong></div><button tabIndex={-1}>Send offer</button></div>
           <p className="paid-note"><i>✓</i> Nothing books until the customer pays.</p>
         </div>
       </div>
@@ -602,7 +630,12 @@ export default function FlagshipHome() {
             and stay organized.
           </p>
           <div className="hero-actions">
-            <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>Create Free Account <span>→</span></a>
+            {/* SIGNUP_LABEL, not a fifth spelling of it. This button was the
+                last "Create Free Account" on the site — the label site-chrome's
+                own note records losing to "Build my free site", on the one page
+                where the free site IS the offer. The header directly above it
+                and the phone bar below it both already said the other thing. */}
+            <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
             <a className="button secondary" href="/demo">Try the Demo</a>
           </div>
           <p className="hero-note"><i>✓</i> Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Pay only when you get paid</p>
@@ -758,7 +791,7 @@ export default function FlagshipHome() {
             data-plays is what starts it, added by the reveal observer, so a
             visitor who arrives here directly sees it from the beginning
             instead of walking in halfway through. */}
-        <div className="client-product client-plays" data-rise aria-label="Example showing a job text conversation connected to its client portal">
+        <div className="client-product client-plays" data-rise role="img" aria-label="Illustration: a text conversation where a homeowner approves a quote, and the job portal beside it advancing to scheduled.">
           <div className="text-console">
             <div className="console-top"><span>Messages</span><small>JOB #1048 · KITCHEN REMODEL</small></div>
             <div className="contact-row"><span className="contact-avatar">AM</span><div><b>Alex Morgan</b><small>Text conversation · synced to job</small></div><i>ACTIVE</i></div>
@@ -767,7 +800,7 @@ export default function FlagshipHome() {
               <div className="msg incoming" style={cssVars({ '--beat': 1 })}><p>Approved—Tuesday morning works for us.</p><span>10:21 AM</span></div>
               <div className="msg outgoing" style={cssVars({ '--beat': 2 })}><small>BRIGHTLINE</small><p>You’re scheduled for Tuesday, 9–11 AM. We’ll text when the crew is on the way.</p><span>10:22 AM · Delivered</span></div>
             </div>
-            <div className="message-footer"><span>Reply by text…</span><button type="button">Send</button></div>
+            <div className="message-footer"><span>Reply by text…</span><button type="button" tabIndex={-1}>Send</button></div>
           </div>
 
           <div className="portal-window">
@@ -778,7 +811,7 @@ export default function FlagshipHome() {
               <span className="next" style={cssVars({ '--beat': 2.4 })}><i>2</i><div><b>Installation visit</b><small>Tuesday · 9–11 AM</small></div></span>
               <span><i>3</i><div><b>Final payment</b><small>Due after work is complete</small></div></span>
             </div>
-            <div className="portal-actions"><button type="button">View approved quote</button><button type="button">Message contractor</button></div>
+            <div className="portal-actions"><button type="button" tabIndex={-1}>View approved quote</button><button type="button" tabIndex={-1}>Message contractor</button></div>
             <p className="portal-note"><span>✓</span> This portal is unique to this job.</p>
           </div>
         </div>

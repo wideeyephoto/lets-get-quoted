@@ -97,6 +97,7 @@ const PORTAL_FAQ: { q: string; a: string }[] = [
 export default function ClientPortalPage() {
   return (
     <FeatureDetailLayout
+      breadcrumb={{ name: 'Client portal', path: '/features/client-portal' }}
       /* Shorter than "Text messaging + a portal for every job", which wrapped
          at 390px and left "JOB" alone on the second line. */
       eyebrow="Client portals + two-way texting"

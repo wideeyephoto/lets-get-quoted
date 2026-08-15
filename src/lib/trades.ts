@@ -16,6 +16,16 @@ export type Trade = {
   templateIds: string[];
   metaTitle: string;
   metaDescription: string;
+  /**
+   * Who hands over the money, for the "you only pay when a ___ pays you" line
+   * the template repeats three times. Defaults to "homeowner", which is right
+   * for the forty-six trades that work on houses and wrong for the three that
+   * do not — a home inspector is hired by a buyer who does not own the place
+   * yet, and nobody moving house or getting their car detailed is a homeowner
+   * in the sentence. The metaDescriptions on those three already said "client"
+   * and "customer"; the visible page was the part still saying homeowner.
+   */
+  payer?: string;
 };
 
 export const TRADES: Trade[] = [
@@ -35,7 +45,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Landscapers',
     metaDescription:
-      'A landscaping website with instant estimates, online booking, recurring auto-billing, and Stripe payments straight to your bank. No subscription — pay only when you get paid.',
+      'A landscaping website with instant estimates, online booking, recurring auto-billing, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'roofers',
@@ -53,7 +63,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Roofers',
     metaDescription:
-      'A roofing website with instant estimates, high-value lead alerts, deposits, payment plans, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+      'A roofing website with instant estimates, high-value lead alerts, deposits, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'plumbers',
@@ -125,7 +135,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'professional'],
     metaTitle: 'Website & Software for HVAC Contractors',
     metaDescription:
-      'An HVAC website with instant estimates, online booking, payment plans, recurring maintenance billing, and Stripe payments. No subscription — pay only when you get paid.',
+      'An HVAC website with instant estimates, payment plans, recurring maintenance billing, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'cleaning-services',
@@ -143,7 +153,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Cleaning Services',
     metaDescription:
-      'A cleaning-business website with online booking, recurring auto-billing, cards on file, automatic reviews, and Stripe payments. No subscription — pay only when you get paid.',
+      'A cleaning-business website with online booking, recurring auto-billing, cards on file, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'remodelers',
@@ -197,7 +207,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'reno'],
     metaTitle: 'Website & Software for Concrete Contractors',
     metaDescription:
-      'A concrete-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments straight to your bank. No subscription — pay only when you get paid.',
+      'A concrete-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments to your bank. No subscription — pay only when you get paid.',
   },
   {
     slug: 'fencing',
@@ -215,7 +225,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Fencing Contractors',
     metaDescription:
-      'A fencing-contractor website with instant estimates, per-foot quotes, deposits, online booking, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A fencing-contractor website with instant estimates, per-foot quotes, deposits, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'flooring',
@@ -233,7 +243,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Flooring Contractors',
     metaDescription:
-      'A flooring-contractor website with itemized quotes, material options, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'A flooring-contractor website with itemized quotes, material options, deposits, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'pressure-washing',
@@ -251,7 +261,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Pressure Washing Businesses',
     metaDescription:
-      'A pressure-washing website with instant estimates, online booking, tap-to-pay, before/after galleries, and recurring plans. No subscription — pay only when you get paid.',
+      'A pressure-washing website with instant estimates, online booking, tap-to-pay, and recurring plans. No subscription — pay only when you get paid.',
   },
   {
     slug: 'tree-services',
@@ -269,7 +279,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'fixit'],
     metaTitle: 'Website & Software for Tree Service Companies',
     metaDescription:
-      'A tree-service website with 24/7 instant estimates, high-value lead alerts, deposits, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+      'A tree-service website with 24/7 instant estimates, high-value lead alerts, deposits, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'pest-control',
@@ -341,7 +351,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'fixit'],
     metaTitle: 'Website & Software for Gutter Companies',
     metaDescription:
-      'A gutter-company website with instant estimates, online booking, recurring cleaning plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A gutter-company website with instant estimates, online booking, recurring cleaning plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'siding',
@@ -377,7 +387,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Deck Builders',
     metaDescription:
-      'A deck-builder website with itemized quotes, add-on options, staged deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'A deck-builder website with itemized quotes, add-on options, staged deposits, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'junk-removal',
@@ -467,7 +477,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'reno'],
     metaTitle: 'Website & Software for Masonry Contractors',
     metaDescription:
-      'A masonry-contractor website with instant estimates, itemized quotes, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'A masonry-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'drywall',
@@ -485,7 +495,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'modern'],
     metaTitle: 'Website & Software for Drywall Contractors',
     metaDescription:
-      'A drywall-contractor website with instant estimates, itemized quotes, online booking, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+      'A drywall-contractor website with instant estimates, itemized quotes, online booking, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'insulation',
@@ -521,7 +531,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Window Cleaning Businesses',
     metaDescription:
-      'A window-cleaning website with online booking, recurring auto-billing, cards on file, automatic reviews, and Stripe payments. No subscription — pay only when you get paid.',
+      'A window-cleaning website with online booking, recurring auto-billing, cards on file, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'movers',
@@ -539,7 +549,9 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'modern'],
     metaTitle: 'Website & Software for Moving Companies',
     metaDescription:
-      'A moving-company website with instant estimates, deposits to hold the date, online booking, and Stripe payments. No subscription — pay only when a customer pays you.',
+      'A moving-company website with instant estimates, deposits to hold the date, and Stripe payments. No subscription — pay only when you get paid.',
+    // Renters move too, and the mover is often paid by the one leaving.
+    payer: 'customer',
   },
   {
     slug: 'paving',
@@ -563,7 +575,8 @@ export const TRADES: Trade[] = [
     slug: 'chimney-sweep',
     name: 'Chimney Sweeps',
     work: 'chimney sweep & repair',
-    headline: 'Chimney websites that fill the fall booking rush.',
+    // "Chimney websites" read as websites for chimneys. The trade is the sweep.
+    headline: 'Chimney-sweep websites that fill the fall booking rush.',
     subhead:
       'Pack your busy season with online booking, quote repairs and liners on-site, and keep every home on a yearly inspection plan.',
     pains: [
@@ -575,7 +588,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'professional'],
     metaTitle: 'Website & Software for Chimney Sweeps',
     metaDescription:
-      'A chimney-sweep website with online booking, instant estimates, recurring inspection plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A chimney-sweep website with online booking, instant estimates, recurring inspection plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'epoxy-flooring',
@@ -593,7 +606,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'carbon'],
     metaTitle: 'Website & Software for Epoxy Floor Coating Companies',
     metaDescription:
-      'An epoxy-flooring website with itemized quotes, finish options, deposits, before/after galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'An epoxy-flooring website with itemized quotes, finish options, deposits, and before/after galleries. No subscription — pay only when you get paid.',
   },
   {
     slug: 'locksmiths',
@@ -629,7 +642,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'fixit'],
     metaTitle: 'Website & Software for Septic Companies',
     metaDescription:
-      'A septic-service website with online booking, instant estimates, recurring pumping plans, and Stripe payments. No subscription — pay only when a customer pays you.',
+      'A septic-service website with online booking, instant estimates, recurring pumping plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'foundation-repair',
@@ -647,7 +660,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Foundation Repair Contractors',
     metaDescription:
-      'A foundation-repair website with 24/7 lead capture, high-value alerts, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A foundation-repair website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'water-damage-restoration',
@@ -665,7 +678,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'carbon'],
     metaTitle: 'Website & Software for Water Damage Restoration Companies',
     metaDescription:
-      'A restoration-company website with 24/7 emergency lead capture, photo documentation, itemized quotes, and Stripe payments. No subscription — pay only when you get paid.',
+      'A restoration-company website with 24/7 emergency lead capture, photo documentation, and itemized quotes. No subscription — pay only when you get paid.',
   },
   {
     slug: 'carpet-cleaning',
@@ -683,7 +696,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Carpet Cleaning Businesses',
     metaDescription:
-      'A carpet-cleaning website with instant per-room estimates, online booking, tap-to-pay, recurring plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A carpet-cleaning website with instant per-room estimates, online booking, tap-to-pay, and recurring plans. No subscription — pay only when you get paid.',
   },
   {
     slug: 'countertops',
@@ -701,7 +714,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Countertop Installers',
     metaDescription:
-      'A countertop-installer website with itemized quotes, material options, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'A countertop-installer website with itemized quotes, material options, deposits, and project galleries. No subscription — pay only when you get paid.',
   },
   {
     slug: 'tile',
@@ -719,7 +732,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'coat'],
     metaTitle: 'Website & Software for Tile Contractors',
     metaDescription:
-      'A tile-contractor website with itemized quotes, material options, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'A tile-contractor website with itemized quotes, material options, deposits, and project galleries. No subscription — pay only when you get paid.',
   },
   {
     slug: 'irrigation',
@@ -737,7 +750,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Irrigation & Sprinkler Companies',
     metaDescription:
-      'An irrigation-company website with instant estimates, online booking, recurring seasonal service, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'An irrigation-company website with instant estimates, recurring seasonal service, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'auto-detailing',
@@ -756,6 +769,8 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Auto Detailing Businesses',
     metaDescription:
       'An auto-detailing website with online booking, tap-to-pay, recurring plans, and Stripe payments. No subscription — pay only when a customer pays you.',
+    // The job is a car. Nothing about this trade turns on owning a house.
+    payer: 'customer',
   },
   {
     slug: 'snow-removal',
@@ -773,7 +788,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'handy'],
     metaTitle: 'Website & Software for Snow Removal Businesses',
     metaDescription:
-      'A snow-removal website with online contracts, deposits, cards on file, per-storm auto-billing, and Stripe payments. No subscription — pay only when a customer pays you.',
+      'A snow-removal website with online contracts, deposits, cards on file, and per-storm auto-billing. No subscription — pay only when you get paid.',
   },
   {
     slug: 'home-inspectors',
@@ -792,6 +807,8 @@ export const TRADES: Trade[] = [
     metaTitle: 'Website & Software for Home Inspectors',
     metaDescription:
       'A home-inspection website with online booking, pay-at-booking, reviews, and Stripe payments. No subscription — pay only when a client pays you.',
+    // A buyer's inspector is hired by someone who does not own the house yet.
+    payer: 'client',
   },
   {
     slug: 'excavation',
@@ -809,7 +826,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Excavation Contractors',
     metaDescription:
-      'An excavation-contractor website with itemized quotes, deposits, staged payments, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+      'An excavation-contractor website with itemized quotes, deposits, staged payments, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'stucco',
@@ -845,7 +862,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Cabinet Makers',
     metaDescription:
-      'A cabinetry website with itemized quotes, material options, deposits, staged payments, project galleries, and Stripe. No subscription — pay only when you get paid.',
+      'A cabinetry website with itemized quotes, material options, deposits, staged payments, and project galleries. No subscription — pay only when you get paid.',
   },
   {
     slug: 'window-treatments',
@@ -863,7 +880,7 @@ export const TRADES: Trade[] = [
     templateIds: ['modern', 'coat'],
     metaTitle: 'Website & Software for Window Treatment Companies',
     metaDescription:
-      'A window-treatment website with itemized quotes, material options, deposits, online booking, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A window-treatment website with itemized quotes, material options, deposits, and online booking. No subscription — pay only when you get paid.',
   },
   {
     slug: 'well-water',
@@ -881,7 +898,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'professional'],
     metaTitle: 'Website & Software for Well & Water Treatment Companies',
     metaDescription:
-      'A water-treatment website with online booking, instant estimates, recurring service plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A water-treatment website with online booking, instant estimates, recurring service plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
   {
     slug: 'generators',
@@ -899,12 +916,62 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'fixit'],
     metaTitle: 'Website & Software for Generator Installers',
     metaDescription:
-      'A generator-installer website with 24/7 lead capture, itemized quotes, payment plans, maintenance plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A generator-installer website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
   },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
   return TRADES.find((trade) => trade.slug === slug);
+}
+
+/**
+ * "an appliance repair business", not "a appliance repair business".
+ *
+ * The trade template renders "Everything a {work} business needs" for all 49
+ * trades, and eight of the `work` nouns begin with a vowel sound — appliance
+ * repair, auto detailing, electrical work, epoxy & floor coatings, excavation &
+ * grading, HVAC, insulation, irrigation & sprinklers. Every one of those pages
+ * shipped the wrong article, twice per page.
+ *
+ * The rule is about SOUND and not spelling, which is why this is a function and
+ * not `/^[aeiou]/`:
+ *
+ *   - An all-caps initialism is read letter by letter, so the article follows
+ *     the name of the FIRST LETTER: "an HVAC business" (aitch), "an SBA loan"
+ *     (ess). H, F, L, M, N, R, S and X all sound out with a leading vowel.
+ *   - A leading "u" that says /juː/ takes "a": a uniform, a utility trailer, a
+ *     used truck. None of the current 49 hit this, which is exactly why it is
+ *     guarded — the fiftieth trade should not have to rediscover it.
+ */
+const VOWEL_SOUND_LETTERS = new Set(['A', 'E', 'F', 'H', 'I', 'L', 'M', 'N', 'O', 'R', 'S', 'X']);
+const CONSONANT_SOUND_START = /^(uni|use|usu|uti|ubi|eu|one)/i;
+
+export function indefiniteArticle(phrase: string): 'a' | 'an' {
+  const word = phrase.trim().split(/[\s&/-]+/)[0] ?? '';
+  if (!word) return 'a';
+  if (/^[A-Z]{2,}$/.test(word)) return VOWEL_SOUND_LETTERS.has(word[0]) ? 'an' : 'a';
+  if (CONSONANT_SOUND_START.test(word)) return 'a';
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
+}
+
+/**
+ * Trade names lowercased for mid-sentence use, without flattening acronyms.
+ *
+ * `trade.name.toLowerCase()` gave "For hvac contractors" and "Built around what
+ * hvac contractors actually struggle with" on the one page whose visitors are
+ * most likely to notice. A word that is already all caps is an initialism and
+ * keeps its case; everything else lowercases as before.
+ */
+export function lowerTradeName(name: string): string {
+  return name
+    .split(' ')
+    .map((word) => (/^[A-Z0-9]{2,}$/.test(word) ? word : word.toLowerCase()))
+    .join(' ');
+}
+
+/** Who pays, for the "pay only when a ___ pays you" line. See Trade.payer. */
+export function tradePayer(trade: Trade): string {
+  return trade.payer ?? 'homeowner';
 }
 
 // The flagship dozen shown on the homepage "Built for your trade" row (in this

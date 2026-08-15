@@ -8,15 +8,18 @@ import LaunchBanner from '@/components/marketing/launch-banner';
 import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
 import styles from '@/components/flagship/flagship.module.css';
 import { APP_SIGNUP_URL, DEMO_URL } from '@/components/marketing/links';
+import { titleWithBrand } from '@/lib/seo/marketing-seo';
 
 import OpportunityCards from './opportunity-cards';
 import SectionNav, { type NavSection } from './section-nav';
 import TextAlertDemo from './text-alert-demo';
 
 export const metadata: Metadata = {
-  title: 'How Let’s Get Quoted Works — your best jobs rise to the top',
+  // absolute: the root template's " · Let's Get Quoted" pushed this to 77
+  // characters, and the brand is already the third word. See titleWithBrand.
+  title: { absolute: titleWithBrand('How Let’s Get Quoted Works — your best jobs rise to the top') },
   description:
-    'Your website qualifies every incoming request, estimates its value and scores it, then texts you when a promising job needs an answer. Respond now — or save it for later.',
+    'Your website qualifies every request, scores it by value, and tells you when a promising job needs an answer — then carries it all the way through to paid.',
   alternates: { canonical: 'https://letsgetquoted.com/how-it-works' },
   openGraph: {
     title: 'Your best jobs rise to the top.',

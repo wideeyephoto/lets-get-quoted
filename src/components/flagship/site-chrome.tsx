@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
 import styles from './flagship.module.css';
 
 /**
@@ -339,22 +340,26 @@ export function SiteFooter() {
         <a className="brand brand-logo footer-logo" href="/" aria-label="Let’s Get Quoted home">
           <BrandMark />
         </a>
+        {/* FOOTER_PRIMARY, not NAV. The header's NAV is a six-item bar with a
+            length limit; a footer has no such constraint, and using it here
+            meant this footer — the one under the homepage, /features and
+            /how-it-works — was the only one on the site with no path to
+            Resources, the FAQ, Security or the SMS terms. See footer-nav. */}
         <p className="footer-links">
-          {NAV.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
+          {FOOTER_PRIMARY.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
           {/* The footer is where people look for a way in once the top of the
               page has scrolled away. */}
           {!signedIn ? <a href={LOGIN_URL}>Sign in</a> : null}
         </p>
-        {/* PRIVACY, TERMS AND A WAY TO REACH A HUMAN.
-            All three routes existed and none of them was linked from anywhere
-            on the marketing site — which for the first two is what the footer
-            is for, and for the third is the thing a contractor looks for before
-            handing over their business. Kept on their own line, quieter than
-            the product nav, because that is the convention people scan for. */}
+        {/* SECURITY, PRIVACY, TERMS AND A WAY TO REACH A HUMAN.
+            All of these routes existed and none of them was linked from
+            anywhere on the marketing site — which for the legal pages is what
+            the footer is for, and for the other two is the thing a contractor
+            looks for before handing over their business. Kept on their own
+            line, quieter than the product nav, because that is the convention
+            people scan for. */}
         <p className="footer-legal">
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/contact">Contact</a>
+          {FOOTER_LEGAL.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
         </p>
         <span>© 2026 Let’s Get Quoted</span>
       </footer>

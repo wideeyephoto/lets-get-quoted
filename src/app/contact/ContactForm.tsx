@@ -118,7 +118,22 @@ export default function ContactForm() {
   const canSubmit = !pending && (!SITE_KEY || !!token || widgetFailed);
 
   return (
-    <form className={styles.form} onSubmit={onSubmit} noValidate>
+    /* method="post" is load-bearing, not decoration.
+       A <form> with no method attribute IS method="get". onSubmit calls
+       preventDefault, so in the normal case nothing navigates — but the normal
+       case is the hydrated one. Submit before this component hydrates, or with
+       its JS blocked or broken, and the browser fell back to the element's own
+       behavior: a GET to /contact carrying name, email, subject and the whole
+       message in the query string, where it lands in browser history, in the
+       Referer header of the next request, and in every access log and proxy
+       between here and the origin. Somebody sending a privacy request would
+       have had it written into the logs on the way in.
+
+       POST puts those fields in a request body instead. (Unhydrated, the POST
+       now 405s against the page route rather than sending — a visible failure
+       rather than a silent leak, and the server action is what handles the
+       submission in every real case.) */
+    <form className={styles.form} method="post" onSubmit={onSubmit} noValidate>
       {/* Honeypot — visually hidden, off the tab order; bots fill it, humans don't. */}
       <div className={styles.hp} aria-hidden="true">
         <label>

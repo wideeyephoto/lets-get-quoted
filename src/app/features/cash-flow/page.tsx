@@ -36,6 +36,7 @@ export const metadata: Metadata = {
 export default function CashFlowFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Cash flow', path: '/features/cash-flow' }}
       eyebrow="Cash flow + insights"
       title={
         <>

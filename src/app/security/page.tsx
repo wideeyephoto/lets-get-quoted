@@ -6,7 +6,7 @@ import { APP_SIGNUP_URL } from '@/components/marketing/links';
 export const metadata: Metadata = {
   title: 'Security',
   description:
-    'How Let’s Get Quoted keeps your money and your customers’ data safe: payments handled by Stripe, encryption in transit, per-account data isolation, verified-webhook payments, and passwordless sign-in.',
+    'How Let’s Get Quoted keeps your money and your customers’ data safe: payments handled by Stripe, encryption in transit, and per-account data isolation.',
   alternates: { canonical: 'https://letsgetquoted.com/security' },
 };
 

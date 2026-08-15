@@ -1,5 +1,13 @@
 /* The shared marketing pieces. Import from here or from the individual files —
- * both work; this barrel just keeps page imports to one line. */
+ * this barrel just keeps page imports to one line.
+ *
+ * ONE EXCEPTION, AND IT IS A BUILD ERROR RATHER THAN A SUBTLE ONE: a CLIENT
+ * component must import from the individual files. FeatureDetailLayout below
+ * reads the request's CSP nonce (next/headers) and is server-only, and a barrel
+ * puts every export in the importer's module graph regardless of which names
+ * are destructured — so a 'use client' page that wants ExampleFrame from here
+ * fails with "you're importing a component that needs next/headers". See the
+ * note at the top of app/home-next/page.tsx, which is where that happened. */
 
 export { default as FeatureDetailLayout } from './feature-detail-layout';
 export type {

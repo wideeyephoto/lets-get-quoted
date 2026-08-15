@@ -70,6 +70,18 @@ export default async function NotFound() {
           <a className="btn primary" href="/">Go to the homepage</a>
           <a className="btn secondary" href="/contact">Contact us</a>
         </div>
+        {/* SOMEWHERE TO GO, not just a way out.
+            Two buttons — home, or tell us it is broken — asked a visitor who
+            landed here from a stale link or a typo'd URL to start over. These
+            four are the pages people arrive looking for, so a 404 becomes a
+            junction instead of a dead end. Quieter than the buttons above,
+            because the primary action is still "go to the homepage". */}
+        <nav className={styles.suggestions} aria-label="Popular pages">
+          <a href="/demo">See the live demo</a>
+          <a href="/for">Find your trade</a>
+          <a href="/pricing">Pricing</a>
+          <a href="/features">All features</a>
+        </nav>
       </div>
     </main>
   );

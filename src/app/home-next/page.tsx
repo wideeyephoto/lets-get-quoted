@@ -6,7 +6,18 @@ import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
-import { CtaLink, ExampleFrame, MarketingCta, PriceZeroDial, APP_SIGNUP_URL } from '@/components/marketing';
+/* FROM THE FILES, NOT THE BARREL, because this page is a client component.
+   components/marketing/index.ts also re-exports FeatureDetailLayout, which
+   reads the request's CSP nonce and is therefore server-only — and a barrel
+   pulls every one of its exports into the importer's module graph whether or
+   not they are named here. So one client page importing four presentational
+   pieces through the barrel was enough to fail the build with "you're
+   importing a component that needs next/headers". Named imports do not
+   tree-shake that away before the server/client boundary check runs. */
+import { CtaLink, APP_SIGNUP_URL } from '@/components/marketing/links';
+import ExampleFrame from '@/components/marketing/example-frame';
+import MarketingCta from '@/components/marketing/marketing-cta';
+import PriceZeroDial from '@/components/marketing/price-zero-dial';
 import { TRADES } from '@/lib/trades';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './home-next.module.css';

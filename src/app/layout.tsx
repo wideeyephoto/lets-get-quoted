@@ -81,8 +81,16 @@ export const metadata: Metadata = {
     default: "Let's Get Quoted — Contractor websites that get you paid, straight to your bank",
     template: "%s · Let's Get Quoted",
   },
+  /* 160 CHARACTERS, NOT 364.
+     This was two and a quarter times what Google renders, so the sentence a
+     searcher actually saw ended mid-clause at "…request an available arrival
+     wind…" and every word after it — including the whole fee disclosure it was
+     lengthened to carry — was written for nobody. The disclosure has not been
+     dropped, it has been moved somewhere it is read: /pricing states the fee
+     model in full, and the homepage's own pricing band carries it above the
+     fold. A <meta description> is a snippet, not a disclosure surface. */
   description:
-    'The all-in-one platform for contractors: a website with an AI estimator that collects job details, shows an estimated range, and lets customers request an available arrival window 24/7 — plus quotes and e-signatures, scheduling, and Stripe payments straight to your bank. No monthly subscription; platform and Stripe processing fees apply when you collect payment.',
+    'One platform for contractors: a website with an AI estimator, quotes and e-signatures, scheduling, and Stripe payments. No subscription — pay when you get paid.',
   applicationName: "Let's Get Quoted",
   alternates: { canonical: '/' },
   openGraph: {

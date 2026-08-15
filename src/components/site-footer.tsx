@@ -1,7 +1,13 @@
 import Link from 'next/link';
+import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
 
-// Shared marketing footer — one place for the nav + the copyright year (computed
-// at render so it never goes stale), used across every public marketing page.
+// Shared marketing footer — the nav + the copyright year (computed at render so
+// it never goes stale), used across every public marketing page that draws from
+// globals.css rather than the flagship stylesheet.
+//
+// The LINKS are no longer written here: they come from footer-nav, which
+// flagship/site-chrome's footer also renders, so the two footers can differ in
+// markup and styling but never in where they let a visitor go. See that file.
 export default function SiteFooter() {
   const year = new Date().getFullYear();
   return (
@@ -13,21 +19,9 @@ export default function SiteFooter() {
           there. */}
       <nav aria-label="Site" style={{ flexWrap: 'wrap' }}>
         <Link href="/">Home</Link>
-        {/* /features is a page again, not the homepage anchor it was while the
-            section was folded into the home wheel. This link is also the only
-            path a crawler has from the existing site into the new cluster —
-            the five /features/* sub-pages hang off that index. */}
-        <Link href="/features">Features</Link>
-        <Link href="/how-it-works">How it works</Link>
-        <Link href="/pricing">Pricing</Link>
-        <Link href="/resources">Resources</Link>
-        <Link href="/faq">FAQ</Link>
-        <Link href="/security">Security</Link>
-        <Link href="/contact">Contact</Link>
-        <Link href="/founder">Founder</Link>
-        <Link href="/terms">Terms of Service</Link>
-        <Link href="/privacy">Privacy Policy</Link>
-        <Link href="/sms-terms">SMS Terms</Link>
+        {[...FOOTER_PRIMARY, ...FOOTER_LEGAL].map(([href, label]) => (
+          <Link key={href} href={href}>{label}</Link>
+        ))}
       </nav>
     </footer>
   );

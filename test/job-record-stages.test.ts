@@ -61,7 +61,12 @@ describe('one job record, four stages', () => {
       'Itemized proposals, optional upgrades and clear approvals.',
       'Deposits, balances and payment plans through Stripe.',
       'See customer money, payroll and bills before they move.',
-      'Follow-ups, review requests and AI-assisted marketing.',
+      // Was "Follow-ups, review requests and AI-assisted marketing." Campaigns
+      // moved into this description when the tool beside it stopped claiming
+      // them: "Campaigns + blog" linked at /features/website-builder, which
+      // covers the blog and never mentions campaigns. The pair now splits along
+      // the same line the product does.
+      'Follow-ups, review requests, and email or text campaigns to past, repeat and lapsed customers.',
     ]) {
       expect(SRC).toContain(tool);
     }

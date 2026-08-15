@@ -26,6 +26,49 @@ export default function ContactPage() {
         <section>
           <ContactForm />
         </section>
+
+        {/* WHAT THE FORM DOES NOT SAY ON ITS OWN.
+            The page offered one undifferentiated box and no idea what happens
+            after Send. These three are the addresses the product already sends
+            from and replies to (see lib/email.ts) — not new inboxes invented
+            for a contact page, which would be a promise nobody is watching.
+
+            The payment-details warning is here because a contact form is
+            exactly where somebody tries to "update the card on file". This
+            inbox is ordinary email; card numbers do not belong in it, and the
+            product never needs them — Stripe collects them directly. */}
+        <section>
+          <h2>Where to send what</h2>
+          <ul>
+            <li>
+              <strong>General questions and support</strong> — the form above, or{' '}
+              <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a>.
+            </li>
+            <li>
+              <strong>Account and billing help</strong> —{' '}
+              <a href="mailto:support@letsgetquoted.com">support@letsgetquoted.com</a>, or reply to any
+              email the platform has sent you so the thread stays together.
+            </li>
+            <li>
+              <strong>Privacy requests</strong> — the form above, or{' '}
+              <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a> with
+              &ldquo;Privacy request&rdquo; in the subject. See the{' '}
+              <Link href="/privacy">Privacy Policy</Link> for what we hold and how to ask for it.
+            </li>
+          </ul>
+          <p>
+            A person reads every message and replies by email — there is no ticket robot in
+            between. If your question is about texting, note that automatic texts are still
+            going through carrier registration; the <Link href="/faq">FAQ</Link> covers what
+            that does and does not affect.
+          </p>
+          <p>
+            <strong>Please don&rsquo;t send payment details.</strong> Never put a card number,
+            bank details, or a password in this form or in an email. Card payments are handled
+            entirely by Stripe and we never need to see them &mdash; anyone asking you for them
+            is not us.
+          </p>
+        </section>
       </div>
 
       <nav className={styles.legalNav} aria-label="Site pages">

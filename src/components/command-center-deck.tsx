@@ -61,9 +61,23 @@ function splitDeck(markup: string): Screen[] {
       const end = chunk.indexOf(CLOSE);
       const inner = end === -1 ? chunk : chunk.slice(0, end);
       const label = inner.match(/class="cc-card-eye">([^<]+)</)?.[1]?.trim() ?? '';
+      /* THE BUTTONS IN THESE SCREENS ARE DRAWN, NOT WIRED.
+         "+ New quote", "Add job", "Request payment" and "Message customer" are
+         real <button> elements inside a picture of a dashboard. Nothing is
+         bound to them, and nothing should be — but they were focusable, so
+         tabbing through the homepage stopped on four controls that do nothing,
+         and a screen reader announced them as available actions. "+ New quote"
+         in particular reads as an invitation to start one.
+
+         Neutralized here rather than in the markup because that string is
+         GENERATED (see the note above splitDeck) — an edit to it is undone by
+         the next regeneration. Doing it at the parse keeps the fix wherever the
+         string comes from. aria-hidden as well as tabindex because the label is
+         the misleading part, not just the stop. */
+      const inert = inner.replace(/<button /g, '<button tabindex="-1" aria-hidden="true" ');
       // Re-wrapped: the split consumed the opening tag, and .cc-card is what
       // both the stylesheet and the reveal/parallax wiring select on.
-      return { id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label, html: OPEN + inner + CLOSE };
+      return { id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label, html: OPEN + inert + CLOSE };
     })
     .filter((screen) => screen.label !== '');
 }

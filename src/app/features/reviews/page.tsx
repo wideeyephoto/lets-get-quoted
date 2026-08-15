@@ -35,6 +35,7 @@ export const metadata: Metadata = {
 export default function ReviewsFeaturePage() {
   return (
     <SuiteFeaturePage
+      breadcrumb={{ name: 'Reviews', path: '/features/reviews' }}
       eyebrow="Reviews + growth"
       title={
         <>

@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ARTICLES, formatArticleDate } from '@/lib/resources';
 import SiteFooter from '@/components/site-footer';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import ResourceLibrary from './ResourceLibrary';
 
 export const metadata: Metadata = {
   title: 'Resources',
   description:
-    'Practical, no-fluff guides for contractors: how to price for real margin, stop losing leads, get paid faster, and earn more 5-star reviews.',
+    'Practical, no-fluff guides for contractors: how to price for real margin, stop losing leads, get paid faster, and earn more Google reviews.',
   alternates: { canonical: 'https://letsgetquoted.com/resources' },
 };
 
@@ -26,16 +26,7 @@ export default function ResourcesPage() {
       </section>
 
       <section className="section-block">
-        <div className="feature-grid fav-grid">
-          {ARTICLES.map((article) => (
-            <Link key={article.slug} href={`/resources/${article.slug}`} className="feature-card fav-card resource-card">
-              <span className="fav-card-tag">{article.category}</span>
-              <h3>{article.title}</h3>
-              <p>{article.excerpt}</p>
-              <span className="resource-meta">{formatArticleDate(article.datePublished)} · {article.readMinutes} min read</span>
-            </Link>
-          ))}
-        </div>
+        <ResourceLibrary />
       </section>
 
       <section className="cta-band">
