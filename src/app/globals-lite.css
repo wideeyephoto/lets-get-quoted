@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: aecb55d87b7fa07b
+   source-sha256: 1bc52b1c8326c310
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -895,8 +895,10 @@
 :root[data-theme='light'] .feature-card,
 :root[data-theme='light'] .bset-master,
 :root[data-theme='light'] .bset-card,
+:root[data-theme='light'] .bset-summary-item,
 :root[data-theme='light'] .bset-section,
 :root[data-theme='light'] .bset-preview,
+:root[data-theme='light'] .bset-preview-toggle,
 :root[data-theme='light'] .bset-recurring,
 :root[data-theme='light'] .schedule-popover-panel,
 :root[data-theme='light'] .schedule-crew-picker-panel,
@@ -11492,11 +11494,87 @@ button.plan-badge.warn.is-action:focus-visible { outline: 2px solid rgba(255, 12
   .month-nav-label { font-size: 1.05rem; }
   .schedule-panel-foot { justify-content: flex-start; }
 }
+
+/* ===========================================================================
+   Booking & availability setup (/dashboard/schedule/booking)
+
+   Three depths of surface, so nesting reads without needing a border on
+   everything: the page, a section card, and a field group inside it. Orange is
+   reserved for what's SELECTED and for the primary action — nothing decorative
+   uses it, or "on" stops meaning anything.
+=========================================================================== */
+
+/* Booking and Quick Stops declare their own surface palette, which is why they
+   were the last two screens still dark under Harbour: a local --bset-card:
+   rgba(10,20,33,.92) wins over anything the flip has to say.
+
+   Declared on the CARDS, not on .bset. Putting them on the region meant its
+   header, its coverage map and its save bar all read paper values while
+   standing on the dark canvas — the region is desk (see the note in THE FLIP's
+   selector list). Only what paints itself a sheet gets the sheet's palette. */
+:root[data-theme='light'] .bset-master,
+:root[data-theme='light'] .bset-card,
+:root[data-theme='light'] .bset-section,
+:root[data-theme='light'] .bset-preview,
+:root[data-theme='light'] .bset-recurring,
+:root[data-theme='light'] .bset-tipcard {
+  --bset-card: #ffffff;
+  --bset-inner: rgba(17, 27, 41, 0.035);
+  /* Edged like everything else on paper now — these were 1.28:1 and 1.55:1. */
+  --bset-line: #28384b;
+  --bset-line-strong: #1f2a39;
+  /* The accent when it is READ rather than filled. --bset-accent stays #ff7a29
+     because it is also a fill, and on a fill it is correct; as bare text on a
+     white sheet it measured 2.6:1. Deep burnt orange keeps the hue — this is
+     still the brand's colour, at the value paper needs. */
+  --bset-accent-ink: #a54f1b;
+}
 .qs-foot-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
 /* Both jump targets clear the sticky top bar rather than landing under it. */
 #quick-stop-earn-more,
 #quick-stop-demand { scroll-margin-top: calc(var(--appbar-h) + 1.25rem); }
+.bset-summary-item.is-static { cursor: default; }
+.bset-summary-item.is-static:hover { border-color: var(--bset-line); transform: none; }
+.bset-window-copy strong em.is-warning { border-color: var(--cedge-amber-11); color: var(--gold-ink); }
+
+.bset-tipcard,
+.bset-recurring {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 16px;
+  background: var(--bset-card);
+}
+
+.bset-tipcard > svg,
+.bset-recurring > svg { width: 1.25rem; height: 1.25rem; flex: none; color: var(--ink-amber-1); margin-top: 0.1rem; }
+
+.bset-tipcard > div,
+.bset-recurring > div { min-width: 0; flex: 1; }
+.bset-tipcard strong, .bset-recurring strong { display: block; font-size: 0.92rem; font-weight: 650; }
+.bset-tipcard p, .bset-recurring p { margin: 0.25rem 0 0.55rem; font-size: 0.83rem; color: var(--muted, var(--muted-2)); line-height: 1.45; }
+
+.bset-tipcard a,
+.bset-recurring-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bset-accent-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bset-tipcard a:hover, .bset-recurring-link:hover { text-decoration: underline; }
+.bset-tipcard a svg, .bset-recurring-link svg { width: 0.85rem; height: 0.85rem; }
 
 /* Applied for ~1.5s by revealRow() when a map pin points at a record, so the
    row you were sent to identifies itself instead of leaving you to work out

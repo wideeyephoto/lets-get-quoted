@@ -107,7 +107,7 @@ describe('the minimum job value is whole dollars, and says so', () => {
     expect(BOOKING).toContain("return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 });");
     expect(BOOKING).toContain('inputMode="numeric"');
     expect(BOOKING).toContain('placeholder="0"');
-    expect(BOOKING).toContain('aria-label="Minimum job value in whole dollars"');
+    expect(BOOKING).toContain('aria-label="Minimum estimated job value in whole dollars"');
   });
 
   /**
