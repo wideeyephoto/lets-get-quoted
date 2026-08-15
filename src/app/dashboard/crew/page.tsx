@@ -370,7 +370,6 @@ export default async function CrewLaborPage({
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
             initialWorkerType={searchParams.worker === 'subcontractor' || searchParams.worker === 'employee' ? searchParams.worker : 'all'}
             initialView={rosterView}
-            initialSkin={crewSkin}
             initialOverview={crewTheme === 'overview'}
           />
         ) : null}

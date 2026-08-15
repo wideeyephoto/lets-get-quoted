@@ -8,7 +8,7 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setCrewOverviewAction, setRosterViewAction } from '@/app/dashboard/view-actions';
-import type { CrewSkin, RosterView } from '@/lib/dashboard-views';
+import type { RosterView } from '@/lib/dashboard-views';
 import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
 import { FIELD_APP_LABEL, FIELD_APP_TITLE, needsInvite, type FieldAppState } from '@/lib/crew-invite';
 import type { PayType } from '@/lib/pay-types';
@@ -226,7 +226,6 @@ export default function CrewRoster({
   /** "?worker=subcontractor" — the whole directory, or one half of it. */
   initialWorkerType?: WorkerType | 'all';
   initialView: RosterView;
-  initialSkin: CrewSkin;
   /** Whether the whole page is in Overview. Outranks initialView while it's on. */
   initialOverview: boolean;
   /**
@@ -276,15 +275,9 @@ export default function CrewRoster({
     });
   }
 
-  // Retire old Cards/Focus preferences to Rows once. Otherwise a stale cookie
-  // would put the server shell into a layout the simplified menu no longer
-  // offers and bring it back on the next visit.
-  useEffect(() => {
-    if (initialOverview || isSimplifiedRosterView(initialView)) return;
-    startViewSave(() => {
-      void setRosterViewAction('rows').catch(() => {});
-    });
-  }, [initialOverview, initialView]);
+  // Legacy Cards/Focus preferences render as Rows in People, but are not
+  // rewritten here. Focus is still a valid Hours & pay preference, and the
+  // shared view action would otherwise erase that unrelated saved choice.
 
   // Board columns, the nine-column table and Focus's rail all want more than the
   // 1100px cap, and the shell is rendered by the page above this component. The
@@ -433,6 +426,21 @@ export default function CrewRoster({
     Number(role !== 'all') +
     Number(jobFilter !== 'all') +
     Number(appFilter !== 'all');
+  const summaryScopeIsAll = query.trim() === '' && workerType === 'all' && role === 'all';
+
+  function showRosterSlice(
+    nextStatus: 'active' | 'archived',
+    nextJobFilter: string,
+    nextAppFilter = 'all',
+    nextWorkerType: WorkerType | 'all' = 'all',
+  ) {
+    setQuery('');
+    setStatus(nextStatus);
+    setWorkerType(nextWorkerType);
+    setRole('all');
+    setJobFilter(nextJobFilter);
+    setAppFilter(nextAppFilter);
+  }
 
   // The roster as Overview rows. The three stats are the three facts a roster
   // exists to answer — what they cost you this period, what they're paid, and
@@ -527,9 +535,7 @@ export default function CrewRoster({
             type="button"
             className="btn primary"
             onClick={() => {
-              setStatus('active');
-              setWorkerType('employee');
-              setAppFilter('needs-setup');
+              showRosterSlice('active', 'all', 'needs-setup', 'employee');
               setFiltersOpen(false);
             }}
           >
@@ -538,27 +544,27 @@ export default function CrewRoster({
         </section>
       ) : null}
 
-      <div className={styles.rosterSummary} aria-label="Crew availability">
+      <div className={styles.rosterSummary} role="group" aria-label="Crew availability filters">
         <button
           type="button"
-          aria-pressed={status === 'active' && jobFilter === 'all' && appFilter === 'all'}
-          onClick={() => { setStatus('active'); setJobFilter('all'); setAppFilter('all'); }}
+          aria-pressed={summaryScopeIsAll && status === 'active' && jobFilter === 'all' && appFilter === 'all'}
+          onClick={() => showRosterSlice('active', 'all')}
         >
           <strong>{totals.activeCount}</strong>
           <span>Active</span>
         </button>
         <button
           type="button"
-          aria-pressed={status === 'active' && jobFilter === 'available'}
-          onClick={() => { setStatus('active'); setJobFilter('available'); setAppFilter('all'); }}
+          aria-pressed={summaryScopeIsAll && status === 'active' && jobFilter === 'available' && appFilter === 'all'}
+          onClick={() => showRosterSlice('active', 'available')}
         >
           <strong>{totals.available}</strong>
           <span>Available</span>
         </button>
         <button
           type="button"
-          aria-pressed={status === 'active' && jobFilter === 'assigned'}
-          onClick={() => { setStatus('active'); setJobFilter('assigned'); setAppFilter('all'); }}
+          aria-pressed={summaryScopeIsAll && status === 'active' && jobFilter === 'assigned' && appFilter === 'all'}
+          onClick={() => showRosterSlice('active', 'assigned')}
         >
           <strong>{totals.onJob}</strong>
           <span>Assigned</span>
@@ -566,8 +572,8 @@ export default function CrewRoster({
         {setup.total > 0 ? (
           <button
             type="button"
-            aria-pressed={appFilter === 'needs-setup'}
-            onClick={() => { setStatus('active'); setWorkerType('employee'); setJobFilter('all'); setAppFilter('needs-setup'); }}
+            aria-pressed={query.trim() === '' && status === 'active' && workerType === 'employee' && role === 'all' && jobFilter === 'all' && appFilter === 'needs-setup'}
+            onClick={() => showRosterSlice('active', 'all', 'needs-setup', 'employee')}
           >
             <strong>{setup.total}</strong>
             <span>Needs setup</span>
@@ -575,9 +581,9 @@ export default function CrewRoster({
         ) : null}
         <button
           type="button"
-          aria-pressed={status === 'archived'}
+          aria-pressed={summaryScopeIsAll && status === 'archived' && jobFilter === 'all' && appFilter === 'all'}
           disabled={totals.archived === 0}
-          onClick={() => { setStatus('archived'); setJobFilter('all'); setAppFilter('all'); }}
+          onClick={() => showRosterSlice('archived', 'all')}
         >
           <strong>{totals.archived}</strong>
           <span>Archived</span>
@@ -1039,17 +1045,7 @@ function CrewActions({
   return (
     <div className={styles.rowActions}>
       {!readOnly && row.active ? (
-        row.workerType === 'employee' && row.fieldApp === 'no-email' ? (
-          <button type="button" className={`${styles.rowBtn} ${styles.rowBtnPrimary}`} onClick={onOpen}>
-            Add email
-          </button>
-        ) : row.workerType === 'employee' && needsInvite(row.fieldApp) ? (
-          <form action={inviteCrewAction.bind(null, row.id)}>
-            <button type="submit" className={`${styles.rowBtn} ${styles.rowBtnPrimary}`}>
-              {row.fieldApp === 'expired' ? 'Resend invite' : 'Send invite'}
-            </button>
-          </form>
-        ) : (
+        <>
           <button
             type="button"
             className={styles.rowBtn}
@@ -1059,7 +1055,18 @@ function CrewActions({
           >
             Assign job
           </button>
-        )
+          {row.workerType === 'employee' && row.fieldApp === 'no-email' ? (
+            <button type="button" className={`${styles.rowBtn} ${styles.rowBtnPrimary}`} onClick={onOpen}>
+              Add email
+            </button>
+          ) : row.workerType === 'employee' && needsInvite(row.fieldApp) ? (
+            <form action={inviteCrewAction.bind(null, row.id)}>
+              <button type="submit" className={`${styles.rowBtn} ${styles.rowBtnPrimary}`}>
+                {row.fieldApp === 'expired' ? 'Resend invite' : 'Send invite'}
+              </button>
+            </form>
+          ) : null}
+        </>
       ) : null}
       <Link href={hoursHrefFor(row, basePath)} className={styles.rowBtn}>View hours</Link>
 
