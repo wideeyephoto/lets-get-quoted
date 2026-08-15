@@ -624,7 +624,7 @@ export default function LaborByJob({
           </Link>
         ))}
         <span className={styles.rangeNote}>
-          One period for the whole page — changing it here changes it on <Link href={periodHref({})}>Hours &amp; pay</Link> too.
+          One period for the whole page — changing it here changes it on <Link href={periodHref({ tab: 'hours' })}>Hours &amp; pay</Link> too.
         </span>
       </div>
 

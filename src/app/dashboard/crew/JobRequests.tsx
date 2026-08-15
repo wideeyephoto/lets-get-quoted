@@ -156,10 +156,12 @@ export default function JobRequests({
             qualified acceptance takes the job — every other offer closes itself.
           </p>
           {subcontractorCount === 0 ? (
-            <p>
-              You have no subcontractors saved yet. Add one from <strong>Add person → Add subcontractor</strong>, then
-              come back here.
-            </p>
+            <>
+              <p>Add a subcontractor first, then you can offer one job to several qualified firms at once.</p>
+              <Link href="/dashboard/crew?tab=people&add=sub" className="btn primary">
+                + Add subcontractor
+              </Link>
+            </>
           ) : assignableJobs.length === 0 ? (
             <p>There are no open jobs to request cover for.</p>
           ) : (

@@ -18,7 +18,7 @@ import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
-import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
+import { isTimeClockAvailable } from '@/lib/time-clock-data';
 import { isLiveMessagingEnvironment } from '@/lib/sms';
 import { listSubcontractorRequests, loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
 import { normalizeWorkerType } from '@/lib/subcontractors';
@@ -170,19 +170,6 @@ export default async function CrewLaborPage({
     }
   }
 
-  const onJobCount = activeCrew.filter((member) => (jobsByCrew[member.id]?.length ?? 0) > 0).length;
-
-  // The time clock's own card lives on the Crew members tab, so that tab pays
-  // for these reads and no other one does. `available` is a separate question
-  // from the mode: getTimeClockMode answers 'off' both when the migration has
-  // not run and when the owner genuinely turned it off, which is right for
-  // behavior and useless for explaining. Open shifts are only worth a query
-  // when there is a clock that could have left one running.
-  const timeClockMode = tab === 'people' ? await getTimeClockMode(supabase, accountId) : 'off';
-  const timeClockAvailable = tab === 'people' ? await isTimeClockAvailable(supabase, accountId) : false;
-  const crewOpenShifts =
-    tab === 'people' && timeClockMode !== 'off' ? await listOpenShifts(supabase, accountId) : [];
-
   // Hours for the roster's "this pay period" summary. Cheap enough to always
   // load: it's the number that makes a roster row worth reading.
   const totals = await laborTotalsByCrew(supabase, accountId, { startIso: period.startIso, endIso: period.endIso });
@@ -286,6 +273,12 @@ export default async function CrewLaborPage({
           searchParams,
         })
       : null;
+  // Time-clock configuration now sits beside the hours it produces. The pay
+  // view already loaded the mode and open shifts, so the only extra read is the
+  // migration-availability check needed to explain a disabled save.
+  const timeClockMode = payView?.timeClockMode ?? 'off';
+  const timeClockAvailable = tab === 'hours' ? await isTimeClockAvailable(supabase, accountId) : false;
+  const crewOpenShifts = payView?.openShifts ?? [];
 
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
@@ -329,7 +322,7 @@ export default async function CrewLaborPage({
         .filter(Boolean)
         .join(' ')}
     >
-      <section className="panel workspace-section-card">
+      <section className={`panel workspace-section-card ${styles.crewPanel}`}>
         <header className={styles.pageHead}>
           <div>
             <p className="eyebrow">Team</p>
@@ -377,7 +370,6 @@ export default async function CrewLaborPage({
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
             initialWorkerType={searchParams.worker === 'subcontractor' || searchParams.worker === 'employee' ? searchParams.worker : 'all'}
             initialView={rosterView}
-            initialSkin={crewSkin}
             initialOverview={crewTheme === 'overview'}
           />
         ) : null}
@@ -455,37 +447,10 @@ export default async function CrewLaborPage({
         ) : null}
       </section>
 
-      {tab === 'people' ? (
-        <div className={`stat-ticker panel ${styles.rosterStats}`}>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{activeCrew.length}</span>
-            <span className="stat-ticker-label">Active crew</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{onJobCount}</span>
-            <span className="stat-ticker-label">Assigned</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{activeCrew.length - onJobCount}</span>
-            <span className="stat-ticker-label">Available</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{subs.length}</span>
-            <span className="stat-ticker-label">Subcontractors</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{crew.length - activeCrew.length}</span>
-            <span className="stat-ticker-label">Archived</span>
-          </div>
-        </div>
-      ) : null}
-
-      {/* The time clock, on the tab that renders with zero crew and zero hours.
-          Its only control used to be a <select> in the Hours & pay rail, and
-          that rail is not rendered when no hours exist for the period — so
-          switching the clock ON required hours to have already been logged
-          without it. See TimeClockCard. */}
-      {tab === 'people' ? (
+      {/* Kept outside HoursAndPay's rows/no-rows branch so a completely empty
+          period can still turn the clock on. It now sits beside the hours it
+          creates instead of after the entire people directory. */}
+      {tab === 'hours' ? (
         <TimeClockCard
           mode={timeClockMode}
           available={timeClockAvailable}

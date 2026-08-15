@@ -95,7 +95,6 @@ export default async function DemoCrewPage({ searchParams }: { searchParams: { t
             periodLabel={period.rangeLabel}
             initialStatus="active"
             initialView="rows"
-            initialSkin="standard"
             // Overview is the page default now — the demo opens on it too, so a
             // prospect sees the shape an owner sees on their first visit.
             initialOverview
