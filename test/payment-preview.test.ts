@@ -90,10 +90,14 @@ describe('the invoice panel', () => {
   });
 
   it('is loaded from the invoice itself, with its real totals', () => {
-    expect(JOB_PAGE).toContain('await getInvoiceWithItems(supabase, accountId, jobInvoice.id)');
+    expect(JOB_PAGE).toContain('getInvoiceWithItems(supabase, accountId, jobInvoice.id)');
     expect(JOB_PAGE).toContain('computeInvoiceTotals(');
-    // A job with no invoice costs no query.
-    expect(JOB_PAGE).toContain('jobInvoice ? await getInvoiceWithItems');
+    // A job with no invoice costs no query. Spelled WITHOUT the `await` that
+    // used to sit here: the call is one arm of a Promise.all now, so the guard
+    // is the ternary rather than the statement. It is the ternary that carries
+    // the property — pinning the await tested where the call sat, not whether
+    // it was skipped.
+    expect(JOB_PAGE).toContain('jobInvoice ? getInvoiceWithItems');
   });
 
   it('says what happens when there is no invoice yet', () => {

@@ -136,7 +136,7 @@ export default async function JobDetailPage({
   params: { id: string };
   searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string };
 }) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId, accountTimeZone } = await requireOwnerContext();
 
   const job = await getJob(supabase, accountId, params.id);
 
@@ -153,26 +153,91 @@ export default async function JobDetailPage({
     );
   }
 
-  const costs = await listCosts(supabase, accountId, job.id);
-  const margin = computeMargin(job, costs);
-  const changeOrders = await listChangeOrders(supabase, accountId, job.id);
-  const [selections, selectionTemplates, lastSelectionSent] = await Promise.all([
+  // ── TWO WAVES, NOT TWENTY-TWO ROUND TRIPS ─────────────────────────────────
+  //
+  // Everything from here down used to be awaited a statement at a time —
+  // payments, then invoices, then the feed, then the client-link count, then
+  // the crew — though none of them needs anything the one before it returns.
+  // Rendering this screen cost about twenty-two serial round trips.
+  //
+  // The two waves below are both independent of each other and could be one
+  // Promise.all. They are split to hold the fan-out to about a dozen concurrent
+  // reads: this is the heaviest page in the app, and a twenty-wide burst on
+  // every open changes the database's access pattern under load, not just this
+  // page's latency. The second wave costs one extra round trip and keeps the
+  // concurrency near where it has already been running.
+  const arrivalAdmin = createAdminClient();
+  const [
+    costs,
+    changeOrders,
+    selections,
+    selectionTemplates,
+    lastSelectionSent,
+    warranties,
+    warrantyClaims,
+    minMarginPct,
+    payments,
+    invoices,
+    feed,
+    activeClientLinkCount,
+  ] = await Promise.all([
+    listCosts(supabase, accountId, job.id),
+    listChangeOrders(supabase, accountId, job.id),
     listSelections(supabase, accountId, job.id),
     listSelectionTemplates(supabase, accountId),
     // From the job feed, which is where BOTH senders record themselves — the
     // contractor's own button and the scheduled reminder. See lastSelectionSendAt.
     lastSelectionSendAt(supabase, accountId, job.id),
-  ]);
-  // The homeowner saw pictures and the contractor saw a text list. Both sides
-  // of a feature about agreeing on what was picked should see the same thing.
-  const selectionPhotos = await signSelectionPhotos(accountId, selections);
-  const selectionStatus = boardStatus(selections);
-  const [warranties, warrantyClaims, { data: warrantyDefaults }] = await Promise.all([
     listWarranties(supabase, accountId, job.id),
     listClaims(supabase, accountId, job.id),
-    supabase.from('accounts').select('default_warranty_months').eq('id', accountId).maybeSingle(),
+    getMinMarginPct(supabase, accountId),
+    listPayments(supabase, accountId, job.id),
+    listInvoices(supabase, accountId, job.id),
+    listJobFeed(supabase, accountId, job.id),
+    getActiveClientAccessCount(supabase, accountId, job.id),
   ]);
-  const defaultWarrantyMonths = Number(warrantyDefaults?.default_warranty_months) || 0;
+
+  // Arrival. The live trip and the account's arrival rules — read with the
+  // admin client because job_tracking is owner-scoped by RLS and this page is
+  // already inside requireOwnerContext.
+  const [
+    crew,
+    { data: arrivalAccount },
+    { data: arrivalSite },
+    activeArrival,
+    milestones,
+    assignedCrewIds,
+    previewBusinessName,
+    jobPhotos,
+    originatingLead,
+    priceBookServices,
+    jobTasks,
+    reviewUrl,
+    clientOptedOut,
+  ] = await Promise.all([
+    listCrew(supabase, accountId, { activeOnly: true }),
+    arrivalAdmin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
+    arrivalAdmin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
+    getActiveTracking(arrivalAdmin, accountId, job.id),
+    listMilestones(supabase, accountId, job.id),
+    listCrewIdsForJob(supabase, accountId, job.id),
+    loadBusinessName(supabase, accountId),
+    createJobPhotoLinks(accountId, job.photo_paths || []),
+    getLeadByConvertedJob(supabase, accountId, job.id),
+    listServices(supabase, accountId, { activeOnly: true }),
+    listJobTasks(supabase, accountId, job.id),
+    resolveAccountReviewUrl(supabase, accountId),
+    // How this customer may be messaged about this job — their own STOP reply.
+    // No phone, no question to ask, and no query.
+    job.client_phone ? isPhoneOptedOut(accountId, job.client_phone) : Promise.resolve(false),
+  ]);
+
+  const margin = computeMargin(job, costs);
+  const selectionStatus = boardStatus(selections);
+  // Off the account row the arrival block already fetches in full. This was its
+  // own single-column read, and so were the Stripe/review/day-hours columns and
+  // the timezone further down — four queries against one row.
+  const defaultWarrantyMonths = Number((arrivalAccount as { default_warranty_months?: unknown } | null)?.default_warranty_months) || 0;
   // How defensible this job's cost figure is, and whether it's worth saying
   // anything about the margin. Both stay quiet on a job with nothing recorded.
   const confidence = costConfidence(
@@ -181,7 +246,7 @@ export default async function JobDetailPage({
   const marginWarning = marginVerdict({
     revenue: margin.revenue,
     totalCost: margin.totalCost,
-    minMarginPct: await getMinMarginPct(supabase, accountId),
+    minMarginPct,
     evidencedPct: confidence.evidencedPct,
   });
   // Computed over the whole list, not just at entry: the duplicate worth
@@ -195,21 +260,6 @@ export default async function JobDetailPage({
       createdAt: cost.created_at,
     })),
   );
-  const payments = await listPayments(supabase, accountId, job.id);
-  const invoices = await listInvoices(supabase, accountId, job.id);
-  const feed = await listJobFeed(supabase, accountId, job.id);
-  const activeClientLinkCount = await getActiveClientAccessCount(supabase, accountId, job.id);
-  const crew = await listCrew(supabase, accountId, { activeOnly: true });
-
-  // Arrival. The live trip and the account's arrival rules — read with the
-  // admin client because job_tracking is owner-scoped by RLS and this page is
-  // already inside requireOwnerContext.
-  const arrivalAdmin = createAdminClient();
-  const [{ data: arrivalAccount }, { data: arrivalSite }, activeArrival] = await Promise.all([
-    arrivalAdmin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
-    arrivalAdmin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
-    getActiveTracking(arrivalAdmin, accountId, job.id),
-  ]);
   const arrivalSettings = arrivalSettingsFromAccount(arrivalAccount as Record<string, unknown> | null);
   const jobBusinessName =
     (arrivalSite?.company_name as string | undefined) || (arrivalAccount?.business_name as string | undefined) || 'Your contractor';
@@ -232,19 +282,7 @@ export default async function JobDetailPage({
   const arrivalFlash = describeArrivalOutcome(searchParams.arrival, searchParams.sms);
 
   // Proof-to-Pay stages, flattened for the client component.
-  const milestoneViews = (await listMilestones(supabase, accountId, job.id)).map(flattenMilestone);
-  const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
-
-  // Subcontractor dispatch: the live request for this job (if any), whether
-  // there is anybody to ask, and — once the work is done — the private review.
-  // All four reads are cheap and degrade to nothing on a database that has not
-  // taken the 2026-08-17 migration.
-  const [subRequest, subcontractorDirectory, jobSubcontractors, jobSubReviews] = await Promise.all([
-    getActiveRequestForJob(supabase, accountId, job.id),
-    loadSubcontractors(supabase, accountId, { today: todayIn(arrivalSettings.timeZone) }),
-    listJobSubcontractors(supabase, accountId, job.id),
-    listSubcontractorReviews(supabase, accountId, { jobId: job.id }),
-  ]);
+  const milestoneViews = milestones.map(flattenMilestone);
   const jobInvoice = selectPrimaryInvoice(invoices);
   const invoicePaidTotal = jobInvoice
     ? payments.filter((payment) => payment.invoice_id === jobInvoice.id && payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0)
@@ -253,11 +291,39 @@ export default async function JobDetailPage({
   const invoiceBalance = jobInvoice ? Math.max(0, invoiceDisplayTotal - invoicePaidTotal) : null;
   const outstandingBalance = Math.max(0, invoiceDisplayTotal - invoicePaidTotal);
 
-  /* THE INVOICE AS THE CLIENT WILL SEE IT, for the preview beside the send
-     button. Lines and charges rather than a total, because a preview that only
-     repeats the number already on the screen answers no question anybody had.
-     Loaded only when there is an invoice, so a job with none costs no query. */
-  const previewInvoice = jobInvoice ? await getInvoiceWithItems(supabase, accountId, jobInvoice.id) : null;
+  // ── THE THIRD WAVE: the only three reads that actually had to wait ────────
+  //
+  // Each needs something the waves above returned — the selections, the primary
+  // invoice, and the account's timezone — which is what separates them from the
+  // twenty that were merely written in sequence.
+  //
+  // THE INVOICE AS THE CLIENT WILL SEE IT, for the preview beside the send
+  // button. Lines and charges rather than a total, because a preview that only
+  // repeats the number already on the screen answers no question anybody had.
+  // Loaded only when there is an invoice, so a job with none still costs no query.
+  //
+  // The homeowner saw pictures and the contractor saw a text list. Both sides of
+  // a feature about agreeing on what was picked should see the same thing.
+  //
+  // Subcontractor dispatch: the live request for this job (if any), whether
+  // there is anybody to ask, and — once the work is done — the private review.
+  // All four reads are cheap and degrade to nothing on a database that has not
+  // taken the 2026-08-17 migration.
+  const [
+    previewInvoice,
+    selectionPhotos,
+    subRequest,
+    subcontractorDirectory,
+    jobSubcontractors,
+    jobSubReviews,
+  ] = await Promise.all([
+    jobInvoice ? getInvoiceWithItems(supabase, accountId, jobInvoice.id) : Promise.resolve(null),
+    signSelectionPhotos(accountId, selections),
+    getActiveRequestForJob(supabase, accountId, job.id),
+    loadSubcontractors(supabase, accountId, { today: todayIn(arrivalSettings.timeZone) }),
+    listJobSubcontractors(supabase, accountId, job.id),
+    listSubcontractorReviews(supabase, accountId, { jobId: job.id }),
+  ]);
   const previewTotals = previewInvoice
     ? computeInvoiceTotals(
         previewInvoice.items,
@@ -265,19 +331,14 @@ export default async function JobDetailPage({
         Number(previewInvoice.invoice.tax_rate) || 0,
       )
     : null;
-  const previewBusinessName = await loadBusinessName(supabase, accountId);
-  const jobPhotos = await createJobPhotoLinks(accountId, job.photo_paths || []);
-  const { data: accountRow } = await supabase
-    .from('accounts')
-    .select('connect_onboarded, auto_review_request, schedule_day_hours')
-    .eq('id', accountId)
-    .maybeSingle();
-  const stripeOnboarded = accountRow?.connect_onboarded ?? false;
-  const autoReviewRequest = Boolean(accountRow?.auto_review_request);
+  // All three off the account row already in hand, rather than a fourth query
+  // for three columns of it.
+  const accountRow = (arrivalAccount ?? {}) as Record<string, unknown>;
+  const stripeOnboarded = Boolean(accountRow.connect_onboarded);
+  const autoReviewRequest = Boolean(accountRow.auto_review_request);
   // The working day, for the "18 hrs across 6 days is about 3 a day" line on
   // the scheduling card. Same fallback the schedule page uses.
-  const scheduleDayHours = Number(accountRow?.schedule_day_hours) || 8;
-  const originatingLead = await getLeadByConvertedJob(supabase, accountId, job.id);
+  const scheduleDayHours = Number(accountRow.schedule_day_hours) || 8;
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
   const boundUpdateJobCrew = updateJobCrewAction.bind(null, job.id, true);
@@ -295,25 +356,24 @@ export default async function JobDetailPage({
   // Anything that compares a booked day against "today" has to use the clock
   // the contractor is actually looking at, or it calls a normal completion
   // early and an early one normal for several hours a day.
-  const { data: accountClock } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
-  const todayKey = zonedNowParts(new Date(), (accountClock?.timezone as string) || 'America/New_York').dateKey;
+  // accountTimeZone comes off the account row requireOwnerContext already read,
+  // and resolves the same 'America/New_York' fallback this used to spell out.
+  // It was a fifth query against that row.
+  const todayKey = zonedNowParts(new Date(), accountTimeZone).dateKey;
   // appointment_confirmed_at is selected via getJob's `*` but isn't on the Job
   // type yet — read it off the row without widening the shared type.
   const appointmentConfirmedAt = (job as { appointment_confirmed_at?: string | null }).appointment_confirmed_at ?? null;
-  const priceBook = (await listServices(supabase, accountId, { activeOnly: true }))
+  const priceBook = priceBookServices
     .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0, unit: service.unit }));
-  const jobTasks = await listJobTasks(supabase, accountId, job.id);
   const taskStats = taskProgress(jobTasks);
-  const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
   const lastReviewRequest = feed.find((event) => event.kind === 'review_requested');
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
   const boundScheduleJob = scheduleJobAction.bind(null, job.id);
   // How this customer may be messaged about this job — the contractor's setting,
-  // their own STOP reply, and what's actually on file, resolved together in one
-  // place. Every card on this page that offers to text them asks this rather
-  // than checking for a phone number and hoping.
+  // their own STOP reply (resolved in the wave above), and what's actually on
+  // file, brought together in one place. Every card on this page that offers to
+  // text them asks this rather than checking for a phone number and hoping.
   const clientChannelPreference = normalizeClientChannelPreference(job.message_channel);
-  const clientOptedOut = job.client_phone ? await isPhoneOptedOut(accountId, job.client_phone) : false;
   const clientContact = {
     phone: job.client_phone,
     email: job.client_email,

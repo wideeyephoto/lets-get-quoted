@@ -704,8 +704,13 @@ describe('automations reports, and no longer collects', () => {
   it('links to the dialog rather than duplicating it', () => {
     expect(AUTOMATIONS).toContain('/dashboard/messages?setup=1#texting-setup');
     // Read through the same chip, so the two pages cannot hold two opinions
-    // about one account.
-    expect(AUTOMATIONS).toContain('ownerAlertChip(await loadOwnerAlerts(accountId))');
+    // about one account. Asserted as two facts rather than one nested
+    // expression: loadOwnerAlerts is fetched in the page's opening Promise.all
+    // now, so the call no longer sits inside the ownerAlertChip( ... ). What
+    // matters is that the page asks loadOwnerAlerts and renders through the
+    // chip, and neither of those moved.
+    expect(AUTOMATIONS).toContain('loadOwnerAlerts(accountId)');
+    expect(AUTOMATIONS).toContain('ownerAlertChip(');
   });
 
   /**
