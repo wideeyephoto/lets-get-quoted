@@ -50,7 +50,7 @@ export const PLANS: readonly PricingPlan[] = [
       '50 text + 30 AI Intake one-time starter credits',
       '100 marketing emails + 25 AI writing drafts to start',
       'No automatic refills; optional paid top-ups',
-      'Smart Phone Receptionist available for $69/month',
+      'AI Voice Receptionist available for $69/month',
     ],
   },
   {
@@ -79,7 +79,7 @@ export const PLANS: readonly PricingPlan[] = [
       '500 text credits + 500 marketing emails/month',
       '250 AI Intake + 50 AI writing drafts/month',
       '100 domestic forwarding/voicemail minutes/month',
-      'Smart Phone Receptionist available for $59/month',
+      'AI Voice Receptionist available for $59/month',
     ],
   },
   {
@@ -108,7 +108,7 @@ export const PLANS: readonly PricingPlan[] = [
       '1,500 text credits + 2,500 marketing emails/month',
       '500 AI Intake + 250 AI writing drafts/month',
       '100 domestic forwarding/voicemail minutes/month',
-      'Smart Phone Receptionist available for $55/month',
+      'AI Voice Receptionist available for $55/month',
     ],
   },
   {
@@ -131,10 +131,10 @@ export const PLANS: readonly PricingPlan[] = [
     features: [
       'Growth-level team, messaging, AI Intake, and storage capacity',
       '0% LGQ payment fee',
-      'Smart Phone Receptionist included with 100 minutes',
+      'AI Voice Receptionist included with 100 minutes',
       '3 simultaneous AI calls + advanced routing',
       '5 office users + 10 crew users',
-      '90-day Receptionist call history',
+      '90-day AI Voice Receptionist call history',
       '1 custom-domain connection',
       '1 dedicated voice/text business number',
       '1,500 text credits + 2,500 marketing emails/month',
@@ -163,7 +163,7 @@ export const COMPARISON_ROWS = [
   ['Operating locations for one legal business', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Custom-domain connections', '1', '1', '1', '1'],
   ['Business number', 'Shared LGQ texting number', '1 dedicated voice/text number', '1 dedicated voice/text number', '1 dedicated voice/text number'],
-  ['Basic call forwarding & voicemail', 'With active Receptionist', '100 min/month', '100 min/month', '100 min/month'],
+  ['Basic call forwarding & voicemail', 'With active AI Voice Receptionist', '100 min/month', '100 min/month', '100 min/month'],
   ['Text credits', '50 one-time starter credits', '500/month', '1,500/month', '1,500/month'],
   ['Marketing email sends', '100 one-time starter sends', '500/month', '2,500/month', '2,500/month'],
   ['Transactional emails', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)'],
@@ -171,10 +171,10 @@ export const COMPARISON_ROWS = [
   ['AI writing drafts', '25 one-time starter drafts', '50/month', '250/month', '250/month'],
   ['File & photo storage', '5 GB', '10 GB', '100 GB', '100 GB'],
   ['QuickBooks Online', '1 connection included', '1 connection included', '1 connection included', '1 connection included'],
-  ['Smart Phone Receptionist', '$69 add-on / 100 min', '$59 add-on / 100 min', '$55 add-on / 200 min', 'Included / 100 min'],
-  ['Simultaneous AI Receptionist calls', '1', '1', '1', '3'],
-  ['AI Receptionist routing', 'Standard', 'Standard', 'Standard', 'Advanced'],
-  ['Receptionist call history', '30 days', '30 days', '30 days', '90 days'],
+  ['AI Voice Receptionist', '$69 add-on / 100 min', '$59 add-on / 100 min', '$55 add-on / 200 min', 'Included / 100 min'],
+  ['Simultaneous AI Voice Receptionist calls', '1', '1', '1', '3'],
+  ['AI Voice Receptionist routing', 'Standard', 'Standard', 'Standard', 'Advanced'],
+  ['AI Voice Receptionist call history', '30 days', '30 days', '30 days', '90 days'],
   ['Usage beyond included limits', 'Approved top-ups', 'Approved top-ups', 'Approved top-ups', 'Top-ups or enabled overages with a spending cap'],
   ['Free onboarding + quick tour', 'Included', 'Included', 'Included', 'Included'],
 ] as const;
@@ -228,7 +228,7 @@ export const PRICING_FAQS = [
     a: 'Not without approval. Extra capacity requires a one-time top-up or an overage setting you deliberately enable with a spending cap.',
   },
   {
-    q: 'What does a dedicated business number do without the AI Receptionist?',
+    q: 'What does a dedicated business number do without the AI Voice Receptionist?',
     a: 'The included Solo, Growth, and Scale number supports two-way texting, domestic call forwarding, and voicemail. Text credits and voice-minute rules still apply.',
   },
   {
@@ -236,7 +236,7 @@ export const PRICING_FAQS = [
     a: 'Extra lines are available on Solo, Growth, Scale, and Enterprise after carrier review. They share the workspace’s text, voice, and concurrency allowances and do not create another workspace or another set of plan credits. The price is shown for approval before activation.',
   },
   {
-    q: 'What happens when the Receptionist reaches its limit during a call?',
+    q: 'What happens when the AI Voice Receptionist reaches its limit during a call?',
     a: 'The active call may finish its current interaction and transfer or fall back, with up to 15 grace minutes and a 60-minute total-call safety cap. New calls then follow your forwarding or voicemail rule unless you explicitly enabled paid extra minutes.',
   },
   {
@@ -245,7 +245,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'What is the annual-plan guarantee?',
-    a: 'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ payment fees are not recalculated retroactively, and consumed add-ons, Voice or carrier costs, Stripe fees, taxes, and custom work are excluded.',
+    a: 'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ payment fees are not recalculated retroactively, and consumed add-ons, AI Voice Receptionist or carrier costs, Stripe fees, taxes, and custom work are excluded.',
   },
   {
     q: 'What happens to an inactive Flex workspace?',

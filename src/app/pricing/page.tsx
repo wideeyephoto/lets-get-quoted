@@ -8,7 +8,7 @@ import styles from './pricing.module.css';
 export const metadata: Metadata = {
   title: 'Contractor Software Pricing',
   description:
-    'Flexible contractor software pricing from $0/month. Compare Flex, Solo, Growth, and Scale, calculate your LGQ payment fee, and add an AI phone receptionist when you need it.',
+    'Flexible contractor software pricing from $0/month. Compare Flex, Solo, Growth, and Scale, calculate your LGQ payment fee, and add AI Voice Receptionist when you need it.',
   alternates: { canonical: 'https://letsgetquoted.com/pricing' },
   openGraph: {
     title: 'Contractor Software Pricing · Let’s Get Quoted',

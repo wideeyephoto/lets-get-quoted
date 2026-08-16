@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import PricingCalculator from './PricingCalculator';
 import {
@@ -11,6 +11,7 @@ import {
   PLANS,
   PRICING_FAQS,
   VOICE_MONTHLY_BY_PLAN,
+  annualPlanCost,
   type BillingCycle,
   type PlanId,
   type PricingPlan,
@@ -19,34 +20,72 @@ import styles from './pricing.module.css';
 
 const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   flex: [
+    '$0 monthly base software bill',
     'Unlimited leads, quotes, jobs, and invoices',
-    '1 office user + 2 crew users',
-    'Custom-domain connection + QuickBooks Online',
-    'Shared LGQ texting number',
-    'One-time starter messaging and AI credits',
+    'Custom domain + QuickBooks Online',
   ],
   solo: [
-    'Everything essential for an owner-operator',
-    '1 office user + 2 crew users',
     'Your own voice/text business number',
     '500 text + 250 AI Intake credits/month',
     'Custom domain + QuickBooks Online',
   ],
   growth: [
     '5 office users + 10 crew users',
-    'Your own voice/text business number',
     '1,500 text + 500 AI Intake credits/month',
-    '2,500 marketing sends + 250 AI drafts/month',
-    'Smart Phone Receptionist available',
+    'AI Voice Receptionist available',
   ],
   scale: [
-    'The same core team and usage capacity as Growth',
     '0% LGQ payment fee',
-    'Smart Phone Receptionist included',
+    'AI Voice Receptionist included',
     '3 simultaneous AI calls + advanced routing',
-    '90-day Receptionist call history',
   ],
 };
+
+const PLAN_STAGES: Record<PlanId, { label: string; shortLabel: string; number: string }> = {
+  flex: { label: 'Seasonal / starting out', shortLabel: 'Start', number: '01' },
+  solo: { label: 'Owner-operator', shortLabel: 'Own', number: '02' },
+  growth: { label: 'Growing team', shortLabel: 'Grow', number: '03' },
+  scale: { label: 'High volume', shortLabel: 'Scale', number: '04' },
+};
+
+const SCENARIOS: readonly {
+  planId: PlanId;
+  revenue: number;
+  title: string;
+  description: string;
+}[] = [
+  {
+    planId: 'flex',
+    revenue: 40_000,
+    title: 'Seasonal handyman',
+    description: 'Keeps fixed costs at zero while the business finds its rhythm.',
+  },
+  {
+    planId: 'solo',
+    revenue: 250_000,
+    title: 'Owner-operator electrician',
+    description: 'Gets a dedicated number and a much lower payment fee.',
+  },
+  {
+    planId: 'growth',
+    revenue: 600_000,
+    title: 'Landscaping team',
+    description: 'Adds office and field capacity without paying per core record.',
+  },
+  {
+    planId: 'scale',
+    revenue: 1_200_000,
+    title: 'High-volume roofer',
+    description: 'Trades the LGQ payment fee for predictable software cost.',
+  },
+];
+
+const COMPARISON_HIGHLIGHTS = [
+  { value: '1.25% → 0%', label: 'Payment fee falls as volume grows' },
+  { value: '1 → 5', label: 'Office seats expand on Growth' },
+  { value: 'Solo+', label: 'Dedicated business number' },
+  { value: 'Included', label: 'AI Voice Receptionist arrives with Scale' },
+] as const;
 
 const COMPETITORS = [
   {
@@ -55,7 +94,7 @@ const COMPETITORS = [
     monthly: '$129 + 0.25%',
     annual: '$99 + 0.25%',
     users: '5 office + 10 crew',
-    phone: 'Dedicated number; Receptionist +$55',
+    phone: 'Dedicated number; AI Voice Receptionist +$55',
     href: '#plans',
   },
   {
@@ -96,8 +135,36 @@ const COMPETITORS = [
   },
 ] as const;
 
+const SECTION_IDS = ['plans', 'calculator', 'receptionist', 'compare', 'questions'] as const;
+
+const NAV_ITEMS = [
+  { id: 'plans', label: 'Plans', mobileLabel: 'Plans' },
+  { id: 'calculator', label: 'Cost calculator', mobileLabel: 'Calculator' },
+  { id: 'receptionist', label: 'AI Voice Receptionist', mobileLabel: 'AI Voice' },
+  { id: 'compare', label: 'Compare', mobileLabel: 'Compare' },
+  { id: 'questions', label: 'Questions', mobileLabel: 'FAQ' },
+] as const;
+
 function price(plan: PricingPlan, billing: BillingCycle): number {
   return billing === 'annual' ? plan.annualMonthly : plan.monthly;
+}
+
+function paymentFee(plan: PricingPlan): string {
+  return `${plan.paymentFeePct.toFixed(plan.paymentFeePct === 0 ? 0 : 2)}%`;
+}
+
+function money(value: number): string {
+  return value.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+}
+
+function getPlan(planId: PlanId): PricingPlan {
+  const plan = PLANS.find((item) => item.id === planId);
+  if (!plan) throw new Error(`Unknown pricing plan: ${planId}`);
+  return plan;
 }
 
 function voiceDescription(plan: PricingPlan): string {
@@ -111,13 +178,11 @@ function signupHref(
   plan: PlanId,
   billing: BillingCycle,
   includeVoice: boolean,
-  includeMessaging: boolean,
 ): string {
   const options = [
     `plan=${plan}`,
     `billing=${billing}`,
     includeVoice ? 'voice=1' : '',
-    includeMessaging ? 'messaging=1' : '',
   ].filter(Boolean);
   return `${APP_SIGNUP_URL}&${options.join('&')}`;
 }
@@ -131,107 +196,178 @@ function InfoBubble({ label, children }: { label: string; children: ReactNode })
   );
 }
 
+function AIVoiceReceptionistInfoBubble() {
+  return (
+    <InfoBubble label="AI Voice Receptionist">
+      <p>
+        Answers calls on your business number, gathers job details, and routes the caller using your rules. It is an
+        optional add-on for Flex, Solo, and Growth and is included on Scale.
+      </p>
+      <a href="#receptionist">See AI Voice Receptionist plans and minutes →</a>
+    </InfoBubble>
+  );
+}
+
+function MessagingInfoBubble() {
+  return (
+    <InfoBubble label="2-Way Messaging">
+      <p>
+        Keeps customer texts and your replies together in one inbox. Flex uses a shared LGQ texting number; paid
+        plans include a dedicated business number. Outgoing messages use plan text credits.
+      </p>
+      <Link href="/demo/messages">Open the messaging demo →</Link>
+    </InfoBubble>
+  );
+}
+
 export default function PricingExperience() {
   const [billing, setBilling] = useState<BillingCycle>('annual');
   const [includeVoice, setIncludeVoice] = useState(false);
-  const [includeMessaging, setIncludeMessaging] = useState(false);
-  const [volume, setVolume] = useState(250_000);
+  const [volume, setVolume] = useState(40_000);
+  const [spotlightPlan, setSpotlightPlan] = useState<PlanId | null>(null);
+  const [activeSection, setActiveSection] = useState<string>('plans');
+  const [expandedMobilePlan, setExpandedMobilePlan] = useState<PlanId | null>(null);
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
+
+  useEffect(() => {
+    const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(
+      (section): section is HTMLElement => section !== null,
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target.id) setActiveSection(visible.target.id);
+      },
+      { rootMargin: '-25% 0px -60% 0px', threshold: [0, 0.1, 0.35] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <>
       <section className={styles.hero}>
         <div className={styles.heroGrid}>
-          <div>
+          <div className={styles.heroCopy}>
             <p className={styles.heroEyebrow}>Pricing built for working contractors</p>
-            <h1>Powerful contractor software at a surprisingly reasonable price.</h1>
+            <h1>Start free. Pay less as you grow.</h1>
             <p className={styles.heroLead}>
-              Start without a monthly bill, add your own business number when you are ready, and reach 0% LGQ fees
-              as your business grows. No forced upgrades. No hidden feature maze.
+              One system for seasonal work—from your first side job to a high-volume crew—with pricing that gets more
+              efficient at every stage.
             </p>
+            <a className={styles.seasonalHeroLink} href="#seasonal-flex">
+              <span aria-hidden="true">01</span>
+              Seasonal contractor? See why Flex fits →
+            </a>
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="#plans">Choose a plan</a>
+              <a className={styles.primaryButton} href="#plans">Find my fit</a>
               <a className={styles.secondaryButton} href="#calculator">Run my numbers</a>
             </div>
             <ul className={styles.heroProof} aria-label="Pricing highlights">
-              <li>QuickBooks Online on every plan</li>
-              <li>Free onboarding + quick tour</li>
-              <li>Normal quote form never shuts off</li>
+              <li>QuickBooks on every plan</li>
+              <li>Free onboarding</li>
+              <li>No forced upgrades</li>
             </ul>
           </div>
 
           <aside className={styles.heroBoard} aria-label="How LGQ pricing grows with a contractor">
-            <p className={styles.boardLabel}>A clear path as you grow</p>
-            <ol>
-              <li data-plan="flex"><span>Starting out</span><strong>$0/mo + 1.25%</strong></li>
-              <li data-plan="solo"><span>Owner-operator</span><strong>$39/mo + 0.50%</strong></li>
-              <li data-plan="growth"><span>Growing team</span><strong>$129/mo + 0.25%</strong></li>
-              <li data-plan="scale"><span>High volume</span><strong>$329/mo + 0%</strong></li>
+            <div className={styles.boardTopline}>
+              <p className={styles.boardLabel}>Your growth path</p>
+              <span>Fixed cost rises</span>
+            </div>
+            <ol className={styles.growthPath}>
+              {PLANS.map((plan, index) => (
+                <li data-plan={plan.id} key={plan.id}>
+                  <span className={styles.pathNumber}>{PLAN_STAGES[plan.id].number}</span>
+                  <div>
+                    <span>{PLAN_STAGES[plan.id].label}</span>
+                    <strong>{plan.name}</strong>
+                  </div>
+                  <div className={styles.pathPrice}>
+                    <strong>${plan.annualMonthly}<small>/mo</small></strong>
+                    <span>{paymentFee(plan)} fee</span>
+                  </div>
+                  {index < PLANS.length - 1 ? <i aria-hidden="true" /> : null}
+                </li>
+              ))}
             </ol>
-            <p className={styles.boardNote}>Stripe processing is separate and paid by the contractor.</p>
+            <div className={styles.boardFooter}>
+              <span><b>$0</b> to start</span>
+              <span><b>0%</b> at scale</span>
+            </div>
+            <p className={styles.boardNote}>Annual monthly equivalent shown. Stripe processing is separate.</p>
           </aside>
-        </div>
-        <div className={styles.previewNotice}>
-          <strong>New-plan preview</strong>
-          <span>Paid-plan activation follows final payment-infrastructure and usage-control verification.</span>
         </div>
       </section>
 
       <nav className={styles.sectionNav} aria-label="Pricing sections">
-        <a href="#plans">Plans</a>
-        <a href="#calculator">Cost calculator</a>
-        <a href="#receptionist">Receptionist</a>
-        <a href="#compare">Compare</a>
-        <a href="#questions">Questions</a>
+        {NAV_ITEMS.map((item) => (
+          <a key={item.id} href={`#${item.id}`} data-active={activeSection === item.id} aria-current={activeSection === item.id ? 'location' : undefined}>
+            <span className={styles.navDesktopLabel}>{item.label}</span>
+            <span className={styles.navMobileLabel}>{item.mobileLabel}</span>
+          </a>
+        ))}
       </nav>
 
       <section className={styles.plansSection} id="plans">
         <div className={styles.sectionHeadingSplit}>
           <div>
             <p className={styles.sectionEyebrow}>Choose what fits today</p>
-            <h2>Four useful steps. No dead-end starter plan.</h2>
-            <p>Pick by the way your business works. The calculator below handles the revenue math.</p>
+            <h2>Four stages. One clear next step.</h2>
+            <p>Start with how you work. Then let the calculator check the math.</p>
           </div>
 
           <div className={styles.billingToggle} role="group" aria-label="Billing cycle">
-            <button
-              type="button"
-              aria-pressed={billing === 'monthly'}
-              onClick={() => setBilling('monthly')}
-            >
+            <button type="button" aria-pressed={billing === 'monthly'} onClick={() => setBilling('monthly')}>
               Monthly
             </button>
-            <button
-              type="button"
-              aria-pressed={billing === 'annual'}
-              onClick={() => setBilling('annual')}
-            >
+            <button type="button" aria-pressed={billing === 'annual'} onClick={() => setBilling('annual')}>
               Annual <span>Save up to $360</span>
             </button>
           </div>
         </div>
 
-        <div className={styles.quickOptions} aria-label="Add options while comparing plans">
-          <button
-            type="button"
-            className={includeVoice ? styles.quickOptionSelected : undefined}
-            aria-pressed={includeVoice}
-            onClick={() => setIncludeVoice((selected) => !selected)}
-          >
-            <span className={styles.quickIcon} aria-hidden="true">V</span>
-            <span><strong>{includeVoice ? 'Voice added' : 'Add Voice'}</strong><small>From $55/mo · included on Scale</small></span>
-            <b aria-hidden="true">{includeVoice ? '✓' : '+'}</b>
-          </button>
-          <button
-            type="button"
-            className={includeMessaging ? styles.quickOptionSelected : undefined}
-            aria-pressed={includeMessaging}
-            onClick={() => setIncludeMessaging((selected) => !selected)}
-          >
-            <span className={styles.quickIcon} aria-hidden="true">2W</span>
-            <span><strong>{includeMessaging ? '2-Way Messaging added' : 'Add 2-Way Messaging'}</strong><small>Included on every plan · usage limits apply</small></span>
-            <b aria-hidden="true">{includeMessaging ? '✓' : '+'}</b>
-          </button>
-          <p>These quick picks update the cards and calculator. Messaging is already part of every plan.</p>
+        <aside className={styles.seasonalFeature} id="seasonal-flex">
+          <div className={styles.seasonalCopy}>
+            <p className={styles.sectionEyebrow}>Seasonal contractor? This is your plan.</p>
+            <h3>Flex stays light when work slows down.</h3>
+            <p>
+              There is no monthly base subscription. Pay the 1.25% LGQ fee only on eligible payments you actually
+              collect, then move up when the math or your team makes sense.
+            </p>
+          </div>
+          <ol className={styles.seasonalRhythm} aria-label="How Flex follows a seasonal business">
+            <li><span>Quiet months</span><strong>$0</strong><small>monthly base</small></li>
+            <li><span>Jobs come in</span><strong>1.25%</strong><small>eligible payments</small></li>
+            <li><span>Business grows</span><strong>Your call</strong><small>upgrade when ready</small></li>
+          </ol>
+          <a className={styles.seasonalButton} href={signupHref('flex', billing, includeVoice)}>
+            Start with Flex
+          </a>
+        </aside>
+
+        <div className={styles.fitFinder}>
+          <div>
+            <span className={styles.miniEyebrow}>Quick fit finder</span>
+            <strong>Which sounds most like you?</strong>
+          </div>
+          <div role="group" aria-label="Business stage">
+            {PLANS.map((plan) => (
+              <button
+                type="button"
+                key={plan.id}
+                data-plan={plan.id}
+                aria-pressed={spotlightPlan === plan.id}
+                onClick={() => setSpotlightPlan((selected) => selected === plan.id ? null : plan.id)}
+              >
+                <span>{PLAN_STAGES[plan.id].number}</span>
+                {PLAN_STAGES[plan.id].label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={styles.planGrid}>
@@ -239,14 +375,27 @@ export default function PricingExperience() {
             const selectedPrice = price(plan, billing);
             const annualTotal = plan.annualMonthly * 12;
             const annualSavings = (plan.monthly - plan.annualMonthly) * 12;
+            const isSpotlighted = spotlightPlan === plan.id;
+            const isExpandedOnMobile = plan.id === 'flex' || expandedMobilePlan === plan.id;
             return (
               <article
                 key={plan.id}
-                className={`${styles.planCard}${plan.featured ? ` ${styles.featuredCard}` : ''}`}
+                className={`${styles.planCard}${plan.featured ? ` ${styles.featuredCard}` : ''}${isSpotlighted ? ` ${styles.spotlightCard}` : ''}`}
                 data-plan={plan.id}
+                data-expanded={isExpandedOnMobile}
               >
                 <div className={styles.planAccent} />
-                {plan.featured ? <span className={styles.featuredBadge}>Best for teams</span> : null}
+                <div className={styles.planIdentity}>
+                  <span>{PLAN_STAGES[plan.id].number}</span>
+                  <small>{PLAN_STAGES[plan.id].shortLabel}</small>
+                </div>
+                {isSpotlighted ? (
+                  <span className={styles.matchBadge}>Your match</span>
+                ) : plan.id === 'flex' ? (
+                  <span className={styles.seasonalBadge}>Seasonal favorite</span>
+                ) : plan.featured ? (
+                  <span className={styles.featuredBadge}>Best for teams</span>
+                ) : null}
                 <p className={styles.planAudience}>{plan.audience}</p>
                 <h3>{plan.name}</h3>
                 <p className={styles.planPromise}>{plan.promise}</p>
@@ -265,33 +414,44 @@ export default function PricingExperience() {
 
                 <div className={styles.feeLine}>
                   <span>LGQ payment fee</span>
-                  <strong>{plan.paymentFeePct.toFixed(plan.paymentFeePct === 0 ? 0 : 2)}%</strong>
+                  <strong>{paymentFee(plan)}</strong>
                   <InfoBubble label={`${plan.name} LGQ payment fee`}>
                     Applied only to the discount-adjusted service subtotal successfully collected through LGQ.
                     Separately stated tax, tips, Stripe fees, refunds, and credits are excluded.
                   </InfoBubble>
                 </div>
 
-                <ul className={styles.cardFeatures}>
-                  {CARD_FEATURES[plan.id].map((feature) => <li key={feature}>{feature}</li>)}
-                </ul>
+                {plan.id !== 'flex' ? (
+                  <button
+                    type="button"
+                    className={styles.mobilePlanToggle}
+                    aria-expanded={isExpandedOnMobile}
+                    aria-controls={`plan-highlights-${plan.id}`}
+                    onClick={() => setExpandedMobilePlan((expanded) => expanded === plan.id ? null : plan.id)}
+                  >
+                    {isExpandedOnMobile ? 'Hide key features' : 'See key features'}
+                  </button>
+                ) : null}
 
-                <div className={styles.selectedOptions}>
-                  <span data-active={includeVoice || plan.id === 'scale'}>
-                    <b>Voice</b>
-                    {plan.id === 'scale' || includeVoice ? voiceDescription(plan) : 'Not selected'}
-                  </span>
-                  <span data-active={includeMessaging}>
-                    <b>2-Way Messaging</b>
-                    {includeMessaging ? plan.messagingSummary : 'Included; quick pick not selected'}
-                  </span>
+                <div className={styles.planHighlights} id={`plan-highlights-${plan.id}`}>
+                  <ul className={styles.cardFeatures}>
+                    {CARD_FEATURES[plan.id].map((feature) => <li key={feature}>{feature}</li>)}
+                  </ul>
+
+                  <div className={styles.selectedOptions}>
+                    <div data-active={includeVoice || plan.id === 'scale'}>
+                      <div className={styles.optionLabel}><b>AI Voice Receptionist</b><AIVoiceReceptionistInfoBubble /></div>
+                      <span>{plan.id === 'scale' || includeVoice ? voiceDescription(plan) : 'Optional add-on'}</span>
+                    </div>
+                    <div data-active="true">
+                      <div className={styles.optionLabel}><b>2-Way Messaging</b><MessagingInfoBubble /></div>
+                      <span>Included at launch · {plan.messagingSummary}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <a
-                  className={plan.featured ? styles.primaryButton : styles.planButton}
-                  href={signupHref(plan.id, billing, includeVoice, includeMessaging)}
-                >
-                  Choose {plan.name}
+                <a className={plan.id === 'flex' ? styles.seasonalButton : plan.featured || isSpotlighted ? styles.primaryButton : styles.planButton} href={signupHref(plan.id, billing, includeVoice)}>
+                  {plan.id === 'flex' ? 'Start with Flex' : `Choose ${plan.name}`}
                 </a>
 
                 <details className={styles.cardDetails}>
@@ -301,6 +461,34 @@ export default function PricingExperience() {
               </article>
             );
           })}
+        </div>
+
+        <div className={styles.quickOptions} aria-label="Fine-tune plan options">
+          <div className={styles.quickOptionsIntro}>
+            <span className={styles.miniEyebrow}>Fine-tune your plan</span>
+            <strong>Add the tools you need now.</strong>
+          </div>
+          <div className={styles.quickOptionGroup}>
+            <button
+              type="button"
+              className={includeVoice ? styles.quickOptionSelected : undefined}
+              aria-pressed={includeVoice}
+              onClick={() => setIncludeVoice((selected) => !selected)}
+            >
+              <span className={styles.quickIcon} aria-hidden="true">AI</span>
+              <span><strong>{includeVoice ? 'AI Voice Receptionist added' : 'Add AI Voice Receptionist'}</strong><small>From $55/mo · included on Scale</small></span>
+              <b aria-hidden="true">{includeVoice ? '✓' : '+'}</b>
+            </button>
+            <a className={styles.quickLearnMore} href="#receptionist">What AI Voice Receptionist includes →</a>
+          </div>
+          <div className={`${styles.quickOptionGroup} ${styles.includedOption}`}>
+            <div className={styles.includedOptionBody}>
+              <span className={styles.quickIcon} aria-hidden="true">2W</span>
+              <span><strong>2-Way Messaging</strong><small>Included at launch on every plan · carrier registration pending</small></span>
+              <b>Included</b>
+            </div>
+            <Link className={styles.quickLearnMore} href="/demo/messages">See the messaging demo →</Link>
+          </div>
         </div>
 
         <div className={styles.enterpriseStrip}>
@@ -317,41 +505,65 @@ export default function PricingExperience() {
         </div>
       </section>
 
+      <section className={styles.scenarioSection} aria-labelledby="scenario-heading">
+        <div className={styles.scenarioIntro}>
+          <p className={styles.sectionEyebrow}>Picture your business here</p>
+          <h2 id="scenario-heading">What the journey can look like.</h2>
+          <p>Modeled examples using annual billing and eligible payment volume. Your exact fit may differ.</p>
+        </div>
+        <div className={styles.scenarioTrack}>
+          {SCENARIOS.map((scenario) => {
+            const plan = getPlan(scenario.planId);
+            const cost = annualPlanCost(plan, 'annual', scenario.revenue, false);
+            return (
+              <article key={scenario.planId} data-plan={scenario.planId}>
+                <div className={styles.scenarioMarker}>{PLAN_STAGES[plan.id].number}</div>
+                <p>{scenario.title}</p>
+                <h3>{money(scenario.revenue)} collected</h3>
+                <span>{plan.name} · about {money(cost / 12)}/month</span>
+                <small>{scenario.description}</small>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
       <section className={styles.calculatorSection} id="calculator">
-        <div className={styles.sectionHeading}>
-          <p className={styles.sectionEyebrow}>Run your real numbers</p>
-          <h2>See what LGQ revenue looks like at different contractor sizes.</h2>
-          <p>The lowest-price plan changes with billing cadence, payment volume, and whether you need live AI calls.</p>
+        <div className={styles.sectionHeadingSplit}>
+          <div>
+            <p className={styles.sectionEyebrow}>Run your real numbers</p>
+            <h2>Find the point where your plan should change.</h2>
+            <p>The math responds instantly to payment volume, billing cadence, and live AI calls.</p>
+          </div>
+          <div className={styles.calculatorOptionRow}>
+            <span>Using {billing} billing</span>
+            <button type="button" aria-pressed={includeVoice} onClick={() => setIncludeVoice((selected) => !selected)}>
+              {includeVoice ? '✓ AI Voice Receptionist included' : '+ Add AI Voice Receptionist'}
+            </button>
+          </div>
         </div>
-        <div className={styles.calculatorOptionRow}>
-          <span>Calculator options:</span>
-          <button type="button" aria-pressed={includeVoice} onClick={() => setIncludeVoice((selected) => !selected)}>
-            {includeVoice ? '✓ Receptionist included' : '+ Add Receptionist'}
-          </button>
-          <strong>{billing === 'annual' ? 'Annual billing' : 'Monthly billing'}</strong>
-        </div>
-        <PricingCalculator
-          billing={billing}
-          volume={volume}
-          includeVoice={includeVoice}
-          onVolumeChange={setVolume}
-        />
+        <PricingCalculator billing={billing} volume={volume} includeVoice={includeVoice} onVolumeChange={setVolume} />
       </section>
 
       <section className={styles.voiceSection} id="receptionist">
-        <div className={styles.sectionHeadingSplit}>
+        <div className={styles.voiceStory}>
           <div>
             <p className={styles.sectionEyebrow}>Never miss the next good job</p>
-            <h2>Smart Phone Receptionist</h2>
+            <h2>Your phone keeps working when you can’t answer.</h2>
             <p>
-              Answers calls, gathers job details, and routes the caller using your rules. It uses a dedicated business
-              number and keeps working after hours.
+              AI Voice Receptionist answers, gathers the job details, and routes the caller using your rules—even
+              after hours.
             </p>
+            <div className={styles.voiceProof}>
+              <strong>Safe at the limit</strong>
+              <span>The active call finishes, then new callers follow forwarding or voicemail.</span>
+            </div>
           </div>
-          <div className={styles.voiceProof}>
-            <strong>Safe at the limit</strong>
-            <span>The active call finishes, then new callers follow forwarding or voicemail.</span>
-          </div>
+          <ol className={styles.callFlow} aria-label="How AI Voice Receptionist handles a call">
+            <li><span>01</span><div><strong>Answer</strong><small>A professional greeting, every time.</small></div></li>
+            <li><span>02</span><div><strong>Qualify</strong><small>Capture the job, urgency, and location.</small></div></li>
+            <li><span>03</span><div><strong>Route</strong><small>Transfer or follow your fallback rule.</small></div></li>
+          </ol>
         </div>
 
         <div className={styles.voiceGrid}>
@@ -371,17 +583,30 @@ export default function PricingExperience() {
       </section>
 
       <section className={styles.compareSection} id="compare">
-        <div className={styles.sectionHeading}>
-          <p className={styles.sectionEyebrow}>Straight answers before checkout</p>
-          <h2>Compare the details without squinting.</h2>
-          <p>Core business records stay unlimited. We meter the services that create real usage cost.</p>
+        <div className={styles.sectionHeadingSplit}>
+          <div>
+            <p className={styles.sectionEyebrow}>Straight answers before checkout</p>
+            <h2>Compare the details without squinting.</h2>
+          </div>
+          <p className={styles.compareIntro}>Core business records stay unlimited. We meter only the services that create real usage cost.</p>
         </div>
 
-        <details className={styles.disclosure} open>
+        <div className={styles.comparisonHighlights}>
+          {COMPARISON_HIGHLIGHTS.map((item, index) => (
+            <div key={item.label}>
+              <span>0{index + 1}</span>
+              <strong>{item.value}</strong>
+              <small>{item.label}</small>
+            </div>
+          ))}
+        </div>
+
+        <details className={styles.disclosure}>
           <summary>
             <span><strong>Full LGQ feature comparison</strong><small>Every allowance and plan gate</small></span>
             <b aria-hidden="true">+</b>
           </summary>
+          <p className={styles.tableHint}>Swipe horizontally to compare all plans →</p>
           <div className={styles.tableScroll} tabIndex={0}>
             <table className={styles.comparisonTable}>
               <caption className={styles.srOnly}>Detailed comparison of Flex, Solo, Growth, and Scale</caption>
@@ -449,11 +674,13 @@ export default function PricingExperience() {
       </section>
 
       <section className={styles.faqSection} id="questions">
-        <div className={styles.sectionHeading}>
+        <div className={styles.faqIntro}>
           <p className={styles.sectionEyebrow}>The fine print, in plain English</p>
           <h2>Questions contractors actually ask.</h2>
+          <p>Still unsure which plan fits? We’ll talk through the math with you.</p>
+          <Link className={styles.secondaryButton} href="/contact">Ask a real person</Link>
         </div>
-        <div className={styles.faqGrid}>
+        <div className={`${styles.faqGrid}${showAllFaqs ? ` ${styles.faqGridExpanded}` : ''}`}>
           {PRICING_FAQS.map((item) => (
             <details key={item.q} className={styles.faqItem}>
               <summary>{item.q}<span aria-hidden="true">+</span></summary>
@@ -461,16 +688,35 @@ export default function PricingExperience() {
             </details>
           ))}
         </div>
+        <button
+          type="button"
+          className={styles.faqMoreButton}
+          aria-expanded={showAllFaqs}
+          onClick={() => setShowAllFaqs((shown) => !shown)}
+        >
+          {showAllFaqs ? 'Show fewer questions' : `Show ${Math.max(0, PRICING_FAQS.length - 6)} more questions`}
+        </button>
       </section>
 
       <section className={styles.finalCta}>
-        <p className={styles.sectionEyebrow}>Built to earn its place in your truck</p>
-        <h2>Start small. Keep the same system as you grow.</h2>
-        <p>Flex starts at $0/month plus 1.25% on eligible payments. Upgrade only when the math or your team says it is time.</p>
-        <div className={styles.heroActions}>
-          <a className={styles.primaryButton} href={signupHref('flex', billing, includeVoice, includeMessaging)}>Choose Flex</a>
-          <Link className={styles.secondaryButton} href="/contact">Talk to a real person</Link>
+        <div className={styles.finalCtaCopy}>
+          <p className={styles.sectionEyebrow}>Built for your busy season and beyond</p>
+          <h2>Keep costs light when work slows. Keep the same system when it takes off.</h2>
+          <p>Flex starts at $0/month plus 1.25% on eligible payments. Upgrade only when the math or your team says it is time.</p>
+          <div className={styles.heroActions}>
+            <a className={styles.seasonalButton} href={signupHref('flex', billing, includeVoice)}>Start with Flex</a>
+            <Link className={styles.secondaryButton} href="/contact">Talk to a real person</Link>
+          </div>
         </div>
+        <ol className={styles.finalPath} aria-label="LGQ plan journey">
+          {PLANS.map((plan) => (
+            <li key={plan.id} data-plan={plan.id}>
+              <span>{PLAN_STAGES[plan.id].number}</span>
+              <strong>{plan.name}</strong>
+              <small>{paymentFee(plan)} fee</small>
+            </li>
+          ))}
+        </ol>
       </section>
     </>
   );
