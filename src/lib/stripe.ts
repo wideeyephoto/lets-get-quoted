@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 
 let cachedClient: Stripe | null = null;
+export const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2026-06-24.dahlia';
 
 export function getStripeClient(): Stripe {
   if (cachedClient) return cachedClient;
@@ -10,7 +11,10 @@ export function getStripeClient(): Stripe {
     throw new Error('STRIPE_SECRET_KEY is not configured.');
   }
 
-  cachedClient = new Stripe(key, { typescript: true });
+  cachedClient = new Stripe(key, {
+    apiVersion: STRIPE_API_VERSION,
+    typescript: true,
+  });
   return cachedClient;
 }
 
