@@ -38,7 +38,7 @@ import { boardStatus } from '@/lib/selections';
 import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
-import { listPayments } from '@/lib/payments';
+import { isLegacyDestinationPayment, listPayments } from '@/lib/payments';
 import { computeInvoiceTotals, getInvoiceWithItems, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { loadBusinessName } from '@/lib/business-name';
 import PaymentPreview from './PaymentPreview';
@@ -1364,7 +1364,7 @@ export default async function JobDetailPage({
                         onRetry={retryPaymentAction}
                         onCancel={cancelPaymentRequestAction}
                         onMarkPaidManually={markPaymentPaidManuallyAction}
-                        canRefund={Boolean(payment.stripe_payment_intent)}
+                        canRefund={Boolean(payment.stripe_payment_intent) && isLegacyDestinationPayment(payment)}
                         amount={Number(payment.amount)}
                         refundedAmount={Number(payment.refunded_amount) || 0}
                       />

@@ -1,4 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  isLegacyDestinationPayment,
+  isMissingPaymentChargeModelColumnError,
+} from '@/lib/payments';
 
 // This ledger is scoped to rows with paid_at: the records behind the Command
 // Center's "payments processed" number. Uncollected attempts have no processed
@@ -91,9 +95,12 @@ export type AdminPaymentDetail = {
   requested_at: string | null;
   paid_at: string | null;
   created_at: string | null;
+  // Absent on a database that predates charge-model migrations. Presence with
+  // any value other than `destination` must disable the legacy refund surface.
+  charge_model?: string | null;
 };
 
-const DETAIL_COLUMNS = `
+const LEGACY_DETAIL_COLUMNS = `
   id, account_id, job_id, invoice_id, kind, label, amount, status,
   platform_fee, fee_rate, refunded_amount, platform_fee_refunded, refunded_at,
   stripe_payment_intent, stripe_checkout_session, stripe_dispute_id,
@@ -101,9 +108,13 @@ const DETAIL_COLUMNS = `
   dunning_state, failure_message, failed_at,
   requested_at, paid_at, created_at
 `.replace(/\s+/g, ' ').trim();
+const DETAIL_COLUMNS = `${LEGACY_DETAIL_COLUMNS}, charge_model`;
 
 export async function getPaymentForAdmin(admin: SupabaseClient, paymentId: string): Promise<AdminPaymentDetail | null> {
-  const { data, error } = await admin.from('payments').select(DETAIL_COLUMNS).eq('id', paymentId).maybeSingle();
+  let { data, error } = await admin.from('payments').select(DETAIL_COLUMNS).eq('id', paymentId).maybeSingle();
+  if (isMissingPaymentChargeModelColumnError(error)) {
+    ({ data, error } = await admin.from('payments').select(LEGACY_DETAIL_COLUMNS).eq('id', paymentId).maybeSingle());
+  }
   if (error) {
     console.error('getPaymentForAdmin failed:', error);
     return null;
@@ -121,6 +132,11 @@ export function refundableCents(payment: Pick<AdminPaymentDetail, 'amount' | 're
 }
 
 export function refundBlockedReason(payment: AdminPaymentDetail): string | null {
+  if (!isLegacyDestinationPayment(payment)) {
+    return payment.charge_model === 'direct'
+      ? 'This payment uses the direct-charge rail. Its dedicated refund workflow is not active here yet.'
+      : 'This payment has an unrecognized charge model. The legacy refund path is blocked until it is reconciled.';
+  }
   if (payment.status === 'refunded') return 'This payment has already been fully refunded.';
   if (payment.status === 'disputed') return 'This payment is disputed. Resolve it on Stripe — refunding here as well would pay the customer twice.';
   if (payment.status !== 'paid') return 'Only a payment that has actually been collected can be refunded.';
@@ -130,6 +146,11 @@ export function refundBlockedReason(payment: AdminPaymentDetail): string | null 
 }
 
 export function stripePaymentUrl(payment: AdminPaymentDetail): string | null {
+  // These URLs address objects on the platform account. A direct charge lives
+  // on its connected Merchant account, so linking its identifiers here would
+  // point staff at the wrong Stripe account. Keep that future URL dark with the
+  // future direct-refund workflow.
+  if (!isLegacyDestinationPayment(payment)) return null;
   if (payment.stripe_payment_intent) return `https://dashboard.stripe.com/payments/${payment.stripe_payment_intent}`;
   if (payment.stripe_checkout_session) return `https://dashboard.stripe.com/checkout/sessions/${payment.stripe_checkout_session}`;
   return null;

@@ -41,6 +41,10 @@ export type Payment = {
   requested_at: string;
   paid_at: string | null;
   refunded_amount: number;
+  // Added by the dark direct-charge migrations. Older databases do not return
+  // this property at all, which intentionally remains compatible with the
+  // legacy destination-charge refund path.
+  charge_model?: string | null;
   disputed_at: string | null;
   dispute_reason: string | null;
   dispute_status: string | null;
@@ -50,6 +54,28 @@ export type Payment = {
   installment_seq?: number | null;
   sms_events?: { event_type: string; status: string; sent_at: string | null }[];
 };
+
+type PaymentChargeModelRow = { charge_model?: unknown };
+
+/**
+ * Whether a payment is safe to send through the active, destination-charge
+ * refund path.
+ *
+ * `charge_model` did not exist before the pricing migrations, so an ABSENT
+ * property is a real legacy row and must keep working. Once the property is
+ * present, only the explicit database value `destination` is safe. Null,
+ * `direct`, unknown strings, and an explicitly-present undefined value all
+ * fail closed instead of risking a refund against the wrong Stripe account.
+ */
+export function isLegacyDestinationPayment(payment: PaymentChargeModelRow): boolean {
+  return !Object.prototype.hasOwnProperty.call(payment, 'charge_model')
+    || payment.charge_model === 'destination';
+}
+
+/** PostgREST's two missing-column shapes during an app-before-migration deploy. */
+export function isMissingPaymentChargeModelColumnError(error: { code?: string | null } | null | undefined): boolean {
+  return error?.code === '42703' || error?.code === 'PGRST204';
+}
 
 // Sum of paid amounts in the trailing 365 days — the basis for the fee bracket.
 // Uses the admin client since this is a trusted server-side calculation, not a
@@ -413,6 +439,15 @@ export async function refundPayment(
 
   if (!payment) {
     throw new Error('Payment not found for this account.');
+  }
+
+  // This function implements the legacy destination-charge refund mechanics
+  // (`reverse_transfer` + `refund_application_fee`). Direct charges live on a
+  // connected account and require the separate, still-dark direct refund state
+  // machine. Block before status checks and, critically, before constructing a
+  // Stripe client or submitting any provider request.
+  if (!isLegacyDestinationPayment(payment)) {
+    throw new Error('This payment cannot be refunded through the legacy destination-charge refund path.');
   }
 
   // A partially-refunded payment is still `paid`, so this also covers "refund a

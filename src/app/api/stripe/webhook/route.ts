@@ -13,7 +13,11 @@ import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
-import { reversedPlatformFee } from '@/lib/payments';
+import {
+  isLegacyDestinationPayment,
+  isMissingPaymentChargeModelColumnError,
+  reversedPlatformFee,
+} from '@/lib/payments';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -268,23 +272,39 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
       const refundedTotal = fromCents(charge.amount_refunded);
       const isFull = charge.amount_refunded >= charge.amount;
 
-      const { data: payment } = await admin
+      const refundPaymentColumns = 'id, invoice_id, status, refunded_amount, amount, platform_fee';
+      let { data: payment, error: paymentError } = await admin
         .from('payments')
         // amount + platform_fee ride along so the fee reversal can be computed
         // from the same cumulative total Stripe just sent us.
-        .select('id, invoice_id, status, refunded_amount, amount, platform_fee')
+        .select(`${refundPaymentColumns}, charge_model`)
         .eq('id', paymentId)
         .maybeSingle();
+
+      // A rolling deploy can put this application ahead of the pricing
+      // migration. Retry only the two genuine missing-column errors; every
+      // other read failure stays fail-closed. The fallback row has no
+      // charge_model property, which the shared predicate recognizes as a
+      // pre-migration destination charge.
+      if (isMissingPaymentChargeModelColumnError(paymentError)) {
+        ({ data: payment, error: paymentError } = await admin
+          .from('payments')
+          .select(refundPaymentColumns)
+          .eq('id', paymentId)
+          .maybeSingle());
+      }
 
       // Reconcile only a collected payment; never resurrect a disputed one, and
       // never walk the refunded total backwards. Acting only on NEW progress makes
       // at-least-once redelivery and the synchronous refundPayment() write no-ops.
       if (
         payment &&
+        !paymentError &&
+        isLegacyDestinationPayment(payment) &&
         (payment.status === 'paid' || payment.status === 'refunded') &&
         toCents(refundedTotal) > toCents(Number(payment.refunded_amount) || 0)
       ) {
-        const { data: transitioned } = await admin
+        let transition = admin
           .from('payments')
           .update({
             refunded_amount: refundedTotal,
@@ -301,8 +321,19 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
               refundedTotal,
             }),
           })
-          .eq('id', payment.id)
+          .eq('id', payment.id);
+        // Re-check the immutable rail at write time whenever the column exists.
+        // The pre-migration fallback cannot name a column that is not there.
+        if (Object.prototype.hasOwnProperty.call(payment, 'charge_model')) {
+          transition = transition.eq('charge_model', 'destination');
+        }
+        const { data: transitioned } = await transition
           .in('status', ['paid', 'refunded'])
+          // The event carries Stripe's cumulative refunded total. Make the
+          // monotonicity check part of the UPDATE itself so concurrent 20-then-
+          // 50 (or 50-then-20) deliveries can only move the stored total
+          // forward. `refunded_amount` is null on older untouched rows.
+          .or(`refunded_amount.is.null,refunded_amount.lt.${refundedTotal}`)
           .select('id, invoice_id')
           .maybeSingle();
         if (transitioned) {
