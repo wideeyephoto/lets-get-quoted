@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteContent } from '@/lib/site-content';
 import { estimatePostureBias } from '@/lib/estimate-posture';
-import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { checkRateLimit, checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
+import {
+  aiIntakeUsageGateEnabled,
+  allowAiIntakeProviderAttempt,
+  beginAiIntakeUsage,
+  commitAiIntakeUsage,
+  releaseAiIntakeUsage,
+  type AiIntakeUsageLease,
+} from '@/lib/billing/ai-intake-usage';
+import { isAiIntakeFlowKind } from '@/lib/ai-intake-thread';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +25,10 @@ const MAX_QUESTIONS = 6;
 // worse than none.
 function fallback() {
   return { type: 'estimate' as const };
+}
+
+function classicFallback() {
+  return { type: 'classic_fallback' as const };
 }
 
 function extractOutputText(payload: unknown): string {
@@ -68,7 +81,7 @@ export async function POST(request: NextRequest) {
   // The owner's pricing posture biases the estimate lower/higher (see
   // estimate-posture.ts). Defensive: a missing column degrades to the default
   // 'lean' bias — the estimator never breaks over a settings read.
-  const { data: postureRow } = await admin.from('accounts').select('estimate_posture').eq('id', site.account_id).maybeSingle();
+  const { data: postureRow } = await admin.from('accounts').select('estimate_posture, instant_book_enabled').eq('id', site.account_id).maybeSingle();
   const postureBias = estimatePostureBias(postureRow?.estimate_posture);
 
   // Lead-quality context from the owner's settings: served towns and excluded
@@ -84,8 +97,77 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     // No key configured yet — degrade gracefully rather than breaking the wizard.
-    return NextResponse.json(fallback());
+    return NextResponse.json(aiIntakeUsageGateEnabled() ? classicFallback() : fallback());
   }
+
+  // This is a public route: the opaque browser thread is only an idempotency
+  // capability. Workspace authority comes from the published site row above.
+  // With the rollout flag off, beginAiIntakeUsage returns before validation and
+  // performs no ledger call, preserving the current endpoint behavior exactly.
+  const usageEnabled = aiIntakeUsageGateEnabled();
+  const intakeFlowKind = isAiIntakeFlowKind(body?.intakeFlowKind) ? body.intakeFlowKind : null;
+  if (usageEnabled && (
+    !intakeFlowKind
+    || (intakeFlowKind === 'smart_intake' && !siteContent.estimateRanges.enabled)
+    || (intakeFlowKind === 'instant_booking' && !postureRow?.instant_book_enabled)
+  )) {
+    return NextResponse.json(classicFallback());
+  }
+  const usageDecision = await beginAiIntakeUsage(admin, {
+    accountId: site.account_id,
+    siteId: site.id,
+    threadId: typeof body?.intakeThreadId === 'string' ? body.intakeThreadId : '',
+    flowKind: intakeFlowKind ?? 'smart_intake',
+  }, {
+    enabled: usageEnabled,
+    dependencies: {
+      // This strict limiter is reached only after the helper proves there is no
+      // reservation for this published site/thread. Existing thread follow-ups
+      // never spend the six-new-threads-per-hour allowance.
+      allowNewThread: async () => {
+        if (!(await checkRateLimitStrict(admin, `ai-intake:new:${site.id}:${ip}`, 6, 60 * 60))) {
+          return false;
+        }
+        // IP buckets deter ordinary retry/bot loops; this site-wide ceiling
+        // also bounds a distributed drain of a contractor's paid credits.
+        // Real visitors still fall back to the normal quote form at the cap.
+        return checkRateLimitStrict(admin, `ai-intake:new:${site.id}:all`, 10, 60 * 60);
+      },
+    },
+  });
+  if (usageDecision.kind === 'classic_fallback') {
+    return NextResponse.json(classicFallback());
+  }
+  const usageLease: AiIntakeUsageLease | null = usageDecision.kind === 'allowed' ? usageDecision : null;
+
+  const releaseUsage = async (reason: string) => {
+    if (!usageLease) return;
+    try {
+      await releaseAiIntakeUsage(admin, usageLease, reason);
+    } catch (error) {
+      console.error('AI Intake credit release failed:', error);
+    }
+  };
+  const substantiveResponse = async (value: Record<string, unknown>) => {
+    if (usageLease && !(await commitAiIntakeUsage(admin, usageLease))) {
+      await releaseUsage('commit_failed');
+      return NextResponse.json(classicFallback());
+    }
+    return NextResponse.json(value);
+  };
+  const fetchProvider = async (init: RequestInit) => {
+    // The idempotency key contains only a SHA-256 digest of the server-bound
+    // account/site/flow/thread identity. Count every paid provider attempt,
+    // including the forced retry below, and fail closed if the limiter cannot
+    // prove this one-credit thread is still within its 24-hour budget.
+    if (!(await allowAiIntakeProviderAttempt(
+      usageLease,
+      (bucket, limit, windowSeconds) => checkRateLimitStrict(admin, bucket, limit, windowSeconds),
+    ))) {
+      throw new Error('AI Intake provider attempt budget reached.');
+    }
+    return fetch('https://api.openai.com/v1/responses', init);
+  };
 
   const questionsRemaining = maxQuestions - turn;
   // Free context from the site's own profile (already stored, no extra AI call) —
@@ -123,7 +205,7 @@ export async function POST(request: NextRequest) {
       : 'When unsure between repair and replacement, price the repair.');
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetchProvider({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,7 +228,14 @@ export async function POST(request: NextRequest) {
     let parsed = JSON.parse(extractOutputText(payload));
 
     if (parsed.type === 'question' && typeof parsed.question === 'string' && turn < maxQuestions) {
-      return NextResponse.json({ type: 'question', question: parsed.question, responseId: payload.id });
+      // Preserve the legacy response shape exactly while the gate is dark.
+      if (!usageLease) {
+        return NextResponse.json({ type: 'question', question: parsed.question, responseId: payload.id });
+      }
+      const question = parsed.question.trim();
+      if (question && typeof payload.id === 'string' && payload.id) {
+        return substantiveResponse({ type: 'question', question, responseId: payload.id });
+      }
     }
 
     const readBand = (value: { min?: unknown; max?: unknown }) => {
@@ -160,7 +249,7 @@ export async function POST(request: NextRequest) {
     // that demands the estimate. A shown range is the whole point.
     let band = readBand(parsed);
     if (!band) {
-      const retryResponse = await fetch('https://api.openai.com/v1/responses', {
+      const retryResponse = await fetchProvider({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -191,11 +280,19 @@ export async function POST(request: NextRequest) {
     };
     if (band) {
       const basis = typeof parsed.basis === 'string' ? parsed.basis.trim().slice(0, 60) : '';
-      return NextResponse.json({ type: 'estimate', ...band, ...(basis ? { basis } : {}), ...fit });
+      return substantiveResponse({ type: 'estimate', ...band, ...(basis ? { basis } : {}), ...fit });
+    }
+    if (usageLease) {
+      await releaseUsage('non_substantive_result');
+      return NextResponse.json(classicFallback());
     }
     return NextResponse.json({ ...fallback(), ...fit });
   } catch (error) {
     console.error('Estimate chat failed:', error);
+    if (usageLease) {
+      await releaseUsage('provider_or_internal_failure');
+      return NextResponse.json(classicFallback());
+    }
     return NextResponse.json(fallback());
   }
 }

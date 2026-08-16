@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import SaveButton from '@/components/save-button';
 import { phoneLink } from '@/lib/phone';
 import { PHONE_EXAMPLE, addressExample } from '@/lib/booking-examples';
+import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import BookingSteps from './BookingSteps';
 import { evaluateBookingAction, submitBookingAction, submitCallbackAction, type BookingEvaluation } from './actions';
 
@@ -26,13 +27,19 @@ const STEPS = [
   { n: 3, label: 'Request a time' },
 ];
 
+const CLASSIC_STEPS = [
+  { n: 1, label: 'The job' },
+  { n: 2, label: 'Contact details' },
+];
+
 type Phase = 'describe' | 'asking' | 'thinking' | 'result';
 type Estimate = { min?: number; max?: number; basis?: string };
 
 // Response shapes from /api/public/leads/classify-estimate.
 type EstimatorResponse =
   | { type: 'question'; question: string; responseId: string }
-  | { type: 'estimate'; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean };
+  | { type: 'estimate'; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean }
+  | { type: 'classic_fallback' };
 
 const money = (n: number) => '$' + Math.round(n).toLocaleString();
 
@@ -50,26 +57,47 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   const [turn, setTurn] = useState(0);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [evaluation, setEvaluation] = useState<BookingEvaluation | null>(null);
+  const [classicFallback, setClassicFallback] = useState(false);
+  const intakeThreadIdRef = useRef<string | null>(null);
 
   const submitBooking = submitBookingAction.bind(null, subdomain);
   const submitCallback = submitCallbackAction.bind(null, subdomain);
 
   async function callEstimator(payload: Record<string, unknown>): Promise<EstimatorResponse> {
-    // A deadline of its own, because fetch has none. The callers below already
-    // recover from a throw by treating the value as unknown and carrying on —
-    // this is what makes a SLOW estimator throw instead of leaving somebody on
-    // the "thinking" screen indefinitely. Down was handled; hanging was not.
+    // A deadline of its own, because fetch has none. The callers below recover
+    // from a throw by switching to classic callback capture — this is what makes
+    // a SLOW estimator fall back instead of leaving somebody on the "thinking"
+    // screen indefinitely or soft-passing unknown eligibility into booking.
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), ESTIMATOR_TIMEOUT_MS);
     try {
+      let threadBody: Record<string, unknown> = {};
+      try {
+        if (!intakeThreadIdRef.current) {
+          intakeThreadIdRef.current = getOrCreateAiIntakeThread({
+            siteId,
+            flowKind: 'instant_booking',
+          }).id;
+        }
+        threadBody = {
+          intakeThreadId: intakeThreadIdRef.current,
+          intakeFlowKind: 'instant_booking',
+        };
+      } catch {
+        // The server gate is dark by default. If it is enabled, a missing
+        // secure thread identity returns the classic callback flow safely.
+      }
       const res = await fetch('/api/public/leads/classify-estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId, businessName, serviceArea, location: address, ...payload }),
+        body: JSON.stringify({ siteId, businessName, serviceArea, location: address, ...payload, ...threadBody }),
         signal: controller.signal,
       });
       if (!res.ok) throw new Error('estimator');
-      return await res.json();
+      const result = await res.json().catch(() => null);
+      const type = result && typeof result === 'object' ? (result as { type?: unknown }).type : null;
+      if (!['question', 'estimate', 'classic_fallback'].includes(String(type))) throw new Error('estimator');
+      return result as EstimatorResponse;
     } finally {
       clearTimeout(deadline);
     }
@@ -83,6 +111,13 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   }
 
   async function handle(res: EstimatorResponse) {
+    if (res.type === 'classic_fallback') {
+      setClassicFallback(true);
+      setEstimate(null);
+      setEvaluation(null);
+      setPhase('result');
+      return;
+    }
     if (res.type === 'question') {
       if (res.question) {
         setQuestion(res.question);
@@ -91,8 +126,8 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
         setAnswer('');
         setPhase('asking');
       } else {
-        // Malformed question — treat as an unknown-value estimate rather than stall.
-        await evaluate(null, null, false);
+        // A malformed estimator response is not evidence of booking eligibility.
+        await handle({ type: 'classic_fallback' });
       }
       return;
     }
@@ -110,10 +145,11 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
     if (!description.trim() || !address.trim()) return;
     setPhase('thinking');
     try {
-      handle(await callEstimator({ description: description.trim(), turn: 0 }));
+      await handle(await callEstimator({ description: description.trim(), turn: 0 }));
     } catch {
-      // Estimator unreachable — don't strand the visitor; treat as unknown value.
-      await evaluate(null, null, false);
+      // Unknown is a legacy soft-pass into self-booking. When transport or the
+      // eligibility action is uncertain, use the classic callback path instead.
+      await handle({ type: 'classic_fallback' });
     }
   }
 
@@ -122,9 +158,9 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
     if (!answer.trim()) return;
     setPhase('thinking');
     try {
-      handle(await callEstimator({ answer: answer.trim(), previousResponseId: prevResponseId, turn }));
+      await handle(await callEstimator({ answer: answer.trim(), previousResponseId: prevResponseId, turn }));
     } catch {
-      await evaluate(null, null, false);
+      await handle({ type: 'classic_fallback' });
     }
   }
 
@@ -223,6 +259,54 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   }
 
   // phase === 'result'
+  // An enabled entitlement gate can deliberately bypass the estimator when
+  // the workspace has no AI Intake credit (or when ledger state is uncertain).
+  // Keep the visitor's job and address, then use the existing callback action
+  // so the lead is still captured without presenting an AI-derived verdict or
+  // self-serve availability as though a qualification had happened.
+  if (classicFallback) {
+    return (
+      <form action={submitCallback} className="panel workspace-section-card booking-form">
+        <BookingSteps steps={CLASSIC_STEPS} current={2} />
+        <div className="section-heading workspace-section-heading book-step-head">
+          <p className="eyebrow">Quote request</p>
+          <h2>Tell us where to follow up</h2>
+        </div>
+        <p className="workspace-details-copy">
+          The instant estimate isn&apos;t available right now. Your project details are saved here, and {businessName} can follow up with a normal quote.
+        </p>
+        <input type="hidden" name="description" value={description} />
+        <div className="form-grid">
+          <div className="field full">
+            <label htmlFor="classic-name">Full name</label>
+            <input id="classic-name" name="name" required placeholder="Jane Homeowner" autoComplete="name" />
+          </div>
+          <div className="field">
+            <label htmlFor="classic-phone">Mobile</label>
+            <input id="classic-phone" name="phone" type="tel" placeholder={PHONE_EXAMPLE} autoComplete="tel" />
+          </div>
+          <div className="field">
+            <label htmlFor="classic-email">Email</label>
+            <input id="classic-email" name="email" type="email" placeholder="jane@email.com" autoComplete="email" />
+          </div>
+          <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
+          <div className="field full">
+            <label htmlFor="classic-address">Address</label>
+            <input id="classic-address" name="address" required defaultValue={address} placeholder={addressExample(serviceArea)} autoComplete="street-address" />
+          </div>
+          <div className="field full">
+            <label htmlFor="classic-note">Anything we should know? (optional)</label>
+            <textarea id="classic-note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
+          </div>
+          <div className="field full">
+            <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a quote</SaveButton>
+          </div>
+        </div>
+        {callOut}
+      </form>
+    );
+  }
+
   if (!evaluation) {
     return (
       <section className="panel workspace-section-card booking-form">

@@ -8,6 +8,7 @@ import { matchesServedCity } from '@/lib/service-area-match';
 import { HoneypotField } from '@/components/honeypot-field';
 import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
+import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
@@ -123,6 +124,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const wizardEnabled = siteContent.estimateRanges.enabled;
+  const [classicFallback, setClassicFallback] = useState(false);
+  const smartIntakeActive = wizardEnabled && !classicFallback;
+  const intakeThreadIdRef = useRef<string | null>(null);
   // Owner-controlled email field on the AI intake ('off' | 'optional' |
   // 'required') — phone is always the required contact there.
   const wizardEmailField = siteContent.estimateRanges.emailField;
@@ -130,8 +134,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // service-area question (only when the owner listed cities), minimum job
   // note, and fully-booked capacity banner. Gates flag, never block.
   const leadFilters = siteContent.leadFilters;
-  const askTimeline = wizardEnabled && leadFilters.askTimeline;
-  const askLocation = wizardEnabled && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
+  const askTimeline = smartIntakeActive && leadFilters.askTimeline;
+  const askLocation = smartIntakeActive && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
   // Real, earned response-time stat (absent = no honest claim to make).
   const avgReplyMs = typeof site.avg_response_ms === 'number' && site.avg_response_ms > 0 ? site.avg_response_ms : null;
   const replyPromise = avgReplyMs
@@ -175,6 +179,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // wizardEnabled. Re-seed whenever the method changes so the hero matches the
   // rest of the page.
   useEffect(() => {
+    setClassicFallback(false);
     setStep(wizardEnabled ? 'describe' : 'contact');
   }, [wizardEnabled]);
 
@@ -218,7 +223,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     contact.trim() &&
     (!askLocation || location.trim()) &&
     (!askTimeline || timeline) &&
-    (wizardEmailField !== 'required' || classifyEmail(email.trim()).valid),
+    (!smartIntakeActive || wizardEmailField !== 'required' || classifyEmail(email.trim()).valid),
   );
   // How the homeowner wants the follow-up: some people never answer calls.
   const [contactPref, setContactPref] = useState<'any' | 'text'>('any');
@@ -232,7 +237,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [verifyCode, setVerifyCode] = useState('');
   const [verifySkipped, setVerifySkipped] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
-  const needsVerification = wizardEnabled && leadFilters.phoneVerification && !verifySkipped;
+  const needsVerification = smartIntakeActive && leadFilters.phoneVerification && !verifySkipped;
 
   async function sendVerifyCode() {
     const trimmed = contact.trim();
@@ -284,6 +289,16 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   }
 
   function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean } | null) {
+    if (result?.type === 'classic_fallback') {
+      setClassicFallback(true);
+      setEstimate(null);
+      setChatQuestion('');
+      setChatAnswer('');
+      setChatResponseId('');
+      setStatus(null);
+      setStep('contact');
+      return;
+    }
     if (result?.type === 'question' && result.question) {
       setChatQuestion(result.question);
       setChatResponseId(result.responseId ?? '');
@@ -338,8 +353,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       applyChatResult(result);
     } catch {
       // AI is a convenience, not a requirement — fall back to contact info
-      // silently. Also where a timed-out or skipped call lands.
-      setStep('contact');
+      // silently. A transport failure is just as uncertain as an explicit
+      // entitlement fallback, so it must use the normal quote path too.
+      applyChatResult({ type: 'classic_fallback' });
     } finally {
       setIsClassifying(false);
     }
@@ -360,7 +376,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       });
       applyChatResult(result);
     } catch {
-      setStep('contact');
+      applyChatResult({ type: 'classic_fallback' });
     } finally {
       setIsClassifying(false);
     }
@@ -381,7 +397,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       });
       applyChatResult(result);
     } catch {
-      setStep('contact');
+      applyChatResult({ type: 'classic_fallback' });
     } finally {
       setIsClassifying(false);
     }
@@ -408,13 +424,34 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     classifyAbortRef.current = controller;
     const deadline = setTimeout(() => controller.abort(), CLASSIFY_TIMEOUT_MS);
     try {
+      let threadBody: Record<string, unknown> = {};
+      try {
+        if (!intakeThreadIdRef.current) {
+          intakeThreadIdRef.current = getOrCreateAiIntakeThread({
+            siteId: site.id,
+            flowKind: 'smart_intake',
+          }).id;
+        }
+        threadBody = {
+          intakeThreadId: intakeThreadIdRef.current,
+          intakeFlowKind: 'smart_intake',
+        };
+      } catch {
+        // The server flag is authoritative. With it off, omitting these fields
+        // preserves the legacy request; with it on, the route falls back safely.
+      }
       const response = await fetch('/api/public/leads/classify-estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, ...threadBody }),
         signal: controller.signal,
       });
-      return await response.json().catch(() => null);
+      const result = await response.json().catch(() => null);
+      const type = result && typeof result === 'object' ? (result as { type?: unknown }).type : null;
+      if (!response.ok || !['question', 'estimate', 'classic_fallback'].includes(String(type))) {
+        throw new Error('Estimator unavailable.');
+      }
+      return result as Record<string, unknown>;
     } finally {
       clearTimeout(deadline);
       if (classifyAbortRef.current === controller) classifyAbortRef.current = null;
@@ -462,14 +499,18 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     // untouched: every check below still runs for a real homeowner.
     if (demo) {
       setStatus(null);
-      submitLead(wizardEnabled ? { description } : undefined);
+      submitLead(smartIntakeActive
+        ? { description }
+        : classicFallback
+          ? { description, classicFallback: true }
+          : undefined);
       return;
     }
 
     const trimmedContact = contact.trim();
     if (!name.trim() || !trimmedContact) return;
 
-    if (wizardEnabled) {
+    if (smartIntakeActive) {
       // Smart Intake always needs a real phone number so the contractor can
       // follow up by text or call.
       if (!normalizeUsPhone(trimmedContact)) {
@@ -510,10 +551,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
     }
 
     setStatus(null);
-    submitLead();
+    submitLead(classicFallback ? { description, classicFallback: true } : undefined);
   }
 
-  async function submitLead(details?: { description: string }) {
+  async function submitLead(details?: { description: string; classicFallback?: boolean }) {
     // The preview creates no lead — but it does show the last screen, because
     // the screen before it just promised a price "on the next screen" and
     // stopping short of the number makes the preview end on the one thing the
@@ -551,7 +592,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       data.set('siteId', site.id);
       data.set('startedAt', String(startedAt.current));
       data.set('name', name.trim());
-      if (details) {
+      if (details && !details.classicFallback) {
         data.set('phone', contact.trim());
         if (email.trim()) data.set('email', email.trim());
       } else if (emailRequired || contact.includes('@')) {
@@ -560,7 +601,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         data.set('phone', contact.trim());
       }
 
-      if (details) {
+      if (details?.classicFallback) {
+        data.set('message', details.description.trim());
+        if (location.trim()) data.set('location', location.trim());
+      } else if (details) {
         const timelineLabel = timeline === 'asap'
           ? 'Needed ASAP'
           : timeline === 'month'
@@ -609,7 +653,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         if (details) setSentWithoutEstimate(true);
         setStatus({
           tone: 'success',
-          text: details
+          text: details && !details.classicFallback
             ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'text or call'} you ${avgReplyMs ? `typically within ${formatReplyTime(avgReplyMs)}` : 'as soon as possible'} to confirm the details and next steps.`
             : `Thanks! Your request is in — ${avgReplyMs ? `we typically reply within ${formatReplyTime(avgReplyMs)}` : 'we\u2019ll follow up as soon as possible'} to confirm the details and next steps.`,
         });
@@ -641,13 +685,13 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       ref={formRef}
       className={styles.heroQuickForm}
       onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
-      data-edit={wizardEnabled ? 'estimate' : 'quoteForm'}
+      data-edit={smartIntakeActive ? 'estimate' : 'quoteForm'}
     >
       <HoneypotField />
 
       {bookedNote && step !== 'result' && <p className={styles.heroFormBooked}>{bookedNote}</p>}
 
-      {wizardEnabled && (
+      {smartIntakeActive && (
         <div className={styles.heroFormProgress} aria-hidden="true">
           {[0, 1, 2].map((index) => <span key={index} data-active={index <= Math.min(stepIndex, 2)} />)}
         </div>
@@ -743,11 +787,14 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'contact' && (
         <div className={styles.heroFormStep} key="contact">
-          <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
+          <h2 className={styles.heroFormTitle}>{classicFallback ? 'Request a Free Quote' : estimateLabel}</h2>
+          {classicFallback && (
+            <p className={styles.heroFormNote}>The instant estimate isn&apos;t available right now. Your project details are saved here—send the normal quote request and {site.company_name} can follow up directly.</p>
+          )}
           {/* The price already exists at this point — it is deliberately held
               back until the details are in. Saying so plainly, and once, turns
               the form from a toll gate into the last step of something. */}
-          {wizardEnabled && estimate ? (
+          {smartIntakeActive && estimate ? (
             <div className={styles.heroFormReady}>
               <span className={styles.heroFormReadyMark} aria-hidden="true">✓</span>
               <span>
@@ -767,24 +814,24 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               <input name="name" placeholder="Jane Homeowner" autoComplete="name" maxLength={100} required={!demo} value={name} onChange={(event) => setName(event.target.value)} />
             </Field>
             <Field
-              icon={wizardEnabled || !emailRequired ? 'phone' : 'mail'}
-              label={wizardEnabled ? 'Mobile number' : emailRequired ? 'Email' : 'Phone or email'}
+              icon={smartIntakeActive || !emailRequired ? 'phone' : 'mail'}
+              label={smartIntakeActive ? 'Mobile number' : emailRequired ? 'Email' : 'Phone or email'}
               filled={Boolean(contact.trim())}
             >
               <input
                 name="contact"
-                type={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'text'}
+                type={smartIntakeActive ? 'tel' : emailRequired ? 'email' : 'text'}
                 // An example, not the label again. A placeholder that repeats
                 // the field name is a wasted line and tells nobody what shape
                 // the answer should be.
-                placeholder={wizardEnabled ? '(248) 555-0199' : emailRequired ? 'you@email.com' : '(248) 555-0199'}
-                autoComplete={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'tel'}
+                placeholder={smartIntakeActive ? '(248) 555-0199' : emailRequired ? 'you@email.com' : '(248) 555-0199'}
+                autoComplete={smartIntakeActive ? 'tel' : emailRequired ? 'email' : 'tel'}
                 maxLength={160}
                 required={!demo}
                 value={contact}
                 onChange={(event) => {
                   setContact(event.target.value);
-                  if (wizardEnabled) {
+                  if (smartIntakeActive) {
                     setVerify(null);
                     setVerifyCode('');
                   }
@@ -834,7 +881,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               )}
             </div>
           )}
-          {wizardEnabled && (
+          {smartIntakeActive && (
             <div className={styles.heroFormChoice} role="group" aria-label="Best way to reach you">
               <span className={styles.heroFormChoiceLabel}>Best way to reach you?</span>
               <div className={styles.heroFormChipRow}>
@@ -856,7 +903,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               </div>
             </div>
           )}
-          {wizardEnabled && wizardEmailField !== 'off' && (
+          {smartIntakeActive && wizardEmailField !== 'off' && (
             <>
               <Field
                 icon="mail"
@@ -916,7 +963,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               </div>
             )}
           </div>
-          {wizardEnabled && (() => {
+          {smartIntakeActive && (() => {
             const notes = [
               fit.inArea === false ? 'your location may be outside our usual service area' : '',
               fit.excluded ? "this may be a type of job we don't take on" : '',
@@ -925,17 +972,23 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             return notes.length ? <p className={styles.heroFormFitNote}>Heads up: {notes.join('; ')} — send your request and we&apos;ll confirm when we reach out.</p> : null;
           })()}
           <small className={styles.heroFormConsent}>
-            By submitting, you agree to be contacted {wizardEnabled && contactPref === 'text' ? 'by text or email' : 'by phone, text, or email'} about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
+            By submitting, you agree to be contacted {smartIntakeActive && contactPref === 'text' ? 'by text or email' : 'by phone, text, or email'} about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
           </small>
           {/* Lights up once everything required is in. The button is never
               disabled — a dead button explains nothing and the real validation
               is on submit, with a message — but it should look like the next
               thing to do the moment it actually is. */}
           <button type="submit" data-ready={contactReady || undefined} disabled={isSubmitting}>
-            {isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}
+            {isSubmitting
+              ? 'Sending...'
+              : classicFallback
+                ? 'Request a Free Quote'
+                : smartIntakeActive && estimate
+                  ? 'See My Free Estimate'
+                  : 'Get My Free Estimate'}
           </button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
-          {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard} disabled={isSubmitting || isClassifying}>← Edit project details</button>}
+          {smartIntakeActive && <button type="button" className={styles.heroFormRestart} onClick={restartWizard} disabled={isSubmitting || isClassifying}>← Edit project details</button>}
         </div>
       )}
 
