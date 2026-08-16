@@ -5,6 +5,8 @@ import {
 } from '@/lib/billing/catalog';
 import {
   planUpgradeCreditDeltas,
+  proratedPlanUpgradeCreditDeltas,
+  type BillingPeriodWindow,
   workspaceEntitlementCatalogSnapshot,
   type PlanCreditGrant,
   type WorkspaceEntitlementCatalogSnapshot,
@@ -65,6 +67,7 @@ function validateSelection(selection: WorkspacePlanSelection, label: string): vo
 export function decidePlanTransition(
   current: WorkspacePlanSelection,
   target: WorkspacePlanSelection,
+  currentPeriod?: BillingPeriodWindow,
 ): PlanTransitionDecision {
   validateSelection(current, 'Current');
   validateSelection(target, 'Target');
@@ -75,14 +78,35 @@ export function decidePlanTransition(
 
   const targetSnapshot = workspaceEntitlementCatalogSnapshot(target.planCode, target.billingInterval);
   const isCapacityUpgrade = PLAN_RANK[target.planCode] > PLAN_RANK[current.planCode];
+  const changesBillingInterval = current.billingInterval !== target.billingInterval;
 
-  if (isCapacityUpgrade) {
+  // A cycle change always waits for renewal, even when it accompanies a higher
+  // tier. This prevents an annual subscriber from escaping the paid term by
+  // combining Growth -> Scale with annual -> monthly. The UI can offer the
+  // same-interval tier upgrade now and schedule the cycle change separately.
+  if (isCapacityUpgrade && (current.planCode === 'flex' || !changesBillingInterval)) {
+    let creditGrants: readonly PlanCreditGrant[];
+    if (current.planCode === 'flex') {
+      creditGrants = planUpgradeCreditDeltas(current.planCode, target.planCode);
+    } else {
+      if (target.planCode === 'flex') {
+        throw new Error('A paid capacity upgrade cannot target Flex.');
+      }
+      if (!currentPeriod) {
+        throw new Error('A paid mid-cycle upgrade requires its current billing-period window.');
+      }
+      creditGrants = proratedPlanUpgradeCreditDeltas(
+        current.planCode,
+        target.planCode,
+        currentPeriod,
+      );
+    }
     return Object.freeze({
       kind: 'activate_after_payment',
       current,
       target,
       targetSnapshot,
-      creditGrants: planUpgradeCreditDeltas(current.planCode, target.planCode),
+      creditGrants,
       paymentMode: current.planCode === 'flex' ? 'new_subscription' : 'invoice_proration',
       platformFeeEffective: 'payment_charge_created_after_activation',
     });

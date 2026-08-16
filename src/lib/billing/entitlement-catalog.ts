@@ -130,6 +130,43 @@ export function planUpgradeCreditDeltas(
     .filter((grant) => grant.units > 0));
 }
 
+export type BillingPeriodWindow = Readonly<{
+  periodStartMs: number;
+  periodEndMs: number;
+  effectiveAtMs: number;
+}>;
+
+function periodFractionRemaining(window: BillingPeriodWindow): number {
+  const { periodStartMs, periodEndMs, effectiveAtMs } = window;
+  if (![periodStartMs, periodEndMs, effectiveAtMs].every(Number.isFinite)) {
+    throw new Error('Billing-period timestamps must be finite numbers.');
+  }
+  if (periodEndMs <= periodStartMs) throw new Error('Billing period end must be after its start.');
+  if (effectiveAtMs < periodStartMs || effectiveAtMs > periodEndMs) {
+    throw new Error('Upgrade effective time must fall inside the current billing period.');
+  }
+  return (periodEndMs - effectiveAtMs) / (periodEndMs - periodStartMs);
+}
+
+/**
+ * Match a prorated subscription upgrade with a prorated allowance increase.
+ * Floor rounding never promises more variable-cost usage than the paid period
+ * fraction supports; a new paid subscription still receives full grants.
+ */
+export function proratedPlanUpgradeCreditDeltas(
+  fromPlanCode: Exclude<BillingPlanId, 'flex'>,
+  toPlanCode: Exclude<BillingPlanId, 'flex'>,
+  window: BillingPeriodWindow,
+): readonly PlanCreditGrant[] {
+  const fraction = periodFractionRemaining(window);
+  return Object.freeze(planUpgradeCreditDeltas(fromPlanCode, toPlanCode)
+    .map((grant) => Object.freeze({
+      ...grant,
+      units: Math.floor(grant.units * fraction),
+    }))
+    .filter((grant) => grant.units > 0));
+}
+
 export type TopUpGrant = Readonly<{
   topUpId: TopUpId;
   resourceCode: (typeof TOP_UPS)[TopUpId]['resourceCode'];

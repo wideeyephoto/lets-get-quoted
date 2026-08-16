@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { decidePlanTransition, isSelfServicePaidPlan } from '@/lib/billing/plan-transition';
 
 describe('approved plan-transition policy', () => {
+  const currentPeriod = {
+    periodStartMs: Date.UTC(2026, 7, 1),
+    periodEndMs: Date.UTC(2026, 8, 1),
+    effectiveAtMs: Date.UTC(2026, 7, 16, 12),
+  } as const;
+
   it('starts a paid plan only after successful subscription payment', () => {
     const decision = decidePlanTransition(
       { planCode: 'flex', billingInterval: 'none' },
@@ -21,18 +27,26 @@ describe('approved plan-transition policy', () => {
     const decision = decidePlanTransition(
       { planCode: 'solo', billingInterval: 'monthly' },
       { planCode: 'growth', billingInterval: 'monthly' },
+      currentPeriod,
     );
 
     expect(decision).toMatchObject({
       kind: 'activate_after_payment',
       paymentMode: 'invoice_proration',
       creditGrants: [
-        { resourceCode: 'text_segments', units: 1_000 },
-        { resourceCode: 'marketing_email_sends', units: 2_000 },
-        { resourceCode: 'ai_intake_threads', units: 250 },
-        { resourceCode: 'ai_writing_drafts', units: 200 },
+        { resourceCode: 'text_segments', units: 500 },
+        { resourceCode: 'marketing_email_sends', units: 1_000 },
+        { resourceCode: 'ai_intake_threads', units: 125 },
+        { resourceCode: 'ai_writing_drafts', units: 100 },
       ],
     });
+  });
+
+  it('requires period facts for a paid immediate upgrade', () => {
+    expect(() => decidePlanTransition(
+      { planCode: 'solo', billingInterval: 'monthly' },
+      { planCode: 'growth', billingInterval: 'monthly' },
+    )).toThrow(/billing-period window/i);
   });
 
   it('schedules lower capacity, Flex, and cycle-only changes at renewal', () => {
@@ -49,6 +63,12 @@ describe('approved plan-transition policy', () => {
     expect(decidePlanTransition(
       { planCode: 'growth', billingInterval: 'monthly' },
       { planCode: 'growth', billingInterval: 'annual' },
+    ).kind).toBe('schedule_at_renewal');
+
+    expect(decidePlanTransition(
+      { planCode: 'growth', billingInterval: 'annual' },
+      { planCode: 'scale', billingInterval: 'monthly' },
+      currentPeriod,
     ).kind).toBe('schedule_at_renewal');
   });
 

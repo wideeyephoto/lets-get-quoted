@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   planCreditGrants,
   planUpgradeCreditDeltas,
+  proratedPlanUpgradeCreditDeltas,
   isTopUpEligible,
   topUpGrant,
   workspaceEntitlementCatalogSnapshot,
@@ -109,5 +110,28 @@ describe('billing entitlement catalog compiler', () => {
     expect(isTopUpEligible('flex_text_250', 'solo')).toBe(false);
     expect(isTopUpEligible('office_user', 'flex')).toBe(false);
     expect(isTopUpEligible('office_user', 'growth')).toBe(true);
+  });
+
+  it('prorates paid mid-cycle allowance deltas to the paid period fraction', () => {
+    const periodStartMs = Date.UTC(2026, 7, 1);
+    const periodEndMs = Date.UTC(2026, 8, 1);
+    const halfway = periodStartMs + ((periodEndMs - periodStartMs) / 2);
+
+    expect(proratedPlanUpgradeCreditDeltas('solo', 'growth', {
+      periodStartMs,
+      periodEndMs,
+      effectiveAtMs: halfway,
+    })).toEqual([
+      { resourceCode: 'text_segments', units: 500, cadence: 'one_time' },
+      { resourceCode: 'marketing_email_sends', units: 1_000, cadence: 'one_time' },
+      { resourceCode: 'ai_intake_threads', units: 125, cadence: 'one_time' },
+      { resourceCode: 'ai_writing_drafts', units: 100, cadence: 'one_time' },
+    ]);
+
+    expect(() => proratedPlanUpgradeCreditDeltas('solo', 'growth', {
+      periodStartMs,
+      periodEndMs,
+      effectiveAtMs: periodEndMs + 1,
+    })).toThrow(/inside the current billing period/i);
   });
 });
