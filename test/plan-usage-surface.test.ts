@@ -33,7 +33,9 @@ describe('Plan & usage navigation', () => {
   it('adds a dedicated tab without changing the Stripe payout destination', () => {
     expect(PAGE).toContain("id: 'plan'");
     expect(PAGE).toContain("label: 'Plan & usage'");
-    expect(PAGE).toContain("anchors: ['current-plan', 'platform-fee', 'usage-balances', 'included-limits']");
+    expect(PAGE).toContain("...(showSubscriptionCheckout ? ['choose-paid-plan'] : [])");
+    expect(PAGE).toContain("'usage-balances'");
+    expect(PAGE).toContain("'included-limits'");
     expect(PAGE).toContain("anchors: pricingDashboardEnabled ? ['payouts'] : ['payouts', 'platform-fee']");
     expect(SECTION).toContain('id="platform-fee"');
     expect(TABS).toContain("plan: '");
