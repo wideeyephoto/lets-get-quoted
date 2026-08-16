@@ -188,6 +188,16 @@ export type TopUpDefinition = {
   label: string;
   priceCents: number;
   recurring: boolean;
+  fulfillment: 'usage_credit' | 'recurring_capacity';
+  resourceCode:
+    | 'text_segments'
+    | 'marketing_email_sends'
+    | 'ai_intake_threads'
+    | 'ai_writing_drafts'
+    | 'storage_gb'
+    | 'office_users'
+    | 'crew_users';
+  units: number;
   eligiblePlans: readonly BillingPlanId[];
   eligibilityLabel: string;
 };
@@ -198,6 +208,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: 'Flex: 250 text-credit top-up',
     priceCents: 1_200,
     recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'text_segments',
+    units: 250,
     eligiblePlans: ['flex'],
     eligibilityLabel: 'Flex',
   },
@@ -206,6 +219,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: '1,000 text credits',
     priceCents: 4_200,
     recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'text_segments',
+    units: 1_000,
     eligiblePlans: BILLING_PLAN_IDS,
     eligibilityLabel: 'All plans',
   },
@@ -214,6 +230,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: '5,000 marketing emails',
     priceCents: 1_700,
     recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'marketing_email_sends',
+    units: 5_000,
     eligiblePlans: BILLING_PLAN_IDS,
     eligibilityLabel: 'All plans',
   },
@@ -222,6 +241,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: '100 AI Intake credits',
     priceCents: 1_500,
     recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'ai_intake_threads',
+    units: 100,
     eligiblePlans: BILLING_PLAN_IDS,
     eligibilityLabel: 'All plans',
   },
@@ -230,6 +252,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: '250 AI writing drafts',
     priceCents: 1_900,
     recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'ai_writing_drafts',
+    units: 250,
     eligiblePlans: BILLING_PLAN_IDS,
     eligibilityLabel: 'All plans',
   },
@@ -238,6 +263,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: '100 GB storage',
     priceCents: 1_500,
     recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'storage_gb',
+    units: 100,
     eligiblePlans: BILLING_PLAN_IDS,
     eligibilityLabel: 'All plans',
   },
@@ -246,6 +274,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: 'Office user',
     priceCents: 1_500,
     recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'office_users',
+    units: 1,
     eligiblePlans: ['solo', 'growth', 'scale'],
     eligibilityLabel: 'Solo+',
   },
@@ -254,6 +285,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     label: 'Crew user',
     priceCents: 500,
     recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'crew_users',
+    units: 1,
     eligiblePlans: ['solo', 'growth', 'scale'],
     eligibilityLabel: 'Solo+',
   },
