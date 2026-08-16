@@ -1,6 +1,12 @@
 import { createAdminClient } from '@/lib/auth';
 import { formatMoneyExact } from '@/lib/jobs';
-import { getPublicPayment, getQuotedFee, ACH_MIN_AMOUNT, type PaymentStatus } from '@/lib/payments';
+import {
+  getPublicPayment,
+  getQuotedFee,
+  isLegacyDestinationPayment,
+  ACH_MIN_AMOUNT,
+  type PaymentStatus,
+} from '@/lib/payments';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { startCheckoutAction } from './actions';
@@ -93,11 +99,14 @@ export default async function PublicPaymentPage({
     );
   }
 
+  const legacyDestinationPayment = isLegacyDestinationPayment(payment);
   const statusMessage: Record<PaymentStatus, string> = {
     requested: '',
     processing: 'This payment is processing. Bank transfers (ACH) can take a few business days to clear — you’ll be confirmed once it settles.',
     paid: 'This payment has already been completed. Thank you!',
-    failed: 'The last payment attempt failed. You can try again below.',
+    failed: legacyDestinationPayment
+      ? 'The last payment attempt failed. You can try again below.'
+      : 'The last payment attempt did not complete. Please contact your contractor for a current secure payment link.',
     refunded: 'This payment has been refunded.',
     disputed: 'This payment is under dispute with your bank and cannot be paid here.',
     // The contractor withdrew it. Said plainly rather than left as a working
@@ -114,7 +123,11 @@ export default async function PublicPaymentPage({
   const cancelledJustNow = searchParams.status === 'cancelled';
   const canPay =
     (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing') &&
-    !alreadyPaid;
+    !alreadyPaid &&
+    legacyDestinationPayment;
+  const directCheckoutUnavailable =
+    !legacyDestinationPayment &&
+    (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing');
 
   // Once checkout has started, fee_rate/platform_fee are locked in on the row
   // (the actual rate used for that Stripe session) — use those. Otherwise,
@@ -178,6 +191,15 @@ export default async function PublicPaymentPage({
             <div className={statusTone}>
               {statusMessage[payment.status] ? <p>{statusMessage[payment.status]}</p> : null}
               {cancelledJustNow ? <p>Checkout was cancelled. You have not been charged.</p> : null}
+            </div>
+          ) : null}
+
+          {directCheckoutUnavailable ? (
+            <div className="payment-banner muted">
+              <p>
+                Online checkout cannot be started or retried from this link. Please contact your contractor for the
+                current secure payment link. No payment can be submitted from this page.
+              </p>
             </div>
           ) : null}
 

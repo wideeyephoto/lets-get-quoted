@@ -57,6 +57,24 @@ export type Payment = {
 
 type PaymentChargeModelRow = { charge_model?: unknown };
 
+type PaymentReadError = {
+  code?: string | null;
+  message?: string | null;
+};
+
+type PaymentReadResult<T> = {
+  data: T | null;
+  error: PaymentReadError | null;
+};
+
+export type LegacyDestinationPaymentRail =
+  | { kind: 'allowed'; chargeModelColumnPresent: boolean }
+  | { kind: 'blocked' }
+  | { kind: 'not_found' };
+
+export const LEGACY_DESTINATION_PAYMENT_RAIL_ERROR =
+  'This payment is assigned to a different payment rail and cannot use the legacy destination-charge path.';
+
 /**
  * Whether a payment is safe to send through the active, destination-charge
  * refund path.
@@ -75,6 +93,99 @@ export function isLegacyDestinationPayment(payment: PaymentChargeModelRow): bool
 /** PostgREST's two missing-column shapes during an app-before-migration deploy. */
 export function isMissingPaymentChargeModelColumnError(error: { code?: string | null } | null | undefined): boolean {
   return error?.code === '42703' || error?.code === 'PGRST204';
+}
+
+function isMissingCanceledPaymentStatusError(error: PaymentReadError | null | undefined): boolean {
+  return error?.code === '22P02' && /canceled/i.test(error.message ?? '');
+}
+
+/**
+ * Resolve a payment read across an app-before-migration deploy without ever
+ * mistaking an explicit direct/malformed model for a legacy row.
+ *
+ * The probe is intentionally separate from the full read. A 42703/PGRST204 on
+ * a multi-column query proves only that *some* selected column is missing. We
+ * fall back to the legacy query only when a charge_model-only probe reports
+ * that same missing-column condition. If the probe succeeds, the current
+ * schema exists and the original read remains failed closed.
+ */
+async function resolvePaymentChargeModelRead<T extends PaymentChargeModelRow>(
+  initial: PaymentReadResult<T>,
+  probe: () => Promise<PaymentReadResult<PaymentChargeModelRow>>,
+  legacy: () => Promise<PaymentReadResult<T>>,
+): Promise<PaymentReadResult<T>> {
+  if (!initial.error && !initial.data) return initial;
+
+  const needsProbe =
+    (!initial.error && initial.data && !Object.prototype.hasOwnProperty.call(initial.data, 'charge_model'))
+    || isMissingPaymentChargeModelColumnError(initial.error);
+  if (!needsProbe) return initial;
+
+  const probed = await probe();
+  if (!probed.error) {
+    if (!probed.data) return { data: null, error: null };
+
+    // A successful probe proves the current schema exists. It may fill a field
+    // omitted by a stale `*` response, but it must never authorize a fallback
+    // after a failed full query (whose missing column was something else).
+    if (!initial.error && initial.data) {
+      return {
+        data: { ...initial.data, charge_model: probed.data.charge_model },
+        error: null,
+      };
+    }
+    return initial;
+  }
+
+  if (!isMissingPaymentChargeModelColumnError(probed.error)) {
+    return { data: null, error: probed.error };
+  }
+
+  return legacy();
+}
+
+/**
+ * Inspect the immutable payment rail before any legacy provider call or status
+ * mutation. Direct, null, unknown, and explicitly-present undefined models are
+ * blocked. Only explicit destination, or a schema proven not to have the
+ * charge_model column yet, may continue.
+ */
+export async function inspectLegacyDestinationPaymentRail(
+  supabase: SupabaseClient,
+  paymentId: string,
+  accountId?: string,
+): Promise<LegacyDestinationPaymentRail> {
+  const read = async (columns: string): Promise<PaymentReadResult<PaymentChargeModelRow>> => {
+    let query = supabase.from('payments').select(columns).eq('id', paymentId);
+    if (accountId) query = query.eq('account_id', accountId);
+    const result = await query.maybeSingle();
+    return result as PaymentReadResult<PaymentChargeModelRow>;
+  };
+
+  const resolved = await resolvePaymentChargeModelRead(
+    await read('id, status, charge_model'),
+    () => read('charge_model'),
+    () => read('id, status'),
+  );
+
+  if (resolved.error) throw resolved.error;
+  if (!resolved.data) return { kind: 'not_found' };
+  if (!isLegacyDestinationPayment(resolved.data)) return { kind: 'blocked' };
+  return {
+    kind: 'allowed',
+    chargeModelColumnPresent: Object.prototype.hasOwnProperty.call(resolved.data, 'charge_model'),
+  };
+}
+
+async function requireLegacyDestinationPaymentRail(
+  supabase: SupabaseClient,
+  paymentId: string,
+  accountId?: string,
+): Promise<{ chargeModelColumnPresent: boolean }> {
+  const rail = await inspectLegacyDestinationPaymentRail(supabase, paymentId, accountId);
+  if (rail.kind === 'blocked') throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
+  if (rail.kind === 'not_found') throw new Error('Payment not found.');
+  return rail;
 }
 
 // Sum of paid amounts in the trailing 365 days — the basis for the fee bracket.
@@ -193,23 +304,42 @@ type PublicPaymentRecord = Payment & {
   display_business_name: string;
 };
 
+type PublicPaymentDatabaseRecord = Omit<PublicPaymentRecord, 'display_business_name'>;
+
 // Public read — no user session exists (the homeowner is not a system user),
 // so this always uses the admin client and returns only what the public pay
 // page needs to render.
 export async function getPublicPayment(paymentId: string): Promise<PublicPaymentRecord | null> {
   const admin = createAdminClient();
 
-  const { data, error } = await admin
-    .from('payments')
-    .select('*, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)')
-    .eq('id', paymentId)
-    .maybeSingle();
+  const read = async (columns: string): Promise<PaymentReadResult<PublicPaymentDatabaseRecord>> => {
+    const result = await admin
+      .from('payments')
+      .select(columns)
+      .eq('id', paymentId)
+      .maybeSingle();
+    return result as unknown as PaymentReadResult<PublicPaymentDatabaseRecord>;
+  };
+
+  const fullColumns =
+    '*, charge_model, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)';
+  const legacyColumns =
+    '*, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)';
+  const resolved = await resolvePaymentChargeModelRead(
+    await read(fullColumns),
+    async () => {
+      const result = await admin.from('payments').select('charge_model').eq('id', paymentId).maybeSingle();
+      return result as PaymentReadResult<PaymentChargeModelRow>;
+    },
+    () => read(legacyColumns),
+  );
+  const { data, error } = resolved;
 
   if (error || !data) {
     return null;
   }
 
-  const payment = data as unknown as Omit<PublicPaymentRecord, 'display_business_name'>;
+  const payment = data;
   const { data: site } = await admin
     .from('sites')
     .select('company_name')
@@ -246,10 +376,20 @@ async function ensurePlanDepositCustomer(planId: string, accountId: string, clie
 }
 
 export async function createCheckoutSessionForPayment(paymentId: string, origin: string): Promise<string> {
+  // Once a row is prepared as direct it belongs to the connected-account
+  // runtime for life, even while that runtime remains dark. Prove the rail
+  // before reading Quick Stop state or constructing any Stripe client.
+  const railAdmin = createAdminClient();
+  await requireLegacyDestinationPaymentRail(railAdmin, paymentId);
+
   const payment = await getPublicPayment(paymentId);
 
   if (!payment) {
     throw new Error('Payment not found.');
+  }
+
+  if (!isLegacyDestinationPayment(payment)) {
+    throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
   }
 
   // "processing" means a checkout session was started but not necessarily
@@ -286,7 +426,7 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   }
 
   const stripe = getStripeClient();
-  const admin = createAdminClient();
+  const admin = railAdmin;
 
   // If a checkout session already exists for this payment, check it before
   // creating a new one. Blindly creating a fresh session every time this is
@@ -297,12 +437,16 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   // a webhook was missed).
   if (payment.stripe_checkout_session) {
     const existing = await stripe.checkout.sessions.retrieve(payment.stripe_checkout_session);
+    // Re-prove the rail after the provider round-trip. A requested destination
+    // row can be atomically prepared as direct while this request is in flight;
+    // once that happens, even an otherwise reusable legacy Session is barred.
+    const existingRail = await requireLegacyDestinationPaymentRail(admin, paymentId);
 
     if (existing.payment_status === 'paid') {
       // Compare-and-set like every other payment transition — only advance a
       // still-open payment, never resurrect a refunded/disputed one through the
       // TOCTOU window between the read above and this write.
-      await admin
+      let settle = admin
         .from('payments')
         .update({
           status: 'paid',
@@ -310,8 +454,17 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
           stripe_payment_intent:
             typeof existing.payment_intent === 'string' ? existing.payment_intent : existing.payment_intent?.id,
         })
-        .eq('id', paymentId)
-        .in('status', ['requested', 'processing', 'failed']);
+        .eq('id', paymentId);
+      if (existingRail.chargeModelColumnPresent) settle = settle.eq('charge_model', 'destination');
+      const { data: settled, error: settleError } = await settle
+        .in('status', ['requested', 'processing', 'failed'])
+        .select('id')
+        .maybeSingle();
+      if (settleError) throw settleError;
+      if (!settled) {
+        const currentRail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+        if (currentRail.kind === 'blocked') throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
+      }
       throw new Error('This payment has already been completed.');
     }
 
@@ -383,7 +536,25 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     }
   }
 
-  const { error } = await admin
+  const expireUndisclosedSession = async () => {
+    try {
+      await stripe.checkout.sessions.expire(session.id);
+    } catch (error) {
+      // The important invariant is that this URL is never disclosed. Stripe
+      // may already have closed it; log only the provider object id and error.
+      console.error(`Unable to expire undisclosed Checkout Session ${session.id}:`, error);
+    }
+  };
+
+  let currentRail: { chargeModelColumnPresent: boolean };
+  try {
+    currentRail = await requireLegacyDestinationPaymentRail(admin, paymentId);
+  } catch (error) {
+    await expireUndisclosedSession();
+    throw error;
+  }
+
+  let persistSession = admin
     .from('payments')
     .update({
       status: 'processing',
@@ -392,12 +563,16 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
       fee_rate: feeRate,
     })
     .eq('id', paymentId);
+  if (currentRail.chargeModelColumnPresent) persistSession = persistSession.eq('charge_model', 'destination');
+  const { data: persisted, error } = await persistSession
+    .in('status', ['requested', 'processing', 'failed'])
+    .select('id')
+    .maybeSingle();
 
-  if (error) {
-    throw error;
-  }
-
-  if (!session.url) {
+  if (error || !persisted || !session.url) {
+    await expireUndisclosedSession();
+    if (error) throw error;
+    if (!persisted) throw new Error('The payment changed before Checkout could be saved. Please reload and try again.');
     throw new Error('Stripe did not return a checkout URL.');
   }
 
@@ -406,16 +581,34 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
 
 // Fetch a payment with full details for display (contractor dashboard)
 export async function getPaymentDetails(supabase: SupabaseClient, accountId: string, paymentId: string) {
-  const { data, error } = await supabase
-    .from('payments')
-    .select(
-      `*,
-       invoice:invoices(id, ref, status, total),
-       job:jobs(id, ref, client_name)`
-    )
-    .eq('account_id', accountId)
-    .eq('id', paymentId)
-    .maybeSingle();
+  type PaymentDetailsRecord = Payment & {
+    invoice: { id: string; ref: string; status: string; total: number } | null;
+    job: { id: string; ref: string; client_name: string } | null;
+  };
+  const read = async (columns: string): Promise<PaymentReadResult<PaymentDetailsRecord>> => {
+    const result = await supabase
+      .from('payments')
+      .select(columns)
+      .eq('account_id', accountId)
+      .eq('id', paymentId)
+      .maybeSingle();
+    return result as unknown as PaymentReadResult<PaymentDetailsRecord>;
+  };
+  const relations = `invoice:invoices(id, ref, status, total), job:jobs(id, ref, client_name)`;
+  const resolved = await resolvePaymentChargeModelRead(
+    await read(`*, charge_model, ${relations}`),
+    async () => {
+      const result = await supabase
+        .from('payments')
+        .select('charge_model')
+        .eq('account_id', accountId)
+        .eq('id', paymentId)
+        .maybeSingle();
+      return result as PaymentReadResult<PaymentChargeModelRow>;
+    },
+    () => read(`*, ${relations}`),
+  );
+  const { data, error } = resolved;
 
   if (error || !data) {
     return null;
@@ -548,6 +741,12 @@ export async function refundPayment(
       })
       .eq('id', paymentId)
       .eq('status', 'paid');
+    // The provider refund has already happened, so make the local reconciliation
+    // fail closed if the immutable payment rail no longer matches the row we
+    // authorized above. A proven pre-migration row cannot name this column.
+    if (Object.prototype.hasOwnProperty.call(payment, 'charge_model')) {
+      casQuery = casQuery.eq('charge_model', 'destination');
+    }
     casQuery = payment.refunded_amount == null ? casQuery.is('refunded_amount', null) : casQuery.eq('refunded_amount', payment.refunded_amount);
     const { data: claimed, error } = await casQuery.select('id').maybeSingle();
     if (error) {
@@ -613,11 +812,17 @@ function formatMoneyCents(cents: number): string {
 
 // Mark a payment as failed (e.g., for reconciliation/admin override)
 export async function markPaymentFailed(supabase: SupabaseClient, accountId: string, paymentId: string): Promise<void> {
-  const { data, error } = await supabase
+  const rail = await requireLegacyDestinationPaymentRail(supabase, paymentId, accountId);
+
+  let transition = supabase
     .from('payments')
     .update({ status: 'failed' })
     .eq('account_id', accountId)
-    .eq('id', paymentId)
+    .eq('id', paymentId);
+  // Re-check the immutable rail in the atomic UPDATE whenever the column is
+  // available. The truly pre-migration branch cannot name a missing column.
+  if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+  const { data, error } = await transition
     .eq('status', 'processing')
     .select('id')
     .maybeSingle();
@@ -641,14 +846,18 @@ export async function markPaymentPaidManually(
   accountId: string,
   paymentId: string
 ): Promise<boolean> {
+  const rail = await requireLegacyDestinationPaymentRail(supabase, paymentId, accountId);
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment) throw new Error('Payment not found for this account.');
+  if (!isLegacyDestinationPayment(payment)) throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
 
-  const { data: settled, error } = await supabase
+  let transition = supabase
     .from('payments')
     .update({ status: 'paid', paid_at: new Date().toISOString() })
     .eq('account_id', accountId)
-    .eq('id', paymentId)
+    .eq('id', paymentId);
+  if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+  const { data: settled, error } = await transition
     .in('status', ['requested', 'failed'])
     .select('id')
     .maybeSingle();
@@ -702,11 +911,15 @@ export async function markPaymentPaidManually(
  * contractor's cancel is not.
  */
 export async function cancelPaymentRequest(supabase: SupabaseClient, accountId: string, paymentId: string): Promise<void> {
-  const { data, error } = await supabase
+  const rail = await requireLegacyDestinationPaymentRail(supabase, paymentId, accountId);
+
+  let transition = supabase
     .from('payments')
     .update({ status: 'canceled' })
     .eq('account_id', accountId)
-    .eq('id', paymentId)
+    .eq('id', paymentId);
+  if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+  const { data, error } = await transition
     .eq('status', 'requested')
     .select('id')
     .maybeSingle();
@@ -716,11 +929,18 @@ export async function cancelPaymentRequest(supabase: SupabaseClient, accountId: 
     return;
   }
 
-  const fallback = await supabase
+  // Delete compatibility exists solely for the deploy window before the
+  // `canceled` enum value. Permission, network, constraint, and unrelated
+  // schema failures must not turn into a destructive fallback.
+  if (!isMissingCanceledPaymentStatusError(error)) throw error;
+
+  let legacyDelete = supabase
     .from('payments')
     .delete()
     .eq('account_id', accountId)
-    .eq('id', paymentId)
+    .eq('id', paymentId);
+  if (rail.chargeModelColumnPresent) legacyDelete = legacyDelete.eq('charge_model', 'destination');
+  const fallback = await legacyDelete
     .eq('status', 'requested')
     .select('id')
     .maybeSingle();
@@ -730,10 +950,17 @@ export async function cancelPaymentRequest(supabase: SupabaseClient, accountId: 
 
 // Retry a failed/processing payment by creating a fresh checkout session
 export async function retryPayment(paymentId: string, origin: string): Promise<string> {
+  const railAdmin = createAdminClient();
+  await requireLegacyDestinationPaymentRail(railAdmin, paymentId);
+
   const payment = await getPublicPayment(paymentId);
 
   if (!payment) {
     throw new Error('Payment not found.');
+  }
+
+  if (!isLegacyDestinationPayment(payment)) {
+    throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
   }
 
   if (payment.status === 'paid' || payment.status === 'refunded') {

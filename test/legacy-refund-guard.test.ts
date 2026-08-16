@@ -56,18 +56,28 @@ const legacyPayment = {
 
 function paymentClient(row: Record<string, unknown>) {
   const updates: Record<string, unknown>[] = [];
-  const read = {
-    eq: vi.fn(() => read),
-    maybeSingle: vi.fn(async () => ({ data: row, error: null })),
-  };
+  const filters: Array<[string, unknown]> = [];
   const update = {
-    eq: vi.fn(() => update),
+    eq: vi.fn((column: string, value: unknown) => {
+      filters.push([column, value]);
+      return update;
+    }),
     is: vi.fn(() => update),
     select: vi.fn(() => update),
     maybeSingle: vi.fn(async () => ({ data: null, error: null })),
   };
   const table = {
-    select: vi.fn(() => read),
+    select: vi.fn((columns: string) => {
+      const read = {
+        eq: vi.fn(() => read),
+        maybeSingle: vi.fn(async () => (
+          columns.includes('charge_model') && !Object.prototype.hasOwnProperty.call(row, 'charge_model')
+            ? { data: null, error: { code: '42703', message: 'column charge_model does not exist' } }
+            : { data: row, error: null }
+        )),
+      };
+      return read;
+    }),
     update: vi.fn((values: Record<string, unknown>) => {
       updates.push(values);
       return update;
@@ -76,6 +86,7 @@ function paymentClient(row: Record<string, unknown>) {
   return {
     client: { from: vi.fn(() => table) } as unknown as SupabaseClient,
     updates,
+    filters,
   };
 }
 
@@ -318,7 +329,7 @@ describe('legacy refund charge-model boundary', () => {
     ['pre-migration', {}],
     ['destination', { charge_model: 'destination' }],
   ])('preserves the legacy Stripe refund request for a %s row', async (_label, model) => {
-    const { client, updates } = paymentClient({ ...legacyPayment, ...model });
+    const { client, updates, filters } = paymentClient({ ...legacyPayment, ...model });
 
     await expect(refundPayment(client, 'acct_workspace', 'pay_legacy_guard', 25)).resolves.toEqual({
       amount: 25,
@@ -340,6 +351,11 @@ describe('legacy refund charge-model boundary', () => {
       { idempotencyKey: 'refund_pay_legacy_guard_0_2500' },
     );
     expect(updates).toHaveLength(1);
+    if (Object.prototype.hasOwnProperty.call(model, 'charge_model')) {
+      expect(filters).toContainEqual(['charge_model', 'destination']);
+    } else {
+      expect(filters.some(([column]) => column === 'charge_model')).toBe(false);
+    }
   });
 
   it.each([
@@ -397,9 +413,11 @@ describe('legacy refund charge-model boundary', () => {
       const response = await legacyStripeWebhook(webhookRequest());
 
       expect(response.status).toBe(200);
-      expect(db.selections).toHaveLength(2);
+      expect(db.selections).toHaveLength(4);
       expect(db.selections[0]).toContain('charge_model');
-      expect(db.selections[1]).not.toContain('charge_model');
+      expect(db.selections[1]).toBe('charge_model');
+      expect(db.selections[2]).not.toContain('charge_model');
+      expect(db.selections[3]).not.toContain('charge_model');
       expect(db.chargeModelFilters).toEqual([]);
       expect(db.state).toMatchObject({ refunded_amount: 25, status: 'paid' });
     },
@@ -412,7 +430,7 @@ describe('legacy refund charge-model boundary', () => {
 
     const response = await legacyStripeWebhook(webhookRequest());
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(500);
     expect(db.selections).toHaveLength(1);
     expect(db.updates).toEqual([]);
     expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();

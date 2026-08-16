@@ -1048,7 +1048,10 @@ export default async function JobDetailPage({
                 {displayedFeed.map((event) => {
                   const linkedPayment = event.source_table === 'payments' ? payments.find((payment) => payment.id === event.source_id) : undefined;
                   const linkedInvoice = event.source_table === 'invoices' ? invoices.find((invoice) => invoice.id === event.source_id) : undefined;
-                  const canCancelPayment = event.kind === 'payment_requested' && linkedPayment?.status === 'requested';
+                  const canCancelPayment =
+                    event.kind === 'payment_requested'
+                    && linkedPayment?.status === 'requested'
+                    && isLegacyDestinationPayment(linkedPayment);
                   const canCancelInvoice =
                     (event.kind === 'invoice_created' || event.kind === 'invoice_sent' || event.kind === 'invoice_signoff_link') &&
                     (linkedInvoice?.status === 'draft' || linkedInvoice?.status === 'sent');
@@ -1338,7 +1341,8 @@ export default async function JobDetailPage({
                           ? ` · platform fee ${formatMoney(payment.platform_fee)} (${((payment.fee_rate ?? 0) * 100).toFixed(2)}%)`
                           : null}
                         {payment.sms_events?.find((event) => event.event_type === 'payment_requested') ? ` · SMS ${payment.sms_events.find((event) => event.event_type === 'payment_requested')?.status}` : null}
-                        {payment.status === 'requested' || payment.status === 'processing' ? (
+                        {!isLegacyDestinationPayment(payment) ? ' · connected-account checkout' : null}
+                        {(payment.status === 'requested' || payment.status === 'processing') && isLegacyDestinationPayment(payment) ? (
                           <>
                             {' · '}
                             <a href={`/pay/${payment.id}`} target="_blank" rel="noreferrer">
@@ -1365,13 +1369,14 @@ export default async function JobDetailPage({
                         onCancel={cancelPaymentRequestAction}
                         onMarkPaidManually={markPaymentPaidManuallyAction}
                         canRefund={Boolean(payment.stripe_payment_intent) && isLegacyDestinationPayment(payment)}
+                        canUseLegacyRail={isLegacyDestinationPayment(payment)}
                         amount={Number(payment.amount)}
                         refundedAmount={Number(payment.refunded_amount) || 0}
                       />
-                      {payment.status === 'requested' || payment.status === 'processing' ? (
+                      {(payment.status === 'requested' || payment.status === 'processing') && isLegacyDestinationPayment(payment) ? (
                         <CopyLinkButton url={`${quoteLinkOrigin}/pay/${payment.id}`} label="Copy pay link" />
                       ) : null}
-                      {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
+                      {isLegacyDestinationPayment(payment) && payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
                         <form action={boundRetryPaymentText.bind(null, payment.id)}>
                           <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
                             Retry SMS

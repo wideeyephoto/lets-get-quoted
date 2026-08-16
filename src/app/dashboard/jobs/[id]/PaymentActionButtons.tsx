@@ -16,6 +16,10 @@ interface PaymentActionButtonsProps {
   // Refunds go through Stripe, so only offer Refund on rows that were paid via
   // Stripe (they carry a payment intent). Cash/check rows can't be refunded here.
   canRefund?: boolean;
+  // Retry/fail/cancel belong to the active destination-charge lifecycle. A
+  // prepared direct row remains owned by the direct runtime even while that
+  // runtime is dark, so none of those controls may fall back here.
+  canUseLegacyRail?: boolean;
   // The full payment amount and how much has already been refunded, so the refund
   // field can default to (and cap at) the remaining balance.
   amount?: number;
@@ -38,6 +42,7 @@ export default function PaymentActionButtons({
   onCancel,
   onMarkPaidManually,
   canRefund = true,
+  canUseLegacyRail = true,
   amount = 0,
   refundedAmount = 0,
 }: PaymentActionButtonsProps) {
@@ -148,7 +153,7 @@ export default function PaymentActionButtons({
 
   return (
     <div style={{ display: 'flex', gap: '0.25rem' }}>
-      {status === 'requested' && (
+      {status === 'requested' && canUseLegacyRail && (
         <>
           {onMarkPaidManually && (
             <>
@@ -234,7 +239,7 @@ export default function PaymentActionButtons({
           </button>
         )
       )}
-      {(status === 'processing' || status === 'failed') && (
+      {canUseLegacyRail && (status === 'processing' || status === 'failed') && (
         <>
           <button
             onClick={handleRetry}

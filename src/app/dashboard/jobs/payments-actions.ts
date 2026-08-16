@@ -5,7 +5,19 @@ import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
-import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, listPayments, refundPayment, markPaymentFailed, markPaymentPaidManually, retryPayment, type PaymentKind } from '@/lib/payments';
+import {
+  cancelPaymentRequest,
+  createDepositRequest,
+  getPaymentDetails,
+  isLegacyDestinationPayment,
+  LEGACY_DESTINATION_PAYMENT_RAIL_ERROR,
+  listPayments,
+  refundPayment,
+  markPaymentFailed,
+  markPaymentPaidManually,
+  retryPayment,
+  type PaymentKind,
+} from '@/lib/payments';
 import { formatMoneyExact } from '@/lib/jobs';
 import { jobMoney, overageForNewRequest } from '@/lib/job-lifecycle';
 import { listChangeOrders } from '@/lib/change-orders-data';
@@ -171,6 +183,10 @@ export async function retryPaymentTextAction(jobId: string, paymentId: string) {
   const { supabase, accountId } = await requireOwnerContext();
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
   if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
+  // This text contains /pay/:id, whose active Checkout implementation is the
+  // legacy destination rail. Never resend it for a row already assigned to the
+  // direct runtime, even while that runtime is dark.
+  if (!isLegacyDestinationPayment(payment)) throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
   const result = await retryFailedPaymentSmsEvent(paymentId, 'payment_requested');
   if (result.status === 'failed') throw new Error(result.error);
   revalidatePath(`/dashboard/jobs/${jobId}`);

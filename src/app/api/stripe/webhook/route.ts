@@ -14,8 +14,8 @@ import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
 import {
+  inspectLegacyDestinationPaymentRail,
   isLegacyDestinationPayment,
-  isMissingPaymentChargeModelColumnError,
   reversedPlatformFee,
 } from '@/lib/payments';
 
@@ -58,7 +58,16 @@ async function emailContractorAlert(
   }
 }
 
-async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paymentId: string, stripePaymentIntent: string | null) {
+async function markPaymentPaid(
+  admin: ReturnType<typeof createAdminClient>,
+  paymentId: string,
+  stripePaymentIntent: string | null,
+): Promise<{ legacyRailAuthorized: boolean; transitioned: boolean; alreadyPaid: boolean }> {
+  const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+  if (rail.kind !== 'allowed') {
+    return { legacyRailAuthorized: false, transitioned: false, alreadyPaid: false };
+  }
+
   // Stripe delivers webhooks at-least-once and can overlap a retry with a still-
   // in-flight first delivery, so this must be an atomic compare-and-set, not a
   // read-then-write: the conditional UPDATE both flips the row and tells us
@@ -71,27 +80,44 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
   // refuses to resurrect a `refunded`/`disputed` payment back to `paid` on a
   // late-arriving checkout.session.completed. Mirrors the payment_intent.succeeded
   // handler and every other transition in this file.
-  const { data: transitioned, error: paymentError } = await admin
+  let transition = admin
     .from('payments')
     .update({
       status: 'paid',
       paid_at: new Date().toISOString(),
       stripe_payment_intent: stripePaymentIntent,
     })
-    .eq('id', paymentId)
+    .eq('id', paymentId);
+  if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+  const { data: transitioned, error: paymentError } = await transition
     .in('status', ['requested', 'processing', 'failed'])
     .select('invoice_id')
     .maybeSingle();
 
   if (paymentError) {
     console.error('Failed to mark payment paid:', paymentError);
-    return;
+    return { legacyRailAuthorized: true, transitioned: false, alreadyPaid: false };
   }
 
   // Already paid (or no longer in a payable state) — nothing transitioned, so
   // don't re-run the reconcile or re-notify.
   if (!transitioned) {
-    return;
+    // A webhook replay is the repair path for a crash after the payment CAS
+    // won but before Quick Stop confirmation. Prove the row is already paid on
+    // the same authorized rail; a refunded/disputed/canceled row must not
+    // confirm an appointment merely because the payment UPDATE was a no-op.
+    let paidReplay = admin
+      .from('payments')
+      .select('id')
+      .eq('id', paymentId)
+      .eq('status', 'paid');
+    if (rail.chargeModelColumnPresent) paidReplay = paidReplay.eq('charge_model', 'destination');
+    const { data: alreadyPaid } = await paidReplay.maybeSingle();
+    return {
+      legacyRailAuthorized: true,
+      transitioned: false,
+      alreadyPaid: Boolean(alreadyPaid),
+    };
   }
 
   // If payment is linked to an invoice, mark invoice as paid (shared reconcile —
@@ -107,6 +133,27 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
   // activates + schedules the installments, a payoff closes the plan, an
   // installment checks for completion. No-ops for one-off payments.
   await handlePlanPaymentSettled(admin, paymentId);
+  return { legacyRailAuthorized: true, transitioned: true, alreadyPaid: false };
+}
+
+async function markLegacyPaymentFailed(
+  admin: ReturnType<typeof createAdminClient>,
+  paymentId: string,
+  match: { statuses?: string[]; status?: string; checkoutSessionId?: string } = {},
+): Promise<{ handled: boolean; transitioned: { id: string } | null }> {
+  const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+  if (rail.kind !== 'allowed') return { handled: false, transitioned: null };
+
+  let transition = admin
+    .from('payments')
+    .update({ status: 'failed' })
+    .eq('id', paymentId);
+  if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+  if (match.checkoutSessionId) transition = transition.eq('stripe_checkout_session', match.checkoutSessionId);
+  if (match.status) transition = transition.eq('status', match.status);
+  if (match.statuses) transition = transition.in('status', match.statuses);
+  const { data: transitioned } = await transition.select('id').maybeSingle();
+  return { handled: true, transitioned };
 }
 
 export async function POST(request: Request) {
@@ -174,10 +221,17 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     } else if (paymentId && session.payment_status === 'paid') {
       const stripePaymentIntent =
         typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
-      await markPaymentPaid(admin, paymentId, stripePaymentIntent);
+      const settlement = await markPaymentPaid(admin, paymentId, stripePaymentIntent);
       // If this payment is a live Quick Stop offer, confirm the appointment
-      // (idempotent compare-and-set; a no-op for every other payment).
-      await confirmQuickStopPayment(admin, paymentId);
+      // (idempotent compare-and-set; a no-op for every other payment). An
+      // already-paid legacy replay repairs a crash between the two transitions;
+      // a blocked/direct row can never enter this caller.
+      if (
+        settlement.legacyRailAuthorized
+        && (settlement.transitioned || settlement.alreadyPaid)
+      ) {
+        await confirmQuickStopPayment(admin, paymentId);
+      }
     }
   }
 
@@ -199,17 +253,13 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     const session = event.data.object;
     const paymentId = session.metadata?.payment_id;
     if (paymentId) {
-      const { data: transitioned } = await admin
-        .from('payments')
-        .update({ status: 'failed' })
-        .eq('id', paymentId)
-        .in('status', ['requested', 'processing'])
-        .select('id')
-        .maybeSingle();
+      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+        statuses: ['requested', 'processing'],
+      });
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
       // Release a held payoff lock if a large ACH payoff bounced.
-      await handlePlanPaymentFailed(admin, paymentId);
+      if (transitioned) await handlePlanPaymentFailed(admin, paymentId);
     }
   }
 
@@ -219,19 +269,15 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     const paymentId = session.metadata?.payment_id;
 
     if (paymentId) {
-      const { data: transitioned } = await admin
-        .from('payments')
-        .update({ status: 'failed' })
-        .eq('id', paymentId)
-        .eq('stripe_checkout_session', session.id)
-        .eq('status', 'processing')
-        .select('id')
-        .maybeSingle();
+      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+        checkoutSessionId: session.id,
+        status: 'processing',
+      });
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
       // A payment-plan payoff was abandoned — release its lock so the plan
       // resumes its normal installment schedule.
-      await handlePlanPaymentFailed(admin, paymentId);
+      if (transitioned) await handlePlanPaymentFailed(admin, paymentId);
     }
   }
 
@@ -242,17 +288,13 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
 
     if (paymentId) {
       console.log(`Charge failed for payment ${paymentId}:`, charge.failure_message);
-      const { data: transitioned } = await admin
-        .from('payments')
-        .update({ status: 'failed' })
-        .eq('id', paymentId)
-        .in('status', ['requested', 'processing'])
-        .select('id')
-        .maybeSingle();
+      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+        statuses: ['requested', 'processing'],
+      });
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
       // Release a held payoff lock if this failed charge was a plan payoff.
-      await handlePlanPaymentFailed(admin, paymentId);
+      if (transitioned) await handlePlanPaymentFailed(admin, paymentId);
     }
   }
 
@@ -273,26 +315,30 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
       const isFull = charge.amount_refunded >= charge.amount;
 
       const refundPaymentColumns = 'id, invoice_id, status, refunded_amount, amount, platform_fee';
-      let { data: payment, error: paymentError } = await admin
-        .from('payments')
-        // amount + platform_fee ride along so the fee reversal can be computed
-        // from the same cumulative total Stripe just sent us.
-        .select(`${refundPaymentColumns}, charge_model`)
-        .eq('id', paymentId)
-        .maybeSingle();
-
-      // A rolling deploy can put this application ahead of the pricing
-      // migration. Retry only the two genuine missing-column errors; every
-      // other read failure stays fail-closed. The fallback row has no
-      // charge_model property, which the shared predicate recognizes as a
-      // pre-migration destination charge.
-      if (isMissingPaymentChargeModelColumnError(paymentError)) {
-        ({ data: payment, error: paymentError } = await admin
-          .from('payments')
-          .select(refundPaymentColumns)
-          .eq('id', paymentId)
-          .maybeSingle());
-      }
+      const refundRail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+      const refundRead = (refundRail.kind === 'allowed'
+        ? await admin
+            .from('payments')
+            // amount + platform_fee ride along so the fee reversal can be
+            // computed from the same cumulative total Stripe just sent us.
+            .select(refundRail.chargeModelColumnPresent
+              ? `${refundPaymentColumns}, charge_model`
+              : refundPaymentColumns)
+            .eq('id', paymentId)
+            .maybeSingle()
+        : { data: null, error: null }) as unknown as {
+          data: {
+            id: string;
+            invoice_id: string | null;
+            status: string;
+            refunded_amount: number | null;
+            amount: number;
+            platform_fee: number | null;
+            charge_model?: unknown;
+          } | null;
+          error: { code?: string | null } | null;
+        };
+      const { data: payment, error: paymentError } = refundRead;
 
       // Reconcile only a collected payment; never resurrect a disputed one, and
       // never walk the refunded total backwards. Acting only on NEW progress makes
@@ -324,7 +370,7 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
           .eq('id', payment.id);
         // Re-check the immutable rail at write time whenever the column exists.
         // The pre-migration fallback cannot name a column that is not there.
-        if (Object.prototype.hasOwnProperty.call(payment, 'charge_model')) {
+        if (refundRail.kind === 'allowed' && refundRail.chargeModelColumnPresent) {
           transition = transition.eq('charge_model', 'destination');
         }
         const { data: transitioned } = await transition
@@ -361,13 +407,9 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     // (which also records the decline). Skip both here so we don't double-notify.
     if (paymentId && !recurringPlanId && !paymentPlanId) {
       console.log(`Payment intent failed for payment ${paymentId}:`, paymentIntent.last_payment_error);
-      const { data: transitioned } = await admin
-        .from('payments')
-        .update({ status: 'failed' })
-        .eq('id', paymentId)
-        .in('status', ['requested', 'processing'])
-        .select('id')
-        .maybeSingle();
+      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+        statuses: ['requested', 'processing'],
+      });
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
     }
@@ -382,10 +424,14 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     const paymentIntent = event.data.object;
     const paymentId = paymentIntent.metadata?.payment_id;
     if (paymentId) {
-      const { data: transitioned } = await admin
+      const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+      if (rail.kind !== 'allowed') return;
+      let transition = admin
         .from('payments')
         .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: paymentIntent.id, dunning_state: 'recovered', next_retry_at: null })
-        .eq('id', paymentId)
+        .eq('id', paymentId);
+      if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+      const { data: transitioned } = await transition
         .in('status', ['requested', 'processing', 'failed'])
         .select('id, invoice_id')
         .maybeSingle();
@@ -485,7 +531,9 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
         .maybeSingle();
 
       if (payment && payment.status === 'paid') {
-        const { data: transitioned } = await admin
+        const rail = await inspectLegacyDestinationPaymentRail(admin, payment.id);
+        if (rail.kind !== 'allowed') return;
+        let transition = admin
           .from('payments')
           .update({
             status: 'disputed',
@@ -495,7 +543,9 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
             stripe_dispute_id: dispute.id ?? null,
             dispute_due_by: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString() : null,
           })
-          .eq('id', payment.id)
+          .eq('id', payment.id);
+        if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+        const { data: transitioned } = await transition
           .eq('status', 'paid')
           .select('id')
           .maybeSingle();
@@ -538,11 +588,15 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
         .maybeSingle();
 
       if (payment && payment.status === 'disputed') {
+        const rail = await inspectLegacyDestinationPaymentRail(admin, payment.id);
+        if (rail.kind !== 'allowed') return;
         if (dispute.status === 'won') {
-          const { data: transitioned } = await admin
+          let transition = admin
             .from('payments')
             .update({ status: 'paid', dispute_status: 'won' })
-            .eq('id', payment.id)
+            .eq('id', payment.id);
+          if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+          const { data: transitioned } = await transition
             .eq('status', 'disputed')
             .select('id')
             .maybeSingle();
@@ -550,10 +604,12 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
             await createDisputeFeedEvent(admin, payment.id, 'dispute_won', 'Chargeback won', 'Stripe resolved the dispute in your favor. The payment stands.');
           }
         } else {
-          const { data: transitioned } = await admin
+          let transition = admin
             .from('payments')
             .update({ status: 'refunded', dispute_status: 'lost' })
-            .eq('id', payment.id)
+            .eq('id', payment.id);
+          if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+          const { data: transitioned } = await transition
             .eq('status', 'disputed')
             .select('id')
             .maybeSingle();
