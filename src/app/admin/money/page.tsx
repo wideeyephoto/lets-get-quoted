@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
 import { createAdminSignalDiagnostics, getOpenDisputes, getPausedPayouts, getNotOnboardedCount } from '@/lib/admin-alerts';
 import { fetchFeeWindow } from '@/lib/platform-fees';
+import { stripeAdminLinks } from '@/lib/admin-payments';
 import { isDateRange, rangeWindow, type DateRange } from '@/lib/command-center-logic';
 import { StatCard } from '../StatCard';
 import styles from '../admin.module.css';
@@ -58,7 +59,10 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
   const disputesAvailable = !diagnostics.failed.includes('disputes');
   const payoutsAvailable = !diagnostics.failed.includes('pausedPayouts');
   const onboardingAvailable = !diagnostics.failed.includes('notOnboarded');
-  const unavailableCount = diagnostics.failed.length + Number(!fees.availability.payments) + Number(!fees.availability.refunds);
+  const unavailableCount = diagnostics.failed.length
+    + Number(!fees.availability.payments)
+    + Number(!fees.availability.fees)
+    + Number(!fees.availability.refunds);
 
   // Stitch display names (site company_name preferred) onto the dispute, paused
   // and refund rows in one pass.
@@ -91,7 +95,7 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Oversight</p>
         <h1 className={styles.title}>Money</h1>
-        <p className={styles.lead}>Platform fees, refunds, disputes, and payout health. You&rsquo;re the merchant of record on Connect — this is the liability side of the ledger.</p>
+        <p className={styles.lead}>Reconciled LGQ fees, refunds, disputes, and payout health across the legacy and direct-charge rails.</p>
       </header>
 
       {unavailableCount > 0 ? (
@@ -113,13 +117,13 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
           link to the list that holds those records. */}
       <section className={styles.cardGrid} style={{ marginBottom: '1.4rem' }}>
         <StatCard
-          value={fees.availability.payments && fees.availability.refunds ? usd(netFees) : '—'}
-          label={`Platform fees (${rangeLabel})`}
+          value={fees.availability.fees && fees.availability.refunds ? usd(netFees) : '—'}
+          label={`Reconciled LGQ fees (${rangeLabel})`}
           /* The arithmetic is shown rather than hidden. A net figure with no
              working is indistinguishable from the gross one that used to sit
              here, and the whole point of the fix is that they differ. */
-          note={fees.availability.payments && fees.availability.refunds && feesReversed > 0 ? <>{usd(grossFees)} charged − {usd(feesReversed)} returned with refunds</> : null}
-          tone={!fees.availability.payments || !fees.availability.refunds ? 'warn' : undefined}
+          note={fees.availability.fees && fees.availability.refunds && feesReversed > 0 ? <>{usd(grossFees)} recognized − {usd(feesReversed)} returned with refunds</> : null}
+          tone={!fees.availability.fees || !fees.availability.refunds ? 'warn' : undefined}
         />
         <StatCard
           value={fees.availability.refunds ? usd(refunds) : '—'}
@@ -159,7 +163,7 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Refunded</th><th>Account</th><th>Charge</th><th className="num">Original</th><th className="num">Refunded</th><th className="num">Our fee returned</th><th /></tr></thead>
+              <thead><tr><th>Refunded</th><th>Account</th><th>Charge</th><th className="num">Original</th><th className="num">Refunded</th><th className="num">LGQ fee returned</th><th /></tr></thead>
               <tbody>
                 {refundRows.map((row) => {
                   const acct = nameMap.get(row.account_id);
@@ -220,7 +224,8 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
                 {disputes.map((row) => {
                   const acct = nameMap.get(row.account_id);
                   const dueMs = row.dispute_due_by ? new Date(row.dispute_due_by).getTime() : NaN;
-                  const overdue = Number.isFinite(dueMs) && dueMs < Date.now();
+                  const overdue = Number.isFinite(dueMs) && dueMs < now.getTime();
+                  const disputeUrl = stripeAdminLinks(row).find((link) => link.kind === 'dispute')?.url;
                   return (
                     <tr key={row.id}>
                       <td className={styles.muted}>{fmtDate(row.disputed_at)}</td>
@@ -230,8 +235,8 @@ export default async function AdminMoneyPage({ searchParams }: { searchParams: {
                       <td className={styles.muted}>{row.dispute_reason || row.dispute_status || '—'}</td>
                       <td>{row.dispute_due_by ? <span className={`${styles.pill} ${overdue ? styles.bad : styles.warn}`}>{fmtDate(row.dispute_due_by)}</span> : <span className={styles.muted}>—</span>}</td>
                       <td>
-                        {row.stripe_dispute_id ? (
-                          <a href={`https://dashboard.stripe.com/disputes/${row.stripe_dispute_id}`} target="_blank" rel="noreferrer" className={styles.rowLink}>Respond on Stripe →</a>
+                        {disputeUrl ? (
+                          <a href={disputeUrl} target="_blank" rel="noreferrer" className={styles.rowLink}>Respond on Stripe →</a>
                         ) : (
                           <span className={styles.muted}>—</span>
                         )}

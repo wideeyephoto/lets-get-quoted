@@ -4,10 +4,11 @@ import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
 import { listAdminActions } from '@/lib/admin';
 import {
+  adminPaymentFeeState,
   getPaymentForAdmin,
   refundBlockedReason,
   refundableCents,
-  stripePaymentUrl,
+  stripeAdminLinks,
 } from '@/lib/admin-payments';
 import { staffCan } from '@/lib/staff';
 import { refundPaymentAction } from './actions';
@@ -60,6 +61,7 @@ export default async function AdminPaymentPage({
   searchParams: { done?: string; error?: string; detail?: string };
 }) {
   const ctx = await requireAdmin();
+  const renderedAt = new Date();
   const payment = await getPaymentForAdmin(ctx.admin, params.id);
   if (!payment) notFound();
 
@@ -78,8 +80,20 @@ export default async function AdminPaymentPage({
   const mayRefund = staffCan(ctx.staff, 'money.refund');
   const blocked = refundBlockedReason(payment);
   const remaining = refundableCents(payment);
-  const stripeUrl = stripePaymentUrl(payment);
-  const netFee = (Number(payment.platform_fee) || 0) - (Number(payment.platform_fee_refunded) || 0);
+  const stripeLinks = stripeAdminLinks(payment);
+  const disputeUrl = stripeLinks.find((link) => link.kind === 'dispute')?.url;
+  const referenceLinks = stripeLinks.filter((link) => link.kind !== 'dispute');
+  const fee = adminPaymentFeeState(payment);
+  const feeTone = fee.code === 'direct_reconciled' || fee.code === 'legacy_recognized'
+    ? styles.good
+    : fee.code === 'unrecognized' || fee.code === 'direct_mismatch'
+      ? styles.bad
+      : styles.warn;
+  const chargeModelLabel = !Object.prototype.hasOwnProperty.call(payment, 'charge_model')
+    ? 'legacy destination · pre-migration'
+    : payment.charge_model === 'destination' || payment.charge_model === 'direct'
+      ? payment.charge_model
+      : 'unrecognized';
 
   return (
     <>
@@ -99,6 +113,7 @@ export default async function AdminPaymentPage({
             <span className={`${styles.pill} ${styles.warn}`}>{usd(payment.refunded_amount)} refunded</span>
           ) : null}
           {payment.disputed_at ? <span className={`${styles.pill} ${styles.bad}`}>Disputed</span> : null}
+          <span className={`${styles.pill} ${feeTone}`}>{fee.label}</span>
         </div>
       </header>
 
@@ -123,16 +138,19 @@ export default async function AdminPaymentPage({
               <dd>{Number(payment.refunded_amount) > 0 ? <strong>{usd(payment.refunded_amount)}</strong> : '$0.00'}</dd>
               <dt>Still refundable</dt>
               <dd>{remaining > 0 ? usdCents(remaining) : <span className={styles.muted}>nothing</span>}</dd>
-              <dt>Our fee</dt>
+              <dt>Reconciled LGQ fee</dt>
               <dd>
-                {usd(netFee)}
-                {Number(payment.platform_fee_refunded) > 0 ? (
+                {fee.recognizedFee !== null ? usd(fee.recognizedFee) : <span className={styles.muted}>—</span>}
+                {fee.recognizedFee !== null && Number(payment.platform_fee_refunded) > 0 ? (
                   <span className={styles.muted} style={{ fontSize: '.75rem' }}>
-                    {' '}({usd(payment.platform_fee)} charged − {usd(payment.platform_fee_refunded)} returned)
+                    {' '}({usd(payment.platform_fee)} recognized − {usd(payment.platform_fee_refunded)} returned)
                   </span>
                 ) : null}
                 {payment.fee_rate ? <span className={styles.muted} style={{ fontSize: '.75rem' }}> · {(Number(payment.fee_rate) * 100).toFixed(2)}%</span> : null}
               </dd>
+              {fee.expectedFee !== null ? <><dt>Expected LGQ fee</dt><dd>{usd(fee.expectedFee)} <span className={styles.muted}>· not recognized</span></dd></> : null}
+              <dt>Fee state</dt><dd><span className={`${styles.pill} ${feeTone}`}>{fee.label}</span></dd>
+              {fee.recognizedAt ? <><dt>Fee recognized</dt><dd className={styles.muted}>{fmt(fee.recognizedAt)}</dd></> : null}
               <dt>Requested</dt><dd className={styles.muted}>{fmt(payment.requested_at ?? payment.created_at)}</dd>
               <dt>Paid</dt><dd className={styles.muted}>{fmt(payment.paid_at)}</dd>
               {payment.refunded_at ? <><dt>Last refunded</dt><dd className={styles.muted}>{fmt(payment.refunded_at)}</dd></> : null}
@@ -149,15 +167,15 @@ export default async function AdminPaymentPage({
                 <dt>Respond by</dt>
                 <dd>
                   {payment.dispute_due_by ? (
-                    <span className={`${styles.pill} ${new Date(payment.dispute_due_by).getTime() < Date.now() ? styles.bad : styles.warn}`}>
+                    <span className={`${styles.pill} ${new Date(payment.dispute_due_by).getTime() < renderedAt.getTime() ? styles.bad : styles.warn}`}>
                       {fmt(payment.dispute_due_by)}
                     </span>
                   ) : '—'}
                 </dd>
               </dl>
-              {payment.stripe_dispute_id ? (
+              {disputeUrl ? (
                 <div className={styles.actionRow} style={{ marginTop: '.8rem' }}>
-                  <a href={`https://dashboard.stripe.com/disputes/${payment.stripe_dispute_id}`} target="_blank" rel="noreferrer" className="btn secondary">
+                  <a href={disputeUrl} target="_blank" rel="noreferrer" className="btn secondary">
                     Respond on Stripe →
                   </a>
                 </div>
@@ -243,12 +261,25 @@ export default async function AdminPaymentPage({
               <dt>Payment</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.id}</code></dd>
               <dt>Stripe intent</dt>
               <dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.stripe_payment_intent || '—'}</code></dd>
+              <dt>Charge model</dt><dd className={styles.muted}>{chargeModelLabel}</dd>
+              {payment.charge_model === 'direct' ? <>
+                <dt>Merchant account</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.stripe_account_id || '—'}</code></dd>
+                <dt>Stripe mode</dt><dd className={styles.muted}>{typeof payment.stripe_livemode === 'boolean' ? (payment.stripe_livemode ? 'live' : 'test') : '—'}</dd>
+                <dt>Checkout Session</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.stripe_checkout_session || '—'}</code></dd>
+                <dt>Charge</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.stripe_charge_id || '—'}</code></dd>
+                <dt>Application Fee</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.stripe_application_fee_id || '—'}</code></dd>
+                <dt>Balance transaction</dt><dd className={styles.muted}><code style={{ fontSize: '.72rem' }}>{payment.stripe_balance_transaction_id || '—'}</code></dd>
+              </> : null}
               <dt>Job</dt>
               <dd>{payment.job_id ? <code className={styles.muted} style={{ fontSize: '.72rem' }}>{payment.job_id}</code> : <span className={styles.muted}>—</span>}</dd>
             </dl>
-            {stripeUrl ? (
+            {referenceLinks.length ? (
               <div className={styles.actionRow} style={{ marginTop: '.8rem' }}>
-                <a href={stripeUrl} target="_blank" rel="noreferrer" className="btn secondary">Open in Stripe →</a>
+                {referenceLinks.map((link) => (
+                  <a key={link.kind} href={link.url} target="_blank" rel="noreferrer" className="btn secondary">
+                    {link.label} →
+                  </a>
+                ))}
               </div>
             ) : null}
           </section>

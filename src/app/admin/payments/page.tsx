@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
 import { isDateRange, rangeWindow, type DateRange } from '@/lib/command-center-logic';
-import { isPaymentLedgerStatus, listAdminPayments, PAYMENT_LEDGER_STATUSES } from '@/lib/admin-payments';
+import {
+  adminPaymentFeeState,
+  isPaymentLedgerStatus,
+  listAdminPayments,
+  PAYMENT_LEDGER_STATUSES,
+} from '@/lib/admin-payments';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +51,10 @@ export default async function AdminPaymentsPage({ searchParams }: { searchParams
     if (status) params.set('status', status);
     if (q) params.set('q', q);
     if (accountId) params.set('account', accountId);
-    for (const [key, value] of Object.entries(next)) value ? params.set(key, value) : params.delete(key);
+    for (const [key, value] of Object.entries(next)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
     return `/admin/payments?${params.toString()}`;
   };
   const pageSize = 50;
@@ -92,10 +100,15 @@ export default async function AdminPaymentsPage({ searchParams }: { searchParams
         {ledger.rows.length ? (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Processed</th><th>Account</th><th>Charge</th><th>Status</th><th className="num">Collected</th><th className="num">Refunded</th><th className="num">Net fee</th><th>Provider ref</th></tr></thead>
+              <thead><tr><th>Processed</th><th>Account</th><th>Charge</th><th>Status</th><th className="num">Collected</th><th className="num">Refunded</th><th className="num">Reconciled LGQ fee</th><th>Fee state</th><th>Provider ref</th></tr></thead>
               <tbody>{ledger.rows.map((row) => {
                 const account = names.get(row.account_id);
-                const netFee = (Number(row.platform_fee) || 0) - (Number(row.platform_fee_refunded) || 0);
+                const fee = adminPaymentFeeState(row);
+                const feeTone = fee.code === 'direct_reconciled' || fee.code === 'legacy_recognized'
+                  ? styles.good
+                  : fee.code === 'unrecognized' || fee.code === 'direct_mismatch'
+                    ? styles.bad
+                    : styles.warn;
                 return <tr key={row.id}>
                   <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{fmt(row.paid_at)}</td>
                   <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{account ? accountDisplayName(account) : 'Account'}</Link>{account?.account_number ? <div className={styles.muted}>#{account.account_number}</div> : null}</td>
@@ -103,8 +116,12 @@ export default async function AdminPaymentsPage({ searchParams }: { searchParams
                   <td><span className={`${styles.pill} ${row.status === 'disputed' || row.status === 'failed' ? styles.bad : row.status === 'refunded' ? styles.warn : styles.neutral}`}>{row.status}</span></td>
                   <td className="num">{usd(row.amount)}</td>
                   <td className="num">{row.refunded_amount ? usd(row.refunded_amount) : '—'}</td>
-                  <td className="num">{usd(netFee)}</td>
-                  <td className={styles.muted}><code>{row.stripe_dispute_id || row.stripe_payment_intent || '—'}</code></td>
+                  <td className="num">
+                    {fee.recognizedFee !== null ? usd(fee.recognizedFee) : <span className={styles.muted}>—</span>}
+                    {fee.expectedFee !== null ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>{usd(fee.expectedFee)} expected</div> : null}
+                  </td>
+                  <td><span className={`${styles.pill} ${feeTone}`}>{fee.label}</span></td>
+                  <td className={styles.muted}><code>{row.stripe_dispute_id || row.stripe_payment_intent || row.stripe_charge_id || row.stripe_checkout_session || '—'}</code></td>
                 </tr>;
               })}</tbody>
             </table>

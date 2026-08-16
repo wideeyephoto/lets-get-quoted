@@ -471,13 +471,19 @@ describe('admin and contractor refund surfaces', () => {
     const legacy = adminDetail();
     const { admin, selections } = detailClient([
       { data: null, error: { code } },
+      // A code-only missing-column error does not identify which reporting
+      // column is absent. The charge-model probe must fail too before the
+      // reader may omit the rail discriminator.
+      { data: null, error: { code } },
       { data: legacy, error: null },
     ]);
 
     await expect(getPaymentForAdmin(admin, legacy.id)).resolves.toEqual(legacy);
-    expect(selections).toHaveLength(2);
+    expect(selections).toHaveLength(3);
     expect(selections[0]).toContain('charge_model');
-    expect(selections[1]).not.toContain('charge_model');
+    expect(selections[1]).toContain('charge_model');
+    expect(selections[1]).not.toContain('reconciliation_status');
+    expect(selections[2]).not.toContain('charge_model');
   });
 
   it('does not reinterpret an unrelated admin read failure as a legacy row', async () => {

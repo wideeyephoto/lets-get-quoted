@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isMissingPaymentChargeModelColumnError } from '@/lib/payments';
 
 /**
  * Best-effort queries still need an honest UI state.  Callers that render a
@@ -57,29 +58,49 @@ export type DisputeRow = {
   dispute_status: string | null;
   stripe_dispute_id: string | null;
   dispute_due_by: string | null;
+  charge_model?: string | null;
+  stripe_account_id?: string | null;
+  stripe_livemode?: boolean | null;
 };
+
+const LEGACY_DISPUTE_COLUMNS = 'id, account_id, amount, label, disputed_at, dispute_reason, dispute_status, stripe_dispute_id, dispute_due_by';
+const CHARGE_MODEL_DISPUTE_COLUMNS = `${LEGACY_DISPUTE_COLUMNS}, charge_model`;
+const DISPUTE_COLUMNS = `${LEGACY_DISPUTE_COLUMNS}, charge_model, stripe_account_id, stripe_livemode`;
 
 export async function getOpenDisputes(
   admin: SupabaseClient,
   opts?: SignalOptions & { limit?: number; accountId?: string },
 ): Promise<DisputeRow[]> {
-  let q = admin
-    .from('payments')
-    .select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status, stripe_dispute_id, dispute_due_by')
-    .is('test_marker', null)
-    .eq('status', 'disputed')
-    .order('disputed_at', { ascending: false })
-    .limit(opts?.limit ?? 50);
-  // So the per-account dispute count can open its own rows. Everything a staff
-  // member needs to respond is in this shape already; it just had no way to be
-  // asked for one account.
-  if (opts?.accountId) q = q.eq('account_id', opts.accountId);
-  const { data, error } = await q;
+  const run = async (columns: string) => {
+    let query = admin
+      .from('payments')
+      .select(columns)
+      .is('test_marker', null)
+      .eq('status', 'disputed')
+      .order('disputed_at', { ascending: false })
+      .limit(opts?.limit ?? 50);
+    // So the per-account dispute count can open its own rows. Everything a staff
+    // member needs to respond is in this shape already; it just had no way to be
+    // asked for one account.
+    if (opts?.accountId) query = query.eq('account_id', opts.accountId);
+    return query;
+  };
+
+  let result = await run(DISPUTE_COLUMNS);
+  if (isMissingPaymentChargeModelColumnError(result.error)) {
+    // Probe the discriminator before ever omitting it. A code-only error does
+    // not tell us whether this is the old schema or a partial direct schema.
+    result = await run(CHARGE_MODEL_DISPUTE_COLUMNS);
+    if (isMissingPaymentChargeModelColumnError(result.error)) {
+      result = await run(LEGACY_DISPUTE_COLUMNS);
+    }
+  }
+  const { data, error } = result;
   if (error) {
     signalFailed(opts?.diagnostics, 'disputes', 'getOpenDisputes', error);
     return [];
   }
-  return (data ?? []) as DisputeRow[];
+  return (data ?? []) as unknown as DisputeRow[];
 }
 
 export type PausedPayoutRow = {

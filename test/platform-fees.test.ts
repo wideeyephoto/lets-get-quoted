@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeFeeWindow, type FeeRefundRow } from '@/lib/platform-fees';
+import {
+  isLegacyRecognizedFee,
+  isReconciledDirectFee,
+  summarizeFeeWindow,
+  type FeeRefundRow,
+} from '@/lib/platform-fees';
 
 // The shipped defect these cover: gross fees were summed over `status = 'paid'`
 // while reversals were summed over anything refunded in the window. A full
@@ -99,5 +104,72 @@ describe('an empty window', () => {
   it('is zero across the board rather than NaN', () => {
     const result = summarizeFeeWindow([], []);
     expect(result).toEqual({ paymentsProcessed: 0, grossFees: 0, feesReversed: 0, netFees: 0, refunds: 0 });
+  });
+});
+
+describe('direct-charge fee recognition', () => {
+  const reconciled = {
+    platform_fee: 12.5,
+    charge_model: 'direct',
+    reconciliation_status: 'reconciled',
+    reconciled_at: '2026-08-11T12:00:00.000Z',
+  };
+
+  it('keeps absent and explicit destination rows on the legacy paid-at path', () => {
+    expect(isLegacyRecognizedFee({ platform_fee: 3 })).toBe(true);
+    expect(isLegacyRecognizedFee({ platform_fee: 3, charge_model: 'destination' })).toBe(true);
+  });
+
+  it('recognizes a direct fee only with exact reconciled status and timestamp', () => {
+    expect(isReconciledDirectFee(reconciled)).toBe(true);
+    expect(isReconciledDirectFee({ ...reconciled, reconciled_at: null })).toBe(false);
+    expect(isReconciledDirectFee({ ...reconciled, reconciliation_status: 'pending' })).toBe(false);
+  });
+
+  it.each(['pending', 'mismatch', 'waived'])('does not recognize a %s direct expectation', (status) => {
+    const result = summarizeFeeWindow(
+      [{ platform_fee: 3, charge_model: 'destination' }, { ...reconciled, reconciliation_status: status }],
+      [],
+      [{ ...reconciled, reconciliation_status: status }],
+    );
+
+    expect(result.paymentsProcessed).toBe(2);
+    expect(result.grossFees).toBe(3);
+  });
+
+  it('dates direct recognition through the separately selected reconciled-at population', () => {
+    const result = summarizeFeeWindow(
+      // This direct row was paid in the window but is not legacy revenue.
+      [{ platform_fee: 3, charge_model: 'destination' }, reconciled],
+      [],
+      // It contributes only because the reconciled-at query selected it.
+      [reconciled],
+    );
+
+    expect(result.paymentsProcessed).toBe(2);
+    expect(result.grossFees).toBe(15.5);
+  });
+
+  it.each([null, 'destination_v2', 'mystery'])('fails closed for explicit unknown model %s', (chargeModel) => {
+    const result = summarizeFeeWindow(
+      [{ platform_fee: 99, charge_model: chargeModel }],
+      [],
+      [{ ...reconciled, charge_model: chargeModel }],
+    );
+
+    expect(result.paymentsProcessed).toBe(1);
+    expect(result.grossFees).toBe(0);
+  });
+
+  it('keeps refund reversals dated by their refund population regardless of fee state', () => {
+    const result = summarizeFeeWindow(
+      [{ ...reconciled, reconciliation_status: 'pending', reconciled_at: null }],
+      [refund({ platform_fee_refunded: 4 })],
+      [],
+    );
+
+    expect(result.grossFees).toBe(0);
+    expect(result.feesReversed).toBe(4);
+    expect(result.netFees).toBe(-4);
   });
 });

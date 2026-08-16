@@ -15,6 +15,7 @@ import {
   type DateRange,
 } from '@/lib/command-center-logic';
 import { groupEmailFailures, groupSmsFailures, groupWebhookFailures } from '@/lib/admin-failure-groups';
+import { stripeAdminLinks } from '@/lib/admin-payments';
 import { AlertCard, type AlertItem } from './AlertCard';
 import { CommandCenterBoard, type BoardCard } from './CommandCenterBoard';
 import { StatCard } from './StatCard';
@@ -194,6 +195,7 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
 
   const disputeItems: AlertItem[] = data.disputes.map((row) => {
     const severity = row.dispute_due_by ? severityForDeadline(row.dispute_due_by, now) : 'warn';
+    const disputeUrl = stripeAdminLinks(row).find((link) => link.kind === 'dispute')?.url;
     return {
       key: row.id,
       severity,
@@ -202,9 +204,9 @@ export default async function AdminCommandCenterPage({ searchParams }: { searchP
       owner: acctName(row.account_id),
       ownerHref: `/admin/accounts/${row.account_id}`,
       age: relativeAge(row.disputed_at ?? row.dispute_due_by ?? now.toISOString(), now),
-      actionLabel: row.stripe_dispute_id ? 'Respond on Stripe' : 'View account',
-      actionHref: row.stripe_dispute_id ? `https://dashboard.stripe.com/disputes/${row.stripe_dispute_id}` : `/admin/accounts/${row.account_id}`,
-      actionExternal: Boolean(row.stripe_dispute_id),
+      actionLabel: disputeUrl ? 'Respond on Stripe' : 'Review payment',
+      actionHref: disputeUrl ?? `/admin/payments/${row.id}`,
+      actionExternal: Boolean(disputeUrl),
     };
   });
 

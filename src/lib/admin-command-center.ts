@@ -114,7 +114,7 @@ async function fetchMetricsWindow(admin: SupabaseClient, startIso: string, endIs
     availability: {
       newAccounts: !accountsRes.error,
       paymentsProcessed: fees.availability.payments,
-      platformFees: fees.availability.payments && fees.availability.refunds,
+      platformFees: fees.availability.fees && fees.availability.refunds,
       refunds: fees.availability.refunds,
     },
   };
@@ -177,7 +177,7 @@ export async function buildCommandCenterData(
   const metrics: CommandCenterMetric[] = [
     { key: 'newAccounts', label: 'New accounts', format: 'number', goodDirection: 'up', available: currentWindow.availability.newAccounts && previousWindow.availability.newAccounts, ...computeTrend(currentWindow.newAccounts, previousWindow.newAccounts) },
     { key: 'paymentsProcessed', label: 'Payments processed', format: 'number', goodDirection: 'up', available: currentWindow.availability.paymentsProcessed && previousWindow.availability.paymentsProcessed, ...computeTrend(currentWindow.paymentsProcessed, previousWindow.paymentsProcessed) },
-    { key: 'platformFees', label: 'Platform fees', format: 'usd', goodDirection: 'up', available: currentWindow.availability.platformFees && previousWindow.availability.platformFees, ...computeTrend(currentWindow.platformFees, previousWindow.platformFees) },
+    { key: 'platformFees', label: 'Reconciled LGQ fees', format: 'usd', goodDirection: 'up', available: currentWindow.availability.platformFees && previousWindow.availability.platformFees, ...computeTrend(currentWindow.platformFees, previousWindow.platformFees) },
     { key: 'refunds', label: 'Refunds issued', format: 'usd', goodDirection: 'down', available: currentWindow.availability.refunds && previousWindow.availability.refunds, ...computeTrend(currentWindow.refunds, previousWindow.refunds) },
   ];
 
