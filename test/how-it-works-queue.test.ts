@@ -119,7 +119,7 @@ describe('the copy the brief specified', () => {
     // under the button, where the rest of the terms already were.
     expect(PAGE.match(/Start free/g)?.length).toBe(2);
     expect(PAGE.match(/Explore the demo/g)?.length).toBe(2);
-    expect(PAGE).toContain('Free website included · $0/month · Pay only when paid');
+    expect(PAGE).toContain('Flex includes a website · $0/month + 1.25%');
   });
 
   it('names the whole journey, in order, as one sequence', () => {

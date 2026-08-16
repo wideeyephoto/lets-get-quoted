@@ -80,7 +80,7 @@ describe('the hero is a note from a person', () => {
   });
 
   it('states the three terms in the hero rather than saving them for /pricing', () => {
-    expect(PAGE).toContain("const HERO_POINTS = ['No card', 'No monthly subscription', 'Complete product']");
+    expect(PAGE).toContain("const HERO_POINTS = ['No card', 'Start at $0/month', 'One connected product']");
   });
 });
 
@@ -301,7 +301,7 @@ describe('metadata', () => {
   it('spells out the social card, because the title template does not reach it', () => {
     // Without these, a shared link reads "The website, CRM & payments platform
     // built for contractors" — the site's pitch, not this page's.
-    const meta = PAGE.slice(at('export const metadata'), at('const STARTING_RATE'));
+    const meta = PAGE.slice(at('export const metadata'), at('const HERO_LEDE'));
     expect(meta).toContain('openGraph');
     expect(meta).toContain('twitter');
     expect(meta).toMatch(/title: 'A note from Brett, founder · Let’s Get Quoted'/);
