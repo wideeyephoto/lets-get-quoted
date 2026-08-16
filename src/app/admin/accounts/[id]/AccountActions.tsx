@@ -12,7 +12,6 @@ import {
   resetVerificationAction,
   restrictPayoutsAction,
   unrestrictPayoutsAction,
-  changePlanAction,
   resendOnboardingAction,
   signOutAllSessionsAction,
   setAccountSyntheticAction,
@@ -38,7 +37,6 @@ export default function AccountActions({
   suspended,
   quickStopLockedUntil,
   businessName,
-  plan,
   payoutsRestricted,
   synthetic,
   role,
@@ -47,7 +45,6 @@ export default function AccountActions({
   suspended: boolean;
   quickStopLockedUntil: string | null;
   businessName: string;
-  plan: string;
   payoutsRestricted: boolean;
   synthetic: boolean;
   role: StaffRole;
@@ -120,23 +117,13 @@ export default function AccountActions({
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
         {can('money.plan') ? (
-        <form action={changePlanAction.bind(null, accountId)} className={styles.formStack}>
-          {/* htmlFor, because a <label> attached to nothing is decoration. It
-              read correctly on screen and was inert everywhere else: no
-              accessible name on the select, and clicking the word did not focus
-              it. */}
-          <label htmlFor="account-plan">Plan</label>
-          <div className={styles.searchRow} style={{ margin: 0 }}>
-            <select id="account-plan" name="plan" defaultValue={plan} className={styles.input} style={{ minWidth: 0, flex: '0 0 160px' }}>
-              <option value="free">Free</option>
-              <option value="pro">Pro</option>
-              <option value="crew_plus">Crew+</option>
-            </select>
-            <label className={styles.srOnly} htmlFor="plan-change-reason">Reason</label>
-            <input id="plan-change-reason" className={styles.input} name="reason" required minLength={4} placeholder="Reason for plan change" />
-            <button type="submit" className="btn secondary">Change plan</button>
-          </div>
-        </form>
+        <div className={styles.formStack}>
+          <p className={styles.formLabel}>Plan changes are read-only in the admin console</p>
+          <p className={styles.muted} style={{ margin: 0 }}>
+            The effective plan is controlled by the workspace entitlement and must change through a verified billing lifecycle.
+            Manual paid-plan grants are disabled until an audited operation can update both authorities safely.
+          </p>
+        </div>
         ) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />

@@ -20,6 +20,7 @@ import {
 import { ACCOUNT_FLAGS } from '@/lib/account-flags';
 import { listAccountMessages, messageFailed, messageKindLabel } from '@/lib/admin-messages';
 import { staffCan } from '@/lib/staff';
+import { formatPlatformFeeBps } from '@/lib/admin-plan-authority';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,9 @@ function fmtDateTime(v: unknown): string {
 }
 function bool(v: unknown): boolean {
   return v === true;
+}
+function words(v: string): string {
+  return v.replace(/_/g, ' ');
 }
 
 // The flag list moved to lib/account-flags.ts, where the server action can
@@ -74,6 +78,9 @@ export default async function AdminAccountDetailPage({
   const paypaused = Boolean(a.connect_disabled_at);
   const connected = bool(a.connect_onboarded);
   const payoutsRestricted = Boolean(a.payouts_restricted_at);
+  const entitlement = detail.entitlement;
+  const subscription = detail.subscription;
+  const doneMessage = searchParams.done ? DONE_MESSAGES[searchParams.done] : null;
 
   return (
     <>
@@ -88,7 +95,13 @@ export default async function AdminAccountDetailPage({
         </p>
         <div className={styles.actionRow} style={{ marginTop: '.6rem' }}>
           {suspended ? <span className={`${styles.pill} ${styles.bad}`}>Suspended</span> : <span className={`${styles.pill} ${styles.good}`}>Active</span>}
-          <span className={`${styles.pill} ${styles.neutral}`}>{String(a.plan ?? 'free')}</span>
+          {entitlement.kind === 'ready' ? (
+            <span className={`${styles.pill} ${styles.neutral}`}>
+              {entitlement.snapshot.planName} · {words(entitlement.snapshot.entitlementState)}
+            </span>
+          ) : (
+            <span className={`${styles.pill} ${styles.warn}`}>Plan snapshot unavailable</span>
+          )}
           {paypaused ? <span className={`${styles.pill} ${styles.bad}`}>Payouts paused</span> : connected ? <span className={`${styles.pill} ${styles.good}`}>Payouts connected</span> : <span className={`${styles.pill} ${styles.neutral}`}>Payouts not set up</span>}
           {payoutsRestricted ? <span className={`${styles.pill} ${styles.bad}`}>Payouts restricted</span> : null}
           {lockedUntil ? <span className={`${styles.pill} ${styles.warn}`}>Quick Stop locked</span> : null}
@@ -96,7 +109,7 @@ export default async function AdminAccountDetailPage({
         </div>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE_MESSAGES[searchParams.done] ?? 'Done.'}</div> : null}
+      {doneMessage ? <div className={`${styles.banner} ${styles.ok}`}>{doneMessage}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
 
       <div className={styles.detailGrid}>
@@ -106,21 +119,90 @@ export default async function AdminAccountDetailPage({
             <dl className={styles.kv}>
               <dt>Owner email</dt><dd>{detail.ownerEmail ?? <span className={styles.muted}>unknown</span>}</dd>
               <dt>Phone</dt><dd>{detail.site?.phone || String(a.alert_phone || '') || <span className={styles.muted}>—</span>}</dd>
-              <dt>Plan</dt><dd>{String(a.plan ?? 'free')}</dd>
-              <dt>Subscription</dt><dd>{String(a.subscription_status || '—')}</dd>
               <dt>Timezone</dt><dd>{String(a.timezone || '—')}</dd>
               <dt>Mailing address</dt><dd>{String(a.mailing_address || '') || <span className={styles.muted}>—</span>}</dd>
             </dl>
           </section>
 
           <section className={styles.panel}>
-            <h2 className={styles.panelTitle}>Payments & fee tier</h2>
+            <h2 className={styles.panelTitle}>Plan & billing authority</h2>
+            <p className={styles.muted} style={{ margin: '0 0 .7rem', fontSize: '.75rem' }}>
+              workspace_entitlements is the effective plan authority. The latest billing_subscriptions row is supporting billing provenance.
+              The legacy account fields below are never substituted for a missing entitlement.
+            </p>
+            {entitlement.kind === 'ready' ? (
+              <dl className={styles.kv}>
+                <dt>Effective plan</dt><dd><strong>{entitlement.snapshot.planName}</strong></dd>
+                <dt>Billing interval</dt><dd>{words(entitlement.snapshot.billingInterval)}</dd>
+                <dt>Billing status</dt><dd>{words(entitlement.snapshot.billingStatus)}</dd>
+                <dt>Entitlement state</dt><dd>{words(entitlement.snapshot.entitlementState)}</dd>
+                <dt>Platform fee</dt><dd>{formatPlatformFeeBps(entitlement.snapshot.platformFeeBps)}</dd>
+                <dt>Catalog provenance</dt>
+                <dd>workspace_entitlements · {entitlement.snapshot.catalogVersion} · snapshot v{entitlement.snapshot.version}</dd>
+                <dt>Effective at</dt><dd>{fmtDateTime(entitlement.snapshot.effectiveAt)}</dd>
+                <dt>Snapshot updated</dt><dd>{fmtDateTime(entitlement.snapshot.updatedAt)}</dd>
+                <dt>Entitlement period</dt>
+                <dd>{entitlement.snapshot.periodStart || entitlement.snapshot.periodEnd
+                  ? `${fmtDate(entitlement.snapshot.periodStart)} – ${fmtDate(entitlement.snapshot.periodEnd)}`
+                  : entitlement.snapshot.planCode === 'flex'
+                    ? 'No billing period (Flex)'
+                    : 'No period recorded'}</dd>
+              </dl>
+            ) : (
+              <p className={styles.emptyState}>
+                {entitlement.kind === 'missing'
+                  ? 'No workspace entitlement snapshot exists. No legacy plan has been substituted.'
+                  : 'The workspace entitlement snapshot could not be read or validated. No legacy plan has been substituted.'}
+              </p>
+            )}
+
+            <h3 style={{ margin: '1rem 0 .5rem', fontSize: '.88rem' }}>Latest billing subscription snapshot</h3>
+            {subscription.kind === 'ready' ? (
+              <dl className={styles.kv}>
+                <dt>Subscription plan</dt><dd>{subscription.snapshot.planName} · {words(subscription.snapshot.billingInterval)}</dd>
+                <dt>Subscription status</dt><dd>{words(subscription.snapshot.status)}</dd>
+                <dt>Subscription fee</dt><dd>{formatPlatformFeeBps(subscription.snapshot.platformFeeBps)}</dd>
+                <dt>Catalog provenance</dt><dd>billing_subscriptions · {subscription.snapshot.catalogVersion}</dd>
+                <dt>Snapshot updated</dt><dd>{fmtDateTime(subscription.snapshot.updatedAt)}</dd>
+                <dt>Current period</dt>
+                <dd>{subscription.snapshot.currentPeriodStart || subscription.snapshot.currentPeriodEnd
+                  ? `${fmtDate(subscription.snapshot.currentPeriodStart)} – ${fmtDate(subscription.snapshot.currentPeriodEnd)}`
+                  : '—'}</dd>
+                <dt>Cancellation</dt>
+                <dd>{subscription.snapshot.cancelAtPeriodEnd
+                  ? `Scheduled for period end${subscription.snapshot.cancelAt ? ` (${fmtDate(subscription.snapshot.cancelAt)})` : ''}`
+                  : subscription.snapshot.canceledAt
+                    ? `Canceled ${fmtDate(subscription.snapshot.canceledAt)}`
+                    : subscription.snapshot.endedAt
+                      ? `Ended ${fmtDate(subscription.snapshot.endedAt)}`
+                      : subscription.snapshot.status === 'canceled'
+                        ? 'Canceled (no timestamp recorded)'
+                        : 'Not scheduled'}</dd>
+              </dl>
+            ) : (
+              <p className={styles.emptyState}>
+                {subscription.kind === 'unavailable'
+                  ? 'The latest billing subscription snapshot could not be read or validated.'
+                  : entitlement.kind === 'ready' && entitlement.snapshot.planCode === 'flex'
+                    ? 'No paid subscription snapshot (expected for Flex).'
+                    : 'No billing subscription snapshot is available.'}
+              </p>
+            )}
+
+            <dl className={styles.kv} style={{ marginTop: '1rem' }}>
+              <dt>Legacy account plan (migration diagnostic only)</dt><dd>{String(a.plan ?? 'unset')} · not billing authority</dd>
+              <dt>Legacy subscription status (migration diagnostic only)</dt><dd>{String(a.subscription_status || 'unset')} · not billing authority</dd>
+            </dl>
+          </section>
+
+          <section className={styles.panel}>
+            <h2 className={styles.panelTitle}>Payments & legacy rail diagnostic</h2>
             <dl className={styles.kv}>
               <dt>Payout status</dt>
               <dd>{paypaused ? 'Paused by Stripe' : connected ? 'Connected & active' : 'Not connected'}{a.connect_disabled_at ? ` (since ${fmtDate(a.connect_disabled_at)})` : ''}</dd>
               <dt>Connect ID</dt><dd className={styles.muted}>{String(a.stripe_connect_id || '—')}</dd>
-              <dt>Fee tier</dt><dd>Tier {detail.tier.tier} · {(detail.tier.rate * 100).toFixed(2)}%</dd>
-              <dt>Trailing 12-mo volume</dt><dd>{usd(detail.trailingVolume)}</dd>
+              <dt>Legacy volume tier (not plan authority)</dt><dd>Tier {detail.tier.tier} · {(detail.tier.rate * 100).toFixed(2)}%</dd>
+              <dt>Legacy trailing 12-mo volume</dt><dd>{usd(detail.trailingVolume)}</dd>
               <dt>Paid (30 days)</dt><dd>{usdCents(detail.activity.paidVolume30dCents)}</dd>
               {/* A red count with nothing behind it was the sharpest dead end
                   on the page: everything needed to act on a dispute — reason,
@@ -446,7 +528,6 @@ export default async function AdminAccountDetailPage({
             suspended={suspended}
             quickStopLockedUntil={lockedUntil}
             businessName={displayName}
-            plan={String(a.plan ?? 'free')}
             payoutsRestricted={payoutsRestricted}
             synthetic={Boolean(a.test_marker)}
           />
@@ -482,7 +563,6 @@ const DONE_MESSAGES: Record<string, string> = {
   reset_verification: 'Payment verification reset. The owner will need to reconnect.',
   payouts_restricted: 'Payouts restricted for this account.',
   payouts_unrestricted: 'Payout restriction lifted.',
-  plan_changed: 'Plan updated.',
   onboarding_resent: 'Onboarding link resent to the owner.',
   signed_out: 'New sign-ins and token refreshes are blocked for 24 hours. Existing short-lived access tokens expire naturally.',
   noted: 'Note added.',
@@ -503,7 +583,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   amount: 'Enter a valid dollar amount.',
   state: 'That action isn’t available right now.',
   confirm: 'Confirmation text didn’t match.',
-  plan: 'That isn’t a valid plan.',
   no_owner: 'No owner email found for this account.',
   note: 'Enter some text for the note.',
   tag: 'Enter a tag.',

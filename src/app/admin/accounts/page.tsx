@@ -47,6 +47,29 @@ function connectPill(row: { connect_onboarded: boolean | null; connect_disabled_
   return <span className={`${styles.pill} ${styles.neutral}`}>Not connected</span>;
 }
 
+function effectivePlanCell(row: AdminAccountRow) {
+  if (row.entitlement.kind !== 'ready') {
+    return (
+      <>
+        <span className={`${styles.pill} ${styles.warn}`}>Snapshot unavailable</span>
+        <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '.2rem' }}>
+          {row.entitlement.kind === 'missing' ? 'No entitlement row' : 'Could not validate entitlement'}
+        </div>
+      </>
+    );
+  }
+
+  const plan = row.entitlement.snapshot;
+  return (
+    <>
+      <span className={`${styles.pill} ${styles.neutral}`}>{plan.planName}</span>
+      <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '.2rem' }}>
+        {plan.billingInterval} · {plan.billingStatus} billing · {plan.entitlementState} entitlement
+      </div>
+    </>
+  );
+}
+
 /**
  * What is missing, and the thing to do about it.
  *
@@ -154,7 +177,7 @@ export default async function AdminAccountsPage({
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
       {!rowsAvailable || !totalAvailable || !syntheticAvailable || !ownerEmailsAvailable ? (
-        <div className={`${styles.banner} ${styles.err}`}>Account data is incomplete. Missing results, totals, or owner emails are not being treated as empty.</div>
+        <div className={`${styles.banner} ${styles.err}`}>Account data is incomplete. Missing rows, totals, owner emails, or entitlement snapshots are not being treated as valid values.</div>
       ) : null}
 
       {syntheticAvailable && syntheticCount > 0 ? (
@@ -235,7 +258,7 @@ export default async function AdminAccountsPage({
                       {ownerEmails.get(r.id) ?? <span className={styles.muted}>—</span>}
                     </td>
                     <td className={styles.muted}>{r.account_number ?? '—'}</td>
-                    <td><span className={`${styles.pill} ${styles.neutral}`}>{r.plan ?? 'free'}</span></td>
+                    <td>{effectivePlanCell(r)}</td>
                     <td>{connectPill(r)}</td>
                     <td>
                       {r.suspended_at ? (

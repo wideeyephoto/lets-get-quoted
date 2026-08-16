@@ -8,13 +8,20 @@ import { listAccountNotes, listAccountTags, type AccountNote, type AccountTag } 
 import { listAccountAttachments, type AccountAttachment } from '@/lib/account-attachments';
 import { listPrivacyRequests, type PrivacyRequest } from '@/lib/privacy-requests';
 import type { AccountFilter } from '@/lib/admin-account-filters';
+import {
+  normalizeAdminEntitlementSnapshot,
+  normalizeAdminSubscriptionSnapshot,
+  type AdminEntitlementSnapshot,
+  type AdminSnapshotRead,
+  type AdminSubscriptionSnapshot,
+} from '@/lib/admin-plan-authority';
 
 // Data layer for the admin console's account views. All reads use the passed-in
 // service-role client (RLS is owner-scoped, so a session client can't cross
 // tenants). Kept defensive: newer columns (suspension, quick-stop lock) degrade
 // gracefully so the console works before the migration is applied everywhere.
 
-export type AdminAccountRow = {
+type AdminAccountBaseRow = {
   id: string;
   account_number: number | null;
   business_name: string | null;
@@ -22,7 +29,6 @@ export type AdminAccountRow = {
   // display — accounts.business_name defaults to the placeholder 'My Business'
   // and many owners only ever set company_name.
   company_name: string | null;
-  plan: string | null;
   connect_onboarded: boolean | null;
   // Selected so the list can say HOW FAR through payout setup an account got,
   // not merely that it is unfinished. See lib/admin-account-filters.ts.
@@ -35,8 +41,19 @@ export type AdminAccountRow = {
   test_marker: string | null;
 };
 
+export type AdminAccountRow = AdminAccountBaseRow & {
+  /** Canonical plan authority; the legacy account column is not selected. */
+  entitlement: AdminSnapshotRead<AdminEntitlementSnapshot>;
+};
+
 const ACCOUNT_LIST_COLUMNS =
-  'id, account_number, business_name, plan, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at, test_marker';
+  'id, account_number, business_name, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at, test_marker';
+
+const ADMIN_ENTITLEMENT_COLUMNS =
+  'account_id, plan_code, billing_interval, billing_status, entitlement_state, catalog_version, platform_fee_bps, period_start, period_end, version, effective_at, updated_at';
+
+const ADMIN_SUBSCRIPTION_COLUMNS =
+  'account_id, plan_code, billing_interval, status, catalog_version, platform_fee_bps, current_period_start, current_period_end, cancel_at_period_end, cancel_at, canceled_at, ended_at, updated_at';
 
 /**
  * Narrow a query to one of the named slices the console counts.
@@ -168,14 +185,14 @@ export async function listAccountsForAdmin(
     if (!opts.includeTestRecords) query = query.is('test_marker', null);
     return applyAccountFilter(query, filter, opts.joinedSince);
   };
-  let rows: AdminAccountRow[] = [];
+  let rows: AdminAccountBaseRow[] = [];
 
   if (term) {
     const digits = term.replace(/[^0-9]/g, '');
     if (/^\d+$/.test(digits) && Number(digits) > 0) {
       const { data, error } = await base().eq('account_number', Number(digits)).limit(limit);
       if (error) opts.onError?.('account number search', error);
-      rows = (data ?? []) as AdminAccountRow[];
+      rows = (data ?? []) as AdminAccountBaseRow[];
     } else {
       // Three ways in: the account's business_name, the site's company_name, or
       // the owner's login email. The last one is what a support ticket actually
@@ -190,7 +207,7 @@ export async function listAccountsForAdmin(
       ]);
       if (byBiz.error) opts.onError?.('business name search', byBiz.error);
       if (bySite.error) opts.onError?.('site name search', bySite.error);
-      const found = (byBiz.data ?? []) as AdminAccountRow[];
+      const found = (byBiz.data ?? []) as AdminAccountBaseRow[];
       const haveIds = new Set(found.map((r) => r.id));
       const extraIds = [
         ...(bySite.data ?? []).map((s) => (s as { account_id: string }).account_id),
@@ -203,7 +220,7 @@ export async function listAccountsForAdmin(
         // filtered list it does not belong in.
         const { data: extra, error } = await base().in('id', extraIds).limit(limit);
         if (error) opts.onError?.('account search hydration', error);
-        rows = [...found, ...((extra ?? []) as AdminAccountRow[])];
+        rows = [...found, ...((extra ?? []) as AdminAccountBaseRow[])];
       } else {
         rows = found;
       }
@@ -211,22 +228,50 @@ export async function listAccountsForAdmin(
   } else {
     const { data, error } = await base().order('created_at', { ascending: false }).limit(limit);
     if (error) opts.onError?.('account list', error);
-    rows = (data ?? []) as AdminAccountRow[];
+    rows = (data ?? []) as AdminAccountBaseRow[];
   }
 
-  // Stitch each account's site company_name in, then order newest-first.
+  // Stitch each account's site company_name and canonical entitlement in, then
+  // order newest-first. Never fill a missing entitlement from accounts.plan:
+  // doing so would recreate the split-brain display this read is replacing.
   const ids = rows.map((r) => r.id);
   const nameMap = new Map<string, string | null>();
+  const entitlementMap = new Map<string, AdminSnapshotRead<AdminEntitlementSnapshot>>();
+  let entitlementReadFailed = false;
   if (ids.length) {
-    const { data, error } = await admin.from('sites').select('account_id, company_name').in('account_id', ids);
-    if (error) opts.onError?.('account name hydration', error);
-    for (const s of data ?? []) {
+    const [siteResult, entitlementResult] = await Promise.all([
+      admin.from('sites').select('account_id, company_name').in('account_id', ids),
+      admin.from('workspace_entitlements').select(ADMIN_ENTITLEMENT_COLUMNS).in('account_id', ids),
+    ]);
+    if (siteResult.error) opts.onError?.('account name hydration', siteResult.error);
+    for (const s of siteResult.data ?? []) {
       const row = s as { account_id: string; company_name: string | null };
       nameMap.set(row.account_id, row.company_name);
     }
+
+    if (entitlementResult.error) {
+      entitlementReadFailed = true;
+      opts.onError?.('account entitlement hydration', entitlementResult.error);
+    } else {
+      for (const raw of entitlementResult.data ?? []) {
+        const row = raw as { account_id?: unknown };
+        if (typeof row.account_id !== 'string' || !ids.includes(row.account_id)) continue;
+        const normalized = normalizeAdminEntitlementSnapshot(raw, row.account_id);
+        entitlementMap.set(row.account_id, normalized);
+        if (normalized.kind === 'unavailable') {
+          opts.onError?.('account entitlement hydration', new Error('A canonical entitlement snapshot is malformed.'));
+        }
+      }
+    }
   }
   return rows
-    .map((r) => ({ ...r, company_name: nameMap.get(r.id) ?? null }))
+    .map((r) => ({
+      ...r,
+      company_name: nameMap.get(r.id) ?? null,
+      entitlement: entitlementReadFailed
+        ? { kind: 'unavailable' as const }
+        : entitlementMap.get(r.id) ?? { kind: 'missing' as const },
+    }))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
@@ -252,6 +297,8 @@ export type AdminAccountDetail = {
   account: Record<string, unknown> | null;
   ownerEmail: string | null;
   site: { company_name: string | null; phone: string | null } | null;
+  entitlement: AdminSnapshotRead<AdminEntitlementSnapshot>;
+  subscription: AdminSnapshotRead<AdminSubscriptionSnapshot>;
   tier: TierInfo;
   trailingVolume: number;
   activity: AdminActivity;
@@ -275,6 +322,8 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
   const [
     ownerEmail,
     siteRes,
+    entitlementRes,
+    subscriptionRes,
     trailingVolume,
     leads30d,
     jobsActive,
@@ -293,6 +342,14 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
   ] = await Promise.all([
     getAccountOwnerEmail(admin, id).catch(() => null),
     admin.from('sites').select('company_name, phone').eq('account_id', id).maybeSingle(),
+    admin.from('workspace_entitlements').select(ADMIN_ENTITLEMENT_COLUMNS).eq('account_id', id).maybeSingle(),
+    admin
+      .from('billing_subscriptions')
+      .select(ADMIN_SUBSCRIPTION_COLUMNS)
+      .eq('account_id', id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     getTrailingVolume(id).catch(() => 0),
     admin.from('leads').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).gte('created_at', since),
     admin.from('jobs').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).in('status', ['new_lead', 'in_progress']),
@@ -317,11 +374,19 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
   ]);
 
   const paidVolume30d = (paidRows.data ?? []).reduce((sum, r) => sum + (Number((r as { amount: number }).amount) || 0), 0);
+  if (entitlementRes.error) console.error('getAccountAdminDetail entitlement read failed:', entitlementRes.error);
+  if (subscriptionRes.error) console.error('getAccountAdminDetail subscription read failed:', subscriptionRes.error);
 
   return {
     account: account as Record<string, unknown>,
     ownerEmail,
     site: (siteRes.data as { company_name: string | null; phone: string | null } | null) ?? null,
+    entitlement: entitlementRes.error
+      ? { kind: 'unavailable' }
+      : normalizeAdminEntitlementSnapshot(entitlementRes.data, id),
+    subscription: subscriptionRes.error
+      ? { kind: 'unavailable' }
+      : normalizeAdminSubscriptionSnapshot(subscriptionRes.data, id),
     tier: getTierInfo(trailingVolume),
     trailingVolume,
     activity: {

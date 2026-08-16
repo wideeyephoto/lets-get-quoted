@@ -11,12 +11,6 @@ import { uploadAccountAttachment, deleteAccountAttachment, isAttachmentFile } fr
 import { logPrivacyRequest, resolvePrivacyRequest, isPrivacyRequestKind } from '@/lib/privacy-requests';
 import { isAccountFlag } from '@/lib/account-flags';
 
-const PLAN_TARGETS = ['free', 'pro', 'crew_plus'] as const;
-type PlanTarget = (typeof PLAN_TARGETS)[number];
-function isPlanTarget(v: string): v is PlanTarget {
-  return (PLAN_TARGETS as readonly string[]).includes(v);
-}
-
 // All account-level staff actions. Each re-runs requireAdmin() (a server action
 // is its own entry point — never trust that the page guarded it) and writes to
 // the audit trail. Destructive/irreversible actions require typed confirmation.
@@ -176,32 +170,6 @@ export async function unrestrictPayoutsAction(accountId: string, formData: FormD
   await logAdminAction(admin, ctx, { action: 'account_unrestrict_payouts', accountId, targetType: 'account', targetId: accountId, reason });
   revalidatePath(`/admin/accounts/${accountId}`);
   backTo(accountId, 'done=payouts_unrestricted');
-}
-
-// Target is deliberately restricted to the three real billing plans — the
-// plan_tier enum's legacy 'suspended' value must never be reachable here;
-// account suspension is the separate suspended_at/_reason/_by triple above.
-export async function changePlanAction(accountId: string, formData: FormData) {
-  const ctx = await requireMfaPermission('money.plan');
-  const { admin } = ctx;
-  const plan = String(formData.get('plan') ?? '').trim();
-  const reason = actionReason(accountId, formData);
-  if (!isPlanTarget(plan)) backTo(accountId, 'error=plan');
-  // What they were on is the whole question when a bill is disputed.
-  const { data: was } = await admin.from('accounts').select('plan').eq('id', accountId).maybeSingle();
-  const { error: updateError } = await admin.from('accounts').update({ plan }).eq('id', accountId);
-  if (updateError) {
-    console.error('changePlanAction failed:', updateError);
-    backTo(accountId, 'error=update_failed');
-  }
-  await logAdminAction(admin, ctx, {
-    action: 'account_change_plan', accountId, targetType: 'account', targetId: accountId,
-    before: { plan: (was as { plan?: string } | null)?.plan ?? null },
-    after: { plan },
-    reason,
-  });
-  revalidatePath(`/admin/accounts/${accountId}`);
-  backTo(accountId, 'done=plan_changed');
 }
 
 // Reuses the owner's own magic link, landing on /dashboard/settings where

@@ -129,7 +129,6 @@ describe('every <select> in the app', () => {
 
 describe('a label that points at nothing', () => {
   const ADMIN = [
-    ['src/app/admin/accounts/[id]/AccountActions.tsx', 'account-plan'],
     ['src/app/admin/cases/new/page.tsx', 'case-priority'],
     ['src/app/admin/cases/[id]/CaseActions.tsx', 'case-status'],
     ['src/app/admin/quick-stops/[id]/QuickStopAdminActions.tsx', 'quick-stop-outcome'],
