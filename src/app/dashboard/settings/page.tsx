@@ -30,6 +30,7 @@ import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
 import { formatMoney } from '@/lib/jobs';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
+import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import PlanUsageSection from './PlanUsageSection';
 
 export const metadata = { title: 'Account' };
@@ -45,6 +46,7 @@ export default async function SettingsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const pricingDashboardEnabled = planUsageDashboardEnabled();
+  const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
 
   const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage] =
     await Promise.all([
@@ -175,6 +177,16 @@ export default async function SettingsPage({
   // send anybody anywhere. A listing URL on its own is a link somebody pasted.
   const googleLinked = Boolean(businessBasics.testimonials.googlePlaceId);
 
+  // The first-subscription form has its own stricter server switch in addition
+  // to the dark Plan & usage surface. With the switch off no control exists in
+  // the page; the client mints its stable intent only after an eligible render.
+  const showSubscriptionCheckout = subscriptionCheckoutEnabled
+    && planUsage?.plan.kind === 'ready'
+    && planUsage.plan.planCode === 'flex'
+    && planUsage.plan.billingInterval === 'none'
+    && planUsage.plan.billingStatus === 'free'
+    && planUsage.plan.entitlementState === 'active';
+
   // "Is my account actually set up?" — the one thing the Business tab could not
   // answer without opening all eight of its forms.
   const setup = businessSetup({
@@ -290,8 +302,19 @@ export default async function SettingsPage({
           ...(pricingDashboardEnabled && planUsage ? [{
             id: 'plan',
             label: 'Plan & usage',
-            anchors: ['current-plan', 'platform-fee', 'usage-balances', 'included-limits'],
-            content: <PlanUsageSection data={planUsage} />,
+            anchors: [
+              'current-plan',
+              'platform-fee',
+              ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
+              'usage-balances',
+              'included-limits',
+            ],
+            content: (
+              <PlanUsageSection
+                data={planUsage}
+                showSubscriptionCheckout={showSubscriptionCheckout}
+              />
+            ),
           }] : []),
           {
             id: 'payments',

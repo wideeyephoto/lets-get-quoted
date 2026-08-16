@@ -16,6 +16,11 @@ import { TERMS_VERSION } from '@/lib/terms';
 
 export type PaidBasePlanId = Exclude<BillingPlanId, 'flex'>;
 
+export type SubscriptionConsentOwnerContext = Pick<
+  Awaited<ReturnType<typeof requireOwnerContext>>,
+  'supabase' | 'accountId' | 'userId'
+>;
+
 export type AuthenticatedSubscriptionConsentEvidence = Readonly<{
   acceptanceId: string;
   workspaceId: string;
@@ -97,12 +102,23 @@ function requireTimestamp(value: unknown, label: string): string {
  * auth.uid() itself and binds the resulting single-use evidence to the exact
  * future Checkout operation and price contract.
  */
-export async function recordAuthenticatedBasePlanSubscriptionConsent(input: {
+export type RecordBasePlanSubscriptionConsentInput = Readonly<{
   operationId: string;
   planCode: PaidBasePlanId;
   billingInterval: BillingCycle;
   accepted: boolean;
-}): Promise<AuthenticatedSubscriptionConsentEvidence> {
+}>;
+
+/**
+ * Records consent with an owner context already resolved by a surrounding
+ * server action. Keeping this seam avoids a second auth/Terms redirect inside
+ * an action's provider-error boundary while preserving the database's own
+ * auth.uid(), membership, Flex, Terms, amount, and artifact checks.
+ */
+export async function recordBasePlanSubscriptionConsentForOwner(
+  owner: SubscriptionConsentOwnerContext,
+  input: RecordBasePlanSubscriptionConsentInput,
+): Promise<AuthenticatedSubscriptionConsentEvidence> {
   if (input.accepted !== true) {
     throw new Error('Recurring subscription consent must be affirmatively accepted.');
   }
@@ -111,7 +127,7 @@ export async function recordAuthenticatedBasePlanSubscriptionConsent(input: {
   const planCode = requirePaidPlan(input.planCode);
   const billingInterval = requireBillingInterval(input.billingInterval);
   const unitAmountCents = basePriceCents(BILLING_PLANS[planCode], billingInterval);
-  const { supabase, accountId, userId } = await requireOwnerContext();
+  const { supabase, accountId, userId } = owner;
 
   const { data, error } = await supabase.rpc('record_base_plan_recurring_consent', {
     p_account_id: accountId,
@@ -176,4 +192,15 @@ export async function recordAuthenticatedBasePlanSubscriptionConsent(input: {
       'artifact hash',
     ) as typeof BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
   });
+}
+
+export async function recordAuthenticatedBasePlanSubscriptionConsent(
+  input: RecordBasePlanSubscriptionConsentInput,
+): Promise<AuthenticatedSubscriptionConsentEvidence> {
+  // Preserve the original boundary: refusal is rejected before auth or any
+  // database call, even when this convenience wrapper is used directly.
+  if (input.accepted !== true) {
+    throw new Error('Recurring subscription consent must be affirmatively accepted.');
+  }
+  return recordBasePlanSubscriptionConsentForOwner(await requireOwnerContext(), input);
 }

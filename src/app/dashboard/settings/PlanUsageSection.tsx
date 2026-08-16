@@ -4,6 +4,7 @@ import type {
   WorkspacePlanRead,
   WorkspacePlanUsage,
 } from '@/lib/billing/plan-usage';
+import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -60,8 +61,19 @@ function balanceNote(balance: Extract<WorkspacePlanUsage['balances'], { kind: 'r
   return 'No expiration is scheduled.';
 }
 
-export default function PlanUsageSection({ data }: { data: WorkspacePlanUsage }) {
+export default function PlanUsageSection({
+  data,
+  showSubscriptionCheckout = false,
+}: {
+  data: WorkspacePlanUsage;
+  showSubscriptionCheckout?: boolean;
+}) {
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
+  const canStartFirstSubscription = data.plan.kind === 'ready'
+    && data.plan.planCode === 'flex'
+    && data.plan.billingInterval === 'none'
+    && data.plan.billingStatus === 'free'
+    && data.plan.entitlementState === 'active';
 
   return (
     <>
@@ -122,6 +134,10 @@ export default function PlanUsageSection({ data }: { data: WorkspacePlanUsage })
           </div>
         )}
       </section>
+
+      {canStartFirstSubscription && showSubscriptionCheckout ? (
+        <BasePlanSubscriptionCheckout />
+      ) : null}
 
       <section className="panel workspace-section-card" id="usage-balances">
         <div className="section-heading workspace-section-heading compact-heading">

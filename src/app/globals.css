@@ -4359,11 +4359,41 @@ h3 {
 .plan-usage-limit-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.72rem 0.2rem; border-bottom: 1px solid var(--rule-t08); }
 .plan-usage-limit-list > div:nth-child(odd) { margin-right: 1rem; }
 .plan-usage-limit-list dd { text-align: right; }
+.base-plan-checkout-form { display: grid; gap: 1rem; margin-top: 1rem; }
+.base-plan-checkout-choice { margin-top: 0; }
+.base-plan-checkout-price {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.3rem 1rem;
+  padding: 1rem;
+  border: 1px solid var(--cedge-orange-7);
+  border-radius: 0.8rem;
+  background: linear-gradient(145deg, rgba(255, 122, 33, 0.12), rgba(255, 209, 102, 0.06));
+}
+.base-plan-checkout-price > span { color: var(--text); font-weight: 800; }
+.base-plan-checkout-price > strong { color: var(--gold-ink); text-align: right; font-variant-numeric: tabular-nums; }
+.base-plan-checkout-price > small { grid-column: 1 / -1; color: rgba(var(--ink-rgb), 0.68); }
+.base-plan-checkout-consent {
+  padding: 1rem;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.8rem;
+  background: rgba(var(--tint), 0.025);
+}
+.base-plan-checkout-consent > strong { color: var(--text); }
+.base-plan-checkout-consent > p { margin: 0.65rem 0 0; color: rgba(var(--ink-rgb), 0.76); font-size: 0.84rem; line-height: 1.55; }
+.base-plan-checkout-affirmation { display: flex; align-items: flex-start; gap: 0.7rem; margin-top: 0.9rem; color: var(--text); font-weight: 700; line-height: 1.45; cursor: pointer; }
+.base-plan-checkout-affirmation input { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; margin-top: 0.15rem; accent-color: var(--accent); }
+.base-plan-checkout-actions { display: flex; align-items: center; gap: 0.8rem 1rem; flex-wrap: wrap; }
+.base-plan-checkout-actions > span { color: rgba(var(--ink-rgb), 0.66); font-size: 0.8rem; line-height: 1.4; }
 @media (max-width: 680px) {
   .plan-usage-plan-facts,
   .plan-usage-balance-grid,
   .plan-usage-limit-list { grid-template-columns: 1fr; }
   .plan-usage-limit-list > div:nth-child(odd) { margin-right: 0; }
+  .base-plan-checkout-price { grid-template-columns: 1fr; }
+  .base-plan-checkout-price > strong { text-align: left; }
+  .base-plan-checkout-price > small { grid-column: auto; }
 }
 
 /* Compact "log out" footer folded into the sign-in methods card. */

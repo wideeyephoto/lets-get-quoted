@@ -10,7 +10,10 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 import { PRICING_CATALOG_VERSION } from '@/lib/billing/catalog';
-import { recordAuthenticatedBasePlanSubscriptionConsent } from '@/lib/billing/subscription-consent-acceptance';
+import {
+  recordAuthenticatedBasePlanSubscriptionConsent,
+  recordBasePlanSubscriptionConsentForOwner,
+} from '@/lib/billing/subscription-consent-acceptance';
 import {
   BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
   BASE_PLAN_RECURRING_CONSENT_VERSION,
@@ -104,6 +107,23 @@ describe('authenticated base-plan recurring consent capture', () => {
     })).rejects.toThrow(/affirmatively accepted/i);
     expect(mocks.requireOwnerContext).not.toHaveBeenCalled();
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('reuses a surrounding server action owner context without resolving auth twice', async () => {
+    const result = await recordBasePlanSubscriptionConsentForOwner({
+      supabase: { rpc: mocks.rpc } as never,
+      accountId: WORKSPACE_ID,
+      userId: USER_ID,
+    }, {
+      operationId: OPERATION_ID,
+      planCode: 'solo',
+      billingInterval: 'annual',
+      accepted: true,
+    });
+
+    expect(result.acceptanceId).toBe(ACCEPTANCE_ID);
+    expect(mocks.requireOwnerContext).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
   it.each([
