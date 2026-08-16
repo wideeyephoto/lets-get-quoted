@@ -18,6 +18,7 @@ const ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: '/admin/risk', label: 'Review queue' },
   { href: '/admin/money', label: 'Money' },
   { href: '/admin/payments', label: 'Payment ledger' },
+  { href: '/admin/billing-operations', label: 'Billing operations' },
   { href: '/admin/health', label: 'Service health' },
   { href: '/admin/failures', label: 'Failures' },
   { href: '/admin/incidents', label: 'Incidents' },
