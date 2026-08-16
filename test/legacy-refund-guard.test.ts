@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   event: null as unknown,
   sendPaymentSmsEvent: vi.fn(),
   createPaymentFeedEvent: vi.fn(),
+  logWebhookFailure: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -28,6 +29,10 @@ vi.mock('@/lib/sms', () => ({
 vi.mock('@/lib/job-feed', () => ({
   createPaymentFeedEvent: mocks.createPaymentFeedEvent,
   createDisputeFeedEvent: vi.fn(),
+}));
+
+vi.mock('@/lib/webhook-failures', () => ({
+  logWebhookFailure: mocks.logWebhookFailure,
 }));
 
 import { POST as legacyStripeWebhook } from '@/app/api/stripe/webhook/route';
@@ -282,6 +287,58 @@ function webhookRequest(): Request {
   });
 }
 
+function queuedRefundWebhookAdmin(input: {
+  reads: Array<{ data: Record<string, unknown> | null; error: { code?: string; message?: string } | null }>;
+  updates: Array<{ data: Record<string, unknown> | null; error: { code?: string; message?: string } | null }>;
+}) {
+  const reads = [...input.reads];
+  const updates = [...input.updates];
+
+  function chained(queue: typeof reads) {
+    const query = {
+      eq: vi.fn(() => query),
+      in: vi.fn(() => query),
+      or: vi.fn(() => query),
+      select: vi.fn(() => query),
+      maybeSingle: vi.fn(async () => queue.shift() ?? { data: null, error: null }),
+    };
+    return query;
+  }
+
+  const update = vi.fn(() => chained(updates));
+  const admin = {
+    from: vi.fn((table: string) => {
+      if (table !== 'payments') throw new Error(`unexpected table ${table}`);
+      return {
+        select: vi.fn(() => chained(reads)),
+        update,
+      };
+    }),
+  };
+
+  return { admin, update };
+}
+
+const destinationRefundRail = {
+  data: { id: 'pay_webhook_guard', status: 'paid', charge_model: 'destination' },
+  error: null,
+};
+
+const destinationRefundPayment = {
+  data: {
+    id: 'pay_webhook_guard',
+    invoice_id: null,
+    status: 'paid',
+    refunded_amount: 0,
+    amount: 50,
+    platform_fee: 3,
+    charge_model: 'destination',
+  },
+  error: null,
+};
+
+const transientRefundDbError = { code: '08006', message: 'temporary database failure' };
+
 describe('legacy refund charge-model boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -434,6 +491,61 @@ describe('legacy refund charge-model boundary', () => {
     expect(db.selections).toHaveLength(1);
     expect(db.updates).toEqual([]);
     expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 for a refund payment-read error and reconciles on Stripe retry', async () => {
+    const db = queuedRefundWebhookAdmin({
+      reads: [
+        destinationRefundRail,
+        { data: null, error: transientRefundDbError },
+        destinationRefundRail,
+        destinationRefundPayment,
+      ],
+      updates: [{ data: { id: 'pay_webhook_guard', invoice_id: null }, error: null }],
+    });
+    mocks.admin = db.admin;
+    mocks.event = { id: 'evt_refund_read_retry', ...chargeRefundedEvent(2500) };
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);
+    expect(db.update).not.toHaveBeenCalled();
+    expect(mocks.logWebhookFailure).toHaveBeenCalledWith(expect.objectContaining({
+      source: 'stripe',
+      eventType: 'charge.refunded',
+      referenceId: 'evt_refund_read_retry',
+    }));
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(db.update).toHaveBeenCalledTimes(1);
+    expect(mocks.createPaymentFeedEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 500 for a refund CAS error and reconciles on Stripe retry', async () => {
+    const db = queuedRefundWebhookAdmin({
+      reads: [
+        destinationRefundRail,
+        destinationRefundPayment,
+        destinationRefundRail,
+        destinationRefundPayment,
+      ],
+      updates: [
+        { data: null, error: transientRefundDbError },
+        { data: { id: 'pay_webhook_guard', invoice_id: null }, error: null },
+      ],
+    });
+    mocks.admin = db.admin;
+    mocks.event = { id: 'evt_refund_cas_retry', ...chargeRefundedEvent(2500) };
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);
+    expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
+    expect(mocks.logWebhookFailure).toHaveBeenCalledWith(expect.objectContaining({
+      source: 'stripe',
+      eventType: 'charge.refunded',
+      referenceId: 'evt_refund_cas_retry',
+    }));
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(db.update).toHaveBeenCalledTimes(2);
+    expect(mocks.createPaymentFeedEvent).toHaveBeenCalledTimes(1);
   });
 
   it.each([

@@ -293,6 +293,53 @@ function webhookAdmin(
   return { admin: { from: vi.fn(() => table) }, update, filters };
 }
 
+function queuedWebhookMutationAdmin(input: {
+  reads: DbResponse[];
+  updates: DbResponse[];
+}) {
+  const reads = [...input.reads];
+  const updates = [...input.updates];
+  const update = vi.fn(() => chained(updates));
+
+  function chained(queue: DbResponse[]) {
+    const query = {
+      eq: vi.fn(() => query),
+      in: vi.fn(() => query),
+      limit: vi.fn(() => query),
+      or: vi.fn(() => query),
+      select: vi.fn(() => query),
+      maybeSingle: vi.fn(async () => queue.shift() ?? { data: null, error: null }),
+    };
+    return query;
+  }
+
+  const admin = {
+    from: vi.fn((table: string) => {
+      if (table === 'payments') {
+        return {
+          select: vi.fn(() => chained(reads)),
+          update,
+        };
+      }
+
+      return {
+        select: vi.fn(() => chained([{ data: null, error: null }])),
+      };
+    }),
+  };
+
+  return { admin, update };
+}
+
+const transientDbError = { code: '08006', message: 'temporary database failure' };
+
+function destinationRail(status: string): DbResponse {
+  return {
+    data: { id: 'pay_guard', status, charge_model: 'destination' },
+    error: null,
+  };
+}
+
 function webhookRequest(): Request {
   return new Request('https://letsgetquoted.com/api/stripe/webhook', {
     method: 'POST',
@@ -571,6 +618,263 @@ describe('legacy platform webhook rail boundary', () => {
     expect(db.filters).toContainEqual(['charge_model', 'destination']);
     expect(mocks.sendPaymentSmsEvent).toHaveBeenCalledWith('pay_guard', 'payment_failed');
     expect(mocks.handlePlanPaymentFailed).toHaveBeenCalledWith(db.admin, 'pay_guard');
+  });
+
+  const retryableTransitionCases = [
+    {
+      label: 'checkout completed',
+      status: 'requested',
+      event: {
+        id: 'evt_checkout_completed_retry',
+        type: 'checkout.session.completed',
+        data: { object: { mode: 'payment', payment_status: 'paid', metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } },
+      },
+      transitioned: { id: 'pay_guard', invoice_id: null },
+    },
+    {
+      label: 'async checkout succeeded',
+      status: 'processing',
+      event: {
+        id: 'evt_checkout_async_succeeded_retry',
+        type: 'checkout.session.async_payment_succeeded',
+        data: { object: { metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } },
+      },
+      transitioned: { id: 'pay_guard', invoice_id: null },
+    },
+    {
+      label: 'payment intent succeeded',
+      status: 'processing',
+      event: {
+        id: 'evt_payment_intent_succeeded_retry',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_guard', metadata: { payment_id: 'pay_guard' } } },
+      },
+      transitioned: { id: 'pay_guard', invoice_id: null },
+    },
+    {
+      label: 'async checkout failed',
+      status: 'processing',
+      event: {
+        id: 'evt_checkout_async_failed_retry',
+        type: 'checkout.session.async_payment_failed',
+        data: { object: { metadata: { payment_id: 'pay_guard' } } },
+      },
+      transitioned: { id: 'pay_guard' },
+    },
+    {
+      label: 'checkout expired',
+      status: 'processing',
+      event: {
+        id: 'evt_checkout_expired_retry',
+        type: 'checkout.session.expired',
+        data: { object: { id: 'cs_guard', metadata: { payment_id: 'pay_guard' } } },
+      },
+      transitioned: { id: 'pay_guard' },
+    },
+    {
+      label: 'charge failed',
+      status: 'processing',
+      event: {
+        id: 'evt_charge_failed_retry',
+        type: 'charge.failed',
+        data: { object: { metadata: { payment_id: 'pay_guard' }, failure_message: 'declined' } },
+      },
+      transitioned: { id: 'pay_guard' },
+    },
+    {
+      label: 'payment intent failed',
+      status: 'processing',
+      event: {
+        id: 'evt_payment_intent_failed_retry',
+        type: 'payment_intent.payment_failed',
+        data: { object: { metadata: { payment_id: 'pay_guard' }, last_payment_error: null } },
+      },
+      transitioned: { id: 'pay_guard' },
+    },
+  ] as const;
+
+  it.each(retryableTransitionCases)(
+    'returns 500 for a $label payment transition error and succeeds on Stripe retry',
+    async ({ event, status, transitioned }) => {
+      const db = queuedWebhookMutationAdmin({
+        reads: [destinationRail(status), destinationRail(status)],
+        updates: [
+          { data: null, error: transientDbError },
+          { data: transitioned, error: null },
+        ],
+      });
+      mocks.admin = db.admin;
+      mocks.event = event;
+
+      const failed = await legacyStripeWebhook(webhookRequest());
+
+      expect(failed.status).toBe(500);
+      expect(mocks.logWebhookFailure).toHaveBeenCalledWith(expect.objectContaining({
+        source: 'stripe',
+        eventType: event.type,
+        referenceId: event.id,
+      }));
+      expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+      expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
+      expect(mocks.handlePlanPaymentSettled).not.toHaveBeenCalled();
+      expect(mocks.handlePlanPaymentFailed).not.toHaveBeenCalled();
+      expect(mocks.confirmQuickStopPayment).not.toHaveBeenCalled();
+
+      const retried = await legacyStripeWebhook(webhookRequest());
+
+      expect(retried.status).toBe(200);
+      expect(db.update).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('returns 500 when the already-paid verification read fails and repairs Quick Stop on retry', async () => {
+    const db = queuedWebhookMutationAdmin({
+      reads: [
+        destinationRail('paid'),
+        { data: null, error: transientDbError },
+        destinationRail('paid'),
+        { data: { id: 'pay_guard' }, error: null },
+      ],
+      updates: [
+        { data: null, error: null },
+        { data: null, error: null },
+      ],
+    });
+    mocks.admin = db.admin;
+    mocks.event = {
+      id: 'evt_paid_replay_read_retry',
+      type: 'checkout.session.completed',
+      data: { object: { mode: 'payment', payment_status: 'paid', metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } },
+    };
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);
+    expect(mocks.confirmQuickStopPayment).not.toHaveBeenCalled();
+    expect(mocks.logWebhookFailure).toHaveBeenCalledWith(expect.objectContaining({
+      source: 'stripe',
+      eventType: 'checkout.session.completed',
+      referenceId: 'evt_paid_replay_read_retry',
+    }));
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(mocks.confirmQuickStopPayment).toHaveBeenCalledWith(db.admin, 'pay_guard');
+  });
+
+  const disputeCases = [
+    {
+      label: 'created',
+      event: {
+        id: 'evt_dispute_created_retry',
+        type: 'charge.dispute.created',
+        data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', amount: 1000, reason: 'fraudulent', status: 'needs_response', evidence_details: {} } },
+      },
+      payment: { id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', status: 'paid' },
+    },
+    {
+      label: 'won',
+      event: {
+        id: 'evt_dispute_won_retry',
+        type: 'charge.dispute.closed',
+        data: { object: { payment_intent: 'pi_guard', status: 'won' } },
+      },
+      payment: { id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null, status: 'disputed' },
+    },
+    {
+      label: 'lost',
+      event: {
+        id: 'evt_dispute_lost_retry',
+        type: 'charge.dispute.closed',
+        data: { object: { payment_intent: 'pi_guard', status: 'lost' } },
+      },
+      payment: { id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null, status: 'disputed' },
+    },
+  ] as const;
+
+  it.each(disputeCases)(
+    'returns 500 for a dispute-$label payment lookup error and succeeds on retry',
+    async ({ event, payment }) => {
+      const db = queuedWebhookMutationAdmin({
+        reads: [
+          { data: null, error: transientDbError },
+          { data: payment, error: null },
+          destinationRail(payment.status),
+        ],
+        updates: [{ data: { id: 'pay_guard' }, error: null }],
+      });
+      mocks.admin = db.admin;
+      mocks.event = event;
+
+      expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);
+      expect(db.update).not.toHaveBeenCalled();
+      expect(mocks.logWebhookFailure).toHaveBeenCalledWith(expect.objectContaining({
+        source: 'stripe',
+        eventType: event.type,
+        referenceId: event.id,
+      }));
+
+      expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+      expect(db.update).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(disputeCases)(
+    'returns 500 for a dispute-$label payment CAS error and succeeds on retry',
+    async ({ event, payment }) => {
+      const db = queuedWebhookMutationAdmin({
+        reads: [
+          { data: payment, error: null },
+          destinationRail(payment.status),
+          { data: payment, error: null },
+          destinationRail(payment.status),
+        ],
+        updates: [
+          { data: null, error: transientDbError },
+          { data: { id: 'pay_guard' }, error: null },
+        ],
+      });
+      mocks.admin = db.admin;
+      mocks.event = event;
+
+      expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);
+      expect(mocks.createDisputeFeedEvent).not.toHaveBeenCalled();
+      expect(mocks.logWebhookFailure).toHaveBeenCalledWith(expect.objectContaining({
+        source: 'stripe',
+        eventType: event.type,
+        referenceId: event.id,
+      }));
+
+      expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+      expect(db.update).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('keeps no-metadata and terminal destination events as acknowledged no-ops', async () => {
+    mocks.admin = {
+      from: vi.fn(() => {
+        throw new Error('an event without LGQ metadata must not query the database');
+      }),
+    };
+    mocks.event = {
+      id: 'evt_no_metadata',
+      type: 'checkout.session.completed',
+      data: { object: { mode: 'payment', payment_status: 'paid', metadata: {}, payment_intent: 'pi_guard' } },
+    };
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+
+    const terminal = queuedWebhookMutationAdmin({
+      reads: [destinationRail('refunded'), { data: null, error: null }],
+      updates: [{ data: null, error: null }],
+    });
+    mocks.admin = terminal.admin;
+    mocks.event = {
+      id: 'evt_terminal_payment',
+      type: 'checkout.session.completed',
+      data: { object: { mode: 'payment', payment_status: 'paid', metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } },
+    };
+
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+    expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
+    expect(mocks.confirmQuickStopPayment).not.toHaveBeenCalled();
   });
 });
 
