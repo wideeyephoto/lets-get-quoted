@@ -8,6 +8,65 @@ export type SweepSummary = { paymentExpired: number; responseExpired: number; au
 
 const AUTO_COMPLETE_GRACE_MS = 2 * 60 * 60 * 1000; // assume done 2h after the window
 
+/** The shape the due-check needs. Deliberately structural: the caller already
+ *  has these rows and should not have to hold the full request type. */
+export type SweepCandidate = {
+  status: string;
+  payment_deadline_at?: string | null;
+  response_deadline_at?: string | null;
+  arrival_date?: string | null;
+  arrival_end?: string | null;
+  no_show_reported_at?: string | null;
+};
+
+/**
+ * Would the sweep actually change anything for these requests?
+ *
+ * The Quick Stops page runs the sweep lazily so an owner's queue is current
+ * between cron runs. That cost three SELECTs and a write loop on EVERY page
+ * load, whether or not a single row was eligible — and the payment-expiry
+ * branch sends the contractor an email, so "nothing to do" was never free.
+ *
+ * The page has already loaded the account's requests to render them. That is
+ * the same data the sweep's three queries go looking for, so the answer is
+ * available in memory for nothing. This mirrors the three conditions below and
+ * lives beside them so the two cannot drift apart.
+ *
+ * Conservative by construction: it may say yes when the sweep turns out to do
+ * nothing (a race, a row already claimed), which merely costs what every load
+ * used to. It says no only when no loaded row matches any branch. The cron
+ * remains the backstop for anything outside the page's own window.
+ */
+export function quickStopSweepDue(requests: SweepCandidate[], now: Date = new Date()): boolean {
+  const nowMs = now.getTime();
+  const nowIso = now.toISOString();
+  const todayKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+
+  return requests.some((r) => {
+    // 1) Payment window elapsed with no payment.
+    if (r.status === 'awaiting_customer_payment' && r.payment_deadline_at && r.payment_deadline_at < nowIso) return true;
+
+    // 2) Contractor never responded inside their window.
+    if (
+      (r.status === 'awaiting_contractor' || r.status === 'more_information_requested') &&
+      r.response_deadline_at &&
+      r.response_deadline_at < nowIso
+    ) {
+      return true;
+    }
+
+    // 3) Arrival window elapsed by the grace period with no no-show reported.
+    if (r.status === 'confirmed' || r.status === 'en_route' || r.status === 'arrived') {
+      if (r.no_show_reported_at) return false;
+      if (!r.arrival_date || r.arrival_date > todayKey) return false;
+      const endMs = r.arrival_end ? new Date(`${r.arrival_date}T${r.arrival_end}`).getTime() : NaN;
+      if (Number.isFinite(endMs) && nowMs >= endMs + AUTO_COMPLETE_GRACE_MS) return true;
+    }
+
+    return false;
+  });
+}
+
 // Expire stale Quick Stop offers. The hard money-guard lives in
 // createCheckoutSessionForPayment (a late payment is rejected regardless of this
 // sweep); this cleans up the calendar placeholder, releases the day's slot,

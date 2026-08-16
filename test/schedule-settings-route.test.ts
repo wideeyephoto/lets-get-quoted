@@ -72,7 +72,11 @@ describe('the calendar stopped fetching what it no longer shows', () => {
    *  booking-requests panel needs to know whether a second choice is still
    *  free. Losing that would silently change what that panel can say. */
   it('but still reads what the booking-requests panel needs', () => {
-    expect(PAGE).toContain('const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];');
+    // Spelled without the `await` that used to precede it — the call is one arm
+    // of the page's batched wave now. The property being guarded is the gate:
+    // the booking days are read only when there is a booking URL to read them
+    // for, and that is the ternary, not the statement shape.
+    expect(PAGE).toContain('bookingUrl ? getAvailableBookingDays(supabase, accountId)');
     expect(PAGE).toContain('openSlots={');
   });
 

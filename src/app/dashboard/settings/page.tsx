@@ -43,41 +43,60 @@ export default async function SettingsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }] =
-    await Promise.all([
-      supabase.auth.getUser(),
-      supabase.auth.getUserIdentities(),
-      // Narrowed when Automations moved to its own page. Thirteen of these
-      // columns — the workday, the buffer, call forwarding, every arrival_* and
-      // the time-clock mode — were read for cards that now live on
-      // /dashboard/automations, and nothing on this page has consumed them
-      // since. ESLint cannot see inside a select string, so an over-wide read
-      // like this one goes unnoticed forever unless it is trimmed by hand at
-      // the moment its consumers leave.
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone').eq('id', accountId).single(),
-      // Still the whole row: the Business tab reads company_name, published,
-      // content and the domain fields off it, and getSiteContent takes the
-      // content blob wholesale. (The justification used to be the intake
-      // preview, which went to /dashboard/automations with everything else it
-      // belonged to.)
-      supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
-      supabase
-        .from('payments')
-        .select('id', { count: 'exact', head: true })
-        .eq('account_id', accountId)
-        .in('status', ['requested', 'processing']),
-    ]);
+  // ── ONE READ OF THE ACCOUNT ROW, and everything independent in one wave ────
+  //
+  // This page read the account row FIVE times: a narrow select here and four
+  // more below, each fetching the three or four columns one card needed. They
+  // were split deliberately — the comment on the old `client_quote_changes`
+  // read said it plainly: this select is a `.single()`, and on a database where
+  // a migration has not run, naming a column that is not there fails the whole
+  // query and takes the Settings page with it.
+  //
+  // `select('*')` keeps exactly that protection and drops the four extra round
+  // trips. It names no column, so it cannot fail on a missing one, and a column
+  // that does not exist yet simply is not on the object — which is the same
+  // undefined every one of those defensive reads was already coded against.
+  //
+  // getUser stays: this page shows the owner's PHONE, and the verified claims
+  // requireOwnerContext works from carry the id and email but not that.
+  const [
+    { data: userData },
+    { data: identityData },
+    { data: account },
+    { data: site },
+    { count: pendingPaymentsCount },
+    trailingVolume,
+    quickBooksStatus,
+    { count: clientCount },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.auth.getUserIdentities(),
+    supabase.from('accounts').select('*').eq('id', accountId).maybeSingle(),
+    // The whole row: the Business tab reads company_name, published, content and
+    // the domain fields off it, and getSiteContent takes the content blob
+    // wholesale.
+    supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
+    supabase
+      .from('payments')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .in('status', ['requested', 'processing']),
+    // Platform fee tier, shown on the Payments tab so a contractor can see the
+    // rate they're on and what it takes to reach the next (lower) one.
+    getTrailingVolume(accountId),
+    // Never throws and never returns a token — a missing table (feature deployed
+    // ahead of its migration) reports "not connected".
+    connectionStatus(accountId),
+    // Is this account still moving in? See stillMovingIn below.
+    supabase.from('clients').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+  ]);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = pickBusinessName(site, account);
+  const accountRow = (account ?? {}) as Record<string, unknown>;
 
-  // Whether customers may change their own extras. Read on its own rather than
-  // added to the accounts select above, because that select is a `.single()` —
-  // on a database where the migration has not run, naming a column that isn't
-  // there fails the whole query and takes the Settings page with it.
-  const settingsRead = await supabase.from('accounts').select('client_quote_changes').eq('id', accountId).maybeSingle();
-  const settingsRow = settingsRead.error ? null : (settingsRead.data as { client_quote_changes?: boolean | null } | null);
-  const clientQuoteChanges = settingsRow?.client_quote_changes === true;
+  // Whether customers may change their own extras.
+  const clientQuoteChanges = accountRow.client_quote_changes === true;
 
   const businessBasics = getSiteContent((site?.content as Record<string, unknown> | null | undefined) ?? null);
   // The two ends of the review ask, built the same way the sender builds them so
@@ -89,52 +108,30 @@ export default async function SettingsPage({
     listingUrl: businessBasics.testimonials.googleUrl,
   });
 
-  // Platform fee tier, shown on the Payments tab so a contractor can see the rate
-  // they're on and what it takes to reach the next (lower) one.
-  const trailingVolume = await getTrailingVolume(accountId);
   const feeTier = getTierInfo(trailingVolume);
 
-  const { data: costSettings } = await supabase
-    .from('accounts')
-    .select('default_burden_pct, min_margin_pct')
-    .eq('id', accountId)
-    .maybeSingle();
   // A stored 0 is a real choice and is kept; the defaults stand in only when
   // there is nothing stored at all. `|| 0` would have conflated the two, which
   // is why this reads the value rather than coercing it.
-  const storedBurden = Number(costSettings?.default_burden_pct);
-  const storedMargin = Number(costSettings?.min_margin_pct);
+  const storedBurden = Number(accountRow.default_burden_pct);
+  const storedMargin = Number(accountRow.min_margin_pct);
   const defaultBurdenPct = Number.isFinite(storedBurden) ? storedBurden : DEFAULT_BURDEN_PCT;
   const minMarginPct = Number.isFinite(storedMargin) ? storedMargin : DEFAULT_MIN_MARGIN_PCT;
 
-  const { data: mailingSettings } = await supabase
-    .from('accounts')
-    .select('mailing_address, operating_address, service_center_lat, service_center_lng')
-    .eq('id', accountId)
-    .maybeSingle();
   // Older values were typed into a textarea; a newline inside an <input> value
   // renders as nothing, so an existing address would look half-missing until the
   // owner retyped it.
   const oneLine = (value: unknown) => ((value as string | null) ?? '').replace(/\s*\n\s*/g, ', ').trim();
-  const mailingAddress = oneLine(mailingSettings?.mailing_address);
-  const operatingAddress = oneLine(mailingSettings?.operating_address);
+  const mailingAddress = oneLine(accountRow.mailing_address);
+  const operatingAddress = oneLine(accountRow.operating_address);
   // Whether the address we geocode actually resolved. Null here means Plan my
   // day has no point to measure the drive from, which is invisible on this page
   // and only shows up as a day whose mileage is quietly short.
-  const hasServiceCenter = mailingSettings?.service_center_lat != null && mailingSettings?.service_center_lng != null;
-
-  // Never throws and never returns a token — a missing table (feature deployed
-  // ahead of its migration) reports "not connected".
-  const quickBooksStatus = await connectionStatus(accountId);
+  const hasServiceCenter = accountRow.service_center_lat != null && accountRow.service_center_lng != null;
 
   // Proof of insurance. Read straight off the account so a lapsed certificate
   // reports as lapsed on the day it lapses, with no sweep to wait for.
-  const { data: insuranceRow } = await supabase
-    .from('accounts')
-    .select('insurance_path, insurance_filename, insurance_carrier, insurance_policy_number, insurance_coverage_amount, insurance_expires_on, insurance_show_on_quotes, insurance_uploaded_at')
-    .eq('id', accountId)
-    .maybeSingle();
-  const ins = (insuranceRow ?? {}) as Record<string, unknown>;
+  const ins = accountRow;
   const insuranceRecord = {
     path: (ins.insurance_path as string) ?? null,
     filename: (ins.insurance_filename as string) ?? null,
@@ -157,10 +154,6 @@ export default async function SettingsPage({
   // somebody with one is past the point where "Moving in from another CRM?"
   // deserves the top of a section. Five rather than one, because a couple of
   // hand-typed customers is still setting up.
-  const { count: clientCount } = await supabase
-    .from('clients')
-    .select('id', { count: 'exact', head: true })
-    .eq('account_id', accountId);
   const stillMovingIn = (clientCount ?? 0) < 5;
 
   // A place id is the thing that actually works — the review ask needs one to

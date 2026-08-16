@@ -18,7 +18,12 @@ describe('weather on the Day view', () => {
    *  so the gate is on a column the page already selects. */
   it('costs nothing when the account has it switched off', () => {
     expect(PAGE).toContain('weatherAccount?.weather_alerts_enabled');
-    expect(PAGE).toContain('weather_alerts_enabled, service_center_lat, service_center_lng');
+    // The gate must read a column the page ALREADY has, or checking it would
+    // cost the query it is meant to avoid. That used to be asserted by naming
+    // the three columns in the select; the page now takes the whole account row
+    // in one read — `select('*')` cannot fail on an un-migrated column the way a
+    // column list can — which satisfies the same requirement outright.
+    expect(PAGE).toContain("from('accounts').select('*')");
   });
 
   /**

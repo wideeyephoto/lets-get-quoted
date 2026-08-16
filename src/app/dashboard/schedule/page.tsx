@@ -169,7 +169,10 @@ export default async function SchedulePage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng').eq('id', accountId).single(),
+    // `*` rather than a column list, and maybeSingle rather than single: naming
+    // columns in a `.single()` means one un-migrated column fails the whole
+    // query and takes the calendar with it. One row is one row either way.
+    supabase.from('accounts').select('*').eq('id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
@@ -183,12 +186,6 @@ export default async function SchedulePage({
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
   const bookingUrl = bookingSubdomain ? `${appOrigin}/book/${bookingSubdomain}` : null;
-  /* Still read here, and ONLY for the booking-requests panel below: it needs to
-     know whether a customer's second choice is still free. The folded "N open
-     windows" header this also fed has moved to /dashboard/schedule/settings,
-     which computes its own. */
-  const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];
-
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
   const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours, workingWeekdays);
@@ -213,20 +210,9 @@ export default async function SchedulePage({
   // is also the card the queue focuses when there are several.
   const firstUnapprovedId = unscheduledJobs.find((job) => job.status === 'new_lead')?.id ?? null;
 
-  const crew = await listCrew(supabase, accountId, { activeOnly: true });
-  const assignmentsByJob = await listCrewAssignmentsForJobs(
-    supabase,
-    accountId,
-    activeJobs.map((job) => job.id)
-  );
-  const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
-  const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledJobs.map((job) => job.id));
-
-  // Self-serve bookings that have not been answered. These are NOT in
-  // unscheduledJobs above and must never be: they are not work waiting for a
-  // date, they are a customer waiting for a yes.
-  const pendingBookingRows = await listPendingBookings(supabase, accountId);
-
+  // The calendar's own arithmetic, hoisted above the reads because it needs no
+  // database at all — and because listUpcomingBlocks needs todayKey, which is
+  // the only reason that read used to sit six statements further down.
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -241,7 +227,46 @@ export default async function SchedulePage({
 
   const now = new Date();
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
-  const availabilityBlocks = await listUpcomingBlocks(supabase, accountId, todayKey);
+
+  // Which map, if any — a cookie, so it costs nothing to know here and it
+  // decides whether the pins are worth fetching at all.
+  const mapCookie = cookies().get(mapViewCookie('schedule'))?.value;
+  const mapView = mapCookie ? normalizeMapView(mapCookie) : 'off';
+
+  // ── ONE WAVE ──────────────────────────────────────────────────────────────
+  // Eight reads that were awaited one after another down the length of this
+  // function. Only two of them ever needed anything from the ones above — the
+  // crew assignments and the schedule requests want the job list — and that
+  // arrived in the wave above this one. The rest were sequential purely because
+  // of where they were written.
+  const [
+    bookingDays,
+    crew,
+    assignmentsByJob,
+    scheduleRequestByJob,
+    pendingBookingRows,
+    availabilityBlocks,
+    recurringPlans,
+    mapPins,
+  ] = await Promise.all([
+    /* ONLY for the booking-requests panel below: it needs to know whether a
+       customer's second choice is still free. The folded "N open windows"
+       header this also fed has moved to /dashboard/schedule/settings, which
+       computes its own. */
+    bookingUrl ? getAvailableBookingDays(supabase, accountId) : Promise.resolve([]),
+    listCrew(supabase, accountId, { activeOnly: true }),
+    listCrewAssignmentsForJobs(supabase, accountId, activeJobs.map((job) => job.id)),
+    listActiveScheduleRequests(supabase, accountId, unscheduledJobs.map((job) => job.id)),
+    // Self-serve bookings that have not been answered. These are NOT in
+    // unscheduledJobs above and must never be: they are not work waiting for a
+    // date, they are a customer waiting for a yes.
+    listPendingBookings(supabase, accountId),
+    listUpcomingBlocks(supabase, accountId, todayKey),
+    listRecurringPlans(supabase, accountId),
+    mapView !== 'off' ? getMapPins(supabase, accountId) : Promise.resolve([]),
+  ]);
+
+  const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
 
   // Recurring visits past the horizon.
   //
@@ -263,7 +288,7 @@ export default async function SchedulePage({
   // showed their jobs but silently dropped their recurring visits — a Monday
   // that reads empty in one view and busy in another.
   const plannedVisits = projectPlanVisits(
-    await listRecurringPlans(supabase, accountId),
+    recurringPlans,
     {
       fromKey: addDaysToDateKey(toDateKey(year, monthIndex, 1), -7),
       toKey: addDaysToDateKey(toDateKey(year, monthIndex, daysInMonth), 7),
@@ -408,55 +433,67 @@ export default async function SchedulePage({
   }
 
   const scheduledJobIds = scheduledJobs.map((job) => job.id);
-  const { data: crewDateTextEvents } = scheduledJobIds.length > 0
-    ? await supabase
-        .from('job_feed')
-        .select('job_id, created_at')
-        .eq('account_id', accountId)
-        .in('title', ['Crew date text sent', 'Crew assignment text sent'])
-        .in('job_id', scheduledJobIds)
-        .order('created_at', { ascending: false })
-    : { data: [] as Array<{ job_id: string; created_at: string }> };
+  const hasScheduled = scheduledJobIds.length > 0;
+
+  /* Gated on the account's own switch before a single query runs, so an account
+     with weather off pays nothing; when it is on, getForecast serves from
+     weather_cache and only reaches NWS when the row is stale. One point, not one
+     per job: jobsAtRisk already answers "which booked work is in trouble" and
+     fetches per grid cell across up to 200 jobs, which is a digest's shape. */
+  const weatherAccount = account as { weather_alerts_enabled?: boolean; service_center_lat?: number | null; service_center_lng?: number | null } | null;
+
+  // ── THE SECOND WAVE ───────────────────────────────────────────────────────
+  // Six more reads that were serial. Every one of them needs only the job list
+  // or the account row, both of which landed in the very first wave — they ran
+  // in sequence because of where they were written, not because of what they
+  // depend on. Kept as a separate wave from the one above purely to hold the
+  // fan-out to single digits on the app's second-heaviest page.
+  const [
+    { data: crewDateTextEvents },
+    { data: confirmedRows },
+    { data: invoiceRows, error: invoiceError },
+    { data: paymentRows, error: paymentError },
+    { data: clientAccessRows, error: clientAccessError },
+    weatherByDay,
+  ] = await Promise.all([
+    hasScheduled
+      ? supabase
+          .from('job_feed')
+          .select('job_id, created_at')
+          .eq('account_id', accountId)
+          .in('title', ['Crew date text sent', 'Crew assignment text sent'])
+          .in('job_id', scheduledJobIds)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as Array<{ job_id: string; created_at: string }> }),
+    // Jobs the client confirmed by text (appointment_confirmed_at set) —
+    // surfaced as a ✓ on the calendar. Defensive: a read error just yields no ticks.
+    hasScheduled
+      ? supabase.from('jobs').select('id').eq('account_id', accountId).in('id', scheduledJobIds).not('appointment_confirmed_at', 'is', null)
+      : Promise.resolve({ data: [] as Array<{ id: string }> }),
+    hasScheduled
+      ? supabase.from('invoices').select('*').eq('account_id', accountId).in('job_id', scheduledJobIds).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as Invoice[] | null, error: null }),
+    hasScheduled
+      ? supabase.from('payments').select('*').eq('account_id', accountId).in('job_id', scheduledJobIds).order('requested_at', { ascending: false })
+      : Promise.resolve({ data: [] as Payment[] | null, error: null }),
+    hasScheduled
+      ? supabase.from('client_job_access').select('job_id').eq('account_id', accountId).in('job_id', scheduledJobIds).is('revoked_at', null)
+      : Promise.resolve({ data: [] as Array<{ job_id: string }> | null, error: null }),
+    weatherAccount?.weather_alerts_enabled
+      ? outlookByDay(supabase, accountId, {
+          lat: weatherAccount.service_center_lat ?? null,
+          lng: weatherAccount.service_center_lng ?? null,
+        })
+      : Promise.resolve({}),
+  ]);
+
   const crewNotifiedAtByJob = new Map<string, string>();
   for (const event of crewDateTextEvents ?? []) {
     const jobId = event.job_id as string;
     if (!crewNotifiedAtByJob.has(jobId)) crewNotifiedAtByJob.set(jobId, event.created_at as string);
   }
 
-  // Jobs the client confirmed by text (appointment_confirmed_at set) — surfaced
-  // as a ✓ on the calendar. Defensive: a read error just yields no ticks.
-  const { data: confirmedRows } = scheduledJobIds.length > 0
-    ? await supabase.from('jobs').select('id').eq('account_id', accountId).in('id', scheduledJobIds).not('appointment_confirmed_at', 'is', null)
-    : { data: [] as Array<{ id: string }> };
   const confirmedJobIds = new Set((confirmedRows ?? []).map((row) => row.id as string));
-
-  const [{ data: invoiceRows, error: invoiceError }, { data: paymentRows, error: paymentError }, { data: clientAccessRows, error: clientAccessError }] =
-    scheduledJobIds.length > 0
-      ? await Promise.all([
-          supabase
-            .from('invoices')
-            .select('*')
-            .eq('account_id', accountId)
-            .in('job_id', scheduledJobIds)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('payments')
-            .select('*')
-            .eq('account_id', accountId)
-            .in('job_id', scheduledJobIds)
-            .order('requested_at', { ascending: false }),
-          supabase
-            .from('client_job_access')
-            .select('job_id')
-            .eq('account_id', accountId)
-            .in('job_id', scheduledJobIds)
-            .is('revoked_at', null),
-        ])
-      : [
-          { data: [] as Invoice[] | null, error: null },
-          { data: [] as Payment[] | null, error: null },
-          { data: [] as Array<{ job_id: string }> | null, error: null },
-        ];
 
   if (invoiceError) throw invoiceError;
   if (paymentError) throw paymentError;
@@ -636,18 +673,9 @@ export default async function SchedulePage({
      thirty-day count of "weather conflicts" is not a number anybody acts on,
      and the forecast belongs on the day you are looking at. This is that day.
 
-     Gated on the account's own switch before a single query runs, so an account
-     with weather off pays nothing; when it is on, getForecast serves from
-     weather_cache and only reaches NWS when the row is stale. One point, not one
-     per job: jobsAtRisk already answers "which booked work is in trouble" and
-     fetches per grid cell across up to 200 jobs, which is a digest's shape. */
-  const weatherAccount = account as { weather_alerts_enabled?: boolean; service_center_lat?: number | null; service_center_lng?: number | null } | null;
-  const weatherByDay = weatherAccount?.weather_alerts_enabled
-    ? await outlookByDay(supabase, accountId, {
-        lat: weatherAccount.service_center_lat ?? null,
-        lng: weatherAccount.service_center_lng ?? null,
-      })
-    : {};
+     Fetched up in the second wave now, still behind the same switch, so an
+     account with weather off pays nothing and an account with it on no longer
+     waits for the calendar's other reads to finish first. */
 
   /* CLOSED UNLESS ASKED FOR, ON THIS PAGE ONLY.
      normalizeMapView's absent-cookie default is 'large', which is right for
@@ -656,8 +684,8 @@ export default async function SchedulePage({
      markers under it on every load — the single largest thing left on a phone
      once the settings moved off. An explicit choice still persists both ways;
      only the meaning of "never chose" changes. */
-  const mapCookie = cookies().get(mapViewCookie('schedule'))?.value;
-  const mapView = mapCookie ? normalizeMapView(mapCookie) : 'off';
+  /* mapCookie/mapView are read further up now: the pins are fetched in the
+     wave with everything else, and that wave has to know whether to fetch. */
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   /* THE DEFAULT WEEK IS THE WEEK THIS BUSINESS WORKS.
      Both weekend columns were on until somebody turned them off, so a Mon–Fri
@@ -680,7 +708,6 @@ export default async function SchedulePage({
   // Read server-side so the calendar renders in the right shape on the first
   // paint — and, more to the point, so stepping a month doesn't reset it.
   const calendarView = normalizeCalendarView(cookies().get(CALENDAR_VIEW_COOKIE)?.value);
-  const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
   /* A SECOND accounts SELECT USED TO SIT HERE. Eleven booking columns, fetched
      on every load of the calendar, feeding one folded status pill at the very

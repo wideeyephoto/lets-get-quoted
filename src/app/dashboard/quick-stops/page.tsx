@@ -1,6 +1,6 @@
 import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
-import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
+import { quickStopSweepDue, sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
 import { computeQuickStopRoute, lastKnownWorkPoint, loadRouteStops } from '@/lib/quick-stop-route';
 import QuickStopCoverageMap from './QuickStopCoverageMap';
@@ -72,15 +72,84 @@ export const metadata = { title: 'Quick Stops' };
 export default async function QuickStopsPage({ searchParams }: { searchParams: { tab?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  // Lazy expiry so the queue is current even between cron runs (releases lapsed
-  // payment holds, closes unanswered requests). Best-effort — never blocks render.
-  await sweepQuickStopOffers(createAdminClient(), accountId).catch(() => undefined);
+  // Their own recent work, run through the same deterministic screen a live
+  // request gets. Pure, so it can be computed before anything is read.
+  const sinceIso = new Date(Date.now() - DEMAND_WINDOW_DAYS * 86400000).toISOString();
 
-  const [{ data: accountRow }, requests, { data: site }] = await Promise.all([
+  // ── ONE WAVE, AND THE SWEEP NO LONGER LEADS ───────────────────────────────
+  // Eleven reads that ran one after another down this function. None of them
+  // needs anything from another; they were sequential because of the order they
+  // were written in.
+  const [
+    { data: accountRow },
+    initialRequests,
+    { data: site },
+    refundTiers,
+    { data: recentLeads },
+    { data: recentJobs },
+    { data: quickStopJobRows },
+    screenings,
+    recipients,
+    priorityZones,
+    zonesAvailable,
+  ] = await Promise.all([
     supabase.from('accounts').select(`${QUICK_STOP_SETTINGS_COLUMNS}, extra_stop_lock_reason, timezone, instant_book_drive_time, connect_onboarded, business_name`).eq('id', accountId).single(),
     listQuickStopRequests(supabase, accountId, { limit: 100 }),
     supabase.from('sites').select('published, subdomain, company_name').eq('account_id', accountId).maybeSingle(),
+    loadRefundTiers(supabase, accountId),
+    supabase
+      .from('leads')
+      // converted_job is in the ORIGINAL create table (schema.sql:1130), not a
+      // later alter, so naming it here cannot fail on any live database. It is
+      // what stops a lead and the job it became being counted as two pieces of
+      // work — which online booking manufactures on every single booking, since
+      // it writes both rows for one customer action and links them.
+      .select('id, name, email, phone, message, project_type, estimated_hours, source, created_at, converted_job')
+      .eq('account_id', accountId)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(CANDIDATE_QUERY_LIMIT),
+    supabase
+      .from('jobs')
+      .select('id, ref, client_name, client_email, client_phone, scope, estimated_hours, created_at, status')
+      .eq('account_id', accountId)
+      .neq('status', 'archived')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(CANDIDATE_QUERY_LIMIT),
+    // Every job a Quick Stop request already owns. Without it those jobs read as
+    // ordinary recent work: a completed Quick Stop breaks no rule by
+    // construction, so every one of them was being shown back as a Quick Stop
+    // the owner had MISSED — and priced again, on top of the fee it actually
+    // earned. Matched on the id and never on the "Quick Stop — " scope prefix,
+    // so renaming a job cannot bring the double count back. Deliberately
+    // unbounded by date: an older request can own a recent job.
+    supabase
+      .from('extra_stop_requests')
+      .select('job_id')
+      .eq('account_id', accountId)
+      .not('job_id', 'is', null)
+      .limit(1000),
+    // Empty (and harmless) until the migration has run.
+    loadScreeningSummary(supabase, accountId, sinceIso),
+    loadRecipients(supabase, accountId).catch(() => []),
+    // Empty until the migration is applied — the map then draws the plain limit.
+    loadPriorityZones(supabase, accountId),
+    priorityZonesAvailable(supabase, accountId),
   ]);
+
+  // ── THE LAZY SWEEP, ONLY WHEN IT WOULD DO SOMETHING ───────────────────────
+  // It ran on every load and cost three SELECTs plus a write loop before the
+  // page read anything of its own — and its payment branch emails the
+  // contractor, so an idle sweep was never free. The requests above are the
+  // very rows its queries go looking for, so whether it has work is answerable
+  // in memory. See quickStopSweepDue, which lives next to the sweep so the two
+  // cannot drift. The cron still runs every 15 minutes as the backstop.
+  let requests = initialRequests;
+  if (quickStopSweepDue(requests)) {
+    await sweepQuickStopOffers(createAdminClient(), accountId).catch(() => undefined);
+    requests = await listQuickStopRequests(supabase, accountId, { limit: 100 });
+  }
   const settings = quickStopSettingsFromAccount(accountRow as Parameters<typeof quickStopSettingsFromAccount>[0]);
   const lockReason = (accountRow as { extra_stop_lock_reason?: string } | null)?.extra_stop_lock_reason || '';
   const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
@@ -99,22 +168,25 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
       // The day THEY asked for, not today. Routing a tomorrow request against
       // today's stops answers a question nobody asked and can talk the owner out
       // of a job that fits perfectly well tomorrow.
-      const route = offerable
-        ? await computeQuickStopRoute(supabase, accountId, target, {
-            arrivalDate: r.requested_date ?? r.arrival_date ?? null,
-            visitMinutes: r.ai_visit_minutes,
-            driveTime,
-            timezone,
-          })
-        : null;
-      const photoUrls = r.photo_paths?.length ? await createLeadPhotoUrls(accountId, r.photo_paths).catch(() => []) : [];
+      // The route and the photos know nothing about each other; awaiting them in
+      // turn made every card cost both round trips end to end.
+      const [route, photoUrls] = await Promise.all([
+        offerable
+          ? computeQuickStopRoute(supabase, accountId, target, {
+              arrivalDate: r.requested_date ?? r.arrival_date ?? null,
+              visitMinutes: r.ai_visit_minutes,
+              driveTime,
+              timezone,
+            })
+          : Promise.resolve(null),
+        r.photo_paths?.length ? createLeadPhotoUrls(accountId, r.photo_paths).catch(() => []) : Promise.resolve([]),
+      ]);
       return { r, route, photoUrls };
     }),
   );
 
   // For the explainer's setup checklist — real state, not decoration.
   const stripeConnected = Boolean((accountRow as { connect_onboarded?: boolean } | null)?.connect_onboarded);
-  const refundTiers = await loadRefundTiers(supabase, accountId);
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingUrl = site?.published && site?.subdomain ? `${appOrigin}/book/${site.subdomain}` : null;
   /**
@@ -152,45 +224,6 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
   const businessName =
     (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
 
-  // Their own recent work, run through the same deterministic screen a live
-  // request gets. Both tables, because a lead carries the customer's own words
-  // and a job carries the owner's — and the screener wants whichever exists.
-  const sinceIso = new Date(Date.now() - DEMAND_WINDOW_DAYS * 86400000).toISOString();
-  const [{ data: recentLeads }, { data: recentJobs }, { data: quickStopJobRows }] = await Promise.all([
-    supabase
-      .from('leads')
-      // converted_job is in the ORIGINAL create table (schema.sql:1130), not a
-      // later alter, so naming it here cannot fail on any live database. It is
-      // what stops a lead and the job it became being counted as two pieces of
-      // work — which online booking manufactures on every single booking, since
-      // it writes both rows for one customer action and links them.
-      .select('id, name, email, phone, message, project_type, estimated_hours, source, created_at, converted_job')
-      .eq('account_id', accountId)
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false })
-      .limit(CANDIDATE_QUERY_LIMIT),
-    supabase
-      .from('jobs')
-      .select('id, ref, client_name, client_email, client_phone, scope, estimated_hours, created_at, status')
-      .eq('account_id', accountId)
-      .neq('status', 'archived')
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false })
-      .limit(CANDIDATE_QUERY_LIMIT),
-    // The jobs that exist BECAUSE a Quick Stop was accepted (actions.ts creates
-    // them and links them back here). Each one is under the visit limit and
-    // breaks no rule by construction, so every one of them was being shown back
-    // as a Quick Stop the owner had MISSED — and priced again, on top of the fee
-    // it actually earned. Matched on the id and never on the "Quick Stop — "
-    // scope prefix, so renaming a job cannot bring the double count back.
-    // Deliberately unbounded by date: an older request can own a recent job.
-    supabase
-      .from('extra_stop_requests')
-      .select('job_id')
-      .eq('account_id', accountId)
-      .not('job_id', 'is', null)
-      .limit(1000),
-  ]);
   const quickStopJobIds = ((quickStopJobRows ?? []) as { job_id: string | null }[])
     .map((row) => row.job_id)
     .filter((id): id is string => Boolean(id));
@@ -231,12 +264,9 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
     maxVisitMinutes: settings.maxVisitMinutes,
     quickStopJobIds,
   });
-  // The other half of demand: people who actually asked, including the ones the
-  // screener refused. Empty (and harmless) until the migration has run.
-  const screenings = await loadScreeningSummary(supabase, accountId, sinceIso);
   // How many past customers could actually be told. Counted the same way the
   // campaign composer counts them, so the two screens can't disagree.
-  const reachable = (await loadRecipients(supabase, accountId).catch(() => []))
+  const reachable = recipients
     .filter((recipient) => matchesAudience(recipient, 'past', Date.now()) && (recipient.emailReady || recipient.smsReady))
     .length;
 
@@ -254,11 +284,10 @@ export default async function QuickStopsPage({ searchParams }: { searchParams: {
   ).length;
 
   // Today's real route, for the coverage map in the hero. Same loader the
-  // detour screener uses, so the picture and the rule cannot disagree.
+  // detour screener uses, so the picture and the rule cannot disagree. The
+  // zones it draws over came up in the first wave; this one could not, because
+  // todayKey is cut in the account's timezone and that arrived with the account.
   const routeStops = await loadRouteStops(supabase, accountId, { day: todayKey, timezone });
-  // Empty until the migration is applied — the map then draws the plain limit.
-  const priorityZones = await loadPriorityZones(supabase, accountId);
-  const zonesAvailable = await priorityZonesAvailable(supabase, accountId);
   // Somewhere to open the map on a day with nothing booked. Without it the
   // canvas never mounted, and priority areas — a setting about where you WOULD
   // drive — could not be drawn at all unless you happened to have work today.

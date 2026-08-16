@@ -54,7 +54,11 @@ describe('the map is opened rather than dismissed', () => {
 
   /** Nor fetch the pins for a map nobody asked for. */
   it('does not fetch pins for it either', () => {
-    expect(PAGE).toContain("const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];");
+    // The gate is the ternary, not the statement it used to sit in: the pins are
+    // fetched in the page's batched wave now, so there is no `await` in front of
+    // the call. What matters — and what this asserts — is that getMapPins is
+    // still reached only when the map is on.
+    expect(PAGE).toContain("mapView !== 'off' ? getMapPins(supabase, accountId)");
   });
 
   /** "Show map" alone does not say whether there is anything on it, and opening
