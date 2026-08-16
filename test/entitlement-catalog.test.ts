@@ -132,6 +132,12 @@ describe('billing entitlement catalog compiler', () => {
       periodStartMs,
       periodEndMs,
       effectiveAtMs: periodEndMs + 1,
-    })).toThrow(/inside the current billing period/i);
+    })).toThrow(/inside the current allowance period/i);
+
+    expect(() => proratedPlanUpgradeCreditDeltas('solo', 'growth', {
+      periodStartMs,
+      periodEndMs: Date.UTC(2027, 7, 1),
+      effectiveAtMs: halfway,
+    })).toThrow(/cannot exceed 32 days/i);
   });
 });

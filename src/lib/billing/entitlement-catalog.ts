@@ -130,22 +130,28 @@ export function planUpgradeCreditDeltas(
     .filter((grant) => grant.units > 0));
 }
 
-export type BillingPeriodWindow = Readonly<{
+export type AllowancePeriodWindow = Readonly<{
   periodStartMs: number;
   periodEndMs: number;
   effectiveAtMs: number;
 }>;
 
-function periodFractionRemaining(window: BillingPeriodWindow): number {
+const MAX_ALLOWANCE_PERIOD_MS = 32 * 24 * 60 * 60 * 1_000;
+
+function periodFractionRemaining(window: AllowancePeriodWindow): number {
   const { periodStartMs, periodEndMs, effectiveAtMs } = window;
   if (![periodStartMs, periodEndMs, effectiveAtMs].every(Number.isFinite)) {
-    throw new Error('Billing-period timestamps must be finite numbers.');
+    throw new Error('Allowance-period timestamps must be finite numbers.');
   }
-  if (periodEndMs <= periodStartMs) throw new Error('Billing period end must be after its start.');
+  const periodDurationMs = periodEndMs - periodStartMs;
+  if (periodDurationMs <= 0) throw new Error('Allowance period end must be after its start.');
+  if (periodDurationMs > MAX_ALLOWANCE_PERIOD_MS) {
+    throw new Error('Allowance period cannot exceed 32 days; do not use the subscription billing term.');
+  }
   if (effectiveAtMs < periodStartMs || effectiveAtMs > periodEndMs) {
-    throw new Error('Upgrade effective time must fall inside the current billing period.');
+    throw new Error('Upgrade effective time must fall inside the current allowance period.');
   }
-  return (periodEndMs - effectiveAtMs) / (periodEndMs - periodStartMs);
+  return (periodEndMs - effectiveAtMs) / periodDurationMs;
 }
 
 /**
@@ -156,7 +162,7 @@ function periodFractionRemaining(window: BillingPeriodWindow): number {
 export function proratedPlanUpgradeCreditDeltas(
   fromPlanCode: Exclude<BillingPlanId, 'flex'>,
   toPlanCode: Exclude<BillingPlanId, 'flex'>,
-  window: BillingPeriodWindow,
+  window: AllowancePeriodWindow,
 ): readonly PlanCreditGrant[] {
   const fraction = periodFractionRemaining(window);
   return Object.freeze(planUpgradeCreditDeltas(fromPlanCode, toPlanCode)

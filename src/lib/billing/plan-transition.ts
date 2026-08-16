@@ -6,7 +6,7 @@ import {
 import {
   planUpgradeCreditDeltas,
   proratedPlanUpgradeCreditDeltas,
-  type BillingPeriodWindow,
+  type AllowancePeriodWindow,
   workspaceEntitlementCatalogSnapshot,
   type PlanCreditGrant,
   type WorkspaceEntitlementCatalogSnapshot,
@@ -67,7 +67,7 @@ function validateSelection(selection: WorkspacePlanSelection, label: string): vo
 export function decidePlanTransition(
   current: WorkspacePlanSelection,
   target: WorkspacePlanSelection,
-  currentPeriod?: BillingPeriodWindow,
+  currentAllowancePeriod?: AllowancePeriodWindow,
 ): PlanTransitionDecision {
   validateSelection(current, 'Current');
   validateSelection(target, 'Target');
@@ -92,13 +92,13 @@ export function decidePlanTransition(
       if (target.planCode === 'flex') {
         throw new Error('A paid capacity upgrade cannot target Flex.');
       }
-      if (!currentPeriod) {
-        throw new Error('A paid mid-cycle upgrade requires its current billing-period window.');
+      if (!currentAllowancePeriod) {
+        throw new Error('A paid mid-cycle upgrade requires its current monthly allowance-period window.');
       }
       creditGrants = proratedPlanUpgradeCreditDeltas(
         current.planCode,
         target.planCode,
-        currentPeriod,
+        currentAllowancePeriod,
       );
     }
     return Object.freeze({

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decidePlanTransition, isSelfServicePaidPlan } from '@/lib/billing/plan-transition';
 
 describe('approved plan-transition policy', () => {
-  const currentPeriod = {
+  const currentAllowancePeriod = {
     periodStartMs: Date.UTC(2026, 7, 1),
     periodEndMs: Date.UTC(2026, 8, 1),
     effectiveAtMs: Date.UTC(2026, 7, 16, 12),
@@ -27,7 +27,7 @@ describe('approved plan-transition policy', () => {
     const decision = decidePlanTransition(
       { planCode: 'solo', billingInterval: 'monthly' },
       { planCode: 'growth', billingInterval: 'monthly' },
-      currentPeriod,
+      currentAllowancePeriod,
     );
 
     expect(decision).toMatchObject({
@@ -46,7 +46,7 @@ describe('approved plan-transition policy', () => {
     expect(() => decidePlanTransition(
       { planCode: 'solo', billingInterval: 'monthly' },
       { planCode: 'growth', billingInterval: 'monthly' },
-    )).toThrow(/billing-period window/i);
+    )).toThrow(/allowance-period window/i);
   });
 
   it('schedules lower capacity, Flex, and cycle-only changes at renewal', () => {
@@ -68,8 +68,38 @@ describe('approved plan-transition policy', () => {
     expect(decidePlanTransition(
       { planCode: 'growth', billingInterval: 'annual' },
       { planCode: 'scale', billingInterval: 'monthly' },
-      currentPeriod,
+      currentAllowancePeriod,
     ).kind).toBe('schedule_at_renewal');
+  });
+
+  it('prorates an annual subscriber upgrade by its monthly allowance reset window', () => {
+    const decision = decidePlanTransition(
+      { planCode: 'solo', billingInterval: 'annual' },
+      { planCode: 'growth', billingInterval: 'annual' },
+      currentAllowancePeriod,
+    );
+
+    expect(decision).toMatchObject({
+      kind: 'activate_after_payment',
+      paymentMode: 'invoice_proration',
+      targetSnapshot: { billingInterval: 'annual' },
+      creditGrants: [
+        { resourceCode: 'text_segments', units: 500 },
+        { resourceCode: 'marketing_email_sends', units: 1_000 },
+        { resourceCode: 'ai_intake_threads', units: 125 },
+        { resourceCode: 'ai_writing_drafts', units: 100 },
+      ],
+    });
+
+    expect(() => decidePlanTransition(
+      { planCode: 'solo', billingInterval: 'annual' },
+      { planCode: 'growth', billingInterval: 'annual' },
+      {
+        periodStartMs: Date.UTC(2026, 0, 1),
+        periodEndMs: Date.UTC(2027, 0, 1),
+        effectiveAtMs: Date.UTC(2026, 7, 16),
+      },
+    )).toThrow(/cannot exceed 32 days/i);
   });
 
   it('does nothing for the exact current selection and rejects invalid intervals', () => {
