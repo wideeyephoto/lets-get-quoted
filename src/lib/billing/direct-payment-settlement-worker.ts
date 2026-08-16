@@ -10,11 +10,12 @@ import { paymentText } from '@/lib/sms-templates';
  * DARK server-only fulfillment worker for a successfully projected one-off
  * Merchant direct payment.
  *
- * Nothing imports this module. It has no route, cron, timer, flag, or automatic
- * execution path. The database owns leases and terminal outcomes. This worker
- * owns only two effects, in order: one idempotent payment-paid feed entry and
- * one currently-consented payment receipt text. It never changes ordinary job
- * status and never calls Quick Stop, payment-plan, recurring, or refund logic.
+ * Only the exact-1-gated billing cron boundary imports this module. With that
+ * gate off, it has no execution path. The database owns leases and terminal
+ * outcomes. This worker owns only two effects, in order: one idempotent
+ * payment-paid feed entry and one currently-consented payment receipt text. It
+ * never changes ordinary job status and never calls Quick Stop, payment-plan,
+ * recurring, or refund logic.
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

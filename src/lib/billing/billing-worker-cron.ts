@@ -5,12 +5,16 @@ import {
   type RunPaidPlanMonthlyAllowanceResetBatchResult,
 } from '@/lib/billing/monthly-allowance-reset-worker';
 import {
+  runDirectPaymentSettlementBatch,
+  type RunDirectPaymentSettlementBatchResult,
+} from '@/lib/billing/direct-payment-settlement-worker';
+import {
   runStripeBillingSubscriptionProjectionBatch,
   type StripeSubscriptionProjectionWorkerBatchResult,
 } from '@/lib/billing/subscription-projection-worker';
 
 /**
- * DARK scheduler boundary for the two durable billing workers.
+ * DARK scheduler boundary for the durable billing workers.
  *
  * The route gate is deliberately separate from CRON_SECRET. A disabled route
  * must stop before the authenticated cron wrapper reads the secret, creates a
@@ -23,12 +27,15 @@ export const STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG =
   'LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED';
 export const PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG =
   'LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED';
+export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
+  'LGQ_DIRECT_PAYMENT_SETTLEMENT_WORKER_ENABLED';
 
 // Request input never controls these bounds. Increasing either value requires
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
 // unbounded provider or database loop.
 export const STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE = 10;
 export const PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE = 10;
+export const DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE = 10;
 
 type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -42,6 +49,12 @@ export function paidPlanAllowanceResetWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG] === '1';
+}
+
+export function directPaymentSettlementWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG] === '1';
 }
 
 export type StripeSubscriptionProjectionCronSummary = Readonly<{
@@ -200,4 +213,119 @@ PaidPlanAllowanceResetCronSummary
     result,
     PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE,
   );
+}
+
+export type DirectPaymentSettlementCronSummary = Readonly<{
+  requested: number;
+  claimed: number;
+  completed: number;
+  already_finished: number;
+  retryable_failures: number;
+  terminal_failures: number;
+  sms_indeterminate: number;
+  feed_recorded: number;
+  sms_sent: number;
+  sms_skipped_no_consent: number;
+  sms_skipped_opted_out: number;
+  sms_pending: number;
+  worker_errors: number;
+  failures: number;
+}>;
+
+/** Collapse every task/payment/workspace/provider identifier to fixed counters. */
+export function summarizeDirectPaymentSettlementBatch(
+  result: RunDirectPaymentSettlementBatchResult,
+  requested = DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
+  workerErrors = 0,
+): DirectPaymentSettlementCronSummary {
+  let completed = 0;
+  let alreadyFinished = 0;
+  let retryableFailures = 0;
+  let terminalFailures = 0;
+  let smsIndeterminate = 0;
+  let feedRecorded = 0;
+  let smsSent = 0;
+  let smsSkippedNoConsent = 0;
+  let smsSkippedOptedOut = 0;
+  let smsPending = 0;
+
+  for (const outcome of result.outcomes) {
+    switch (outcome.status) {
+      case 'completed':
+        completed += 1;
+        break;
+      case 'already_finished':
+        alreadyFinished += 1;
+        break;
+      case 'failed_retryable':
+        retryableFailures += 1;
+        break;
+      case 'failed_terminal':
+        terminalFailures += 1;
+        break;
+      case 'sms_indeterminate':
+        smsIndeterminate += 1;
+        break;
+    }
+
+    if (outcome.feedStatus === 'recorded') feedRecorded += 1;
+    switch (outcome.smsStatus) {
+      case 'sent':
+        smsSent += 1;
+        break;
+      case 'skipped_no_consent':
+        smsSkippedNoConsent += 1;
+        break;
+      case 'skipped_opted_out':
+        smsSkippedOptedOut += 1;
+        break;
+      case 'indeterminate':
+        // Counted separately above as failed work; retain the SMS state without
+        // turning it back into something retryable.
+        break;
+      case 'pending':
+        smsPending += 1;
+        break;
+    }
+  }
+
+  const failures = retryableFailures + terminalFailures + smsIndeterminate + workerErrors;
+  return Object.freeze({
+    requested,
+    claimed: result.claimedCount,
+    completed,
+    already_finished: alreadyFinished,
+    retryable_failures: retryableFailures,
+    terminal_failures: terminalFailures,
+    sms_indeterminate: smsIndeterminate,
+    feed_recorded: feedRecorded,
+    sms_sent: smsSent,
+    sms_skipped_no_consent: smsSkippedNoConsent,
+    sms_skipped_opted_out: smsSkippedOptedOut,
+    sms_pending: smsPending,
+    worker_errors: workerErrors,
+    failures,
+  });
+}
+
+export async function runDirectPaymentSettlementCronBatch(): Promise<
+DirectPaymentSettlementCronSummary
+> {
+  try {
+    const result = await runDirectPaymentSettlementBatch(
+      DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
+    );
+    return summarizeDirectPaymentSettlementBatch(
+      result,
+      DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
+    );
+  } catch {
+    // Never let exception text reach the cron response or cron_runs. Worker/RPC
+    // failures are monitored as one count-only logical failure instead.
+    return summarizeDirectPaymentSettlementBatch(
+      { claimedCount: 0, outcomes: [] },
+      DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
+      1,
+    );
+  }
 }

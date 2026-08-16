@@ -272,7 +272,7 @@ describe('dark direct payment settlement worker', () => {
     await expect(ambiguous.stageSms(CLAIM, ENVELOPE)).rejects.toThrow(/sms_stage_invalid/);
   });
 
-  it('stays server-only, dark, and disconnected from special job/payment transitions', () => {
+  it('stays server-only, exact-gated, and disconnected from special job/payment transitions', () => {
     const worker = join(
       process.cwd(),
       'src',
@@ -280,7 +280,16 @@ describe('dark direct payment settlement worker', () => {
       'billing',
       'direct-payment-settlement-worker.ts',
     );
-    const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter((file) => file !== worker);
+    const schedulerBoundary = join(
+      process.cwd(),
+      'src',
+      'lib',
+      'billing',
+      'billing-worker-cron.ts',
+    );
+    const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter(
+      (file) => file !== worker && file !== schedulerBoundary,
+    );
     activeFiles.push(join(process.cwd(), '.env.example'), join(process.cwd(), 'vercel.json'));
 
     for (const file of activeFiles) {
@@ -289,6 +298,11 @@ describe('dark direct payment settlement worker', () => {
       expect(source).not.toContain('runDirectPaymentSettlementBatch');
       expect(source).not.toContain('claim_direct_payment_settlement_tasks');
     }
+
+    const scheduler = readFileSync(schedulerBoundary, 'utf8');
+    expect(scheduler).toContain("from '@/lib/billing/direct-payment-settlement-worker'");
+    expect(scheduler).toContain('DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG');
+    expect(scheduler).toContain('runDirectPaymentSettlementCronBatch');
 
     const source = readFileSync(worker, 'utf8');
     expect(source.startsWith("import 'server-only';")).toBe(true);

@@ -31,6 +31,13 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'direct-payment-settlement',
+    label: 'Direct payment settlement',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Successful direct payments stop receiving their idempotent job-feed entry and currently-consented receipt text.',
+  },
+  {
     job: 'billing-subscription-projection',
     label: 'Billing subscription projection',
     schedule: '*/5 * * * *',
