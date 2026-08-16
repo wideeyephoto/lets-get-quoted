@@ -4,6 +4,7 @@ import { isSectionNew, markNavSeen, parseNavSeen, resolveTabForHash, shouldAutoO
 // Mirrors the real settings tab config (id + the section ids each tab owns).
 const TABS = [
   { id: 'account' },
+  { id: 'plan', anchors: ['current-plan', 'platform-fee', 'usage-balances', 'included-limits'] },
   { id: 'payments', anchors: ['deposits'] },
   { id: 'automations', anchors: ['reviews', 'followups', 'reminders', 'daily-digest'] },
   { id: 'business', anchors: ['marketing-address', 'finances'] },
@@ -13,6 +14,7 @@ describe('resolveTabForHash', () => {
   it('matches a tab by its own id (with or without leading #)', () => {
     expect(resolveTabForHash(TABS, '#payments')).toBe('payments');
     expect(resolveTabForHash(TABS, 'account')).toBe('account');
+    expect(resolveTabForHash(TABS, '#plan')).toBe('plan');
   });
 
   it('resolves a deep-link anchor to the tab that owns it', () => {
@@ -24,6 +26,8 @@ describe('resolveTabForHash', () => {
     expect(resolveTabForHash(TABS, '#finances')).toBe('business');
     expect(resolveTabForHash(TABS, '#marketing-address')).toBe('business');
     expect(resolveTabForHash(TABS, '#deposits')).toBe('payments');
+    expect(resolveTabForHash(TABS, '#usage-balances')).toBe('plan');
+    expect(resolveTabForHash(TABS, '#platform-fee')).toBe('plan');
   });
 
   it('returns null for empty, missing, or unknown hashes', () => {

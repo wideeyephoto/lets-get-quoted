@@ -4301,6 +4301,71 @@ h3 {
 .fee-tier-bar { height: 8px; border-radius: 999px; background: rgba(var(--tint), 0.08); margin: 0.9rem 0 0.6rem; overflow: hidden; }
 .fee-tier-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent, #ff7a21), var(--accent-2, #ffd166)); }
 
+/* Read-only Plan & usage surface (Account -> Plan & usage). */
+.plan-usage-plan-card {
+  margin-top: 0.9rem;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--edge-t09);
+  border-radius: 0.9rem;
+  background: linear-gradient(145deg, rgba(255, 122, 33, 0.09), rgba(var(--tint), 0.025) 55%);
+}
+.plan-usage-plan-name { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.plan-usage-plan-name > span { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+.plan-usage-plan-name > strong { color: var(--gold-ink); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.plan-usage-plan-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+}
+.plan-usage-plan-facts > div,
+.plan-usage-balance {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--rule-t08);
+  border-radius: 0.72rem;
+  background: rgba(var(--tint), 0.025);
+}
+.plan-usage-plan-facts dt,
+.plan-usage-limit-list dt { color: var(--mute-g270); font-size: 0.75rem; font-weight: 700; }
+.plan-usage-plan-facts dd,
+.plan-usage-limit-list dd { margin: 0.22rem 0 0; color: var(--text); font-weight: 750; font-variant-numeric: tabular-nums; }
+.plan-usage-disclosure,
+.plan-usage-intro { margin: 0.9rem 0 0; }
+.plan-usage-note,
+.plan-usage-unavailable {
+  margin: 0.85rem 0 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--cedge-amber-6);
+  border-radius: 0.7rem;
+  color: var(--gold-ink);
+  background: rgba(255, 209, 102, 0.08);
+  line-height: 1.45;
+}
+.plan-usage-note.warning { border-color: var(--cedge-orange-8); color: var(--accent-ink); background: rgba(255, 122, 33, 0.08); }
+.plan-usage-unavailable { display: grid; gap: 0.22rem; }
+.plan-usage-unavailable span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.86rem; }
+.plan-usage-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+.plan-usage-balance { display: grid; gap: 0.26rem; }
+.plan-usage-balance > span { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
+.plan-usage-balance > strong { color: var(--text); font-size: 1.12rem; font-variant-numeric: tabular-nums; }
+.plan-usage-balance > small { color: rgba(var(--ink-rgb), 0.62); line-height: 1.35; }
+.plan-usage-limit-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0.8rem 0 0; }
+.plan-usage-limit-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.72rem 0.2rem; border-bottom: 1px solid var(--rule-t08); }
+.plan-usage-limit-list > div:nth-child(odd) { margin-right: 1rem; }
+.plan-usage-limit-list dd { text-align: right; }
+@media (max-width: 680px) {
+  .plan-usage-plan-facts,
+  .plan-usage-balance-grid,
+  .plan-usage-limit-list { grid-template-columns: 1fr; }
+  .plan-usage-limit-list > div:nth-child(odd) { margin-right: 0; }
+}
+
 /* Compact "log out" footer folded into the sign-in methods card. */
 .signout-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule-t08); }
 

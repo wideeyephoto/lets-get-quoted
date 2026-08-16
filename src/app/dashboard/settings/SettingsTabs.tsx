@@ -15,6 +15,7 @@ export type SettingsTab = {
 
 const TAB_ICONS: Record<string, string> = {
   account: '<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+  plan: '<path d="M4 6.5h16v11H4z"/><path d="M7.5 10h4M7.5 14h7M16.5 9v2"/>',
   payments: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/><path d="M6 15h4"/>',
   // No `automations` entry: that tab is a page now, /dashboard/automations.
   // Its old anchors are forwarded there by the effect below.

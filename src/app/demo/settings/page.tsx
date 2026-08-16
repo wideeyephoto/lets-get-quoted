@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { DEMO_COMPANY_NAME, DEMO_SERVICE_AREA, DEMO_SITE_HOST } from '@/lib/demo-data';
 import SettingsTabs from '@/app/dashboard/settings/SettingsTabs';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Account settings — Live Demo' };
@@ -19,13 +20,15 @@ export const metadata = { title: 'Account settings — Live Demo' };
  * of what is configurable. The value here is knowing the settings EXIST and how
  * they are organized, not operating them.
  *
- * So the compromise: the real SettingsTabs shell, with the real four tabs in
- * their real order, over purpose-built read-only summaries. A prospect sees the
+ * So the compromise: the real SettingsTabs shell, with the real tabs in their
+ * real order, over purpose-built read-only summaries. A prospect sees the
  * true shape of the page; nothing pretends to be a control it isn't. If a tab is
  * ever added or renamed, the nav here follows automatically — only the summaries
  * would need a look.
  */
 export default function DemoSettingsPage() {
+  const pricingDashboardEnabled = planUsageDashboardEnabled();
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero workspace-hero-solo panel">
@@ -67,6 +70,26 @@ export default function DemoSettingsPage() {
               </section>
             ),
           },
+          ...(pricingDashboardEnabled ? [{
+            id: 'plan',
+            label: 'Plan & usage',
+            content: (
+              <section className="panel workspace-section-card">
+                <div className="section-heading workspace-section-heading">
+                  <p className="eyebrow">Plan &amp; usage</p>
+                  <h2>What is included and what is available</h2>
+                </div>
+                <p className="workspace-card-copy">
+                  The real account shows its saved plan, LGQ platform-fee rate, billing status, and the exact
+                  text, marketing email, AI Intake, and AI writing balances available right now.
+                </p>
+                <p className="workspace-card-copy">
+                  Purchased credits and plan-period credits may share a balance, so the page labels the amount
+                  available instead of presenting a misleading monthly progress bar.
+                </p>
+              </section>
+            ),
+          }] : []),
           {
             id: 'payments',
             label: 'Payments',

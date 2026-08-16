@@ -29,6 +29,8 @@ import { googleReviewUrl } from '@/lib/review-routing';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
 import { formatMoney } from '@/lib/jobs';
+import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
+import PlanUsageSection from './PlanUsageSection';
 
 export const metadata = { title: 'Account' };
 
@@ -42,8 +44,9 @@ export default async function SettingsPage({
   searchParams: { year?: string; quickbooks?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
+  const pricingDashboardEnabled = planUsageDashboardEnabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -66,6 +69,10 @@ export default async function SettingsPage({
         .select('id', { count: 'exact', head: true })
         .eq('account_id', accountId)
         .in('status', ['requested', 'processing']),
+      // Dark by default. A disabled rollout performs no entitlement query, so
+      // deploying the code ahead of the production migration cannot disturb
+      // the existing Account page.
+      pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
     ]);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
@@ -89,10 +96,11 @@ export default async function SettingsPage({
     listingUrl: businessBasics.testimonials.googleUrl,
   });
 
-  // Platform fee tier, shown on the Payments tab so a contractor can see the rate
-  // they're on and what it takes to reach the next (lower) one.
-  const trailingVolume = await getTrailingVolume(accountId);
-  const feeTier = getTierInfo(trailingVolume);
+  // Keep the existing volume-tier read exactly while the new surface is dark.
+  // Once enabled, the entitlement snapshot is the authority and the obsolete
+  // tier calculation is neither queried nor rendered.
+  const trailingVolume = pricingDashboardEnabled ? null : await getTrailingVolume(accountId);
+  const feeTier = trailingVolume === null ? null : getTierInfo(trailingVolume);
 
   const { data: costSettings } = await supabase
     .from('accounts')
@@ -279,6 +287,12 @@ export default async function SettingsPage({
               </>
             ),
           },
+          ...(pricingDashboardEnabled && planUsage ? [{
+            id: 'plan',
+            label: 'Plan & usage',
+            anchors: ['current-plan', 'platform-fee', 'usage-balances', 'included-limits'],
+            content: <PlanUsageSection data={planUsage} />,
+          }] : []),
           {
             id: 'payments',
             label: 'Payments',
@@ -286,7 +300,7 @@ export default async function SettingsPage({
             // be linked to AT ALL — the same bug job-costing had, and the
             // reason a contrast sweep that walks tabs by anchor never rendered
             // this tab and never saw what was wrong on it.
-            anchors: ['payouts', 'platform-fee'],
+            anchors: pricingDashboardEnabled ? ['payouts'] : ['payouts', 'platform-fee'],
             content: (
               <>
                 <section className="panel workspace-section-card" id="payouts">
@@ -299,39 +313,41 @@ export default async function SettingsPage({
                   />
                 </section>
 
-                <section className="panel workspace-section-card" id="platform-fee">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Platform fee</p>
-                    <h2>Your current tier</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    letsgetquoted.com takes a small platform fee on each payment you collect, and it drops
-                    as your trailing 12-month volume grows. The rate is locked in on every payment when it&apos;s
-                    made — this never re-rates what you&apos;ve already been charged.
-                  </p>
-                  <div className="fee-tier-card">
-                    <div className="fee-tier-head">
-                      <span className="fee-tier-rate">{(feeTier.rate * 100).toFixed(2)}%</span>
-                      <span className="fee-tier-meta">
-                        <strong>Tier {feeTier.tier}</strong>
-                        <span>{formatMoney(trailingVolume)} trailing 12-mo volume</span>
-                      </span>
+                {!pricingDashboardEnabled && feeTier && trailingVolume !== null ? (
+                  <section className="panel workspace-section-card" id="platform-fee">
+                    <div className="section-heading workspace-section-heading compact-heading">
+                      <p className="eyebrow">Platform fee</p>
+                      <h2>Your current tier</h2>
                     </div>
-                    {feeTier.nextTier ? (
-                      <>
-                        <div className="fee-tier-bar" role="presentation">
-                          <span style={{ width: `${Math.round((feeTier.progressToNext ?? 0) * 100)}%` }} />
-                        </div>
-                        <p className="field-hint">
-                          {formatMoney(feeTier.amountToNextTier ?? 0)} more in the next 12 months moves you to{' '}
-                          <strong>{(feeTier.nextTier.rate * 100).toFixed(2)}%</strong> (Tier {feeTier.nextTier.tier}).
-                        </p>
-                      </>
-                    ) : (
-                      <p className="field-hint">You&apos;re on the lowest platform fee we offer. 🎉</p>
-                    )}
-                  </div>
-                </section>
+                    <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                      letsgetquoted.com takes a small platform fee on each payment you collect, and it drops
+                      as your trailing 12-month volume grows. The rate is locked in on every payment when it&apos;s
+                      made — this never re-rates what you&apos;ve already been charged.
+                    </p>
+                    <div className="fee-tier-card">
+                      <div className="fee-tier-head">
+                        <span className="fee-tier-rate">{(feeTier.rate * 100).toFixed(2)}%</span>
+                        <span className="fee-tier-meta">
+                          <strong>Tier {feeTier.tier}</strong>
+                          <span>{formatMoney(trailingVolume)} trailing 12-mo volume</span>
+                        </span>
+                      </div>
+                      {feeTier.nextTier ? (
+                        <>
+                          <div className="fee-tier-bar" role="presentation">
+                            <span style={{ width: `${Math.round((feeTier.progressToNext ?? 0) * 100)}%` }} />
+                          </div>
+                          <p className="field-hint">
+                            {formatMoney(feeTier.amountToNextTier ?? 0)} more in the next 12 months moves you to{' '}
+                            <strong>{(feeTier.nextTier.rate * 100).toFixed(2)}%</strong> (Tier {feeTier.nextTier.tier}).
+                          </p>
+                        </>
+                      ) : (
+                        <p className="field-hint">You&apos;re on the lowest platform fee we offer. 🎉</p>
+                      )}
+                    </div>
+                  </section>
+                ) : null}
               </>
             ),
           },
