@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const doubles = vi.hoisted(() => ({
   createAdminClient: vi.fn(),
   runProjectionBatch: vi.fn(),
+  runConnectedProjectionBatch: vi.fn(),
   runAllowanceResetBatch: vi.fn(),
   runSettlementBatch: vi.fn(),
 }));
@@ -17,6 +18,10 @@ vi.mock('@/lib/billing/subscription-projection-worker', () => ({
   runStripeBillingSubscriptionProjectionBatch: doubles.runProjectionBatch,
 }));
 
+vi.mock('@/lib/billing/connected-payment-projection-worker', () => ({
+  runConnectedPaymentProjectionBatch: doubles.runConnectedProjectionBatch,
+}));
+
 vi.mock('@/lib/billing/monthly-allowance-reset-worker', () => ({
   runPaidPlanMonthlyAllowanceResetBatch: doubles.runAllowanceResetBatch,
 }));
@@ -27,17 +32,22 @@ vi.mock('@/lib/billing/direct-payment-settlement-worker', () => ({
 
 import { GET as runAllowanceResets } from '@/app/api/cron/billing-allowance-resets/route';
 import { GET as runSubscriptionProjection } from '@/app/api/cron/billing-subscription-projection/route';
+import { GET as runConnectedPaymentProjection } from '@/app/api/cron/connected-payment-projection/route';
 import { GET as runDirectPaymentSettlement } from '@/app/api/cron/direct-payment-settlement/route';
 import {
   DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
   DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG,
   PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE,
   PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG,
+  STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+  STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG,
   STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE,
   STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG,
   directPaymentSettlementWorkerEnabled,
   paidPlanAllowanceResetWorkerEnabled,
+  stripeConnectedPaymentProjectionWorkerEnabled,
   stripeSubscriptionProjectionWorkerEnabled,
+  summarizeConnectedPaymentProjectionBatch,
   summarizePaidPlanAllowanceResetBatch,
   summarizeDirectPaymentSettlementBatch,
   summarizeStripeSubscriptionProjectionBatch,
@@ -45,6 +55,8 @@ import {
 import { cronSummaryHasFailures } from '@/lib/cron-jobs';
 
 const ORIGINAL_PROJECTION_FLAG = process.env[STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG];
+const ORIGINAL_CONNECTED_PROJECTION_FLAG =
+  process.env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG];
 const ORIGINAL_RESET_FLAG = process.env[PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG];
 const ORIGINAL_SETTLEMENT_FLAG = process.env[DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG];
 const ORIGINAL_CRON_SECRET = process.env.CRON_SECRET;
@@ -95,6 +107,14 @@ beforeEach(() => {
     results: [],
     errorCode: null,
   });
+  doubles.runConnectedProjectionBatch.mockReset().mockResolvedValue({
+    status: 'completed',
+    requestedBatchSize: STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+    selectedCount: 0,
+    claimedCount: 0,
+    results: [],
+    errorCode: null,
+  });
   doubles.runAllowanceResetBatch.mockReset().mockResolvedValue({
     claimedCount: 0,
     outcomes: [],
@@ -107,6 +127,10 @@ beforeEach(() => {
 
 afterEach(() => {
   restoreEnvironment(STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG, ORIGINAL_PROJECTION_FLAG);
+  restoreEnvironment(
+    STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG,
+    ORIGINAL_CONNECTED_PROJECTION_FLAG,
+  );
   restoreEnvironment(PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG, ORIGINAL_RESET_FLAG);
   restoreEnvironment(DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG, ORIGINAL_SETTLEMENT_FLAG);
   restoreEnvironment('CRON_SECRET', ORIGINAL_CRON_SECRET);
@@ -129,6 +153,24 @@ describe('dark billing worker route gates', () => {
       expect(unread.text).not.toHaveBeenCalled();
       expect(doubles.createAdminClient).not.toHaveBeenCalled();
       expect(doubles.runProjectionBatch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([undefined, '', '0', 'true', ' 1', '1 '])(
+    'keeps connected-payment projection dark unless its flag is exactly 1 (%s)',
+    async (configured) => {
+      restoreEnvironment(STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG, configured);
+      process.env.CRON_SECRET = 'must-not-be-read';
+      const unread = unreadRequest();
+
+      const response = await runConnectedPaymentProjection(unread.request);
+
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe('');
+      expect(unread.get).not.toHaveBeenCalled();
+      expect(unread.text).not.toHaveBeenCalled();
+      expect(doubles.createAdminClient).not.toHaveBeenCalled();
+      expect(doubles.runConnectedProjectionBatch).not.toHaveBeenCalled();
     },
   );
 
@@ -175,6 +217,12 @@ describe('dark billing worker route gates', () => {
     expect(stripeSubscriptionProjectionWorkerEnabled({
       [STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG]: 'true',
     })).toBe(false);
+    expect(stripeConnectedPaymentProjectionWorkerEnabled({
+      [STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG]: '1',
+    })).toBe(true);
+    expect(stripeConnectedPaymentProjectionWorkerEnabled({
+      [STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG]: 'true',
+    })).toBe(false);
     expect(paidPlanAllowanceResetWorkerEnabled({
       [PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG]: '1',
     })).toBe(true);
@@ -191,6 +239,7 @@ describe('dark billing worker route gates', () => {
 
   it.each([
     [STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG, runSubscriptionProjection],
+    [STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG, runConnectedPaymentProjection],
     [PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG, runAllowanceResets],
     [DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG, runDirectPaymentSettlement],
   ] as const)('requires CRON_SECRET after %s is enabled', async (flag, handler) => {
@@ -203,6 +252,7 @@ describe('dark billing worker route gates', () => {
     expect(await response.json()).toEqual({ error: 'Unauthorized' });
     expect(doubles.createAdminClient).not.toHaveBeenCalled();
     expect(doubles.runProjectionBatch).not.toHaveBeenCalled();
+    expect(doubles.runConnectedProjectionBatch).not.toHaveBeenCalled();
     expect(doubles.runAllowanceResetBatch).not.toHaveBeenCalled();
     expect(doubles.runSettlementBatch).not.toHaveBeenCalled();
   });
@@ -240,6 +290,102 @@ describe('dark billing worker route gates', () => {
     expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
       ok: true,
       summary: expect.objectContaining({ requested: 10, claimed: 1, failures: 0 }),
+    }));
+  });
+
+  it('uses one fixed connected-payment batch and records only count-based monitoring', async () => {
+    process.env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG] = '1';
+    process.env.CRON_SECRET = 'cron-secret';
+    const { admin, builder } = fakeCronAdmin();
+    doubles.createAdminClient.mockReturnValue(admin);
+    const secret = 'private@example.com / payment-private / evt_private';
+    doubles.runConnectedProjectionBatch.mockResolvedValue({
+      status: 'completed',
+      requestedBatchSize: STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+      selectedCount: 2,
+      claimedCount: 1,
+      results: [
+        {
+          status: 'processed',
+          billingEventId: secret,
+          paymentId: secret,
+          workspaceId: secret,
+          applied: true,
+          reconciliationStatus: 'pending',
+        },
+        {
+          status: 'failed_terminal',
+          billingEventId: secret,
+          errorCode: 'projection_retry_attempt_limit',
+        },
+      ],
+      errorCode: null,
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const response = await runConnectedPaymentProjection(new Request(
+      'https://letsgetquoted.com/api/cron/connected-payment-projection?batch=999999',
+      { headers: { authorization: 'Bearer cron-secret' } },
+    ));
+    const responseBody = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(doubles.runConnectedProjectionBatch).toHaveBeenCalledOnce();
+    expect(doubles.runConnectedProjectionBatch).toHaveBeenCalledWith(
+      STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+    );
+    expect(responseBody).toMatchObject({
+      summary: {
+        requested: 10,
+        selected: 2,
+        claimed: 1,
+        dead_lettered_without_provider: 1,
+        processed: 1,
+        pending_reconciliation: 1,
+        terminal_failures: 1,
+        failures: 1,
+      },
+    });
+    expect(JSON.stringify(responseBody)).not.toContain(secret);
+    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+      ok: false,
+      summary: expect.objectContaining({
+        requested: 10,
+        selected: 2,
+        failures: 1,
+      }),
+    }));
+  });
+
+  it('collapses a top-level connected-payment worker exception to one fixed count', async () => {
+    process.env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG] = '1';
+    process.env.CRON_SECRET = 'cron-secret';
+    const { admin, builder } = fakeCronAdmin();
+    doubles.createAdminClient.mockReturnValue(admin);
+    const secret = 'customer@example.com / acct_private / ch_private';
+    doubles.runConnectedProjectionBatch.mockRejectedValue(new Error(secret));
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const response = await runConnectedPaymentProjection(new Request(
+      'https://letsgetquoted.com/api/cron/connected-payment-projection',
+      { headers: { authorization: 'Bearer cron-secret' } },
+    ));
+    const responseBody = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(responseBody).toMatchObject({
+      summary: {
+        selected: 0,
+        claimed: 0,
+        worker_errors: 1,
+        failures: 1,
+      },
+    });
+    expect(JSON.stringify(responseBody)).not.toContain(secret);
+    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+      ok: false,
+      summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
+      error: null,
     }));
   });
 
@@ -419,6 +565,49 @@ describe('PII-free billing worker heartbeat summaries', () => {
     expect(cronSummaryHasFailures(summary)).toBe(true);
   });
 
+  it('drops connected payment, workspace, Merchant, provider, and error identifiers', () => {
+    const secret = 'private@example.com / acct_private / pi_private / evt_private';
+    const summary = summarizeConnectedPaymentProjectionBatch({
+      status: 'completed',
+      requestedBatchSize: 10,
+      selectedCount: 4,
+      claimedCount: 3,
+      results: [
+        {
+          status: 'processed',
+          billingEventId: secret,
+          paymentId: secret,
+          workspaceId: secret,
+          applied: true,
+          reconciliationStatus: 'reconciled',
+        },
+        { status: 'failed_retryable', billingEventId: secret, errorCode: secret },
+        { status: 'failed_terminal', billingEventId: secret, errorCode: secret },
+        { status: 'worker_error', billingEventId: secret, errorCode: 'projection_worker_execution_error' },
+      ],
+      errorCode: null,
+    });
+
+    expect(summary).toEqual({
+      requested: 10,
+      selected: 4,
+      claimed: 3,
+      dead_lettered_without_provider: 1,
+      processed: 1,
+      reconciled: 1,
+      pending_reconciliation: 0,
+      replayed: 0,
+      in_progress: 0,
+      retryable_failures: 1,
+      terminal_failures: 1,
+      worker_errors: 1,
+      claim_errors: 0,
+      failures: 3,
+    });
+    expect(JSON.stringify(summary)).not.toContain(secret);
+    expect(cronSummaryHasFailures(summary)).toBe(true);
+  });
+
   it('drops allowance workspace and operation identifiers and flags dead letters', () => {
     const secret = 'private-workspace-or-operation-id';
     const summary = summarizePaidPlanAllowanceResetBatch({
@@ -482,6 +671,7 @@ describe('PII-free billing worker heartbeat summaries', () => {
 describe('billing worker route source contracts', () => {
   it.each([
     ['billing-subscription-projection', 'stripeSubscriptionProjectionWorkerEnabled'],
+    ['connected-payment-projection', 'stripeConnectedPaymentProjectionWorkerEnabled'],
     ['billing-allowance-resets', 'paidPlanAllowanceResetWorkerEnabled'],
     ['direct-payment-settlement', 'directPaymentSettlementWorkerEnabled'],
   ])('keeps the %s exact gate in front of cronRoute execution', (job, gate) => {

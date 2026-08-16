@@ -5,6 +5,10 @@ import {
   type RunPaidPlanMonthlyAllowanceResetBatchResult,
 } from '@/lib/billing/monthly-allowance-reset-worker';
 import {
+  runConnectedPaymentProjectionBatch,
+  type ConnectedPaymentProjectionWorkerBatchResult,
+} from '@/lib/billing/connected-payment-projection-worker';
+import {
   runDirectPaymentSettlementBatch,
   type RunDirectPaymentSettlementBatchResult,
 } from '@/lib/billing/direct-payment-settlement-worker';
@@ -25,6 +29,8 @@ import {
 
 export const STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG =
   'LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED';
+export const STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG =
+  'LGQ_STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_ENABLED';
 export const PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG =
   'LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED';
 export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
@@ -34,6 +40,7 @@ export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
 // unbounded provider or database loop.
 export const STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE = 10;
+export const STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE = 10;
 export const PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE = 10;
 export const DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE = 10;
 
@@ -43,6 +50,12 @@ export function stripeSubscriptionProjectionWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG] === '1';
+}
+
+export function stripeConnectedPaymentProjectionWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG] === '1';
 }
 
 export function paidPlanAllowanceResetWorkerEnabled(
@@ -201,6 +214,106 @@ StripeSubscriptionProjectionCronSummary
     STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE,
   );
   return summarizeStripeSubscriptionProjectionBatch(result);
+}
+
+export type ConnectedPaymentProjectionCronSummary = Readonly<{
+  requested: number;
+  selected: number;
+  claimed: number;
+  dead_lettered_without_provider: number;
+  processed: number;
+  reconciled: number;
+  pending_reconciliation: number;
+  replayed: number;
+  in_progress: number;
+  retryable_failures: number;
+  terminal_failures: number;
+  worker_errors: number;
+  claim_errors: number;
+  failures: number;
+}>;
+
+/** Collapse payment/workspace/provider identifiers before cron_runs sees them. */
+export function summarizeConnectedPaymentProjectionBatch(
+  result: ConnectedPaymentProjectionWorkerBatchResult,
+  topLevelWorkerErrors = 0,
+): ConnectedPaymentProjectionCronSummary {
+  let processed = 0;
+  let reconciled = 0;
+  let pendingReconciliation = 0;
+  let replayed = 0;
+  let inProgress = 0;
+  let retryableFailures = 0;
+  let terminalFailures = 0;
+  let itemWorkerErrors = 0;
+
+  for (const item of result.results) {
+    switch (item.status) {
+      case 'processed':
+        processed += 1;
+        if (item.reconciliationStatus === 'reconciled') reconciled += 1;
+        else pendingReconciliation += 1;
+        break;
+      case 'replay_processed':
+      case 'replay_ignored':
+        replayed += 1;
+        break;
+      case 'in_progress':
+        inProgress += 1;
+        break;
+      case 'failed_retryable':
+        retryableFailures += 1;
+        break;
+      case 'failed_terminal':
+        terminalFailures += 1;
+        break;
+      case 'worker_error':
+        itemWorkerErrors += 1;
+        break;
+    }
+  }
+
+  const workerErrors = itemWorkerErrors + topLevelWorkerErrors;
+  const claimErrors = result.status === 'claim_failed' ? 1 : 0;
+  const failures = retryableFailures + terminalFailures + workerErrors + claimErrors;
+  return Object.freeze({
+    requested: result.requestedBatchSize,
+    selected: result.selectedCount,
+    claimed: result.claimedCount,
+    dead_lettered_without_provider: result.selectedCount - result.claimedCount,
+    processed,
+    reconciled,
+    pending_reconciliation: pendingReconciliation,
+    replayed,
+    in_progress: inProgress,
+    retryable_failures: retryableFailures,
+    terminal_failures: terminalFailures,
+    worker_errors: workerErrors,
+    claim_errors: claimErrors,
+    failures,
+  });
+}
+
+export async function runConnectedPaymentProjectionCronBatch(): Promise<
+ConnectedPaymentProjectionCronSummary
+> {
+  try {
+    const result = await runConnectedPaymentProjectionBatch(
+      STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+    );
+    return summarizeConnectedPaymentProjectionBatch(result);
+  } catch {
+    // Initialization/configuration exceptions are reduced to one count. Never
+    // let a provider, payment, event, or database error string reach cron_runs.
+    return summarizeConnectedPaymentProjectionBatch({
+      status: 'completed',
+      requestedBatchSize: STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+      selectedCount: 0,
+      claimedCount: 0,
+      results: [],
+      errorCode: null,
+    }, 1);
+  }
 }
 
 export async function runPaidPlanAllowanceResetCronBatch(): Promise<

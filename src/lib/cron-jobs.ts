@@ -31,6 +31,13 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'connected-payment-projection',
+    label: 'Connected payment projection',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Signed connected-account Checkout success events stop marking direct payments paid and reconciled.',
+  },
+  {
     job: 'direct-payment-settlement',
     label: 'Direct payment settlement',
     schedule: '*/5 * * * *',

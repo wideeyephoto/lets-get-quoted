@@ -65,6 +65,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/connected-payment-projection",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/direct-payment-settlement",
       "schedule": "*/5 * * * *"
     }
