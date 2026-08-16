@@ -119,13 +119,43 @@ export async function buildDashboardHome(
 ): Promise<DashboardHome> {
   const basePath = options.basePath ?? '/dashboard';
 
-  const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
+  // ── EVERYTHING THAT DEPENDS ON NOTHING ────────────────────────────────────
+  //
+  // This was four waves. Only two of the reads in the later ones ever needed a
+  // result from an earlier one — the crew assignments want the scheduled jobs,
+  // and the schedule requests want the unscheduled ones — so the rest were
+  // waiting for no reason. The crew, the automation activity, the rebook and
+  // feedback counts and BOTH money reads are answered from the account id
+  // alone, which is known before any of this starts.
+  const [
+    { data: account },
+    { data: identityData },
+    { data: site },
+    jobs,
+    leads,
+    { count: clientCount },
+    crew,
+    automation,
+    rebookDue,
+    privateFeedback,
+    { data: invoiceRows },
+    { data: paidRows },
+  ] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled, auto_review_request, quote_followups_enabled, appointment_reminders_enabled, booking_weekdays, timezone').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at, content').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
     listLeads(supabase, accountId),
     supabase.from('clients').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+    listCrew(supabase, accountId, { activeOnly: true }),
+    getAutomationActivity(supabase, accountId),
+    countRebookCandidates(supabase, accountId),
+    countRecentPrivateFeedback(supabase, accountId),
+    supabase.from('invoices').select('id, total, status, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
+    // Two windows come out of one read: the calendar month, and the invoice
+    // netting, which needs every payment ever made against an open invoice
+    // rather than only this month's. Bounded by status so it stays a small set.
+    supabase.from('payments').select('amount, refunded_amount, status, paid_at, invoice_id').eq('account_id', accountId).eq('status', 'paid'),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
@@ -178,13 +208,6 @@ export async function buildDashboardHome(
   // page splits its board with; see lib/lead-queue.
   const activeLeads = leads.filter((lead) => isLeadActive({ status: lead.status, triage: getLeadTriage(lead) }, now));
   const leadStats = leadSummary(activeLeads);
-  const [crew, assignmentsByJob, automation, rebookDue, privateFeedback] = await Promise.all([
-    listCrew(supabase, accountId, { activeOnly: true }),
-    listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
-    getAutomationActivity(supabase, accountId),
-    countRebookCandidates(supabase, accountId),
-    countRecentPrivateFeedback(supabase, accountId),
-  ]);
 
   const jobsByDate = new Map<string, typeof scheduledJobOccurrences>();
   for (const job of scheduledJobOccurrences) {
@@ -210,6 +233,21 @@ export async function buildDashboardHome(
 
   const unscheduledActiveJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived' && !job.scheduled_for);
 
+  // ── THE ONLY TWO READS THAT HAD TO WAIT ───────────────────────────────────
+  // Both are keyed on a list of job ids, and the job list is what the wave
+  // above went and got. Everything else on this page now runs before them
+  // rather than behind them.
+  //
+  // The second counts jobs whose LATEST live schedule request is "needs more
+  // options" — a raw count of needs_more_options rows would over-count (the
+  // status is never cleared once set) and disagree with the schedule board,
+  // which dedupes to the latest request per job via the same helper.
+  const [assignmentsByJob, scheduleRequestByJob] = await Promise.all([
+    listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
+    listActiveScheduleRequests(supabase, accountId, unscheduledActiveJobs.map((job) => job.id)),
+  ]);
+  const stuckScheduleCount = Object.values(scheduleRequestByJob).filter((request) => request.status === 'needs_more_options').length;
+
   // ONE JOB, ONE ISSUE — see lib/scheduling-issues for the two over-counts this
   // replaces. The headline is the size of a union; the three reason lists are
   // still their own honest lengths and will add up to more than it.
@@ -222,13 +260,6 @@ export async function buildDashboardHome(
   const jobsMissingTimeCount = schedulingIssues.missingTime.length;
   const unscheduledJobCount = schedulingIssues.unscheduled.length;
   const schedulingIssueCount = schedulingIssues.all.length;
-
-  // Count jobs whose LATEST live schedule request is "needs more options" — a
-  // raw count of needs_more_options rows would over-count (the status is never
-  // cleared once set) and disagree with the schedule board, which dedupes to
-  // the latest request per job via the same helper.
-  const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledActiveJobs.map((job) => job.id));
-  const stuckScheduleCount = Object.values(scheduleRequestByJob).filter((request) => request.status === 'needs_more_options').length;
 
   // -- Money -------------------------------------------------------------------
   //
@@ -249,14 +280,10 @@ export async function buildDashboardHome(
   const bookedFromKey = zonedDateKey(accountToday, timeZone);
   const bookedToKey = zonedDateKey(addZonedDays(accountToday, 30, timeZone), timeZone);
 
-  const [{ data: invoiceRows }, { data: paidRows }] = await Promise.all([
-    supabase.from('invoices').select('id, total, status, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
-    // Two windows come out of one read: the calendar month, and the invoice
-    // netting, which needs every payment ever made against an open invoice
-    // rather than only this month's. Bounded by status so it stays a small set.
-    supabase.from('payments').select('amount, refunded_amount, status, paid_at, invoice_id').eq('account_id', accountId).eq('status', 'paid'),
-  ]);
-
+  // The two reads behind these figures came up in the opening wave: both are
+  // keyed on the account alone, and only the DATE WINDOWS below need the
+  // account's timezone. Cutting the windows here and the rows there is the
+  // whole trick — nothing about the queries depended on the clock.
   const outstanding = outstandingInvoices((invoiceRows ?? []) as InvoiceRow[], (paidRows ?? []) as PaymentRow[]);
   const openQuotes = quotesAwaitingApproval(jobs as unknown as QuotedJobRow[]);
   const bookedWork = scheduledWorkValue(jobs as unknown as QuotedJobRow[], bookedFromKey, bookedToKey);

@@ -312,6 +312,20 @@ const loadOwnerContext = perRequest(async (skipFirstRunGate: boolean) => {
     accountId,
     accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
     connectOnboarded: (acct as { connect_onboarded?: boolean | null } | null)?.connect_onboarded ?? false,
+    /**
+     * The whole account row, already in hand.
+     *
+     * It is fetched here regardless — the suspension and terms gates need it —
+     * and it is fetched as `accounts(*)`, so it holds every column. Callers that
+     * want one more setting off this row should read it from here rather than
+     * issuing a second query for it; that second query was the single most
+     * repeated round trip in the dashboard.
+     *
+     * Null only when the read failed, which the gates above already treat as
+     * "carry on" — so consumers must keep their own defaults rather than
+     * assuming a row.
+     */
+    account: acct,
   };
 });
 
