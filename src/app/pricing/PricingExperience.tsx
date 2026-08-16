@@ -680,7 +680,7 @@ export default function PricingExperience() {
           <p>Still unsure which plan fits? We’ll talk through the math with you.</p>
           <Link className={styles.secondaryButton} href="/contact">Ask a real person</Link>
         </div>
-        <div className={`${styles.faqGrid}${showAllFaqs ? ` ${styles.faqGridExpanded}` : ''}`}>
+        <div id="pricing-faqs" className={`${styles.faqGrid}${showAllFaqs ? ` ${styles.faqGridExpanded}` : ''}`}>
           {PRICING_FAQS.map((item) => (
             <details key={item.q} className={styles.faqItem}>
               <summary>{item.q}<span aria-hidden="true">+</span></summary>
@@ -692,6 +692,7 @@ export default function PricingExperience() {
           type="button"
           className={styles.faqMoreButton}
           aria-expanded={showAllFaqs}
+          aria-controls="pricing-faqs"
           onClick={() => setShowAllFaqs((shown) => !shown)}
         >
           {showAllFaqs ? 'Show fewer questions' : `Show ${Math.max(0, PRICING_FAQS.length - 6)} more questions`}
