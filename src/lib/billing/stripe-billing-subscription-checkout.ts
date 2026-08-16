@@ -11,6 +11,10 @@ import {
   type BillingCycle,
   type BillingPlanId,
 } from '@/lib/billing/catalog';
+import {
+  BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+  BASE_PLAN_RECURRING_CONSENT_VERSION,
+} from '@/lib/billing/subscription-consent';
 import { getStripeClient } from '@/lib/stripe';
 import { TERMS_VERSION } from '@/lib/terms';
 
@@ -39,6 +43,8 @@ export const SUBSCRIPTION_CHECKOUT_METADATA_KEYS = Object.freeze({
   operationId: 'lgq_operation_id',
   termsVersion: 'lgq_terms_version',
   recurringConsentVersion: 'lgq_recurring_consent_version',
+  recurringConsentTextSha256: 'lgq_recurring_consent_text_sha256',
+  recurringConsentAcceptanceId: 'lgq_recurring_consent_acceptance_id',
 } as const);
 
 export type PaidBillingPlanId = Exclude<BillingPlanId, 'flex'>;
@@ -66,7 +72,9 @@ export type BasePlanSubscriptionMetadata = Readonly<{
   lgq_catalog_version: typeof PRICING_CATALOG_VERSION;
   lgq_operation_id: string;
   lgq_terms_version: typeof TERMS_VERSION;
-  lgq_recurring_consent_version: string;
+  lgq_recurring_consent_version: typeof BASE_PLAN_RECURRING_CONSENT_VERSION;
+  lgq_recurring_consent_text_sha256: typeof BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256;
+  lgq_recurring_consent_acceptance_id: string;
 }>;
 
 export type SubscriptionCheckoutBuildInput = Readonly<{
@@ -83,8 +91,8 @@ export type SubscriptionCheckoutBuildInput = Readonly<{
   providerCustomerId: string | null;
   /** Server-calculated epoch seconds, persisted before Stripe create. */
   checkoutExpiresAt: number;
-  /** Server-only configured version of the future recurring-consent wording. */
-  recurringConsentVersion: string;
+  /** Authenticated owner acceptance recorded before this operation is claimed. */
+  recurringConsentAcceptanceId: string;
 }>;
 
 export type PlatformSubscriptionCheckoutRequestOptions = Readonly<{
@@ -111,7 +119,9 @@ export type PlatformSubscriptionCheckoutCall = Readonly<{
     providerCustomerId: string | null;
     checkoutExpiresAt: number;
     termsVersion: typeof TERMS_VERSION;
-    recurringConsentVersion: string;
+    recurringConsentVersion: typeof BASE_PLAN_RECURRING_CONSENT_VERSION;
+    recurringConsentTextSha256: typeof BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256;
+    recurringConsentAcceptanceId: string;
   }>;
 }>;
 
@@ -189,16 +199,12 @@ function requireCheckoutExpiresAt(value: number): number {
   return value;
 }
 
-function requireRecurringConsentVersion(value: string): string {
+function requireRecurringConsentAcceptanceId(value: string): string {
   const normalized = value.trim();
-  if (
-    !normalized
-    || normalized.length > 100
-    || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(normalized)
-  ) {
-    throw new Error('Recurring-subscription consent version is invalid.');
+  if (!UUID_PATTERN.test(normalized)) {
+    throw new Error('Recurring-subscription consent acceptance ID must be a UUID.');
   }
-  return normalized;
+  return normalized.toLowerCase();
 }
 
 function validateVerifiedPrice(
@@ -291,12 +297,6 @@ export function buildBasePlanSubscriptionCheckoutIdempotencyKey(input: {
   return `lgq:billing:v1:subscription_checkout.create:${digest}`;
 }
 
-export function requireConfiguredRecurringConsentVersion(): string {
-  return requireRecurringConsentVersion(
-    process.env.LGQ_BASE_PLAN_RECURRING_CONSENT_VERSION ?? '',
-  );
-}
-
 export function assertConfiguredStripeBillingMode(livemode: boolean): void {
   if (typeof livemode !== 'boolean') throw new Error('Stripe Billing livemode must be explicit.');
 
@@ -326,7 +326,9 @@ export function buildBasePlanSubscriptionCheckoutCall(
   const verifiedPrice = validateVerifiedPrice(input, planCode, billingInterval);
   const providerCustomerId = requireProviderCustomerId(input.providerCustomerId);
   const checkoutExpiresAt = requireCheckoutExpiresAt(input.checkoutExpiresAt);
-  const recurringConsentVersion = requireRecurringConsentVersion(input.recurringConsentVersion);
+  const recurringConsentAcceptanceId = requireRecurringConsentAcceptanceId(
+    input.recurringConsentAcceptanceId,
+  );
 
   const metadata = Object.freeze({
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.purpose]: BASE_PLAN_SUBSCRIPTION_PURPOSE,
@@ -336,7 +338,9 @@ export function buildBasePlanSubscriptionCheckoutCall(
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.catalogVersion]: PRICING_CATALOG_VERSION,
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.operationId]: operationId,
     [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.termsVersion]: TERMS_VERSION,
-    [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentVersion]: recurringConsentVersion,
+    [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentVersion]: BASE_PLAN_RECURRING_CONSENT_VERSION,
+    [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentTextSha256]: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+    [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentAcceptanceId]: recurringConsentAcceptanceId,
   }) as BasePlanSubscriptionMetadata;
 
   const lineItem = Object.freeze({ price: verifiedPrice.priceId, quantity: 1 as const });
@@ -386,7 +390,9 @@ export function buildBasePlanSubscriptionCheckoutCall(
     providerCustomerId,
     checkoutExpiresAt,
     termsVersion: TERMS_VERSION,
-    recurringConsentVersion,
+    recurringConsentVersion: BASE_PLAN_RECURRING_CONSENT_VERSION,
+    recurringConsentTextSha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+    recurringConsentAcceptanceId,
   });
   const options = Object.freeze({
     idempotencyKey: buildBasePlanSubscriptionCheckoutIdempotencyKey({
@@ -440,6 +446,8 @@ function assertPlatformSubscriptionCheckoutCreateCall(
     lgq_operation_id: call.contract.operationId,
     lgq_terms_version: call.contract.termsVersion,
     lgq_recurring_consent_version: call.contract.recurringConsentVersion,
+    lgq_recurring_consent_text_sha256: call.contract.recurringConsentTextSha256,
+    lgq_recurring_consent_acceptance_id: call.contract.recurringConsentAcceptanceId,
   };
   const lineItems = call.params.line_items;
   const subscriptionData = call.params.subscription_data;

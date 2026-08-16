@@ -40,6 +40,10 @@ import {
   type VerifiedSubscriptionPrice,
 } from '@/lib/billing/stripe-billing-subscription-checkout';
 import {
+  BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+  BASE_PLAN_RECURRING_CONSENT_VERSION,
+} from '@/lib/billing/subscription-consent';
+import {
   SubscriptionCheckoutIndeterminateError,
   SubscriptionCheckoutPersistenceError,
   SubscriptionCheckoutUnavailableError,
@@ -54,11 +58,11 @@ import { TERMS_VERSION } from '@/lib/terms';
 const WORKSPACE_ID = '10000000-0000-4000-8000-000000000001';
 const OPERATION_PK = '20000000-0000-4000-8000-000000000002';
 const CLAIM_TOKEN = '30000000-0000-4000-8000-000000000003';
+const CONSENT_ACCEPTANCE_ID = '40000000-0000-4000-8000-000000000004';
 const NOW_EPOCH_SECONDS = 1_800_000_000;
 const CHECKOUT_EXPIRES_AT = NOW_EPOCH_SECONDS
   + SUBSCRIPTION_CHECKOUT_TTL_SECONDS
   + SUBSCRIPTION_CHECKOUT_EXPIRY_TRANSPORT_SECONDS;
-const RECURRING_CONSENT_VERSION = 'base-plan-recurring-v1-test';
 
 const PLAN_CASES = [
   ['solo', 'monthly', 'price_soloMonthly123', 'prod_soloPlan123', 3_900, 'month'],
@@ -81,6 +85,7 @@ function operationInput(
     livemode: false,
     successUrl: `${APP_ORIGIN}/dashboard/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${APP_ORIGIN}/pricing?billing=cancelled`,
+    recurringConsentAcceptanceId: CONSENT_ACCEPTANCE_ID,
   };
 }
 
@@ -119,7 +124,7 @@ function checkoutBuildInput(
     verifiedPrice: verifiedPrice(input.planCode, input.billingInterval),
     providerCustomerId: null,
     checkoutExpiresAt: CHECKOUT_EXPIRES_AT,
-    recurringConsentVersion: RECURRING_CONSENT_VERSION,
+    recurringConsentAcceptanceId: CONSENT_ACCEPTANCE_ID,
     ...overrides,
   };
 }
@@ -202,7 +207,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_not-a-real-key');
   vi.stubEnv('LGQ_STRIPE_BILLING_LIVEMODE', '0');
-  vi.stubEnv('LGQ_BASE_PLAN_RECURRING_CONSENT_VERSION', RECURRING_CONSENT_VERSION);
 });
 
 afterEach(() => vi.unstubAllEnvs());
@@ -221,7 +225,9 @@ describe('platform Stripe Billing subscription Checkout adapter', () => {
         [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.catalogVersion]: PRICING_CATALOG_VERSION,
         [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.operationId]: input.operationId,
         [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.termsVersion]: TERMS_VERSION,
-        [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentVersion]: RECURRING_CONSENT_VERSION,
+        [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentVersion]: BASE_PLAN_RECURRING_CONSENT_VERSION,
+        [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentTextSha256]: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+        [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.recurringConsentAcceptanceId]: CONSENT_ACCEPTANCE_ID,
       };
 
       expect(call.contract).toEqual({
@@ -239,7 +245,9 @@ describe('platform Stripe Billing subscription Checkout adapter', () => {
         providerCustomerId: null,
         checkoutExpiresAt: CHECKOUT_EXPIRES_AT,
         termsVersion: TERMS_VERSION,
-        recurringConsentVersion: RECURRING_CONSENT_VERSION,
+        recurringConsentVersion: BASE_PLAN_RECURRING_CONSENT_VERSION,
+        recurringConsentTextSha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+        recurringConsentAcceptanceId: CONSENT_ACCEPTANCE_ID,
       });
       expect(call.contract.unitAmountCents).toBe(
         basePriceCents(BILLING_PLANS[planCode], billingInterval),
@@ -289,6 +297,9 @@ describe('platform Stripe Billing subscription Checkout adapter', () => {
       cancelUrl: `${APP_ORIGIN}/pricing?billing=cancelled-again`,
     });
     const changedExpiry = callFor(operationInput(), { checkoutExpiresAt: CHECKOUT_EXPIRES_AT + 1 });
+    const changedConsent = callFor(operationInput(), {
+      recurringConsentAcceptanceId: '50000000-0000-4000-8000-000000000005',
+    });
 
     expect(first.options.idempotencyKey).toBe(same.options.idempotencyKey);
     expect(first.requestFingerprint).toBe(same.requestFingerprint);
@@ -296,6 +307,8 @@ describe('platform Stripe Billing subscription Checkout adapter', () => {
     expect(changedReturn.options.idempotencyKey).toBe(first.options.idempotencyKey);
     expect(changedReturn.requestFingerprint).not.toBe(first.requestFingerprint);
     expect(changedExpiry.requestFingerprint).not.toBe(first.requestFingerprint);
+    expect(changedConsent.options.idempotencyKey).toBe(first.options.idempotencyKey);
+    expect(changedConsent.requestFingerprint).not.toBe(first.requestFingerprint);
   });
 
   it.each([
@@ -410,7 +423,9 @@ describe('durable subscription Checkout orchestration', () => {
       currency: 'usd',
       unitAmountCents: 3_900,
       termsVersion: TERMS_VERSION,
-      recurringConsentVersion: RECURRING_CONSENT_VERSION,
+      recurringConsentVersion: BASE_PLAN_RECURRING_CONSENT_VERSION,
+      recurringConsentTextSha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+      recurringConsentAcceptanceId: CONSENT_ACCEPTANCE_ID,
       stripeIdempotencyKey: expect.stringMatching(/^[A-Za-z0-9:._-]+$/),
     });
     expect(store.beginSubmission).toHaveBeenCalledWith({
@@ -583,15 +598,14 @@ describe('durable subscription Checkout orchestration', () => {
     expect(store.markIndeterminate).not.toHaveBeenCalled();
   });
 
-  it('fails before claim when consent, credential, deployment, request, or Price mode disagrees', async () => {
+  it('fails before claim when consent evidence, credential, deployment, request, or Price mode disagrees', async () => {
     const missingConsent = mocks();
-    vi.stubEnv('LGQ_BASE_PLAN_RECURRING_CONSENT_VERSION', '');
-    await expect(orchestrateBasePlanSubscriptionCheckout(operationInput(), missingConsent.dependencies))
-      .rejects.toThrow(/consent version is invalid/i);
-    expect(missingConsent.resolveVerifiedPrice).not.toHaveBeenCalled();
+    await expect(orchestrateBasePlanSubscriptionCheckout({
+      ...operationInput(),
+      recurringConsentAcceptanceId: '',
+    }, missingConsent.dependencies)).rejects.toThrow(/acceptance ID must be a UUID/i);
     expect(missingConsent.store.claim).not.toHaveBeenCalled();
 
-    vi.stubEnv('LGQ_BASE_PLAN_RECURRING_CONSENT_VERSION', RECURRING_CONSENT_VERSION);
     vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_not-a-real-key');
     const modeMismatch = mocks();
     await expect(orchestrateBasePlanSubscriptionCheckout(operationInput(), modeMismatch.dependencies))

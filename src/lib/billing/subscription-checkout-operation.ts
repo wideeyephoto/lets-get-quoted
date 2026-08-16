@@ -10,7 +10,6 @@ import {
   buildBasePlanSubscriptionCheckoutCall,
   buildBasePlanSubscriptionCheckoutIdempotencyKey,
   createPlatformSubscriptionCheckoutSession,
-  requireConfiguredRecurringConsentVersion,
   retrievePlatformSubscriptionCheckoutSession,
   SUBSCRIPTION_CHECKOUT_EXPIRY_TRANSPORT_SECONDS,
   SUBSCRIPTION_CHECKOUT_TTL_SECONDS,
@@ -19,6 +18,10 @@ import {
   type VerifiedSubscriptionPrice,
 } from '@/lib/billing/stripe-billing-subscription-checkout';
 import { loadVerifiedStripePlanPrices } from '@/lib/billing/stripe-plan-prices';
+import {
+  BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+  BASE_PLAN_RECURRING_CONSENT_VERSION,
+} from '@/lib/billing/subscription-consent';
 import { TERMS_VERSION } from '@/lib/terms';
 
 /**
@@ -37,6 +40,8 @@ export type BasePlanSubscriptionCheckoutInput = Readonly<{
   livemode: boolean;
   successUrl: string;
   cancelUrl: string;
+  /** ID returned only after the current owner accepts the canonical artifact. */
+  recurringConsentAcceptanceId: string;
 }>;
 
 export type SubscriptionCheckoutOperationState =
@@ -82,6 +87,8 @@ export type SubscriptionCheckoutClaimInput = Readonly<{
   unitAmountCents: number;
   termsVersion: string;
   recurringConsentVersion: string;
+  recurringConsentTextSha256: string;
+  recurringConsentAcceptanceId: string;
   stripeIdempotencyKey: string;
 }>;
 
@@ -181,6 +188,8 @@ export class SupabaseSubscriptionCheckoutOperationStore implements SubscriptionC
       p_unit_amount_cents: input.unitAmountCents,
       p_terms_version: input.termsVersion,
       p_recurring_consent_version: input.recurringConsentVersion,
+      p_recurring_consent_text_sha256: input.recurringConsentTextSha256,
+      p_recurring_consent_acceptance_id: input.recurringConsentAcceptanceId,
       p_stripe_idempotency_key: input.stripeIdempotencyKey,
     });
     if (error) throw rpcFailure('Unable to claim subscription Checkout operation', error);
@@ -362,7 +371,6 @@ export async function orchestrateBasePlanSubscriptionCheckout(
   // durable claim, and provider response must all agree on test/live mode.
   assertConfiguredStripeBillingMode(input.livemode);
 
-  const recurringConsentVersion = requireConfiguredRecurringConsentVersion();
   const verifiedPrice = await dependencies.resolveVerifiedPrice({
     planCode: input.planCode,
     billingInterval: input.billingInterval,
@@ -385,7 +393,7 @@ export async function orchestrateBasePlanSubscriptionCheckout(
     verifiedPrice,
     providerCustomerId: null,
     checkoutExpiresAt: validationExpiresAt,
-    recurringConsentVersion,
+    recurringConsentAcceptanceId: input.recurringConsentAcceptanceId,
   });
   const stripeIdempotencyKey = buildBasePlanSubscriptionCheckoutIdempotencyKey({
     workspaceId: provisionalCall.contract.workspaceId,
@@ -404,7 +412,9 @@ export async function orchestrateBasePlanSubscriptionCheckout(
     currency: provisionalCall.contract.currency,
     unitAmountCents: provisionalCall.contract.unitAmountCents,
     termsVersion: TERMS_VERSION,
-    recurringConsentVersion,
+    recurringConsentVersion: BASE_PLAN_RECURRING_CONSENT_VERSION,
+    recurringConsentTextSha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
+    recurringConsentAcceptanceId: provisionalCall.contract.recurringConsentAcceptanceId,
     stripeIdempotencyKey,
   });
 
@@ -442,7 +452,7 @@ export async function orchestrateBasePlanSubscriptionCheckout(
     verifiedPrice,
     providerCustomerId: claim.providerCustomerId,
     checkoutExpiresAt,
-    recurringConsentVersion,
+    recurringConsentAcceptanceId: provisionalCall.contract.recurringConsentAcceptanceId,
   });
   if (call.options.idempotencyKey !== stripeIdempotencyKey) {
     throw new Error('Subscription Checkout idempotency identity changed after database claim.');

@@ -8,8 +8,8 @@
 // that should be re-accepted; leaving it alone means an edit is a clarification,
 // not a new agreement.
 
-export const TERMS_VERSION = '2026-08-03';
-export const TERMS_EFFECTIVE_DATE = 'August 3, 2026';
+export const TERMS_VERSION = '2026-08-16';
+export const TERMS_EFFECTIVE_DATE = 'August 16, 2026';
 
 // What ensureAccountMembership names a brand-new account before anyone has said
 // who they are. Treated as "not set" by the first-run screen so the field starts

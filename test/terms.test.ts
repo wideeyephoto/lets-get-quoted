@@ -16,7 +16,7 @@ describe('needsFirstRun', () => {
   });
 
   it('lets through an account on the current version', () => {
-    expect(needsFirstRun({ terms_accepted_at: '2026-08-03T00:00:00Z', terms_version: TERMS_VERSION })).toBe(false);
+    expect(needsFirstRun({ terms_accepted_at: '2026-08-16T00:00:00Z', terms_version: TERMS_VERSION })).toBe(false);
   });
 
   it('re-gates when the document version moves on', () => {
