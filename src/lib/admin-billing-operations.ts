@@ -6,6 +6,7 @@ const MISSING_SCHEMA_CODES = new Set(['42P01', '42703', '42883', 'PGRST202', 'PG
 const CODE_SAMPLE_LIMIT = 200;
 const UNRECOGNIZED_ERROR_CODE = 'unrecognized_error_code';
 const DIRECT_SETTLEMENT_SUMMARY_RPC = 'admin_billing_direct_payment_settlement_summary';
+const DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_RPC = 'admin_billing_direct_checkout_late_success_summary';
 
 const DIRECT_SETTLEMENT_ERROR_CODES = new Set([
   'dispatch_status_invalid',
@@ -33,6 +34,27 @@ const DIRECT_SETTLEMENT_ERROR_CODES = new Set([
   UNRECOGNIZED_ERROR_CODE,
 ]);
 
+const DIRECT_CHECKOUT_LATE_SUCCESS_REASON_CODES = new Set([
+  'successor_never_submitted',
+  'successor_signed_expired_unpaid',
+  'successor_expired_unpaid',
+  'late_paid_truth_without_successor',
+  'additional_paid_truth_operator_required',
+  'successor_additional_paid_truth',
+  'successor_unexpireable_state',
+  'successor_contract_mismatch',
+  'successor_provider_state_indeterminate',
+  'provider_metadata_mismatch',
+  'provider_mode_mismatch',
+  'provider_object_retrieve_failed',
+  'provider_object_contract_mismatch',
+  'late_success_successor_retrieve_failed',
+  'late_success_successor_expire_indeterminate',
+  'projection_internal_error',
+  'projection_retry_attempt_limit',
+  UNRECOGNIZED_ERROR_CODE,
+]);
+
 const QUICK_STOP_ERROR_CODES = new Set([
   'payment_amount_not_exact',
   'payment_scope_changed',
@@ -55,7 +77,17 @@ const QUICK_STOP_ERROR_CODES = new Set([
 export type BillingOperationsAvailability = 'installed' | 'not_installed' | 'unavailable';
 
 export type BillingOperationsMetric = {
-  code: 'total' | 'unresolved' | 'applied' | 'completed' | 'indeterminate' | 'dead_letter' | 'evidence';
+  code:
+    | 'total'
+    | 'unresolved'
+    | 'worker_open'
+    | 'applied'
+    | 'completed'
+    | 'successor_neutralized'
+    | 'manual_review'
+    | 'indeterminate'
+    | 'dead_letter'
+    | 'evidence';
   label: string;
   count: number;
 };
@@ -72,6 +104,7 @@ export type BillingOperationsLedger = {
     | 'connected_expiration_events'
     | 'subscription_checkout_operations'
     | 'direct_payment_operations'
+    | 'direct_checkout_late_success'
     | 'direct_settlement_tasks'
     | 'quick_stop_late_refunds';
   label: string;
@@ -164,6 +197,12 @@ const DIRECT_SETTLEMENT_SPEC: LedgerIdentity = {
   id: 'direct_settlement_tasks',
   label: 'Direct settlement',
   description: 'Post-payment feed and SMS settlement work for direct charges.',
+};
+
+const DIRECT_CHECKOUT_LATE_SUCCESS_SPEC: LedgerIdentity = {
+  id: 'direct_checkout_late_success',
+  label: 'Direct Checkout late-success holds',
+  description: 'Signed paid facts that impose a permanent operator hold while newer direct Checkout collection risk is classified.',
 };
 
 const TASK_SPECS: TaskLedgerSpec[] = [
@@ -467,6 +506,19 @@ type DirectSettlementSummaryRow = {
   fixed_error_codes_truncated: unknown;
 };
 
+type DirectCheckoutLateSuccessSummaryRow = {
+  total_count: unknown;
+  held_payment_count: unknown;
+  worker_open_count: unknown;
+  successor_neutralized_count: unknown;
+  manual_review_count: unknown;
+  evidence_count: unknown;
+  oldest_held_at: unknown;
+  fixed_reason_code: unknown;
+  fixed_reason_code_count: unknown;
+  fixed_reason_codes_truncated: unknown;
+};
+
 function rpcCount(value: unknown): number | null {
   if (typeof value === 'number') return validCount(value) ? value : null;
   if (typeof value !== 'string' || !/^(?:0|[1-9][0-9]*)$/.test(value)) return null;
@@ -580,18 +632,134 @@ async function readDirectSettlementLedger(admin: SupabaseClient): Promise<Billin
   };
 }
 
+async function readDirectCheckoutLateSuccessLedger(admin: SupabaseClient): Promise<BillingOperationsLedger> {
+  const result = await admin.rpc(DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_RPC) as unknown as RowsResult;
+  if (result.error) {
+    return readFailure(DIRECT_CHECKOUT_LATE_SUCCESS_SPEC, [result.error])
+      ?? emptyLedger(DIRECT_CHECKOUT_LATE_SUCCESS_SPEC, 'unavailable');
+  }
+  if (
+    !Array.isArray(result.data)
+    || result.data.length < 1
+    || result.data.length > DIRECT_CHECKOUT_LATE_SUCCESS_REASON_CODES.size
+    || !result.data.every(isUnknownRecord)
+  ) {
+    return readFailure(DIRECT_CHECKOUT_LATE_SUCCESS_SPEC, [], true)
+      ?? emptyLedger(DIRECT_CHECKOUT_LATE_SUCCESS_SPEC, 'unavailable');
+  }
+
+  const rows = result.data as DirectCheckoutLateSuccessSummaryRow[];
+  const first = rows[0];
+  const total = rpcCount(first.total_count);
+  const heldPayments = rpcCount(first.held_payment_count);
+  const workerOpen = rpcCount(first.worker_open_count);
+  const neutralized = rpcCount(first.successor_neutralized_count);
+  const manualReview = rpcCount(first.manual_review_count);
+  const evidence = rpcCount(first.evidence_count);
+  const oldestHeldAt = first.oldest_held_at === null
+    ? null
+    : typeof first.oldest_held_at === 'string' && Number.isFinite(Date.parse(first.oldest_held_at))
+      ? first.oldest_held_at
+      : undefined;
+  const truncated = first.fixed_reason_codes_truncated;
+
+  const repeatedFields = [
+    'total_count',
+    'held_payment_count',
+    'worker_open_count',
+    'successor_neutralized_count',
+    'manual_review_count',
+    'evidence_count',
+    'oldest_held_at',
+    'fixed_reason_codes_truncated',
+  ] as const;
+  const repeated = rows.every((row) => repeatedFields.every((field) => row[field] === first[field]));
+  const fixedErrorCodes: BillingOperationsFixedCode[] = [];
+  const seenCodes = new Set<string>();
+  let fixedCodeTotal = 0;
+  let codesValid = true;
+
+  for (const row of rows) {
+    const code = row.fixed_reason_code;
+    const count = rpcCount(row.fixed_reason_code_count);
+    if (
+      typeof code !== 'string'
+      || !DIRECT_CHECKOUT_LATE_SUCCESS_REASON_CODES.has(code)
+      || seenCodes.has(code)
+      || count === null
+      || count < 1
+    ) {
+      codesValid = false;
+      continue;
+    }
+    seenCodes.add(code);
+    fixedCodeTotal += count;
+    fixedErrorCodes.push({ code, count });
+  }
+
+  const terminalCount = neutralized === null || manualReview === null
+    ? null
+    : neutralized + manualReview;
+  const emptyCodesValid = terminalCount === 0
+    && rows.length === 1
+    && first.fixed_reason_code === null
+    && rpcCount(first.fixed_reason_code_count) === 0;
+  if (emptyCodesValid) {
+    codesValid = true;
+    fixedErrorCodes.length = 0;
+    fixedCodeTotal = 0;
+  }
+
+  const invalid = total === null
+    || heldPayments === null
+    || workerOpen === null
+    || neutralized === null
+    || manualReview === null
+    || evidence === null
+    || truncated !== false
+    || !repeated
+    || !validOldest(heldPayments ?? -1, oldestHeldAt)
+    || total !== workerOpen + neutralized + manualReview
+    || heldPayments > total
+    || evidence > total
+    || !codesValid
+    || fixedCodeTotal !== terminalCount
+    || fixedErrorCodes.length !== (terminalCount === 0 ? 0 : rows.length);
+  const failure = readFailure(DIRECT_CHECKOUT_LATE_SUCCESS_SPEC, [], invalid);
+  if (failure) return failure;
+
+  fixedErrorCodes.sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+  return {
+    ...DIRECT_CHECKOUT_LATE_SUCCESS_SPEC,
+    availability: 'installed',
+    metrics: [
+      { code: 'total', label: 'Tasks', count: total as number },
+      { code: 'unresolved', label: 'Held payments', count: heldPayments as number },
+      { code: 'worker_open', label: 'Active reconciliation', count: workerOpen as number },
+      { code: 'successor_neutralized', label: 'Successor neutralized', count: neutralized as number },
+      { code: 'manual_review', label: 'Manual review', count: manualReview as number },
+      { code: 'evidence', label: 'Paid evidence verified', count: evidence as number },
+    ],
+    oldestOpenAt: oldestHeldAt ?? null,
+    fixedErrorCodesSupported: true,
+    fixedErrorCodes,
+    fixedErrorCodesTruncated: false,
+  };
+}
+
 /**
  * Read-only, platform-wide health for the dark billing ledgers.
  *
  * The service-role client is intentionally supplied by requireAdmin(). This
- * module uses one fixed, read-only aggregate RPC for the table that deliberately
- * denies service-role SELECT. It exposes no record identifiers, provider
+ * module uses fixed, read-only aggregate RPCs for tables that deliberately
+ * deny service-role SELECT. They expose no record identifiers, provider
  * payloads, customer data, mutation controls, or worker activation path.
  */
 export async function loadAdminBillingOperations(admin: SupabaseClient): Promise<AdminBillingOperationsReport> {
   const ledgers = await Promise.all([
     ...EVENT_SPECS.map((spec) => readEventLedger(admin, spec)),
     ...OPERATION_SPECS.map((spec) => readOperationLedger(admin, spec)),
+    readDirectCheckoutLateSuccessLedger(admin),
     readDirectSettlementLedger(admin),
     ...TASK_SPECS.map((spec) => readTaskLedger(admin, spec)),
   ]);

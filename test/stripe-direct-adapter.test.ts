@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const stripeMocks = vi.hoisted(() => ({
   getStripeClient: vi.fn(),
   checkoutCreate: vi.fn(),
+  checkoutExpire: vi.fn(),
   checkoutRetrieve: vi.fn(),
   paymentIntentCreate: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
@@ -20,6 +21,7 @@ import {
   buildDirectChargeMetadata,
   buildDirectApplicationFeeRefundCall,
   buildDirectCheckoutSessionCall,
+  buildDirectCheckoutSessionExpireCall,
   buildDirectMutationRequestOptions,
   buildDirectPaymentIntentCall,
   buildDirectRequestFingerprint,
@@ -27,6 +29,7 @@ import {
   buildDirectRefundCall,
   createDirectApplicationFeeRefund,
   createDirectCheckoutSession,
+  expireDirectCheckoutSession,
   createDirectPaymentIntent,
   createDirectRefund,
   retrieveDirectCheckoutSession,
@@ -52,6 +55,11 @@ const checkoutInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   stripeMocks.checkoutCreate.mockResolvedValue({ id: 'cs_test_session123' });
+  stripeMocks.checkoutExpire.mockResolvedValue({
+    id: 'cs_test_session123',
+    status: 'expired',
+    payment_status: 'unpaid',
+  });
   stripeMocks.checkoutRetrieve.mockResolvedValue({ id: 'cs_test_session123' });
   stripeMocks.paymentIntentCreate.mockResolvedValue({ id: 'pi_test_intent123' });
   stripeMocks.paymentIntentRetrieve.mockResolvedValue({ id: 'pi_test_intent123' });
@@ -62,6 +70,7 @@ beforeEach(() => {
     checkout: {
       sessions: {
         create: stripeMocks.checkoutCreate,
+        expire: stripeMocks.checkoutExpire,
         retrieve: stripeMocks.checkoutRetrieve,
       },
     },
@@ -185,6 +194,31 @@ describe('pure direct-charge call builders', () => {
     expect(call.options.stripeAccount).toBe(MERCHANT_ACCOUNT_ID);
     expect(call.options.idempotencyKey).toContain('checkout_session.create');
     expect(call.requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('builds an exact connected-account Session expiration with stable identity', () => {
+    const input = {
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      operationId: 'late-success:payment_01J_TEST:checkout:2',
+      checkoutSessionId: 'cs_test_successor123',
+    };
+    const first = buildDirectCheckoutSessionExpireCall(input);
+    const replay = buildDirectCheckoutSessionExpireCall(input);
+
+    expect(first).toEqual(replay);
+    expect(first.checkoutSessionId).toBe('cs_test_successor123');
+    expect(first.params).toEqual({});
+    expect(first.options).toEqual(expect.objectContaining({
+      stripeAccount: MERCHANT_ACCOUNT_ID,
+      idempotencyKey: expect.stringMatching(
+        /^lgq:direct:v1:checkout_session\.expire:[a-f0-9]{64}$/,
+      ),
+    }));
+    expect(first.requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(() => buildDirectCheckoutSessionExpireCall({
+      ...input,
+      checkoutSessionId: 'cs invalid',
+    })).toThrow(/valid Stripe ID/);
   });
 
   it('passes the server-created application fee through a PaymentIntent unchanged', () => {
@@ -381,6 +415,11 @@ describe('Stripe direct-charge wrappers', () => {
       checkoutSessionId: 'cs_test_session123',
       params: { expand: ['payment_intent'] },
     });
+    await expireDirectCheckoutSession({
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      operationId: 'late-success:payment_01J_TEST:checkout:2',
+      checkoutSessionId: 'cs_test_session123',
+    });
     await createDirectPaymentIntent({
       merchantAccountId: MERCHANT_ACCOUNT_ID,
       operationId: 'payment_intent_123',
@@ -418,6 +457,14 @@ describe('Stripe direct-charge wrappers', () => {
       'cs_test_session123',
       { expand: ['payment_intent'] },
       { stripeAccount: MERCHANT_ACCOUNT_ID },
+    );
+    expect(stripeMocks.checkoutExpire).toHaveBeenCalledWith(
+      'cs_test_session123',
+      {},
+      expect.objectContaining({
+        stripeAccount: MERCHANT_ACCOUNT_ID,
+        idempotencyKey: expect.stringContaining('checkout_session.expire'),
+      }),
     );
     expect(stripeMocks.paymentIntentCreate).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 25_000 }),

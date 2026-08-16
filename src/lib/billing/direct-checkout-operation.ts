@@ -11,6 +11,7 @@ import {
   DIRECT_CHARGE_METADATA_KEYS,
   DIRECT_CHARGE_MODEL,
   retrieveDirectCheckoutSession,
+  expireDirectCheckoutSession,
   type DirectCheckoutSessionInput,
 } from '@/lib/billing/stripe-direct';
 
@@ -127,7 +128,11 @@ export interface DirectCheckoutOperationStore {
     claimToken: string;
     checkoutSessionId: string;
     checkoutSessionExpiresAt: string;
-  }): Promise<void>;
+  }): Promise<boolean>;
+  confirmPresentation(input: {
+    operationPk: string;
+    checkoutSessionId: string;
+  }): Promise<boolean>;
   markIndeterminate(input: {
     operationPk: string;
     claimToken: string;
@@ -215,7 +220,7 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
   async findCurrent(input: DirectCheckoutCurrentLookupInput): Promise<DirectCheckoutCurrentAttempt | null> {
     const paymentResult = await this.admin
       .from('payments')
-      .select('id, account_id, amount, fee_basis_amount, platform_fee, fee_plan_code, fee_catalog_version, fee_rate_bps, fee_rate, charge_model, stripe_account_id, stripe_livemode, stripe_checkout_session, current_checkout_operation_pk')
+      .select('id, account_id, amount, fee_basis_amount, platform_fee, fee_plan_code, fee_catalog_version, fee_rate_bps, fee_rate, charge_model, stripe_account_id, stripe_livemode, stripe_checkout_session, current_checkout_operation_pk, late_checkout_success_task_pk')
       .eq('id', input.paymentId)
       .limit(2);
     if (paymentResult.error) {
@@ -248,6 +253,13 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
       || payment.stripe_livemode !== input.livemode
     ) {
       throw new Error('Direct Checkout current lookup does not match the immutable payment snapshot.');
+    }
+    if (payment.late_checkout_success_task_pk != null) {
+      requireString(
+        payment.late_checkout_success_task_pk,
+        'Direct Checkout late-success task primary key',
+      );
+      throw new DirectCheckoutLateSuccessBlockedError();
     }
 
     const currentOperationPk = payment.current_checkout_operation_pk == null
@@ -484,7 +496,7 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
     claimToken: string;
     checkoutSessionId: string;
     checkoutSessionExpiresAt: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const { data, error } = await this.admin.rpc('complete_one_off_direct_checkout_operation', {
       p_operation_pk: input.operationPk,
       p_claim_token: input.claimToken,
@@ -492,7 +504,28 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
       p_checkout_session_expires_at: input.checkoutSessionExpiresAt,
     });
     if (error) throw rpcFailure('Unable to complete direct Checkout operation', error);
-    if (data !== true) throw new Error('Direct Checkout completion RPC did not confirm the transition.');
+    if (typeof data !== 'boolean') {
+      throw new Error('Direct Checkout completion RPC returned an invalid presentation decision.');
+    }
+    return data;
+  }
+
+  async confirmPresentation(input: {
+    operationPk: string;
+    checkoutSessionId: string;
+  }): Promise<boolean> {
+    const { data, error } = await this.admin.rpc(
+      'confirm_one_off_direct_checkout_presentation',
+      {
+        p_operation_pk: input.operationPk,
+        p_checkout_session_id: input.checkoutSessionId,
+      },
+    );
+    if (error) throw rpcFailure('Unable to confirm direct Checkout presentation', error);
+    if (typeof data !== 'boolean') {
+      throw new Error('Direct Checkout presentation RPC returned an invalid decision.');
+    }
+    return data;
   }
 
   async markIndeterminate(input: {
@@ -516,6 +549,11 @@ export type DirectCheckoutOperationDependencies = Readonly<{
   retrieveSession(input: {
     merchantAccountId: string;
     checkoutSessionId: string;
+  }): Promise<Stripe.Checkout.Session>;
+  expireSession(input: {
+    merchantAccountId: string;
+    checkoutSessionId: string;
+    operationId: string;
   }): Promise<Stripe.Checkout.Session>;
   nowEpochSeconds(): number;
 }>;
@@ -567,6 +605,14 @@ export class DirectCheckoutOperationUnavailableError extends Error {
 
   constructor(readonly operationState: string) {
     super(`Direct Checkout operation is ${operationState}; no new Stripe request was sent.`);
+  }
+}
+
+export class DirectCheckoutLateSuccessBlockedError extends Error {
+  override readonly name = 'DirectCheckoutLateSuccessBlockedError';
+
+  constructor() {
+    super('Direct Checkout is blocked by verified late payment truth; operator reconciliation is required.');
   }
 }
 
@@ -918,6 +964,7 @@ function defaultDependencies(): DirectCheckoutOperationDependencies {
     store: new SupabaseDirectCheckoutOperationStore(),
     createSession: createDirectCheckoutSession,
     retrieveSession: retrieveDirectCheckoutSession,
+    expireSession: expireDirectCheckoutSession,
     nowEpochSeconds: () => Math.floor(Date.now() / 1_000),
   };
 }
@@ -1028,6 +1075,22 @@ export async function orchestrateOneOffDirectCheckout(
         });
         claim = await dependencies.store.claim(claimedContext.claimInput);
       } else {
+        if (!await dependencies.store.confirmPresentation({
+          operationPk: current.operationPk,
+          checkoutSessionId: current.providerObjectId!,
+        })) {
+          try {
+            await dependencies.expireSession({
+              merchantAccountId: operation.merchantAccountId,
+              checkoutSessionId: current.providerObjectId!,
+              operationId: `${context.claimInput.operationId}:late-success-block`,
+            });
+          } catch {
+            // The durable hold still prevents another disclosure while the
+            // late-success task re-reads and retries the same Session expiry.
+          }
+          throw new DirectCheckoutLateSuccessBlockedError();
+        }
         return buildOperationResult({
           outcome: 'replayed',
           operationPk: current.operationPk,
@@ -1119,17 +1182,49 @@ export async function orchestrateOneOffDirectCheckout(
   }
 
   try {
-    await dependencies.store.complete({
+    const presentationAllowed = await dependencies.store.complete({
       operationPk: claim.operationPk,
       claimToken: claim.claimToken,
       checkoutSessionId: session.id,
       checkoutSessionExpiresAt: stripeTimestampIso(session.expires_at),
     });
+    if (!presentationAllowed) {
+      try {
+        await dependencies.expireSession({
+          merchantAccountId: operation.merchantAccountId,
+          checkoutSessionId: session.id,
+          operationId: `${claimedContext.claimInput.operationId}:late-success-block`,
+        });
+      } catch {
+        // The URL is withheld. The durable late-success task owns subsequent
+        // state-first provider reconciliation when immediate expiry is unclear.
+      }
+      throw new DirectCheckoutLateSuccessBlockedError();
+    }
   } catch (persistenceError) {
+    if (persistenceError instanceof DirectCheckoutLateSuccessBlockedError) {
+      throw persistenceError;
+    }
     // The completion transaction may have committed even if its HTTP response
     // was lost. Leave submitted/succeeded resolution to the next database claim;
     // never issue another Stripe create from this ambiguous branch.
     throw new DirectCheckoutOperationPersistenceError(persistenceError);
+  }
+
+  if (!await dependencies.store.confirmPresentation({
+    operationPk: claim.operationPk,
+    checkoutSessionId: session.id,
+  })) {
+    try {
+      await dependencies.expireSession({
+        merchantAccountId: operation.merchantAccountId,
+        checkoutSessionId: session.id,
+        operationId: `${claimedContext.claimInput.operationId}:late-success-block`,
+      });
+    } catch {
+      // The durable task remains the retry/operator boundary; never disclose.
+    }
+    throw new DirectCheckoutLateSuccessBlockedError();
   }
 
   return buildOperationResult({

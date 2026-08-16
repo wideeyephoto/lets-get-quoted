@@ -22,6 +22,8 @@ type QueryCall = {
 type RpcCall = { functionName: string; args: unknown };
 
 const OPENED_AT = '2026-08-16T12:00:00.000Z';
+const DIRECT_SETTLEMENT_RPC = 'admin_billing_direct_payment_settlement_summary';
+const LATE_SUCCESS_RPC = 'admin_billing_direct_checkout_late_success_summary';
 const DIRECT_ERROR_CODES = [
   'dispatch_status_invalid',
   'feed_result_invalid',
@@ -45,6 +47,25 @@ const DIRECT_ERROR_CODES = [
   'worker_internal_error',
   'worker_lease_expired_attempt_limit',
   'worker_transport_error',
+] as const;
+const LATE_SUCCESS_REASON_CODES = [
+  'successor_never_submitted',
+  'successor_signed_expired_unpaid',
+  'successor_expired_unpaid',
+  'late_paid_truth_without_successor',
+  'additional_paid_truth_operator_required',
+  'successor_additional_paid_truth',
+  'successor_unexpireable_state',
+  'successor_contract_mismatch',
+  'successor_provider_state_indeterminate',
+  'provider_metadata_mismatch',
+  'provider_mode_mismatch',
+  'provider_object_retrieve_failed',
+  'provider_object_contract_mismatch',
+  'late_success_successor_retrieve_failed',
+  'late_success_successor_expire_indeterminate',
+  'projection_internal_error',
+  'projection_retry_attempt_limit',
 ] as const;
 
 function hasFilter(call: QueryCall, method: string, column: string, value?: unknown): boolean {
@@ -97,9 +118,32 @@ function directSummaryRow(overrides: Record<string, unknown> = {}): Record<strin
   };
 }
 
+function lateSuccessSummaryRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    total_count: '8',
+    held_payment_count: '4',
+    worker_open_count: '2',
+    successor_neutralized_count: '3',
+    manual_review_count: '3',
+    evidence_count: '7',
+    oldest_held_at: OPENED_AT,
+    fixed_reason_code: 'successor_expired_unpaid',
+    fixed_reason_code_count: '6',
+    fixed_reason_codes_truncated: false,
+    ...overrides,
+  };
+}
+
+function rpcOverride(
+  functionName: string,
+  response: Partial<RpcResponse>,
+): (call: RpcCall) => Partial<RpcResponse> {
+  return (call) => (call.functionName === functionName ? response : {});
+}
+
 function fakeAdmin(
   resolver: (call: QueryCall) => Partial<DbResponse> = healthyTableResponse,
-  rpcResolver: (call: RpcCall) => Partial<RpcResponse> = () => ({ data: [directSummaryRow()] }),
+  rpcResolver: (call: RpcCall) => Partial<RpcResponse> = () => ({}),
 ): { admin: SupabaseClient; calls: QueryCall[]; rpcCalls: RpcCall[] } {
   const calls: QueryCall[] = [];
   const rpcCalls: RpcCall[] = [];
@@ -140,7 +184,12 @@ function fakeAdmin(
     rpc: vi.fn((functionName: string, args?: unknown) => {
       const call = { functionName, args };
       rpcCalls.push(call);
-      const defaults: RpcResponse = { data: [directSummaryRow()], error: null };
+      const defaults: RpcResponse = {
+        data: functionName === LATE_SUCCESS_RPC
+          ? [lateSuccessSummaryRow()]
+          : [directSummaryRow()],
+        error: null,
+      };
       return Promise.resolve({ ...defaults, ...rpcResolver(call) });
     }),
   } as unknown as SupabaseClient;
@@ -153,7 +202,7 @@ describe('read-only admin billing operations', () => {
 
     const report = await loadAdminBillingOperations(admin);
 
-    expect(report.ledgers).toHaveLength(7);
+    expect(report.ledgers).toHaveLength(8);
     expect(report.ledgers.every((ledger) => ledger.availability === 'installed')).toBe(true);
     expect(report.ledgers.find((ledger) => ledger.id === 'subscription_events')).toMatchObject({
       oldestOpenAt: '2026-08-16T10:00:00.000Z',
@@ -175,6 +224,19 @@ describe('read-only admin billing operations', () => {
       metrics: expect.arrayContaining([
         { code: 'indeterminate', label: 'SMS indeterminate', count: 1 },
         { code: 'dead_letter', label: 'Dead letter', count: 2 },
+      ]),
+    });
+    expect(report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success')).toMatchObject({
+      oldestOpenAt: OPENED_AT,
+      fixedErrorCodesSupported: true,
+      fixedErrorCodes: [{ code: 'successor_expired_unpaid', count: 6 }],
+      fixedErrorCodesTruncated: false,
+      metrics: expect.arrayContaining([
+        { code: 'unresolved', label: 'Held payments', count: 4 },
+        { code: 'worker_open', label: 'Active reconciliation', count: 2 },
+        { code: 'successor_neutralized', label: 'Successor neutralized', count: 3 },
+        { code: 'manual_review', label: 'Manual review', count: 3 },
+        { code: 'evidence', label: 'Paid evidence verified', count: 7 },
       ]),
     });
     expect(report.ledgers.find((ledger) => ledger.id === 'quick_stop_late_refunds')?.metrics)
@@ -202,11 +264,12 @@ describe('read-only admin billing operations', () => {
     expect(selected).not.toMatch(/payload|metadata|provider_|stripe_|last_error(?:,|$)/);
     expect(calls.filter((call) => call.columns === 'last_error_code, dead_lettered_at')).toHaveLength(1);
     expect(calls.filter((call) => call.table === 'billing_direct_payment_settlement_tasks')).toHaveLength(0);
+    expect(calls.filter((call) => call.table === 'billing_direct_checkout_late_success_tasks')).toHaveLength(0);
     expect(calls).toHaveLength(22);
-    expect(rpcCalls).toEqual([{
-      functionName: 'admin_billing_direct_payment_settlement_summary',
-      args: undefined,
-    }]);
+    expect(rpcCalls).toEqual([
+      { functionName: LATE_SUCCESS_RPC, args: undefined },
+      { functionName: DIRECT_SETTLEMENT_RPC, args: undefined },
+    ]);
   });
 
   it.each(['42P01', '42703', '42883', 'PGRST202', 'PGRST204', 'PGRST205'])(
@@ -224,14 +287,14 @@ describe('read-only admin billing operations', () => {
 
       const report = await loadAdminBillingOperations(admin);
 
-      expect(report.ledgers).toHaveLength(7);
+      expect(report.ledgers).toHaveLength(8);
       expect(report.ledgers.every((ledger) => (
         ledger.availability === 'not_installed'
         && ledger.metrics.length === 0
         && ledger.oldestOpenAt === null
       ))).toBe(true);
       expect(calls).toHaveLength(6);
-      expect(rpcCalls).toHaveLength(1);
+      expect(rpcCalls).toHaveLength(2);
     },
   );
 
@@ -337,7 +400,10 @@ describe('read-only admin billing operations', () => {
   it.each(['PGRST202', '42883'])('treats missing direct-settlement RPC code %s as not installed', async (code) => {
     const { admin } = fakeAdmin(
       healthyTableResponse,
-      () => ({ data: null, error: { code, message: 'function is absent' } }),
+      rpcOverride(DIRECT_SETTLEMENT_RPC, {
+        data: null,
+        error: { code, message: 'function is absent' },
+      }),
     );
 
     const report = await loadAdminBillingOperations(admin);
@@ -352,7 +418,10 @@ describe('read-only admin billing operations', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { admin } = fakeAdmin(
       healthyTableResponse,
-      () => ({ data: null, error: { code: '42501', message: 'private provider detail' } }),
+      rpcOverride(DIRECT_SETTLEMENT_RPC, {
+        data: null,
+        error: { code: '42501', message: 'private provider detail' },
+      }),
     );
 
     const report = await loadAdminBillingOperations(admin);
@@ -391,7 +460,10 @@ describe('read-only admin billing operations', () => {
 
   it.each(malformedRpcRows)('fails the direct ledger closed for malformed RPC result: %s', async (_name, data) => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { admin } = fakeAdmin(healthyTableResponse, () => ({ data }));
+    const { admin } = fakeAdmin(
+      healthyTableResponse,
+      rpcOverride(DIRECT_SETTLEMENT_RPC, { data }),
+    );
 
     const report = await loadAdminBillingOperations(admin);
     const direct = report.ledgers.find((ledger) => ledger.id === 'direct_settlement_tasks');
@@ -412,7 +484,7 @@ describe('read-only admin billing operations', () => {
   it('accepts the single null-code aggregate row for a ledger with no dead letters', async () => {
     const { admin } = fakeAdmin(
       healthyTableResponse,
-      () => ({
+      rpcOverride(DIRECT_SETTLEMENT_RPC, {
         data: [directSummaryRow({
           total_count: '7',
           dead_letter_count: '0',
@@ -435,7 +507,7 @@ describe('read-only admin billing operations', () => {
     const codes = [...DIRECT_ERROR_CODES, 'unrecognized_error_code'];
     const { admin } = fakeAdmin(
       healthyTableResponse,
-      () => ({
+      rpcOverride(DIRECT_SETTLEMENT_RPC, {
         data: codes.map((code) => directSummaryRow({
           total_count: '28',
           completed_count: '2',
@@ -452,6 +524,158 @@ describe('read-only admin billing operations', () => {
     expect(direct?.availability).toBe('installed');
     expect(new Set(direct?.fixedErrorCodes.map((entry) => entry.code))).toEqual(new Set(codes));
     expect(direct?.fixedErrorCodes.every((entry) => entry.count === 1)).toBe(true);
+  });
+
+  it.each(['PGRST202', '42883'])(
+    'treats missing direct Checkout late-success summary RPC code %s as not installed',
+    async (code) => {
+      const { admin } = fakeAdmin(
+        healthyTableResponse,
+        rpcOverride(LATE_SUCCESS_RPC, {
+          data: null,
+          error: { code, message: 'function is absent' },
+        }),
+      );
+
+      const report = await loadAdminBillingOperations(admin);
+      const late = report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success');
+
+      expect(late).toMatchObject({ availability: 'not_installed', metrics: [], fixedErrorCodes: [] });
+      expect(report.ledgers.filter((ledger) => ledger.id !== 'direct_checkout_late_success')
+        .every((ledger) => ledger.availability === 'installed')).toBe(true);
+    },
+  );
+
+  const malformedLateSuccessRows: [string, unknown][] = [
+    ['null data', null],
+    ['empty rows', []],
+    ['negative count', [lateSuccessSummaryRow({ total_count: '-1' })]],
+    ['partition mismatch', [lateSuccessSummaryRow({ total_count: '9' })]],
+    ['held payments beyond task count', [lateSuccessSummaryRow({ held_payment_count: '9' })]],
+    ['evidence beyond total', [lateSuccessSummaryRow({ evidence_count: '9' })]],
+    ['missing oldest-held timestamp', [lateSuccessSummaryRow({ oldest_held_at: null })]],
+    ['oldest-held timestamp without a hold', [lateSuccessSummaryRow({
+      held_payment_count: '0',
+    })]],
+    ['raw unknown reason', [lateSuccessSummaryRow({ fixed_reason_code: 'customer_brett_marker' })]],
+    ['zero grouped count', [lateSuccessSummaryRow({ fixed_reason_code_count: '0' })]],
+    ['group-count sum mismatch', [lateSuccessSummaryRow({ fixed_reason_code_count: '5' })]],
+    ['truncated exact result', [lateSuccessSummaryRow({ fixed_reason_codes_truncated: true })]],
+    ['conflicting repeated totals', [
+      lateSuccessSummaryRow({ fixed_reason_code_count: '3' }),
+      lateSuccessSummaryRow({
+        total_count: '7',
+        fixed_reason_code: 'successor_contract_mismatch',
+        fixed_reason_code_count: '3',
+      }),
+    ]],
+    ['more than the bounded reason set', Array.from({ length: 19 }, () => lateSuccessSummaryRow())],
+  ];
+
+  it.each(malformedLateSuccessRows)(
+    'fails the late-success ledger closed for malformed RPC result: %s',
+    async (_name, data) => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { admin } = fakeAdmin(
+        healthyTableResponse,
+        rpcOverride(LATE_SUCCESS_RPC, { data }),
+      );
+
+      const report = await loadAdminBillingOperations(admin);
+      const late = report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success');
+
+      expect(late).toMatchObject({
+        availability: 'unavailable',
+        metrics: [],
+        oldestOpenAt: null,
+        fixedErrorCodes: [],
+      });
+      expect(report.ledgers.filter((ledger) => ledger.id !== 'direct_checkout_late_success')
+        .every((ledger) => ledger.availability === 'installed')).toBe(true);
+      expect(JSON.stringify(report)).not.toContain('customer_brett_marker');
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain('customer_brett_marker');
+      consoleError.mockRestore();
+    },
+  );
+
+  it('accepts a single null-reason aggregate row when every late-success task is still open', async () => {
+    const { admin } = fakeAdmin(
+      healthyTableResponse,
+      rpcOverride(LATE_SUCCESS_RPC, {
+        data: [lateSuccessSummaryRow({
+          total_count: '2',
+          held_payment_count: '1',
+          worker_open_count: '2',
+          successor_neutralized_count: '0',
+          manual_review_count: '0',
+          evidence_count: '1',
+          fixed_reason_code: null,
+          fixed_reason_code_count: '0',
+        })],
+      }),
+    );
+
+    const report = await loadAdminBillingOperations(admin);
+    expect(report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success')).toMatchObject({
+      availability: 'installed',
+      fixedErrorCodes: [],
+      metrics: expect.arrayContaining([
+        { code: 'unresolved', label: 'Held payments', count: 1 },
+        { code: 'worker_open', label: 'Active reconciliation', count: 2 },
+      ]),
+    });
+  });
+
+  it('keeps the oldest unresolved age when only terminal task states retain a payment hold', async () => {
+    const { admin } = fakeAdmin(
+      healthyTableResponse,
+      rpcOverride(LATE_SUCCESS_RPC, {
+        data: [lateSuccessSummaryRow({
+          total_count: '6',
+          held_payment_count: '1',
+          worker_open_count: '0',
+          successor_neutralized_count: '3',
+          manual_review_count: '3',
+          evidence_count: '6',
+        })],
+      }),
+    );
+
+    const report = await loadAdminBillingOperations(admin);
+    expect(report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success')).toMatchObject({
+      availability: 'installed',
+      oldestOpenAt: OPENED_AT,
+      metrics: expect.arrayContaining([
+        { code: 'unresolved', label: 'Held payments', count: 1 },
+        { code: 'worker_open', label: 'Active reconciliation', count: 0 },
+      ]),
+    });
+  });
+
+  it('accepts every audited late-success reason plus the fixed fallback bucket', async () => {
+    const codes = [...LATE_SUCCESS_REASON_CODES, 'unrecognized_error_code'];
+    const { admin } = fakeAdmin(
+      healthyTableResponse,
+      rpcOverride(LATE_SUCCESS_RPC, {
+        data: codes.map((code) => lateSuccessSummaryRow({
+          total_count: '20',
+          held_payment_count: '10',
+          worker_open_count: '2',
+          successor_neutralized_count: '8',
+          manual_review_count: '10',
+          evidence_count: '18',
+          fixed_reason_code: code,
+          fixed_reason_code_count: '1',
+        })),
+      }),
+    );
+
+    const report = await loadAdminBillingOperations(admin);
+    const late = report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success');
+
+    expect(late?.availability).toBe('installed');
+    expect(new Set(late?.fixedErrorCodes.map((entry) => entry.code))).toEqual(new Set(codes));
+    expect(late?.fixedErrorCodes.every((entry) => entry.count === 1)).toBe(true);
   });
 
   it('keeps the aggregate RPC least-privilege, exact, and free of activation behavior', () => {
@@ -501,9 +725,11 @@ describe('read-only admin billing operations', () => {
     expect(page).toContain('await requireAdmin()');
     expect(page).toContain('loadAdminBillingOperations(admin)');
     expect(page).not.toMatch(/<form|<button|action=/);
-    expect(loader.match(/\.rpc\(/g)).toHaveLength(1);
+    expect(loader.match(/\.rpc\(/g)).toHaveLength(2);
     expect(loader).toContain("const DIRECT_SETTLEMENT_SUMMARY_RPC = 'admin_billing_direct_payment_settlement_summary'");
+    expect(loader).toContain("const DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_RPC = 'admin_billing_direct_checkout_late_success_summary'");
     expect(loader).not.toMatch(/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+    expect(page).toContain('Late-success holds');
     expect(nav).toContain("href: '/admin/billing-operations'");
   });
 });

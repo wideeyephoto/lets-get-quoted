@@ -3,6 +3,14 @@ import 'server-only';
 import type Stripe from 'stripe';
 
 import { createAdminClient } from '@/lib/auth';
+import {
+  ConnectedPaymentLateSuccessProviderError,
+  SupabaseConnectedPaymentLateSuccessStore,
+  reconcileConnectedPaymentLateSuccess,
+  type ConnectedPaymentLateSuccessDependencies,
+  type ConnectedPaymentLateSuccessPlan,
+  type ConnectedPaymentLateSuccessResult,
+} from '@/lib/billing/connected-payment-late-success-reconciler';
 import { DIRECT_CHARGE_MODEL, DIRECT_CHARGE_METADATA_KEYS } from '@/lib/billing/stripe-direct';
 import { getStripeClient } from '@/lib/stripe';
 
@@ -127,8 +135,16 @@ export type ConnectedPaymentProjectResult = Readonly<{
   reconciliationStatus: 'pending' | 'reconciled';
 }>;
 
+export type ConnectedPaymentProjectionPlan =
+  | Readonly<{ projectionKind: 'current' }>
+  | ConnectedPaymentLateSuccessPlan;
+
 export interface ConnectedPaymentProjectionStore {
   claim(billingEventId: string): Promise<ConnectedPaymentProjectorClaim>;
+  plan(input: {
+    billingEventId: string;
+    claimToken: string;
+  }): Promise<ConnectedPaymentProjectionPlan>;
   resolveBinding(input: {
     billingEventId: string;
     claimToken: string;
@@ -354,6 +370,54 @@ function parseProjectResult(value: unknown): ConnectedPaymentProjectResult {
   });
 }
 
+function parseProjectionPlan(value: unknown): ConnectedPaymentProjectionPlan {
+  const row = rowRecord(value, 'Connected payment projection plan RPC');
+  const projectionKind = requiredString(row.projection_kind, 'projection kind');
+  if (projectionKind === 'current') return Object.freeze({ projectionKind });
+  if (projectionKind !== 'late_predecessor') {
+    throw new Error('Connected payment projection plan kind is invalid.');
+  }
+  const reconciliationStatus = requiredString(
+    row.reconciliation_status,
+    'reconciliation status',
+  );
+  if (reconciliationStatus !== 'pending' && reconciliationStatus !== 'reconciled') {
+    throw new Error('Connected payment late-success reconciliation status is invalid.');
+  }
+  return Object.freeze({
+    projectionKind,
+    taskId: requiredUuid(row.task_id, 'late-success task ID'),
+    taskClaimToken: requiredUuid(row.task_claim_token, 'late-success task claim token'),
+    workspaceId: requiredUuid(row.workspace_id, 'workspace ID'),
+    paymentId: requiredUuid(row.payment_id, 'payment ID'),
+    merchantAccountId: requiredString(
+      row.merchant_account_id,
+      'Merchant account ID',
+      ACCOUNT_ID_PATTERN,
+    ),
+    livemode: requiredBoolean(row.livemode, 'livemode'),
+    paidOperationPk: requiredUuid(row.paid_operation_pk, 'late-success paid operation PK'),
+    paidOperationId: requiredString(
+      row.paid_operation_id,
+      'late-success paid operation ID',
+      OPERATION_ID_PATTERN,
+    ),
+    paidCheckoutSessionId: requiredString(
+      row.paid_checkout_session_id,
+      'late-success paid Checkout Session ID',
+      CHECKOUT_SESSION_ID_PATTERN,
+    ),
+    paidCheckoutGeneration: requiredInteger(
+      row.paid_checkout_generation,
+      'late-success paid Checkout generation',
+      1,
+    ),
+    amountCents: requiredInteger(row.amount_cents, 'payment amount', 1),
+    applicationFeeCents: requiredInteger(row.application_fee_cents, 'application fee amount'),
+    reconciliationStatus,
+  });
+}
+
 export class SupabaseConnectedPaymentProjectionStore implements ConnectedPaymentProjectionStore {
   constructor(private readonly admin = createAdminClient()) {}
 
@@ -363,6 +427,21 @@ export class SupabaseConnectedPaymentProjectionStore implements ConnectedPayment
     });
     if (error) throw rpcFailure('Unable to claim connected payment event', error);
     return parseClaim(data);
+  }
+
+  async plan(input: {
+    billingEventId: string;
+    claimToken: string;
+  }): Promise<ConnectedPaymentProjectionPlan> {
+    const { data, error } = await this.admin.rpc(
+      'plan_stripe_connected_payment_projection',
+      {
+        p_billing_event_id: requiredUuid(input.billingEventId, 'billing event ID'),
+        p_claim_token: requiredUuid(input.claimToken, 'claim token'),
+      },
+    );
+    if (error) throw rpcFailure('Unable to plan connected payment projection', error);
+    return parseProjectionPlan(data);
   }
 
   async resolveBinding(input: {
@@ -740,18 +819,51 @@ export type ProjectConnectedPaymentEventResult =
     status: 'failed_retryable' | 'failed_terminal';
     billingEventId: string;
     errorCode: string;
-  }>;
+  }>
+  | ConnectedPaymentLateSuccessResult;
+
+export interface ConnectedPaymentLateSuccessHandler {
+  reconcile(input: {
+    billingEventId: string;
+    eventClaimToken: string;
+    plan: ConnectedPaymentLateSuccessPlan;
+    projection: ConnectedPaymentProjection;
+  }): Promise<ConnectedPaymentLateSuccessResult>;
+  fail(input: {
+    billingEventId: string;
+    eventClaimToken: string;
+    plan: ConnectedPaymentLateSuccessPlan;
+    errorCode: string;
+    retryable: boolean;
+    nextAttemptAt: string | null;
+  }): Promise<void>;
+}
 
 export type ConnectedPaymentProjectorDependencies = Readonly<{
   store: ConnectedPaymentProjectionStore;
   resolver: ConnectedPaymentProjectionResolver;
+  lateSuccess: ConnectedPaymentLateSuccessHandler;
   now(): Date;
 }>;
 
 function defaultDependencies(): ConnectedPaymentProjectorDependencies {
+  const lateSuccessStore = new SupabaseConnectedPaymentLateSuccessStore();
   return Object.freeze({
     store: new SupabaseConnectedPaymentProjectionStore(),
     resolver: createConnectedPaymentProjectionResolver(),
+    lateSuccess: {
+      reconcile: (input) => reconcileConnectedPaymentLateSuccess(input, {
+        store: lateSuccessStore,
+      } as Partial<ConnectedPaymentLateSuccessDependencies>),
+      fail: (input) => lateSuccessStore.fail({
+        billingEventId: input.billingEventId,
+        eventClaimToken: input.eventClaimToken,
+        plan: input.plan,
+        errorCode: input.errorCode,
+        retryable: input.retryable,
+        nextAttemptAt: input.nextAttemptAt,
+      }),
+    },
     now: () => new Date(),
   });
 }
@@ -765,6 +877,7 @@ function retryAt(now: Date, attemptCount: number): string {
 function fixedFailure(error: unknown): { code: string; retryable: boolean } {
   if (
     error instanceof ConnectedPaymentProjectionProviderError
+    || error instanceof ConnectedPaymentLateSuccessProviderError
     || error instanceof ConnectedPaymentProjectionPersistenceError
   ) {
     return { code: error.code, retryable: error.retryable };
@@ -793,14 +906,48 @@ export async function projectConnectedPaymentEvent(
   }
   if (!claim.claimToken) throw new Error('Claimed connected payment event has no ownership token.');
 
-  if (claim.attemptCount > 8) {
+  let plan: ConnectedPaymentProjectionPlan | null = null;
+  try {
+    plan = await dependencies.store.plan({
+      billingEventId: claim.billingEventId,
+      claimToken: claim.claimToken,
+    });
+  } catch (error) {
+    const failure = fixedFailure(error);
+    const nextAttemptAt = failure.retryable ? retryAt(dependencies.now(), claim.attemptCount) : null;
     await dependencies.store.fail({
       billingEventId: claim.billingEventId,
       claimToken: claim.claimToken,
-      errorCode: 'projection_retry_attempt_limit',
-      retryable: false,
-      nextAttemptAt: null,
+      errorCode: failure.code,
+      retryable: failure.retryable,
+      nextAttemptAt,
     });
+    return {
+      status: failure.retryable ? 'failed_retryable' : 'failed_terminal',
+      billingEventId: claim.billingEventId,
+      errorCode: failure.code,
+    };
+  }
+
+  if (claim.attemptCount > 8) {
+    if (plan.projectionKind === 'late_predecessor') {
+      await dependencies.lateSuccess.fail({
+        billingEventId: claim.billingEventId,
+        eventClaimToken: claim.claimToken,
+        plan,
+        errorCode: 'projection_retry_attempt_limit',
+        retryable: false,
+        nextAttemptAt: null,
+      });
+    } else {
+      await dependencies.store.fail({
+        billingEventId: claim.billingEventId,
+        claimToken: claim.claimToken,
+        errorCode: 'projection_retry_attempt_limit',
+        retryable: false,
+        nextAttemptAt: null,
+      });
+    }
     return {
       status: 'failed_terminal',
       billingEventId: claim.billingEventId,
@@ -810,6 +957,27 @@ export async function projectConnectedPaymentEvent(
 
   try {
     const evidence = await dependencies.resolver.loadProviderEvidence(claim);
+    if (plan.projectionKind === 'late_predecessor') {
+      const projection = dependencies.resolver.buildProjection(evidence, {
+        operationPk: plan.paidOperationPk,
+        workspaceId: plan.workspaceId,
+        paymentId: plan.paymentId,
+        operationId: plan.paidOperationId,
+        checkoutSessionId: plan.paidCheckoutSessionId,
+        merchantAccountId: plan.merchantAccountId,
+        livemode: plan.livemode,
+        amountCents: plan.amountCents,
+        applicationFeeCents: plan.applicationFeeCents,
+        currentPaymentStatus: 'processing',
+        reconciliationStatus: plan.reconciliationStatus,
+      });
+      return await dependencies.lateSuccess.reconcile({
+        billingEventId: claim.billingEventId,
+        eventClaimToken: claim.claimToken,
+        plan,
+        projection,
+      });
+    }
     const binding = await dependencies.store.resolveBinding({
       billingEventId: claim.billingEventId,
       claimToken: claim.claimToken,
@@ -825,13 +993,24 @@ export async function projectConnectedPaymentEvent(
   } catch (error) {
     const failure = fixedFailure(error);
     const nextAttemptAt = failure.retryable ? retryAt(dependencies.now(), claim.attemptCount) : null;
-    await dependencies.store.fail({
-      billingEventId: claim.billingEventId,
-      claimToken: claim.claimToken,
-      errorCode: failure.code,
-      retryable: failure.retryable,
-      nextAttemptAt,
-    });
+    if (plan.projectionKind === 'late_predecessor') {
+      await dependencies.lateSuccess.fail({
+        billingEventId: claim.billingEventId,
+        eventClaimToken: claim.claimToken,
+        plan,
+        errorCode: failure.code,
+        retryable: failure.retryable,
+        nextAttemptAt,
+      });
+    } else {
+      await dependencies.store.fail({
+        billingEventId: claim.billingEventId,
+        claimToken: claim.claimToken,
+        errorCode: failure.code,
+        retryable: failure.retryable,
+        nextAttemptAt,
+      });
+    }
     return {
       status: failure.retryable ? 'failed_retryable' : 'failed_terminal',
       billingEventId: claim.billingEventId,

@@ -22,6 +22,7 @@ import type {
   ConnectedPaymentProjectionResolver,
   ConnectedPaymentProjectionStore,
   ConnectedPaymentProjectorClaim,
+  ConnectedPaymentLateSuccessHandler,
 } from '@/lib/billing/connected-payment-event-projector';
 
 const EVENT_ONE = '10000000-0000-4000-8000-000000000001';
@@ -60,6 +61,13 @@ function terminalClaim(): ConnectedPaymentProjectorClaim {
     status: 'failed_terminal',
     claimToken: null,
   });
+}
+
+function lateSuccessHandler(): ConnectedPaymentLateSuccessHandler {
+  return {
+    reconcile: vi.fn(),
+    fail: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 describe('dark connected-payment projection worker', () => {
@@ -166,6 +174,7 @@ describe('dark connected-payment projection worker', () => {
   it('reports a database-dead-lettered eighth lease without provider or projection calls', async () => {
     const projectionStore = {
       claim: vi.fn(),
+      plan: vi.fn(),
       resolveBinding: vi.fn(),
       project: vi.fn(),
       fail: vi.fn(),
@@ -178,6 +187,7 @@ describe('dark connected-payment projection worker', () => {
     await expect(processClaimedConnectedPaymentProjection(terminalClaim(), {
       projectionStore,
       resolver,
+      lateSuccess: lateSuccessHandler(),
       now: () => new Date('2026-08-16T02:00:00.000Z'),
     })).resolves.toEqual({
       status: 'failed_terminal',
@@ -207,6 +217,7 @@ describe('dark connected-payment projection worker', () => {
     });
     const projectionStore = {
       claim: vi.fn(),
+      plan: vi.fn().mockResolvedValue({ projectionKind: 'current' }),
       resolveBinding,
       project,
       fail: vi.fn(),
@@ -219,6 +230,7 @@ describe('dark connected-payment projection worker', () => {
     await expect(processClaimedConnectedPaymentProjection(owned, {
       projectionStore,
       resolver,
+      lateSuccess: lateSuccessHandler(),
       now: () => new Date('2026-08-16T02:00:00.000Z'),
     })).resolves.toMatchObject({
       status: 'processed',

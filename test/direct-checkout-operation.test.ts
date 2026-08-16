@@ -9,6 +9,7 @@ vi.mock('@/lib/auth', () => ({
 
 import {
   DirectCheckoutGenerationLimitError,
+  DirectCheckoutLateSuccessBlockedError,
   DirectCheckoutOperationIndeterminateError,
   DirectCheckoutOperationPersistenceError,
   DirectCheckoutOperationUnavailableError,
@@ -175,7 +176,9 @@ function mocks(options: {
     beginSubmission: vi.fn<DirectCheckoutOperationStore['beginSubmission']>()
       .mockResolvedValue(undefined),
     complete: vi.fn<DirectCheckoutOperationStore['complete']>()
-      .mockResolvedValue(undefined),
+      .mockResolvedValue(true),
+    confirmPresentation: vi.fn<DirectCheckoutOperationStore['confirmPresentation']>()
+      .mockResolvedValue(true),
     markIndeterminate: vi.fn<DirectCheckoutOperationStore['markIndeterminate']>()
       .mockResolvedValue(undefined),
   } satisfies DirectCheckoutOperationStore;
@@ -183,14 +186,21 @@ function mocks(options: {
     .mockResolvedValue(session());
   const retrieveSession = vi.fn<DirectCheckoutOperationDependencies['retrieveSession']>()
     .mockResolvedValue(session());
+  const expireSession = vi.fn<DirectCheckoutOperationDependencies['expireSession']>()
+    .mockResolvedValue(session('cs_test_generation1', 1, null, {
+      status: 'expired',
+      payment_status: 'unpaid',
+      url: null,
+    }));
   const nowEpochSeconds = vi.fn<DirectCheckoutOperationDependencies['nowEpochSeconds']>()
     .mockReturnValue(NOW_EPOCH_SECONDS);
   return {
     store,
     createSession,
     retrieveSession,
+    expireSession,
     nowEpochSeconds,
-    dependencies: { store, createSession, retrieveSession, nowEpochSeconds },
+    dependencies: { store, createSession, retrieveSession, expireSession, nowEpochSeconds },
   };
 }
 
@@ -296,6 +306,27 @@ describe('generation-aware one-off direct Checkout orchestration', () => {
     });
     expect(store.claim).not.toHaveBeenCalled();
     expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('withholds a replay URL when a late-success block appears after provider retrieval', async () => {
+    const current = currentAttempt();
+    const { dependencies, store, createSession, retrieveSession, expireSession } = mocks({ current });
+    retrieveSession.mockResolvedValue(session(current.providerObjectId!));
+    store.confirmPresentation.mockResolvedValue(false);
+
+    await expect(orchestrateOneOffDirectCheckout(operationInput(), dependencies))
+      .rejects.toBeInstanceOf(DirectCheckoutLateSuccessBlockedError);
+    expect(store.confirmPresentation).toHaveBeenCalledWith({
+      operationPk: current.operationPk,
+      checkoutSessionId: current.providerObjectId,
+    });
+    expect(store.claim).not.toHaveBeenCalled();
+    expect(createSession).not.toHaveBeenCalled();
+    expect(expireSession).toHaveBeenCalledWith({
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      checkoutSessionId: current.providerObjectId,
+      operationId: `${operationId(1)}:late-success-block`,
+    });
   });
 
   it('does not append a successor until signed expiration evidence changes the DB lifecycle', async () => {
@@ -446,6 +477,20 @@ describe('generation-aware one-off direct Checkout orchestration', () => {
     expect(store.markIndeterminate).not.toHaveBeenCalled();
   });
 
+  it('persists but never discloses an in-flight Session when late truth wins completion', async () => {
+    const { dependencies, store, expireSession } = mocks();
+    store.complete.mockResolvedValue(false);
+
+    await expect(orchestrateOneOffDirectCheckout(operationInput(), dependencies))
+      .rejects.toBeInstanceOf(DirectCheckoutLateSuccessBlockedError);
+    expect(expireSession).toHaveBeenCalledWith({
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      checkoutSessionId: 'cs_test_generation1',
+      operationId: `${operationId(1)}:late-success-block`,
+    });
+    expect(store.confirmPresentation).not.toHaveBeenCalled();
+  });
+
   it('rejects test/live key drift before any durable or provider operation', async () => {
     vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_not-a-real-key');
     const { dependencies, store, createSession } = mocks();
@@ -474,6 +519,7 @@ describe('generation-aware one-off direct Checkout orchestration', () => {
       stripe_livemode: false,
       stripe_checkout_session: 'cs_test_generation1',
       current_checkout_operation_pk: OPERATION_PK_1,
+      late_checkout_success_task_pk: null,
     }]);
     const operationQuery = resolvedSelectQuery([{
       id: OPERATION_PK_1,
@@ -530,5 +576,37 @@ describe('generation-aware one-off direct Checkout orchestration', () => {
     });
     expect(operationQuery.filter.eq).toHaveBeenCalledWith('id', OPERATION_PK_1);
     expect(operationQuery.filter.eq).not.toHaveBeenCalledWith('payment_id', PAYMENT_ID);
+  });
+
+  it('stops before operation or provider reads when the payment has a late-success task', async () => {
+    const feeSnapshot = operationInput().feeSnapshot;
+    const paymentQuery = resolvedSelectQuery([{
+      id: PAYMENT_ID,
+      account_id: ACCOUNT_ID,
+      amount: 250,
+      fee_basis_amount: 200,
+      platform_fee: 0.5,
+      fee_plan_code: feeSnapshot.planCode,
+      fee_catalog_version: feeSnapshot.catalogVersion,
+      fee_rate_bps: feeSnapshot.feeRateBps,
+      fee_rate: feeSnapshot.feeRate,
+      charge_model: 'direct',
+      stripe_account_id: MERCHANT_ACCOUNT_ID,
+      stripe_livemode: false,
+      stripe_checkout_session: 'cs_test_generation2',
+      current_checkout_operation_pk: OPERATION_PK_2,
+      late_checkout_success_task_pk: '50000000-0000-4000-8000-000000000005',
+    }]);
+    const admin = { from: vi.fn(() => paymentQuery) };
+    const store = new SupabaseDirectCheckoutOperationStore(admin as never);
+
+    await expect(store.findCurrent({
+      accountId: ACCOUNT_ID,
+      paymentId: PAYMENT_ID,
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      livemode: false,
+      feeSnapshot,
+    })).rejects.toBeInstanceOf(DirectCheckoutLateSuccessBlockedError);
+    expect(admin.from).toHaveBeenCalledTimes(1);
   });
 });

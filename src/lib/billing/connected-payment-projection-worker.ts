@@ -2,12 +2,17 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/auth';
 import {
+  SupabaseConnectedPaymentLateSuccessStore,
+  reconcileConnectedPaymentLateSuccess,
+} from '@/lib/billing/connected-payment-late-success-reconciler';
+import {
   CONNECTED_PAYMENT_SUCCESS_EVENT,
   createConnectedPaymentProjectionResolver,
   projectConnectedPaymentEvent,
   SupabaseConnectedPaymentProjectionStore,
   type ConnectedPaymentProjectionResolver,
   type ConnectedPaymentProjectionStore,
+  type ConnectedPaymentLateSuccessHandler,
   type ConnectedPaymentProjectorClaim,
   type ProjectConnectedPaymentEventResult,
 } from '@/lib/billing/connected-payment-event-projector';
@@ -188,6 +193,11 @@ class PreclaimedConnectedPaymentProjectionStore implements ConnectedPaymentProje
     return this.delegate.resolveBinding(input);
   }
 
+  async plan(input: Parameters<ConnectedPaymentProjectionStore['plan']>[0]) {
+    assertOwnedInput(this.claimValue, input.billingEventId, input.claimToken);
+    return this.delegate.plan(input);
+  }
+
   async project(input: Parameters<ConnectedPaymentProjectionStore['project']>[0]) {
     assertOwnedInput(this.claimValue, input.billingEventId, input.claimToken);
     return this.delegate.project(input);
@@ -202,6 +212,7 @@ class PreclaimedConnectedPaymentProjectionStore implements ConnectedPaymentProje
 export type ConnectedPaymentProjectionClaimDependencies = Readonly<{
   projectionStore: ConnectedPaymentProjectionStore;
   resolver: ConnectedPaymentProjectionResolver;
+  lateSuccess: ConnectedPaymentLateSuccessHandler;
   now(): Date;
 }>;
 
@@ -231,6 +242,7 @@ export async function processClaimedConnectedPaymentProjection(
       dependencies.projectionStore,
     ),
     resolver: dependencies.resolver,
+    lateSuccess: dependencies.lateSuccess,
     now: dependencies.now,
   });
 }
@@ -263,6 +275,7 @@ function defaultDependencies(): ConnectedPaymentProjectionWorkerDependencies {
   const admin = createAdminClient();
   const queue = new SupabaseConnectedPaymentProjectionWorkerQueue(admin);
   const projectionStore = new SupabaseConnectedPaymentProjectionStore(admin);
+  const lateSuccessStore = new SupabaseConnectedPaymentLateSuccessStore(admin);
   const resolver = createConnectedPaymentProjectionResolver();
   return Object.freeze({
     queue,
@@ -270,6 +283,19 @@ function defaultDependencies(): ConnectedPaymentProjectionWorkerDependencies {
       processClaimedConnectedPaymentProjection(claim, {
         projectionStore,
         resolver,
+        lateSuccess: {
+          reconcile: (input) => reconcileConnectedPaymentLateSuccess(input, {
+            store: lateSuccessStore,
+          }),
+          fail: (input) => lateSuccessStore.fail({
+            billingEventId: input.billingEventId,
+            eventClaimToken: input.eventClaimToken,
+            plan: input.plan,
+            errorCode: input.errorCode,
+            retryable: input.retryable,
+            nextAttemptAt: input.nextAttemptAt,
+          }),
+        },
         now: () => new Date(),
       })
     ),

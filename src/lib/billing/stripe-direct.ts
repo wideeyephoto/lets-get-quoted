@@ -37,6 +37,7 @@ const CONFIGURED_APP_ORIGIN = new URL(APP_ORIGIN).origin;
 
 export type DirectMutationOperation =
   | 'checkout_session.create'
+  | 'checkout_session.expire'
   | 'payment_intent.create'
   | 'refund.create'
   | 'application_fee_refund.create';
@@ -91,6 +92,10 @@ export type DirectCheckoutSessionInput = DirectOperationContext &
     setupFutureUsage?: 'on_session' | 'off_session';
   };
 
+export type DirectCheckoutSessionExpireInput = DirectOperationContext & {
+  checkoutSessionId: string;
+};
+
 export type DirectPaymentIntentInput = DirectOperationContext &
   DirectChargeAmounts & {
     customerId?: string;
@@ -123,6 +128,13 @@ export type DirectApplicationFeeRefundInput = DirectOperationContext & {
 
 export type DirectCheckoutSessionCall = Readonly<{
   params: Readonly<Stripe.Checkout.SessionCreateParams>;
+  options: DirectMutationRequestOptions;
+  requestFingerprint: string;
+}>;
+
+export type DirectCheckoutSessionExpireCall = Readonly<{
+  checkoutSessionId: string;
+  params: Readonly<Stripe.Checkout.SessionExpireParams>;
   options: DirectMutationRequestOptions;
   requestFingerprint: string;
 }>;
@@ -389,6 +401,34 @@ export function buildDirectCheckoutSessionCall(input: DirectCheckoutSessionInput
   });
 }
 
+export function buildDirectCheckoutSessionExpireCall(
+  input: DirectCheckoutSessionExpireInput,
+): DirectCheckoutSessionExpireCall {
+  const merchantAccountId = validateMerchantAccountId(input.merchantAccountId);
+  const checkoutSessionId = validateStripeResourceId(
+    input.checkoutSessionId,
+    'checkoutSession',
+  );
+  const operation = 'checkout_session.expire' as const;
+  const params = Object.freeze({}) satisfies Readonly<Stripe.Checkout.SessionExpireParams>;
+  const options = buildDirectMutationRequestOptions({
+    merchantAccountId,
+    operation,
+    operationId: input.operationId,
+  });
+  return Object.freeze({
+    checkoutSessionId,
+    params,
+    options,
+    requestFingerprint: buildDirectRequestFingerprint({
+      operation,
+      merchantAccountId,
+      checkoutSessionId,
+      params,
+    }),
+  });
+}
+
 export function buildDirectPaymentIntentCall(input: DirectPaymentIntentInput): DirectPaymentIntentCall {
   const merchantAccountId = validateMerchantAccountId(input.merchantAccountId);
   const amountCents = validateChargeAmountCents(input.amountCents);
@@ -487,6 +527,15 @@ export function buildDirectApplicationFeeRefundCall(
 export async function createDirectCheckoutSession(input: DirectCheckoutSessionInput) {
   const call = buildDirectCheckoutSessionCall(input);
   return getStripeClient().checkout.sessions.create(call.params, call.options);
+}
+
+export async function expireDirectCheckoutSession(input: DirectCheckoutSessionExpireInput) {
+  const call = buildDirectCheckoutSessionExpireCall(input);
+  return getStripeClient().checkout.sessions.expire(
+    call.checkoutSessionId,
+    call.params,
+    call.options,
+  );
 }
 
 export async function retrieveDirectCheckoutSession(input: {

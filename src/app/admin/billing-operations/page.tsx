@@ -154,6 +154,7 @@ export default async function AdminBillingOperationsPage() {
         <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '.55rem', fontSize: '.85rem' }}>
           <li><strong>Unresolved</strong> includes received, in-flight, retrying, and terminally failed inbox events. Terminal failures are also called out separately.</li>
           <li><strong>Indeterminate</strong> means a provider submission may have succeeded and must be reconciled before another attempt; it is never safe to infer failure from that state.</li>
+          <li><strong>Late-success holds</strong> block Checkout presentation, new payment attempts, settlement, and new refunds. Held payments are distinct payments; task-state and reason counts are per signed receipt and can be higher. A neutralized successor is no longer collectible, but the hold remains until a separately reviewed operator-resolution path exists.</li>
           <li><strong>Fixed terminal codes</strong> come from a closed operational allowlist; unknown codes are collapsed before display. Free-form error messages, raw Stripe payloads, object IDs, account IDs, and customer details are never selected.</li>
           <li><strong>Not installed</strong> is reserved for missing required schema objects. Any other database failure is shown as read unavailable.</li>
         </ul>

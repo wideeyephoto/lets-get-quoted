@@ -63,7 +63,7 @@ describe('direct Checkout generation recovery migration', () => {
     expect(claim).toContain("case when v_operation.state = 'claimed' then 'in_progress' else v_operation.state end");
   });
 
-  it('requires exact signed expiration evidence and closes both sides of the late-success race', () => {
+  it('requires exact signed expiration evidence and installs the original late-success detector', () => {
     const evidenceTrigger = sliceBetween(
       'create function public.bind_stripe_connected_checkout_expiration_generation()',
       'create trigger bind_stripe_connected_checkout_expiration_generation_trigger',

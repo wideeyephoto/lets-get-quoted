@@ -20,6 +20,7 @@ import {
   projectConnectedPaymentEvent,
   type ConnectedPaymentProjectionBinding,
   type ConnectedPaymentProjectionStore,
+  type ConnectedPaymentLateSuccessHandler,
   type ConnectedPaymentProjectorClaim,
 } from '@/lib/billing/connected-payment-event-projector';
 
@@ -172,6 +173,17 @@ function binding(overrides: Partial<ConnectedPaymentProjectionBinding> = {}): Co
   });
 }
 
+function currentPlan() {
+  return Object.freeze({ projectionKind: 'current' as const });
+}
+
+function lateSuccessHandler(): ConnectedPaymentLateSuccessHandler {
+  return {
+    reconcile: vi.fn(),
+    fail: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 function provider(overrides: {
   session?: Stripe.Checkout.Session;
   paymentIntent?: Stripe.PaymentIntent;
@@ -322,6 +334,7 @@ describe('dark connected payment event projector', () => {
   it('stops durable replays before any provider or binding egress', async () => {
     const store = {
       claim: vi.fn().mockResolvedValue(claim({ status: 'processed', claimToken: null })),
+      plan: vi.fn(),
       resolveBinding: vi.fn(),
       project: vi.fn(),
       fail: vi.fn(),
@@ -334,6 +347,7 @@ describe('dark connected payment event projector', () => {
     await expect(projectConnectedPaymentEvent(EVENT_ROW_ID, {
       store,
       resolver,
+      lateSuccess: lateSuccessHandler(),
       now: () => new Date('2026-08-16T02:00:00.000Z'),
     })).resolves.toEqual({ status: 'replay_processed', billingEventId: EVENT_ROW_ID });
     expect(resolver.loadProviderEvidence).not.toHaveBeenCalled();
@@ -352,6 +366,7 @@ describe('dark connected payment event projector', () => {
     });
     const store = {
       claim: vi.fn().mockResolvedValue(claim()),
+      plan: vi.fn().mockResolvedValue(currentPlan()),
       resolveBinding,
       project,
       fail: vi.fn(),
@@ -360,6 +375,7 @@ describe('dark connected payment event projector', () => {
     await expect(projectConnectedPaymentEvent(EVENT_ROW_ID, {
       store,
       resolver: stripe.resolver,
+      lateSuccess: lateSuccessHandler(),
       now: () => new Date('2026-08-16T02:00:00.000Z'),
     })).resolves.toMatchObject({
       status: 'processed',
@@ -379,11 +395,71 @@ describe('dark connected payment event projector', () => {
     expect(store.fail).not.toHaveBeenCalled();
   });
 
+  it('routes an expired predecessor into the durable late-success reconciler', async () => {
+    const stripe = provider();
+    const taskId = '60000000-0000-4000-8000-000000000006';
+    const taskClaimToken = '70000000-0000-4000-8000-000000000007';
+    const plan = {
+      projectionKind: 'late_predecessor' as const,
+      taskId,
+      taskClaimToken,
+      workspaceId: WORKSPACE_ID,
+      paymentId: PAYMENT_ID,
+      merchantAccountId: MERCHANT_ID,
+      livemode: false,
+      paidOperationPk: OPERATION_PK,
+      paidOperationId: OPERATION_ID,
+      paidCheckoutSessionId: SESSION_ID,
+      paidCheckoutGeneration: 1,
+      amountCents: 25_000,
+      applicationFeeCents: 50,
+      reconciliationStatus: 'pending' as const,
+    };
+    const store = {
+      claim: vi.fn().mockResolvedValue(claim()),
+      plan: vi.fn().mockResolvedValue(plan),
+      resolveBinding: vi.fn(),
+      project: vi.fn(),
+      fail: vi.fn(),
+    } satisfies ConnectedPaymentProjectionStore;
+    const lateSuccess = lateSuccessHandler();
+    vi.mocked(lateSuccess.reconcile).mockResolvedValue({
+      status: 'manual_reconciliation',
+      billingEventId: EVENT_ROW_ID,
+      taskId,
+      taskState: 'successor_neutralized',
+      reasonCode: 'successor_expired_unpaid',
+    });
+
+    await expect(projectConnectedPaymentEvent(EVENT_ROW_ID, {
+      store,
+      resolver: stripe.resolver,
+      lateSuccess,
+      now: () => new Date('2026-08-16T02:00:00.000Z'),
+    })).resolves.toMatchObject({
+      status: 'manual_reconciliation',
+      taskId,
+    });
+    expect(lateSuccess.reconcile).toHaveBeenCalledWith(expect.objectContaining({
+      billingEventId: EVENT_ROW_ID,
+      eventClaimToken: CLAIM_TOKEN,
+      plan,
+      projection: expect.objectContaining({
+        payment_intent_id: PAYMENT_INTENT_ID,
+        charge_id: CHARGE_ID,
+      }),
+    }));
+    expect(store.resolveBinding).not.toHaveBeenCalled();
+    expect(store.project).not.toHaveBeenCalled();
+    expect(store.fail).not.toHaveBeenCalled();
+  });
+
   it('persists fixed PII-free failure codes and no provider exception text', async () => {
     const secret = 'homeowner@example.com pm_secret';
     const fail = vi.fn().mockResolvedValue(undefined);
     const store = {
       claim: vi.fn().mockResolvedValue(claim()),
+      plan: vi.fn().mockResolvedValue(currentPlan()),
       resolveBinding: vi.fn(),
       project: vi.fn(),
       fail,
@@ -396,6 +472,7 @@ describe('dark connected payment event projector', () => {
     await expect(projectConnectedPaymentEvent(EVENT_ROW_ID, {
       store,
       resolver,
+      lateSuccess: lateSuccessHandler(),
       now: () => new Date('2026-08-16T02:00:00.000Z'),
     })).resolves.toMatchObject({
       status: 'failed_retryable',
@@ -421,6 +498,7 @@ describe('dark connected payment event projector', () => {
     const fail = vi.fn().mockResolvedValue(undefined);
     const store = {
       claim: vi.fn().mockResolvedValue(claim()),
+      plan: vi.fn().mockResolvedValue(currentPlan()),
       resolveBinding: vi.fn().mockResolvedValue(binding()),
       project: persistence.project.bind(persistence),
       fail,
@@ -429,6 +507,7 @@ describe('dark connected payment event projector', () => {
     await expect(projectConnectedPaymentEvent(EVENT_ROW_ID, {
       store,
       resolver: stripe.resolver,
+      lateSuccess: lateSuccessHandler(),
       now: () => new Date('2026-08-16T02:00:00.000Z'),
     })).resolves.toEqual({
       status: 'failed_terminal',
