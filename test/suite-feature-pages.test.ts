@@ -170,12 +170,11 @@ describe('the capability list is read from the product catalog', () => {
 });
 
 describe('what these pages promise', () => {
-  it.each(SUITE)('/features/$slug prices from the fee model, not from a number', ({ slug }) => {
+  it.each(SUITE)('/features/$slug prices from the canonical plan projection', ({ slug }) => {
     const source = page(slug);
-    expect(source).toContain('FEE_TIERS[0].rate');
-    expect(source).toContain('STRIPE_PROCESSING_NOTE');
-    // A rate typed into marketing copy is a rate that drifts from /pricing.
-    expect(source).not.toMatch(/\b1\.25%|0\.65%/);
+    expect(source).toContain('FEATURE_PRICING_NOTE');
+    expect(source).not.toContain('FEE_TIERS');
+    expect(source).not.toContain('0.65%');
   });
 
   it.each(SUITE)('/features/$slug invents no social proof', ({ slug }) => {

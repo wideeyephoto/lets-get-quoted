@@ -83,7 +83,7 @@ const SCENARIOS: readonly {
 ];
 
 const COMPARISON_HIGHLIGHTS = [
-  { value: '1.25% → 0.1%', label: 'Platform fee falls as volume grows' },
+  { value: '1.25% → 0.1%', label: 'Choose a plan with the fee that fits' },
   { value: '1 → 5', label: 'Office seats expand on Growth' },
   { value: 'Solo+', label: 'Dedicated business number' },
   { value: 'Included', label: 'AI Voice Receptionist arrives with Scale' },

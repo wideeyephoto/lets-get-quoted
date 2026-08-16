@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FEE_TIERS } from '@/lib/pricing';
+import { FLEX_PRICE, LOWEST_PLATFORM_FEE } from '@/lib/pricing';
 import styles from './home-editorial.module.css';
 
 /**
@@ -83,7 +83,6 @@ export default function HomeEditorialPage() {
   // `rate` is already a formatted string ("1.25%"); ratePct is the number to
   // compare on. Read rather than retyped so the page cannot drift from the
   // rates /pricing publishes.
-  const lowest = [...FEE_TIERS].reduce((a, b) => (a.ratePct <= b.ratePct ? a : b));
 
   return (
     <div className={styles.root}>
@@ -129,7 +128,7 @@ export default function HomeEditorialPage() {
             </Link>
           </div>
           <p className={styles.fine}>
-            Free to start · No card required · You pay only when a homeowner pays you
+            Flex starts at $0/month + 1.25% · No card required
           </p>
         </section>
 
@@ -267,17 +266,16 @@ export default function HomeEditorialPage() {
               <sup>$</sup>0
             </p>
             <p className={styles.priceCaption} aria-hidden="true">
-              Monthly subscription
+              Flex monthly base
             </p>
-            <span className="sr-only">$0 monthly subscription.</span>
+            <span className="sr-only">Flex has a $0 monthly base price.</span>
             <h2 className={styles.chapterTitle} id="price-t" style={{ marginTop: '2.5rem' }}>
-              When business is slow, your software bill is $0.
+              Start on Flex. Upgrade when the math works.
             </h2>
             <p className={styles.chapterBody}>
-              There is no monthly subscription waiting for you in a quiet month. A platform fee
-              applies only when a homeowner actually pays you through the system, starting at{' '}
-              {FEE_TIERS[0].rate} and falling to {lowest.rate} as the business grows. Card
-              processing is charged separately by Stripe.
+              Flex is {FLEX_PRICE.monthlyPrice} plus {FLEX_PRICE.platformFee}. Paid plans lower the
+              LGQ platform fee as far as {LOWEST_PLATFORM_FEE} and include more capacity. Stripe
+              costs are separate.
             </p>
             <div className={styles.actions} style={{ justifyContent: 'center' }}>
               <Link className={styles.secondary} href="/pricing">
@@ -300,7 +298,7 @@ export default function HomeEditorialPage() {
                 Create my account <span aria-hidden="true">→</span>
               </a>
             </div>
-            <p className={styles.fine}>No card required · No monthly subscription · Cancel anytime</p>
+            <p className={styles.fine}>Flex starts at $0/month · No card to start · Cancel anytime</p>
           </div>
         </section>
 

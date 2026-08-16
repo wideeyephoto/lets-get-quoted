@@ -479,7 +479,7 @@ export default function HowItWorksPage() {
                 Explore the demo
               </Link>
             </div>
-            <p className="hiq-reassurance">Free website included · $0/month · Pay only when paid</p>
+            <p className="hiq-reassurance">Flex includes a website · $0/month + 1.25%</p>
           </div>
 
           <div className="hiq-final-receipt">

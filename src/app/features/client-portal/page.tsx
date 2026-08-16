@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import FaqList from '@/components/marketing/faq-list';
 import ExampleFrame from '@/components/marketing/example-frame';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './client-portal.module.css';
 
 export const metadata: Metadata = {
@@ -117,7 +117,7 @@ export default function ClientPortalPage() {
       // conversation, the useful reassurance is that the homeowner does not
       // have to install anything to take part: the portal is /client/jobs/[token]
       // (a link, no account) and the texts go out over Twilio as ordinary SMS.
-      heroNote="No card required · No monthly subscription · Pay only when you get paid. The portal is a private per-job link rather than an account, texts are ordinary SMS the homeowner can stop at any time by replying STOP, and card payments are handled by Stripe — we never hold the card."
+      heroNote="The client portal is included on every base plan. It is a private per-job link rather than a homeowner account; texts are ordinary SMS the homeowner can stop by replying STOP, and card payments are handled by Stripe."
       demo={
         <ExampleFrame
           label="The job record on the contractor’s side. The conversation is part of the record, not a separate inbox."
@@ -224,7 +224,7 @@ export default function ClientPortalPage() {
       ]}
       cta={{
         title: 'Give every job a conversation customers can follow.',
-        note: `No subscription. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Text allowances vary by plan; Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
     >
       <section className="section-block" id="one-job" aria-labelledby="one-job-title">

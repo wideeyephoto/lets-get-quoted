@@ -8,7 +8,7 @@ import SuiteFeaturePage, {
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
 import { CASH_WARN_DAYS } from '@/lib/cash-warning';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Cash Flow Forecasting for Contractors',
@@ -143,12 +143,12 @@ export default function CashFlowFeaturePage() {
         },
         {
           q: 'Does it cost extra?',
-          a: `No. There is no subscription and nothing here is a paid tier. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}).`,
+          a: `${FEATURE_PRICING_NOTE} Cash-flow visibility has no separate add-on price. Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
         },
       ]}
       cta={{
         title: 'Stop finding out about payroll on payroll day.',
-        note: `No subscription and no setup fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Cash-flow visibility is included without a separate add-on.`,
       }}
     />
   );

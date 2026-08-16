@@ -601,7 +601,7 @@ export default function HomeNextPage({ searchParams }: { searchParams: { frame?:
             </div>
 
             <p className="hero-reassure hero-reassure-pill">
-              Free to start · No credit card · <strong>Pay only when you get paid</strong>
+              Flex starts at $0/month + 1.25% · <strong>No credit card required</strong>
             </p>
 
             <div className={styles.scalePair}>
@@ -946,19 +946,19 @@ export default function HomeNextPage({ searchParams }: { searchParams: { frame?:
                 ExampleFrame on purpose: this is the real price, not a mock. */}
             <PriceZeroDial variant="inline" caption="/ MONTH" srLabel="$0 per month." />
             <div className="section-heading">
-              <p className="eyebrow">Full suite. No monthly subscription.</p>
+              <p className="eyebrow">Four plans. Start at $0/month.</p>
               <h2 id="pricing-title">
-                When business is slow, <span className="gradient-text">your software bill is $0.</span>
+                Start lean, then <span className="gradient-text">move up when the value is clear.</span>
               </h2>
               <p>
-                Use the full suite without a monthly subscription. A small platform fee applies only when a homeowner
-                pays you.
+                Flex has a $0 monthly base price and a 1.25% LGQ platform fee. Solo, Growth and Scale add a predictable
+                subscription, lower fee rates and more included capacity.
               </p>
               <ul className={styles.pricingPoints}>
                 <li>No setup fee</li>
-                <li>No contract</li>
-                <li>No per-seat fee</li>
-                <li>Rate drops as you grow</li>
+                <li>Monthly or annual paid plans</li>
+                <li>Plan-based user allowances</li>
+                <li>Lower fee rates on paid plans</li>
               </ul>
             </div>
           </div>
@@ -1005,7 +1005,7 @@ export default function HomeNextPage({ searchParams }: { searchParams: { frame?:
           body="Launch the site, connect the work and give your growing business one place to run."
           primary={{ label: 'Create my account', href: APP_SIGNUP_URL }}
           secondary={null}
-          note="No card required · No monthly subscription · Cancel anytime"
+          note="No card required · Plans start at $0/month · Cancel anytime"
         />
 
         <SiteFooter />

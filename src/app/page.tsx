@@ -40,13 +40,13 @@ const jsonLd = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'An all-in-one platform for contractors: a marketing website with an AI lead estimator, quotes and e-signatures, scheduling, recurring billing, reviews, and Stripe payments that pay out to your bank. No subscription — you only pay when a homeowner pays you.',
+        'An all-in-one platform for contractors: a marketing website with AI Intake, quotes and e-signatures, scheduling, recurring billing, reviews, and Stripe payments. Plans start at $0/month.',
       offers: {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'USD',
         description:
-          'Free to start. No subscription or setup fee — a platform fee of 0.65%–1.25% applies only when a homeowner pays you.',
+          'Flex starts at $0/month plus a 1.25% LGQ platform fee. Paid plans lower the fee and add included capacity.',
       },
     },
     {

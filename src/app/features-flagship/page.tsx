@@ -16,7 +16,7 @@ import { PageCTA, SiteFooter, SiteHeader } from '@/components/flagship/site-chro
 import styles from '@/components/flagship/flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 
-export const metadata: Metadata = { title: "Contractor Software Features | Let’s Get Quoted", description: "Explore the complete no-subscription contractor suite—from website and AI intake to quoting, scheduling, crews and payments." , robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Contractor Software Features | Let’s Get Quoted", description: "Explore the connected contractor suite—from website and AI intake to quoting, scheduling, crews and payments. Plans start at $0/month with Flex." , robots: { index: false, follow: false } };
 
 const flagships = [
   ["01", "One-click website", "Launch a complete, editable contractor site with Smart Intake connected from day one.", "/features/website-builder", "BUILD THE FRONT DOOR"],
@@ -42,7 +42,7 @@ export default function FeaturesPage() {
     <main className={`${styles.root} inner-site feature-index-page`}>
       <a className="skip-link" href="#main-content">Skip to content</a><SiteHeader />
       <LaunchBanner offsetHeader />
-      <section className="index-hero" id="main-content"><p className="eyebrow"><span>✦</span> THE FULL CONTRACTOR SUITE</p><h1>One system for the first click, <em>the final payment and everything between.</em></h1><p>Your website, leads, quotes, schedule, crew, customer communication and money share one connected workflow—with no monthly subscription.</p><div className="hero-actions"><a className="button primary" href="https://app.letsgetquoted.com/">Build my free site <span>→</span></a><a className="button secondary" href="#flagship-index">Explore the suite</a></div>
+      <section className="index-hero" id="main-content"><p className="eyebrow"><span>✦</span> THE FULL CONTRACTOR SUITE</p><h1>One system for the first click, <em>the final payment and everything between.</em></h1><p>Your website, leads, quotes, schedule, crew, customer communication and money share one connected workflow. Plans start at $0/month with Flex.</p><div className="hero-actions"><a className="button primary" href="https://app.letsgetquoted.com/">Build my free site <span>→</span></a><a className="button secondary" href="#flagship-index">Explore the suite</a></div>
         <div className="system-pipeline" aria-label="One job moving through five connected stages">
           <div className="system-pipeline-head"><span><i /> LIVE JOB WORKFLOW</span><small>ONE CUSTOMER RECORD · START TO FINISH</small></div>
           <div className="system-pipeline-track">

@@ -45,7 +45,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Landscapers',
     metaDescription:
-      'A landscaping website with instant estimates, online booking, recurring auto-billing, and Stripe payments. No subscription — pay only when you get paid.',
+      'A landscaping website with instant estimates, online booking, recurring auto-billing, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'roofers',
@@ -63,7 +63,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Roofers',
     metaDescription:
-      'A roofing website with instant estimates, high-value lead alerts, deposits, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A roofing website with instant estimates, high-value lead alerts, deposits, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'plumbers',
@@ -81,7 +81,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'fixit'],
     metaTitle: 'Website & Software for Plumbers',
     metaDescription:
-      'A plumbing website with 24/7 instant estimates, online booking, on-site card & bank payments, and no subscription. Pay only when a homeowner pays you.',
+      'A plumbing website with 24/7 instant estimates, online booking, on-site card & bank payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'painters',
@@ -99,7 +99,7 @@ export const TRADES: Trade[] = [
     templateIds: ['coat', 'modern'],
     metaTitle: 'Website & Software for Painters',
     metaDescription:
-      'A painting website with a photo-first gallery, itemized quotes, deposits, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A painting website with a photo-first gallery, itemized quotes, deposits, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'electricians',
@@ -117,7 +117,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'fixit'],
     metaTitle: 'Website & Software for Electricians',
     metaDescription:
-      'An electrician website with instant estimates, online booking, deposits, and Stripe card & bank payments. No subscription — pay only when a homeowner pays you.',
+      'An electrician website with instant estimates, online booking, deposits, and Stripe card & bank payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'hvac',
@@ -135,7 +135,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'professional'],
     metaTitle: 'Website & Software for HVAC Contractors',
     metaDescription:
-      'An HVAC website with instant estimates, payment plans, recurring maintenance billing, and Stripe payments. No subscription — pay only when you get paid.',
+      'An HVAC website with instant estimates, payment plans, recurring maintenance billing, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'cleaning-services',
@@ -153,7 +153,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Cleaning Services',
     metaDescription:
-      'A cleaning-business website with online booking, recurring auto-billing, cards on file, and Stripe payments. No subscription — pay only when you get paid.',
+      'A cleaning-business website with online booking, recurring auto-billing, cards on file, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'remodelers',
@@ -171,7 +171,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'professional'],
     metaTitle: 'Website & Software for Remodelers',
     metaDescription:
-      'A remodeling website with project galleries, itemized quotes, staged deposits, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A remodeling website with project galleries, itemized quotes, staged deposits, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'handyman',
@@ -189,7 +189,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'handy'],
     metaTitle: 'Website & Software for Handyman Businesses',
     metaDescription:
-      'A handyman website with instant estimates, online booking, tap-to-pay, and rebook reminders. No subscription — pay only when a homeowner pays you.',
+      'A handyman website with instant estimates, online booking, tap-to-pay, and rebook reminders. Plans start at $0/month with Flex.',
   },
   {
     slug: 'concrete',
@@ -207,7 +207,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'reno'],
     metaTitle: 'Website & Software for Concrete Contractors',
     metaDescription:
-      'A concrete-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+      'A concrete-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments to your bank. Plans start at $0/month with Flex.',
   },
   {
     slug: 'fencing',
@@ -225,7 +225,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Fencing Contractors',
     metaDescription:
-      'A fencing-contractor website with instant estimates, per-foot quotes, deposits, and Stripe payments. No subscription — pay only when you get paid.',
+      'A fencing-contractor website with instant estimates, per-foot quotes, deposits, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'flooring',
@@ -243,7 +243,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Flooring Contractors',
     metaDescription:
-      'A flooring-contractor website with itemized quotes, material options, deposits, and Stripe payments. No subscription — pay only when you get paid.',
+      'A flooring-contractor website with itemized quotes, material options, deposits, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'pressure-washing',
@@ -261,7 +261,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Pressure Washing Businesses',
     metaDescription:
-      'A pressure-washing website with instant estimates, online booking, tap-to-pay, and recurring plans. No subscription — pay only when you get paid.',
+      'A pressure-washing website with instant estimates, online booking, tap-to-pay, and recurring plans. Plans start at $0/month with Flex.',
   },
   {
     slug: 'tree-services',
@@ -279,7 +279,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'fixit'],
     metaTitle: 'Website & Software for Tree Service Companies',
     metaDescription:
-      'A tree-service website with 24/7 instant estimates, high-value lead alerts, deposits, and Stripe payments. No subscription — pay only when you get paid.',
+      'A tree-service website with 24/7 instant estimates, high-value lead alerts, deposits, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'pest-control',
@@ -297,7 +297,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'handy'],
     metaTitle: 'Website & Software for Pest Control Companies',
     metaDescription:
-      'A pest-control website with online booking, recurring auto-billing, cards on file, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A pest-control website with online booking, recurring auto-billing, cards on file, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'pool-services',
@@ -315,7 +315,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Pool Service Companies',
     metaDescription:
-      'A pool-service website with online booking, recurring auto-billing, on-site quotes, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A pool-service website with online booking, recurring auto-billing, on-site quotes, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'garage-doors',
@@ -333,7 +333,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'professional'],
     metaTitle: 'Website & Software for Garage Door Companies',
     metaDescription:
-      'A garage-door website with 24/7 instant estimates, online booking, on-site card & bank payments, and no subscription. Pay only when a homeowner pays you.',
+      'A garage-door website with 24/7 instant estimates, online booking, on-site card & bank payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'gutters',
@@ -351,7 +351,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'fixit'],
     metaTitle: 'Website & Software for Gutter Companies',
     metaDescription:
-      'A gutter-company website with instant estimates, online booking, recurring cleaning plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A gutter-company website with instant estimates, online booking, recurring cleaning plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'siding',
@@ -369,7 +369,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'professional'],
     metaTitle: 'Website & Software for Siding Contractors',
     metaDescription:
-      'A siding-contractor website with itemized quotes, material options, deposits, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A siding-contractor website with itemized quotes, material options, deposits, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'deck-builders',
@@ -387,7 +387,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Deck Builders',
     metaDescription:
-      'A deck-builder website with itemized quotes, add-on options, staged deposits, and Stripe payments. No subscription — pay only when you get paid.',
+      'A deck-builder website with itemized quotes, add-on options, staged deposits, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'junk-removal',
@@ -405,7 +405,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'fixit'],
     metaTitle: 'Website & Software for Junk Removal Businesses',
     metaDescription:
-      'A junk-removal website with instant estimates, online booking, tap-to-pay, and no subscription. Pay only when a customer pays you.',
+      'A junk-removal website with instant estimates, online booking, tap-to-pay. Plans start at $0/month with Flex.',
   },
   {
     slug: 'window-installers',
@@ -423,7 +423,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'modern'],
     metaTitle: 'Website & Software for Window & Door Installers',
     metaDescription:
-      'A window-and-door-installer website with itemized quotes, deposits, payment plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+      'A window-and-door-installer website with itemized quotes, deposits, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'appliance-repair',
@@ -441,7 +441,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'handy'],
     metaTitle: 'Website & Software for Appliance Repair Businesses',
     metaDescription:
-      'An appliance-repair website with 24/7 instant estimates, online booking, on-site card & bank payments, and no subscription. Pay only when a customer pays you.',
+      'An appliance-repair website with 24/7 instant estimates, online booking, on-site card & bank payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'solar',
@@ -459,7 +459,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Solar Installers',
     metaDescription:
-      'A solar-installer website with 24/7 lead capture, high-value alerts, itemized quotes, staged payments, and Stripe. No subscription — pay only when you get paid.',
+      'A solar-installer website with 24/7 lead capture, high-value alerts, itemized quotes, staged payments, and Stripe. Plans start at $0/month with Flex.',
   },
   {
     slug: 'masonry',
@@ -477,7 +477,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'reno'],
     metaTitle: 'Website & Software for Masonry Contractors',
     metaDescription:
-      'A masonry-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments. No subscription — pay only when you get paid.',
+      'A masonry-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'drywall',
@@ -495,7 +495,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'modern'],
     metaTitle: 'Website & Software for Drywall Contractors',
     metaDescription:
-      'A drywall-contractor website with instant estimates, itemized quotes, online booking, and Stripe payments. No subscription — pay only when you get paid.',
+      'A drywall-contractor website with instant estimates, itemized quotes, online booking, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'insulation',
@@ -513,7 +513,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'handy'],
     metaTitle: 'Website & Software for Insulation Contractors',
     metaDescription:
-      'An insulation-contractor website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'An insulation-contractor website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'window-cleaning',
@@ -531,7 +531,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Window Cleaning Businesses',
     metaDescription:
-      'A window-cleaning website with online booking, recurring auto-billing, cards on file, and Stripe payments. No subscription — pay only when you get paid.',
+      'A window-cleaning website with online booking, recurring auto-billing, cards on file, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'movers',
@@ -549,7 +549,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'modern'],
     metaTitle: 'Website & Software for Moving Companies',
     metaDescription:
-      'A moving-company website with instant estimates, deposits to hold the date, and Stripe payments. No subscription — pay only when you get paid.',
+      'A moving-company website with instant estimates, deposits to hold the date, and Stripe payments. Plans start at $0/month with Flex.',
     // Renters move too, and the mover is often paid by the one leaving.
     payer: 'customer',
   },
@@ -569,7 +569,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'reno'],
     metaTitle: 'Website & Software for Paving & Asphalt Contractors',
     metaDescription:
-      'A paving-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+      'A paving-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments to your bank. Plans start at $0/month with Flex.',
   },
   {
     slug: 'chimney-sweep',
@@ -588,7 +588,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'professional'],
     metaTitle: 'Website & Software for Chimney Sweeps',
     metaDescription:
-      'A chimney-sweep website with online booking, instant estimates, recurring inspection plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A chimney-sweep website with online booking, instant estimates, recurring inspection plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'epoxy-flooring',
@@ -606,7 +606,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'carbon'],
     metaTitle: 'Website & Software for Epoxy Floor Coating Companies',
     metaDescription:
-      'An epoxy-flooring website with itemized quotes, finish options, deposits, and before/after galleries. No subscription — pay only when you get paid.',
+      'An epoxy-flooring website with itemized quotes, finish options, deposits, and before/after galleries. Plans start at $0/month with Flex.',
   },
   {
     slug: 'locksmiths',
@@ -624,7 +624,7 @@ export const TRADES: Trade[] = [
     templateIds: ['fixit', 'carbon'],
     metaTitle: 'Website & Software for Locksmiths',
     metaDescription:
-      'A locksmith website with 24/7 instant estimates, online booking, on-site card & tap-to-pay, and no subscription. Pay only when a customer pays you.',
+      'A locksmith website with 24/7 instant estimates, online booking, on-site card & tap-to-pay. Plans start at $0/month with Flex.',
   },
   {
     slug: 'septic',
@@ -642,7 +642,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'fixit'],
     metaTitle: 'Website & Software for Septic Companies',
     metaDescription:
-      'A septic-service website with online booking, instant estimates, recurring pumping plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A septic-service website with online booking, instant estimates, recurring pumping plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'foundation-repair',
@@ -660,7 +660,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Foundation Repair Contractors',
     metaDescription:
-      'A foundation-repair website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A foundation-repair website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'water-damage-restoration',
@@ -678,7 +678,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'carbon'],
     metaTitle: 'Website & Software for Water Damage Restoration Companies',
     metaDescription:
-      'A restoration-company website with 24/7 emergency lead capture, photo documentation, and itemized quotes. No subscription — pay only when you get paid.',
+      'A restoration-company website with 24/7 emergency lead capture, photo documentation, and itemized quotes. Plans start at $0/month with Flex.',
   },
   {
     slug: 'carpet-cleaning',
@@ -696,7 +696,7 @@ export const TRADES: Trade[] = [
     templateIds: ['shine', 'handy'],
     metaTitle: 'Website & Software for Carpet Cleaning Businesses',
     metaDescription:
-      'A carpet-cleaning website with instant per-room estimates, online booking, tap-to-pay, and recurring plans. No subscription — pay only when you get paid.',
+      'A carpet-cleaning website with instant per-room estimates, online booking, tap-to-pay, and recurring plans. Plans start at $0/month with Flex.',
   },
   {
     slug: 'countertops',
@@ -714,7 +714,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Countertop Installers',
     metaDescription:
-      'A countertop-installer website with itemized quotes, material options, deposits, and project galleries. No subscription — pay only when you get paid.',
+      'A countertop-installer website with itemized quotes, material options, deposits, and project galleries. Plans start at $0/month with Flex.',
   },
   {
     slug: 'tile',
@@ -732,7 +732,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'coat'],
     metaTitle: 'Website & Software for Tile Contractors',
     metaDescription:
-      'A tile-contractor website with itemized quotes, material options, deposits, and project galleries. No subscription — pay only when you get paid.',
+      'A tile-contractor website with itemized quotes, material options, deposits, and project galleries. Plans start at $0/month with Flex.',
   },
   {
     slug: 'irrigation',
@@ -750,7 +750,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'modern'],
     metaTitle: 'Website & Software for Irrigation & Sprinkler Companies',
     metaDescription:
-      'An irrigation-company website with instant estimates, recurring seasonal service, and Stripe payments. No subscription — pay only when you get paid.',
+      'An irrigation-company website with instant estimates, recurring seasonal service, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'auto-detailing',
@@ -768,7 +768,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'shine'],
     metaTitle: 'Website & Software for Auto Detailing Businesses',
     metaDescription:
-      'An auto-detailing website with online booking, tap-to-pay, recurring plans, and Stripe payments. No subscription — pay only when a customer pays you.',
+      'An auto-detailing website with online booking, tap-to-pay, recurring plans, and Stripe payments. Plans start at $0/month with Flex.',
     // The job is a car. Nothing about this trade turns on owning a house.
     payer: 'customer',
   },
@@ -788,7 +788,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'handy'],
     metaTitle: 'Website & Software for Snow Removal Businesses',
     metaDescription:
-      'A snow-removal website with online contracts, deposits, cards on file, and per-storm auto-billing. No subscription — pay only when you get paid.',
+      'A snow-removal website with online contracts, deposits, cards on file, and per-storm auto-billing. Plans start at $0/month with Flex.',
   },
   {
     slug: 'home-inspectors',
@@ -806,7 +806,7 @@ export const TRADES: Trade[] = [
     templateIds: ['professional', 'modern'],
     metaTitle: 'Website & Software for Home Inspectors',
     metaDescription:
-      'A home-inspection website with online booking, pay-at-booking, reviews, and Stripe payments. No subscription — pay only when a client pays you.',
+      'A home-inspection website with online booking, pay-at-booking, reviews, and Stripe payments. Plans start at $0/month with Flex.',
     // A buyer's inspector is hired by someone who does not own the house yet.
     payer: 'client',
   },
@@ -826,7 +826,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'professional'],
     metaTitle: 'Website & Software for Excavation Contractors',
     metaDescription:
-      'An excavation-contractor website with itemized quotes, deposits, staged payments, and Stripe payments. No subscription — pay only when you get paid.',
+      'An excavation-contractor website with itemized quotes, deposits, staged payments, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'stucco',
@@ -844,7 +844,7 @@ export const TRADES: Trade[] = [
     templateIds: ['coat', 'reno'],
     metaTitle: 'Website & Software for Stucco Contractors',
     metaDescription:
-      'A stucco-contractor website with itemized quotes, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+      'A stucco-contractor website with itemized quotes, deposits, project galleries, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'cabinetry',
@@ -862,7 +862,7 @@ export const TRADES: Trade[] = [
     templateIds: ['reno', 'modern'],
     metaTitle: 'Website & Software for Cabinet Makers',
     metaDescription:
-      'A cabinetry website with itemized quotes, material options, deposits, staged payments, and project galleries. No subscription — pay only when you get paid.',
+      'A cabinetry website with itemized quotes, material options, deposits, staged payments, and project galleries. Plans start at $0/month with Flex.',
   },
   {
     slug: 'window-treatments',
@@ -880,7 +880,7 @@ export const TRADES: Trade[] = [
     templateIds: ['modern', 'coat'],
     metaTitle: 'Website & Software for Window Treatment Companies',
     metaDescription:
-      'A window-treatment website with itemized quotes, material options, deposits, and online booking. No subscription — pay only when you get paid.',
+      'A window-treatment website with itemized quotes, material options, deposits, and online booking. Plans start at $0/month with Flex.',
   },
   {
     slug: 'well-water',
@@ -898,7 +898,7 @@ export const TRADES: Trade[] = [
     templateIds: ['handy', 'professional'],
     metaTitle: 'Website & Software for Well & Water Treatment Companies',
     metaDescription:
-      'A water-treatment website with online booking, instant estimates, recurring service plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A water-treatment website with online booking, instant estimates, recurring service plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
   {
     slug: 'generators',
@@ -916,7 +916,7 @@ export const TRADES: Trade[] = [
     templateIds: ['carbon', 'fixit'],
     metaTitle: 'Website & Software for Generator Installers',
     metaDescription:
-      'A generator-installer website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+      'A generator-installer website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. Plans start at $0/month with Flex.',
   },
 ];
 

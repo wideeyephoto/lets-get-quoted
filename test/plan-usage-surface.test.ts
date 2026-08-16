@@ -22,10 +22,11 @@ describe('the Plan & usage settings surface stays dark until explicitly activate
     expect(PAGE).toContain('pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null)');
   });
 
-  it('keeps the legacy volume-tier card only in the disabled branch', () => {
-    expect(PAGE).toContain('const trailingVolume = pricingDashboardEnabled ? null : await getTrailingVolume(accountId)');
-    expect(PAGE).toContain('!pricingDashboardEnabled && feeTier && trailingVolume !== null ?');
-    expect(PAGE).toContain('as your trailing 12-month volume grows');
+  it('uses a canonical static pricing fallback without querying legacy tiers', () => {
+    expect(PAGE).toContain('!pricingDashboardEnabled ?');
+    expect(PAGE).toContain('{PUBLIC_PRICING_SUMMARY}');
+    expect(PAGE).not.toContain('getTrailingVolume');
+    expect(PAGE).not.toContain('getTierInfo');
   });
 });
 

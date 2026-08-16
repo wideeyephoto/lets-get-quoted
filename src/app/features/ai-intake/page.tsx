@@ -3,7 +3,7 @@ import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import SampleIntake from './sample-intake';
 import ExampleFrame from '@/components/marketing/example-frame';
 import { TRADES } from '@/lib/trades';
-import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE } from '@/lib/pricing';
 import { TIER_LABEL } from '@/lib/lead-priority';
 import styles from './ai-intake.module.css';
 
@@ -268,7 +268,7 @@ export default function AIIntakePage() {
       ]}
       cta={{
         title: 'Let your website qualify the next lead for you.',
-        note: `No monthly fee. You pay a small platform fee only on money you actually collect, plus Stripe’s ${STRIPE_PROCESSING_NOTE}.`,
+        note: `${FEATURE_PRICING_NOTE} AI Intake allowances vary by plan, and the standard quote form takes over automatically when credits run out.`,
       }}
     >
       <section className="section-block" aria-labelledby="intake-alerts-title">

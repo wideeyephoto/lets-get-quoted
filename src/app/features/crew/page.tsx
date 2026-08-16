@@ -7,7 +7,7 @@ import SuiteFeaturePage, {
   PanelNote,
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Crew Management and Field App',
@@ -160,12 +160,12 @@ export default function CrewFeaturePage() {
         },
         {
           q: 'Is there a per-seat charge for crew?',
-          a: `No. There is no subscription and no per-user fee, so adding somebody costs nothing. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}).`,
+          a: `${FEATURE_PRICING_NOTE} Flex and Solo include 2 crew users; Growth and Scale include 10. Extra crew users are an optional $5/month each on Solo and above.`,
         },
       ]}
       cta={{
         title: 'Put the crew, the hours and the margin on one record.',
-        note: `No subscription, no per-seat fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Included crew seats and optional extras are listed on /pricing; Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
     />
   );

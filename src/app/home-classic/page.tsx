@@ -3,10 +3,10 @@ import { TRADES, FEATURED_TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
-import HomeFeeCalculator from '@/components/home-fee-calculator';
 import FeatureWheelStory from '../features/FeatureWheelStory';
 import { cspNonce } from '@/lib/csp-nonce';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import { PLAN_PRICE_OPTIONS } from '@/lib/pricing';
 
 function QuoteIcon() {
   return (
@@ -141,17 +141,17 @@ const compareRows: CompareRow[] = [
     ],
   },
   {
-    label: 'When you actually pay',
+    label: 'Base software price',
     cells: [
-      { tone: 'good', text: 'Only when a homeowner pays you' },
+      { tone: 'good', text: 'Flex $0; paid plans available' },
       { tone: 'mid', text: 'Every month, work or not' },
       { tone: 'mid', text: 'Every month, work or not' },
     ],
   },
   {
-    label: 'Platform fee as you grow',
+    label: 'LGQ platform fee',
     cells: [
-      { tone: 'good', text: 'Drops to 0.65% automatically' },
+      { tone: 'good', text: '0.10%–1.25%, set by plan' },
       { tone: 'bad', text: 'Flat — never rewards volume' },
       { tone: 'bad', text: 'Often rises with seats & tiers' },
     ],
@@ -232,12 +232,12 @@ const compareRows: CompareRow[] = [
 
 const TONE_MARK: Record<CompareCell['tone'], string> = { good: '✓', mid: '~', bad: '✕' };
 
-const feeTiers = [
-  { tier: 1, rate: '1.25%', range: '$0\u2013$100k', barHeight: 180 },
-  { tier: 2, rate: '1.00%', range: '$100k\u2013$300k', barHeight: 144 },
-  { tier: 3, rate: '0.80%', range: '$300k\u2013$750k', barHeight: 115 },
-  { tier: 4, rate: '0.65%', range: '$750k+', barHeight: 94 },
-];
+const feeTiers = PLAN_PRICE_OPTIONS.map((plan, index) => ({
+  tier: index + 1,
+  rate: plan.platformFee,
+  range: `${plan.name} · ${plan.monthlyPrice}`,
+  barHeight: [180, 140, 110, 85][index],
+}));
 
 const trustBadges = [
   { label: 'Card & bank payments run on Stripe — we never touch card numbers', icon: <ShieldIcon /> },
@@ -251,7 +251,7 @@ const trustBadges = [
 const homeFaqs = [
   {
     q: 'So what’s the catch?',
-    a: 'There isn’t one. No subscription, no setup fee, no contract. You build your site, send quotes, and run jobs for free — we only take a small platform fee (1.25%, dropping to 0.65% as you grow) when a homeowner actually pays you. In a month you book nothing, you pay nothing.',
+    a: 'Flex has a $0 monthly base price and a 1.25% LGQ platform fee on eligible payments collected through LGQ. Solo, Growth, and Scale add a base subscription, lower the fee, and include more capacity. There is no setup fee or contract.',
   },
   {
     q: 'Do you hold my money?',
@@ -296,13 +296,13 @@ const jsonLd = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'An all-in-one platform for contractors: a marketing website with an AI lead estimator, quotes and e-signatures, scheduling, recurring billing, reviews, and Stripe payments that pay out to your bank. No subscription — you only pay when a homeowner pays you.',
+        'An all-in-one contractor platform with a website, AI Intake, quotes, scheduling, recurring billing, reviews, and Stripe payments. Plans start at $0/month.',
       offers: {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'USD',
         description:
-          'Free to start. No subscription or setup fee — a platform fee of 0.65%–1.25% applies only when a homeowner pays you.',
+          'Flex starts at $0/month plus a 1.25% LGQ platform fee. Paid plans lower the fee and include more capacity.',
       },
     },
     {
@@ -339,11 +339,11 @@ export default function HomePage() {
               Explore the demo &mdash; no signup
             </Link>
           </div>
-          <p className="hero-reassure hero-reassure-pill">Free to start &middot; No credit card &middot; <strong>you only pay when a homeowner pays you.</strong></p>
+          <p className="hero-reassure hero-reassure-pill">Flex starts at $0/month &middot; No credit card to start &middot; <strong>paid plans lower the LGQ fee.</strong></p>
           <ul className="hero-trust-row">
             <li><MessageIcon /><span>Collects job details, provides an estimated range, and accepts booking requests 24/7</span></li>
             <li><SignatureIcon /><span>Quote, e-sign &amp; get paid on Stripe</span></li>
-            <li><TrendDownIcon /><span>No monthly subscription. Platform and Stripe processing fees apply when you collect payment (1.25% &rarr; 0.65% as you grow)</span></li>
+            <li><TrendDownIcon /><span>Flex starts at $0/month plus 1.25%; paid plans lower the LGQ fee as far as 0.10%. Stripe costs are separate.</span></li>
           </ul>
         </div>
 
@@ -380,7 +380,7 @@ export default function HomePage() {
       <section className="section-block compare-band">
         <div className="section-heading">
           <p className="eyebrow">Why contractors switch</p>
-          <h2>One tool doing the work of five &mdash; and <span className="gradient-text">you only pay when you get paid.</span></h2>
+          <h2>One tool doing the work of five &mdash; with <span className="gradient-text">a plan for each stage.</span></h2>
           <p>
             A website builder gives you a page. Field-service software rents you a login by the month. Let&apos;s Get
             Quoted runs the whole job &mdash; your website, quotes, signatures, scheduling, and payments &mdash; with no
@@ -436,10 +436,10 @@ export default function HomePage() {
       <section className="section-block pricing-band">
         <div className="section-heading">
           <p className="eyebrow">Transparent pricing</p>
-          <h2>The more you grow, the less you pay.</h2>
+          <h2>Choose the plan that fits today.</h2>
           <p>
-            You only pay when a homeowner actually pays you &mdash; no subscription, no setup fee. Our platform fee
-            scales down automatically with your trailing 12-month volume, with no calls to sales.
+            Flex starts at $0/month plus a 1.25% LGQ platform fee. Paid plans add a predictable base price,
+            lower the fee, and include more capacity. No setup fee.
           </p>
         </div>
         <div className="pricing-tiers">
@@ -449,7 +449,7 @@ export default function HomePage() {
                 <span className="pricing-tier-rate">{t.rate}</span>
                 <span className="pricing-tier-bar" style={{ height: `${t.barHeight}px` }} />
               </div>
-              <span className="pricing-tier-label">Tier {t.tier}</span>
+              <span className="pricing-tier-label">Plan {t.tier}</span>
               <span className="pricing-tier-range">{t.range}</span>
             </div>
           ))}
@@ -463,11 +463,10 @@ export default function HomePage() {
             <li className="keep"><span>You keep</span><span className="v">~$2,051</span></li>
           </ul>
           <p className="pricing-takehome-note">
-            ACH processing is typically less expensive than card processing. Current Stripe fees apply. Slow month
-            with no jobs? <strong>$0</strong> &mdash; while a monthly CRM still bills you $200+.
+            ACH processing is typically less expensive than card processing. Current Stripe fees apply. Flex keeps
+            its monthly base at <strong>$0</strong>; paid-plan base prices still apply in a slow month.
           </p>
         </div>
-        <HomeFeeCalculator />
         <div className="mid-cta">
           <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>

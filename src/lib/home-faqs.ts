@@ -16,7 +16,7 @@ export type HomeFaq = { q: string; a: string };
 export const HOME_FAQS: HomeFaq[] = [
   {
     q: 'So what’s the catch?',
-    a: 'There isn’t one. No subscription, no setup fee, no contract. You build your site, send quotes, and run jobs for free — we only take a small platform fee (1.25%, dropping to 0.65% as you grow) when a homeowner actually pays you. In a month you book nothing, you pay nothing.',
+    a: 'Flex has no monthly base price and carries a 1.25% LGQ platform fee on eligible payments collected through LGQ. Solo, Growth, and Scale add a subscription in exchange for lower platform fees and more included capacity. There is no setup fee or contract; compare the exact prices and limits before choosing a plan.',
   },
   {
     q: 'Do you hold my money?',
@@ -32,7 +32,7 @@ export const HOME_FAQS: HomeFaq[] = [
   },
   {
     q: 'Do I need my own website already?',
-    a: 'No — building it is the first thing the platform does. Pick a template made for contractors, drop in your photos, and you’re live on your own domain in minutes. No web guy, no monthly hosting bill.',
+    a: 'No — building it is the first thing the platform does. Pick a template made for contractors, add your photos, and publish on the included subdomain or connect your own domain. Website capacity is included according to your plan.',
   },
   {
     q: 'Will this get me more leads, or just organize the ones I have?',

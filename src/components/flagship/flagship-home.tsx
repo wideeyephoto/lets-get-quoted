@@ -9,7 +9,7 @@ import TradeOrbit from './trade-orbit';
 import CommandCenterDeck, { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroShowcase from './hero-showcase';
 import { HOME_FAQS } from '@/lib/home-faqs';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { PLAN_PRICE_OPTIONS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 
@@ -638,7 +638,7 @@ export default function FlagshipHome() {
             <a className="button primary" href={SIGNUP_URL} ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
             <a className="button secondary" href="/demo">Try the Demo</a>
           </div>
-          <p className="hero-note"><i>✓</i> Free to start &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Pay only when you get paid</p>
+          <p className="hero-note"><i>✓</i> Flex starts at $0/month + 1.25% &nbsp;·&nbsp; No credit card</p>
 
           {/* The four outcome badges sat here. Removed — see PROMISES above:
               they were the second of two navigation strips in the same screen,
@@ -904,44 +904,24 @@ export default function FlagshipHome() {
         </div>
       </section>
 
-      {/* THE PRICE, WITHOUT THE CALCULATOR.
-          A HomeFeeCalculator sat here — a slider that worked out a year's
-          platform fee on the spot. It is gone from this page on request, and
-          what replaces it is a link rather than nothing: /pricing carries the
-          full calculator, the break-even against a monthly plan and the FAQ, so
-          the arithmetic still exists, one click away, in the place that can
-          answer the follow-up question.
-
-          The four brackets below stay. They are the actual rates and they are
-          built from FEE_TIERS, so the homepage still states the price rather
-          than only promising one. HomeFeeCalculator itself is untouched —
-          /home-classic and /home-next both still render it. */}
+      {/* The four plan summaries are projected from the canonical billing
+          catalog. The full calculator and allowance detail live on /pricing. */}
       <section className="pricing-band" id="pricing">
         <Glare />
         <div className="price-zero" data-plane="back"><span>$</span><strong>0</strong><small>/ MONTH</small></div>
         <div className="pricing-copy" data-rise>
-          <p className="eyebrow"><span>✦</span> FULL SUITE. NO MONTHLY SUBSCRIPTION.</p>
-          <h2>When business is slow,<br /><em>your software bill is $0.</em></h2>
-          <p>Use the full suite without a monthly subscription. A small platform fee applies only when a homeowner pays you.</p>
-          <div className="pricing-points"><span>✓ No setup fee</span><span>✓ No contract</span><span>✓ No per-seat fee</span><span>✓ Rate drops as you grow</span></div>
+          <p className="eyebrow"><span>✦</span> FOUR PLANS. START AT $0.</p>
+          <h2>Start free.<br /><em>Upgrade when the math works.</em></h2>
+          <p>Flex is $0/month plus a 1.25% LGQ platform fee. Paid plans trade a predictable base price for a lower fee and more included capacity.</p>
+          <div className="pricing-points"><span>✓ Free onboarding</span><span>✓ No contract</span><span>✓ Core workflow on every plan</span><span>✓ Fee set by your plan</span></div>
 
-          {/* THE RATE, WRITTEN DOWN.
-              "A small platform fee" and a slider were the whole explanation.
-              A visitor could work out what they would pay this year without
-              ever learning what the rate IS, or that it falls in brackets, or
-              who takes the card processing on top.
-
-              Built from FEE_TIERS, the same array /pricing and the calculator
-              above read, so these four numbers cannot drift from the ones we
-              charge. */}
-          <ul className="fee-tiers" aria-label="Platform fee by yearly volume collected">
-            {FEE_TIERS.map((tier) => (
-              <li key={tier.tier}><b>{tier.rate}</b><small>{tier.rangeLabel}</small></li>
+          <ul className="fee-tiers" aria-label="LGQ base plans and platform fees">
+            {PLAN_PRICE_OPTIONS.map((plan) => (
+              <li key={plan.id}><b>{plan.platformFee}</b><small>{plan.name} · {plan.monthlyPrice}</small></li>
             ))}
           </ul>
           <p className="fee-note">
-            Marginal, like tax brackets — the first $100k of volume is charged at 1.25%, the next
-            slice at 1.00%, and so on. It applies only when a homeowner actually pays you.
+            The LGQ fee applies to eligible service subtotal collected through LGQ. Your rate changes when you change plans—not when you cross a volume bracket.
           </p>
 
           {/* The price is where the decision actually gets made, and this band
@@ -955,13 +935,13 @@ export default function FlagshipHome() {
           <div className="pricing-actions">
             <a className="button primary" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
             <Link className="button secondary" href="/pricing">
-              Work out your fee <span aria-hidden="true">→</span>
+              Compare plans <span aria-hidden="true">→</span>
             </Link>
           </div>
           <small className="pricing-fineprint">
             Card payments run through <b>Stripe Checkout</b>, so card details are entered on
             Stripe&apos;s own page and never reach our servers. Stripe&apos;s processing fee
-            ({STRIPE_PROCESSING_NOTE}) is separate from the platform fee above.
+            ({STRIPE_PROCESSING_NOTE}) are separate from the LGQ prices above.
           </small>
         </div>
       </section>
@@ -1002,7 +982,7 @@ export default function FlagshipHome() {
         <h2>One truck or ten crews.<br />Your next stage starts here.</h2>
         <p>Launch the site, connect the work and give your growing business one place to run.</p>
         <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
-        <small>No card required · No monthly subscription · Cancel anytime</small>
+        <small>Flex starts at $0/month · Free onboarding · Cancel anytime</small>
       </section>
 
       <SiteFooter />

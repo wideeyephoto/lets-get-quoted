@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { TRADES, getTrade, indefiniteArticle, lowerTradeName, tradePayer } from '@/lib/trades';
+import { TRADES, getTrade, indefiniteArticle, lowerTradeName } from '@/lib/trades';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
@@ -47,7 +47,6 @@ export default function TradePage({ params }: { params: { trade: string } }) {
   // here, on every one of the 49 pages. See the notes on these helpers.
   const name = lowerTradeName(trade.name);
   const an = indefiniteArticle(trade.work);
-  const payer = tradePayer(trade);
 
   // Home › For your trade › Roofers, in place of the bare slug, on all 49.
   const breadcrumbs = breadcrumbJsonLd([
@@ -69,7 +68,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
           <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
-        <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a {payer} pays you.</p>
+        <p className="hero-reassure">Flex starts at $0/month + 1.25% &middot; No credit card</p>
         <ul className="trade-services" aria-label={`Built for ${trade.work} work`}>
           {trade.services.map((service) => (
             <li key={service}>{service}</li>
@@ -141,8 +140,8 @@ export default function TradePage({ params }: { params: { trade: string } }) {
       <section className="cta-band">
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
-          <h2>Start free &mdash; you only pay when a {payer} pays you.</h2>
-          <p>No subscription. No setup fee. Everything {an} {trade.work} business needs, from your first quote.</p>
+          <h2>Start with Flex at $0/month plus 1.25%.</h2>
+          <p>Plans start with Flex at $0/month plus 1.25%. No setup fee. Everything {an} {trade.work} business needs, from your first quote.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/faq" className="btn secondary">Read the FAQ</Link>

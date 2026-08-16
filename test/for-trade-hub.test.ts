@@ -233,7 +233,7 @@ describe('the trust strip', () => {
     expect(strip).toContain('${TRADES.length} trades supported');
     expect(strip).toContain("'Free to start'");
     expect(strip).toContain("'No credit card'");
-    expect(strip).toContain("'No monthly subscription'");
+    expect(strip).toContain("'Flex is $0/month'");
     expect(strip).toContain("'Stripe-powered payments'");
   });
 
@@ -264,9 +264,9 @@ describe('the trust strip', () => {
 
   /* The fee is the number the decision turns on, and the page that explains it
      has to be one click away from where the claim is made. */
-  it('says what "you only pay when you get paid" costs, and links the breakdown', () => {
-    expect(PAGE).toContain('{HIGHEST_FEE}');
-    expect(PAGE).toContain('{LOWEST_FEE}');
+  it('states plan-based prices from the canonical projection and links the breakdown', () => {
+    expect(PAGE).toContain('{FLEX_PRICE.platformFee}');
+    expect(PAGE).toContain('{LOWEST_PLATFORM_FEE}');
     expect(PAGE).toContain('<Link href="/pricing">');
   });
 });

@@ -113,7 +113,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     num: '05',
     slug: 'payments',
     title: 'Getting paid',
-    intro: 'Card and bank payments on Stripe, straight to your account — you only pay when you get paid.',
+    intro: 'Card and bank payments on Stripe, straight to your account. Flex starts at $0/month plus a 1.25% LGQ platform fee.',
     features: [
       { id: 'stripe-payments', name: 'Stripe-powered payments', desc: 'Card and bank payments route to your account; we never see card numbers.', favorite: true },
       { id: 'deposits-stages', name: 'Deposits & stage payments', desc: 'Collect any payment at any point via hosted checkout.' },
@@ -124,7 +124,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
       { id: 'refunds', name: 'Refunds', desc: 'Full or partial, tracked, with an automatic client text.' },
       { id: 'offline-payments', name: 'Offline payments', desc: 'Log cash or check with correct invoice reconciliation.' },
       { id: 'disputes', name: 'Dispute handling', desc: 'Chargebacks tracked automatically from Stripe.' },
-      { id: 'shrinking-fees', name: 'Fees that shrink', desc: 'Platform fee drops from 1.25% to 0.65% as your volume grows. No subscription.' },
+      { id: 'shrinking-fees', name: 'Plan-based payment fees', desc: 'Choose Flex at $0/month plus 1.25%, or a paid plan with a lower LGQ platform fee.' },
     ],
   },
   {

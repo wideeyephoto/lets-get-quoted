@@ -11,13 +11,13 @@ import {
   MarketingCta,
   PriceZeroDial,
 } from '@/components/marketing';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FLEX_PRICE, PUBLIC_PRICING_SUMMARY, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import styles from './founder.module.css';
 
 export const metadata: Metadata = {
   title: 'A note from Brett, founder',
   description:
-    'Why I built Let’s Get Quoted: so a one-truck business can look—and run—like a much bigger company. No card, no monthly subscription, the complete product.',
+    'Why I built Let’s Get Quoted: so a one-truck business can look—and run—like a much bigger company. Start at $0/month with Flex or choose a paid plan as you grow.',
   alternates: { canonical: 'https://letsgetquoted.com/founder' },
   /* Spelled out rather than inherited: the root layout's title `template` does
      not reach openGraph, so without these a share card reads "The website, CRM
@@ -41,14 +41,6 @@ export const metadata: Metadata = {
   },
 };
 
-/* The one number on the page, read from the canonical fee model rather than
-   typed in, so it cannot drift from /pricing or the calculator. */
-// FEE_TIERS[0] is the rate a business STARTS on and falls from — 1.25%, the
-// highest of the four, not the lowest. The old name invited a correction to
-// FEE_TIERS[length - 1], which would have quoted everyone the 0.65% that only
-// applies above $750k of volume.
-const STARTING_RATE = FEE_TIERS[0].rate;
-
 /* Prose with apostrophes and quote marks lives in constants rather than inline
    JSX text: it keeps the curly punctuation intact without scattering entities
    through the markup, and it keeps the copy in one readable block. */
@@ -59,7 +51,7 @@ const HERO_LEDE =
 /* The three things the page is actually offering, in the hero rather than
    discovered on the pricing page. Each is a fact stated elsewhere on this page
    and provable on /pricing — not a feature list. */
-const HERO_POINTS = ['No card', 'No monthly subscription', 'Complete product'] as const;
+const HERO_POINTS = ['No card', 'Start at $0/month', 'One connected product'] as const;
 
 const LEDE =
   'I kept seeing talented contractors held back by terrible websites, generic lead forms and a back office split across too many tools. Let’s Get Quoted is my attempt to fix the whole chain—not just redesign the front page.';
@@ -341,18 +333,16 @@ export default function FounderPage() {
             <div className={styles.zeroCopy}>
               <div className={styles.sectionHead}>
                 <p className="eyebrow">The business model</p>
-                <h2 id="founder-model-title">Nothing to pay before the product moves money.</h2>
+                <h2 id="founder-model-title">Start without another monthly bill.</h2>
               </div>
               <p className={styles.prose}>
-                There is no plan to choose and no tier to grow out of, because there is no tier
-                field anywhere in the product to put you in one. Every account opens with all of
-                it.
+                Flex gives a new contractor a $0 monthly base price. Solo, Growth and Scale add
+                more included capacity and lower the LGQ platform fee as the business grows.
               </p>
               <p className={styles.zeroNote}>
-                The one charge is the platform fee, taken out of a payment a homeowner actually
-                makes to you—never a monthly bill, and never a charge for reaching a feature. It
-                starts at {STARTING_RATE} and falls as your volume grows. Card processing (
-                {STRIPE_PROCESSING_NOTE}) is separate and goes to Stripe.
+                Flex applies a {FLEX_PRICE.platformFee} LGQ platform fee to eligible customer
+                payments. {PUBLIC_PRICING_SUMMARY} Card processing ({STRIPE_PROCESSING_NOTE}) is
+                separate and goes to Stripe.
               </p>
               <Link href="/pricing" className={styles.pricingLink}>
                 See pricing details <span aria-hidden="true">→</span>
@@ -401,7 +391,7 @@ export default function FounderPage() {
         <MarketingCta
           kicker="The next chapter is your business"
           title="Build something customers trust—and a system your team can run."
-          note={`No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you, falling as your volume grows, and applies only when they actually pay.`}
+          note={`No card required. ${PUBLIC_PRICING_SUMMARY}`}
         />
 
         <SiteFooter />

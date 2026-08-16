@@ -546,7 +546,7 @@ describe('the client portal page', () => {
     expect(note).toContain('private per-job link');
     expect(note).toContain('STOP');
     expect(note).toContain('Stripe');
-    expect(note).toContain('Pay only when you get paid');
+    expect(note).toContain('included on every base plan');
   });
 
   it('puts the six texture messages behind a disclosure', () => {

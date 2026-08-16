@@ -7,7 +7,7 @@ import SuiteFeaturePage, {
   PanelNote,
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Recurring Work and Auto-Billing',
@@ -157,12 +157,12 @@ export default function RecurringFeaturePage() {
         },
         {
           q: 'Do recurring charges cost more than one-off ones?',
-          a: `No — they are charged on exactly the same terms. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}). There is no subscription and no per-plan fee.`,
+          a: `LGQ applies the same plan platform-fee rate to eligible recurring and one-off service payments. ${FEATURE_PRICING_NOTE} Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
         },
       ]}
       cta={{
         title: 'Turn a good customer into a standing appointment.',
-        note: `No subscription and no per-plan fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Recurring jobs have no separate per-plan charge.`,
       }}
     />
   );

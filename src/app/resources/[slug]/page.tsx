@@ -151,8 +151,8 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
       <section className="cta-band">
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
-          <h2>Start free — you only pay when a homeowner pays you.</h2>
-          <p>No subscription. No setup fee. The whole toolkit, from your first quote.</p>
+          <h2>Start with Flex at $0/month plus 1.25%.</h2>
+          <p>Plans start with Flex at $0/month plus 1.25%. No setup fee. The whole toolkit, from your first quote.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/resources" className="btn secondary">More resources</Link>

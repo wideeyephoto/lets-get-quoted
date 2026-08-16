@@ -4,7 +4,7 @@ import ExampleFrame from '@/components/marketing/example-frame';
 import QuickStopPanel from '@/components/quick-stop-panel';
 import { QuickStopIcon } from '@/components/quick-stop-icons';
 import QuickStopHeroSimulation from './QuickStopHeroSimulation';
-import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   QUICK_STOP_STATUS_LABEL,
   centsToDollars,
@@ -410,7 +410,7 @@ export default function QuickStopsPage() {
       }
       cta={{
         title: 'Make the route you already drive earn more.',
-        note: `No monthly fee. You pay a small platform fee only on money you actually collect — the visit fee and the invoice alike — plus Stripe’s ${STRIPE_PROCESSING_NOTE}.`,
+        note: `${FEATURE_PRICING_NOTE} The plan's fee applies to eligible visit-fee and invoice payments; Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
     >
       {/* #how-it-works moved up to the flow, which is what that fragment

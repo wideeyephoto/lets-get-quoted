@@ -383,7 +383,7 @@ export function PageCTA({
       <h2>{title}</h2>
       <p>{body}</p>
       <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
-      <small>No card required · No monthly subscription</small>
+      <small>No card required · Flex starts at $0/month + 1.25%</small>
     </section>
   );
 }

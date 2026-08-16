@@ -26,11 +26,9 @@ import QuoteChangesSection from './QuoteChangesSection';
 import { displayPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
-import { getTrailingVolume } from '@/lib/payments';
-import { getTierInfo } from '@/lib/stripe';
-import { formatMoney } from '@/lib/jobs';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
+import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import PlanUsageSection from './PlanUsageSection';
 
 export const metadata = { title: 'Account' };
@@ -97,12 +95,6 @@ export default async function SettingsPage({
     placeId: businessBasics.testimonials.googlePlaceId,
     listingUrl: businessBasics.testimonials.googleUrl,
   });
-
-  // Keep the existing volume-tier read exactly while the new surface is dark.
-  // Once enabled, the entitlement snapshot is the authority and the obsolete
-  // tier calculation is neither queried nor rendered.
-  const trailingVolume = pricingDashboardEnabled ? null : await getTrailingVolume(accountId);
-  const feeTier = trailingVolume === null ? null : getTierInfo(trailingVolume);
 
   const { data: costSettings } = await supabase
     .from('accounts')
@@ -336,39 +328,16 @@ export default async function SettingsPage({
                   />
                 </section>
 
-                {!pricingDashboardEnabled && feeTier && trailingVolume !== null ? (
+                {!pricingDashboardEnabled ? (
                   <section className="panel workspace-section-card" id="platform-fee">
                     <div className="section-heading workspace-section-heading compact-heading">
-                      <p className="eyebrow">Platform fee</p>
-                      <h2>Your current tier</h2>
+                      <p className="eyebrow">Plans &amp; pricing</p>
+                      <h2>Compare the published plans</h2>
                     </div>
                     <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                      letsgetquoted.com takes a small platform fee on each payment you collect, and it drops
-                      as your trailing 12-month volume grows. The rate is locked in on every payment when it&apos;s
-                      made — this never re-rates what you&apos;ve already been charged.
+                      {PUBLIC_PRICING_SUMMARY} The plan-and-usage dashboard is not enabled in this environment yet.
                     </p>
-                    <div className="fee-tier-card">
-                      <div className="fee-tier-head">
-                        <span className="fee-tier-rate">{(feeTier.rate * 100).toFixed(2)}%</span>
-                        <span className="fee-tier-meta">
-                          <strong>Tier {feeTier.tier}</strong>
-                          <span>{formatMoney(trailingVolume)} trailing 12-mo volume</span>
-                        </span>
-                      </div>
-                      {feeTier.nextTier ? (
-                        <>
-                          <div className="fee-tier-bar" role="presentation">
-                            <span style={{ width: `${Math.round((feeTier.progressToNext ?? 0) * 100)}%` }} />
-                          </div>
-                          <p className="field-hint">
-                            {formatMoney(feeTier.amountToNextTier ?? 0)} more in the next 12 months moves you to{' '}
-                            <strong>{(feeTier.nextTier.rate * 100).toFixed(2)}%</strong> (Tier {feeTier.nextTier.tier}).
-                          </p>
-                        </>
-                      ) : (
-                        <p className="field-hint">You&apos;re on the lowest platform fee we offer. 🎉</p>
-                      )}
-                    </div>
+                    <Link className="button secondary" href="/pricing">See plans, limits, and fee terms</Link>
                   </section>
                 ) : null}
               </>

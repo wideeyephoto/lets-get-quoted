@@ -8,7 +8,7 @@ import SuiteFeaturePage, {
   PanelNote,
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import ShotVideo from './ShotVideo';
 import styles from './quotes.module.css';
 
@@ -286,12 +286,12 @@ export default function QuotesFeaturePage() {
         },
         {
           q: 'What does it cost to send a quote?',
-          a: `Nothing. There is no subscription and no per-quote fee. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}). A quote nobody approves costs you nothing at all.`,
+          a: `${FEATURE_PRICING_NOTE} Core quotes are unlimited and have no per-quote charge. The LGQ platform fee applies only if you collect an eligible payment through LGQ; Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
         },
       ]}
       cta={{
         title: 'Quote it once. Let them sign it tonight.',
-        note: `No subscription and no setup fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Core quotes are unlimited on every plan.`,
       }}
     />
   );

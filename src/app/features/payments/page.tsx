@@ -9,12 +9,17 @@ import SuiteFeaturePage, {
 } from '@/components/marketing/suite-feature-page';
 import { ACH_MIN_AMOUNT } from '@/lib/payments';
 import { DEFAULT_PLAN } from '@/lib/payment-plan-math';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import {
+  FEATURE_PRICING_NOTE,
+  PLAN_FEE_RANGE_LABEL,
+  PUBLIC_PRICING_SUMMARY,
+  STRIPE_PROCESSING_NOTE,
+} from '@/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Contractor Payments and Deposits',
   description:
-    'Take deposits, balances and 0%-interest payment plans through Stripe, into your own account. No subscription — you pay only when a homeowner pays you.',
+    'Take deposits, balances and 0%-interest payment plans through Stripe, with contractor plans starting at $0/month.',
   alternates: { canonical: 'https://letsgetquoted.com/features/payments' },
   openGraph: {
     type: 'website',
@@ -22,14 +27,14 @@ export const metadata: Metadata = {
     siteName: "Let's Get Quoted",
     title: 'Get paid on the job, not thirty days after it.',
     description:
-      'Deposits, balances and 0%-interest installments through Stripe, into your account. No subscription — you pay only when a homeowner pays you.',
+      'Deposits, balances and 0%-interest installments through Stripe, with plans starting at $0/month.',
     images: [{ url: '/features/og-payments.jpg', width: 1200, height: 630, alt: 'Contractor payments, deposits and payment plans' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Get paid on the job, not thirty days after it.',
     description:
-      'Deposits, balances and 0%-interest installments through Stripe, into your account. No subscription — you pay only when a homeowner pays you.',
+      'Deposits, balances and 0%-interest installments through Stripe, with plans starting at $0/month.',
     images: ['/features/og-payments.jpg'],
   },
 };
@@ -47,14 +52,10 @@ export default function PaymentsFeaturePage() {
         </>
       }
       lede="Take a deposit when the quote is approved and the balance when the work is done. The money goes to your Stripe account, and you pay a percentage only when a homeowner actually pays you."
-      /* The three facts that decide it, above the button. The exact rate was
-         4,000px down the page in the closing band, which is the wrong place for
-         the number somebody is trying to find. Read from FEE_TIERS, so it
-         cannot drift from /pricing. */
       heroChips={[
-        `${FEE_TIERS[0].rate}–${FEE_TIERS[FEE_TIERS.length - 1].rate} platform fee`,
+        `${PLAN_FEE_RANGE_LABEL} LGQ platform fee, depending on plan`,
         `Stripe's ${STRIPE_PROCESSING_NOTE}`,
-        'Only when a homeowner pays you',
+        'Applied only to eligible payments collected through LGQ',
       ]}
       heroNote={`Card numbers never touch us — Stripe holds them. Bank debit is offered automatically on payments of ${ACH_LABEL} or more, where a flat capped fee beats a card percentage.`}
       /* No /demo/payments screen exists, so "See the payment flow" would be a
@@ -91,12 +92,12 @@ export default function PaymentsFeaturePage() {
         { title: 'Straight to your Stripe', body: 'Your account, your payout schedule.' },
         { title: '0% payment plans', body: 'No interest, no credit check, no advance.' },
         { title: `Bank debit at ${ACH_LABEL}+`, body: 'Offered where it beats a card fee.' },
-        { title: `From ${FEE_TIERS[0].rate} to ${FEE_TIERS[FEE_TIERS.length - 1].rate}`, body: 'The fee falls as your volume grows.' },
+        { title: PLAN_FEE_RANGE_LABEL, body: 'Your selected plan sets the LGQ platform-fee rate.' },
       ]}
       story={{
-        eyebrow: 'You only pay when you get paid',
-        title: 'A subscription charges you in the months you are slow.',
-        body: 'There is no monthly plan here. The platform fee is a percentage of money a homeowner actually hands you, it is marginal across yearly volume the way tax brackets are, and it falls as you grow. A quiet January costs you nothing, which is the only pricing shape that makes sense for work that has seasons.',
+        eyebrow: 'Choose the trade-off that fits',
+        title: 'Start without a fixed bill, or pay less per collected job.',
+        body: 'Flex has a $0 monthly base price and a 1.25% LGQ platform fee. Solo, Growth, and Scale add a predictable subscription in exchange for lower platform-fee rates and more included capacity. Your rate follows your plan, not a trailing-volume bracket.',
       }}
       benefits={[
         {
@@ -161,12 +162,12 @@ export default function PaymentsFeaturePage() {
         },
         {
           q: 'What exactly do I pay?',
-          a: `A platform fee on money a homeowner actually pays you, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}). The platform fee is marginal across your trailing-year volume, like tax brackets: ${FEE_TIERS.map((tier) => `${tier.rate} on ${tier.rangeLabel}`).join(', ')}. No subscription, no setup fee, and nothing at all in a month where nobody pays you.`,
+          a: `${PUBLIC_PRICING_SUMMARY} The LGQ fee applies only to the discount-adjusted service subtotal successfully collected through LGQ. Taxes, tips, refunds, credits, and Stripe costs are excluded; Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
         },
       ]}
       cta={{
         title: 'Take the deposit before you load the truck.',
-        note: `No subscription and no setup fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
     />
   );

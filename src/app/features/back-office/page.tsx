@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ExampleFrame, FeatureDetailLayout, ShotSlider, type Shot } from '@/components/marketing';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, FLEX_PRICE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import {
   DEFAULT_PLAN,
   buildPlanSchedule,
@@ -42,16 +42,6 @@ export const metadata: Metadata = {
   },
 };
 
-/* The one number the page quotes, taken from the canonical fee model rather
-   than typed in — the rate a contractor reads here can then never drift from
-   /pricing or from the calculator. */
-// FEE_TIERS[0] is the rate a business STARTS on and falls from — 1.25%, the
-// highest of the four, not the lowest. Named accordingly: the previous name
-// said "lowest", which invited a well-meaning correction to
-// FEE_TIERS[length - 1] and would have quoted every contractor the 0.65% that
-// only applies above $750k of volume.
-const STARTING_RATE = FEE_TIERS[0].rate;
-
 // Deliberately not the fee. The closing band states it in full, with the rate
 // and Stripe's cut — saying it here too makes a page about running the work
 // argue about price twice before the reader has seen any of the work.
@@ -63,7 +53,7 @@ const STARTING_RATE = FEE_TIERS[0].rate;
 /* Three facts, ABOVE the button rather than four lines under it. They are what
    decides whether somebody presses it, and as a "·"-joined sentence in prose
    type they were below the fold on a phone. See the heroChips prop. */
-const HERO_CHIPS = ['Website and back office included', 'No card', 'No monthly subscription'];
+const HERO_CHIPS = ['Website and back office included', 'Flex starts at $0/month', `${FLEX_PRICE.platformFee} on Flex payments`];
 
 /* ------------------------------------------------------------------------- */
 /* The hero: two real screens.                                                */
@@ -643,7 +633,7 @@ export default function BackOfficePage() {
       }
       cta={{
         title: 'Put the entire job behind one front door.',
-        note: `No card required and no monthly subscription. The platform fee is ${STARTING_RATE} of what a homeowner pays you and falls as your volume grows; card processing is Stripe’s standard ${STRIPE_PROCESSING_NOTE}.`,
+        note: `${FEATURE_PRICING_NOTE} Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
     >
       <section className="section-block" aria-labelledby="back-office-capabilities">

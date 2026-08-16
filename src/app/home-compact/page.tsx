@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import HeroDashboard from '@/components/hero-dashboard';
 import { ExampleFrame } from '@/components/marketing';
-import { FEE_TIERS } from '@/lib/pricing';
+import { PLAN_PRICE_OPTIONS } from '@/lib/pricing';
 import styles from './home-compact.module.css';
 
 /**
@@ -77,7 +77,7 @@ export default function HomeCompactPage() {
             </Link>
           </div>
           <p className={styles.fine}>
-            Free to start · No card required · You pay only when a homeowner pays you
+            Flex starts at $0/month + 1.25% · No card required
           </p>
         </div>
 
@@ -87,21 +87,21 @@ export default function HomeCompactPage() {
               <sup>$</sup>0
             </p>
             <p className={styles.markCaption} aria-hidden="true">
-              Monthly subscription
+              Flex monthly base
             </p>
-            <span className="sr-only">$0 monthly subscription.</span>
+            <span className="sr-only">Flex has a $0 monthly base price.</span>
 
             <hr className={styles.panelRule} />
 
-            <h2 className={styles.panelTitle}>When business is slow, your software bill is $0.</h2>
+            <h2 className={styles.panelTitle}>Start on Flex. Upgrade when the math works.</h2>
             <p className={styles.panelBody}>
-              A platform fee applies only when a homeowner pays you, and it drops as the business
-              grows. Card processing is billed separately by Stripe.
+              Flex is $0/month plus 1.25%. Paid plans lower the LGQ platform fee and include more
+              capacity. Stripe costs are separate.
             </p>
-            <ul className={styles.tiers} aria-label="Platform fee by annual volume">
-              {FEE_TIERS.map((tier) => (
-                <li key={tier.tier}>
-                  {tier.rate} <span aria-hidden="true">·</span> {tier.rangeLabel}
+            <ul className={styles.tiers} aria-label="LGQ base plans and platform fees">
+              {PLAN_PRICE_OPTIONS.map((plan) => (
+                <li key={plan.id}>
+                  {plan.platformFee} <span aria-hidden="true">·</span> {plan.name} · {plan.monthlyPrice}
                 </li>
               ))}
             </ul>

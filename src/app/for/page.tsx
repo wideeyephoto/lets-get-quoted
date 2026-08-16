@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { TRADES } from '@/lib/trades';
 import { COMMON_TRADE_SLUGS, tradesBySlugs } from '@/lib/trade-categories';
-import { FEE_TIERS } from '@/lib/pricing';
+import { FLEX_PRICE, LOWEST_PLATFORM_FEE } from '@/lib/pricing';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { titleWithBrand } from '@/lib/seo/marketing-seo';
 import SiteFooter from '@/components/site-footer';
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
      puts the brand back exactly once and only while it fits inside 60. */
   title: { absolute: titleWithBrand('Contractor Website & Software by Trade') },
   description:
-    'A website, a 24/7 AI Estimator, quotes, scheduling, and Stripe payments — tailored to your trade. Browse all 49 trades. Free to start, no subscription.',
+    'A website, AI Intake, quotes, scheduling, and Stripe payments tailored to your trade. Browse all 49 trades. Plans start at $0/month.',
   alternates: { canonical: 'https://letsgetquoted.com/for' },
   /* Next replaces the parent's `openGraph` object wholesale rather than merging
      into it, so everything this card needs has to be here — including the image,
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     siteName: "Let's Get Quoted",
     title: 'Contractor Website & Quoting Software by Trade · Let’s Get Quoted',
     description:
-      'Websites and quoting software built for your trade — 49 of them. Win the lead, quote the job, and get paid. Free to start, no monthly subscription.',
+      'Websites and quoting software built for your trade — 49 of them. Win the lead, quote the job, and get paid. Plans start at $0/month.',
     images: [
       {
         url: '/template-previews/professional.jpg',
@@ -45,13 +45,10 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Contractor Website & Quoting Software by Trade',
     description:
-      'Websites and quoting software built for your trade — 49 of them. Free to start, no monthly subscription.',
+      'Websites and quoting software built for your trade — 49 of them. Plans start at $0/month.',
     images: ['/template-previews/professional.jpg'],
   },
 };
-
-const HIGHEST_FEE = FEE_TIERS[0].rate;
-const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate;
 
 /**
  * WHAT PICKING A TRADE ACTUALLY CHANGES.
@@ -129,7 +126,7 @@ const TRUST = [
   `${TRADES.length} trades supported`,
   'Free to start',
   'No credit card',
-  'No monthly subscription',
+  'Flex is $0/month',
   'Stripe-powered payments',
 ];
 
@@ -204,8 +201,8 @@ export default function TradeIndexPage() {
                   it still has to go and find out what "pay" means, and the page
                   that answers it was not linked from here. */}
               <p className={styles.heroFine}>
-                You only pay when a homeowner pays you &mdash; a platform fee from {HIGHEST_FEE} down
-                to {LOWEST_FEE} as your volume grows. <Link href="/pricing">See the full breakdown</Link>
+                Flex is {FLEX_PRICE.monthlyPrice} plus {FLEX_PRICE.platformFee}. Paid plans lower the LGQ
+                platform fee as far as {LOWEST_PLATFORM_FEE}. <Link href="/pricing">Compare plans and limits</Link>
               </p>
             </div>
 
@@ -358,10 +355,10 @@ export default function TradeIndexPage() {
               stands aside rather than floating on top of the ask it duplicates. */}
           <section className={`${styles.closing} page-cta`}>
             <p className={styles.eyebrow}>Ready when you are</p>
-            <h2>Start free &mdash; you only pay when a homeowner pays you.</h2>
+            <h2>Start on Flex. Upgrade when the math works.</h2>
             <p>
-              No subscription. No setup fee. Everything you need to win the lead, quote the job, and
-              get paid.
+              Flex starts at $0/month plus a 1.25% LGQ platform fee. Paid plans lower the fee and add
+              included capacity. No setup fee.
             </p>
             <div className={styles.closingCtas}>
               <a href={APP_SIGNUP_URL} className={`${styles.btn} ${styles.btnPrimary}`}>

@@ -5,6 +5,7 @@ import ExampleFrame from '@/components/marketing/example-frame';
 import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
 import HeroThemeCycler from './HeroThemeCycler';
 import { TRADES } from '@/lib/trades';
+import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import styles from './website-builder.module.css';
 
 export const metadata: Metadata = {
@@ -117,7 +118,7 @@ const FAQ: { q: string; a: string }[] = [
        from FEE_TIERS. What is claimed here — no subscription, paid when you are
        paid, plus Stripe — is true at every tier. */
     q: 'What does it cost?',
-    a: 'There is no monthly subscription. You pay a platform fee when a homeowner pays you, plus Stripe processing.',
+    a: `The website builder is included on every base plan. ${PUBLIC_PRICING_SUMMARY} Stripe costs are separate.`,
   },
 ];
 

@@ -28,17 +28,17 @@ const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'is-it-really-free',
         q: 'Is Let’s Get Quoted really free?',
-        a: 'Yes. There’s no monthly subscription and no setup fee. You only pay a platform fee when a homeowner actually pays you through the platform — nothing when you’re just building your site, sending quotes, or managing jobs.',
+        a: 'Yes. Flex has a $0 monthly base price and a 1.25% LGQ platform fee on eligible payments collected through LGQ. Paid plans add a subscription, lower that fee, and include more capacity. There is no setup fee.',
       },
       {
         id: 'what-does-it-cost',
         q: 'So what does it cost when I get paid?',
-        a: 'A platform fee that starts at 1.25% and drops to as low as 0.65% as your yearly volume grows, plus standard Stripe processing (about 2.9% + 30¢ per card charge). On a $1,000 card payment at the starting tier that’s roughly $12.50 platform fee plus Stripe’s processing — and the platform rate only gets lower from there.',
+        a: 'Your selected plan sets the LGQ platform fee: Flex 1.25%, Solo 0.50%, Growth 0.25%, or Scale 0.10%. It applies to eligible service subtotal collected through LGQ. Stripe processing and payment-infrastructure costs are separate and paid by the contractor.',
       },
       {
         id: 'contract-or-cancel',
         q: 'Is there a contract or anything to cancel?',
-        a: 'No contract and no subscription to cancel. Because you’re only charged when you collect a payment, there’s nothing running in the background. You can delete your account anytime.',
+        a: 'There is no contract. Paid-plan downgrades and cancellations take effect at renewal; Flex has no monthly base price. You can delete your account anytime, subject to payment and record-retention obligations.',
       },
       {
         // Grounded in lib/payments.ts, which creates every refund with
@@ -160,7 +160,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'how-is-this-different',
         q: 'How is this different from other contractor software?',
-        a: 'Most tools make you stitch together a website builder, a payment link, and a separate CRM — each with its own monthly bill. Let’s Get Quoted is one connected tool for your site, leads, quotes, scheduling, and payments, with no subscription. You can compare it side by side on the home page.',
+        a: 'Most tools make you stitch together a website builder, a payment link, and a separate CRM. Let’s Get Quoted connects your site, leads, quotes, scheduling, and payments in one product, with Flex at $0/month and paid plans for lower fees and more capacity.',
       },
     ],
   },
@@ -191,7 +191,7 @@ export default function FaqPage() {
           {/* The page's own title, so it's the h1 — every other heading here is
               a section under it. Sized by .section-heading h1, not the global. */}
           <h1>Everything you’re wondering, before you sign up.</h1>
-          <p>No subscription, no catch — here’s exactly how Let’s Get Quoted works, what it costs, and how you get paid.</p>
+          <p>Clear plan prices, usage limits, payment fees, and answers about how Let’s Get Quoted works.</p>
         </div>
         <div className="actions">
           <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
@@ -244,7 +244,7 @@ export default function FaqPage() {
         <div className="cta-band-inner">
           <p className="eyebrow">Still have a question?</p>
           <h2>The fastest way to see it is to try it.</h2>
-          <p>Start free — you only pay when a homeowner pays you.</p>
+          <p>Start with Flex at $0/month plus a 1.25% LGQ platform fee.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/contact" className="btn secondary">Ask us directly</Link>

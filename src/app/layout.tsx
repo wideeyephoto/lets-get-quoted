@@ -90,7 +90,7 @@ export const metadata: Metadata = {
      model in full, and the homepage's own pricing band carries it above the
      fold. A <meta description> is a snippet, not a disclosure surface. */
   description:
-    'One platform for contractors: a website with an AI estimator, quotes and e-signatures, scheduling, and Stripe payments. No subscription — pay when you get paid.',
+    'One platform for contractors: a website with AI Intake, quotes and e-signatures, scheduling, and Stripe payments. Plans start at $0/month.',
   applicationName: "Let's Get Quoted",
   alternates: { canonical: '/' },
   openGraph: {
@@ -99,14 +99,14 @@ export const metadata: Metadata = {
     siteName: "Let's Get Quoted",
     title: 'The website, CRM & payments platform built for contractors',
     description:
-      'Win leads with an AI estimator, send quotes and e-signatures, schedule the work, and collect card or bank payments — one tool built for contractors. No subscription; you only pay when you get paid.',
+      'Win leads with AI Intake, send quotes and e-signatures, schedule work, and collect card or bank payments. Contractor plans start at $0/month.',
     images: [{ url: '/template-previews/professional.jpg', width: 1900, height: 881, alt: 'A contractor website built with Let’s Get Quoted' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'The website, CRM & payments platform built for contractors',
     description:
-      'Capture leads, quote, e-sign, schedule, and get paid — one tool built for contractors. No subscription; pay only when you get paid.',
+      'Capture leads, quote, e-sign, schedule, and get paid in one contractor platform. Plans start at $0/month.',
     images: ['/template-previews/professional.jpg'],
   },
 };

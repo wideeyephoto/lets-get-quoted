@@ -66,7 +66,7 @@ export default function StickyCta({
           {label}
         </a>
       )}
-      <span className="sticky-cta-sub">Free &middot; no card &middot; pay only when a homeowner pays you</span>
+      <span className="sticky-cta-sub">Flex: $0/month + 1.25% &middot; no card required</span>
     </div>
   );
 }

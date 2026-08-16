@@ -199,7 +199,7 @@ function LoginInner() {
       <section className="hero-card auth-card">
         <div className="auth-badge"><LockIcon /><span>{isSignup ? 'Free account' : 'Secure Sign-In'}</span></div>
         <h1>{isSignup ? 'Create your free account' : 'Sign in'}</h1>
-        <p>{isSignup ? 'Phone or email — no password, no card. You only pay when a homeowner pays you.' : 'Mobile number or email. No password.'}</p>
+        <p>{isSignup ? 'Phone or email — no password or card. Flex starts at $0/month plus 1.25%.' : 'Mobile number or email. No password.'}</p>
 
         {step === 'request' ? (
           <form onSubmit={handleIdentifierSubmit} className="auth-form">

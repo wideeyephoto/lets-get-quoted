@@ -8,7 +8,7 @@ import SuiteFeaturePage, {
   PanelRows,
 } from '@/components/marketing/suite-feature-page';
 import { CAPACITY_LEVELS } from '@/lib/schedule-capacity';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Contractor Scheduling and Booking',
@@ -156,12 +156,12 @@ export default function SchedulingFeaturePage() {
         },
         {
           q: 'Does scheduling cost extra?',
-          a: `No. There is no subscription and nothing here is metered. The platform fee is ${FEE_TIERS[0].rate} of what a homeowner actually pays you, falling to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your yearly volume grows, plus Stripe's standard processing (${STRIPE_PROCESSING_NOTE}).`,
+          a: `${FEATURE_PRICING_NOTE} Scheduling has no separate per-booking charge. Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
         },
       ]}
       cta={{
         title: 'Put the work on a calendar that knows what is on it.',
-        note: `No subscription and no setup fee. The platform fee is ${FEE_TIERS[0].rate} of what you collect and falls to ${FEE_TIERS[FEE_TIERS.length - 1].rate} as your volume grows, plus Stripe processing (${STRIPE_PROCESSING_NOTE}).`,
+        note: `${FEATURE_PRICING_NOTE} Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
       }}
     />
   );

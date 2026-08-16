@@ -8,7 +8,13 @@ import {
   SIGNUP_LABEL,
   SIGNUP_URL,
 } from '@/components/flagship/site-chrome';
-import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
+import {
+  FLEX_PRICE,
+  LOWEST_PLATFORM_FEE,
+  PLAN_FEE_RANGE_LABEL,
+  PUBLIC_PRICING_SUMMARY,
+  STRIPE_PROCESSING_NOTE,
+} from '@/lib/pricing';
 import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import CinematicMessageSimulation from './CinematicMessageSimulation';
@@ -44,14 +50,9 @@ import LaunchBanner from '@/components/marketing/launch-banner';
 export const metadata: Metadata = {
   title: 'Features',
   description:
-    'Explore the complete no-subscription contractor suite — from website and AI intake to quoting, scheduling, crews and payments, all on one connected job record.',
+    'Explore the connected contractor suite — website, AI Intake, quotes, scheduling, crews and payments — with plans starting at $0/month.',
   alternates: { canonical: 'https://letsgetquoted.com/features' },
 };
-
-// Read from the one place the rates are defined; /pricing and the calculator
-// read the same array, so this page cannot drift from them.
-const HIGHEST_FEE = FEE_TIERS[0].rate;
-const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate;
 
 /**
  * THE PROOF STRIP, AND WHY IT IS FOUR FACTS RATHER THAN FOUR NUMBERS.
@@ -63,32 +64,25 @@ const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate;
  * no cohort, no measured conversion lift. An invented one is the fastest way to
  * lose everything else on the page.
  *
- * So every cell here is a fact about the PRODUCT, and every one is read out of
- * the code rather than typed here: the trade count is TRADES, the feature count
- * is lib/features.ts, and the rates are FEE_TIERS. They cannot drift, and none
- * of them claims anything about anybody's business but ours.
+ * So every cell here is a fact about the product, with price claims projected
+ * from the canonical billing catalog rather than copied into this page.
  */
 const PROOF: { stat: string; label: string }[] = [
   { stat: `${TRADES.length} trades`, label: 'Pages, FAQs and intake questions written for yours' },
-  { stat: '$0 a month', label: 'No card and no setup fee to open an account' },
-  { stat: `${LOWEST_FEE}–${HIGHEST_FEE}`, label: 'Charged only when a homeowner actually pays you' },
-  { stat: `${FEATURE_COUNT} features`, label: 'Every account opens with all of them — there is no upgrade tier' },
+  { stat: FLEX_PRICE.monthlyPrice, label: 'Flex base price; its LGQ platform fee is 1.25%' },
+  { stat: PLAN_FEE_RANGE_LABEL, label: 'LGQ platform fee, selected by plan rather than payment volume' },
+  { stat: `${FEATURE_COUNT} features`, label: 'One connected product; included limits and seats vary by plan' },
 ];
 
 /**
  * The objections, answered where they are raised.
  *
- * Every answer here is checkable against the product rather than against the
- * pitch: the fee model is FEE_TIERS and it is marginal across brackets, Stripe
- * pays the contractor's own connected account, the free subdomain publishes
- * without waiting on DNS, and the custom domain is registered in the
- * contractor's name (lib/domains.ts). Nothing below promises a capability the
- * rest of the page has not already shown.
+ * Every answer here is checkable against the product rather than the pitch.
  */
 const FAQ: { q: string; a: string }[] = [
   {
     q: 'What exactly does the platform fee cost me?',
-    a: `It starts at ${HIGHEST_FEE} of a payment and falls to ${LOWEST_FEE} as your yearly volume grows — charged in brackets, like tax, so only the part of your volume inside a bracket pays that bracket's rate. It applies to payments a homeowner makes through the platform, and to nothing else: no subscription, no setup fee, no per-user charge, and nothing at all in a month you collect nothing. Card processing (${STRIPE_PROCESSING_NOTE}) is separate and goes to Stripe.`,
+    a: `${PUBLIC_PRICING_SUMMARY} The LGQ fee applies to the discount-adjusted service subtotal collected through LGQ; tax, tips, refunds, credits, and Stripe costs are excluded. Stripe's ${STRIPE_PROCESSING_NOTE} are separate.`,
   },
   {
     q: 'Can I use the domain I already own?',
@@ -259,16 +253,12 @@ export default function FeaturesPage() {
           </a>
         </div>
 
-        {/* THE FEE, WHERE THE DECISION IS MADE.
-            "No monthly subscription" was the loudest promise on the page and
-            the platform fee that pays for it was 4,900px below, in the closing
-            band — so a visitor learned the price after deciding, which reads as
-            a bait and switch even when every number is true. The rates come
-            from FEE_TIERS, so this line cannot drift from /pricing. */}
+        {/* The plan range stays beside the primary action and comes from the
+            same canonical catalog as /pricing. */}
         <p className="index-hero-fee">
-          No card, setup fee, or monthly subscription. A {LOWEST_FEE}–{HIGHEST_FEE} platform fee
-          applies only when a homeowner pays you.{' '}
-          <Link href="/pricing">See exactly how the fee works</Link>
+          Flex starts at {FLEX_PRICE.monthlyPrice} plus {FLEX_PRICE.platformFee}. Paid plans lower the LGQ
+          platform fee as far as {LOWEST_PLATFORM_FEE}.{' '}
+          <Link href="/pricing">Compare exact prices and limits</Link>
         </p>
 
         {/* One job MOVING, rather than one job printed.
@@ -402,7 +392,7 @@ export default function FeaturesPage() {
           {/* The claim the old lede made in two sentences, in the place a
               reader is most likely to be doing the sums. */}
           <p className="everything-note">
-            <span aria-hidden="true">✓</span> Included from day one · No monthly subscription
+            <span aria-hidden="true">✓</span> Core workflow on every plan · Included capacity varies
           </p>
         </div>
 
@@ -446,7 +436,7 @@ export default function FeaturesPage() {
 
       <PageCTA
         title="Start with the website. Grow into the whole system."
-        body={`No subscription and no setup fee. The platform fee runs from ${HIGHEST_FEE} down to ${LOWEST_FEE} as your volume grows, and applies only when a homeowner pays you.`}
+        body={`${PUBLIC_PRICING_SUMMARY} See /pricing for included capacity, add-ons, and fee terms.`}
       />
       <SiteFooter />
     </main>

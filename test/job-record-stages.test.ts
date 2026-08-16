@@ -204,7 +204,7 @@ describe('the section around it', () => {
     expect(PAGE).toContain('<JobRecordStages />');
     expect(PAGE).toContain('EVERYTHING BEHIND THE WEBSITE');
     expect(PAGE).toContain('One job record.');
-    expect(PAGE).toContain('Included from day one · No monthly subscription');
+    expect(PAGE).toContain('Core workflow on every plan · Included capacity varies');
     expect(PAGE).not.toContain('capability-band');
   });
 

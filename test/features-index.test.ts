@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, statSync } from 'node:fs';
-import { FEE_TIERS } from '@/lib/pricing';
+import { FLEX_PRICE, LOWEST_PLATFORM_FEE } from '@/lib/pricing';
 
 /**
  * /features, rebuilt around the journey and the price.
@@ -42,24 +42,21 @@ describe('the price is stated where the decision is made', () => {
   it('puts the fee under the hero CTA, not only in the closing band', () => {
     expect(HERO).toContain('index-hero-fee');
     expect(HERO).toContain('platform fee');
-    expect(HERO).toMatch(/No card, setup fee, or monthly subscription/);
+    expect(HERO).toContain('Flex starts at');
     // The order on the page: the fee note is after the buttons and before the
     // thread, so it is read as part of the offer rather than as a footnote.
     expect(HERO.indexOf('hero-actions')).toBeLessThan(HERO.indexOf('index-hero-fee'));
   });
 
-  it('reads both rates from FEE_TIERS rather than typing them', () => {
-    // A typed "1.25%" here is a number that keeps its value after /pricing
-    // changes its mind, and nothing would fail.
-    expect(HERO).toContain('{LOWEST_FEE}–{HIGHEST_FEE}');
-    expect(CODE).toContain('const HIGHEST_FEE = FEE_TIERS[0].rate');
-    expect(CODE).toContain('const LOWEST_FEE = FEE_TIERS[FEE_TIERS.length - 1].rate');
-    expect(FEE_TIERS[0].rate).toBe('1.25%');
-    expect(FEE_TIERS[FEE_TIERS.length - 1].rate).toBe('0.65%');
+  it('reads plan rates from the canonical public projection', () => {
+    expect(HERO).toContain('{FLEX_PRICE.platformFee}');
+    expect(HERO).toContain('{LOWEST_PLATFORM_FEE}');
+    expect(FLEX_PRICE.platformFee).toBe('1.25%');
+    expect(LOWEST_PLATFORM_FEE).toBe('0.10%');
   });
 
   it('says the fee applies only to a payment, and links to the detail', () => {
-    expect(HERO).toMatch(/applies only when a homeowner pays you/);
+    expect(HERO).toContain('Compare exact prices and limits');
     expect(HERO).toContain('href="/pricing"');
   });
 
@@ -81,7 +78,7 @@ describe('the proof strip proves things we can actually show', () => {
     expect([...PROOF.matchAll(/label: '/g)]).toHaveLength(4);
     expect(PROOF).toContain('${TRADES.length} trades');
     expect(PROOF).toContain('${FEATURE_COUNT} features');
-    expect(PROOF).toContain('${LOWEST_FEE}–${HIGHEST_FEE}');
+    expect(PROOF).toContain('PLAN_FEE_RANGE_LABEL');
   });
 
   it('makes no claim about a customer, a result or a rating', () => {

@@ -104,7 +104,7 @@ export default function SecurityPage() {
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
           <h2>Get paid with confidence.</h2>
-          <p>Start free — you only pay when a homeowner pays you.</p>
+          <p>Start with Flex at $0/month plus a 1.25% LGQ platform fee.</p>
           <div className="actions">
             <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             <Link href="/pricing" className="btn secondary">See pricing</Link>
