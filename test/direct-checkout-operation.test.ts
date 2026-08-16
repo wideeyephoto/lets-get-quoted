@@ -119,6 +119,7 @@ describe('durable one-off direct Checkout orchestration', () => {
       applicationFeeAmountCents: 50,
       metadata: {
         source: 'invoice',
+        lgq_workspace_id: ACCOUNT_ID,
         lgq_payment_id: PAYMENT_ID,
       },
     }));
@@ -257,7 +258,11 @@ describe('durable one-off direct Checkout orchestration', () => {
     expect(createSession).toHaveBeenCalledWith(expect.objectContaining({
       amountCents: 25_000,
       applicationFeeAmountCents: 50,
-      metadata: { source: 'invoice', lgq_payment_id: PAYMENT_ID },
+      metadata: {
+        source: 'invoice',
+        lgq_workspace_id: ACCOUNT_ID,
+        lgq_payment_id: PAYMENT_ID,
+      },
     }));
   });
 

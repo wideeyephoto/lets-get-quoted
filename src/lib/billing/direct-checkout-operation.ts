@@ -294,6 +294,7 @@ export async function orchestrateOneOffDirectCheckout(
   const feeSnapshot = Object.freeze({ ...input.feeSnapshot });
   const metadata = Object.freeze({
     ...(input.checkout.metadata ?? {}),
+    lgq_workspace_id: input.accountId,
     lgq_payment_id: input.paymentId,
   });
   const directInput = Object.freeze({
