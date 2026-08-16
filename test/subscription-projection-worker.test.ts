@@ -1,6 +1,3 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth', () => ({
@@ -350,20 +347,4 @@ describe('dark Stripe Billing subscription projection worker', () => {
     expect(rpc).toHaveBeenCalledWith('claim_next_due_stripe_billing_subscription_event');
   });
 
-  it('has no active src/app import or scheduler surface', () => {
-    const appRoot = fileURLToPath(new URL('../src/app', import.meta.url));
-    const sourceFiles: string[] = [];
-    const visit = (directory: string) => {
-      for (const entry of readdirSync(directory, { withFileTypes: true })) {
-        const path = join(directory, entry.name);
-        if (entry.isDirectory()) visit(path);
-        else if (['.ts', '.tsx', '.js', '.jsx'].includes(extname(entry.name))) sourceFiles.push(path);
-      }
-    };
-    visit(appRoot);
-    const activeSource = sourceFiles.map((path) => readFileSync(path, 'utf8')).join('\n');
-    expect(activeSource).not.toContain('subscription-projection-worker');
-    expect(activeSource).not.toContain('claim_next_due_stripe_billing_subscription_event');
-    expect(activeSource).not.toContain('runStripeBillingSubscriptionProjectionBatch');
-  });
 });

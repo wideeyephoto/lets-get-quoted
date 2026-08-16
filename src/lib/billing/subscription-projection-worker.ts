@@ -16,8 +16,8 @@ import type { PlatformSubscriptionEventType } from '@/lib/billing/stripe-event-i
  * DARK server-only worker foundation for the already-signed, redacted Stripe
  * Billing subscription inbox.
  *
- * Nothing in src/app imports this module. A future authenticated scheduler may
- * request a bounded batch, but this runner claims and finishes one event before
+ * A separately gated and CRON_SECRET-authenticated scheduler may request one
+ * fixed bounded batch, but this runner claims and finishes one event before
  * claiming the next. The existing projector RPCs remain the only authority for
  * leases, exact Checkout/account/mode binding, projection, retry state, and
  * terminal failure. No raw provider payload or exception text is retained.

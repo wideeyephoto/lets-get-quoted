@@ -5,8 +5,8 @@ import { createAdminClient } from '@/lib/auth';
 /**
  * DARK server-only worker foundation.
  *
- * Nothing in src/app imports this module. A future authenticated scheduler may
- * request a bounded batch; the database still derives every plan, unit amount,
+ * A separately gated and CRON_SECRET-authenticated scheduler may request one
+ * fixed bounded batch; the database still derives every plan, unit amount,
  * provider period, allowance window, retry time, and dead-letter decision.
  */
 
@@ -435,7 +435,8 @@ export type RunPaidPlanMonthlyAllowanceResetBatchResult = Readonly<{
 
 /**
  * Claim one bounded batch and process it strictly one workspace at a time.
- * There is deliberately no timer, cron integration, route, or parallel fanout.
+ * Scheduling and authentication live at the route boundary; there is still no
+ * timer or parallel fanout in this worker.
  */
 export async function runPaidPlanMonthlyAllowanceResetBatch(
   batchSize = 10,

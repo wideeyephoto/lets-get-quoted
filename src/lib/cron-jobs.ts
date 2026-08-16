@@ -31,6 +31,20 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'billing-subscription-projection',
+    label: 'Billing subscription projection',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Signed Stripe Billing events stop updating paid plans, invoices, and monthly allowance anchors.',
+  },
+  {
+    job: 'billing-allowance-resets',
+    label: 'Paid-plan allowance resets',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Paid contractors stop receiving their anchored monthly usage allowances after renewal.',
+  },
+  {
     job: 'dunning',
     label: 'Dunning retries',
     schedule: '0 15 * * *',
