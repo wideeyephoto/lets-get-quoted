@@ -15,6 +15,7 @@ vi.mock('@/lib/stripe', () => ({
 
 import {
   ConnectedPaymentProjectionProviderError,
+  SupabaseConnectedPaymentProjectionStore,
   createConnectedPaymentProjectionResolver,
   projectConnectedPaymentEvent,
   type ConnectedPaymentProjectionBinding,
@@ -405,5 +406,41 @@ describe('dark connected payment event projector', () => {
       retryable: true,
     }));
     expect(JSON.stringify(fail.mock.calls)).not.toContain(secret);
+  });
+
+  it('classifies the exact expiration mutex guard as a fixed terminal conflict', async () => {
+    const stripe = provider();
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: 'P0001',
+        message: 'stripe_connected_checkout_expiration_conflict',
+      },
+    });
+    const persistence = new SupabaseConnectedPaymentProjectionStore({ rpc } as never);
+    const fail = vi.fn().mockResolvedValue(undefined);
+    const store = {
+      claim: vi.fn().mockResolvedValue(claim()),
+      resolveBinding: vi.fn().mockResolvedValue(binding()),
+      project: persistence.project.bind(persistence),
+      fail,
+    } satisfies ConnectedPaymentProjectionStore;
+
+    await expect(projectConnectedPaymentEvent(EVENT_ROW_ID, {
+      store,
+      resolver: stripe.resolver,
+      now: () => new Date('2026-08-16T02:00:00.000Z'),
+    })).resolves.toEqual({
+      status: 'failed_terminal',
+      billingEventId: EVENT_ROW_ID,
+      errorCode: 'expiration_evidence_conflict',
+    });
+    expect(fail).toHaveBeenCalledWith({
+      billingEventId: EVENT_ROW_ID,
+      claimToken: CLAIM_TOKEN,
+      errorCode: 'expiration_evidence_conflict',
+      retryable: false,
+      nextAttemptAt: null,
+    });
   });
 });

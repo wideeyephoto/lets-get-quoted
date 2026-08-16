@@ -28,6 +28,8 @@ const APPLICATION_FEE_ID_PATTERN = /^fee_[A-Za-z0-9_]+$/;
 const BALANCE_TRANSACTION_ID_PATTERN = /^txn_[A-Za-z0-9_]+$/;
 const STRIPE_SECRET_KEY_MODE_PATTERN = /^(?:sk|rk)_(test|live)_/;
 const OPERATION_ID_PATTERN = /^[^\u0000-\u001F\u007F]{1,200}$/;
+const EXPIRATION_CONFLICT_RPC_CODE = 'P0001';
+const EXPIRATION_CONFLICT_RPC_MESSAGE = 'stripe_connected_checkout_expiration_conflict';
 
 export const CONNECTED_PAYMENT_PROJECTION_SCHEMA = 'stripe_connected_payment_projection_v1' as const;
 export const CONNECTED_PAYMENT_SUCCESS_EVENT = 'checkout.session.completed' as const;
@@ -159,6 +161,14 @@ type RpcError = Readonly<{ message?: string; code?: string }>;
 function rpcFailure(label: string, error: RpcError | null): Error {
   const detail = error?.message?.trim() || error?.code?.trim() || 'unknown database error';
   return new Error(`${label}: ${detail}`);
+}
+
+class ConnectedPaymentProjectionPersistenceError extends Error {
+  override readonly name = 'ConnectedPaymentProjectionPersistenceError';
+
+  constructor(readonly code: string, readonly retryable: boolean) {
+    super(code);
+  }
 }
 
 function rowRecord(value: unknown, label: string): Record<string, unknown> {
@@ -381,7 +391,18 @@ export class SupabaseConnectedPaymentProjectionStore implements ConnectedPayment
       p_claim_token: requiredUuid(input.claimToken, 'claim token'),
       p_projection: input.projection,
     });
-    if (error) throw rpcFailure('Unable to project connected payment event', error);
+    if (error) {
+      if (
+        error.code?.trim() === EXPIRATION_CONFLICT_RPC_CODE
+        && error.message?.trim() === EXPIRATION_CONFLICT_RPC_MESSAGE
+      ) {
+        throw new ConnectedPaymentProjectionPersistenceError(
+          'expiration_evidence_conflict',
+          false,
+        );
+      }
+      throw rpcFailure('Unable to project connected payment event', error);
+    }
     return parseProjectResult(data);
   }
 
@@ -742,7 +763,10 @@ function retryAt(now: Date, attemptCount: number): string {
 }
 
 function fixedFailure(error: unknown): { code: string; retryable: boolean } {
-  if (error instanceof ConnectedPaymentProjectionProviderError) {
+  if (
+    error instanceof ConnectedPaymentProjectionProviderError
+    || error instanceof ConnectedPaymentProjectionPersistenceError
+  ) {
     return { code: error.code, retryable: error.retryable };
   }
   return { code: 'projection_internal_error', retryable: true };
