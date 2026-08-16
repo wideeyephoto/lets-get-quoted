@@ -590,6 +590,7 @@ export function createConnectedCheckoutExpirationResolver(
         || session.payment_method_types.length !== 1
         || session.payment_method_types[0] !== 'card'
         || session.recovered_from !== null
+        || session.after_expiration?.recovery != null
         || session.payment_intent !== null
         || Date.parse(sessionExpiresAt) > Date.parse(claim.providerCreatedAt)
       ) {

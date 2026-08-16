@@ -34,6 +34,10 @@ const CHECKOUT_PAYMENT_STATUSES = new Set<Stripe.Checkout.Session['payment_statu
   'unpaid',
   'no_payment_required',
 ]);
+const MAX_CHECKOUT_GENERATION = 5;
+const CHECKOUT_GENERATION_METADATA_KEY = 'lgq_checkout_generation';
+const CHECKOUT_PREDECESSOR_SESSION_METADATA_KEY = 'lgq_checkout_predecessor_session_id';
+const CHECKOUT_OPERATION_SCHEMA = 'one_off_direct_checkout_generation_v2';
 
 type CheckoutPresentationInput = Readonly<Omit<
   DirectCheckoutSessionInput,
@@ -45,8 +49,6 @@ export type OneOffDirectCheckoutOperationInput = Readonly<{
   paymentId: string;
   merchantAccountId: string;
   livemode: boolean;
-  /** Stable business identity. Reusing it with changed input is rejected by the database. */
-  operationId: string;
   /** Exact persisted payment snapshot; amounts are never recalculated by this layer. */
   feeSnapshot: PaymentFeeSnapshot;
   checkout: CheckoutPresentationInput;
@@ -58,7 +60,10 @@ export type DirectCheckoutClaimStatus =
   | 'in_progress'
   | 'submitted'
   | 'failed'
-  | 'indeterminate';
+  | 'indeterminate'
+  | 'generation_cap';
+
+export type DirectCheckoutLifecycle = 'open' | 'expired_unpaid' | 'paid';
 
 export type DirectCheckoutClaim = Readonly<{
   status: DirectCheckoutClaimStatus;
@@ -66,6 +71,10 @@ export type DirectCheckoutClaim = Readonly<{
   claimToken: string | null;
   operationState: 'claimed' | 'submitted' | 'succeeded' | 'failed' | 'indeterminate';
   providerObjectId: string | null;
+  checkoutGeneration: number;
+  checkoutLifecycle: DirectCheckoutLifecycle | null;
+  checkoutSessionExpiresAt: string | null;
+  predecessorOperationPk: string | null;
 }>;
 
 export type DirectCheckoutClaimInput = Readonly<{
@@ -73,10 +82,34 @@ export type DirectCheckoutClaimInput = Readonly<{
   paymentId: string;
   merchantAccountId: string;
   livemode: boolean;
+  checkoutGeneration: number;
+  predecessorOperationPk: string | null;
   operationId: string;
   stripeIdempotencyKey: string;
   requestFingerprint: string;
   feeSnapshot: PaymentFeeSnapshot;
+}>;
+
+export type DirectCheckoutCurrentLookupInput = Readonly<{
+  accountId: string;
+  paymentId: string;
+  merchantAccountId: string;
+  livemode: boolean;
+  feeSnapshot: PaymentFeeSnapshot;
+}>;
+
+export type DirectCheckoutCurrentAttempt = Readonly<{
+  operationPk: string;
+  operationState: DirectCheckoutClaim['operationState'];
+  providerObjectId: string | null;
+  checkoutGeneration: number;
+  checkoutLifecycle: DirectCheckoutLifecycle | null;
+  checkoutSessionExpiresAt: string | null;
+  predecessorOperationPk: string | null;
+  predecessorProviderObjectId: string | null;
+  operationId: string;
+  stripeIdempotencyKey: string;
+  requestFingerprint: string;
 }>;
 
 export interface DirectCheckoutOperationStore {
@@ -86,13 +119,14 @@ export interface DirectCheckoutOperationStore {
    * a create-time gate, while an already-created Session remains provider
    * truth that must be inspected even after the Merchant is disabled.
    */
-  findSucceededReplay(input: DirectCheckoutClaimInput): Promise<DirectCheckoutClaim | null>;
+  findCurrent(input: DirectCheckoutCurrentLookupInput): Promise<DirectCheckoutCurrentAttempt | null>;
   claim(input: DirectCheckoutClaimInput): Promise<DirectCheckoutClaim>;
   beginSubmission(input: { operationPk: string; claimToken: string }): Promise<void>;
   complete(input: {
     operationPk: string;
     claimToken: string;
     checkoutSessionId: string;
+    checkoutSessionExpiresAt: string;
   }): Promise<void>;
   markIndeterminate(input: {
     operationPk: string;
@@ -128,6 +162,7 @@ const CLAIM_STATUSES = new Set<DirectCheckoutClaimStatus>([
   'submitted',
   'failed',
   'indeterminate',
+  'generation_cap',
 ]);
 
 const OPERATION_STATES = new Set<DirectCheckoutClaim['operationState']>([
@@ -138,27 +173,129 @@ const OPERATION_STATES = new Set<DirectCheckoutClaim['operationState']>([
   'indeterminate',
 ]);
 
+const CHECKOUT_LIFECYCLES = new Set<DirectCheckoutLifecycle>([
+  'open',
+  'expired_unpaid',
+  'paid',
+]);
+
+function requireGeneration(value: unknown, label: string): number {
+  const parsed = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && /^[0-9]+$/.test(value)
+      ? Number(value)
+      : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > MAX_CHECKOUT_GENERATION) {
+    throw new Error(`${label} is invalid.`);
+  }
+  return parsed;
+}
+
+function optionalString(value: unknown, label: string): string | null {
+  return value == null ? null : requireString(value, label);
+}
+
+function optionalLifecycle(value: unknown, label: string): DirectCheckoutLifecycle | null {
+  if (value == null) return null;
+  const lifecycle = requireString(value, label);
+  if (!CHECKOUT_LIFECYCLES.has(lifecycle as DirectCheckoutLifecycle)) {
+    throw new Error(`${label} is invalid.`);
+  }
+  return lifecycle as DirectCheckoutLifecycle;
+}
+
+function canonicalOperationId(paymentId: string, generation: number): string {
+  return `payment:${paymentId}:checkout:${generation}`;
+}
+
 /** Service-role implementation. Direct table writes are revoked by the migration. */
 export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOperationStore {
   constructor(private readonly admin = createAdminClient()) {}
 
-  async findSucceededReplay(input: DirectCheckoutClaimInput): Promise<DirectCheckoutClaim | null> {
+  async findCurrent(input: DirectCheckoutCurrentLookupInput): Promise<DirectCheckoutCurrentAttempt | null> {
+    const paymentResult = await this.admin
+      .from('payments')
+      .select('id, account_id, amount, fee_basis_amount, platform_fee, fee_plan_code, fee_catalog_version, fee_rate_bps, fee_rate, charge_model, stripe_account_id, stripe_livemode, stripe_checkout_session, current_checkout_operation_pk')
+      .eq('id', input.paymentId)
+      .limit(2);
+    if (paymentResult.error) {
+      throw rpcFailure('Unable to inspect the direct Checkout current payment', paymentResult.error);
+    }
+    if (!paymentResult.data || paymentResult.data.length !== 1) {
+      throw new Error('Direct Checkout current lookup is not bound to exactly one payment.');
+    }
+    const payment = paymentResult.data[0] as Record<string, unknown>;
+    if (
+      payment.id !== input.paymentId
+      || payment.account_id !== input.accountId
+      || !decimalExactlyMatchesScaledInteger(payment.amount, input.feeSnapshot.grossAmountCents, 2)
+      || !decimalExactlyMatchesScaledInteger(
+        payment.fee_basis_amount,
+        input.feeSnapshot.eligibleServiceSubtotalCents,
+        2,
+      )
+      || !decimalExactlyMatchesScaledInteger(
+        payment.platform_fee,
+        input.feeSnapshot.applicationFeeCents,
+        2,
+      )
+      || payment.fee_plan_code !== input.feeSnapshot.planCode
+      || payment.fee_catalog_version !== input.feeSnapshot.catalogVersion
+      || payment.fee_rate_bps !== input.feeSnapshot.feeRateBps
+      || !decimalExactlyMatchesScaledInteger(payment.fee_rate, input.feeSnapshot.feeRateBps, 4)
+      || payment.charge_model !== 'direct'
+      || payment.stripe_account_id !== input.merchantAccountId
+      || payment.stripe_livemode !== input.livemode
+    ) {
+      throw new Error('Direct Checkout current lookup does not match the immutable payment snapshot.');
+    }
+
+    const currentOperationPk = payment.current_checkout_operation_pk == null
+      ? null
+      : requireString(
+        payment.current_checkout_operation_pk,
+        'Direct Checkout current operation primary key',
+      );
+    if (!currentOperationPk) {
+      if (payment.stripe_checkout_session != null) {
+        throw new Error('Direct Checkout payment has a Session without a current operation pointer.');
+      }
+      return null;
+    }
+
     const operationResult = await this.admin
       .from('billing_payment_operations')
-      .select('id, account_id, payment_id, operation_type, operation_id, charge_model, stripe_account_id, livemode, stripe_idempotency_key, request_fingerprint, state, provider_object_id, metadata')
-      .eq('payment_id', input.paymentId)
-      .eq('operation_type', 'checkout_session.create')
+      .select('id, account_id, payment_id, operation_type, operation_id, charge_model, stripe_account_id, livemode, stripe_idempotency_key, request_fingerprint, state, provider_object_id, metadata, checkout_generation, checkout_lifecycle, checkout_session_expires_at, predecessor_operation_pk, superseded_by_operation_pk')
+      .eq('id', currentOperationPk)
       .limit(2);
     if (operationResult.error) {
-      throw rpcFailure('Unable to inspect a succeeded direct Checkout replay', operationResult.error);
+      throw rpcFailure('Unable to inspect the direct Checkout current attempt', operationResult.error);
     }
-    if (!operationResult.data || operationResult.data.length === 0) return null;
-    if (operationResult.data.length !== 1) {
-      throw new Error('Direct Checkout replay lookup returned ambiguous operation rows.');
+    if (!operationResult.data || operationResult.data.length !== 1) {
+      throw new Error('Direct Checkout current pointer did not resolve exactly one attempt.');
     }
 
     const operation = operationResult.data[0] as unknown as Record<string, unknown>;
-    if (operation.state !== 'succeeded') return null;
+    const operationState = requireString(operation.state, 'Direct Checkout current operation state');
+    if (!OPERATION_STATES.has(operationState as DirectCheckoutClaim['operationState'])) {
+      throw new Error('Direct Checkout current operation state is invalid.');
+    }
+    const checkoutGeneration = requireGeneration(
+      operation.checkout_generation,
+      'Direct Checkout current generation',
+    );
+    const checkoutLifecycle = optionalLifecycle(
+      operation.checkout_lifecycle,
+      'Direct Checkout current lifecycle',
+    );
+    const checkoutSessionExpiresAt = optionalString(
+      operation.checkout_session_expires_at,
+      'Direct Checkout current Session expiry',
+    );
+    const predecessorOperationPk = optionalString(
+      operation.predecessor_operation_pk,
+      'Direct Checkout predecessor operation primary key',
+    );
     const operationMetadata = operation.metadata;
     const operationMetadataRecord = (
       operationMetadata
@@ -168,21 +305,37 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
       ? operationMetadata as Record<string, unknown>
       : null;
     const recordedFeeSnapshot = operationMetadataRecord?.fee_snapshot;
-    const providerObjectId = requireString(
+    const providerObjectId = optionalString(
       operation.provider_object_id,
-      'Direct Checkout replay provider object ID',
+      'Direct Checkout current provider object ID',
+    );
+    const predecessorProviderObjectId = optionalString(
+      operationMetadataRecord?.predecessor_checkout_session_id,
+      'Direct Checkout predecessor Session ID',
+    );
+    const operationId = requireString(operation.operation_id, 'Direct Checkout operation ID');
+    const stripeIdempotencyKey = requireString(
+      operation.stripe_idempotency_key,
+      'Direct Checkout Stripe idempotency key',
+    );
+    const requestFingerprint = requireString(
+      operation.request_fingerprint,
+      'Direct Checkout request fingerprint',
     );
     if (
       operation.account_id !== input.accountId
       || operation.payment_id !== input.paymentId
       || operation.operation_type !== 'checkout_session.create'
-      || operation.operation_id !== input.operationId
+      || operationId !== canonicalOperationId(input.paymentId, checkoutGeneration)
       || operation.charge_model !== 'direct'
       || operation.stripe_account_id !== input.merchantAccountId
       || operation.livemode !== input.livemode
-      || operation.stripe_idempotency_key !== input.stripeIdempotencyKey
-      || operation.request_fingerprint !== input.requestFingerprint
-      || operationMetadataRecord?.schema !== 'one_off_direct_checkout_v1'
+      || operation.superseded_by_operation_pk != null
+      || operationMetadataRecord?.schema !== CHECKOUT_OPERATION_SCHEMA
+      || operationMetadataRecord.checkout_generation !== checkoutGeneration
+      || operationMetadataRecord.predecessor_operation_pk !== predecessorOperationPk
+      || (checkoutGeneration === 1 && predecessorOperationPk !== null)
+      || (checkoutGeneration > 1 && predecessorOperationPk === null)
       || !recordedFeeSnapshot
       || typeof recordedFeeSnapshot !== 'object'
       || Array.isArray(recordedFeeSnapshot)
@@ -198,59 +351,35 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
     ) {
       throw new Error('Succeeded direct Checkout replay does not match the immutable operation input.');
     }
-
-    const paymentResult = await this.admin
-      .from('payments')
-      .select('id, account_id, amount, fee_basis_amount, platform_fee, fee_plan_code, fee_catalog_version, fee_rate_bps, fee_rate, charge_model, stripe_account_id, stripe_livemode, stripe_checkout_session')
-      .eq('id', input.paymentId)
-      .limit(2);
-    if (paymentResult.error) {
-      throw rpcFailure('Unable to inspect the direct Checkout replay payment', paymentResult.error);
-    }
-    if (!paymentResult.data || paymentResult.data.length !== 1) {
-      throw new Error('Succeeded direct Checkout replay is not bound to exactly one payment.');
-    }
-    const payment = paymentResult.data[0] as Record<string, unknown>;
-    if (
-      payment.id !== input.paymentId
-      || payment.account_id !== input.accountId
-      || !decimalExactlyMatchesScaledInteger(
-        payment.amount,
-        input.feeSnapshot.grossAmountCents,
-        2,
-      )
-      || !decimalExactlyMatchesScaledInteger(
-        payment.fee_basis_amount,
-        input.feeSnapshot.eligibleServiceSubtotalCents,
-        2,
-      )
-      || !decimalExactlyMatchesScaledInteger(
-        payment.platform_fee,
-        input.feeSnapshot.applicationFeeCents,
-        2,
-      )
-      || payment.fee_plan_code !== input.feeSnapshot.planCode
-      || payment.fee_catalog_version !== input.feeSnapshot.catalogVersion
-      || payment.fee_rate_bps !== input.feeSnapshot.feeRateBps
-      || !decimalExactlyMatchesScaledInteger(
-        payment.fee_rate,
-        input.feeSnapshot.feeRateBps,
-        4,
-      )
-      || payment.charge_model !== 'direct'
-      || payment.stripe_account_id !== input.merchantAccountId
-      || payment.stripe_livemode !== input.livemode
-      || payment.stripe_checkout_session !== providerObjectId
+    if (operationState === 'succeeded') {
+      if (
+        !providerObjectId
+        || !checkoutLifecycle
+        || !checkoutSessionExpiresAt
+        || payment.stripe_checkout_session !== providerObjectId
+      ) {
+        throw new Error('Succeeded direct Checkout generation is not reconciled to its payment.');
+      }
+    } else if (
+      providerObjectId !== null
+      || checkoutLifecycle !== null
+      || checkoutSessionExpiresAt !== null
+      || payment.stripe_checkout_session != null
     ) {
-      throw new Error('Succeeded direct Checkout replay is not reconciled to its exact payment.');
+      throw new Error('Unfinished direct Checkout generation contains provider lifecycle truth.');
     }
-
     return Object.freeze({
-      status: 'replay',
-      operationPk: requireString(operation.id, 'Direct Checkout replay operation primary key'),
-      claimToken: null,
-      operationState: 'succeeded',
+      operationPk: requireString(operation.id, 'Direct Checkout current operation primary key'),
+      operationState: operationState as DirectCheckoutClaim['operationState'],
       providerObjectId,
+      checkoutGeneration,
+      checkoutLifecycle,
+      checkoutSessionExpiresAt,
+      predecessorOperationPk,
+      predecessorProviderObjectId,
+      operationId,
+      stripeIdempotencyKey,
+      requestFingerprint,
     });
   }
 
@@ -260,6 +389,8 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
       p_payment_id: input.paymentId,
       p_stripe_account_id: input.merchantAccountId,
       p_livemode: input.livemode,
+      p_checkout_generation: input.checkoutGeneration,
+      p_predecessor_operation_pk: input.predecessorOperationPk,
       p_operation_id: input.operationId,
       p_stripe_idempotency_key: input.stripeIdempotencyKey,
       p_request_fingerprint: input.requestFingerprint,
@@ -287,12 +418,43 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
     const providerObjectId = row.provider_object_id == null
       ? null
       : requireString(row.provider_object_id, 'Direct Checkout provider object ID');
+    const checkoutGeneration = requireGeneration(
+      row.checkout_generation,
+      'Direct Checkout claimed generation',
+    );
+    const checkoutLifecycle = optionalLifecycle(
+      row.checkout_lifecycle,
+      'Direct Checkout claimed lifecycle',
+    );
+    const checkoutSessionExpiresAt = optionalString(
+      row.checkout_session_expires_at,
+      'Direct Checkout claimed Session expiry',
+    );
+    const predecessorOperationPk = optionalString(
+      row.predecessor_operation_pk,
+      'Direct Checkout claimed predecessor operation',
+    );
 
     if (status === 'claimed' && !claimToken) {
       throw new Error('Direct Checkout database claim did not return its owner token.');
     }
     if (status === 'replay' && !providerObjectId) {
       throw new Error('Direct Checkout replay did not return its provider object ID.');
+    }
+    if (
+      status !== 'generation_cap'
+      && (
+        checkoutGeneration !== input.checkoutGeneration
+        || predecessorOperationPk !== input.predecessorOperationPk
+      )
+    ) {
+      throw new Error('Direct Checkout claim returned a different generation lineage.');
+    }
+    if (
+      operationState === 'succeeded'
+      && (!checkoutLifecycle || !checkoutSessionExpiresAt || !providerObjectId)
+    ) {
+      throw new Error('Succeeded direct Checkout claim is missing Session lifecycle evidence.');
     }
 
     return Object.freeze({
@@ -301,6 +463,10 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
       claimToken,
       operationState: operationState as DirectCheckoutClaim['operationState'],
       providerObjectId,
+      checkoutGeneration,
+      checkoutLifecycle,
+      checkoutSessionExpiresAt,
+      predecessorOperationPk,
     });
   }
 
@@ -317,11 +483,13 @@ export class SupabaseDirectCheckoutOperationStore implements DirectCheckoutOpera
     operationPk: string;
     claimToken: string;
     checkoutSessionId: string;
+    checkoutSessionExpiresAt: string;
   }): Promise<void> {
     const { data, error } = await this.admin.rpc('complete_one_off_direct_checkout_operation', {
       p_operation_pk: input.operationPk,
       p_claim_token: input.claimToken,
       p_checkout_session_id: input.checkoutSessionId,
+      p_checkout_session_expires_at: input.checkoutSessionExpiresAt,
     });
     if (error) throw rpcFailure('Unable to complete direct Checkout operation', error);
     if (data !== true) throw new Error('Direct Checkout completion RPC did not confirm the transition.');
@@ -382,6 +550,7 @@ export type OneOffDirectCheckoutOperationResult = Readonly<{
   outcome: 'created' | 'replayed';
   operationPk: string;
   sessionId: string;
+  checkoutGeneration: number;
   presentation: DirectCheckoutPresentation;
 }>;
 
@@ -398,6 +567,14 @@ export class DirectCheckoutOperationUnavailableError extends Error {
 
   constructor(readonly operationState: string) {
     super(`Direct Checkout operation is ${operationState}; no new Stripe request was sent.`);
+  }
+}
+
+export class DirectCheckoutGenerationLimitError extends Error {
+  override readonly name = 'DirectCheckoutGenerationLimitError';
+
+  constructor(readonly checkoutGeneration: number) {
+    super(`Direct Checkout reached generation ${checkoutGeneration}; operator review is required.`);
   }
 }
 
@@ -536,6 +713,7 @@ function assertExpectedSessionId(input: {
 function verifyDirectCheckoutSession(input: {
   session: Stripe.Checkout.Session;
   expectedSessionId?: string;
+  expectedExpiresAt?: number;
   livemode: boolean;
   merchantAccountId: string;
   operationId: string;
@@ -562,6 +740,7 @@ function verifyDirectCheckoutSession(input: {
     || session.amount_subtotal !== input.grossAmountCents
     || session.amount_total !== input.grossAmountCents
     || session.recovered_from !== null
+    || session.after_expiration?.recovery != null
     || !Array.isArray(session.payment_method_types)
     || session.payment_method_types.length !== 1
     || session.payment_method_types[0] !== 'card'
@@ -570,6 +749,7 @@ function verifyDirectCheckoutSession(input: {
     || !CHECKOUT_PAYMENT_STATUSES.has(paymentStatus)
     || !Number.isSafeInteger(session.expires_at)
     || session.expires_at <= 0
+    || (input.expectedExpiresAt !== undefined && session.expires_at !== input.expectedExpiresAt)
     || !metadataExactlyMatches(session.metadata, input.expectedMetadata)
     || session.metadata?.[DIRECT_CHARGE_METADATA_KEYS.chargeModel] !== DIRECT_CHARGE_MODEL
     || session.metadata?.[DIRECT_CHARGE_METADATA_KEYS.merchantAccountId] !== input.merchantAccountId
@@ -631,6 +811,7 @@ function verifyDirectCheckoutSession(input: {
 function buildOperationResult(input: {
   outcome: OneOffDirectCheckoutOperationResult['outcome'];
   operationPk: string;
+  checkoutGeneration: number;
   session: Stripe.Checkout.Session;
   presentation: DirectCheckoutPresentation;
 }): OneOffDirectCheckoutOperationResult {
@@ -638,8 +819,98 @@ function buildOperationResult(input: {
     outcome: input.outcome,
     operationPk: input.operationPk,
     sessionId: input.session.id,
+    checkoutGeneration: input.checkoutGeneration,
     presentation: input.presentation,
   });
+}
+
+type DirectCheckoutAttemptContext = Readonly<{
+  directInput: DirectCheckoutSessionInput;
+  call: ReturnType<typeof buildDirectCheckoutSessionCall>;
+  claimInput: DirectCheckoutClaimInput;
+}>;
+
+function buildAttemptContext(input: {
+  operation: OneOffDirectCheckoutOperationInput;
+  feeSnapshot: PaymentFeeSnapshot;
+  checkoutGeneration: number;
+  predecessorOperationPk: string | null;
+  predecessorProviderObjectId: string | null;
+}): DirectCheckoutAttemptContext {
+  const operationId = canonicalOperationId(
+    input.operation.paymentId,
+    input.checkoutGeneration,
+  );
+  const metadata = Object.freeze({
+    ...(input.operation.checkout.metadata ?? {}),
+    lgq_workspace_id: input.operation.accountId,
+    lgq_payment_id: input.operation.paymentId,
+    [CHECKOUT_GENERATION_METADATA_KEY]: String(input.checkoutGeneration),
+    ...(input.predecessorProviderObjectId
+      ? { [CHECKOUT_PREDECESSOR_SESSION_METADATA_KEY]: input.predecessorProviderObjectId }
+      : {}),
+  });
+  const directInput = Object.freeze({
+    ...input.operation.checkout,
+    metadata,
+    merchantAccountId: input.operation.merchantAccountId,
+    operationId,
+    amountCents: input.feeSnapshot.grossAmountCents,
+    applicationFeeAmountCents: input.feeSnapshot.applicationFeeCents,
+  }) satisfies DirectCheckoutSessionInput;
+  const call = buildDirectCheckoutSessionCall(directInput);
+  return Object.freeze({
+    directInput,
+    call,
+    claimInput: Object.freeze({
+      accountId: input.operation.accountId,
+      paymentId: input.operation.paymentId,
+      merchantAccountId: input.operation.merchantAccountId,
+      livemode: input.operation.livemode,
+      checkoutGeneration: input.checkoutGeneration,
+      predecessorOperationPk: input.predecessorOperationPk,
+      operationId,
+      stripeIdempotencyKey: call.options.idempotencyKey,
+      requestFingerprint: call.requestFingerprint,
+      feeSnapshot: input.feeSnapshot,
+    }),
+  });
+}
+
+function persistedExpiryEpochSeconds(value: string): number {
+  const milliseconds = Date.parse(value);
+  if (!Number.isFinite(milliseconds) || milliseconds % 1_000 !== 0) {
+    throw new Error('Direct Checkout persisted Session expiry is invalid.');
+  }
+  const seconds = milliseconds / 1_000;
+  if (!Number.isSafeInteger(seconds) || seconds <= 0) {
+    throw new Error('Direct Checkout persisted Session expiry is invalid.');
+  }
+  return seconds;
+}
+
+function stripeTimestampIso(value: number): string {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error('Stripe Checkout Session expiry is invalid.');
+  }
+  const iso = new Date(value * 1_000).toISOString();
+  if (!iso) throw new Error('Stripe Checkout Session expiry is invalid.');
+  return iso;
+}
+
+function assertCurrentAttemptMatchesContext(
+  current: DirectCheckoutCurrentAttempt,
+  context: DirectCheckoutAttemptContext,
+): void {
+  if (
+    current.operationId !== context.claimInput.operationId
+    || current.stripeIdempotencyKey !== context.claimInput.stripeIdempotencyKey
+    || current.requestFingerprint !== context.claimInput.requestFingerprint
+    || current.checkoutGeneration !== context.claimInput.checkoutGeneration
+    || current.predecessorOperationPk !== context.claimInput.predecessorOperationPk
+  ) {
+    throw new Error('Current direct Checkout generation does not match its immutable provider request.');
+  }
 }
 
 function defaultDependencies(): DirectCheckoutOperationDependencies {
@@ -660,81 +931,145 @@ export async function orchestrateOneOffDirectCheckout(
   // turn a test-mode payment into a live Stripe request (or vice versa).
   requireConfiguredStripeMode(input.livemode);
 
-  // Copy/freeze every caller-owned value that crosses an await. A mutable fee
-  // object cannot pass one fingerprint and then supply different cents to Stripe.
+  // Copy every caller-owned value before the first await. Each generation then
+  // receives a canonical operation ID, idempotency key, fingerprint, and Stripe
+  // metadata; callers cannot choose a fresh retry identity.
   const feeSnapshot = Object.freeze({ ...input.feeSnapshot });
-  const metadata = Object.freeze({
-    ...(input.checkout.metadata ?? {}),
-    lgq_workspace_id: input.accountId,
-    lgq_payment_id: input.paymentId,
-  });
-  const directInput = Object.freeze({
-    ...input.checkout,
-    metadata,
-    merchantAccountId: input.merchantAccountId,
-    operationId: input.operationId,
-    amountCents: feeSnapshot.grossAmountCents,
-    applicationFeeAmountCents: feeSnapshot.applicationFeeCents,
-  }) satisfies DirectCheckoutSessionInput;
-
-  // Pure construction validates the direct-only Stripe shape before taking a
-  // durable claim. There is no destination-charge adapter or fallback here.
-  const call = buildDirectCheckoutSessionCall(directInput);
-  const claimInput = Object.freeze({
+  const operation = Object.freeze({
     accountId: input.accountId,
     paymentId: input.paymentId,
     merchantAccountId: input.merchantAccountId,
     livemode: input.livemode,
-    operationId: input.operationId,
-    stripeIdempotencyKey: call.options.idempotencyKey,
-    requestFingerprint: call.requestFingerprint,
+    feeSnapshot,
+    checkout: Object.freeze({
+      ...input.checkout,
+      metadata: Object.freeze({ ...(input.checkout.metadata ?? {}) }),
+    }),
+  }) satisfies OneOffDirectCheckoutOperationInput;
+  const lookupInput = Object.freeze({
+    accountId: operation.accountId,
+    paymentId: operation.paymentId,
+    merchantAccountId: operation.merchantAccountId,
+    livemode: operation.livemode,
     feeSnapshot,
   });
-  let claim = await dependencies.store.findSucceededReplay(claimInput);
-  if (!claim) {
-    try {
-      claim = await dependencies.store.claim(claimInput);
-    } catch (claimError) {
-      // A concurrent owner can complete between the read-only replay check and
-      // the claim RPC. Prefer that exact, now-durable replay over surfacing a
-      // stale readiness/claim error; this branch still never creates anew.
-      const concurrentReplay = await dependencies.store.findSucceededReplay(claimInput);
-      if (!concurrentReplay) throw claimError;
-      claim = concurrentReplay;
+  let current = await dependencies.store.findCurrent(lookupInput);
+  let claim: DirectCheckoutClaim | null = null;
+  let claimedContext: DirectCheckoutAttemptContext | null = null;
+
+  // At most two lineage advances are observable here: the initially inspected
+  // attempt and a successor that a concurrent process may complete first.
+  for (let resolutionStep = 0; resolutionStep < 3; resolutionStep += 1) {
+    if (current?.operationState === 'submitted'
+      || current?.operationState === 'indeterminate'
+      || current?.operationState === 'failed') {
+      throw new DirectCheckoutOperationUnavailableError(current.operationState);
     }
+
+    const context = buildAttemptContext({
+      operation,
+      feeSnapshot,
+      checkoutGeneration: current?.checkoutGeneration ?? 1,
+      predecessorOperationPk: current?.predecessorOperationPk ?? null,
+      predecessorProviderObjectId: current?.predecessorProviderObjectId ?? null,
+    });
+    if (current) assertCurrentAttemptMatchesContext(current, context);
+
+    if (current?.operationState === 'succeeded') {
+      assertExpectedSessionId({
+        checkoutSessionId: current.providerObjectId!,
+        livemode: operation.livemode,
+      });
+      const session = await dependencies.retrieveSession({
+        merchantAccountId: operation.merchantAccountId,
+        checkoutSessionId: current.providerObjectId!,
+      });
+      const presentation = verifyDirectCheckoutSession({
+        session,
+        expectedSessionId: current.providerObjectId!,
+        expectedExpiresAt: persistedExpiryEpochSeconds(current.checkoutSessionExpiresAt!),
+        livemode: operation.livemode,
+        merchantAccountId: operation.merchantAccountId,
+        operationId: context.claimInput.operationId,
+        paymentId: operation.paymentId,
+        workspaceId: operation.accountId,
+        grossAmountCents: feeSnapshot.grossAmountCents,
+        expectedMetadata: context.call.params.metadata,
+        nowEpochSeconds: requireValidationClock(dependencies.nowEpochSeconds()),
+      });
+
+      if (current.checkoutLifecycle === 'paid' && presentation.state !== 'payment_confirming') {
+        throw new DirectCheckoutSessionVerificationError(
+          'the paid generation no longer reports complete + paid.',
+        );
+      }
+      if (
+        current.checkoutLifecycle === 'expired_unpaid'
+        && presentation.state !== 'expired_unpaid'
+      ) {
+        throw new DirectCheckoutSessionVerificationError(
+          'the signed expired-unpaid generation no longer reports expired + unpaid.',
+        );
+      }
+
+      if (
+        current.checkoutLifecycle === 'expired_unpaid'
+        && presentation.state === 'expired_unpaid'
+      ) {
+        if (current.checkoutGeneration >= MAX_CHECKOUT_GENERATION) {
+          throw new DirectCheckoutGenerationLimitError(current.checkoutGeneration);
+        }
+        claimedContext = buildAttemptContext({
+          operation,
+          feeSnapshot,
+          checkoutGeneration: current.checkoutGeneration + 1,
+          predecessorOperationPk: current.operationPk,
+          predecessorProviderObjectId: current.providerObjectId,
+        });
+        claim = await dependencies.store.claim(claimedContext.claimInput);
+      } else {
+        return buildOperationResult({
+          outcome: 'replayed',
+          operationPk: current.operationPk,
+          checkoutGeneration: current.checkoutGeneration,
+          session,
+          presentation,
+        });
+      }
+    } else {
+      claimedContext = context;
+      claim = await dependencies.store.claim(context.claimInput);
+    }
+
+    if (claim.status === 'generation_cap') {
+      throw new DirectCheckoutGenerationLimitError(claim.checkoutGeneration);
+    }
+    if (claim.status === 'replay') {
+      current = Object.freeze({
+        operationPk: claim.operationPk,
+        operationState: claim.operationState,
+        providerObjectId: claim.providerObjectId,
+        checkoutGeneration: claim.checkoutGeneration,
+        checkoutLifecycle: claim.checkoutLifecycle,
+        checkoutSessionExpiresAt: claim.checkoutSessionExpiresAt,
+        predecessorOperationPk: claim.predecessorOperationPk,
+        predecessorProviderObjectId: claimedContext.directInput.metadata?.[
+          CHECKOUT_PREDECESSOR_SESSION_METADATA_KEY
+        ] ?? null,
+        operationId: claimedContext.claimInput.operationId,
+        stripeIdempotencyKey: claimedContext.claimInput.stripeIdempotencyKey,
+        requestFingerprint: claimedContext.claimInput.requestFingerprint,
+      });
+      continue;
+    }
+    if (claim.status !== 'claimed' || !claim.claimToken) {
+      throw new DirectCheckoutOperationUnavailableError(claim.operationState);
+    }
+    break;
   }
 
-  if (claim.status === 'replay') {
-    assertExpectedSessionId({
-      checkoutSessionId: claim.providerObjectId!,
-      livemode: input.livemode,
-    });
-    const session = await dependencies.retrieveSession({
-      merchantAccountId: input.merchantAccountId,
-      checkoutSessionId: claim.providerObjectId!,
-    });
-    const presentation = verifyDirectCheckoutSession({
-      session,
-      expectedSessionId: claim.providerObjectId!,
-      livemode: input.livemode,
-      merchantAccountId: input.merchantAccountId,
-      operationId: input.operationId,
-      paymentId: input.paymentId,
-      workspaceId: input.accountId,
-      grossAmountCents: feeSnapshot.grossAmountCents,
-      expectedMetadata: call.params.metadata,
-      nowEpochSeconds: requireValidationClock(dependencies.nowEpochSeconds()),
-    });
-    return buildOperationResult({
-      outcome: 'replayed',
-      operationPk: claim.operationPk,
-      session,
-      presentation,
-    });
-  }
-
-  if (claim.status !== 'claimed' || !claim.claimToken) {
-    throw new DirectCheckoutOperationUnavailableError(claim.operationState);
+  if (!claim || !claimedContext || claim.status !== 'claimed' || !claim.claimToken) {
+    throw new Error('Direct Checkout generation resolution did not converge safely.');
   }
 
   // If this RPC response is lost after commit, the row remains submitted and a
@@ -748,18 +1083,23 @@ export async function orchestrateOneOffDirectCheckout(
   let session: Stripe.Checkout.Session;
   let presentation: DirectCheckoutPresentation;
   try {
-    session = await dependencies.createSession(directInput);
+    session = await dependencies.createSession(claimedContext.directInput);
     presentation = verifyDirectCheckoutSession({
       session,
-      livemode: input.livemode,
-      merchantAccountId: input.merchantAccountId,
-      operationId: input.operationId,
-      paymentId: input.paymentId,
-      workspaceId: input.accountId,
+      livemode: operation.livemode,
+      merchantAccountId: operation.merchantAccountId,
+      operationId: claimedContext.claimInput.operationId,
+      paymentId: operation.paymentId,
+      workspaceId: operation.accountId,
       grossAmountCents: feeSnapshot.grossAmountCents,
-      expectedMetadata: call.params.metadata,
+      expectedMetadata: claimedContext.call.params.metadata,
       nowEpochSeconds: requireValidationClock(dependencies.nowEpochSeconds()),
     });
+    if (presentation.state !== 'reusable_open') {
+      throw new DirectCheckoutSessionVerificationError(
+        'a newly created generation did not return open + unpaid with a reusable URL.',
+      );
+    }
   } catch (providerError) {
     let persistenceError: unknown;
     try {
@@ -783,6 +1123,7 @@ export async function orchestrateOneOffDirectCheckout(
       operationPk: claim.operationPk,
       claimToken: claim.claimToken,
       checkoutSessionId: session.id,
+      checkoutSessionExpiresAt: stripeTimestampIso(session.expires_at),
     });
   } catch (persistenceError) {
     // The completion transaction may have committed even if its HTTP response
@@ -794,6 +1135,7 @@ export async function orchestrateOneOffDirectCheckout(
   return buildOperationResult({
     outcome: 'created',
     operationPk: claim.operationPk,
+    checkoutGeneration: claim.checkoutGeneration,
     session,
     presentation,
   });

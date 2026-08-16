@@ -202,6 +202,7 @@ describe('dark connected Checkout expiration projector', () => {
     ['amount', { amount_total: 24_999 }],
     ['card-only', { payment_method_types: ['card', 'link'] }],
     ['recovery', { recovered_from: 'cs_test_original' }],
+    ['after-expiration recovery', { after_expiration: { recovery: { enabled: true } } }],
     ['PaymentIntent', { payment_intent: 'pi_existing123' }],
     ['future expiration', { expires_at: 1_786_852_900 }],
   ])('fails closed on a contradictory provider %s', async (_label, override) => {
