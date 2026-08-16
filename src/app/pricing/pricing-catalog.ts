@@ -1,5 +1,17 @@
-export type BillingCycle = 'monthly' | 'annual';
-export type PlanId = 'flex' | 'solo' | 'growth' | 'scale';
+import {
+  BILLING_PLANS,
+  ENTERPRISE_PRICING,
+  PRICING_CATALOG_VERSION,
+  TOP_UPS,
+  formatUsdFromCents,
+  platformFeePercent,
+  type BillingCycle as CatalogBillingCycle,
+  type BillingPlanId,
+} from '@/lib/billing/catalog';
+
+export { PRICING_CATALOG_VERSION };
+export type BillingCycle = CatalogBillingCycle;
+export type PlanId = BillingPlanId;
 
 export type PricingPlan = {
   id: PlanId;
@@ -23,26 +35,24 @@ export type PricingPlan = {
 
 export const OFFICE_USER_ADD_ON_MONTHLY = 15;
 
-export const PRICING_CATALOG_VERSION = '2026-08-15-preview';
-
 export const PLANS: readonly PricingPlan[] = [
   {
     id: 'flex',
     name: 'Flex',
     audience: 'New, part-time, or seasonal',
     promise: 'Start without another monthly bill',
-    monthly: 0,
-    annualMonthly: 0,
-    paymentFeePct: 1.25,
+    monthly: BILLING_PLANS.flex.monthlyPriceCents / 100,
+    annualMonthly: BILLING_PLANS.flex.annualPriceCents / 12 / 100,
+    paymentFeePct: platformFeePercent('flex'),
     fit: 'Best for getting started with no fixed software bill.',
     featured: false,
-    officeUsers: 1,
-    crewUsers: 2,
+    officeUsers: BILLING_PLANS.flex.allowances.officeUsers,
+    crewUsers: BILLING_PLANS.flex.allowances.crewUsers,
     textCredits: '50 one-time starter credits',
     messagingSummary: '50 starter text credits · shared LGQ number',
-    forwardingMinutes: 0,
-    voiceMinutes: 100,
-    voiceConcurrentCalls: 1,
+    forwardingMinutes: BILLING_PLANS.flex.allowances.forwardingMinutes,
+    voiceMinutes: BILLING_PLANS.flex.voice.includedMinutes,
+    voiceConcurrentCalls: BILLING_PLANS.flex.voice.concurrentCalls,
     features: [
       'Unlimited core records and standard quote forms',
       '1 office user + 2 crew users',
@@ -60,18 +70,18 @@ export const PLANS: readonly PricingPlan[] = [
     name: 'Solo',
     audience: 'Owner-operator',
     promise: 'Your own number and a lower platform fee',
-    monthly: 39,
-    annualMonthly: 35,
-    paymentFeePct: 0.5,
+    monthly: BILLING_PLANS.solo.monthlyPriceCents / 100,
+    annualMonthly: BILLING_PLANS.solo.annualPriceCents / 12 / 100,
+    paymentFeePct: platformFeePercent('solo'),
     fit: 'Best for owner-operators ready for their own business line.',
     featured: false,
-    officeUsers: 1,
-    crewUsers: 2,
+    officeUsers: BILLING_PLANS.solo.allowances.officeUsers,
+    crewUsers: BILLING_PLANS.solo.allowances.crewUsers,
     textCredits: '500/month',
     messagingSummary: '500 text credits/month · dedicated number',
-    forwardingMinutes: 100,
-    voiceMinutes: 100,
-    voiceConcurrentCalls: 1,
+    forwardingMinutes: BILLING_PLANS.solo.allowances.forwardingMinutes,
+    voiceMinutes: BILLING_PLANS.solo.voice.includedMinutes,
+    voiceConcurrentCalls: BILLING_PLANS.solo.voice.concurrentCalls,
     features: [
       'Unlimited core records and standard quote forms',
       '1 office user + 2 crew users',
@@ -89,18 +99,18 @@ export const PLANS: readonly PricingPlan[] = [
     name: 'Growth',
     audience: 'Growing office + field team',
     promise: 'Add your team and automate the busywork',
-    monthly: 129,
-    annualMonthly: 99,
-    paymentFeePct: 0.25,
+    monthly: BILLING_PLANS.growth.monthlyPriceCents / 100,
+    annualMonthly: BILLING_PLANS.growth.annualPriceCents / 12 / 100,
+    paymentFeePct: platformFeePercent('growth'),
     fit: 'Best for growing teams that need more people and capacity.',
     featured: true,
-    officeUsers: 5,
-    crewUsers: 10,
+    officeUsers: BILLING_PLANS.growth.allowances.officeUsers,
+    crewUsers: BILLING_PLANS.growth.allowances.crewUsers,
     textCredits: '1,500/month',
     messagingSummary: '1,500 text credits/month · dedicated number',
-    forwardingMinutes: 100,
-    voiceMinutes: 200,
-    voiceConcurrentCalls: 1,
+    forwardingMinutes: BILLING_PLANS.growth.allowances.forwardingMinutes,
+    voiceMinutes: BILLING_PLANS.growth.voice.includedMinutes,
+    voiceConcurrentCalls: BILLING_PLANS.growth.voice.concurrentCalls,
     features: [
       'Unlimited core records and standard quote forms',
       '5 office users + 10 crew users',
@@ -118,18 +128,18 @@ export const PLANS: readonly PricingPlan[] = [
     name: 'Scale',
     audience: 'High-volume contractor',
     promise: 'Minimize the LGQ platform fee and upgrade call handling',
-    monthly: 329,
-    annualMonthly: 299,
-    paymentFeePct: 0.1,
+    monthly: BILLING_PLANS.scale.monthlyPriceCents / 100,
+    annualMonthly: BILLING_PLANS.scale.annualPriceCents / 12 / 100,
+    paymentFeePct: platformFeePercent('scale'),
     fit: 'Best when a 0.1% LGQ platform fee and advanced AI call handling save you money.',
     featured: false,
-    officeUsers: 5,
-    crewUsers: 10,
+    officeUsers: BILLING_PLANS.scale.allowances.officeUsers,
+    crewUsers: BILLING_PLANS.scale.allowances.crewUsers,
     textCredits: '1,500/month',
     messagingSummary: '1,500 text credits/month · dedicated number',
-    forwardingMinutes: 100,
-    voiceMinutes: 100,
-    voiceConcurrentCalls: 3,
+    forwardingMinutes: BILLING_PLANS.scale.allowances.forwardingMinutes,
+    voiceMinutes: BILLING_PLANS.scale.voice.includedMinutes,
+    voiceConcurrentCalls: BILLING_PLANS.scale.voice.concurrentCalls,
     features: [
       'Growth-level team, messaging, AI Intake, and storage capacity',
       '0.1% LGQ platform fee',
@@ -149,10 +159,10 @@ export const PLANS: readonly PricingPlan[] = [
 ] as const;
 
 export const VOICE_MONTHLY_BY_PLAN: Record<PlanId, number> = {
-  flex: 69,
-  solo: 59,
-  growth: 55,
-  scale: 0,
+  flex: BILLING_PLANS.flex.voice.monthlyPriceCents / 100,
+  solo: BILLING_PLANS.solo.voice.monthlyPriceCents / 100,
+  growth: BILLING_PLANS.growth.voice.monthlyPriceCents / 100,
+  scale: BILLING_PLANS.scale.voice.monthlyPriceCents / 100,
 };
 
 export const COMPARISON_ROWS = [
@@ -181,16 +191,11 @@ export const COMPARISON_ROWS = [
   ['Free onboarding + quick tour', 'Included', 'Included', 'Included', 'Included'],
 ] as const;
 
-export const ADD_ONS = [
-  { label: 'Flex: 250 text-credit top-up', price: '$12', eligibility: 'Flex' },
-  { label: '1,000 text credits', price: '$42', eligibility: 'All plans' },
-  { label: '5,000 marketing emails', price: '$17', eligibility: 'All plans' },
-  { label: '100 AI Intake credits', price: '$15', eligibility: 'All plans' },
-  { label: '250 AI writing drafts', price: '$19', eligibility: 'All plans' },
-  { label: '100 GB storage', price: '$15/month', eligibility: 'All plans' },
-  { label: 'Office user', price: '$15/month', eligibility: 'Solo+' },
-  { label: 'Crew user', price: '$5/month', eligibility: 'Solo+' },
-] as const;
+export const ADD_ONS = Object.values(TOP_UPS).map((topUp) => ({
+  label: topUp.label,
+  price: `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`,
+  eligibility: topUp.eligibilityLabel,
+}));
 
 export const PRICING_FAQS = [
   {
@@ -260,9 +265,9 @@ export const PRICING_FAQS = [
 ] as const;
 
 export const ENTERPRISE = {
-  startingMonthly: 799,
-  includedWorkspaces: 2,
-  fullScaleDuoMonthly: 1099,
+  startingMonthly: ENTERPRISE_PRICING.startingMonthlyCents / 100,
+  includedWorkspaces: ENTERPRISE_PRICING.includedWorkspaces,
+  fullScaleDuoMonthly: ENTERPRISE_PRICING.fullScaleDuoMonthlyCents / 100,
 } as const;
 
 export function annualFixedCost(plan: PricingPlan, billing: BillingCycle, includeVoice: boolean): number {
