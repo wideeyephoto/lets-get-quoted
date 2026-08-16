@@ -28,6 +28,7 @@ const STRIPE_ACCOUNT_ID_PATTERN = /^acct_[A-Za-z0-9]{8,}$/;
 const STRIPE_RESOURCE_ID_PATTERNS = {
   checkoutSession: /^cs_[A-Za-z0-9_]+$/,
   paymentIntent: /^pi_[A-Za-z0-9_]+$/,
+  charge: /^ch_[A-Za-z0-9_]+$/,
   refund: /^re_[A-Za-z0-9_]+$/,
   applicationFee: /^fee_[A-Za-z0-9_]+$/,
 } as const;
@@ -102,8 +103,11 @@ export type DirectPaymentIntentInput = DirectOperationContext &
     setupFutureUsage?: 'on_session' | 'off_session';
   };
 
-export type DirectRefundInput = DirectOperationContext & {
-  paymentIntentId: string;
+type DirectRefundTarget =
+  | Readonly<{ chargeId: string; paymentIntentId?: never }>
+  | Readonly<{ chargeId?: never; paymentIntentId: string }>;
+
+export type DirectRefundInput = DirectOperationContext & DirectRefundTarget & {
   /** Omit for a full refund. */
   amountCents?: number;
   /** Required so every caller consciously chooses whether LGQ returns its fee. */
@@ -429,6 +433,11 @@ export function buildDirectPaymentIntentCall(input: DirectPaymentIntentInput): D
 
 export function buildDirectRefundCall(input: DirectRefundInput): DirectRefundCall {
   const merchantAccountId = validateMerchantAccountId(input.merchantAccountId);
+  const hasChargeId = typeof input.chargeId === 'string';
+  const hasPaymentIntentId = typeof input.paymentIntentId === 'string';
+  if (hasChargeId === hasPaymentIntentId) {
+    throw new Error('Direct refunds require exactly one Charge or PaymentIntent target.');
+  }
   if (input.amountCents !== undefined && input.refundApplicationFee) {
     throw new Error(
       'Partial direct refunds must set refundApplicationFee to false and refund the exact application fee separately.',
@@ -436,7 +445,9 @@ export function buildDirectRefundCall(input: DirectRefundInput): DirectRefundCal
   }
   const metadata = buildDirectChargeMetadata({ ...input, merchantAccountId });
   const params: Stripe.RefundCreateParams = Object.freeze({
-    payment_intent: validateStripeResourceId(input.paymentIntentId, 'paymentIntent'),
+    ...(hasChargeId
+      ? { charge: validateStripeResourceId(input.chargeId, 'charge') }
+      : { payment_intent: validateStripeResourceId(input.paymentIntentId, 'paymentIntent') }),
     ...(input.amountCents !== undefined ? { amount: validateRefundAmountCents(input.amountCents) } : {}),
     refund_application_fee: input.refundApplicationFee,
     metadata,

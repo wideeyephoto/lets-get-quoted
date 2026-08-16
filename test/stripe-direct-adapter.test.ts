@@ -291,6 +291,32 @@ describe('pure direct-charge call builders', () => {
     expect(feeRefund.options).not.toHaveProperty('stripeAccount');
   });
 
+  it('can bind a refund to the exact connected-account Charge instead of selecting by intent', () => {
+    const call = buildDirectRefundCall({
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      operationId: 'refund_exact_charge',
+      chargeId: 'ch_test_directcharge123',
+      amountCents: 5_000,
+      refundApplicationFee: false,
+    });
+
+    expect(call.params).toMatchObject({
+      charge: 'ch_test_directcharge123',
+      amount: 5_000,
+      refund_application_fee: false,
+    });
+    expect(call.params).not.toHaveProperty('payment_intent');
+
+    expect(() => buildDirectRefundCall({
+      merchantAccountId: MERCHANT_ACCOUNT_ID,
+      operationId: 'refund_ambiguous_target',
+      chargeId: 'ch_test_directcharge123',
+      paymentIntentId: 'pi_test_intent123',
+      amountCents: 5_000,
+      refundApplicationFee: false,
+    } as unknown as DirectRefundInput)).toThrow(/exactly one Charge or PaymentIntent/);
+  });
+
   it('rejects unsafe cent values before any Stripe client is requested', () => {
     for (const amountCents of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 100_000_000]) {
       expect(() => buildDirectCheckoutSessionCall({ ...checkoutInput, amountCents })).toThrow(/amountCents/);
