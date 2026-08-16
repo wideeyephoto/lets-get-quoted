@@ -23,7 +23,8 @@ type RpcCall = { functionName: string; args: unknown };
 
 const OPENED_AT = '2026-08-16T12:00:00.000Z';
 const DIRECT_SETTLEMENT_RPC = 'admin_billing_direct_payment_settlement_summary';
-const LATE_SUCCESS_RPC = 'admin_billing_direct_checkout_late_success_summary';
+const LATE_SUCCESS_RPC = 'admin_billing_direct_checkout_late_success_resolution_summary';
+const LATE_SUCCESS_SUMMARY_SCHEMA = 'direct_checkout_late_success_resolution_summary_v1';
 const DIRECT_ERROR_CODES = [
   'dispatch_status_invalid',
   'feed_result_invalid',
@@ -120,13 +121,17 @@ function directSummaryRow(overrides: Record<string, unknown> = {}): Record<strin
 
 function lateSuccessSummaryRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    total_count: '8',
-    held_payment_count: '4',
+    summary_schema: LATE_SUCCESS_SUMMARY_SCHEMA,
+    total_task_count: '8',
+    affected_payment_count: '5',
+    active_hold_payment_count: '4',
+    released_payment_count: '1',
+    resolution_ready_payment_count: '2',
     worker_open_count: '2',
     successor_neutralized_count: '3',
     manual_review_count: '3',
     evidence_count: '7',
-    oldest_held_at: OPENED_AT,
+    oldest_active_hold_at: OPENED_AT,
     fixed_reason_code: 'successor_expired_unpaid',
     fixed_reason_code_count: '6',
     fixed_reason_codes_truncated: false,
@@ -228,11 +233,21 @@ describe('read-only admin billing operations', () => {
     });
     expect(report.ledgers.find((ledger) => ledger.id === 'direct_checkout_late_success')).toMatchObject({
       oldestOpenAt: OPENED_AT,
+      lateSuccessResolution: {
+        affectedPaymentCount: 5,
+        activeHoldPaymentCount: 4,
+        releasedPaymentCount: 1,
+        resolutionReadyPaymentCount: 2,
+        oldestActiveHoldAt: OPENED_AT,
+      },
       fixedErrorCodesSupported: true,
       fixedErrorCodes: [{ code: 'successor_expired_unpaid', count: 6 }],
       fixedErrorCodesTruncated: false,
       metrics: expect.arrayContaining([
-        { code: 'unresolved', label: 'Held payments', count: 4 },
+        { code: 'affected', label: 'Affected payments', count: 5 },
+        { code: 'active_hold', label: 'Active holds', count: 4 },
+        { code: 'released', label: 'Released', count: 1 },
+        { code: 'resolution_ready', label: 'Resolution ready', count: 2 },
         { code: 'worker_open', label: 'Active reconciliation', count: 2 },
         { code: 'successor_neutralized', label: 'Successor neutralized', count: 3 },
         { code: 'manual_review', label: 'Manual review', count: 3 },
@@ -549,13 +564,23 @@ describe('read-only admin billing operations', () => {
   const malformedLateSuccessRows: [string, unknown][] = [
     ['null data', null],
     ['empty rows', []],
-    ['negative count', [lateSuccessSummaryRow({ total_count: '-1' })]],
-    ['partition mismatch', [lateSuccessSummaryRow({ total_count: '9' })]],
-    ['held payments beyond task count', [lateSuccessSummaryRow({ held_payment_count: '9' })]],
+    ['schema version mismatch', [lateSuccessSummaryRow({ summary_schema: 'legacy_summary_v0' })]],
+    ['negative count', [lateSuccessSummaryRow({ total_task_count: '-1' })]],
+    ['task partition mismatch', [lateSuccessSummaryRow({ total_task_count: '9' })]],
+    ['payment partition mismatch', [lateSuccessSummaryRow({ affected_payment_count: '6' })]],
+    ['affected payments beyond task count', [lateSuccessSummaryRow({
+      affected_payment_count: '9',
+      active_hold_payment_count: '8',
+    })]],
+    ['resolution-ready payments beyond active holds', [lateSuccessSummaryRow({
+      resolution_ready_payment_count: '5',
+    })]],
     ['evidence beyond total', [lateSuccessSummaryRow({ evidence_count: '9' })]],
-    ['missing oldest-held timestamp', [lateSuccessSummaryRow({ oldest_held_at: null })]],
-    ['oldest-held timestamp without a hold', [lateSuccessSummaryRow({
-      held_payment_count: '0',
+    ['missing oldest-active-hold timestamp', [lateSuccessSummaryRow({ oldest_active_hold_at: null })]],
+    ['oldest-active-hold timestamp without a hold', [lateSuccessSummaryRow({
+      active_hold_payment_count: '0',
+      released_payment_count: '5',
+      resolution_ready_payment_count: '0',
     })]],
     ['raw unknown reason', [lateSuccessSummaryRow({ fixed_reason_code: 'customer_brett_marker' })]],
     ['zero grouped count', [lateSuccessSummaryRow({ fixed_reason_code_count: '0' })]],
@@ -564,7 +589,7 @@ describe('read-only admin billing operations', () => {
     ['conflicting repeated totals', [
       lateSuccessSummaryRow({ fixed_reason_code_count: '3' }),
       lateSuccessSummaryRow({
-        total_count: '7',
+        total_task_count: '7',
         fixed_reason_code: 'successor_contract_mismatch',
         fixed_reason_code_count: '3',
       }),
@@ -603,8 +628,11 @@ describe('read-only admin billing operations', () => {
       healthyTableResponse,
       rpcOverride(LATE_SUCCESS_RPC, {
         data: [lateSuccessSummaryRow({
-          total_count: '2',
-          held_payment_count: '1',
+          total_task_count: '2',
+          affected_payment_count: '1',
+          active_hold_payment_count: '1',
+          released_payment_count: '0',
+          resolution_ready_payment_count: '0',
           worker_open_count: '2',
           successor_neutralized_count: '0',
           manual_review_count: '0',
@@ -620,7 +648,8 @@ describe('read-only admin billing operations', () => {
       availability: 'installed',
       fixedErrorCodes: [],
       metrics: expect.arrayContaining([
-        { code: 'unresolved', label: 'Held payments', count: 1 },
+        { code: 'active_hold', label: 'Active holds', count: 1 },
+        { code: 'released', label: 'Released', count: 0 },
         { code: 'worker_open', label: 'Active reconciliation', count: 2 },
       ]),
     });
@@ -631,8 +660,11 @@ describe('read-only admin billing operations', () => {
       healthyTableResponse,
       rpcOverride(LATE_SUCCESS_RPC, {
         data: [lateSuccessSummaryRow({
-          total_count: '6',
-          held_payment_count: '1',
+          total_task_count: '6',
+          affected_payment_count: '1',
+          active_hold_payment_count: '1',
+          released_payment_count: '0',
+          resolution_ready_payment_count: '1',
           worker_open_count: '0',
           successor_neutralized_count: '3',
           manual_review_count: '3',
@@ -646,7 +678,8 @@ describe('read-only admin billing operations', () => {
       availability: 'installed',
       oldestOpenAt: OPENED_AT,
       metrics: expect.arrayContaining([
-        { code: 'unresolved', label: 'Held payments', count: 1 },
+        { code: 'active_hold', label: 'Active holds', count: 1 },
+        { code: 'resolution_ready', label: 'Resolution ready', count: 1 },
         { code: 'worker_open', label: 'Active reconciliation', count: 0 },
       ]),
     });
@@ -658,8 +691,11 @@ describe('read-only admin billing operations', () => {
       healthyTableResponse,
       rpcOverride(LATE_SUCCESS_RPC, {
         data: codes.map((code) => lateSuccessSummaryRow({
-          total_count: '20',
-          held_payment_count: '10',
+          total_task_count: '20',
+          affected_payment_count: '10',
+          active_hold_payment_count: '8',
+          released_payment_count: '2',
+          resolution_ready_payment_count: '8',
           worker_open_count: '2',
           successor_neutralized_count: '8',
           manual_review_count: '10',
@@ -727,9 +763,10 @@ describe('read-only admin billing operations', () => {
     expect(page).not.toMatch(/<form|<button|action=/);
     expect(loader.match(/\.rpc\(/g)).toHaveLength(2);
     expect(loader).toContain("const DIRECT_SETTLEMENT_SUMMARY_RPC = 'admin_billing_direct_payment_settlement_summary'");
-    expect(loader).toContain("const DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_RPC = 'admin_billing_direct_checkout_late_success_summary'");
+    expect(loader).toContain("'admin_billing_direct_checkout_late_success_resolution_summary'");
     expect(loader).not.toMatch(/\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
-    expect(page).toContain('Late-success holds');
+    expect(page).toContain('Late-success audit fences');
+    expect(page).toContain('permanently close affected payments to Checkout');
     expect(nav).toContain("href: '/admin/billing-operations'");
   });
 });

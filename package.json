@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:pg17:late-success": "tsc --noEmit -p tsconfig.test.json && vitest run --config vitest.pg17.config.ts",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
     "test:stock": "node --test src/lib/stock/stock.test.mjs"
   },

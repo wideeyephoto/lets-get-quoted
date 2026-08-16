@@ -12,5 +12,12 @@
   // nobody was checking, then failed against a real database as if the LIBRARY
   // were broken. It cost a detour through library code that was correct.
   "extends": "./tsconfig.json",
-  "include": ["next-env.d.ts", "src", "test", "test-staging", ".next/types/**/*.ts"]
+  "include": [
+    "next-env.d.ts",
+    "src",
+    "test",
+    "test-staging",
+    "test-pg17",
+    ".next/types/**/*.ts"
+  ]
 }

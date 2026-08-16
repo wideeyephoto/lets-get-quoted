@@ -6,7 +6,10 @@ const MISSING_SCHEMA_CODES = new Set(['42P01', '42703', '42883', 'PGRST202', 'PG
 const CODE_SAMPLE_LIMIT = 200;
 const UNRECOGNIZED_ERROR_CODE = 'unrecognized_error_code';
 const DIRECT_SETTLEMENT_SUMMARY_RPC = 'admin_billing_direct_payment_settlement_summary';
-const DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_RPC = 'admin_billing_direct_checkout_late_success_summary';
+const DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_RPC =
+  'admin_billing_direct_checkout_late_success_resolution_summary';
+const DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_SCHEMA =
+  'direct_checkout_late_success_resolution_summary_v1';
 
 const DIRECT_SETTLEMENT_ERROR_CODES = new Set([
   'dispatch_status_invalid',
@@ -81,6 +84,10 @@ export type BillingOperationsMetric = {
     | 'total'
     | 'unresolved'
     | 'worker_open'
+    | 'affected'
+    | 'active_hold'
+    | 'released'
+    | 'resolution_ready'
     | 'applied'
     | 'completed'
     | 'successor_neutralized'
@@ -96,6 +103,14 @@ export type BillingOperationsFixedCode = {
   code: string;
   count: number;
 };
+
+export type BillingOperationsLateSuccessResolutionSummary = Readonly<{
+  affectedPaymentCount: number;
+  activeHoldPaymentCount: number;
+  releasedPaymentCount: number;
+  resolutionReadyPaymentCount: number;
+  oldestActiveHoldAt: string | null;
+}>;
 
 export type BillingOperationsLedger = {
   id:
@@ -115,6 +130,7 @@ export type BillingOperationsLedger = {
   fixedErrorCodesSupported: boolean;
   fixedErrorCodes: BillingOperationsFixedCode[];
   fixedErrorCodesTruncated: boolean;
+  lateSuccessResolution?: BillingOperationsLateSuccessResolutionSummary;
 };
 
 export type AdminBillingOperationsReport = {
@@ -202,7 +218,7 @@ const DIRECT_SETTLEMENT_SPEC: LedgerIdentity = {
 const DIRECT_CHECKOUT_LATE_SUCCESS_SPEC: LedgerIdentity = {
   id: 'direct_checkout_late_success',
   label: 'Direct Checkout late-success holds',
-  description: 'Signed paid facts that impose a permanent operator hold while newer direct Checkout collection risk is classified.',
+  description: 'Signed paid facts retain a permanent Checkout audit fence; explicit coverage can separately release settlement and ordinary refunds.',
 };
 
 const TASK_SPECS: TaskLedgerSpec[] = [
@@ -507,13 +523,17 @@ type DirectSettlementSummaryRow = {
 };
 
 type DirectCheckoutLateSuccessSummaryRow = {
-  total_count: unknown;
-  held_payment_count: unknown;
+  summary_schema: unknown;
+  total_task_count: unknown;
+  affected_payment_count: unknown;
+  active_hold_payment_count: unknown;
+  released_payment_count: unknown;
+  resolution_ready_payment_count: unknown;
   worker_open_count: unknown;
   successor_neutralized_count: unknown;
   manual_review_count: unknown;
   evidence_count: unknown;
-  oldest_held_at: unknown;
+  oldest_active_hold_at: unknown;
   fixed_reason_code: unknown;
   fixed_reason_code_count: unknown;
   fixed_reason_codes_truncated: unknown;
@@ -650,27 +670,35 @@ async function readDirectCheckoutLateSuccessLedger(admin: SupabaseClient): Promi
 
   const rows = result.data as DirectCheckoutLateSuccessSummaryRow[];
   const first = rows[0];
-  const total = rpcCount(first.total_count);
-  const heldPayments = rpcCount(first.held_payment_count);
+  const total = rpcCount(first.total_task_count);
+  const affectedPayments = rpcCount(first.affected_payment_count);
+  const activeHoldPayments = rpcCount(first.active_hold_payment_count);
+  const releasedPayments = rpcCount(first.released_payment_count);
+  const resolutionReadyPayments = rpcCount(first.resolution_ready_payment_count);
   const workerOpen = rpcCount(first.worker_open_count);
   const neutralized = rpcCount(first.successor_neutralized_count);
   const manualReview = rpcCount(first.manual_review_count);
   const evidence = rpcCount(first.evidence_count);
-  const oldestHeldAt = first.oldest_held_at === null
+  const oldestActiveHoldAt = first.oldest_active_hold_at === null
     ? null
-    : typeof first.oldest_held_at === 'string' && Number.isFinite(Date.parse(first.oldest_held_at))
-      ? first.oldest_held_at
+    : typeof first.oldest_active_hold_at === 'string'
+      && Number.isFinite(Date.parse(first.oldest_active_hold_at))
+      ? first.oldest_active_hold_at
       : undefined;
   const truncated = first.fixed_reason_codes_truncated;
 
   const repeatedFields = [
-    'total_count',
-    'held_payment_count',
+    'summary_schema',
+    'total_task_count',
+    'affected_payment_count',
+    'active_hold_payment_count',
+    'released_payment_count',
+    'resolution_ready_payment_count',
     'worker_open_count',
     'successor_neutralized_count',
     'manual_review_count',
     'evidence_count',
-    'oldest_held_at',
+    'oldest_active_hold_at',
     'fixed_reason_codes_truncated',
   ] as const;
   const repeated = rows.every((row) => repeatedFields.every((field) => row[field] === first[field]));
@@ -711,16 +739,22 @@ async function readDirectCheckoutLateSuccessLedger(admin: SupabaseClient): Promi
   }
 
   const invalid = total === null
-    || heldPayments === null
+    || first.summary_schema !== DIRECT_CHECKOUT_LATE_SUCCESS_SUMMARY_SCHEMA
+    || affectedPayments === null
+    || activeHoldPayments === null
+    || releasedPayments === null
+    || resolutionReadyPayments === null
     || workerOpen === null
     || neutralized === null
     || manualReview === null
     || evidence === null
     || truncated !== false
     || !repeated
-    || !validOldest(heldPayments ?? -1, oldestHeldAt)
+    || !validOldest(activeHoldPayments ?? -1, oldestActiveHoldAt)
     || total !== workerOpen + neutralized + manualReview
-    || heldPayments > total
+    || affectedPayments !== activeHoldPayments + releasedPayments
+    || affectedPayments > total
+    || resolutionReadyPayments > activeHoldPayments
     || evidence > total
     || !codesValid
     || fixedCodeTotal !== terminalCount
@@ -734,16 +768,30 @@ async function readDirectCheckoutLateSuccessLedger(admin: SupabaseClient): Promi
     availability: 'installed',
     metrics: [
       { code: 'total', label: 'Tasks', count: total as number },
-      { code: 'unresolved', label: 'Held payments', count: heldPayments as number },
+      { code: 'affected', label: 'Affected payments', count: affectedPayments as number },
+      { code: 'active_hold', label: 'Active holds', count: activeHoldPayments as number },
+      { code: 'released', label: 'Released', count: releasedPayments as number },
+      {
+        code: 'resolution_ready',
+        label: 'Resolution ready',
+        count: resolutionReadyPayments as number,
+      },
       { code: 'worker_open', label: 'Active reconciliation', count: workerOpen as number },
       { code: 'successor_neutralized', label: 'Successor neutralized', count: neutralized as number },
       { code: 'manual_review', label: 'Manual review', count: manualReview as number },
       { code: 'evidence', label: 'Paid evidence verified', count: evidence as number },
     ],
-    oldestOpenAt: oldestHeldAt ?? null,
+    oldestOpenAt: oldestActiveHoldAt ?? null,
     fixedErrorCodesSupported: true,
     fixedErrorCodes,
     fixedErrorCodesTruncated: false,
+    lateSuccessResolution: Object.freeze({
+      affectedPaymentCount: affectedPayments as number,
+      activeHoldPaymentCount: activeHoldPayments as number,
+      releasedPaymentCount: releasedPayments as number,
+      resolutionReadyPaymentCount: resolutionReadyPayments as number,
+      oldestActiveHoldAt: oldestActiveHoldAt ?? null,
+    }),
   };
 }
 
