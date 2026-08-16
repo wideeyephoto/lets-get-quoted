@@ -577,24 +577,39 @@ export function buildMerchantReadinessDatabaseUpdate(
   });
 }
 
-/** Persist evidence only when it still belongs to this workspace's Merchant. */
+export class MerchantReadinessStaleWriteError extends Error {
+  override readonly name = 'MerchantReadinessStaleWriteError';
+
+  constructor(readonly verifiedAt: string) {
+    super('Stripe Merchant readiness evidence was not persisted because newer or equal evidence already exists.');
+  }
+}
+
+/**
+ * Persist only strictly newer evidence for this exact workspace mapping.
+ * Timestamp comparison and the write happen under one database row lock; a
+ * caller can never turn a stale ready response into an activation decision.
+ */
 export async function persistMerchantReadinessEvidence(
   admin: SupabaseClient,
   workspaceId: string,
   evidence: MerchantReadinessEvidence,
 ): Promise<void> {
   const normalizedWorkspaceId = validateWorkspaceId(workspaceId);
+  const providerAccountId = validateStripeMerchantAccountId(evidence.accountId);
+  if (typeof evidence.livemode !== 'boolean') {
+    throw new Error('Stripe Merchant readiness evidence is missing its test/live binding.');
+  }
   const update = buildMerchantReadinessDatabaseUpdate(evidence);
-  const { data, error } = await admin
-    .from('accounts')
-    .update(update)
-    .eq('id', normalizedWorkspaceId)
-    .eq('stripe_merchant_account_id', evidence.accountId)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await admin.rpc('persist_stripe_merchant_readiness_evidence', {
+    p_workspace_id: normalizedWorkspaceId,
+    p_provider_account_id: providerAccountId,
+    p_expected_livemode: evidence.livemode,
+    p_evidence: update,
+  });
 
-  if (error) throw error;
-  if (!data) throw new Error('Merchant readiness was not persisted because the workspace mapping changed.');
+  if (error) throw rpcFailure('Unable to persist Stripe Merchant readiness evidence', error);
+  if (data !== true) throw new MerchantReadinessStaleWriteError(evidence.verifiedAt);
 }
 
 type RpcError = Readonly<{ message?: string; code?: string }>;

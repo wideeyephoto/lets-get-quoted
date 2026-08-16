@@ -17,6 +17,7 @@ vi.mock('@/lib/stripe', async (importOriginal) => {
 import {
   STRIPE_MERCHANT_CONFIGURATION_VERSION,
   STRIPE_MERCHANT_RETRIEVE_PARAMS,
+  MerchantReadinessStaleWriteError,
   MerchantProvisioningIndeterminateError,
   MerchantProvisioningPersistenceError,
   MerchantProvisioningUnavailableError,
@@ -27,6 +28,7 @@ import {
   createMerchantOnboardingLink,
   hashMerchantReadinessSnapshot,
   inspectMerchantReadiness,
+  persistMerchantReadinessEvidence,
   provisionMerchantAccount,
   retrieveMerchantAccountForReadiness,
   type MerchantAccountCreateCall,
@@ -140,6 +142,8 @@ function fakeAdmin(initialMerchantAccountId: string | null) {
   const row: FakeAccountRow = {
     id: WORKSPACE_ID,
     stripe_merchant_account_id: initialMerchantAccountId,
+    merchant_livemode: true,
+    merchant_configuration_verified_at: null,
   };
   const updates: Array<Record<string, unknown>> = [];
 
@@ -148,7 +152,43 @@ function fakeAdmin(initialMerchantAccountId: string | null) {
       && Object.keys(nullFilters).every((key) => row[key] === null);
   }
 
+  let rpcTail = Promise.resolve();
+  const rpc = vi.fn((name: string, args: Record<string, unknown>) => {
+    const operation = rpcTail.then(() => {
+      if (name !== 'persist_stripe_merchant_readiness_evidence') {
+        return { data: null, error: { code: '42883', message: `Unexpected RPC ${name}` } };
+      }
+      if (
+        args.p_workspace_id !== row.id
+        || args.p_provider_account_id !== row.stripe_merchant_account_id
+        || args.p_expected_livemode !== row.merchant_livemode
+      ) {
+        return { data: null, error: { code: 'P0001', message: 'workspace mapping mismatch' } };
+      }
+      const evidence = args.p_evidence;
+      if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
+        return { data: null, error: { code: '22023', message: 'invalid evidence' } };
+      }
+      const payload = evidence as Record<string, unknown>;
+      const incoming = Date.parse(String(payload.merchant_configuration_verified_at ?? ''));
+      const current = row.merchant_configuration_verified_at == null
+        ? Number.NEGATIVE_INFINITY
+        : Date.parse(String(row.merchant_configuration_verified_at));
+      if (!Number.isFinite(incoming)) {
+        return { data: null, error: { code: '22023', message: 'invalid verification timestamp' } };
+      }
+      if (incoming <= current) return { data: false, error: null };
+
+      updates.push(payload);
+      Object.assign(row, payload);
+      return { data: true, error: null };
+    });
+    rpcTail = operation.then(() => undefined, () => undefined);
+    return operation;
+  });
+
   const client = {
+    rpc,
     from: vi.fn((table: string) => {
       if (table !== 'accounts') throw new Error(`Unexpected table ${table}`);
       return {
@@ -166,28 +206,6 @@ function fakeAdmin(initialMerchantAccountId: string | null) {
           };
           return query;
         }),
-        update: vi.fn((payload: Record<string, unknown>) => {
-          const filters: Record<string, unknown> = {};
-          const nullFilters: Record<string, null> = {};
-          const query = {
-            eq: vi.fn((key: string, value: unknown) => {
-              filters[key] = value;
-              return query;
-            }),
-            is: vi.fn((key: string, value: null) => {
-              nullFilters[key] = value;
-              return query;
-            }),
-            select: vi.fn(() => query),
-            maybeSingle: vi.fn(async () => {
-              if (!matches(filters, nullFilters)) return { data: null, error: null };
-              updates.push(payload);
-              Object.assign(row, payload);
-              return { data: { id: row.id, stripe_merchant_account_id: row.stripe_merchant_account_id }, error: null };
-            }),
-          };
-          return query;
-        }),
       };
     }),
   };
@@ -196,6 +214,7 @@ function fakeAdmin(initialMerchantAccountId: string | null) {
     admin: client as unknown as SupabaseClient,
     row,
     updates,
+    rpc,
   };
 }
 
@@ -758,7 +777,108 @@ describe('dark-launched Merchant orchestration', () => {
     expect(fake.row.merchant_fees_collector).toBe('stripe');
     expect(fake.row.merchant_losses_collector).toBe('stripe');
     expect(fake.row.merchant_configuration_api_version).toBe(STRIPE_API_VERSION);
+    expect(fake.rpc).toHaveBeenCalledWith('persist_stripe_merchant_readiness_evidence', {
+      p_workspace_id: WORKSPACE_ID,
+      p_provider_account_id: MERCHANT_ACCOUNT_ID,
+      p_expected_livemode: true,
+      p_evidence: expect.objectContaining({
+        merchant_onboarding_state: 'ready',
+        merchant_configuration_verified_at: VERIFIED_AT.toISOString(),
+      }),
+    });
     expect(fake.updates[0]).not.toHaveProperty('stripe_connect_id');
     expect(fake.updates[0]).not.toHaveProperty('connect_onboarded');
+  });
+
+  it('rejects stale ready evidence after newer disabled evidence wins the row lock', async () => {
+    const olderAt = new Date(VERIFIED_AT.getTime() - 1_000);
+    const newerAt = new Date(VERIFIED_AT.getTime() + 1_000);
+    const olderReady = inspectMerchantReadiness(
+      merchantResponse(),
+      MERCHANT_ACCOUNT_ID,
+      { now: olderAt },
+    );
+    const newerDisabled = inspectMerchantReadiness(
+      merchantResponse({ closed: true }),
+      MERCHANT_ACCOUNT_ID,
+      { now: newerAt },
+    );
+    const fake = fakeAdmin(MERCHANT_ACCOUNT_ID);
+
+    const [newerResult, olderResult] = await Promise.allSettled([
+      persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, newerDisabled),
+      persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, olderReady),
+    ]);
+
+    expect(newerResult.status).toBe('fulfilled');
+    expect(olderResult.status).toBe('rejected');
+    if (olderResult.status !== 'rejected') throw new Error('expected stale persistence to reject');
+    expect(olderResult.reason).toBeInstanceOf(MerchantReadinessStaleWriteError);
+    expect(fake.row.merchant_onboarding_state).toBe('disabled');
+    expect(fake.row.merchant_configuration_verified_at).toBe(newerAt.toISOString());
+    expect(fake.updates).toHaveLength(1);
+  });
+
+  it('converges on newer restricted evidence when the older ready write locks first', async () => {
+    const olderAt = new Date(VERIFIED_AT.getTime() - 1_000);
+    const newerAt = new Date(VERIFIED_AT.getTime() + 1_000);
+    const olderReady = inspectMerchantReadiness(
+      merchantResponse(),
+      MERCHANT_ACCOUNT_ID,
+      { now: olderAt },
+    );
+    const newerRestricted = inspectMerchantReadiness(
+      merchantResponse({ lossesCollector: 'application' }),
+      MERCHANT_ACCOUNT_ID,
+      { now: newerAt },
+    );
+    const fake = fakeAdmin(MERCHANT_ACCOUNT_ID);
+
+    const results = await Promise.allSettled([
+      persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, olderReady),
+      persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, newerRestricted),
+    ]);
+
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
+    expect(fake.row.merchant_onboarding_state).toBe('restricted');
+    expect(fake.row.merchant_configuration_verified_at).toBe(newerAt.toISOString());
+    expect(fake.updates.map((update) => update.merchant_onboarding_state)).toEqual(['ready', 'restricted']);
+  });
+
+  it('treats an equal verification timestamp as a stale replay', async () => {
+    const evidence = inspectMerchantReadiness(
+      merchantResponse(),
+      MERCHANT_ACCOUNT_ID,
+      { now: VERIFIED_AT },
+    );
+    const fake = fakeAdmin(MERCHANT_ACCOUNT_ID);
+
+    await persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, evidence);
+    await expect(persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, evidence))
+      .rejects.toBeInstanceOf(MerchantReadinessStaleWriteError);
+
+    expect(fake.row.merchant_onboarding_state).toBe('ready');
+    expect(fake.row.merchant_configuration_verified_at).toBe(VERIFIED_AT.toISOString());
+    expect(fake.updates).toHaveLength(1);
+  });
+
+  it('fails closed when workspace, provider account, or livemode binding changed', async () => {
+    const evidence = inspectMerchantReadiness(
+      merchantResponse(),
+      MERCHANT_ACCOUNT_ID,
+      { now: VERIFIED_AT },
+    );
+
+    for (const mutate of [
+      (row: FakeAccountRow) => { row.id = OTHER_WORKSPACE_ID; },
+      (row: FakeAccountRow) => { row.stripe_merchant_account_id = 'acct_othermerchant123'; },
+      (row: FakeAccountRow) => { row.merchant_livemode = false; },
+    ]) {
+      const fake = fakeAdmin(MERCHANT_ACCOUNT_ID);
+      mutate(fake.row);
+      await expect(persistMerchantReadinessEvidence(fake.admin, WORKSPACE_ID, evidence))
+        .rejects.toThrow(/workspace mapping mismatch/);
+      expect(fake.updates).toHaveLength(0);
+    }
   });
 });
