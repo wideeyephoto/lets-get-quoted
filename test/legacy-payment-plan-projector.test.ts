@@ -186,7 +186,7 @@ describe('dark service-only legacy payment-plan projector adapter', () => {
     }
   });
 
-  it('stays server-only, unreferenced by active callers, and has no runtime switch', () => {
+  it('stays server-only and is referenced only by the inactive exact-1 coordinator', () => {
     const adapter = join(
       process.cwd(),
       'src',
@@ -194,16 +194,31 @@ describe('dark service-only legacy payment-plan projector adapter', () => {
       'billing',
       'legacy-payment-plan-projector.ts',
     );
+    const coordinator = join(
+      process.cwd(),
+      'src',
+      'lib',
+      'billing',
+      'legacy-payment-projection-coordinator.ts',
+    );
     expect(readFileSync(adapter, 'utf8')).toContain("import 'server-only';");
+    expect(readFileSync(coordinator, 'utf8')).toContain("import 'server-only';");
 
-    const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter((file) => file !== adapter);
-    activeFiles.push(join(process.cwd(), '.env.example'), join(process.cwd(), 'vercel.json'));
+    const allowed = new Set([adapter, coordinator]);
+    const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter((file) => !allowed.has(file));
 
     for (const file of activeFiles) {
       const source = readFileSync(file, 'utf8');
       expect(source).not.toContain('legacy-payment-plan-projector');
       expect(source).not.toContain('project_legacy_payment_plan_payment');
-      expect(source).not.toContain('LEGACY_PAYMENT_PLAN_PROJECTOR_ENABLED');
     }
+
+    const env = readFileSync(join(process.cwd(), '.env.example'), 'utf8');
+    const route = readFileSync(
+      join(process.cwd(), 'src', 'app', 'api', 'stripe', 'webhook', 'route.ts'),
+      'utf8',
+    );
+    expect(env).toContain('LGQ_LEGACY_PAYMENT_PLAN_PROJECTION_ENABLED=0');
+    expect(route).not.toContain('legacy-payment-projection-coordinator');
   });
 });

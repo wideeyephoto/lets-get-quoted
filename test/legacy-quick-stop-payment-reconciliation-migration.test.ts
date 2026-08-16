@@ -207,8 +207,9 @@ describe('dark legacy Quick Stop payment reconciliation migration', () => {
     expect(fail).toContain("task_state = 'dead_letter'");
   });
 
-  it('is reachable only through the exact-1-gated late-refund cron boundary', () => {
+  it('is reachable only through inactive exact-1 coordinator/worker boundaries', () => {
     const allowed = new Set([
+      join(process.cwd(), 'src', 'lib', 'billing', 'legacy-payment-projection-coordinator.ts'),
       join(process.cwd(), 'src', 'lib', 'billing', 'legacy-quick-stop-payment-store.ts'),
       join(process.cwd(), 'src', 'lib', 'billing', 'legacy-quick-stop-late-refund-worker.ts'),
       join(process.cwd(), 'src', 'lib', 'billing', 'legacy-quick-stop-stripe-refund-executor.ts'),
