@@ -378,6 +378,16 @@
 .menuDanger button { color: var(--bad); }
 .menuDanger button:hover { background: rgba(255, 101, 101, 0.14); }
 
+.crewActiveError {
+  grid-column: 1 / -1;
+  flex-basis: 100%;
+  max-width: 22rem;
+  margin: 0.3rem 0.5rem 0.2rem;
+  color: var(--bad);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 .assignForm {
   grid-column: 1 / -1;
   display: flex;
@@ -1032,6 +1042,7 @@
 .drawerSection form { margin-top: 0.9rem; }
 
 .drawerFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--rule-g18); }
+.drawerFoot .crewActiveError { margin-inline: 0; }
 
 @media (max-width: 900px) {
   .rowHead { display: none; }

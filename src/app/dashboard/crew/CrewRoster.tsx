@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
+import { useFormState } from 'react-dom';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
@@ -36,6 +37,7 @@ import {
   inviteCrewAction,
   revokeCrewAccessAction,
   setCrewActiveAction,
+  type CrewActiveActionState,
   updateCrewAction,
   updateCrewPhotoAction,
 } from './actions';
@@ -105,6 +107,8 @@ export type CrewRow = {
 };
 
 type JobOption = { id: string; ref: string; clientName: string };
+
+const CREW_ACTIVE_ACTION_IDLE: CrewActiveActionState = { status: 'idle', message: '' };
 
 const SORTS = [
   { id: 'name', label: 'Name' },
@@ -994,6 +998,35 @@ function hoursHrefFor(row: CrewRow, basePath = '/dashboard'): string {
   return `${basePath}/crew?tab=hours&crew=${row.id}`;
 }
 
+/**
+ * Archive/reactivate form with a durable place for an entitlement refusal.
+ *
+ * A thrown Server Action error is intentionally opaque in a production Next
+ * build. useFormState keeps the database's mapped cap/remediation sentence as
+ * ordinary UI state, beside either place the owner can press Reactivate.
+ */
+function CrewActiveForm({ row, surface }: { row: CrewRow; surface: 'menu' | 'drawer' }) {
+  const action = useMemo(
+    () => setCrewActiveAction.bind(null, row.id, !row.active),
+    [row.active, row.id],
+  );
+  const [state, formAction] = useFormState(action, CREW_ACTIVE_ACTION_IDLE);
+  const menu = surface === 'menu';
+
+  return (
+    <>
+      <form action={formAction} className={menu ? styles.menuDanger : undefined}>
+        <button type="submit" role={menu ? 'menuitem' : undefined} className={menu ? undefined : 'btn ghost'}>
+          {row.active ? (menu ? 'Archive crew member' : 'Archive') : (menu ? 'Reactivate crew member' : 'Reactivate')}
+        </button>
+      </form>
+      {state.status === 'error' ? (
+        <p className={styles.crewActiveError} role="alert">{state.message}</p>
+      ) : null}
+    </>
+  );
+}
+
 // Close the row menu by ref containment on mousedown, NOT by a click listener:
 // Next hydrates into `document`, so React's delegated handler and a document
 // listener sit on the same node and stopPropagation can't keep them apart. A
@@ -1116,11 +1149,7 @@ function CrewActions({
                 <button type="submit" role="menuitem">Remove field-app access</button>
               </form>
             ) : null}
-            <form action={setCrewActiveAction.bind(null, row.id, !row.active)} className={styles.menuDanger}>
-              <button type="submit" role="menuitem">
-                {row.active ? 'Archive crew member' : 'Reactivate crew member'}
-              </button>
-            </form>
+            <CrewActiveForm row={row} surface="menu" />
             </>
             )}
           </div>
@@ -1734,9 +1763,7 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               ) : null}
             </div>
           )}
-          <form action={setCrewActiveAction.bind(null, row.id, !row.active)}>
-            <button type="submit" className="btn ghost">{row.active ? 'Archive' : 'Reactivate'}</button>
-          </form>
+          <CrewActiveForm row={row} surface="drawer" />
           {!row.active ? (
             <ConfirmActionButton
               action={deleteArchivedCrewAction.bind(null, row.id)}

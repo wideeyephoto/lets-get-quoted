@@ -10,17 +10,16 @@ import { normalizePayType } from '@/lib/pay-types';
 import { validateManualEnd } from '@/lib/time-clock';
 import { clockOut, getTimeEntry } from '@/lib/time-clock-data';
 import {
-  createCrewMember,
   deleteArchivedCrewMember,
   listCrew,
   listCrewIdsForJob,
   saveCrewStartAddress,
-  setCrewActive,
   setCrewArrivalPermissions,
   setJobCrewAssignments,
   updateCrewPhoto,
   updateCrewMember,
 } from '@/lib/crew';
+import { createCrewMemberForSeatGate, setCrewActiveForSeatGate } from '@/lib/billing/crew-seat-entitlement';
 import { countLaborEntriesForCrew, countPayRecordsForCrew, laborEntryLockReason } from '@/lib/crew-pay-data';
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { createCost, getJob } from '@/lib/jobs';
@@ -124,7 +123,7 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
     // error on screen that read as though nothing had been saved at all.
     if (isCrewPhotoFile(photo)) validateCrewPhotoFile(photo);
 
-    const member = await createCrewMember(supabase, accountId, {
+    const member = await createCrewMemberForSeatGate(supabase, createAdminClient, accountId, {
       name,
       phone,
       email,
@@ -255,13 +254,39 @@ export async function updateCrewPhotoAction(crewId: string, formData: FormData) 
   revalidatePath('/dashboard/schedule');
 }
 
-export async function setCrewActiveAction(crewId: string, active: boolean) {
+export type CrewActiveActionState = {
+  status: 'idle' | 'saved' | 'error';
+  message: string;
+};
+
+export async function setCrewActiveAction(
+  crewId: string,
+  active: boolean,
+  _previous: CrewActiveActionState,
+  _formData: FormData,
+): Promise<CrewActiveActionState> {
+  // Keep the established auth/account redirects out of the error-state catch:
+  // Next implements redirect() as a thrown sentinel, and swallowing it would
+  // strand a signed-out or suspended owner on this form instead of navigating.
   const { supabase, accountId } = await requireOwnerContext();
 
-  await setCrewActive(supabase, accountId, crewId, active);
+  try {
+    await setCrewActiveForSeatGate(supabase, createAdminClient, accountId, crewId, active);
+  } catch (error) {
+    // Reactivation is a counted-seat transition. Returning the mapped database
+    // sentence is deliberate: thrown Server Action errors are redacted in
+    // production, which would turn an at-cap/remediation decision into a
+    // content-free "server error" beside the button that needs to explain it.
+    console.error('setCrewActiveAction failed:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'That crew member could not be updated. Try again.',
+    };
+  }
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
+  return { status: 'saved', message: '' };
 }
 
 export async function deleteArchivedCrewAction(crewId: string) {

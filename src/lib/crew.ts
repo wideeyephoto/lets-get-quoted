@@ -73,7 +73,7 @@ export type CrewInput = {
  * Only the amount belonging to the chosen type is stored — a stale salary left
  * on somebody switched back to hourly would be invisible and wrong.
  */
-function payColumns(input: CrewInput): Record<string, unknown> {
+function payColumns(input: CrewInput) {
   const payType = normalizePayType(input.payType);
   const annualSalary = payType === 'salary' ? input.annualSalary ?? null : null;
   const dayRate = payType === 'day_rate' ? input.dayRate ?? null : null;
@@ -102,6 +102,27 @@ function isMissingColumn(error: { code?: string } | null): boolean {
 function cleanEmail(email: string | null | undefined): string | null {
   const value = (email ?? '').trim().toLowerCase();
   return value || null;
+}
+
+/**
+ * The canonical columns for a new employee roster identity.
+ *
+ * Shared with the entitlement RPC adapter so the dark path and the legacy path
+ * cannot derive pay, normalize email, or choose defaults differently. The
+ * database RPC still fixes `worker_type = 'employee'`, `active = true`, and the
+ * authoritative account id itself; this object is only the application-facing
+ * value preparation.
+ */
+export function crewMemberCreateColumns(accountId: string, input: CrewInput) {
+  return {
+    account_id: accountId,
+    name: input.name,
+    phone: input.phone,
+    email: cleanEmail(input.email),
+    role_label: input.roleLabel?.trim() || 'Laborer',
+    photo_path: input.photoPath ?? null,
+    ...payColumns(input),
+  };
 }
 
 export type CrewWorkHistoryItem = {
@@ -177,18 +198,11 @@ export async function createCrewMember(
   accountId: string,
   input: CrewInput
 ): Promise<CrewMember> {
-  const base = {
-    account_id: accountId,
-    name: input.name,
-    phone: input.phone,
-    email: cleanEmail(input.email),
-    role_label: input.roleLabel?.trim() || 'Laborer',
-    photo_path: input.photoPath ?? null,
-  };
+  const values = crewMemberCreateColumns(accountId, input);
 
   const { data, error } = await supabase
     .from('crew')
-    .insert({ ...base, ...payColumns(input) })
+    .insert(values)
     .select('*')
     .single();
 
@@ -197,7 +211,15 @@ export async function createCrewMember(
 
   const retry = await supabase
     .from('crew')
-    .insert({ ...base, hourly_rate: input.hourlyRate ?? 0 })
+    .insert({
+      account_id: values.account_id,
+      name: values.name,
+      phone: values.phone,
+      email: values.email,
+      role_label: values.role_label,
+      photo_path: values.photo_path,
+      hourly_rate: input.hourlyRate ?? 0,
+    })
     .select('*')
     .single();
   if (retry.error || !retry.data) throw retry.error ?? new Error('Unable to add crew member');
