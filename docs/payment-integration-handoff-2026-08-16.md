@@ -4,19 +4,44 @@ This is the durable payment/billing integration checkpoint as of 2026-08-16 in `
 
 ## Executive state
 
-- Published implementation checkpoint before this handoff-only update: GitHub `main` at `fb5b7d5716771033fcdeb7fa6ae27dce5c6a3eb6` (`Add dark late-success operator resolution`)
+- Latest implementation checkpoint before this handoff-only update: GitHub `main` at `29630334e944a24784fa3e1a695d3f91ee8b3b58` (`Add dark legacy Checkout generation foundation`). The local equivalent commit is `b423f57928a717467c6e9f168636d1c2af74e2bf`; both point to the identical reviewed tree `8169e5a2b1b669019cbffde07db81102dd230f97`.
+- Checkpoint CI run `31977824627` completed successfully. Vercel deployment `dpl_FQDWibWAjXGyaXxDGsdVhT1bfs9v` is READY, sourced from exact commit `29630334`, has no alias error, and is aliased to `letsgetquoted.com`.
+- Preceding operator-resolution checkpoint: GitHub `main` at `fb5b7d5716771033fcdeb7fa6ae27dce5c6a3eb6` (`Add dark late-success operator resolution`).
 - Branch: `codex/pricing-backend-20260815`
 - Remote: `https://github.com/wideeyephoto/lets-get-quoted.git`
-- The primary local checkout remained clean at `192c9f23ffd932dc287371c890d1d5f3de317a1b`; the exact 13-file implementation tree was independently verified in an isolated checkout and published atomically through the authenticated GitHub connector. There is no unpublished work in the primary checkout, but it is one implementation commit behind live GitHub `main` until it can fetch.
-- Implementation-checkpoint GitHub Actions run `31975757683` completed successfully, including tests, SEO and stock-image contracts, typecheck, lint, and build. Vercel production deployment `dpl_A5zPa493exKM4BN9CcagfPvHV6Ex` is READY, sourced from exact commit `fb5b7d57`, and aliased to `letsgetquoted.com` without error.
-- The admin readiness, legacy projection cutover, direct Checkout generation, late-success reconciliation, and late-success operator-resolution slices are committed separately, pushed, and independently reviewed.
+- The untouched primary checkout remains at `192c9f23ffd932dc287371c890d1d5f3de317a1b`, three published commits behind live GitHub `main` (two implementation commits plus one handoff-only commit). The active isolated checkout contains the current equivalent implementation tree and the WIP ownership recorded below.
+- The preceding operator-resolution GitHub Actions run `31975757683` completed successfully, including tests, SEO and stock-image contracts, typecheck, lint, and build. Its Vercel production deployment `dpl_A5zPa493exKM4BN9CcagfPvHV6Ex` was READY, sourced from exact commit `fb5b7d57`, and aliased without error before the newer checkpoint deployment replaced it.
+- The admin readiness, legacy projection cutover, direct Checkout generation, late-success reconciliation, late-success operator-resolution, and legacy destination Checkout-generation foundation slices are committed separately, pushed, and independently reviewed.
 - All new Stripe Billing, Merchant direct-charge, and entitlement gates remain dark because the exact-`1` flags and required provider configuration are absent.
-- Generation recovery, the direct-settlement admin summary, the legacy late-success summary, and late-success reconciliation are installed on staging only. The new operator-resolution migration and its versioned replacement late-success summary were rollback-validated but not permanently applied anywhere.
+- Generation recovery, the direct-settlement admin summary, the legacy late-success summary, and late-success reconciliation are installed on staging only. The operator-resolution migration, its versioned replacement late-success summary, and the legacy destination Checkout-generation foundation were rollback-validated but not permanently applied anywhere.
 - No Stripe endpoint, Price, secret, Vercel environment, or production Supabase configuration was changed.
 
 ## Git status and ownership
 
-Immediately before editing this handoff update, the primary checkout was clean at `192c9f23ffd932dc287371c890d1d5f3de317a1b`. The isolated verification checkout was clean at local commit `aba6fd0e319881ec2a3607a662f3db18710b847a`; its tree `6eef5df4d038458850a61f5c299a7369b67e9799` exactly matches published GitHub commit `fb5b7d5716771033fcdeb7fa6ae27dce5c6a3eb6`. These are historical pre-publication assertions; publishing this document will intentionally create a newer documentation-only commit.
+Immediately before staging this handoff-only update, the active checkout is at local commit `b423f57928a717467c6e9f168636d1c2af74e2bf`; its tree `8169e5a2b1b669019cbffde07db81102dd230f97` exactly matches published GitHub commit `29630334e944a24784fa3e1a695d3f91ee8b3b58`. The index is empty. Apart from this document, the worktree contains exactly the three pre-existing WIP paths listed below; none belongs in the handoff commit. Publishing this document will intentionally create a newer documentation-only commit.
+
+### Resume checkpoint — legacy destination Checkout generation foundation — commit `29630334`
+
+The latest published implementation checkpoint is deliberately SQL-only and runtime-inert. It contains exactly:
+
+```text
+migrations/20260816221500_legacy_destination_checkout_generation_foundation.sql
+test/legacy-destination-checkout-generation-migration.test.ts
+```
+
+The migration adds a private, FORCE-RLS destination-Checkout generation/event ledger and seven service-role-only RPC contracts. It serializes replacement generations, requires signed expiration before replacement, preserves historical failure as a no-op, and turns historical paid truth into an immutable payment hold. It creates no caller, route, scheduler, provider request, environment change, or activation path. The focused static suite passed `8/8`; the full migration installed twice against staging inside rollback-only transactions. An executable smoke proved the existing gate-OFF legacy Session update still succeeds, a caller-forged custom GUC cannot mutate protected lineage (`42501`), and every new object/history row was absent after rollback.
+
+The migration is **applied nowhere**. Its permanent preflight intentionally refuses any destination payment that already has a Checkout Session pointer until a separately reviewed provider audit/backfill exists. Read-only counts at this checkpoint were: staging `14` destination payments and `0` Session pointers; production `267` destination payments and `4` Session pointers (`2` paid, `1` processing, `1` failed). No production database write occurred.
+
+Current WIP changes exist in exactly three paths outside the checkpoint commit and index:
+
+```text
+.env.example
+src/lib/billing/legacy-destination-checkout-operation.ts
+test/legacy-destination-checkout-operation.test.ts
+```
+
+`.env.example` is a tracked modification; the module and test are untracked. They are work-in-progress ownership for the next slice, not a deployable checkpoint. The module's current provider contract is not yet activation-safe: create/replay validation is not bound to all immutable claim facts (payment, generation, operation, request fingerprint, amount, application fee, destination account, expected customer, and exact metadata). Do not stage the flag example or either TypeScript file until that binding and its negative tests are complete. All deployed gates remain absent/OFF.
 
 ### Integrated admin Billing-operations readiness — commit `06e9874b`
 
@@ -117,6 +142,8 @@ d26b9bb5 Update payment integration handoff
 d5bbaed2 Update payment integration handoff after staging apply
 192c9f23 Normalize payment integration handoff newline
 fb5b7d57 Add dark late-success operator resolution
+d352e6fd Update payment integration handoff
+29630334 Add dark legacy Checkout generation foundation
 ```
 
 ## Supabase state
@@ -177,14 +204,15 @@ The three latest staging-only migrations—generation recovery, the direct-settl
 | Repository migration | State |
 |---|---|
 | `20260816213000_direct_checkout_late_success_operator_resolution.sql` | Full staging install/source/ACL/NULL-input smoke passed inside `BEGIN/ROLLBACK`; no permanent history row or schema object was created on staging or production. |
+| `20260816221500_legacy_destination_checkout_generation_foundation.sql` | Full staging install passed twice inside rollback-only transactions; gate-OFF legacy writes and forged-GUC rejection were exercised; no permanent history row or schema object was created on staging or production. Production's four existing destination Session pointers intentionally fail its permanent-install preflight pending provider-audited adoption/backfill. |
 
 Production has the Terms columns and the later consent migration, but it does not have a `terms_acceptance_prerequisite_20260816` history row. Reconcile that historical prerequisite; do not blindly reapply it.
 
 ### Live data readiness
 
-Staging currently has one account and one current entitlement, but zero Merchant accounts, zero recently verified Merchant accounts, zero Billing events, zero direct payments, zero direct Checkout operations, zero generation-v2 operations, zero Checkout-expiration rows, zero current Checkout-operation pointers, zero late-success tasks, zero held payments, zero settlement tasks/attempts, zero subscriptions, zero subscription Checkout operations, zero allowance-reset attempts, zero Quick Stop tasks, zero payment plans, zero invoices with line items, and zero requested invoice payments with line items. Generation, direct-settlement-summary, and late-success-reconciliation schemas/functions are installed; the operator-resolution ledger/RPCs/summary are absent. Staging is not ready for a real direct Checkout E2E without creating a Stripe Test Merchant and eligible fixture.
+Staging currently has one account and one current entitlement, but zero Merchant accounts, zero recently verified Merchant accounts, zero Billing events, zero direct payments, zero direct Checkout operations, zero generation-v2 operations, zero Checkout-expiration rows, zero current Checkout-operation pointers, zero late-success tasks, zero held payments, zero settlement tasks/attempts, zero subscriptions, zero subscription Checkout operations, zero allowance-reset attempts, zero Quick Stop tasks, zero payment plans, zero invoices with line items, and zero requested invoice payments with line items. It has 14 legacy destination payments and zero legacy destination Checkout Session pointers. Generation, direct-settlement-summary, and late-success-reconciliation schemas/functions are installed; the operator-resolution ledger/RPCs/summary and legacy destination Checkout-generation ledger/RPCs are absent. Staging is not ready for a real direct Checkout E2E without creating a Stripe Test Merchant and eligible fixture.
 
-Production has six accounts/entitlements, zero Merchant accounts/readiness, zero Billing events/subscriptions/subscription Checkout operations, and one payment plan. That plan has a timestamp-only payoff lock, is not active, and has two unresolved plan payments. `payoff_payment_id` is absent because the binding migration is staging-only. There are no plan/Quick Stop target rows among the older destination payments missing PaymentIntent IDs. Production does not have the Checkout-generation schema, either active admin summary, the late-success task/hold schema, the operator-resolution schema, or their history rows.
+Production has six accounts/entitlements, zero Merchant accounts/readiness, zero Billing events/subscriptions/subscription Checkout operations, and one payment plan. That plan has a timestamp-only payoff lock, is not active, and has two unresolved plan payments. `payoff_payment_id` is absent because the binding migration is staging-only. There are no plan/Quick Stop target rows among the older destination payments missing PaymentIntent IDs. Production has 267 legacy destination payments, including four with Checkout Session pointers (two paid, one processing, one failed). It does not have the Checkout-generation schema, either active admin summary, the late-success task/hold schema, the operator-resolution schema, the legacy destination Checkout-generation schema, or their history rows.
 
 ## Stripe configuration
 
@@ -241,6 +269,7 @@ No environment variable or deployment configuration was changed during this chec
 - `LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED`
 - `LGQ_LEGACY_PAYMENT_PLAN_PROJECTION_ENABLED`
 - `LGQ_LEGACY_QUICK_STOP_RECONCILIATION_ENABLED`
+- `LGQ_LEGACY_DESTINATION_CHECKOUT_GENERATION_ENABLED` (WIP-only `.env.example` entry is `0`; no deployed reader exists.)
 
 The gates require the exact string `1`; absent/malformed values are OFF.
 
@@ -311,7 +340,8 @@ Canonical add-ons include: 250 texts for $12 one-time; 1,000 texts for $42; 5,00
 - Checkout-generation commit `3539df7c`: exact six-file staged diff reviewed; focused suites passed 43/43 and the exact nine-suite adjacent gate passed 91/91, plus full typecheck, scoped Next lint, and cached diff checks. GitHub Actions run `31966151221` and Vercel deployment `dpl_FyXuYUfguFRS6TJBKJV5MJnZWRcJ` passed/are READY.
 - Late-success commit `34daea64`: exact 16-file staged diff independently reviewed with no unrelated hunk; 23 suites/338 tests, full no-incremental typecheck, official scoped Next lint, and cached diff checks passed. GitHub Actions run `31971274232` and Vercel deployment `dpl_E3B73FxNu6hvaVKtrxhoRWSJeNGc` passed/are READY. The deployment is sourced from Git `main` at the exact commit, has no alias error, and serves `letsgetquoted.com`.
 - Operator-resolution commit `fb5b7d57`: exact 13-file tree independently reviewed with no unrelated hunk; focused tests passed 108/108 and the broader payment/admin subset passed 374/374, plus full no-incremental typecheck, official scoped Next lint, cached diff checks, and independent P0/P1/P2 review. The local verification commit `aba6fd0e` and published commit `fb5b7d57` have the identical tree `6eef5df4`. GitHub Actions run `31975757683` completed successfully; its unit, SEO, stock-image, typecheck, lint, and build steps all passed. Vercel deployment `dpl_A5zPa493exKM4BN9CcagfPvHV6Ex` is READY, production, sourced from Git `main` at exact commit `fb5b7d57`, aliased to `letsgetquoted.com`, and has no alias error.
-- At the published implementation checkpoint, live GitHub `main == fb5b7d5716771033fcdeb7fa6ae27dce5c6a3eb6`. Immediately before editing this handoff update, both local checkouts had clean indexes/worktrees at their historical SHAs described under Git status and ownership.
+- Legacy destination Checkout-generation foundation `29630334`: exact two-file tree independently reviewed with no unrelated hunk; local `b423f579` and published `29630334` share tree `8169e5a2b1b669019cbffde07db81102dd230f97`. Focused static tests passed 8/8. The full migration installed twice against staging inside rollback-only transactions; the executable gate-OFF/forged-GUC smoke passed and post-rollback object/history absence was verified. GitHub Actions run `31977824627` completed successfully. Vercel deployment `dpl_FQDWibWAjXGyaXxDGsdVhT1bfs9v` is READY, production, sourced from exact commit `29630334`, aliased to `letsgetquoted.com`, and has no alias error.
+- At the latest implementation checkpoint, live GitHub `main == 29630334e944a24784fa3e1a695d3f91ee8b3b58`. The active checkout/index/WIP state immediately before this handoff-only commit is recorded under Git status and ownership.
 
 ### Transactional and staging evidence
 
@@ -336,7 +366,7 @@ Canonical add-ons include: 250 texts for $12 one-time; 1,000 texts for $42; 5,00
 
 ## Known unresolved issues
 
-The five integrated dark slices have no commit/deploy blocker. The following are program-level activation blockers and hardening debt.
+The six integrated dark slices have no commit blocker. The following are program-level activation blockers and hardening debt.
 
 ### P0 — do not activate until resolved
 
@@ -349,7 +379,7 @@ The five integrated dark slices have no commit/deploy blocker. The following are
 7. Subscription activation lacks configured webhook/Prices/workers, portal/cancel UI, upgrade/downgrade/resubscription/current-subscription precedence, dunning/grace/recovery operations, operator dead-letter/requeue, and real Stripe duplicate/out-of-order/test-clock E2E.
 8. Legacy plan/Quick Stop projection flags must stay off until the production 0915/0930/1000 migrations are present, the one timestamp-only payoff lock is explicitly bound or cleared, the exact live webhook event subscription is proven, saved-card behavior is tested, and Quick Stop late-refund monitoring is operational.
 9. Late direct success fails closed through a durable task and immutable payment hold established before provider reads. The worker can verify the predecessor's paid truth and neutralize or manualize the successor. The new dark operator-resolution slice can settle exact eligible predecessor truth once or durably retain the hold without clearing/reparenting lineage, and any uncovered later paid task reactivates the financial fence. Its migration is not installed, it has no MFA/staff-authorized caller, and the committed two-session harness plus Stripe Test flow have not run. Keep the connected projection worker OFF until those gates pass and are monitored.
-10. Legacy Checkout replacement is not serialized by an expected-old-Session CAS. Two overlapping callers can disclose two valid replacement Sessions; the last writer becomes current, and settlement from the other disclosed Session becomes a fixed webhook contradiction. Keep both legacy projection flags OFF until replacement is serialized/idempotent or every disclosed Session is durably tracked.
+10. The SQL-only legacy destination Checkout-generation foundation now durably models serialized replacement and historical paid holds, but it is applied nowhere and has no safe caller. The uncommitted provider adapter is not yet bound to the immutable claim's payment/generation/operation/fingerprint, cents/fee, destination/customer, and metadata facts. Keep `LGQ_LEGACY_DESTINATION_CHECKOUT_GENERATION_ENABLED` plus both legacy projection flags absent/OFF, and do not apply or wire the foundation until provider binding, unconditional signed-event classification, audited adoption/backfill, and race tests are complete.
 11. Before generation, late-success, or operator-resolution migration apply to production, Checkout-operation, immutable expiration, direct-payment, current-pointer, late-task, held-payment, and resolution ledgers must satisfy the reviewed zero/compatibility preflight. Staging passed the installed-slice checks and remains zero; query production immediately before apply and stop for explicit reconciliation if any predicate is nonzero or ambiguous. `20260816213000` also deliberately refuses any existing direct payment/operation/task until an exact backfill design exists.
 
 ### P1 — activation/product gaps
@@ -387,11 +417,11 @@ The five integrated dark slices have no commit/deploy blocker. The following are
 
 ## Activation order
 
-1. **Completed:** integrate admin readiness, legacy webhook wiring, generation recovery, late-success reconciliation, and late-success operator resolution as five exact-scope commits while every flag remains absent/OFF. The exact operator-resolution CI/Vercel publication result is recorded in Verification completed.
+1. **Completed:** integrate admin readiness, legacy webhook wiring, generation recovery, late-success reconciliation, late-success operator resolution, and the SQL-only legacy destination Checkout-generation foundation as exact-scope commits while every deployed flag remains absent/OFF. The destination foundation is committed but intentionally applied nowhere and has no caller.
 2. **Completed on staging only:** run zero-ledger preflights and install generation recovery (`20260816190316`), the admin summary (`20260816204815`), and late-success reconciliation (`20260816204826`); verify catalog, dynamic sources, triggers, RLS/ACLs, aggregate privacy, negative behavior, and zero-ledger preservation. No caller or provider configuration was enabled.
 3. **Code complete, runtime evidence pending:** the additive operator-resolution migration and disposable two-session harness are checked in and locally/rollback verified. Obtain a correctly isolated empty PG17 target, run the destructive harness once, destroy the target, then—only in a separately authorized operation—apply `20260816213000` to staging and reverify catalog, ACL/RLS, aggregate privacy, zero/fixture cleanup, and immutable evidence. The current Supabase organization cannot provide the required preview branch.
-4. Fix concurrent legacy Checkout replacement with an expected-old-Session CAS/idempotency design or a durable record for every disclosed Session, plus equivalent two-session race coverage.
-5. Reconcile production Terms history. Then, only after explicit production authorization and immediate preflights, apply in order: `20260815224559`, `20260816073000`, `080000`, `083000`, `084500`, `090000`, `091500`, `093000`, `094500`, `100000`, `20260816161844`, `20260816175955`, `20260816194056`, and `20260816213000`, followed by any future database migration required for serialized legacy replacement. Use repository order and stop on any nonzero unexpected ledger or ambiguity predicate.
+4. Complete the legacy destination Checkout runtime against the committed ledger: pass the full immutable claim contract into provider create/retrieve validation; reject every amount, fee, destination, customer, metadata, payment, generation, operation, or fingerprint mismatch; classify signed events against the ledger even while projection flags are OFF; and add replacement/provider-loss/delayed-event races. Design and audit adoption/backfill before any permanent apply.
+5. Reconcile production Terms history. Then, only after explicit production authorization and immediate preflights, apply in order: `20260815224559`, `20260816073000`, `080000`, `083000`, `084500`, `090000`, `091500`, `093000`, `094500`, `100000`, `20260816161844`, `20260816175955`, `20260816194056`, and `20260816213000`. The later `20260816221500` destination-generation foundation must not be included until a separately reviewed provider-audited adoption/backfill migration makes the four existing production Session pointers unambiguous. Use repository order and stop on any nonzero unexpected ledger or ambiguity predicate.
 6. In Stripe Test, create a Merchant through the v2 flow and verify monotonic readiness. Create all six test Prices with exact catalog amount/cadence/currency/tax behavior/metadata.
 7. Create separate Test Billing and connected-payment webhook destinations with distinct secrets. Reconcile the legacy Test event list, including `charge.refunded` where required. Keep all Vercel gates OFF.
 8. Exercise signed inbox delivery, duplicates, out-of-order events, retries, expiration, late success, generation two, successor neutralization, operator hold resolution, settlement, direct refunds, Quick Stop late refunds, annual reset, and test-clock subscription flows.
@@ -426,6 +456,8 @@ The five integrated dark slices have no commit/deploy blocker. The following are
 
 ## Exact next task
 
-Design and implement one isolated dark fix for concurrent legacy Checkout replacement. Add an expected-old-Session/generation CAS or a durable operation that makes replacement idempotent and records every disclosed Session. Cover replacement-versus-replacement in both winner orders, a losing provider-created Session, delayed success/failure from either disclosed Session, exact replay, and OFF-gate behavior. A losing Session must be made non-collectible or durably quarantined before it can be returned; never rely on event order or last-writer-wins.
+First finish only the three-file dark adapter/contract WIP listed in the resume checkpoint; add no caller or webhook wiring in that slice. Bind provider creation and replay verification to the entire immutable SQL claim: payment ID, operation PK/ID, generation, request fingerprint, exact gross/application-fee cents and fee rate, destination account, livemode, expected customer, and reserved metadata. Validate those facts before completion or presentation, and add negative unit tests for every mismatched field. Preserve stable ACH/card idempotency identities, quarantine or expire every losing/unsafe provider-created Session, and never return a URL until completion plus presentation confirmation both succeed. The signed-event work in this first slice is an adapter contract only; it must not be described as active event intake.
+
+Only after that isolated adapter slice and an audited staging adoption/install plan should a separate, explicitly scoped webhook-wiring and executable-concurrency slice be proposed. That later slice must make signed destination Checkout event classification ledger-aware independently of projection flags, cover replacement-versus-replacement in both winner orders, provider response loss, delayed success/failure from every disclosed Session, exact replay, and gate-OFF behavior, and include the necessary route, route-test, and two-session harness files. `20260816221500` itself remains unapplied, so no runtime path may call its RPCs yet.
 
 In parallel, obtain a correctly marked disposable PG17 target, run the checked-in operator-resolution harness exactly once, destroy the target, and preserve its evidence. Only after that evidence and a fresh zero-ledger preflight may `20260816213000` be proposed for a separately authorized staging apply. Keep every gate OFF. No production migration, Stripe endpoint/Price mutation, Vercel environment change, secret change, or activation is authorized by this handoff.
