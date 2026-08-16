@@ -28,8 +28,13 @@ import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
+import {
+  loadMerchantOnboardingSurfaceForOwner,
+  stripeMerchantOnboardingV2Enabled,
+} from '@/lib/billing/merchant-onboarding-entrypoint';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import PlanUsageSection from './PlanUsageSection';
+import MerchantOnboardingSection from './MerchantOnboardingSection';
 
 export const metadata = { title: 'Account' };
 
@@ -40,13 +45,14 @@ function formatDate(value: string): string {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { year?: string; quickbooks?: string };
+  searchParams: { year?: string; quickbooks?: string; merchant_onboarding?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const pricingDashboardEnabled = planUsageDashboardEnabled();
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
+  const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -73,6 +79,12 @@ export default async function SettingsPage({
       // deploying the code ahead of the production migration cannot disturb
       // the existing Account page.
       pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
+      // A separate exact-1 gate keeps the Accounts v2 surface and its
+      // service-role readiness read completely dark. This does not replace or
+      // alter the live Recipient payout card above it.
+      merchantOnboardingEnabled
+        ? loadMerchantOnboardingSurfaceForOwner({ accountId })
+        : Promise.resolve(null),
     ]);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
@@ -315,7 +327,11 @@ export default async function SettingsPage({
             // be linked to AT ALL — the same bug job-costing had, and the
             // reason a contrast sweep that walks tabs by anchor never rendered
             // this tab and never saw what was wrong on it.
-            anchors: pricingDashboardEnabled ? ['payouts'] : ['payouts', 'platform-fee'],
+            anchors: [
+              'payouts',
+              ...(merchantOnboardingEnabled && merchantOnboarding ? ['merchant-payments'] : []),
+              ...(!pricingDashboardEnabled ? ['platform-fee'] : []),
+            ],
             content: (
               <>
                 <section className="panel workspace-section-card" id="payouts">
@@ -327,6 +343,13 @@ export default async function SettingsPage({
                     pendingPaymentsCount={pendingPaymentsCount ?? 0}
                   />
                 </section>
+
+                {merchantOnboardingEnabled && merchantOnboarding ? (
+                  <MerchantOnboardingSection
+                    surface={merchantOnboarding}
+                    feedback={searchParams.merchant_onboarding}
+                  />
+                ) : null}
 
                 {!pricingDashboardEnabled ? (
                   <section className="panel workspace-section-card" id="platform-fee">

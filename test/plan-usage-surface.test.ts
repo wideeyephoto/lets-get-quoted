@@ -37,7 +37,9 @@ describe('Plan & usage navigation', () => {
     expect(PAGE).toContain("...(showSubscriptionCheckout ? ['choose-paid-plan'] : [])");
     expect(PAGE).toContain("'usage-balances'");
     expect(PAGE).toContain("'included-limits'");
-    expect(PAGE).toContain("anchors: pricingDashboardEnabled ? ['payouts'] : ['payouts', 'platform-fee']");
+    expect(PAGE).toContain("id: 'payments'");
+    expect(PAGE).toContain("'payouts'");
+    expect(PAGE).toContain("...(!pricingDashboardEnabled ? ['platform-fee'] : [])");
     expect(SECTION).toContain('id="platform-fee"');
     expect(TABS).toContain("plan: '");
   });
