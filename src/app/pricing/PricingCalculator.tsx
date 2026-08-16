@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { PLANS, annualPlanEstimate, planCrossover, type BillingCycle, type PlanId } from './pricing-catalog';
+import { rankPlanCosts } from './pricing-ranking';
 import styles from './pricing.module.css';
 
 type Props = {
@@ -35,9 +36,12 @@ export default function PricingCalculator({ billing, volume, includeVoice, offic
     annualCost: annualPlanEstimate(plan, billing, volume, includeVoice, officeUsers, needsDedicatedNumber),
   })), [billing, includeVoice, needsDedicatedNumber, officeUsers, volume]);
   const eligible = results.filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null);
-  const ranked = [...eligible].sort((a, b) => a.annualCost - b.annualCost);
-  const winner = ranked[0];
-  const runnerUp = ranked[1];
+  const ranking = rankPlanCosts(results.map(({ plan, annualCost }) => ({ planId: plan.id, annualCost })));
+  const winner = eligible.find((result) => result.plan.id === ranking.winner?.planId) ?? eligible[0];
+  const runnerUp = eligible.find((result) => result.plan.id === ranking.runnerUp?.planId);
+  const tiedPlans = ranking.tiedPlanIds
+    .filter((planId) => planId !== winner.plan.id)
+    .map((planId) => LABELS[planId]);
   const savings = runnerUp ? Math.max(0, runnerUp.annualCost - winner.annualCost) : 0;
   const highestCost = Math.max(...eligible.map((result) => result.annualCost), 1);
   const updateDisplayedVolume = (value: number) => onVolumeChange(Math.min(MAX_VOLUME, Math.max(0, Math.round((Number.isFinite(value) ? value : 0) * divisor))));
@@ -71,22 +75,22 @@ export default function PricingCalculator({ billing, volume, includeVoice, offic
       </div>
 
       <div className={styles.calculatorAnswer} data-plan={winner.plan.id}>
-        <span className={styles.srOnly} aria-live="polite">{winner.plan.name} is the lowest-cost eligible plan at {money(volume)} in annual payments.</span>
-        <span>At {money(volume)} in annual payments</span><div className={styles.answerPlan}><small>Your lowest-cost eligible plan</small><strong>{winner.plan.name}</strong></div>
+        <span className={styles.srOnly} aria-live="polite">{tiedPlans.length > 0 ? `${winner.plan.name} ties ${tiedPlans.join(' and ')} for lowest cost and is recommended for its additional included capability` : `${winner.plan.name} is the lowest-cost eligible plan`} at {money(volume)} in annual payments.</span>
+        <span>At {money(volume)} in annual payments</span><div className={styles.answerPlan}><small>{tiedPlans.length > 0 ? 'Lowest-cost tie · more included capability' : 'Your lowest-cost eligible plan'}</small><strong>{winner.plan.name}</strong></div>
         <div className={styles.answerCost}><strong>{money(winner.annualCost / 12)}</strong><span>/month effective</span></div>
-        <p>{money(winner.annualCost)}/year total{runnerUp ? ` · saves ${money(savings)}/year compared with ${runnerUp.plan.name}` : ''}</p><span className={styles.answerStripe}>Stripe processing is paid separately.</span>
+        <p>{money(winner.annualCost)}/year total{tiedPlans.length > 0 ? ` · same estimated price as ${tiedPlans.join(' and ')}` : runnerUp ? ` · saves ${money(savings)}/year compared with ${runnerUp.plan.name}` : ''}</p><span className={styles.answerStripe}>Stripe processing is paid separately.</span>
         <div className={styles.answerActions}><a className={styles.calculatorCta} href={signupHref(winner.plan.id, billing, includeVoice)}>{winner.plan.id === 'flex' ? 'Start with Flex' : `Choose ${winner.plan.name}`}</a><a href="#plans">Compare plan details</a></div>
       </div>
     </div>
 
     <div className={styles.costRace} aria-label="Estimated annual plan costs">
-      <div className={styles.costRaceHeading}><span>Estimated annual cost <b>Lower is better</b></span><small>Subscription + LGQ platform fee{includeVoice ? ' + AI Voice Receptionist' : ''}</small></div>
-      {results.map(({ plan, annualCost }) => { const isWinner = winner.plan.id === plan.id; const excluded = annualCost === null; return <article className={isWinner ? styles.costBarWinner : excluded ? styles.costBarIneligible : undefined} data-plan={plan.id} key={plan.id}>
-        <div className={styles.costBarHeading}><span>{plan.name}</span>{isWinner ? <em>Best fit</em> : excluded ? <em>Not eligible</em> : null}</div><span className={styles.costBarTrack} aria-hidden="true"><span style={{ width: excluded ? '0%' : `${Math.max(6, (annualCost / highestCost) * 100)}%` }} /></span><strong>{excluded ? 'Needs Solo+' : money(annualCost)}</strong>
+      <div className={styles.costRaceHeading}><span>Estimated annual cost <b>Lower is better</b></span><small>Subscription + LGQ platform fee{includeVoice ? ' + each plan’s base AI Voice package' : ''}</small></div>
+      {results.map(({ plan, annualCost }) => { const isWinner = winner.plan.id === plan.id; const isTied = !isWinner && ranking.tiedPlanIds.includes(plan.id); const excluded = annualCost === null; return <article className={isWinner ? styles.costBarWinner : excluded ? styles.costBarIneligible : undefined} data-plan={plan.id} key={plan.id}>
+        <div className={styles.costBarHeading}><span>{plan.name}</span>{isWinner ? <em>Best fit</em> : isTied ? <em>Same price</em> : excluded ? <em>Not eligible</em> : null}</div><span className={styles.costBarTrack} aria-hidden="true"><span style={{ width: excluded ? '0%' : `${Math.max(6, (annualCost / highestCost) * 100)}%` }} /></span><strong>{excluded ? 'Needs Solo+' : money(annualCost)}</strong>
       </article>; })}
     </div>
 
-    <div className={styles.crossoverGrid}><div><p className={styles.miniEyebrow}>Where the math changes</p><h3>Three natural handoff points.</h3><p>These are price breakpoints, not forced upgrades. Team, phone, and workflow capacity still matter.</p></div><ol>{crossovers.map((item, index) => <li key={`${item.from.id}-${item.to.id}`}><span className={styles.crossoverNumber}>0{index + 1}</span><div><span>{LABELS[item.from.id]} → {LABELS[item.to.id]}</span><strong>{money(item.volume)}/year</strong></div></li>)}</ol></div>
-    <p className={styles.calculatorFinePrint}>Estimate includes the selected subscription, LGQ platform fee, extra office users, and the base AI Voice Receptionist package when selected. It assumes usage stays within included minutes and excludes Stripe processing, taxes, and optional top-ups.</p>
+    <div className={styles.crossoverGrid}><div><p className={styles.miniEyebrow}>Where the math changes</p><h3>Three natural handoff points.</h3><p>These are price breakpoints, not forced upgrades. Team, phone, and workflow capacity still matter.{includeVoice ? ' Voice breakpoints compare each plan’s base package, not equal minute allowances.' : ''}</p></div><ol>{crossovers.map((item, index) => <li key={`${item.from.id}-${item.to.id}`}><span className={styles.crossoverNumber}>0{index + 1}</span><div><span>{LABELS[item.from.id]} → {LABELS[item.to.id]}</span><strong>{money(item.volume)}/year</strong></div></li>)}</ol></div>
+    <p className={styles.calculatorFinePrint}>Estimate includes the selected subscription, LGQ platform fee, extra office users, and each plan’s base AI Voice Receptionist package when selected. Growth includes 200 AI-connected minutes; Flex, Solo, and Scale include 100. The comparison assumes usage stays within each package and excludes Stripe processing, taxes, and optional top-ups.</p>
   </div>;
 }
