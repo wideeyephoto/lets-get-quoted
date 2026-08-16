@@ -6,7 +6,7 @@ import {
   type BillingPlanId,
 } from '@/lib/billing/catalog';
 
-export type PaymentFeeSnapshot = {
+export type PaymentFeeSnapshot = Readonly<{
   planCode: BillingPlanId;
   catalogVersion: typeof PRICING_CATALOG_VERSION;
   feeRateBps: number;
@@ -14,7 +14,7 @@ export type PaymentFeeSnapshot = {
   grossAmountCents: number;
   eligibleServiceSubtotalCents: number;
   applicationFeeCents: number;
-};
+}>;
 
 function requireNonNegativeInteger(value: number, label: string): number {
   if (!Number.isSafeInteger(value) || value < 0) {
@@ -99,7 +99,7 @@ export function createPaymentFeeSnapshot(input: {
     throw new Error('eligibleServiceSubtotalCents cannot exceed grossAmountCents.');
   }
 
-  return {
+  return Object.freeze({
     planCode: plan.id,
     catalogVersion: PRICING_CATALOG_VERSION,
     feeRateBps: plan.platformFeeBps,
@@ -107,5 +107,5 @@ export function createPaymentFeeSnapshot(input: {
     grossAmountCents,
     eligibleServiceSubtotalCents,
     applicationFeeCents: platformFeeCents(eligibleServiceSubtotalCents, plan),
-  };
+  });
 }

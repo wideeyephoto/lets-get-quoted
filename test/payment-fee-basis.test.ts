@@ -83,11 +83,13 @@ describe('LGQ payment fee basis', () => {
   });
 
   it('creates an immutable plan/version/rate snapshot from eligible cents', () => {
-    expect(createPaymentFeeSnapshot({
+    const snapshot = createPaymentFeeSnapshot({
       plan: 'scale',
       grossAmountCents: 108_00,
       eligibleServiceSubtotalCents: 100_00,
-    })).toEqual({
+    });
+
+    expect(snapshot).toEqual({
       planCode: 'scale',
       catalogVersion: '2026-08-15-preview',
       feeRateBps: 10,
@@ -96,6 +98,7 @@ describe('LGQ payment fee basis', () => {
       eligibleServiceSubtotalCents: 100_00,
       applicationFeeCents: 10,
     });
+    expect(Object.isFrozen(snapshot)).toBe(true);
   });
 
   it('maps legacy development plans safely while the database migrates', () => {
