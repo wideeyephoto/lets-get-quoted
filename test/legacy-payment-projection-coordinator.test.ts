@@ -143,12 +143,38 @@ describe('DARK legacy destination-payment projection coordinator', () => {
   });
 
   it('does not construct the default service-role client while both gates are off', async () => {
-    const request = input({ paymentId: 'old-path-does-not-validate-this' });
+    const savedCard = vi.fn(async () => ({ stripeCustomerId: 'cus_must_not_load' }));
+    const request = {
+      ...input({ paymentId: 'old-path-does-not-validate-this' }),
+      savedCard,
+    };
 
     await expect(coordinateLegacyDestinationPaymentProjection(request, { env: {} }))
       .resolves.toMatchObject({ bindingChecked: false, plan: 'legacy', quickStop: 'legacy' });
     expect(request.legacy.plan).toHaveBeenCalledTimes(1);
     expect(request.legacy.quickStop).toHaveBeenCalledTimes(1);
+    expect(savedCard).not.toHaveBeenCalled();
+  });
+
+  it('does not let the independent Quick Stop flag add work to a non-Quick-Stop callback', async () => {
+    const request = input();
+    const injected = services();
+    const savedCard = vi.fn(async () => ({ stripeCustomerId: 'cus_must_not_load' }));
+
+    await expect(coordinateLegacyDestinationPaymentProjection({
+      ...request,
+      savedCard,
+      legacy: { plan: request.legacy.plan },
+    }, {
+      env: enabled(LEGACY_QUICK_STOP_RECONCILIATION_FLAG),
+      services: injected,
+    })).resolves.toMatchObject({ bindingChecked: false, plan: 'legacy', quickStop: 'not_requested' });
+
+    expect(request.legacy.plan).toHaveBeenCalledTimes(1);
+    expect(injected.loadBinding).not.toHaveBeenCalled();
+    expect(injected.projectPlan).not.toHaveBeenCalled();
+    expect(injected.reconcileQuickStop).not.toHaveBeenCalled();
+    expect(savedCard).not.toHaveBeenCalled();
   });
 
   it('replaces rather than duplicates enabled plan and Quick Stop transitions', async () => {
@@ -203,6 +229,44 @@ describe('DARK legacy destination-payment projection coordinator', () => {
     expect(injected.projectPlan).toHaveBeenCalledWith(expect.objectContaining({
       paymentId: PAYMENT_ID,
     }));
+  });
+
+  it('resolves saved-card evidence lazily only for an enabled bound deposit', async () => {
+    const request = input();
+    const injected = services();
+    const savedCard = vi.fn(async () => ({
+      stripeCustomerId: 'cus_lazy_customer',
+      stripePaymentMethodId: 'pm_lazy_card',
+      cardBrand: 'visa',
+      cardLast4: '4242',
+    }));
+
+    await coordinateLegacyDestinationPaymentProjection({ ...request, savedCard }, {
+      env: enabled(LEGACY_PAYMENT_PLAN_PROJECTION_FLAG),
+      services: injected,
+    });
+
+    expect(savedCard).toHaveBeenCalledTimes(1);
+    expect(injected.projectPlan).toHaveBeenCalledWith({
+      paymentId: PAYMENT_ID,
+      stripeCustomerId: 'cus_lazy_customer',
+      stripePaymentMethodId: 'pm_lazy_card',
+      cardBrand: 'visa',
+      cardLast4: '4242',
+    });
+
+    const payoffRequest = input();
+    const payoffServices = services(binding({ kind: 'final' }));
+    const payoffSavedCard = vi.fn(async () => ({ stripeCustomerId: 'cus_must_not_load' }));
+    await coordinateLegacyDestinationPaymentProjection({
+      ...payoffRequest,
+      savedCard: payoffSavedCard,
+    }, {
+      env: enabled(LEGACY_PAYMENT_PLAN_PROJECTION_FLAG),
+      services: payoffServices,
+    });
+    expect(payoffSavedCard).not.toHaveBeenCalled();
+    expect(payoffServices.projectPlan).toHaveBeenCalledWith({ paymentId: PAYMENT_ID });
   });
 
   it('cuts over either side independently without layering its legacy callback', async () => {
@@ -418,7 +482,7 @@ describe('DARK legacy destination-payment projection coordinator', () => {
     await expect(store.load(PAYMENT_ID)).rejects.toBe(databaseError);
   });
 
-  it('is server-only, inactive, and documents both gates as zero', () => {
+  it('is server-only, wired behind dark exact-1 gates, and documents both gates as zero', () => {
     const coordinator = readFileSync(join(
       process.cwd(),
       'src',
@@ -438,9 +502,12 @@ describe('DARK legacy destination-payment projection coordinator', () => {
     const env = readFileSync(join(process.cwd(), '.env.example'), 'utf8');
 
     expect(coordinator.startsWith("import 'server-only';")).toBe(true);
-    expect(webhook).not.toContain('legacy-payment-projection-coordinator');
-    expect(webhook).not.toContain(LEGACY_PAYMENT_PLAN_PROJECTION_FLAG);
-    expect(webhook).not.toContain(LEGACY_QUICK_STOP_RECONCILIATION_FLAG);
+    expect(webhook).toContain('legacy-payment-projection-coordinator');
+    expect(webhook).toContain('coordinateLegacyDestinationPaymentProjection');
+    expect(webhook).toContain('legacyPaymentPlanProjectionEnabled');
+    expect(webhook).toContain('legacyQuickStopReconciliationEnabled');
+    expect(env).toContain('signed legacy webhook is the gated caller');
+    expect(env).not.toContain('No active caller exists yet');
     expect(env).toContain(`${LEGACY_PAYMENT_PLAN_PROJECTION_FLAG}=0`);
     expect(env).toContain(`${LEGACY_QUICK_STOP_RECONCILIATION_FLAG}=0`);
     expect(new LegacyPaymentProjectionContractError('fixed').message).toBe('fixed');

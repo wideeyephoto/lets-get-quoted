@@ -18,11 +18,12 @@ import {
 /**
  * DARK cutover boundary for legacy destination-payment side effects.
  *
- * This module has no active caller. A future signed legacy Stripe webhook may
- * replace (never layer) its plan and Quick Stop callbacks with the transactional
- * RPCs by calling this coordinator. While both exact-1 flags are off, the
- * coordinator returns through the supplied legacy callbacks before constructing
- * an admin client, reading a payment binding, or calling either new RPC.
+ * The signed legacy Stripe webhook calls this boundary only after its existing
+ * destination-rail guard and primary payment compare-and-set. The coordinator
+ * then replaces (never layers) its plan and Quick Stop callbacks with the
+ * transactional RPCs. While both exact-1 flags are off, it returns through the
+ * supplied legacy callbacks before constructing an admin client, reading a
+ * payment binding, resolving saved-card evidence, or calling either new RPC.
  */
 
 export const LEGACY_PAYMENT_PLAN_PROJECTION_FLAG =
@@ -98,7 +99,12 @@ export type LegacyProjectionCallbacks = Readonly<{
 
 export type LegacyProjectionCoordinatorInput = Readonly<{
   event: LegacyProjectionEventBinding;
-  savedCard?: LegacyProjectionSavedCardEvidence;
+  /**
+   * Saved-card evidence may require a provider retrieve. Keep it lazy so the
+   * disabled path and non-deposit events perform no new Stripe work.
+   */
+  savedCard?: LegacyProjectionSavedCardEvidence
+    | (() => Promise<LegacyProjectionSavedCardEvidence>);
   legacy: LegacyProjectionCallbacks;
 }>;
 
@@ -359,6 +365,13 @@ async function runLegacyCallbacks(
   });
 }
 
+async function resolveSavedCardEvidence(
+  evidence: LegacyProjectionCoordinatorInput['savedCard'],
+): Promise<LegacyProjectionSavedCardEvidence> {
+  if (!evidence) return Object.freeze({});
+  return typeof evidence === 'function' ? evidence() : evidence;
+}
+
 export async function coordinateLegacyDestinationPaymentProjection(
   input: LegacyProjectionCoordinatorInput,
   options: LegacyProjectionCoordinatorOptions = {},
@@ -370,7 +383,14 @@ export async function coordinateLegacyDestinationPaymentProjection(
   // This must remain the first effectful branch. In particular, do not validate
   // new event fields or construct the service-role client while both gates are
   // off; the old webhook callbacks retain their exact pre-cutover behavior.
-  if (!planProjectionEnabled && !quickStopReconciliationEnabled) {
+  // A Quick Stop-only cutover is irrelevant when this exact legacy path never
+  // had a Quick Stop callback (all non-completed-Checkout events). Treat that as
+  // disabled too so the independent Quick Stop flag cannot add binding reads to
+  // unrelated payment-plan callbacks.
+  if (
+    !planProjectionEnabled
+    && (!quickStopReconciliationEnabled || !input.legacy.quickStop)
+  ) {
     return runLegacyCallbacks(input.legacy);
   }
 
@@ -396,8 +416,11 @@ export async function coordinateLegacyDestinationPaymentProjection(
       || (event.outcome === 'failed' && payment.kind === 'final')
     )
   ) {
+    const savedCard = payment.kind === 'deposit'
+      ? await resolveSavedCardEvidence(input.savedCard)
+      : Object.freeze({});
     planProjection = await services.projectPlan({
-      ...input.savedCard,
+      ...savedCard,
       // Keep the database-verified identity authoritative even if an untyped
       // caller passes an unexpected paymentId property in the evidence object.
       paymentId: payment.paymentId,

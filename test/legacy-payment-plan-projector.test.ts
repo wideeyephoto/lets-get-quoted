@@ -186,7 +186,7 @@ describe('dark service-only legacy payment-plan projector adapter', () => {
     }
   });
 
-  it('stays server-only and is referenced only by the inactive exact-1 coordinator', () => {
+  it('stays server-only and is reachable only through the dark exact-1 coordinator', () => {
     const adapter = join(
       process.cwd(),
       'src',
@@ -219,6 +219,9 @@ describe('dark service-only legacy payment-plan projector adapter', () => {
       'utf8',
     );
     expect(env).toContain('LGQ_LEGACY_PAYMENT_PLAN_PROJECTION_ENABLED=0');
-    expect(route).not.toContain('legacy-payment-projection-coordinator');
+    expect(route).toContain('legacy-payment-projection-coordinator');
+    expect(route).toContain('legacyPaymentPlanProjectionEnabled');
+    expect(route).not.toContain('legacy-payment-plan-projector');
+    expect(route).not.toContain('project_legacy_payment_plan_payment');
   });
 });

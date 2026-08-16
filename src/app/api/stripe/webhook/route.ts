@@ -14,6 +14,14 @@ import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
 import {
+  coordinateLegacyDestinationPaymentProjection,
+  legacyPaymentPlanProjectionEnabled,
+  legacyQuickStopReconciliationEnabled,
+  type LegacyProjectionCallbacks,
+  type LegacyProjectionEventType,
+  type LegacyProjectionSavedCardEvidence,
+} from '@/lib/billing/legacy-payment-projection-coordinator';
+import {
   inspectLegacyDestinationPaymentRail,
   isLegacyDestinationPayment,
   reversedPlatformFee,
@@ -24,6 +32,197 @@ import {
 export const dynamic = 'force-dynamic';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+const STRIPE_CHECKOUT_SESSION_PATTERN = /^cs_(?:test_)?[A-Za-z0-9_]+$/;
+const STRIPE_PAYMENT_INTENT_PATTERN = /^pi_[A-Za-z0-9_]+$/;
+const LEGACY_PROVIDER_BINDING_CONTRADICTION =
+  'legacy_payment_provider_binding_contradiction';
+const LEGACY_PROVIDER_BINDING_LOOKUP_FAILED =
+  'legacy_payment_provider_binding_lookup_failed';
+const LEGACY_PROVIDER_BINDING_MISSING =
+  'legacy_payment_provider_binding_missing';
+const LEGACY_WEBHOOK_HANDLER_ERROR = 'legacy_payment_webhook_handler_error';
+const FIXED_LEGACY_WEBHOOK_ERRORS = new Set([
+  LEGACY_PROVIDER_BINDING_CONTRADICTION,
+  LEGACY_PROVIDER_BINDING_LOOKUP_FAILED,
+  LEGACY_PROVIDER_BINDING_MISSING,
+]);
+
+function expandableStripeId(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const id = (value as { id?: unknown }).id;
+  return typeof id === 'string' ? id : null;
+}
+
+function paymentIntentId(value: unknown): string | null {
+  return expandableStripeId(value);
+}
+
+function normalizedLegacyWebhookError(error: unknown): string {
+  if (error && typeof error === 'object' && !Array.isArray(error)) {
+    const code = (error as { code?: unknown }).code;
+    if (
+      typeof code === 'string'
+      && /^(?:[0-9A-Z]{5}|PGRST[0-9]{3})$/.test(code)
+    ) {
+      return `legacy_payment_database_error_${code.toLowerCase()}`;
+    }
+  }
+  if (error && typeof error === 'object' && !Array.isArray(error)) {
+    const contract = error as { name?: unknown; code?: unknown };
+    if (
+      contract.name === 'LegacyPaymentProjectionContractError'
+      && typeof contract.code === 'string'
+      && /^[a-z][a-z0-9_]{2,80}$/.test(contract.code)
+    ) {
+      return contract.code;
+    }
+  }
+  if (error instanceof Error && FIXED_LEGACY_WEBHOOK_ERRORS.has(error.message)) {
+    return error.message;
+  }
+  return LEGACY_WEBHOOK_HANDLER_ERROR;
+}
+
+type LegacyPaymentIntentCheckoutBinding = Readonly<{
+  checkoutSessionId: string | null;
+}>;
+
+/**
+ * Session-less Charge and PaymentIntent events still need a Checkout-generation
+ * identity before an enabled cutover may mutate a row. Stripe's filtered list
+ * is authoritative for that reverse lookup. No matching Session means this is
+ * a true off-session intent, which is bound only to a row with no Session.
+ */
+async function resolveLegacyPaymentIntentCheckoutBinding(
+  stripe: ReturnType<typeof getStripeClient>,
+  exactPaymentIntentId: string,
+  paymentId: string,
+): Promise<LegacyPaymentIntentCheckoutBinding> {
+  if (!STRIPE_PAYMENT_INTENT_PATTERN.test(exactPaymentIntentId)) {
+    throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
+  }
+
+  const sessions = await stripe.checkout.sessions.list({
+    payment_intent: exactPaymentIntentId,
+    limit: 2,
+  }).catch(() => {
+    throw new Error(LEGACY_PROVIDER_BINDING_LOOKUP_FAILED);
+  });
+  if (!Array.isArray(sessions.data) || sessions.data.length > 1) {
+    throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
+  }
+  if (sessions.data.length === 0) {
+    return Object.freeze({ checkoutSessionId: null });
+  }
+
+  const [session] = sessions.data;
+  if (
+    !session
+    || !STRIPE_CHECKOUT_SESSION_PATTERN.test(session.id)
+    || session.mode !== 'payment'
+    || paymentIntentId(session.payment_intent) !== exactPaymentIntentId
+    || session.metadata?.payment_id !== paymentId
+  ) {
+    throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
+  }
+
+  return Object.freeze({ checkoutSessionId: session.id });
+}
+
+function savedCardEvidenceFromPaymentIntent(
+  intent: Stripe.PaymentIntent,
+  fallbackCustomer: unknown = null,
+): LegacyProjectionSavedCardEvidence {
+  const paymentMethod = intent.payment_method;
+  const expandedPaymentMethod = paymentMethod && typeof paymentMethod === 'object'
+    ? paymentMethod
+    : null;
+
+  return Object.freeze({
+    stripeCustomerId: expandableStripeId(intent.customer)
+      ?? expandableStripeId(fallbackCustomer),
+    stripePaymentMethodId: expandableStripeId(paymentMethod),
+    cardBrand: expandedPaymentMethod?.card?.brand ?? null,
+    cardLast4: expandedPaymentMethod?.card?.last4 ?? null,
+  });
+}
+
+/**
+ * Preserve the legacy deposit activation's best-effort saved-card capture.
+ * This function is passed lazily to the coordinator, so it performs no provider
+ * work unless the plan flag is exactly 1 and the bound payment is a deposit.
+ */
+async function loadLegacySavedCardEvidence(
+  stripe: ReturnType<typeof getStripeClient>,
+  paymentIntent: string | Stripe.PaymentIntent | null,
+  fallbackCustomer: unknown = null,
+): Promise<LegacyProjectionSavedCardEvidence> {
+  if (!paymentIntent) {
+    return Object.freeze({
+      stripeCustomerId: expandableStripeId(fallbackCustomer),
+    });
+  }
+
+  const signedEvidence = typeof paymentIntent === 'object'
+    ? savedCardEvidenceFromPaymentIntent(paymentIntent, fallbackCustomer)
+    : Object.freeze({
+        stripeCustomerId: expandableStripeId(fallbackCustomer),
+      });
+  if (
+    typeof paymentIntent === 'object'
+    && paymentIntent.payment_method
+    && typeof paymentIntent.payment_method === 'object'
+  ) {
+    return signedEvidence;
+  }
+
+  const exactPaymentIntentId = typeof paymentIntent === 'string'
+    ? paymentIntent
+    : paymentIntent.id;
+
+  try {
+    const intent = await stripe.paymentIntents.retrieve(exactPaymentIntentId, {
+      expand: ['payment_method'],
+    });
+    if (intent.id !== exactPaymentIntentId) {
+      throw new Error('Stripe returned a different PaymentIntent.');
+    }
+    return savedCardEvidenceFromPaymentIntent(intent, fallbackCustomer);
+  } catch {
+    // This is intentionally best-effort, matching the pre-cutover activation.
+    // The transactional projector may still activate the plan without card
+    // evidence; installments remain unchargeable until a card is captured.
+    console.error('Legacy payment-plan saved-card lookup failed.');
+    // Preserve the customer / PaymentMethod IDs from the signed event even when
+    // Stripe's best-effort expansion read is temporarily unavailable.
+    return signedEvidence;
+  }
+}
+
+async function coordinateLegacyPaymentSideEffects(input: Readonly<{
+  eventId: string;
+  eventType: LegacyProjectionEventType;
+  eventObjectId: string;
+  paymentIntentId: string | null;
+  paymentId: string;
+  outcome: 'settled' | 'failed';
+  legacy: LegacyProjectionCallbacks;
+  savedCard?: () => Promise<LegacyProjectionSavedCardEvidence>;
+}>): Promise<void> {
+  await coordinateLegacyDestinationPaymentProjection({
+    event: {
+      eventId: input.eventId,
+      eventType: input.eventType,
+      eventObjectId: input.eventObjectId,
+      paymentIntentId: input.paymentIntentId,
+      paymentId: input.paymentId,
+      outcome: input.outcome,
+    },
+    legacy: input.legacy,
+    savedCard: input.savedCard,
+  });
+}
 
 // Emails the account owner an out-of-band alert. Best-effort by contract: a
 // send failure is swallowed so it can never bubble out of a webhook handler
@@ -62,10 +261,21 @@ async function markPaymentPaid(
   admin: ReturnType<typeof createAdminClient>,
   paymentId: string,
   stripePaymentIntent: string | null,
+  exactProviderBinding: Readonly<{
+    checkoutSessionId: string | null;
+    requirePaymentIntent: boolean;
+    replacePaymentIntent?: boolean;
+  }> | null = null,
 ): Promise<{ legacyRailAuthorized: boolean; transitioned: boolean; alreadyPaid: boolean }> {
   const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
   if (rail.kind !== 'allowed') {
     return { legacyRailAuthorized: false, transitioned: false, alreadyPaid: false };
+  }
+  if (
+    exactProviderBinding?.requirePaymentIntent
+    && (!stripePaymentIntent || !STRIPE_PAYMENT_INTENT_PATTERN.test(stripePaymentIntent))
+  ) {
+    throw new Error(LEGACY_PROVIDER_BINDING_MISSING);
   }
 
   // Stripe delivers webhooks at-least-once and can overlap a retry with a still-
@@ -89,6 +299,18 @@ async function markPaymentPaid(
     })
     .eq('id', paymentId);
   if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+  if (exactProviderBinding) {
+    transition = exactProviderBinding.checkoutSessionId === null
+      ? transition.is('stripe_checkout_session', null)
+      : transition.eq('stripe_checkout_session', exactProviderBinding.checkoutSessionId);
+    if (!exactProviderBinding.replacePaymentIntent) {
+      // A true off-session event has no Session generation to prove ownership,
+      // so it may bind only NULL or its already-exact PaymentIntent.
+      transition = transition.or(
+        `stripe_payment_intent.is.null,stripe_payment_intent.eq.${stripePaymentIntent}`,
+      );
+    }
+  }
   const { data: transitioned, error: paymentError } = await transition
     .in('status', ['requested', 'processing', 'failed'])
     .select('invoice_id')
@@ -101,6 +323,21 @@ async function markPaymentPaid(
   // Already paid (or no longer in a payable state) — nothing transitioned, so
   // don't re-run the reconcile or re-notify.
   if (!transitioned) {
+    if (exactProviderBinding) {
+      return {
+        legacyRailAuthorized: true,
+        transitioned: false,
+        alreadyPaid: await classifyLegacyPaymentProjectionNoop(admin, {
+          paymentId,
+          expectedStatus: 'paid',
+          outcome: 'settled',
+          chargeModelColumnPresent: rail.chargeModelColumnPresent,
+          checkoutSessionId: exactProviderBinding.checkoutSessionId,
+          stripePaymentIntent,
+        }),
+      };
+    }
+
     // A webhook replay is the repair path for a crash after the payment CAS
     // won but before Quick Stop confirmation. Prove the row is already paid on
     // the same authorized rail; a refunded/disputed/canceled row must not
@@ -128,33 +365,157 @@ async function markPaymentPaid(
 
   await sendPaymentSmsEvent(paymentId, 'payment_paid');
   await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
-
-  // If this payment belongs to a payment plan, advance the plan: a deposit
-  // activates + schedules the installments, a payoff closes the plan, an
-  // installment checks for completion. No-ops for one-off payments.
-  await handlePlanPaymentSettled(admin, paymentId);
   return { legacyRailAuthorized: true, transitioned: true, alreadyPaid: false };
 }
 
 async function markLegacyPaymentFailed(
   admin: ReturnType<typeof createAdminClient>,
   paymentId: string,
-  match: { statuses?: string[]; status?: string; checkoutSessionId?: string } = {},
-): Promise<{ handled: boolean; transitioned: { id: string } | null }> {
+  match: {
+    statuses?: string[];
+    status?: string;
+    checkoutSessionId?: string | null;
+    stripePaymentIntent?: string | null;
+    bindPaymentIntent?: boolean;
+    replacePaymentIntent?: boolean;
+  } = {},
+): Promise<{
+  handled: boolean;
+  chargeModelColumnPresent: boolean;
+  transitioned: { id: string } | null;
+}> {
   const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
-  if (rail.kind !== 'allowed') return { handled: false, transitioned: null };
+  if (rail.kind !== 'allowed') {
+    return {
+      handled: false,
+      chargeModelColumnPresent: false,
+      transitioned: null,
+    };
+  }
+  const writesPaymentIntent = match.bindPaymentIntent || match.replacePaymentIntent;
+  if (
+    writesPaymentIntent
+    && match.stripePaymentIntent !== null
+    && (
+      typeof match.stripePaymentIntent !== 'string'
+      || !STRIPE_PAYMENT_INTENT_PATTERN.test(match.stripePaymentIntent)
+    )
+  ) {
+    throw new Error(LEGACY_PROVIDER_BINDING_MISSING);
+  }
+  if (match.bindPaymentIntent && !match.stripePaymentIntent) {
+    throw new Error(LEGACY_PROVIDER_BINDING_MISSING);
+  }
 
   let transition = admin
     .from('payments')
-    .update({ status: 'failed' })
+    .update({
+      status: 'failed',
+      ...(writesPaymentIntent
+        ? { stripe_payment_intent: match.stripePaymentIntent }
+        : {}),
+    })
     .eq('id', paymentId);
   if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
-  if (match.checkoutSessionId) transition = transition.eq('stripe_checkout_session', match.checkoutSessionId);
+  if (Object.prototype.hasOwnProperty.call(match, 'checkoutSessionId')) {
+    transition = match.checkoutSessionId === null
+      ? transition.is('stripe_checkout_session', null)
+      : transition.eq('stripe_checkout_session', match.checkoutSessionId);
+  }
+  if (Object.prototype.hasOwnProperty.call(match, 'stripePaymentIntent')) {
+    // The exact current Checkout Session is the generation boundary. Its
+    // signed provider fact may replace a predecessor generation's PI.
+    if (!match.replacePaymentIntent && match.bindPaymentIntent) {
+      // The first failed provider event may be the first place a legacy row sees
+      // an off-session PI. Bind NULL once; a conflict cannot win this CAS.
+      transition = transition.or(
+        `stripe_payment_intent.is.null,stripe_payment_intent.eq.${match.stripePaymentIntent}`,
+      );
+    } else if (!match.replacePaymentIntent) {
+      transition = match.stripePaymentIntent === null
+        ? transition.is('stripe_payment_intent', null)
+        : transition.eq('stripe_payment_intent', match.stripePaymentIntent);
+    }
+  }
   if (match.status) transition = transition.eq('status', match.status);
   if (match.statuses) transition = transition.in('status', match.statuses);
   const { data: transitioned, error } = await transition.select('id').maybeSingle();
   if (error) throw error;
-  return { handled: true, transitioned };
+  return {
+    handled: true,
+    chargeModelColumnPresent: rail.chargeModelColumnPresent,
+    transitioned,
+  };
+}
+
+/**
+ * A projector/reconciler error happens after the primary payment CAS. On the
+ * Stripe retry, prove that exact CAS result still owns the row before retrying
+ * only the flagged projection. The disabled path never calls this read.
+ */
+async function classifyLegacyPaymentProjectionNoop(
+  admin: ReturnType<typeof createAdminClient>,
+  input: Readonly<{
+    paymentId: string;
+    expectedStatus: 'paid' | 'failed';
+    outcome: 'settled' | 'failed';
+    chargeModelColumnPresent: boolean;
+    checkoutSessionId?: string | null;
+    stripePaymentIntent: string | null;
+  }>,
+): Promise<boolean> {
+  const columns = [
+    'id',
+    'status',
+    'stripe_checkout_session',
+    'stripe_payment_intent',
+    ...(input.chargeModelColumnPresent ? ['charge_model'] : []),
+  ].join(', ');
+  let replay = admin
+    .from('payments')
+    .select(columns)
+    .eq('id', input.paymentId);
+  if (input.chargeModelColumnPresent) replay = replay.eq('charge_model', 'destination');
+  const { data, error } = await replay.maybeSingle();
+  if (error) throw error;
+  if (!data) return false;
+
+  const row = data as {
+    status?: unknown;
+    stripe_checkout_session?: unknown;
+    stripe_payment_intent?: unknown;
+  };
+  const providerIdentityExact = (
+    input.checkoutSessionId === undefined
+    || row.stripe_checkout_session === input.checkoutSessionId
+  ) && row.stripe_payment_intent === input.stripePaymentIntent;
+  if (row.status === input.expectedStatus && providerIdentityExact) return true;
+
+  // A signed failure for a provider-verified predecessor Session is harmless
+  // once a different valid Session is current. It must not fail or project the
+  // successor generation. Settled predecessor facts remain contradictions
+  // because money may have moved and require operator reconciliation.
+  if (
+    input.outcome === 'failed'
+    && typeof input.checkoutSessionId === 'string'
+    && typeof row.stripe_checkout_session === 'string'
+    && STRIPE_CHECKOUT_SESSION_PATTERN.test(row.stripe_checkout_session)
+    && row.stripe_checkout_session !== input.checkoutSessionId
+  ) {
+    return false;
+  }
+
+  const legitimateTerminalStatuses = input.outcome === 'settled'
+    ? new Set(['refunded', 'disputed', 'canceled'])
+    : new Set(['paid', 'refunded', 'disputed', 'canceled']);
+  if (typeof row.status === 'string' && legitimateTerminalStatuses.has(row.status)) {
+    return false;
+  }
+
+  // A current/nonterminal row with a different Session or PI is not a harmless
+  // duplicate. Surface one fixed, PII-free failure so Stripe retries and the
+  // existing webhook-failure signal remains operator-visible.
+  throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
 }
 
 export async function POST(request: Request) {
@@ -188,14 +549,15 @@ export async function POST(request: Request) {
   // but only after we've logged which event tripped it, so a string of these
   // shows up as a Command Center signal instead of silent 500s in a log.
   try {
-    await dispatchStripeEvent(admin, event);
+    await dispatchStripeEvent(admin, event, stripe);
   } catch (err) {
-    console.error(`Stripe webhook handler threw for event ${event.type} (${event.id}):`, err);
+    const errorMessage = normalizedLegacyWebhookError(err);
+    console.error(`Stripe webhook handler threw for event ${event.type} (${event.id}): ${errorMessage}`);
     await logWebhookFailure({
       source: 'stripe',
       eventType: event.type,
       referenceId: event.id,
-      errorMessage: err instanceof Error ? err.message : String(err),
+      errorMessage,
     });
     return NextResponse.json({ error: 'Webhook handler error.' }, { status: 500 });
   }
@@ -203,7 +565,11 @@ export async function POST(request: Request) {
   return NextResponse.json({ received: true });
 }
 
-async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, event: Stripe.Event) {
+async function dispatchStripeEvent(
+  admin: ReturnType<typeof createAdminClient>,
+  event: Stripe.Event,
+  stripe: ReturnType<typeof getStripeClient>,
+) {
   // Checkout session completed — a one-off payment succeeded, OR a recurring
   // plan's card-setup session finished (mode='setup', no charge).
   if (event.type === 'checkout.session.completed') {
@@ -222,16 +588,47 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     } else if (paymentId && session.payment_status === 'paid') {
       const stripePaymentIntent =
         typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
-      const settlement = await markPaymentPaid(admin, paymentId, stripePaymentIntent);
-      // If this payment is a live Quick Stop offer, confirm the appointment
-      // (idempotent compare-and-set; a no-op for every other payment). An
-      // already-paid legacy replay repairs a crash between the two transitions;
-      // a blocked/direct row can never enter this caller.
+      const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
+      const quickStopReconciliationEnabled = legacyQuickStopReconciliationEnabled();
+      const settlement = await markPaymentPaid(
+        admin,
+        paymentId,
+        stripePaymentIntent,
+        planProjectionEnabled || quickStopReconciliationEnabled
+          ? {
+              checkoutSessionId: session.id,
+              requirePaymentIntent: true,
+              replacePaymentIntent: true,
+            }
+          : null,
+      );
+      // The coordinator runs only after the existing rail guard and payment CAS.
+      // With both flags off it preserves the old plan-then-Quick-Stop order. An
+      // enabled projector can repair a crash after the CAS on the already-paid
+      // replay, while a blocked/direct row can never enter this caller.
       if (
         settlement.legacyRailAuthorized
         && (settlement.transitioned || settlement.alreadyPaid)
       ) {
-        await confirmQuickStopPayment(admin, paymentId);
+        await coordinateLegacyPaymentSideEffects({
+          eventId: event.id,
+          eventType: event.type,
+          eventObjectId: session.id,
+          paymentIntentId: stripePaymentIntent,
+          paymentId,
+          outcome: 'settled',
+          savedCard: () => loadLegacySavedCardEvidence(
+            stripe,
+            session.payment_intent,
+            session.customer,
+          ),
+          legacy: {
+            ...(settlement.transitioned || planProjectionEnabled
+              ? { plan: () => handlePlanPaymentSettled(admin, paymentId) }
+              : {}),
+            quickStop: () => confirmQuickStopPayment(admin, paymentId),
+          },
+        });
       }
     }
   }
@@ -246,7 +643,40 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     if (paymentId) {
       const stripePaymentIntent =
         typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
-      await markPaymentPaid(admin, paymentId, stripePaymentIntent);
+      const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
+      const settlement = await markPaymentPaid(
+        admin,
+        paymentId,
+        stripePaymentIntent,
+        planProjectionEnabled
+          ? {
+              checkoutSessionId: session.id,
+              requirePaymentIntent: true,
+              replacePaymentIntent: true,
+            }
+          : null,
+      );
+      if (
+        settlement.legacyRailAuthorized
+        && (settlement.transitioned || settlement.alreadyPaid)
+      ) {
+        await coordinateLegacyPaymentSideEffects({
+          eventId: event.id,
+          eventType: event.type,
+          eventObjectId: session.id,
+          paymentIntentId: stripePaymentIntent,
+          paymentId,
+          outcome: 'settled',
+          savedCard: () => loadLegacySavedCardEvidence(
+            stripe,
+            session.payment_intent,
+            session.customer,
+          ),
+          legacy: settlement.transitioned || planProjectionEnabled
+            ? { plan: () => handlePlanPaymentSettled(admin, paymentId) }
+            : {},
+        });
+      }
     }
   }
 
@@ -254,13 +684,47 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     const session = event.data.object;
     const paymentId = session.metadata?.payment_id;
     if (paymentId) {
-      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+      const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
+      const stripePaymentIntent = paymentIntentId(session.payment_intent);
+      const failure = await markLegacyPaymentFailed(admin, paymentId, {
         statuses: ['requested', 'processing'],
+        ...(planProjectionEnabled
+          ? {
+              checkoutSessionId: session.id,
+              stripePaymentIntent,
+              bindPaymentIntent: true,
+              replacePaymentIntent: true,
+            }
+          : {}),
       });
+      const { transitioned } = failure;
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
-      // Release a held payoff lock if a large ACH payoff bounced.
-      if (transitioned) await handlePlanPaymentFailed(admin, paymentId);
+      const replay = !transitioned
+        && failure.handled
+        && planProjectionEnabled
+        && await classifyLegacyPaymentProjectionNoop(admin, {
+          paymentId,
+          expectedStatus: 'failed',
+          outcome: 'failed',
+          chargeModelColumnPresent: failure.chargeModelColumnPresent,
+          checkoutSessionId: session.id,
+          stripePaymentIntent,
+        });
+      if (transitioned || replay) {
+        await coordinateLegacyPaymentSideEffects({
+          eventId: event.id,
+          eventType: event.type,
+          eventObjectId: session.id,
+          paymentIntentId: stripePaymentIntent,
+          paymentId,
+          outcome: 'failed',
+          legacy: {
+            // Release a held payoff lock if a large ACH payoff bounced.
+            plan: () => handlePlanPaymentFailed(admin, paymentId),
+          },
+        });
+      }
     }
   }
 
@@ -270,15 +734,47 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     const paymentId = session.metadata?.payment_id;
 
     if (paymentId) {
-      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+      const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
+      const stripePaymentIntent = paymentIntentId(session.payment_intent);
+      const failure = await markLegacyPaymentFailed(admin, paymentId, {
         checkoutSessionId: session.id,
         status: 'processing',
+        ...(planProjectionEnabled
+          ? {
+              stripePaymentIntent,
+              replacePaymentIntent: true,
+            }
+          : {}),
       });
+      const { transitioned } = failure;
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
-      // A payment-plan payoff was abandoned — release its lock so the plan
-      // resumes its normal installment schedule.
-      if (transitioned) await handlePlanPaymentFailed(admin, paymentId);
+      const replay = !transitioned
+        && failure.handled
+        && planProjectionEnabled
+        && await classifyLegacyPaymentProjectionNoop(admin, {
+          paymentId,
+          expectedStatus: 'failed',
+          outcome: 'failed',
+          chargeModelColumnPresent: failure.chargeModelColumnPresent,
+          checkoutSessionId: session.id,
+          stripePaymentIntent,
+        });
+      if (transitioned || replay) {
+        await coordinateLegacyPaymentSideEffects({
+          eventId: event.id,
+          eventType: event.type,
+          eventObjectId: session.id,
+          paymentIntentId: stripePaymentIntent,
+          paymentId,
+          outcome: 'failed',
+          legacy: {
+            // Release the abandoned payoff lock so the plan resumes its normal
+            // installment schedule.
+            plan: () => handlePlanPaymentFailed(admin, paymentId),
+          },
+        });
+      }
     }
   }
 
@@ -289,13 +785,60 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
 
     if (paymentId) {
       console.log(`Charge failed for payment ${paymentId}:`, charge.failure_message);
-      const { transitioned } = await markLegacyPaymentFailed(admin, paymentId, {
+      const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
+      const stripePaymentIntent = paymentIntentId(charge.payment_intent);
+      if (planProjectionEnabled) {
+        // Keep the reverse provider lookup behind the legacy destination-rail
+        // guard. A direct/malformed row must never trigger legacy Stripe work.
+        const providerLookupRail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+        if (providerLookupRail.kind !== 'allowed') return;
+      }
+      const providerBinding = planProjectionEnabled
+        ? await resolveLegacyPaymentIntentCheckoutBinding(
+            stripe,
+            stripePaymentIntent ?? '',
+            paymentId,
+          )
+        : null;
+      const failure = await markLegacyPaymentFailed(admin, paymentId, {
         statuses: ['requested', 'processing'],
+        ...(planProjectionEnabled
+          ? {
+              checkoutSessionId: providerBinding?.checkoutSessionId ?? null,
+              stripePaymentIntent,
+              bindPaymentIntent: true,
+              replacePaymentIntent: providerBinding?.checkoutSessionId !== null,
+            }
+          : {}),
       });
+      const { transitioned } = failure;
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
-      // Release a held payoff lock if this failed charge was a plan payoff.
-      if (transitioned) await handlePlanPaymentFailed(admin, paymentId);
+      const replay = !transitioned
+        && failure.handled
+        && planProjectionEnabled
+        && await classifyLegacyPaymentProjectionNoop(admin, {
+          paymentId,
+          expectedStatus: 'failed',
+          outcome: 'failed',
+          chargeModelColumnPresent: failure.chargeModelColumnPresent,
+          checkoutSessionId: providerBinding?.checkoutSessionId ?? null,
+          stripePaymentIntent,
+        });
+      if (transitioned || replay) {
+        await coordinateLegacyPaymentSideEffects({
+          eventId: event.id,
+          eventType: event.type,
+          eventObjectId: charge.id,
+          paymentIntentId: stripePaymentIntent,
+          paymentId,
+          outcome: 'failed',
+          legacy: {
+            // Release a held payoff lock if this failed charge was a plan payoff.
+            plan: () => handlePlanPaymentFailed(admin, paymentId),
+          },
+        });
+      }
     }
   }
 
@@ -426,26 +969,73 @@ async function dispatchStripeEvent(admin: ReturnType<typeof createAdminClient>, 
     const paymentIntent = event.data.object;
     const paymentId = paymentIntent.metadata?.payment_id;
     if (paymentId) {
+      const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
       const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
       if (rail.kind !== 'allowed') return;
+      const providerBinding = planProjectionEnabled
+        ? await resolveLegacyPaymentIntentCheckoutBinding(
+            stripe,
+            paymentIntent.id,
+            paymentId,
+          )
+        : null;
       let transition = admin
         .from('payments')
         .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: paymentIntent.id, dunning_state: 'recovered', next_retry_at: null })
         .eq('id', paymentId);
       if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
+      if (planProjectionEnabled) {
+        transition = providerBinding?.checkoutSessionId === null
+          ? transition.is('stripe_checkout_session', null)
+          : transition.eq('stripe_checkout_session', providerBinding?.checkoutSessionId);
+        if (providerBinding?.checkoutSessionId === null) {
+          // No Checkout generation exists, so only NULL or the exact already-
+          // persisted off-session PI may be bound by this event.
+          transition = transition.or(
+            `stripe_payment_intent.is.null,stripe_payment_intent.eq.${paymentIntent.id}`,
+          );
+        }
+      }
       const { data: transitioned, error: transitionError } = await transition
         .in('status', ['requested', 'processing', 'failed'])
         .select('id, invoice_id')
         .maybeSingle();
       if (transitionError) throw transitionError;
+      const replay = !transitioned
+        && planProjectionEnabled
+        && await classifyLegacyPaymentProjectionNoop(admin, {
+          paymentId,
+          expectedStatus: 'paid',
+          outcome: 'settled',
+          chargeModelColumnPresent: rail.chargeModelColumnPresent,
+          checkoutSessionId: providerBinding?.checkoutSessionId ?? null,
+          stripePaymentIntent: paymentIntent.id,
+        });
       if (transitioned) {
         // Keep the visit invoice in lockstep with the settled off-session charge.
         if (transitioned.invoice_id) await markInvoicePaidForPayment(admin, transitioned.invoice_id);
         await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
         await sendPaymentSmsEvent(paymentId, 'payment_paid');
-        // Out-of-band safety net for a plan installment/payoff whose synchronous
-        // write was lost — advance the plan idempotently.
-        await handlePlanPaymentSettled(admin, paymentId);
+      }
+      if (transitioned || replay) {
+        await coordinateLegacyPaymentSideEffects({
+          eventId: event.id,
+          eventType: event.type,
+          eventObjectId: paymentIntent.id,
+          paymentIntentId: paymentIntent.id,
+          paymentId,
+          outcome: 'settled',
+          savedCard: () => loadLegacySavedCardEvidence(
+            stripe,
+            paymentIntent,
+            paymentIntent.customer,
+          ),
+          legacy: {
+            // Out-of-band safety net for a plan installment/payoff whose
+            // synchronous write was lost — advance the plan idempotently.
+            plan: () => handlePlanPaymentSettled(admin, paymentId),
+          },
+        });
       }
     }
   }
