@@ -21,6 +21,8 @@ export type PricingPlan = {
   features: readonly string[];
 };
 
+export const OFFICE_USER_ADD_ON_MONTHLY = 15;
+
 export const PRICING_CATALOG_VERSION = '2026-08-15-preview';
 
 export const PLANS: readonly PricingPlan[] = [
@@ -57,7 +59,7 @@ export const PLANS: readonly PricingPlan[] = [
     id: 'solo',
     name: 'Solo',
     audience: 'Owner-operator',
-    promise: 'Your own number and a lower payment fee',
+    promise: 'Your own number and a lower platform fee',
     monthly: 39,
     annualMonthly: 35,
     paymentFeePct: 0.5,
@@ -115,11 +117,11 @@ export const PLANS: readonly PricingPlan[] = [
     id: 'scale',
     name: 'Scale',
     audience: 'High-volume contractor',
-    promise: 'Remove the LGQ fee and upgrade call handling',
+    promise: 'Minimize the LGQ platform fee and upgrade call handling',
     monthly: 329,
     annualMonthly: 299,
-    paymentFeePct: 0,
-    fit: 'Best when a 0% LGQ fee and advanced AI call handling save you money.',
+    paymentFeePct: 0.1,
+    fit: 'Best when a 0.1% LGQ platform fee and advanced AI call handling save you money.',
     featured: false,
     officeUsers: 5,
     crewUsers: 10,
@@ -130,7 +132,7 @@ export const PLANS: readonly PricingPlan[] = [
     voiceConcurrentCalls: 3,
     features: [
       'Growth-level team, messaging, AI Intake, and storage capacity',
-      '0% LGQ payment fee',
+      '0.1% LGQ platform fee',
       'AI Voice Receptionist included with 100 minutes',
       '3 simultaneous AI calls + advanced routing',
       '5 office users + 10 crew users',
@@ -154,7 +156,7 @@ export const VOICE_MONTHLY_BY_PLAN: Record<PlanId, number> = {
 };
 
 export const COMPARISON_ROWS = [
-  ['LGQ payment fee', '1.25%', '0.50%', '0.25%', '0%'],
+  ['LGQ platform fee', '1.25%', '0.50%', '0.25%', '0.1%'],
   ['Leads, clients, quotes, jobs & invoices', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Standard quote-form submissions', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Lead capture after AI limit', 'Automatic standard form', 'Automatic standard form', 'Automatic standard form', 'Automatic standard form'],
@@ -204,12 +206,12 @@ export const PRICING_FAQS = [
     a: 'One credit covers one deduplicated lead thread for 24 hours, beginning with the first meaningful AI response and subject to published turn and size safety limits. Blocked spam and provider failures before a meaningful response do not use a credit.',
   },
   {
-    q: 'What does the LGQ payment fee apply to?',
+    q: 'What does the LGQ platform fee apply to?',
     a: 'The fee applies only to the discount-adjusted service subtotal successfully collected through LGQ: the job-related labor, materials, equipment, and service-charge line items on the invoice. Separately stated sales tax, tips, Stripe fees, refunds, and credits are excluded. Deposits and installments allocate that eligible subtotal proportionally.',
   },
   {
     q: 'Are Stripe processing fees included?',
-    a: 'No. Stripe processing and payment-infrastructure costs are separate and are paid by the contractor. LGQ plan and payment-fee prices do not include them.',
+    a: 'No. Stripe processing and payment-infrastructure costs are separate and are paid by the contractor. LGQ plan and platform-fee prices do not include them.',
   },
   {
     q: 'Do annual plans receive their usage only once a year?',
@@ -241,11 +243,11 @@ export const PRICING_FAQS = [
   },
   {
     q: 'When do plan changes take effect?',
-    a: 'A paid upgrade takes effect after successful prorated payment and raises the current month’s limits without resetting usage already consumed. The lower LGQ fee applies only to customer payment charges created after the upgrade. A downgrade takes effect at renewal.',
+    a: 'A paid upgrade takes effect after successful prorated payment and raises the current month’s limits without resetting usage already consumed. The lower LGQ platform fee applies only to customer payment charges created after the upgrade. A downgrade takes effect at renewal.',
   },
   {
     q: 'What is the annual-plan guarantee?',
-    a: 'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ payment fees are not recalculated retroactively, and consumed add-ons, AI Voice Receptionist or carrier costs, Stripe fees, taxes, and custom work are excluded.',
+    a: 'Once per verified business, the first annual base plan may be converted within 30 days. The refund is the annual prepayment minus one normal month-to-month base charge. LGQ platform fees are not recalculated retroactively, and consumed add-ons, AI Voice Receptionist or carrier costs, Stripe fees, taxes, and custom work are excluded.',
   },
   {
     q: 'What happens to an inactive Flex workspace?',
@@ -278,6 +280,22 @@ export function annualPlanCost(
     ? Math.max(0, annualEligibleServiceSubtotal)
     : 0;
   return annualFixedCost(plan, billing, includeVoice) + safeSubtotal * (plan.paymentFeePct / 100);
+}
+
+export function annualPlanEstimate(
+  plan: PricingPlan,
+  billing: BillingCycle,
+  annualEligibleServiceSubtotal: number,
+  includeVoice: boolean,
+  officeUsers: number,
+  needsDedicatedNumber: boolean,
+): number | null {
+  const requestedOfficeUsers = Number.isFinite(officeUsers) ? Math.max(1, Math.round(officeUsers)) : 1;
+  if (plan.id === 'flex' && (requestedOfficeUsers > plan.officeUsers || needsDedicatedNumber)) return null;
+
+  const extraOfficeUsers = Math.max(0, requestedOfficeUsers - plan.officeUsers);
+  const annualOfficeUserCost = extraOfficeUsers * OFFICE_USER_ADD_ON_MONTHLY * 12;
+  return annualPlanCost(plan, billing, annualEligibleServiceSubtotal, includeVoice) + annualOfficeUserCost;
 }
 
 export function planCrossover(

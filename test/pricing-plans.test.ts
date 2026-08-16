@@ -9,6 +9,7 @@ import {
   VOICE_MONTHLY_BY_PLAN,
   annualFixedCost,
   annualPlanCost,
+  annualPlanEstimate,
   planCrossover,
   type PlanId,
 } from '@/app/pricing/pricing-catalog';
@@ -26,7 +27,7 @@ function comparisonRow(label: string) {
 }
 
 describe('the contractor pricing catalog', () => {
-  it('pins the exact base prices and LGQ payment fees', () => {
+  it('pins the exact base prices and LGQ platform fees', () => {
     expect(PRICING_CATALOG_VERSION).toBe('2026-08-15-preview');
     expect(
       PLANS.map(({ id, monthly, annualMonthly, paymentFeePct }) => ({
@@ -39,7 +40,7 @@ describe('the contractor pricing catalog', () => {
       { id: 'flex', monthly: 0, annualMonthly: 0, paymentFeePct: 1.25 },
       { id: 'solo', monthly: 39, annualMonthly: 35, paymentFeePct: 0.5 },
       { id: 'growth', monthly: 129, annualMonthly: 99, paymentFeePct: 0.25 },
-      { id: 'scale', monthly: 329, annualMonthly: 299, paymentFeePct: 0 },
+      { id: 'scale', monthly: 329, annualMonthly: 299, paymentFeePct: 0.1 },
     ]);
 
     expect(PLANS.map((candidate) => annualFixedCost(candidate, 'annual', false))).toEqual([
@@ -72,23 +73,30 @@ describe('the contractor pricing catalog', () => {
   it('pins the annual crossovers without Voice', () => {
     expect(planCrossover(plan('flex'), plan('solo'), 'annual', false)).toBe(56_000);
     expect(planCrossover(plan('solo'), plan('growth'), 'annual', false)).toBe(307_200);
-    expect(planCrossover(plan('growth'), plan('scale'), 'annual', false)).toBe(960_000);
+    expect(planCrossover(plan('growth'), plan('scale'), 'annual', false)).toBe(1_600_000);
   });
 
-  it('moves the annual Growth-to-Scale crossover to $696,000 with current Growth Voice', () => {
+  it('moves the annual Growth-to-Scale crossover to $1,160,000 with current Growth Voice', () => {
     expect(VOICE_MONTHLY_BY_PLAN.growth).toBe(55);
     expect(VOICE_MONTHLY_BY_PLAN.scale).toBe(0);
-    expect(planCrossover(plan('growth'), plan('scale'), 'annual', true)).toBe(696_000);
+    expect(planCrossover(plan('growth'), plan('scale'), 'annual', true)).toBe(1_160_000);
   });
 
   it('calculates representative annual contractor costs exactly', () => {
     expect(annualPlanCost(plan('flex'), 'annual', 250_000, false)).toBe(3_125);
     expect(annualPlanCost(plan('solo'), 'annual', 250_000, false)).toBe(1_670);
     expect(annualPlanCost(plan('growth'), 'annual', 250_000, false)).toBe(1_813);
-    expect(annualPlanCost(plan('scale'), 'annual', 250_000, false)).toBe(3_588);
+    expect(annualPlanCost(plan('scale'), 'annual', 250_000, false)).toBe(3_838);
 
-    expect(annualPlanCost(plan('growth'), 'annual', 696_000, true)).toBe(3_588);
-    expect(annualPlanCost(plan('scale'), 'annual', 696_000, true)).toBe(3_588);
+    expect(annualPlanCost(plan('growth'), 'annual', 1_160_000, true)).toBe(4_748);
+    expect(annualPlanCost(plan('scale'), 'annual', 1_160_000, true)).toBe(4_748);
+  });
+
+  it('uses office and phone requirements to find the lowest eligible plan', () => {
+    expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 2, false)).toBeNull();
+    expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 1, true)).toBeNull();
+    expect(annualPlanEstimate(plan('solo'), 'annual', 250_000, false, 2, true)).toBe(1_850);
+    expect(annualPlanEstimate(plan('growth'), 'annual', 600_000, false, 6, true)).toBe(2_868);
   });
 
   it('keeps Scale core team and monthly capacity aligned with Growth', () => {

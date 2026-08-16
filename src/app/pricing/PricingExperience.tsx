@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import PricingCalculator from './PricingCalculator';
 import {
@@ -11,7 +11,9 @@ import {
   PLANS,
   PRICING_FAQS,
   VOICE_MONTHLY_BY_PLAN,
+  annualPlanEstimate,
   annualPlanCost,
+  planCrossover,
   type BillingCycle,
   type PlanId,
   type PricingPlan,
@@ -35,7 +37,7 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
     'AI Voice Receptionist available',
   ],
   scale: [
-    '0% LGQ payment fee',
+    '0.1% LGQ platform fee',
     'AI Voice Receptionist included',
     '3 simultaneous AI calls + advanced routing',
   ],
@@ -64,7 +66,7 @@ const SCENARIOS: readonly {
     planId: 'solo',
     revenue: 250_000,
     title: 'Owner-operator electrician',
-    description: 'Gets a dedicated number and a much lower payment fee.',
+    description: 'Gets a dedicated number and a much lower platform fee.',
   },
   {
     planId: 'growth',
@@ -74,14 +76,14 @@ const SCENARIOS: readonly {
   },
   {
     planId: 'scale',
-    revenue: 1_200_000,
+    revenue: 2_000_000,
     title: 'High-volume roofer',
-    description: 'Trades the LGQ payment fee for predictable software cost.',
+    description: 'Pairs the lowest LGQ platform fee with predictable software cost.',
   },
 ];
 
 const COMPARISON_HIGHLIGHTS = [
-  { value: '1.25% → 0%', label: 'Payment fee falls as volume grows' },
+  { value: '1.25% → 0.1%', label: 'Platform fee falls as volume grows' },
   { value: '1 → 5', label: 'Office seats expand on Growth' },
   { value: 'Solo+', label: 'Dedicated business number' },
   { value: 'Included', label: 'AI Voice Receptionist arrives with Scale' },
@@ -150,7 +152,8 @@ function price(plan: PricingPlan, billing: BillingCycle): number {
 }
 
 function paymentFee(plan: PricingPlan): string {
-  return `${plan.paymentFeePct.toFixed(plan.paymentFeePct === 0 ? 0 : 2)}%`;
+  const digits = plan.paymentFeePct === 0.1 ? 1 : 2;
+  return `${plan.paymentFeePct.toFixed(digits)}%`;
 }
 
 function money(value: number): string {
@@ -228,6 +231,22 @@ export default function PricingExperience() {
   const [activeSection, setActiveSection] = useState<string>('plans');
   const [expandedMobilePlan, setExpandedMobilePlan] = useState<PlanId | null>(null);
   const [showAllFaqs, setShowAllFaqs] = useState(false);
+  const [officeUsers, setOfficeUsers] = useState(1);
+  const [needsDedicatedNumber, setNeedsDedicatedNumber] = useState(false);
+  const [hasUsedCalculator, setHasUsedCalculator] = useState(false);
+  const [stickyDismissed, setStickyDismissed] = useState(false);
+  const [showSeasonalRhythm, setShowSeasonalRhythm] = useState(false);
+  const [showMobileScenarios, setShowMobileScenarios] = useState(false);
+  const [showMobileVoicePlans, setShowMobileVoicePlans] = useState(false);
+
+  const recommendation = useMemo(() => PLANS.map((plan) => ({
+    plan,
+    annualCost: annualPlanEstimate(plan, billing, volume, includeVoice, officeUsers, needsDedicatedNumber),
+  })).filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null)
+    .sort((a, b) => a.annualCost - b.annualCost)[0], [billing, includeVoice, needsDedicatedNumber, officeUsers, volume]);
+
+  const scaleCrossover = planCrossover(getPlan('growth'), getPlan('scale'), billing, includeVoice);
+  const markCalculatorUsed = () => { setHasUsedCalculator(true); setStickyDismissed(false); };
 
   useEffect(() => {
     const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(
@@ -288,7 +307,7 @@ export default function PricingExperience() {
                   </div>
                   <div className={styles.pathPrice}>
                     <strong>${plan.annualMonthly}<small>/mo</small></strong>
-                    <span>{paymentFee(plan)} fee</span>
+                    <span>{paymentFee(plan)} platform fee</span>
                   </div>
                   {index < PLANS.length - 1 ? <i aria-hidden="true" /> : null}
                 </li>
@@ -296,7 +315,7 @@ export default function PricingExperience() {
             </ol>
             <div className={styles.boardFooter}>
               <span><b>$0</b> to start</span>
-              <span><b>0%</b> at scale</span>
+              <span><b>0.1%</b> at scale</span>
             </div>
             <p className={styles.boardNote}>Annual monthly equivalent shown. Stripe processing is separate.</p>
           </aside>
@@ -335,11 +354,14 @@ export default function PricingExperience() {
             <p className={styles.sectionEyebrow}>Seasonal contractor? This is your plan.</p>
             <h3>Flex stays light when work slows down.</h3>
             <p>
-              There is no monthly base subscription. Pay the 1.25% LGQ fee only on eligible payments you actually
+              There is no monthly base subscription. Pay the 1.25% LGQ platform fee only on eligible payments you actually
               collect, then move up when the math or your team makes sense.
             </p>
+            <button type="button" className={styles.mobileDisclosureButton} aria-expanded={showSeasonalRhythm} aria-controls="seasonal-rhythm" onClick={() => setShowSeasonalRhythm((shown) => !shown)}>
+              {showSeasonalRhythm ? 'Hide seasonal cost rhythm' : 'See the seasonal cost rhythm'}
+            </button>
           </div>
-          <ol className={styles.seasonalRhythm} aria-label="How Flex follows a seasonal business">
+          <ol id="seasonal-rhythm" className={styles.seasonalRhythm} data-mobile-expanded={showSeasonalRhythm} aria-label="How Flex follows a seasonal business">
             <li><span>Quiet months</span><strong>$0</strong><small>monthly base</small></li>
             <li><span>Jobs come in</span><strong>1.25%</strong><small>eligible payments</small></li>
             <li><span>Business grows</span><strong>Your call</strong><small>upgrade when ready</small></li>
@@ -413,13 +435,20 @@ export default function PricingExperience() {
                 )}
 
                 <div className={styles.feeLine}>
-                  <span>LGQ payment fee</span>
+                  <span>LGQ platform fee</span>
                   <strong>{paymentFee(plan)}</strong>
-                  <InfoBubble label={`${plan.name} LGQ payment fee`}>
+                  <InfoBubble label={`${plan.name} LGQ platform fee`}>
                     Applied only to the discount-adjusted service subtotal successfully collected through LGQ.
                     Separately stated tax, tips, Stripe fees, refunds, and credits are excluded.
                   </InfoBubble>
                 </div>
+
+                {plan.id === 'scale' ? (
+                  <p className={styles.scaleBreakpoint}>
+                    <span>Base-plan price crossover</span>
+                    <strong>Usually lowest-cost above {money(scaleCrossover)}/year collected{includeVoice ? ' with AI Voice Receptionist' : ''}.</strong>
+                  </p>
+                ) : null}
 
                 {plan.id !== 'flex' ? (
                   <button
@@ -510,8 +539,11 @@ export default function PricingExperience() {
           <p className={styles.sectionEyebrow}>Picture your business here</p>
           <h2 id="scenario-heading">What the journey can look like.</h2>
           <p>Modeled examples using annual billing and eligible payment volume. Your exact fit may differ.</p>
+          <button type="button" className={styles.mobileDisclosureButton} aria-expanded={showMobileScenarios} aria-controls="scenario-examples" onClick={() => setShowMobileScenarios((shown) => !shown)}>
+            {showMobileScenarios ? 'Hide example businesses' : 'See example businesses'}
+          </button>
         </div>
-        <div className={styles.scenarioTrack}>
+        <div id="scenario-examples" className={styles.scenarioTrack} data-mobile-expanded={showMobileScenarios}>
           {SCENARIOS.map((scenario) => {
             const plan = getPlan(scenario.planId);
             const cost = annualPlanCost(plan, 'annual', scenario.revenue, false);
@@ -536,13 +568,23 @@ export default function PricingExperience() {
             <p>The math responds instantly to payment volume, billing cadence, and live AI calls.</p>
           </div>
           <div className={styles.calculatorOptionRow}>
-            <span>Using {billing} billing</span>
-            <button type="button" aria-pressed={includeVoice} onClick={() => setIncludeVoice((selected) => !selected)}>
+            <span>Include call coverage?</span>
+            <button type="button" aria-pressed={includeVoice} onClick={() => { setIncludeVoice((selected) => !selected); markCalculatorUsed(); }}>
               {includeVoice ? '✓ AI Voice Receptionist included' : '+ Add AI Voice Receptionist'}
             </button>
           </div>
         </div>
-        <PricingCalculator billing={billing} volume={volume} includeVoice={includeVoice} onVolumeChange={setVolume} />
+        <PricingCalculator
+          billing={billing}
+          volume={volume}
+          includeVoice={includeVoice}
+          officeUsers={officeUsers}
+          needsDedicatedNumber={needsDedicatedNumber}
+          onBillingChange={(value) => { setBilling(value); markCalculatorUsed(); }}
+          onVolumeChange={(value) => { setVolume(value); markCalculatorUsed(); }}
+          onOfficeUsersChange={(value) => { setOfficeUsers(Math.min(25, Math.max(1, Math.round(value || 1)))); markCalculatorUsed(); }}
+          onDedicatedNumberChange={(value) => { setNeedsDedicatedNumber(value); markCalculatorUsed(); }}
+        />
       </section>
 
       <section className={styles.voiceSection} id="receptionist">
@@ -558,6 +600,9 @@ export default function PricingExperience() {
               <strong>Safe at the limit</strong>
               <span>The active call finishes, then new callers follow forwarding or voicemail.</span>
             </div>
+            <button type="button" className={styles.mobileDisclosureButton} aria-expanded={showMobileVoicePlans} aria-controls="voice-plan-details" onClick={() => setShowMobileVoicePlans((shown) => !shown)}>
+              {showMobileVoicePlans ? 'Hide plan minutes' : 'Compare plan minutes'}
+            </button>
           </div>
           <ol className={styles.callFlow} aria-label="How AI Voice Receptionist handles a call">
             <li><span>01</span><div><strong>Answer</strong><small>A professional greeting, every time.</small></div></li>
@@ -566,20 +611,22 @@ export default function PricingExperience() {
           </ol>
         </div>
 
-        <div className={styles.voiceGrid}>
-          {PLANS.map((plan) => (
-            <article key={plan.id} data-plan={plan.id}>
-              <span>{plan.name}</span>
-              <strong>{voiceDescription(plan)}</strong>
-              <p>{plan.voiceConcurrentCalls} simultaneous AI {plan.voiceConcurrentCalls === 1 ? 'call' : 'calls'}</p>
-              <small>{plan.id === 'scale' ? 'Advanced routing · 90-day history' : 'Standard routing · 30-day history'}</small>
-            </article>
-          ))}
+        <div id="voice-plan-details" className={styles.voicePlanDetails} data-mobile-expanded={showMobileVoicePlans}>
+          <div className={styles.voiceGrid}>
+            {PLANS.map((plan) => (
+              <article key={plan.id} data-plan={plan.id}>
+                <span>{plan.name}</span>
+                <strong>{voiceDescription(plan)}</strong>
+                <p>{plan.voiceConcurrentCalls} simultaneous AI {plan.voiceConcurrentCalls === 1 ? 'call' : 'calls'}</p>
+                <small>{plan.id === 'scale' ? 'Advanced routing · 90-day history' : 'Standard routing · 30-day history'}</small>
+              </article>
+            ))}
+          </div>
+          <p className={styles.sectionFinePrint}>
+            AI-connected minutes are separate from text and AI Intake credits. Ringing, failed calls, blocked spam, and
+            time after a completed transfer do not use AI minutes. Extra usage requires your approval and spending cap.
+          </p>
         </div>
-        <p className={styles.sectionFinePrint}>
-          AI-connected minutes are separate from text and AI Intake credits. Ringing, failed calls, blocked spam, and
-          time after a completed transfer do not use AI minutes. Extra usage requires your approval and spending cap.
-        </p>
       </section>
 
       <section className={styles.compareSection} id="compare">
@@ -659,7 +706,7 @@ export default function PricingExperience() {
             </div>
             <p className={styles.competitorNote}>
               Public USD list prices checked August 14, 2026; limited-time promotions excluded. LGQ percentages are
-              payment fees. “No published percentage” elsewhere does not mean payment processing, phone, AI, seats,
+              platform fees. “No published percentage” elsewhere does not mean payment processing, phone, AI, seats,
               or add-ons are free. Plans are not feature-identical.
             </p>
           </details>
@@ -714,11 +761,19 @@ export default function PricingExperience() {
             <li key={plan.id} data-plan={plan.id}>
               <span>{PLAN_STAGES[plan.id].number}</span>
               <strong>{plan.name}</strong>
-              <small>{paymentFee(plan)} fee</small>
+              <small>{paymentFee(plan)} platform fee</small>
             </li>
           ))}
         </ol>
       </section>
+
+      {hasUsedCalculator && !stickyDismissed ? (
+        <aside className={styles.mobileRecommendation} data-plan={recommendation.plan.id} aria-label="Current plan recommendation">
+          <button type="button" className={styles.mobileRecommendationDismiss} aria-label="Dismiss recommendation" onClick={() => setStickyDismissed(true)}>×</button>
+          <div><span>Your current best fit</span><strong>{recommendation.plan.name} · {money(recommendation.annualCost / 12)}/mo effective</strong></div>
+          <a href={signupHref(recommendation.plan.id, billing, includeVoice)}>{recommendation.plan.id === 'flex' ? 'Start Flex' : `Choose ${recommendation.plan.name}`}</a>
+        </aside>
+      ) : null}
     </>
   );
 }

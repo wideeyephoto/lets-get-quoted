@@ -1,228 +1,92 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
-import {
-  PLANS,
-  annualPlanCost,
-  planCrossover,
-  type BillingCycle,
-  type PlanId,
-} from './pricing-catalog';
+import { PLANS, annualPlanEstimate, planCrossover, type BillingCycle, type PlanId } from './pricing-catalog';
 import styles from './pricing.module.css';
 
-type PricingCalculatorProps = {
-  billing: BillingCycle;
-  volume: number;
-  includeVoice: boolean;
-  onVolumeChange: (volume: number) => void;
+type Props = {
+  billing: BillingCycle; volume: number; includeVoice: boolean; officeUsers: number; needsDedicatedNumber: boolean;
+  onBillingChange: (value: BillingCycle) => void; onVolumeChange: (value: number) => void;
+  onOfficeUsersChange: (value: number) => void; onDedicatedNumberChange: (value: boolean) => void;
 };
 
-const PLAN_LABELS: Record<PlanId, string> = {
-  flex: 'Flex',
-  solo: 'Solo',
-  growth: 'Growth',
-  scale: 'Scale',
-};
-
-const MAX_VOLUME = 1_500_000;
-
-const VOLUME_PRESETS = [
-  { label: 'Seasonal', value: 40_000 },
-  { label: 'Owner-operator', value: 250_000 },
-  { label: 'Growing team', value: 600_000 },
+const LABELS: Record<PlanId, string> = { flex: 'Flex', solo: 'Solo', growth: 'Growth', scale: 'Scale' };
+const MAX_VOLUME = 3_000_000;
+const PRESETS = [
+  { label: 'Seasonal', value: 40_000 }, { label: 'Owner-operator', value: 250_000 },
+  { label: 'Growing team', value: 600_000 }, { label: 'High volume', value: 2_000_000 },
 ] as const;
 
-function money(value: number): string {
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
+function money(value: number) {
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
 
-function signupHref(plan: PlanId, billing: BillingCycle, includeVoice: boolean): string {
-  const options = [
-    `plan=${plan}`,
-    `billing=${billing}`,
-    includeVoice ? 'voice=1' : '',
-  ].filter(Boolean);
-  return `${APP_SIGNUP_URL}&${options.join('&')}`;
+function signupHref(plan: PlanId, billing: BillingCycle, includeVoice: boolean) {
+  return `${APP_SIGNUP_URL}&${[`plan=${plan}`, `billing=${billing}`, includeVoice ? 'voice=1' : ''].filter(Boolean).join('&')}`;
 }
 
-export default function PricingCalculator({
-  billing,
-  volume,
-  includeVoice,
-  onVolumeChange,
-}: PricingCalculatorProps) {
-  const results = useMemo(
-    () =>
-      PLANS.map((plan) => ({
-        plan,
-        annualCost: annualPlanCost(plan, billing, volume, includeVoice),
-      })),
-    [billing, includeVoice, volume],
-  );
+export default function PricingCalculator({ billing, volume, includeVoice, officeUsers, needsDedicatedNumber, onBillingChange, onVolumeChange, onOfficeUsersChange, onDedicatedNumberChange }: Props) {
+  const [volumeCadence, setVolumeCadence] = useState<BillingCycle>('annual');
+  const divisor = volumeCadence === 'monthly' ? 12 : 1;
+  const displayedVolume = Math.round(volume / divisor);
+  const results = useMemo(() => PLANS.map((plan) => ({
+    plan,
+    annualCost: annualPlanEstimate(plan, billing, volume, includeVoice, officeUsers, needsDedicatedNumber),
+  })), [billing, includeVoice, needsDedicatedNumber, officeUsers, volume]);
+  const eligible = results.filter((result): result is typeof result & { annualCost: number } => result.annualCost !== null);
+  const ranked = [...eligible].sort((a, b) => a.annualCost - b.annualCost);
+  const winner = ranked[0];
+  const runnerUp = ranked[1];
+  const savings = runnerUp ? Math.max(0, runnerUp.annualCost - winner.annualCost) : 0;
+  const highestCost = Math.max(...eligible.map((result) => result.annualCost), 1);
+  const updateDisplayedVolume = (value: number) => onVolumeChange(Math.min(MAX_VOLUME, Math.max(0, Math.round((Number.isFinite(value) ? value : 0) * divisor))));
+  const crossovers = useMemo(() => [
+    { from: PLANS[0], to: PLANS[1], volume: planCrossover(PLANS[0], PLANS[1], billing, includeVoice) },
+    { from: PLANS[1], to: PLANS[2], volume: planCrossover(PLANS[1], PLANS[2], billing, includeVoice) },
+    { from: PLANS[2], to: PLANS[3], volume: planCrossover(PLANS[2], PLANS[3], billing, includeVoice) },
+  ], [billing, includeVoice]);
 
-  const rankedResults = [...results].sort((a, b) => a.annualCost - b.annualCost);
-  const winner = rankedResults[0];
-  const runnerUp = rankedResults[1];
-  const annualSavings = Math.max(0, runnerUp.annualCost - winner.annualCost);
-  const highestCost = Math.max(...results.map((result) => result.annualCost), 1);
-
-  const updateVolume = (nextVolume: number) => {
-    const safeVolume = Number.isFinite(nextVolume) ? nextVolume : 0;
-    onVolumeChange(Math.min(MAX_VOLUME, Math.max(0, Math.round(safeVolume))));
-  };
-
-  const crossovers = useMemo(
-    () => [
-      {
-        from: PLANS[0],
-        to: PLANS[1],
-        volume: planCrossover(PLANS[0], PLANS[1], billing, includeVoice),
-      },
-      {
-        from: PLANS[1],
-        to: PLANS[2],
-        volume: planCrossover(PLANS[1], PLANS[2], billing, includeVoice),
-      },
-      {
-        from: PLANS[2],
-        to: PLANS[3],
-        volume: planCrossover(PLANS[2], PLANS[3], billing, includeVoice),
-      },
-    ],
-    [billing, includeVoice],
-  );
-
-  return (
-    <div className={styles.calculatorShell}>
-      <div className={styles.calculatorLead}>
-        <div className={styles.volumeControl}>
-          <label htmlFor="pricing-volume-exact" className={styles.controlLabel}>Annual payments collected through LGQ</label>
-          <div className={styles.volumeEntry}>
-            <span aria-hidden="true">$</span>
-            <input
-              id="pricing-volume-exact"
-              type="number"
-              min={0}
-              max={MAX_VOLUME}
-              step={5_000}
-              inputMode="numeric"
-              value={volume}
-              onChange={(event) => updateVolume(Number(event.target.value))}
-            />
-          </div>
-          <div className={styles.volumePresets} aria-label="Common annual payment amounts">
-            {VOLUME_PRESETS.map((preset) => (
-              <button
-                type="button"
-                key={preset.label}
-                data-active={volume === preset.value}
-                aria-pressed={volume === preset.value}
-                onClick={() => updateVolume(preset.value)}
-              >
-                <span>{preset.label}</span>
-                <strong>{money(preset.value)}</strong>
-              </button>
-            ))}
-          </div>
-          <input
-            id="pricing-volume"
-            type="range"
-            min={0}
-            max={MAX_VOLUME}
-            step={5_000}
-            value={volume}
-            aria-label="Annual payments collected through LGQ"
-            onChange={(event) => updateVolume(Number(event.target.value))}
-          />
-          <span className={styles.rangeEnds} aria-hidden="true">
-            <span>$0</span>
-            <span>$1.5M+</span>
-          </span>
-          <p className={styles.volumeDefinition}>
-            Use the discount-adjusted service subtotal you expect to collect through LGQ. Taxes, tips, refunds,
-            credits, and Stripe processing are excluded.
-          </p>
-        </div>
-
-        <div className={styles.calculatorAnswer} data-plan={winner.plan.id}>
-          <span className={styles.srOnly} aria-live="polite">
-            {winner.plan.name} is the lowest-cost plan at {money(volume)} in annual payments.
-          </span>
-          <span>At {money(volume)} in annual payments</span>
-          <div className={styles.answerPlan}>
-            <small>Your lowest-cost fit</small>
-            <strong>{winner.plan.name}</strong>
-          </div>
-          <div className={styles.answerCost}>
-            <strong>{money(winner.annualCost / 12)}</strong>
-            <span>/month effective</span>
-          </div>
-          <p>
-            {money(winner.annualCost)}/year total · saves {money(annualSavings)}/year compared with {runnerUp.plan.name}
-          </p>
-          <span className={styles.answerStripe}>Stripe processing is paid separately.</span>
-          <div className={styles.answerActions}>
-            <a className={styles.calculatorCta} href={signupHref(winner.plan.id, billing, includeVoice)}>
-              {winner.plan.id === 'flex' ? 'Start with Flex' : `Choose ${winner.plan.name}`}
-            </a>
-            <a href="#plans">Compare plan details</a>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.costRace} aria-label="Estimated annual plan costs">
-        <div className={styles.costRaceHeading}>
-          <span>Estimated annual cost <b>Lower is better</b></span>
-          <small>Subscription + LGQ fee{includeVoice ? ' + AI Voice Receptionist' : ''}</small>
-        </div>
-        {results.map(({ plan, annualCost }) => {
-          const isWinner = winner.plan.id === plan.id;
-          return (
-            <article className={isWinner ? styles.costBarWinner : undefined} data-plan={plan.id} key={plan.id}>
-              <div className={styles.costBarHeading}>
-                <span>{plan.name}</span>
-                {isWinner ? <em>Best fit</em> : null}
-              </div>
-              <span className={styles.costBarTrack} aria-hidden="true">
-                <span style={{ width: `${Math.max(6, (annualCost / highestCost) * 100)}%` }} />
-              </span>
-              <strong>{money(annualCost)}</strong>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className={styles.crossoverGrid}>
-        <div>
-          <p className={styles.miniEyebrow}>Where the math changes</p>
-          <h3>Three natural handoff points.</h3>
-          <p>
-            These are price breakpoints, not forced upgrades. Team, phone, and workflow capacity still matter.
-          </p>
-        </div>
-        <ol>
-          {crossovers.map((crossover, index) => (
-            <li key={`${crossover.from.id}-${crossover.to.id}`}>
-              <span className={styles.crossoverNumber}>0{index + 1}</span>
-              <div>
-                <span>{PLAN_LABELS[crossover.from.id]} → {PLAN_LABELS[crossover.to.id]}</span>
-                <strong>{money(crossover.volume)}/year</strong>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <p className={styles.calculatorFinePrint}>
-        Estimate includes the selected subscription, LGQ payment fee, and the base AI Voice Receptionist package when
-        selected. It assumes usage stays within included minutes and excludes Stripe processing, taxes, and optional
-        top-ups. Stripe costs are paid separately by the contractor.
-      </p>
+  return <div className={styles.calculatorShell}>
+    <div className={styles.calculatorRequirements}>
+      <div><span className={styles.controlLabel}>Billing cycle</span><div className={styles.calculatorBillingToggle} role="group" aria-label="Calculator billing cycle">
+        <button type="button" aria-pressed={billing === 'monthly'} onClick={() => onBillingChange('monthly')}>Monthly</button>
+        <button type="button" aria-pressed={billing === 'annual'} onClick={() => onBillingChange('annual')}>Annual</button>
+      </div></div>
+      <label><span className={styles.controlLabel}>Office users needed</span><input type="number" min={1} max={25} value={officeUsers} onChange={(event) => onOfficeUsersChange(Number(event.target.value))} /></label>
+      <div><span className={styles.controlLabel}>Dedicated business number</span><button className={styles.requirementToggle} type="button" aria-pressed={needsDedicatedNumber} onClick={() => onDedicatedNumberChange(!needsDedicatedNumber)}>{needsDedicatedNumber ? 'Required' : 'Not required'}</button></div>
+      <p>Flex supports one office user and a shared texting number. Extra office users on Solo+ are $15/month.</p>
     </div>
-  );
+
+    <div className={styles.calculatorLead}>
+      <div className={styles.volumeControl}>
+        <div className={styles.volumeControlHeader}><label htmlFor="pricing-volume-exact" className={styles.controlLabel}>Payments collected through LGQ</label><div className={styles.volumeCadence} role="group" aria-label="Payment volume cadence">
+          <button type="button" aria-pressed={volumeCadence === 'monthly'} onClick={() => setVolumeCadence('monthly')}>Monthly</button><button type="button" aria-pressed={volumeCadence === 'annual'} onClick={() => setVolumeCadence('annual')}>Annual</button>
+        </div></div>
+        <div className={styles.volumeEntry}><span aria-hidden="true">$</span><input id="pricing-volume-exact" type="text" inputMode="numeric" value={displayedVolume.toLocaleString('en-US')} onChange={(event) => updateDisplayedVolume(Number(event.target.value.replace(/\D/g, '')))} /></div>
+        <div className={styles.volumePresets} aria-label={`Common ${volumeCadence} payment amounts`}>{PRESETS.map((preset) => <button type="button" key={preset.label} data-active={volume === preset.value} aria-pressed={volume === preset.value} onClick={() => onVolumeChange(preset.value)}><span>{preset.label}</span><strong>{money(Math.round(preset.value / divisor))}{volumeCadence === 'monthly' ? '/mo' : ''}</strong></button>)}</div>
+        <input id="pricing-volume" type="range" min={0} max={MAX_VOLUME / divisor} step={volumeCadence === 'monthly' ? 500 : 5_000} value={displayedVolume} aria-label={`${volumeCadence} payments collected through LGQ`} onChange={(event) => updateDisplayedVolume(Number(event.target.value))} />
+        <span className={styles.rangeEnds} aria-hidden="true"><span>$0</span><span>{volumeCadence === 'monthly' ? '$250K+' : '$3M+'}</span></span>
+        <p className={styles.volumeDefinition}>Use the discount-adjusted service subtotal you expect to collect through LGQ. Monthly entries are annualized. Taxes, tips, refunds, credits, and Stripe processing are excluded.</p>
+      </div>
+
+      <div className={styles.calculatorAnswer} data-plan={winner.plan.id}>
+        <span className={styles.srOnly} aria-live="polite">{winner.plan.name} is the lowest-cost eligible plan at {money(volume)} in annual payments.</span>
+        <span>At {money(volume)} in annual payments</span><div className={styles.answerPlan}><small>Your lowest-cost eligible plan</small><strong>{winner.plan.name}</strong></div>
+        <div className={styles.answerCost}><strong>{money(winner.annualCost / 12)}</strong><span>/month effective</span></div>
+        <p>{money(winner.annualCost)}/year total{runnerUp ? ` · saves ${money(savings)}/year compared with ${runnerUp.plan.name}` : ''}</p><span className={styles.answerStripe}>Stripe processing is paid separately.</span>
+        <div className={styles.answerActions}><a className={styles.calculatorCta} href={signupHref(winner.plan.id, billing, includeVoice)}>{winner.plan.id === 'flex' ? 'Start with Flex' : `Choose ${winner.plan.name}`}</a><a href="#plans">Compare plan details</a></div>
+      </div>
+    </div>
+
+    <div className={styles.costRace} aria-label="Estimated annual plan costs">
+      <div className={styles.costRaceHeading}><span>Estimated annual cost <b>Lower is better</b></span><small>Subscription + LGQ platform fee{includeVoice ? ' + AI Voice Receptionist' : ''}</small></div>
+      {results.map(({ plan, annualCost }) => { const isWinner = winner.plan.id === plan.id; const excluded = annualCost === null; return <article className={isWinner ? styles.costBarWinner : excluded ? styles.costBarIneligible : undefined} data-plan={plan.id} key={plan.id}>
+        <div className={styles.costBarHeading}><span>{plan.name}</span>{isWinner ? <em>Best fit</em> : excluded ? <em>Not eligible</em> : null}</div><span className={styles.costBarTrack} aria-hidden="true"><span style={{ width: excluded ? '0%' : `${Math.max(6, (annualCost / highestCost) * 100)}%` }} /></span><strong>{excluded ? 'Needs Solo+' : money(annualCost)}</strong>
+      </article>; })}
+    </div>
+
+    <div className={styles.crossoverGrid}><div><p className={styles.miniEyebrow}>Where the math changes</p><h3>Three natural handoff points.</h3><p>These are price breakpoints, not forced upgrades. Team, phone, and workflow capacity still matter.</p></div><ol>{crossovers.map((item, index) => <li key={`${item.from.id}-${item.to.id}`}><span className={styles.crossoverNumber}>0{index + 1}</span><div><span>{LABELS[item.from.id]} → {LABELS[item.to.id]}</span><strong>{money(item.volume)}/year</strong></div></li>)}</ol></div>
+    <p className={styles.calculatorFinePrint}>Estimate includes the selected subscription, LGQ platform fee, extra office users, and the base AI Voice Receptionist package when selected. It assumes usage stays within included minutes and excludes Stripe processing, taxes, and optional top-ups.</p>
+  </div>;
 }

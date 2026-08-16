@@ -1183,6 +1183,111 @@
   .planButton:hover { transform: none; }
 }
 
+/* Feature-aware calculator and compact mobile journey */
+.calculatorRequirements {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 1rem;
+  background: rgba(var(--tint), 0.018);
+}
+
+.calculatorRequirements > div,
+.calculatorRequirements > label { display: grid; gap: 0.45rem; }
+.calculatorRequirements > p { grid-column: 1 / -1; margin: 0; color: var(--muted-2); font-size: 0.64rem; }
+.calculatorRequirements input,
+.requirementToggle {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--edge-t15);
+  border-radius: 0.72rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+}
+.requirementToggle { cursor: pointer; font-size: 0.72rem; font-weight: 800; }
+.requirementToggle[aria-pressed='true'] { border-color: rgba(82, 217, 172, 0.5); background: rgba(82, 217, 172, 0.08); }
+
+.calculatorBillingToggle,
+.volumeCadence { display: grid; grid-template-columns: repeat(2, 1fr); padding: 0.2rem; border: 1px solid var(--edge-t12); border-radius: 0.72rem; background: var(--bg-elevated); }
+.calculatorBillingToggle button,
+.volumeCadence button { min-height: 2.35rem; border: 0; border-radius: 0.5rem; background: transparent; color: var(--muted); font-size: 0.68rem; font-weight: 800; cursor: pointer; }
+.calculatorBillingToggle button[aria-pressed='true'],
+.volumeCadence button[aria-pressed='true'] { background: rgba(121, 168, 255, 0.13); color: var(--text); }
+
+.volumeControlHeader { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.volumeCadence { flex: 0 0 auto; }
+.volumeCadence button { min-height: 2rem; padding-inline: 0.55rem; }
+.costRace article.costBarIneligible { opacity: 0.62; }
+.costRace article.costBarIneligible .costBarTrack { background: repeating-linear-gradient(135deg, rgba(var(--tint), 0.08), rgba(var(--tint), 0.08) 4px, transparent 4px, transparent 8px); }
+
+.scaleBreakpoint { margin: 0.8rem 0 0; padding: 0.7rem; border: 1px solid rgba(82, 217, 172, 0.25); border-radius: 0.7rem; background: rgba(82, 217, 172, 0.06); }
+.scaleBreakpoint span,
+.scaleBreakpoint strong { display: block; }
+.scaleBreakpoint span { color: #52d9ac; font-size: 0.58rem; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
+.scaleBreakpoint strong { margin-top: 0.3rem; color: var(--text); font-size: 0.68rem; line-height: 1.45; }
+
+.mobileDisclosureButton,
+.mobileRecommendation { display: none; }
+.voicePlanDetails { display: contents; }
+
+@media (max-width: 620px) {
+  .calculatorRequirements { grid-template-columns: 1fr; }
+  .calculatorRequirements > p { grid-column: auto; }
+  .volumeControlHeader { align-items: stretch; flex-direction: column; }
+  .volumeCadence { width: 100%; }
+
+  .mobileDisclosureButton {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.8rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--edge-t18);
+    border-radius: 0.72rem;
+    background: rgba(var(--tint), 0.04);
+    color: var(--text);
+    font-size: 0.74rem;
+    font-weight: 800;
+  }
+
+  .seasonalRhythm[data-mobile-expanded='false'],
+  .scenarioTrack[data-mobile-expanded='false'],
+  .voicePlanDetails[data-mobile-expanded='false'] { display: none; }
+  .voicePlanDetails[data-mobile-expanded='true'] { display: block; }
+
+  .mobileRecommendation {
+    --plan-color: #79a8ff;
+    position: fixed;
+    z-index: 80;
+    right: 0.7rem;
+    bottom: 0.7rem;
+    left: 0.7rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: center;
+    padding: 0.85rem 3rem 0.85rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--plan-color) 55%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--plan-color) 9%, #0b121b);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.42);
+  }
+  .mobileRecommendation[data-plan='solo'] { --plan-color: #ffd166; }
+  .mobileRecommendation[data-plan='growth'] { --plan-color: #ff8a3d; }
+  .mobileRecommendation[data-plan='scale'] { --plan-color: #52d9ac; }
+  .mobileRecommendation div span,
+  .mobileRecommendation div strong { display: block; }
+  .mobileRecommendation div span { color: var(--muted); font-size: 0.58rem; text-transform: uppercase; }
+  .mobileRecommendation div strong { margin-top: 0.18rem; color: var(--text); font-size: 0.72rem; }
+  .mobileRecommendation > a { display: inline-flex; min-height: 2.75rem; align-items: center; padding: 0.55rem 0.7rem; border-radius: 0.65rem; background: var(--plan-color); color: #071018; font-size: 0.68rem; font-weight: 900; }
+  .mobileRecommendationDismiss { position: absolute; top: 0.1rem; right: 0.1rem; width: 2.75rem; height: 2.75rem; border: 0; background: transparent; color: var(--muted); font-size: 1.25rem; cursor: pointer; }
+}
+
 /* Growth-journey pricing refresh */
 .hero {
   padding-top: clamp(2.5rem, 6vw, 4.75rem);
@@ -1932,7 +2037,7 @@
 
 .volumePresets {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.4rem;
 }
 
@@ -2805,6 +2910,10 @@
 
   .volumePresets button {
     min-height: 3.45rem;
+  }
+
+  .volumePresets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .volumePresets span {
