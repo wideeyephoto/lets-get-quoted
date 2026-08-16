@@ -8,6 +8,8 @@ const doubles = vi.hoisted(() => ({
   runConnectedProjectionBatch: vi.fn(),
   runAllowanceResetBatch: vi.fn(),
   runSettlementBatch: vi.fn(),
+  runQuickStopLateRefundBatch: vi.fn(),
+  quickStopExecutorConstructed: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -30,13 +32,28 @@ vi.mock('@/lib/billing/direct-payment-settlement-worker', () => ({
   runDirectPaymentSettlementBatch: doubles.runSettlementBatch,
 }));
 
+vi.mock('@/lib/billing/legacy-quick-stop-late-refund-worker', () => ({
+  runLegacyQuickStopLateRefundBatch: doubles.runQuickStopLateRefundBatch,
+}));
+
+vi.mock('@/lib/billing/legacy-quick-stop-stripe-refund-executor', () => ({
+  StripeLegacyQuickStopLateRefundExecutor: class {
+    constructor() {
+      doubles.quickStopExecutorConstructed();
+    }
+  },
+}));
+
 import { GET as runAllowanceResets } from '@/app/api/cron/billing-allowance-resets/route';
 import { GET as runSubscriptionProjection } from '@/app/api/cron/billing-subscription-projection/route';
 import { GET as runConnectedPaymentProjection } from '@/app/api/cron/connected-payment-projection/route';
 import { GET as runDirectPaymentSettlement } from '@/app/api/cron/direct-payment-settlement/route';
+import { GET as runQuickStopLateRefunds } from '@/app/api/cron/legacy-quick-stop-late-refunds/route';
 import {
   DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
   DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG,
+  LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
+  LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG,
   PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE,
   PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG,
   STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
@@ -44,12 +61,14 @@ import {
   STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE,
   STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG,
   directPaymentSettlementWorkerEnabled,
+  legacyQuickStopLateRefundWorkerEnabled,
   paidPlanAllowanceResetWorkerEnabled,
   stripeConnectedPaymentProjectionWorkerEnabled,
   stripeSubscriptionProjectionWorkerEnabled,
   summarizeConnectedPaymentProjectionBatch,
   summarizePaidPlanAllowanceResetBatch,
   summarizeDirectPaymentSettlementBatch,
+  summarizeLegacyQuickStopLateRefundBatch,
   summarizeStripeSubscriptionProjectionBatch,
 } from '@/lib/billing/billing-worker-cron';
 import { cronSummaryHasFailures } from '@/lib/cron-jobs';
@@ -59,6 +78,8 @@ const ORIGINAL_CONNECTED_PROJECTION_FLAG =
   process.env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG];
 const ORIGINAL_RESET_FLAG = process.env[PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG];
 const ORIGINAL_SETTLEMENT_FLAG = process.env[DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG];
+const ORIGINAL_QUICK_STOP_REFUND_FLAG =
+  process.env[LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG];
 const ORIGINAL_CRON_SECRET = process.env.CRON_SECRET;
 
 function restoreEnvironment(name: string, value: string | undefined): void {
@@ -123,6 +144,11 @@ beforeEach(() => {
     claimedCount: 0,
     outcomes: [],
   });
+  doubles.runQuickStopLateRefundBatch.mockReset().mockResolvedValue({
+    claimedCount: 0,
+    outcomes: [],
+  });
+  doubles.quickStopExecutorConstructed.mockReset();
 });
 
 afterEach(() => {
@@ -133,6 +159,10 @@ afterEach(() => {
   );
   restoreEnvironment(PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG, ORIGINAL_RESET_FLAG);
   restoreEnvironment(DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG, ORIGINAL_SETTLEMENT_FLAG);
+  restoreEnvironment(
+    LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG,
+    ORIGINAL_QUICK_STOP_REFUND_FLAG,
+  );
   restoreEnvironment('CRON_SECRET', ORIGINAL_CRON_SECRET);
   vi.restoreAllMocks();
 });
@@ -210,6 +240,25 @@ describe('dark billing worker route gates', () => {
     },
   );
 
+  it.each([undefined, '', '0', 'true', ' 1', '1 '])(
+    'keeps legacy Quick Stop late refunds dark unless their flag is exactly 1 (%s)',
+    async (configured) => {
+      restoreEnvironment(LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG, configured);
+      process.env.CRON_SECRET = 'must-not-be-read';
+      const unread = unreadRequest();
+
+      const response = await runQuickStopLateRefunds(unread.request);
+
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe('');
+      expect(unread.get).not.toHaveBeenCalled();
+      expect(unread.text).not.toHaveBeenCalled();
+      expect(doubles.createAdminClient).not.toHaveBeenCalled();
+      expect(doubles.quickStopExecutorConstructed).not.toHaveBeenCalled();
+      expect(doubles.runQuickStopLateRefundBatch).not.toHaveBeenCalled();
+    },
+  );
+
   it('recognizes only exact-1 values in an injected environment', () => {
     expect(stripeSubscriptionProjectionWorkerEnabled({
       [STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG]: '1',
@@ -235,6 +284,12 @@ describe('dark billing worker route gates', () => {
     expect(directPaymentSettlementWorkerEnabled({
       [DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG]: 'TRUE',
     })).toBe(false);
+    expect(legacyQuickStopLateRefundWorkerEnabled({
+      [LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG]: '1',
+    })).toBe(true);
+    expect(legacyQuickStopLateRefundWorkerEnabled({
+      [LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG]: 'yes',
+    })).toBe(false);
   });
 
   it.each([
@@ -242,6 +297,7 @@ describe('dark billing worker route gates', () => {
     [STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG, runConnectedPaymentProjection],
     [PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG, runAllowanceResets],
     [DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG, runDirectPaymentSettlement],
+    [LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG, runQuickStopLateRefunds],
   ] as const)('requires CRON_SECRET after %s is enabled', async (flag, handler) => {
     process.env[flag] = '1';
     delete process.env.CRON_SECRET;
@@ -255,6 +311,83 @@ describe('dark billing worker route gates', () => {
     expect(doubles.runConnectedProjectionBatch).not.toHaveBeenCalled();
     expect(doubles.runAllowanceResetBatch).not.toHaveBeenCalled();
     expect(doubles.runSettlementBatch).not.toHaveBeenCalled();
+    expect(doubles.quickStopExecutorConstructed).not.toHaveBeenCalled();
+    expect(doubles.runQuickStopLateRefundBatch).not.toHaveBeenCalled();
+  });
+
+  it('uses one fixed legacy Quick Stop refund batch and only count-based monitoring', async () => {
+    process.env[LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG] = '1';
+    process.env.CRON_SECRET = 'cron-secret';
+    const { admin, builder } = fakeCronAdmin();
+    doubles.createAdminClient.mockReturnValue(admin);
+    const secret = 'customer@example.com / payment-private / re_private';
+    doubles.runQuickStopLateRefundBatch.mockResolvedValue({
+      claimedCount: 3,
+      outcomes: [
+        { taskId: secret, status: 'completed' },
+        { taskId: secret, status: 'failed_retryable' },
+        { taskId: secret, status: 'already_completed' },
+      ],
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const response = await runQuickStopLateRefunds(new Request(
+      'https://letsgetquoted.com/api/cron/legacy-quick-stop-late-refunds?batch=999999',
+      { headers: { authorization: 'Bearer cron-secret' } },
+    ));
+    const responseBody = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(doubles.quickStopExecutorConstructed).toHaveBeenCalledOnce();
+    expect(doubles.runQuickStopLateRefundBatch).toHaveBeenCalledWith(
+      expect.anything(),
+      LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
+    );
+    expect(responseBody).toMatchObject({
+      summary: {
+        requested: 10,
+        claimed: 3,
+        completed: 1,
+        already_completed: 1,
+        retryable_failures: 1,
+        failures: 1,
+      },
+    });
+    expect(JSON.stringify(responseBody)).not.toContain(secret);
+    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+      ok: false,
+      summary: expect.objectContaining({ requested: 10, claimed: 3, failures: 1 }),
+    }));
+  });
+
+  it('collapses Quick Stop Stripe initialization failure to one PII-free count', async () => {
+    process.env[LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG] = '1';
+    process.env.CRON_SECRET = 'cron-secret';
+    const { admin, builder } = fakeCronAdmin();
+    doubles.createAdminClient.mockReturnValue(admin);
+    const secret = 'sk_test_private / customer@example.com';
+    doubles.quickStopExecutorConstructed.mockImplementationOnce(() => {
+      throw new Error(secret);
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const response = await runQuickStopLateRefunds(new Request(
+      'https://letsgetquoted.com/api/cron/legacy-quick-stop-late-refunds',
+      { headers: { authorization: 'Bearer cron-secret' } },
+    ));
+    const responseBody = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(responseBody).toMatchObject({
+      summary: { claimed: 0, worker_errors: 1, failures: 1 },
+    });
+    expect(JSON.stringify(responseBody)).not.toContain(secret);
+    expect(doubles.runQuickStopLateRefundBatch).not.toHaveBeenCalled();
+    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+      ok: false,
+      summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
+      error: null,
+    }));
   });
 
   it('uses one fixed projection batch and returns only the monitored summary', async () => {
@@ -666,6 +799,34 @@ describe('PII-free billing worker heartbeat summaries', () => {
     expect(JSON.stringify(summary)).not.toContain(secret);
     expect(cronSummaryHasFailures(summary)).toBe(true);
   });
+
+  it('drops legacy Quick Stop task, payment, request, and provider identifiers', () => {
+    const secret = 'customer@example.com / payment-private / request-private / re_private';
+    const summary = summarizeLegacyQuickStopLateRefundBatch({
+      claimedCount: 5,
+      outcomes: [
+        { taskId: secret, status: 'completed' },
+        { taskId: secret, status: 'already_completed' },
+        { taskId: secret, status: 'already_finished' },
+        { taskId: secret, status: 'failed_retryable' },
+        { taskId: secret, status: 'failed_terminal' },
+      ],
+    }, 10);
+
+    expect(summary).toEqual({
+      requested: 10,
+      claimed: 5,
+      completed: 1,
+      already_completed: 1,
+      already_finished: 1,
+      retryable_failures: 1,
+      terminal_failures: 1,
+      worker_errors: 0,
+      failures: 2,
+    });
+    expect(JSON.stringify(summary)).not.toContain(secret);
+    expect(cronSummaryHasFailures(summary)).toBe(true);
+  });
 });
 
 describe('billing worker route source contracts', () => {
@@ -674,6 +835,7 @@ describe('billing worker route source contracts', () => {
     ['connected-payment-projection', 'stripeConnectedPaymentProjectionWorkerEnabled'],
     ['billing-allowance-resets', 'paidPlanAllowanceResetWorkerEnabled'],
     ['direct-payment-settlement', 'directPaymentSettlementWorkerEnabled'],
+    ['legacy-quick-stop-late-refunds', 'legacyQuickStopLateRefundWorkerEnabled'],
   ])('keeps the %s exact gate in front of cronRoute execution', (job, gate) => {
     const source = readFileSync(
       join(process.cwd(), 'src', 'app', 'api', 'cron', job, 'route.ts'),

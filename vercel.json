@@ -71,6 +71,10 @@
     {
       "path": "/api/cron/direct-payment-settlement",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/legacy-quick-stop-late-refunds",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

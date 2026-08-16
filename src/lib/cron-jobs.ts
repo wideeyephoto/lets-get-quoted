@@ -31,6 +31,13 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'legacy-quick-stop-late-refunds',
+    label: 'Legacy Quick Stop late refunds',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Expired Quick Stops paid after their hold lapsed stop receiving the required full destination-charge refund.',
+  },
+  {
     job: 'connected-payment-projection',
     label: 'Connected payment projection',
     schedule: '*/5 * * * *',

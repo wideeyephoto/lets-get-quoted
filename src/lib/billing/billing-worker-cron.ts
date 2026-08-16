@@ -13,6 +13,13 @@ import {
   type RunDirectPaymentSettlementBatchResult,
 } from '@/lib/billing/direct-payment-settlement-worker';
 import {
+  runLegacyQuickStopLateRefundBatch,
+  type RunLegacyQuickStopLateRefundBatchResult,
+} from '@/lib/billing/legacy-quick-stop-late-refund-worker';
+import {
+  StripeLegacyQuickStopLateRefundExecutor,
+} from '@/lib/billing/legacy-quick-stop-stripe-refund-executor';
+import {
   runStripeBillingSubscriptionProjectionBatch,
   type StripeSubscriptionProjectionWorkerBatchResult,
 } from '@/lib/billing/subscription-projection-worker';
@@ -35,6 +42,8 @@ export const PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG =
   'LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED';
 export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
   'LGQ_DIRECT_PAYMENT_SETTLEMENT_WORKER_ENABLED';
+export const LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG =
+  'LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED';
 
 // Request input never controls these bounds. Increasing either value requires
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
@@ -43,6 +52,7 @@ export const STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE = 10;
 export const STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE = 10;
 export const PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE = 10;
 export const DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE = 10;
+export const LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE = 10;
 
 type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -68,6 +78,12 @@ export function directPaymentSettlementWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG] === '1';
+}
+
+export function legacyQuickStopLateRefundWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG] === '1';
 }
 
 export type StripeSubscriptionProjectionCronSummary = Readonly<{
@@ -438,6 +454,88 @@ DirectPaymentSettlementCronSummary
     return summarizeDirectPaymentSettlementBatch(
       { claimedCount: 0, outcomes: [] },
       DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
+      1,
+    );
+  }
+}
+
+export type LegacyQuickStopLateRefundCronSummary = Readonly<{
+  requested: number;
+  claimed: number;
+  completed: number;
+  already_completed: number;
+  already_finished: number;
+  retryable_failures: number;
+  terminal_failures: number;
+  worker_errors: number;
+  failures: number;
+}>;
+
+/** Collapse every task/payment/request/provider identifier to fixed counters. */
+export function summarizeLegacyQuickStopLateRefundBatch(
+  result: RunLegacyQuickStopLateRefundBatchResult,
+  requested = LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
+  workerErrors = 0,
+): LegacyQuickStopLateRefundCronSummary {
+  let completed = 0;
+  let alreadyCompleted = 0;
+  let alreadyFinished = 0;
+  let retryableFailures = 0;
+  let terminalFailures = 0;
+
+  for (const outcome of result.outcomes) {
+    switch (outcome.status) {
+      case 'completed':
+        completed += 1;
+        break;
+      case 'already_completed':
+        alreadyCompleted += 1;
+        break;
+      case 'already_finished':
+        alreadyFinished += 1;
+        break;
+      case 'failed_retryable':
+        retryableFailures += 1;
+        break;
+      case 'failed_terminal':
+        terminalFailures += 1;
+        break;
+    }
+  }
+
+  const failures = retryableFailures + terminalFailures + workerErrors;
+  return Object.freeze({
+    requested,
+    claimed: result.claimedCount,
+    completed,
+    already_completed: alreadyCompleted,
+    already_finished: alreadyFinished,
+    retryable_failures: retryableFailures,
+    terminal_failures: terminalFailures,
+    worker_errors: workerErrors,
+    failures,
+  });
+}
+
+export async function runLegacyQuickStopLateRefundCronBatch(): Promise<
+LegacyQuickStopLateRefundCronSummary
+> {
+  try {
+    const result = await runLegacyQuickStopLateRefundBatch(
+      new StripeLegacyQuickStopLateRefundExecutor(),
+      LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
+    );
+    return summarizeLegacyQuickStopLateRefundBatch(
+      result,
+      LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
+    );
+  } catch {
+    // Stripe configuration, claim, and persistence exceptions are reduced to a
+    // single count so neither cron_runs nor the HTTP response receives IDs or
+    // provider/database details.
+    return summarizeLegacyQuickStopLateRefundBatch(
+      { claimedCount: 0, outcomes: [] },
+      LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
       1,
     );
   }

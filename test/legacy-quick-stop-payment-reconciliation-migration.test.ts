@@ -207,10 +207,13 @@ describe('dark legacy Quick Stop payment reconciliation migration', () => {
     expect(fail).toContain("task_state = 'dead_letter'");
   });
 
-  it('remains disconnected from every active application surface', () => {
+  it('is reachable only through the exact-1-gated late-refund cron boundary', () => {
     const allowed = new Set([
       join(process.cwd(), 'src', 'lib', 'billing', 'legacy-quick-stop-payment-store.ts'),
       join(process.cwd(), 'src', 'lib', 'billing', 'legacy-quick-stop-late-refund-worker.ts'),
+      join(process.cwd(), 'src', 'lib', 'billing', 'legacy-quick-stop-stripe-refund-executor.ts'),
+      join(process.cwd(), 'src', 'lib', 'billing', 'billing-worker-cron.ts'),
+      join(process.cwd(), 'src', 'app', 'api', 'cron', 'legacy-quick-stop-late-refunds', 'route.ts'),
     ]);
     const active = sourceFiles(join(process.cwd(), 'src')).filter((file) => !allowed.has(file));
     for (const file of active) {
