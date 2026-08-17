@@ -1626,6 +1626,14 @@ function validateSignedEventIdentity(
     (checkoutEvent && input.eventObjectId !== checkoutSessionId)
     || (paymentIntentEvent && input.eventObjectId !== input.paymentIntentId)
     || (chargeEvent && !CHARGE_ID_PATTERN.test(input.eventObjectId))
+    // A Charge event's object is a ch_ id, which carries no Session identity of
+    // its own: a Checkout event names the Session and a PaymentIntent event is
+    // matched against the intent, but a Charge is only reachable through its
+    // PaymentIntent. Without one, "this Charge belongs to this Session" is the
+    // caller's unfalsifiable assertion, and every legacy destination Charge is
+    // created by a Checkout Session, so a missing intent means bad evidence
+    // rather than a shape this rail has to tolerate.
+    || (chargeEvent && input.paymentIntentId === null)
     || (input.outcome === 'success' && input.paymentIntentId === null)
     || (
       input.eventType === 'checkout.session.expired'
