@@ -44,10 +44,38 @@ if (!process.argv.includes('--confirm')) {
 
 const step = (n, msg) => console.log(`\n[${n}] ${msg}`);
 
+/**
+ * Resolves the connection string without it ever appearing on a command line,
+ * where it would sit in the process list and shell history. PROD_DATABASE_URL
+ * wins if set — that is how the rehearsal against a local cluster is driven —
+ * otherwise DATABASE_URL is read from the first .env.local found.
+ */
+function resolveConnection() {
+  if (process.env.PROD_DATABASE_URL) return process.env.PROD_DATABASE_URL;
+  const candidates = [
+    join(ROOT, '.env.local'),
+    'C:/dev/CLAUDE CODE FOLDER/.env.local',
+    join(ROOT, '..', 'CLAUDE CODE FOLDER', '.env.local'),
+  ];
+  for (const file of candidates) {
+    let text;
+    try { text = readFileSync(file, 'utf8'); } catch { continue; }
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.startsWith('DATABASE_URL=')) continue;
+      const value = line.slice('DATABASE_URL='.length).trim().replace(/^["']|["']$/g, '');
+      if (value) {
+        console.log(`connection read from ${file}`);
+        return value;
+      }
+    }
+  }
+  throw new Error('no connection string: set PROD_DATABASE_URL or provide DATABASE_URL in .env.local');
+}
+
 // Supabase requires SSL; a local throwaway cluster does not offer it. Deciding
 // by host keeps this runnable against a rehearsal database without editing it,
 // which is the only way to exercise the whole script before production sees it.
-const CONNECTION = process.env.PROD_DATABASE_URL ?? '';
+const CONNECTION = resolveConnection();
 const IS_LOCAL = /@(127\.0\.0\.1|localhost)[:/]/.test(CONNECTION);
 const client = new pg.Client({
   connectionString: CONNECTION,
