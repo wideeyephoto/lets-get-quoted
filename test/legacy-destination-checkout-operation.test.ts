@@ -1179,3 +1179,69 @@ describe('legacy destination Checkout non-actionable claim dispatch', () => {
     expect(wellFormed.checkoutSessionId).toBeNull();
   });
 });
+
+describe('legacy destination Checkout Charge event binding', () => {
+  const CHARGE_ID = 'ch_legacy12345678';
+
+  function chargeEvent(
+    overrides: Partial<LegacyDestinationCheckoutSignedEventIdentity> = {},
+  ): LegacyDestinationCheckoutSignedEventIdentity {
+    return {
+      ...signedEventIdentity(),
+      eventType: 'charge.succeeded',
+      eventObjectId: CHARGE_ID,
+      ...overrides,
+    };
+  }
+
+  it('accepts a Charge event that carries the PaymentIntent linking it to the Session', async () => {
+    const { store } = mocks();
+    await expect(classifyLegacyDestinationCheckoutSignedEvent(chargeEvent(), store))
+      .resolves.toMatchObject({ disposition: 'unknown' });
+    expect(store.classifyEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a failed Charge on the same terms', async () => {
+    const { store } = mocks();
+    await expect(classifyLegacyDestinationCheckoutSignedEvent(chargeEvent({
+      eventType: 'charge.failed',
+      outcome: 'failure',
+      paymentStatus: 'unpaid',
+    }), store)).resolves.toMatchObject({ disposition: 'unknown' });
+    expect(store.classifyEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['charge.succeeded', 'charge.failed'] as const)(
+    'refuses %s with no PaymentIntent, the only link back to the Session',
+    async (eventType) => {
+      const { store } = mocks();
+      // charge.failed is the case that mattered: outcome 'failure' skips the
+      // success-requires-an-intent rule, so before this guard a Charge with no
+      // intent was accepted and bound to a Session on the caller's word alone.
+      await expect(classifyLegacyDestinationCheckoutSignedEvent(chargeEvent({
+        eventType,
+        outcome: eventType === 'charge.failed' ? 'failure' : 'success',
+        paymentIntentId: null,
+      }), store)).rejects.toBeInstanceOf(LegacyDestinationCheckoutUnavailableError);
+      expect(store.classifyEvent).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses a Charge event whose object is not a Charge id', async () => {
+    const { store } = mocks();
+    // Without this the Session id itself would pass as the Charge object, which
+    // is exactly the confusion the per-family object check exists to catch.
+    await expect(classifyLegacyDestinationCheckoutSignedEvent(chargeEvent({
+      eventObjectId: SESSION_ID_1,
+    }), store)).rejects.toBeInstanceOf(LegacyDestinationCheckoutUnavailableError);
+    expect(store.classifyEvent).not.toHaveBeenCalled();
+  });
+
+  it('still requires a paid Charge to report success and paid', async () => {
+    const { store } = mocks();
+    await expect(classifyLegacyDestinationCheckoutSignedEvent(chargeEvent({
+      paymentStatus: 'unpaid',
+    }), store)).rejects.toBeInstanceOf(LegacyDestinationCheckoutUnavailableError);
+    expect(store.classifyEvent).not.toHaveBeenCalled();
+  });
+});
