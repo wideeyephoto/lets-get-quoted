@@ -310,7 +310,9 @@ describe('Stripe Merchant return and refresh contracts', () => {
 
 describe('dark dashboard wiring', () => {
   it('loads and renders the Merchant surface only behind its independent exact gate', () => {
-    const page = readFileSync(new URL('../src/app/dashboard/settings/page.tsx', import.meta.url), 'utf8');
+    // CRLF-normalized: the gate assertion below is an exact multi-line literal.
+    const page = readFileSync(new URL('../src/app/dashboard/settings/page.tsx', import.meta.url), 'utf8')
+      .replace(/\r\n/g, '\n');
     expect(page).toContain('const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();');
     expect(page).toContain('merchantOnboardingEnabled\n        ? loadMerchantOnboardingSurfaceForOwner({ accountId })');
     expect(page).toMatch(/merchantOnboardingEnabled && merchantOnboarding[\s\S]{0,200}<MerchantOnboardingSection/);
