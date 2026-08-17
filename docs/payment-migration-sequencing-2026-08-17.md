@@ -2,7 +2,7 @@
 
 State of production as read on 2026-08-17. Every migration below is dark: none
 creates a caller, route, scheduler, or network call, and every runtime gate stays
-absent or OFF throughout. Applying them changes no behaviour on its own.
+absent or OFF throughout. Applying them changes no behavior on its own.
 
 ## Where production actually is
 

@@ -26,6 +26,10 @@ import {
   isLegacyDestinationPayment,
   reversedPlatformFee,
 } from '@/lib/payments';
+import {
+  legacyDestinationCheckoutProjectionEnabled,
+  legacyDestinationCompareAndSetStandsDown,
+} from '@/lib/billing/legacy-destination-checkout-projection';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -268,7 +272,18 @@ async function markPaymentPaid(
   }> | null = null,
 ): Promise<{ legacyRailAuthorized: boolean; transitioned: boolean; alreadyPaid: boolean }> {
   const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
-  if (rail.kind !== 'allowed') {
+  // Standing down covers both "never on this rail" and "the generation ledger
+  // owns it now". Callers already run no side effects on this answer, so the
+  // second case inherits that behavior rather than needing a parallel path.
+  // The explicit kind test stays first so the rail stays narrowed below; a
+  // boolean helper cannot narrow a union on its own.
+  if (
+    rail.kind !== 'allowed'
+    || legacyDestinationCompareAndSetStandsDown({
+      railKind: rail.kind,
+      projectionEnabled: legacyDestinationCheckoutProjectionEnabled(),
+    })
+  ) {
     return { legacyRailAuthorized: false, transitioned: false, alreadyPaid: false };
   }
   if (
@@ -385,7 +400,15 @@ async function markLegacyPaymentFailed(
   transitioned: { id: string } | null;
 }> {
   const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
-  if (rail.kind !== 'allowed') {
+  // Failure projection stands down on exactly the same terms as settlement: a
+  // rail with two authorities to fail a payment is as wrong as two to pay it.
+  if (
+    rail.kind !== 'allowed'
+    || legacyDestinationCompareAndSetStandsDown({
+      railKind: rail.kind,
+      projectionEnabled: legacyDestinationCheckoutProjectionEnabled(),
+    })
+  ) {
     return {
       handled: false,
       chargeModelColumnPresent: false,
@@ -971,7 +994,16 @@ async function dispatchStripeEvent(
     if (paymentId) {
       const planProjectionEnabled = legacyPaymentPlanProjectionEnabled();
       const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
-      if (rail.kind !== 'allowed') return;
+      // This handler writes the payment inline rather than through the shared
+      // compare-and-set, so it needs the same stand-down or the out-of-band
+      // reconciliation path would keep settling rows the ledger owns.
+      if (
+        rail.kind !== 'allowed'
+        || legacyDestinationCompareAndSetStandsDown({
+          railKind: rail.kind,
+          projectionEnabled: legacyDestinationCheckoutProjectionEnabled(),
+        })
+      ) return;
       const providerBinding = planProjectionEnabled
         ? await resolveLegacyPaymentIntentCheckoutBinding(
             stripe,
