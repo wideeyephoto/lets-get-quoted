@@ -638,7 +638,7 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('payments')
-    .select('id, account_id, amount, label, homeowner_phone, sms_consent, account:accounts(business_name)')
+    .select('id, account_id, amount, label, homeowner_phone, sms_consent, account:accounts!payments_account_id_fkey(business_name)')
     .eq('id', paymentId)
     .maybeSingle();
   if (error || !data) throw error ?? new Error('Payment not found for SMS.');
