@@ -6,7 +6,12 @@ const migrationPath = fileURLToPath(new URL(
   '../migrations/20260816194056_direct_checkout_late_success_reconciliation.sql',
   import.meta.url,
 ));
-const sql = readFileSync(migrationPath, 'utf8').toLowerCase();
+/**
+ * Line endings are normalized because the assertions below are exact multi-line
+ * literals: a checkout with core.autocrlf=true delivers CRLF and fails them all
+ * on Windows while the SQL contract itself is unchanged.
+ */
+const sql = readFileSync(migrationPath, 'utf8').replace(/\r\n/g, '\n').toLowerCase();
 
 function sliceBetween(start: string, end: string): string {
   const startIndex = sql.indexOf(start);

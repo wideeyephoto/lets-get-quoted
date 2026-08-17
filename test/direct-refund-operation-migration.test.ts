@@ -11,8 +11,17 @@ const modulePath = fileURLToPath(new URL(
   '../src/lib/billing/direct-refund-operation.ts',
   import.meta.url,
 ));
-const sql = readFileSync(migrationPath, 'utf8').toLowerCase();
-const source = readFileSync(modulePath, 'utf8');
+/**
+ * Normalize line endings before matching. Several assertions below are exact
+ * multi-line literals, and a checkout with core.autocrlf=true delivers CRLF,
+ * which fails every one of them on Windows while the SQL contract is intact.
+ */
+function readNormalized(path: string): string {
+  return readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+}
+
+const sql = readNormalized(migrationPath).toLowerCase();
+const source = readNormalized(modulePath);
 const srcRoot = join(dirname(modulePath), '..', '..');
 
 function sourceFiles(directory: string): string[] {
