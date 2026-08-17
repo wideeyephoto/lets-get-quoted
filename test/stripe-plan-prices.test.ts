@@ -82,7 +82,17 @@ function stripePrice(
     billing_scheme: 'per_unit',
     created: 1_775_000_000,
     currency: 'usd',
-    currency_options: {},
+    // Stripe always echoes the price's own currency once currency_options is
+    // expanded. A real retrieve never returns an empty dictionary here.
+    currency_options: {
+      usd: {
+        custom_unit_amount: null,
+        tax_behavior: 'exclusive',
+        tiers: null,
+        unit_amount: amount,
+        unit_amount_decimal: String(amount),
+      },
+    },
     custom_unit_amount: null,
     livemode: false,
     lookup_key: null,
@@ -254,6 +264,27 @@ describe('dark Stripe Billing Price binding adapter', () => {
     ['wrong currency', { currency: 'eur' }],
     ['unexpanded currency options', { currency_options: undefined }],
     ['alternate currency amount', { currency_options: { eur: { unit_amount: 3_500 } } }],
+    ['base currency localized to another amount', {
+      currency_options: {
+        usd: {
+          unit_amount: 3_500, tax_behavior: 'exclusive', custom_unit_amount: null, tiers: null,
+        },
+      },
+    }],
+    ['base currency localized to another tax behavior', {
+      currency_options: {
+        usd: {
+          unit_amount: 3_900, tax_behavior: 'inclusive', custom_unit_amount: null, tiers: null,
+        },
+      },
+    }],
+    ['base currency with tiers', {
+      currency_options: {
+        usd: {
+          unit_amount: 3_900, tax_behavior: 'exclusive', custom_unit_amount: null, tiers: [],
+        },
+      },
+    }],
     ['tax-inclusive amount', { tax_behavior: 'inclusive' }],
     ['one-time', { type: 'one_time', recurring: null }],
     ['tiered', { billing_scheme: 'tiered', tiers_mode: 'volume' }],
