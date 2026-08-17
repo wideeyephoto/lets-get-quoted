@@ -624,7 +624,12 @@ begin
   if v_payment.charge_model <> 'destination'
      or v_payment.amount is distinct from p_gross_amount_cents::numeric / 100
      or v_payment.paid_at is not null
-     or v_payment.refunded_amount is distinct from 0
+     -- coalesced, not `is distinct from 0`: a null refunded_amount means no
+     -- refunds everywhere else in this schema -- 20260816093000 coalesces it in
+     -- five places and the webhook route reads `Number(...) || 0` -- so treating
+     -- null as unknown here would refuse every payment on a database where the
+     -- column was added without a backfill, and refuse it silently.
+     or coalesce(v_payment.refunded_amount, 0) <> 0
      or v_payment.disputed_at is not null then
     raise exception 'legacy destination Checkout payment scope is not claimable'
       using errcode = '55000';

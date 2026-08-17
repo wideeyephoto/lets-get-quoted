@@ -189,33 +189,31 @@ call*, not the payment, so it only accepts an `open`/`unpaid` Session. And the
 replay check compares the whole signed-event input including `observed_at`, so a
 genuine redelivery must carry the original timestamp rather than a fresh one.
 
-## Open question: is `refunded_amount` ever null in production?
+## Fixed: a null `refunded_amount` made every payment unclaimable
 
-The claim RPC's scope check reads:
+The claim RPC's scope check read `v_payment.refunded_amount is distinct from 0`.
+That is true for **null** as well as for a non-zero amount, so a payment whose
+`refunded_amount` was null got refused with "payment scope is not claimable"
+exactly as a refunded one would. On a database where that column was added
+without a backfill, no destination payment could ever be claimed — and because
+the failure is a refusal rather than an error, it would have looked like the rail
+simply never engaging.
 
-```sql
-or v_payment.refunded_amount is distinct from 0
-```
+Null means "no refunds" everywhere else in this schema, which is what settles it
+as a defect rather than a deliberate fail-closed choice: `20260816093000`
+coalesces the same column in five places, the webhook route reads
+`Number(payment.refunded_amount) || 0` against a `number | null` type, and the
+admin surfaces test `Number(...) > 0`. One predicate disagreeing with every other
+consumer, including a sibling migration from the same batch, is an oversight.
 
-`is distinct from 0` is false for **null** as well as for a non-zero amount, so a
-payment whose `refunded_amount` is null is refused with "payment scope is not
-claimable" exactly as a refunded one would be. If that column was added without a
-backfill and existing rows are null rather than 0, no destination payment can be
-claimed once the gate is enabled, and the failure is a refusal rather than a
-crash — so it would look like the rail simply never engaging.
+Now `coalesce(v_payment.refunded_amount, 0) <> 0`. Reproduced against PostgreSQL
+17 first — a payment with a null `refunded_amount` was refused — then confirmed
+claimable after the change, and pinned by a case in
+`scripts/verify-destination-generation-contract.mjs`.
 
-Worth confirming before activation, read-only:
-
-```sql
-select count(*) filter (where refunded_amount is null) as null_refunded,
-       count(*) filter (where refunded_amount = 0)     as zero_refunded,
-       count(*)                                        as total
-  from public.payments
- where charge_model = 'destination';
-```
-
-Any non-zero `null_refunded` means either a backfill or a change to that
-predicate is needed before the generation gate can do anything.
+The migration is unapplied everywhere, so this is corrected in place rather than
+by an amendment; there is no deployed schema carrying the old predicate. No
+production backfill is needed as a result.
 
 ## Before starting: check for drift
 
