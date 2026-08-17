@@ -1,105 +1,125 @@
-# The live webhook is missing four events — 2026-08-17
+# The webhook endpoint is correct. The false alarm is the finding. — 2026-08-17
 
-`src/lib/billing/stripe-webhook-subscription.ts` exists to prevent exactly this,
-and it did not prevent it.
+**Resolved: there is no regression.** The Stripe API, read twice independently,
+reports `we_1TuE0BGqh5LFKuTCEyt5d4jh` carrying all **11** required events. The
+earlier version of this document claimed four were missing and that ACH payments
+would strand. That claim was wrong, and this file is rewritten rather than
+deleted because how it went wrong is worth keeping.
 
-## What was found
-
-An authenticated read of `we_1TuE0BGqh5LFKuTCEyt5d4jh` (the live platform
-endpoint, `https://letsgetquoted.com/api/stripe/webhook`, API version
-`2026-06-24.dahlia`, status Active) reports **7 subscribed events**:
-
-```
-account.updated
-charge.dispute.created
-charge.failed
-charge.refunded
-checkout.session.completed
-checkout.session.expired
-payment_intent.payment_failed
-```
-
-That is **byte-for-byte** `LIVE_WEBHOOK_EVENTS_BEFORE_2026_08_17_FIX`
-(`stripe-webhook-subscription.ts:60-68`) — the list the file records as the state
-*before* it was corrected earlier the same day.
-
-The four missing from `REQUIRED_LIVE_WEBHOOK_EVENTS`:
+## What the API actually says
 
 ```
-charge.dispute.closed
-checkout.session.async_payment_failed
-checkout.session.async_payment_succeeded
-payment_intent.succeeded
+id:          we_1TuE0BGqh5LFKuTCEyt5d4jh
+url:         https://letsgetquoted.com/api/stripe/webhook
+api_version: 2026-06-24.dahlia
+status:      enabled
+livemode:    true
+enabled_events (11):
+  checkout.session.completed          charge.dispute.created
+  checkout.session.expired            charge.dispute.closed
+  charge.failed                       checkout.session.async_payment_failed
+  charge.refunded                     checkout.session.async_payment_succeeded
+  payment_intent.payment_failed       payment_intent.succeeded
+  account.updated
 ```
 
-## Why it matters, in the file's own words
+That is `REQUIRED_LIVE_WEBHOOK_EVENTS` exactly. The `RESOLVED 2026-08-17` comment
+in `src/lib/billing/stripe-webhook-subscription.ts` is accurate.
 
-> `checkout.session.async_payment_succeeded` and `payment_intent.succeeded` are
-> the only two events that ever move an ACH payment to paid. ACH is offered on
-> every one-off payment at or above the ACH threshold that is not a plan deposit,
-> and /pay tells the customer they will be "confirmed once it settles". Without
-> these, the bank debit clears at Stripe and the payment row stays `processing`
-> forever.
+## How the alarm happened
 
-ACH is on the **live, ungated** path: `us_bank_account` appears in
-`legacy-destination-checkout-operation.ts:72`, typed at line 658, and that module
-is the legacy destination rail serving `/pay` — the rail that going live on
-2026-08-17 made real.
+A **dashboard UI** read reported 7 events — byte-for-byte the documented pre-fix
+list, which is what made it so convincing. It was wrong. The API read that
+followed showed 11.
 
-`checkout.session.async_payment_failed` is the bounce path, so a failed debit is
-never marked failed and nobody is notified. `charge.dispute.closed` means disputes
-open in the database and never close.
+The endpoint object's `updated` timestamp is `2026-08-17T13:25:46Z`, and Stripe
+exposes no field-level diff, so the object did change today (consistent with the
+fix being applied that morning) but nothing proves *what* changed. The request
+history shows retrieves at 09:17 and 09:26 EDT and no mutation call — which is
+consistent with the correction having been made through the dashboard rather than
+the API.
 
-## Nobody is currently harmed
+**The lesson is not "check twice". It is that this repository has no way to know.**
 
-Verified read-only against production after the demo sweep: the platform holds
-**4 payments total** — 2 `requested` (July, no Stripe session), 1 `failed`, 1
-`refunded`. **Nothing is in `processing`**, so no ACH settlement is stranded right
-now.
+## The real gap, which the false alarm demonstrates better than a real one would
 
-That is the traffic volume, not the safety of the system. The first real
-contractor taking a bank payment strands it.
+`missingLiveWebhookEvents(subscribed)` exists in
+`stripe-webhook-subscription.ts:71`. It takes the subscribed list as an argument
+and returns what is missing. **Nothing calls it.**
 
-## The three possibilities
+`test/stripe-webhook-subscription.test.ts` passes, all six cases — and one of
+those cases is `missingLiveWebhookEvents(LIVE_WEBHOOK_EVENTS_BEFORE_2026_08_17_FIX)`
+asserting it returns the four. The suite exercises the comparison against a
+*hardcoded fixture*. It compares the required list to the route's dispatch table:
+**code against code**. It cannot observe Stripe, so it is green whether the
+endpoint is right or wrong.
 
-1. **The correction never happened.** The comment says the endpoint "was
-   corrected in place the same day … and re-read to confirm all eleven". If that
-   re-read did not occur, or occurred against a stale view, the claim is false and
-   the file has been asserting a fix that was never applied.
-2. **It happened and regressed.** Something reverted the endpoint after the fix.
-3. **The new reading is wrong** — a stale dashboard view, or the UI showing a
-   filtered subset.
+So the state of the live endpoint is knowable only by a human opening a browser,
+and today a human opening a browser got the wrong answer. Half a day of work went
+into a defect that did not exist, and the same tooling would have been equally
+silent had it existed.
 
-Only a fresh read **through the Stripe API** settles it. The dashboard UI is not
-sufficient evidence in either direction; the original diagnosis in the file was
-explicitly made "when first read from the Stripe API".
+What would close it: a script that reads the endpoint through the Stripe API and
+feeds `missingLiveWebhookEvents()`, run on demand and after any deploy that
+touches the webhook route. It is perhaps thirty lines, it has a function waiting
+for it, and it is the difference between "we believe the endpoint is right" and
+"we checked".
 
-## Why the guard did not fire
+## What the audit found while the alarm was still live
 
-`stripe-webhook-subscription.ts:12-14` claims
-`stripe-webhook-subscription.test.ts` "parses the route and fails if this list and
-the route's dispatch table drift apart in either direction".
+Verified against the code and against production, and it stands independently of
+the webhook question.
 
-That guards **code against code**. It cannot observe the Stripe endpoint, so it
-passes at full green while production is broken — which is what happened. 421 test
-files and 7645 tests were green all day.
+### ACH is offered automatically above $1,000, with no flag and no opt-in
 
-`missingLiveWebhookEvents(subscribed)` already exists in the same file and takes
-the subscribed list as an argument. **Nothing calls it.** The diffing tool was
-written; the thing that feeds it real data was not.
+`src/lib/payments.ts:492`:
 
-## What to do, in order
+```js
+const offerAch = payment.amount >= ACH_MIN_AMOUNT && !isPlanDeposit;
+```
 
-1. **Re-read the endpoint through the Stripe API**, not the dashboard. Record the
-   full event list verbatim.
-2. If four are genuinely missing, **add them in place** — do not create a new
-   endpoint and do not roll the secret. Keep `id`, `url`, `api_version` and
-   `status` unchanged so `STRIPE_WEBHOOK_SECRET` stays valid.
-3. **Re-read again** and confirm all eleven.
-4. Only then proceed to the separate billing endpoint
-   (`docs/codex-billing-webhook-tasks-2026-08-17.md`).
-5. Decide whether the "RESOLVED" comment needs rewriting, and whether the guard
-   should become something that actually reads Stripe.
+`ACH_MIN_AMOUNT = 1000` (`src/lib/pricing.ts:82`), in **dollars** —
+`payments.amount` is numeric dollars, converted by `toCents()` at `payments.ts:511`.
+There is no feature flag anywhere in the `/pay` checkout path, no operator
+setting, and no capability read. `/pay` mirrors the predicate at
+`src/app/pay/[id]/page.tsx:120` and renders the ACH copy at `:218-223`.
 
-Do not change the `/pay` code. The route dispatches on all eleven already; the
-defect is entirely on the Stripe side.
+The marketing site states it publicly —
+`src/app/features/payments/page.tsx:60, 94, 157`: *"Bank debit is offered
+automatically on payments of $1,000 or more."*
+
+Three of six accounts satisfy `canCreateConnectCharge` (connect id present,
+onboarded, not payouts-restricted); none is restricted. Every payment the platform
+creates is `charge_model = 'destination'`, which is the rail that offers ACH — so
+that gate is currently a no-op.
+
+**No production payment has ever reached $1,000** (the largest ever is $125), so
+ACH has never actually been presented on a real payment. It is reachable, not yet
+reached.
+
+### Capability enforcement is reactive, not checked
+
+There is no capability *read*, but there is a fallback: `payments.ts:534-542`
+catches a session-create error matching `/us_bank_account/i` and retries
+card-only. Enforcement is delegated to Stripe at session-create time.
+
+`accounts.merchant_us_bank_account_payments_active` exists and is written by
+`stripe-merchant.ts:569`, but it is read only by the Accounts v2 onboarding rail,
+never by checkout — and all six accounts are `merchant_onboarding_state =
+'not_started'` with the flag false, so that rail is inert.
+
+### One code comment is wrong
+
+`payments.ts:535` says the ACH capability belongs to "this account", meaning the
+connected account. These are **destination** charges (`transfer_data` at `:519`),
+so the charge is created on the **platform** account and it is the platform's
+`us_bank_account` capability that governs. Worth correcting; it would mislead
+anyone debugging an ACH rejection.
+
+## Standing conclusion
+
+Nothing is broken. Nothing needs fixing on the Stripe side. The billing-webhook
+work (`docs/codex-billing-webhook-tasks-2026-08-17.md`) can resume from Task 2.
+
+The one thing worth building is the check that would have answered this in
+seconds instead of half a day.
