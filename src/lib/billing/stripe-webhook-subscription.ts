@@ -30,13 +30,14 @@ export const REQUIRED_LIVE_WEBHOOK_EVENTS = [
 export type RequiredLiveWebhookEvent = typeof REQUIRED_LIVE_WEBHOOK_EVENTS[number];
 
 /**
- * What the live endpoint reported when read from the Stripe API on 2026-08-17:
- * `we_1TuE0BGqh5LFKuTCEyt5d4jh`, https://letsgetquoted.com/api/stripe/webhook,
- * on `acct_1TuCWJGqh5LFKuTC`, API version 2026-06-24.dahlia, status enabled.
+ * RESOLVED 2026-08-17. Retained as the evidence this module exists for, and
+ * because a regression would look exactly like this again.
  *
- * This is a point-in-time observation, not a contract — re-read the endpoint
- * before trusting it. It is recorded because the delta against the required set
- * is a live defect rather than a theoretical one:
+ * What the live endpoint reported when first read from the Stripe API that day:
+ * `we_1TuE0BGqh5LFKuTCEyt5d4jh`, https://letsgetquoted.com/api/stripe/webhook,
+ * on `acct_1TuCWJGqh5LFKuTC`, API version 2026-06-24.dahlia, status enabled —
+ * seven of the eleven events the route dispatches on. The four it omitted were
+ * dead handlers in production:
  *
  * - `checkout.session.async_payment_succeeded` and `payment_intent.succeeded`
  *   are the only two events that ever move an ACH payment to paid. ACH is
@@ -45,11 +46,18 @@ export type RequiredLiveWebhookEvent = typeof REQUIRED_LIVE_WEBHOOK_EVENTS[numbe
  *   settles". Without these, the bank debit clears at Stripe and the payment
  *   row stays `processing` forever.
  * - `checkout.session.async_payment_failed` is the matching bounce path, so a
- *   failed debit never marks the payment failed or notifies anyone.
- * - `charge.dispute.closed` is subscribed nowhere, so disputes open in the
- *   database and never close.
+ *   failed debit never marked the payment failed or notified anyone.
+ * - `charge.dispute.closed` was subscribed nowhere, so disputes opened in the
+ *   database and never closed.
+ *
+ * The endpoint was corrected in place the same day — `id`, `url`, `api_version`
+ * and `status` unchanged, so the signing secret was preserved — and re-read to
+ * confirm all eleven. Stripe does not backfill events fired while an endpoint
+ * was unsubscribed; a reconciliation sweep over `processing` payments within the
+ * ~30-day event-retention window found no stranded settlement, so nothing needed
+ * resending.
  */
-export const OBSERVED_LIVE_WEBHOOK_EVENTS_2026_08_17 = [
+export const LIVE_WEBHOOK_EVENTS_BEFORE_2026_08_17_FIX = [
   'account.updated',
   'charge.dispute.created',
   'charge.failed',
