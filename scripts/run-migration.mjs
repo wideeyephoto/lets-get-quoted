@@ -61,7 +61,18 @@ async function main() {
   // for — this reads a file and runs it as SQL, so it is not a place to accept
   // a path.
   const file = resolve(__dirname, '..', 'migrations', basename(name));
-  const sql = await readFile(file, 'utf8');
+
+  // Normalise CRLF to LF before handing the file to Postgres. core.autocrlf is
+  // true in this repo, so a clean checkout on Windows yields CRLF on disk, and
+  // whatever we send is what `pg_get_functiondef` gives back later. Several
+  // migrations patch an existing function by reading its definition, asserting a
+  // multi-line needle appears exactly once, and replacing it — 20260816194056 and
+  // 20260816213000 do this twenty-five times between them. A CRLF needle cannot
+  // match an LF body, so those migrations refuse with "... source contract
+  // drifted" depending purely on the line endings of whoever applied the
+  // prerequisite. Normalising here keeps stored bodies identical regardless of
+  // checkout, and is pure whitespace: no migration carries a lone CR.
+  const sql = (await readFile(file, 'utf8')).replace(/\r\n/g, '\n');
 
   await loadEnvFile();
   const connectionString = process.env.DATABASE_URL;
