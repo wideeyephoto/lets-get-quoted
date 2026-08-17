@@ -180,15 +180,29 @@ function mutationClient(input: {
   };
 }
 
-function checkoutRaceAdmin(existingSessionId: string | null = null) {
+function checkoutRaceAdmin(
+  existingSessionId: string | null = null,
+  finalChargeModel: 'destination' | 'direct' = 'direct',
+  paymentPlanId: string | null = null,
+) {
   let railReads = 0;
   const update = vi.fn(() => {
-    throw new Error('a row that became direct must not persist legacy Checkout state');
+    if (finalChargeModel === 'direct') {
+      throw new Error('a row that became direct must not persist legacy Checkout state');
+    }
+    const q = {
+      eq: vi.fn(() => q),
+      in: vi.fn(() => q),
+      select: vi.fn(() => q),
+      maybeSingle: vi.fn(async () => ({ data: { id: 'pay_guard' }, error: null })),
+    };
+    return q;
   });
   const publicPayment = {
     id: 'pay_guard',
     account_id: 'acct_guard',
     job_id: 'job_guard',
+    payment_plan_id: paymentPlanId,
     invoice_id: null,
     kind: 'final',
     label: 'Final payment',
@@ -241,7 +255,7 @@ function checkoutRaceAdmin(existingSessionId: string | null = null) {
                 data: {
                   id: 'pay_guard',
                   status: 'requested',
-                  charge_model: railReads === 1 ? 'destination' : 'direct',
+                  charge_model: railReads === 1 ? 'destination' : finalChargeModel,
                 },
                 error: null,
               });
@@ -460,6 +474,36 @@ describe('legacy Checkout and contractor mutation boundary', () => {
     expect(expireSession).toHaveBeenCalledWith('cs_undisclosed');
     expect(db.update).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['one-off', null, { payment_id: 'pay_guard' }],
+    ['plan-linked', 'plan_guard', { payment_id: 'pay_guard', payment_plan_id: 'plan_guard' }],
+  ] as const)(
+    'propagates exact %s payment identity to the PaymentIntent for Charge webhook reconciliation',
+    async (_label, paymentPlanId, expectedMetadata) => {
+      const db = checkoutRaceAdmin(null, 'destination', paymentPlanId);
+      const createSession = vi.fn(async () => ({
+        id: 'cs_refund_metadata',
+        url: 'https://checkout.stripe.test/refund-metadata',
+      }));
+      mocks.admin = db.admin;
+      mocks.getStripeClient.mockReturnValue({
+        checkout: { sessions: { create: createSession, expire: vi.fn(), retrieve: vi.fn() } },
+      });
+
+      await expect(createCheckoutSessionForPayment('pay_guard', 'https://letsgetquoted.com'))
+        .resolves.toBe('https://checkout.stripe.test/refund-metadata');
+
+      expect(createSession).toHaveBeenCalledWith(expect.objectContaining({
+        metadata: expectedMetadata,
+        payment_intent_data: expect.objectContaining({
+          application_fee_amount: 125,
+          transfer_data: { destination: 'acct_stripe_guard' },
+          metadata: expectedMetadata,
+        }),
+      }));
+    },
+  );
 
   it('does not return an existing open legacy Session after the row re-proves as direct', async () => {
     const db = checkoutRaceAdmin('cs_existing');

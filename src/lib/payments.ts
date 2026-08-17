@@ -491,6 +491,11 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   // isn't wired into that path yet). Card is always offered alongside ACH.
   const offerAch = payment.amount >= ACH_MIN_AMOUNT && !isPlanDeposit;
 
+  const paymentMetadata = {
+    payment_id: payment.id,
+    ...(payment.payment_plan_id ? { payment_plan_id: payment.payment_plan_id } : {}),
+  };
+
   const params: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     ...(planCustomerId ? { customer: planCustomerId } : {}),
@@ -512,12 +517,12 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
       // Bill the exact fee cents (not a dollar round-trip) — same value, no drift.
       application_fee_amount: computePlatformFeeCents(payment.amount, feeRate),
       transfer_data: { destination: payment.account.stripe_connect_id },
+      // PaymentIntent metadata snapshots onto the Charge. Dashboard-issued
+      // refunds therefore retain the payment id needed by charge.refunded.
+      metadata: paymentMetadata,
       ...(isPlanDeposit ? { setup_future_usage: 'off_session' as const } : {}),
     },
-    metadata: {
-      payment_id: payment.id,
-      ...(payment.payment_plan_id ? { payment_plan_id: payment.payment_plan_id } : {}),
-    },
+    metadata: paymentMetadata,
     success_url: `${origin}/pay/${payment.id}?status=success`,
     cancel_url: `${origin}/pay/${payment.id}?status=cancelled`,
   };
