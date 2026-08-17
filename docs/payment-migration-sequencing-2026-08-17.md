@@ -160,6 +160,63 @@ useful contrast: the same technique that found those confirms these.
 All test-clock artifacts were deleted afterward; deleting the clock cascades to
 the customer, subscription and invoice.
 
+## The destination rail, proven against a real engine
+
+`scripts/verify-destination-generation-contract.mjs` runs the foundation and its
+RPCs against PostgreSQL 17 on a minimal stub. Seventeen checks pass, and three of
+them were previously reasoning rather than evidence:
+
+- **The preflight fails closed.** With a destination Session pointer present the
+  migration refuses to install, and refuses with `55000` — its intended domain
+  error, not a syntax or missing-column failure that would look identical from
+  outside. With the pointer cleared it installs. That is the ordering this
+  document depends on.
+- **The two-session race holds.** Two connections claiming the same payment
+  concurrently: the second blocks on the payment row lock until the first
+  commits, then returns `in_progress` rather than a second generation. One
+  operation row, one generation, and the two provider idempotency keys distinct
+  and suffixed `:ach` and `:card`. This is the claim that turns into a double
+  charge if it is wrong.
+- **A redelivery cannot settle twice.** The full lifecycle — claim, begin
+  submission, complete, classify — marks the payment paid with both provider
+  identities bound and the fee projected as dollars. Replaying the identical
+  signed event returns `replay` with `projection_allowed = false`, and the
+  payment remains settled exactly once.
+
+Two naming subtleties, both of which cost a wrong first attempt:
+`complete_legacy_destination_checkout_operation` completes the *provider create
+call*, not the payment, so it only accepts an `open`/`unpaid` Session. And the
+replay check compares the whole signed-event input including `observed_at`, so a
+genuine redelivery must carry the original timestamp rather than a fresh one.
+
+## Open question: is `refunded_amount` ever null in production?
+
+The claim RPC's scope check reads:
+
+```sql
+or v_payment.refunded_amount is distinct from 0
+```
+
+`is distinct from 0` is false for **null** as well as for a non-zero amount, so a
+payment whose `refunded_amount` is null is refused with "payment scope is not
+claimable" exactly as a refunded one would be. If that column was added without a
+backfill and existing rows are null rather than 0, no destination payment can be
+claimed once the gate is enabled, and the failure is a refusal rather than a
+crash — so it would look like the rail simply never engaging.
+
+Worth confirming before activation, read-only:
+
+```sql
+select count(*) filter (where refunded_amount is null) as null_refunded,
+       count(*) filter (where refunded_amount = 0)     as zero_refunded,
+       count(*)                                        as total
+  from public.payments
+ where charge_model = 'destination';
+```
+
+Any non-zero `null_refunded` means either a backfill or a change to that
+predicate is needed before the generation gate can do anything.
+
 ## Before starting: check for drift
 
 `20260815224559` uses `create or replace function` throughout, which will

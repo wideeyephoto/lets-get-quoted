@@ -75,6 +75,9 @@ const STUB = `
     disputed_at timestamptz,
     refunded_amount numeric(12,2),
     current_checkout_operation_pk uuid,
+    -- classify writes both of these on the paid path.
+    platform_fee numeric(12,2),
+    fee_rate numeric,
     unique (id, account_id)
   );
 `;
@@ -200,6 +203,72 @@ async function main() {
 
   await a.end();
   await b.end();
+
+  // 6. Full lifecycle through to settlement. This is the path the projection
+  //    gate hands ownership to, so "does it actually mark the payment paid" is
+  //    the question that decides whether that handover is safe.
+  const PAYMENT_ID = 'bf0df2cb-b402-4397-a38b-b9572d592f09';
+  const SESSION_ID = 'cs_live_lifecycleAAAAAAAAAAAAAAAAAAAAAAAA';
+  const PI_ID = 'pi_lifecycle12345678';
+  await reset(client, { withPointer: false });
+  await client.query(foundation);
+
+  const claimed = (await client.query(claimSql, args)).rows[0];
+  const opPk = claimed.operation_pk;
+  const token = claimed.claim_token;
+
+  const began = await client.query(
+    'select public.begin_legacy_destination_checkout_submission($1,$2) as ok', [opPk, token]);
+  check('submission can be begun under the live claim token', began.rows[0].ok === true,
+    `ok=${began.rows[0].ok}`);
+
+  // This completes the OPERATION -- the provider create call -- not the payment.
+  // The Session it binds has just been created, so the only lifecycle it accepts
+  // is open/unpaid; a complete/paid Session here is rejected as invalid evidence.
+  const completed = await client.query(
+    `select public.complete_legacy_destination_checkout_operation($1,$2,$3,'open','unpaid',$4) as ok`,
+    [opPk, token, SESSION_ID, new Date(Date.now() + 3600_000).toISOString()]);
+  check('the operation completes with the freshly created Session bound',
+    completed.rows[0].ok === true, `ok=${completed.rows[0].ok}`);
+
+  // A redelivery carries the same event, so observed_at is fixed rather than
+  // now(): the RPC refuses a "replay" whose input differs, which is the point.
+  const OBSERVED = new Date().toISOString();
+  const classified = await client.query(
+    `select * from public.classify_legacy_destination_checkout_event(
+       $1,'checkout.session.completed',$2,$3,$2,$4,true,'success','complete','paid',$5::timestamptz)`,
+    ['evt_lifecycle12345678', SESSION_ID, PAYMENT_ID, PI_ID, OBSERVED]);
+  check('a signed paid completion classifies as current and projectable',
+    classified.rows[0].projection_allowed === true,
+    JSON.stringify({ status: classified.rows[0].event_status, disposition: classified.rows[0].disposition,
+      allowed: classified.rows[0].projection_allowed }));
+
+  const settled = await client.query(
+    'select status, paid_at, stripe_payment_intent, stripe_checkout_session, platform_fee from public.payments where id=$1',
+    [PAYMENT_ID]);
+  check('the payment is marked paid with the provider identities bound',
+    settled.rows[0].status === 'paid'
+      && settled.rows[0].paid_at !== null
+      && settled.rows[0].stripe_payment_intent === PI_ID
+      && settled.rows[0].stripe_checkout_session === SESSION_ID,
+    JSON.stringify(settled.rows[0]));
+  check('the application fee is projected as dollars, not cents',
+    String(settled.rows[0].platform_fee) === '6.25', `platform_fee=${settled.rows[0].platform_fee}`);
+
+  // At-least-once delivery: the same signed event must not settle twice.
+  const replayed = await client.query(
+    `select * from public.classify_legacy_destination_checkout_event(
+       $1,'checkout.session.completed',$2,$3,$2,$4,true,'success','complete','paid',$5::timestamptz)`,
+    ['evt_lifecycle12345678', SESSION_ID, PAYMENT_ID, PI_ID, OBSERVED]);
+  check('a redelivery of the same event is recognized as a replay',
+    replayed.rows[0].event_status === 'replay' || replayed.rows[0].projection_allowed === false,
+    JSON.stringify({ status: replayed.rows[0].event_status, allowed: replayed.rows[0].projection_allowed }));
+
+  const afterReplay = await client.query(
+    'select count(*)::int as n from public.payments where id=$1 and status=$2', [PAYMENT_ID, 'paid']);
+  check('the payment is still settled exactly once after redelivery',
+    afterReplay.rows[0].n === 1, `n=${afterReplay.rows[0].n}`);
+
   await client.end();
   report();
 }
