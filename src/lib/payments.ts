@@ -322,9 +322,9 @@ export async function getPublicPayment(paymentId: string): Promise<PublicPayment
   };
 
   const fullColumns =
-    '*, charge_model, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)';
+    '*, charge_model, job:jobs!payments_job_id_fkey(client_name, ref), account:accounts!payments_account_id_fkey(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)';
   const legacyColumns =
-    '*, job:jobs(client_name, ref), account:accounts(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)';
+    '*, job:jobs!payments_job_id_fkey(client_name, ref), account:accounts!payments_account_id_fkey(business_name, stripe_connect_id, connect_onboarded, payouts_restricted_at)';
   const resolved = await resolvePaymentChargeModelRead(
     await read(fullColumns),
     async () => {
