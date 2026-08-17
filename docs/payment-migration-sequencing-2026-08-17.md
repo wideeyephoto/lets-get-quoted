@@ -71,6 +71,66 @@ deliberate and was kept rather than amended: the four known pointers carry no
 money, so clearing them is strictly better than teaching a fail-closed guard to
 accept evidence.
 
+## The four destination pointers, and what is actually established
+
+Read-only against `acct_1TuCWJGqh5LFKuTC` on 2026-08-17.
+
+| Payment | Status | Pointer | Provider result |
+|---|---|---|---|
+| `bf0df2cb` | `failed` | `cs_live_a1RKiUyk…` | exists, `expired`/`unpaid`, no PaymentIntent, **no sibling Sessions** |
+| `ba7a6159` | `processing` | `cs_test_a1aSm45f…` | 404 |
+| `665d872a` | `paid` | `cs_test_a1Z6lxQZ…` | 404, and its PaymentIntent 404s |
+| `9e355543` | `paid` | `cs_test_a16LojIf…` | 404, and its PaymentIntent 404s |
+
+Only `bf0df2cb` is genuine history on this platform, and nothing was ever
+collected on it. It is the one the adopt-and-clear script covers, as
+`inert_terminal`.
+
+**The origin of the three test pointers is not established.** An earlier guess
+that they came from the sandbox `acct_1TtDcKPqCWgR3Ww0` was inferred from Stripe
+id substrings and does not survive checking: creating a Session on that sandbox
+rejects their recorded destination `acct_1TtEtEPqTgY5Sbcb` with `No such
+destination`, so that connected account does not exist there either. What is
+established is only that they cannot be resolved or settled on the production
+platform. Treat the provenance as unknown.
+
+They cannot go through the adoption ledger, by design. Every provider fact that
+RPC takes is `not null` and range-checked, and a 404 is the absence of provider
+truth rather than a value; supplying invented values to satisfy the signature
+would put a fabricated observation into an append-only audit table. Two of them
+are unrepresentable twice over: `665d872a` and `9e355543` are `paid`, and
+`inert_terminal` requires `failed`/`canceled` while `frozen_paid` asserts the
+provider reported paid, which is exactly what cannot be observed.
+
+So the three need their own reviewed decision, and it carries a data question:
+production currently reports roughly $2,600 collected across the paid pair with
+no provider evidence anywhere on this platform, on rows that are not marked demo.
+
+## Provider contract verified against the live API
+
+On 2026-08-17 the destination provider's exact create parameters were exercised
+against Stripe in test mode at the pinned `2026-06-24.dahlia`, and the response
+checked against what `inspectProviderSession` requires:
+
+- `adaptive_pricing: { enabled: false }` is accepted and echoed back. This was
+  the least certain parameter; presentment conversion staying off is what keeps a
+  customer from being charged something other than the frozen gross.
+- `payment_method_types` echoes back in the exact order sent, including the
+  two-element ACH variant, which is what the index-wise comparison requires.
+- `amount_subtotal` and `amount_total` are both populated and equal; the
+  validator checks both against the frozen gross.
+- `recovered_from` and `after_expiration` are both `null` on a fresh Session, and
+  the validator rejects either being non-null.
+- `expires_at` is echoed exactly, so the `expectedExpiresAt` equality check holds.
+- `payment_intent` is `null` on a newly created Session. `inspectProviderSession`
+  never reads it, so this is fine — worth recording because a validator that
+  required it there would quarantine every Session the rail creates.
+
+The unit fixture `sessionForContract` was compared field by field against that
+capture and matches on everything the validator reads. That check exists because
+the Price `currency_options` defect survived precisely by having a fixture assert
+a shape Stripe never returns.
+
 ## Before starting: check for drift
 
 `20260815224559` uses `create or replace function` throughout, which will
