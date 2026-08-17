@@ -16,19 +16,54 @@ both open with an unconditional `perform ... from public.invoices ... for update
 before any gate is consulted, establishing a new payments→invoices lock order on
 the hottest write paths.
 
-## Status — partially applied, 2026-08-17 (second session)
+## Status — COMPLETE, 2026-08-17 (second session)
 
-Twelve of the sixteen are now applied to `mfuvvtrkipkigwqqtcal`. Read this before
-following the apply order below, because the order as written no longer matches
-what remains.
+**All sixteen are applied to `mfuvvtrkipkigwqqtcal`, plus one new repair migration.
+Every one of the 17 gates is still absent or 0. Nothing is live.** The apply order
+below is kept for the record; it is done.
 
 | | |
 |---|---|
-| Applied this session | `20260815224559`, then `073000` `080000` `083000` `084500` `090000` `091500` `093000` `094500` `100000` `161844` `175955` |
-| Already applied before it | `20260816220000` (adoption ledger) — **skip it; see below** |
-| Refused, not applied | `20260816194056` — `direct refund plan hold source contract drifted` |
-| Still outstanding | `20260816194056`, `20260816213000`, `20260816221500`, and the new `20260817120000` |
+| Applied this session | `20260815224559`, then `073000` `080000` `083000` `084500` `090000` `091500` `093000` `094500` `100000` `161844` `175955`, then `20260817120000`, then `194056` `213000` `221500` |
+| Already applied before it | `20260816220000` (adoption ledger) — **skipped, correctly; see below** |
 | History rows written | none — `run-migration.mjs` does not write them (see "Migration history") |
+
+`20260816194056` refused on the first attempt with `direct refund plan hold source
+contract drifted`, which is how the line-ending problem below was found. It applied
+cleanly once `20260817120000` had normalised the stored bodies — the refusal was the
+guard working, not a defect.
+
+Verified afterwards, read-only against the live catalogue:
+
+| Check | Result |
+|---|---|
+| Destination Session pointers | **0** — the foundation's preflight passed on it |
+| CRLF function bodies remaining | **0** of 156 public functions |
+| `payments` rows | **267**, unchanged, still 100% `charge_model='destination'` |
+| `billing_payment_operations` rows | 0 |
+| `legacy_destination_checkout_operations` rows | 0 — the new ledger is empty, nothing live |
+| `payments.current_checkout_operation_pk` | present (`161844`) |
+| `payments.late_checkout_success_task_pk` | present (`194056`) |
+| `classify_legacy_destination_checkout_event` | present (`221500`) |
+
+One artifact legitimately disappeared: `billing_payment_operations_one_checkout_per_payment`,
+created by `20260815224559`, is dropped by `20260816161844:357` and replaced with three
+finer-grained unique indexes (`checkout_generation_unique`, `checkout_current_unique`,
+`checkout_predecessor_unique`). The generation model supersedes one-checkout-per-payment.
+That drop is also the statement the dependency audit falsely reports as a missing
+prerequisite — see below.
+
+Three corrections that mattered on the way:
+
+1. **`20260816220000` was already applied and is not idempotent.** It is step 3 below
+   and was counted in the "16". It opens with a bare `create table` — no
+   `if not exists` — so re-running it aborts with `42P07 duplicate_table`. It also
+   sits *above* the high-water this document records, which is how it was missed.
+   The real count was 15, not 16.
+2. **The destination-pointer count is 0, not 3.** See the corrected "After each
+   step" section. All four pointers were cleared, not one.
+3. **Line endings decided whether `194056` and `213000` could apply at all.** See
+   "Line endings are load-bearing".
 
 Three corrections that matter more than the rest:
 
@@ -311,8 +346,12 @@ the customer, subscription and invoice.
 ## The destination rail, proven against a real engine
 
 `scripts/verify-destination-generation-contract.mjs` runs the foundation and its
-RPCs against PostgreSQL 17 on a minimal stub. Seventeen checks pass, and three of
-them were previously reasoning rather than evidence:
+RPCs against PostgreSQL 17 on a minimal stub. **Twenty-two** checks pass today
+(`22/22`, and `verify-adoption-contract.mjs` is `20/20`). "Seventeen" was exact when
+written — three later commits moved it: `e17d8060` added the three failure-side
+checks (17→20), `69860e3f` added a null-`refunded_amount` check (→21), and `0253ace8`
+replaced that one with two refund-scope checks (→22). Three of the checks were
+previously reasoning rather than evidence:
 
 - **The preflight fails closed.** With a destination Session pointer present the
   migration refuses to install, and refuses with `55000` — its intended domain
@@ -330,6 +369,53 @@ them were previously reasoning rather than evidence:
   identities bound and the fee projected as dollars. Replaying the identical
   signed event returns `replay` with `projection_allowed = false`, and the
   payment remains settled exactly once.
+
+### Which of those three are actually load-bearing
+
+Each was mutation-tested by breaking the thing it is meant to catch, against a
+scratch copy of the migration. The results are not uniform, and the difference
+matters because these are the money-safety claims:
+
+- **Preflight fails closed — REAL.** Deleting the arm that raises `55000` turned two
+  checks red. Solid.
+- **Two-session race — REAL, but carried by 2 of its 4 checks.** Removing only the
+  payment-row `for update` aborts the run outright on a duplicate-key violation, so
+  the unique constraints are an independent second line of defence — worth knowing.
+  Removing the lock *and* the uniqueness backstops produced a true double-mint, and
+  the two checks that caught it were "exactly one of two concurrent claims is
+  granted" and "the race produced exactly one operation row, at one generation".
+  The check named "the second concurrent claim blocks until the first commits"
+  stayed **green** through that double-mint: `B` blocks on the write lock taken by
+  the RPC's trailing `update public.payments set current_legacy_destination_checkout_operation_pk`,
+  not on the read lock the check is meant to prove. Blocking is not a valid proxy
+  for serialisation here.
+- **A redelivery cannot settle twice — WEAKER THAN STATED, and this is the one to
+  fix.** The check at `verify-destination-generation-contract.mjs:297` is a
+  *disjunction*: `event_status === 'replay' || projection_allowed === false`. Flipping
+  only `projection_allowed` to true left the suite fully green at `22/22`, printing
+  `PASS ... {"status":"replay","allowed":true}`. The property this document asserts is
+  the *conjunction*. And its companion check at `:301` counts
+  `payments where id=$1 and status='paid'` — `id` is the primary key, so the result is
+  0 or 1 by construction and it can **never** reveal a second settlement. A regression
+  that keeps the `replay` label but lets `projection_allowed` become true, or that
+  re-runs the settlement UPDATE and overwrites `paid_at` or re-binds a different
+  PaymentIntent, ships with a green harness.
+
+Two smaller gaps from the same pass: the idempotency-key check reads `rows[0]` with no
+`rowCount === 1` assertion, so it silently inspects the first of however many operation
+rows exist; and the preflight's *second* fail-closed arm (the
+`current_checkout_operation_pk` cross-rail lineage guard) is never exercised, because
+`reset()` leaves that column NULL in every fixture row — deleting that whole arm leaves
+the suite at `22/22`.
+
+None of this is a defect in the migrations, and none of it changed what was applied.
+It is a defect in the evidence: the harness's headline replay claim is the one property
+it does not robustly guard. The fixes are small — `||` to `&&` at `:297`, assert on
+`paid_at`/`stripe_payment_intent` stability rather than a primary-key count at `:301`,
+add `rowCount === 1`, add a `reset()` variant seeding a non-null lineage pointer, and
+drop the invented `kind` default while naming `kind` in the fixture insert. They are
+deliberately **not** applied here, because changing a verification harness without
+running it is how you get a harness that passes for a new reason.
 
 Two naming subtleties, both of which cost a wrong first attempt:
 `complete_legacy_destination_checkout_operation` completes the *provider create
@@ -366,7 +452,25 @@ reality never produces — arrived at from the opposite direction. A stub that i
 wrong permissively invents defects; one that is wrong strictly hides them.
 
 Both harness stubs now mirror the real definitions — enums, nullability,
-defaults, and the relevant CHECK constraints — and both suites pass against them.
+and the relevant CHECK constraints — and both suites pass against them. **Defaults
+are the one exception, and it is the same permissive direction this section exists to
+warn about:** the generation stub declares
+`kind public.payment_kind not null default 'deposit'`
+(`verify-destination-generation-contract.mjs:84`) while production has `kind` NOT NULL
+with **no default**. `reset()` therefore inserts a payment without naming `kind` and
+succeeds against the stub; the identical INSERT against production raises `23502`.
+Enums match exactly for `payment_status` and `payment_kind` (labels and order), and
+nullability is correct on every column either stub declares, including all three
+refund columns the retraction below turns on.
+
+Relatedly, neither stub is production-legal for inserts: `payments.job_id` (uuid NOT
+NULL, no default), `accounts.business_name` and `accounts.account_number` exist in
+production and in neither stub. Both script headers disclose the minimalism
+deliberately, which is fine — but "mirrors the real definitions" needs that
+qualifier, because the moment a check's subject is the *shape of a payment row*
+rather than the behaviour of an RPC, it is being validated against a fixture
+production cannot produce. That is precisely how the retracted `refunded_amount`
+defect was manufactured.
 The refund scope check is exercised in both directions instead: a payment at the
 default refund state claims, and a partially refunded one is refused.
 
