@@ -50,10 +50,25 @@ function connection() {
   });
 }
 
+/**
+ * Mirrors production's real definitions for the columns and constraints these
+ * migrations touch, taken from the catalog on 2026-08-17. Nullability and
+ * defaults are copied exactly rather than guessed: an earlier version of this
+ * stub declared refunded_amount nullable when production has it NOT NULL
+ * DEFAULT 0, which manufactured a failure state that cannot occur and led to a
+ * "fix" for a defect that did not exist. A stub that is wrong in the permissive
+ * direction invents bugs; one that is wrong in the strict direction hides them.
+ */
 const STUB = `
   drop schema public cascade;
   create schema public;
   grant usage on schema public to public;
+  create type public.payment_status as enum (
+    'requested','processing','paid','failed','refunded','disputed'
+  );
+  create type public.payment_kind as enum (
+    'deposit','stage','final','plan_installment'
+  );
   create table public.accounts (
     id uuid primary key,
     stripe_connect_id text,
@@ -63,21 +78,39 @@ const STUB = `
     payouts_restricted_at timestamptz
   );
   create table public.payments (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     account_id uuid not null references public.accounts(id),
     amount numeric(12,2) not null,
-    charge_model text,
-    status text not null,
+    kind public.payment_kind not null default 'deposit',
+    status public.payment_status not null default 'requested',
+    charge_model text not null default 'destination',
     stripe_checkout_session text,
     stripe_payment_intent text,
     stripe_charge_id text,
+    stripe_account_id text,
+    stripe_livemode boolean,
     paid_at timestamptz,
     disputed_at timestamptz,
-    refunded_amount numeric(12,2),
+    refunded_amount numeric(12,2) not null default 0,
+    platform_fee_refunded numeric(12,2) not null default 0,
+    eligible_service_refunded_amount numeric(12,2) default 0,
     current_checkout_operation_pk uuid,
-    -- classify writes both of these on the paid path.
     platform_fee numeric(12,2),
-    fee_rate numeric,
+    fee_rate numeric(6,4),
+    fee_basis_amount numeric(12,2),
+    constraint payments_charge_model_check
+      check (charge_model in ('destination','direct')),
+    constraint payments_refunded_amount_check
+      check (refunded_amount >= 0 and refunded_amount <= amount),
+    constraint payments_platform_fee_refunded_check
+      check (platform_fee_refunded >= 0
+             and (platform_fee is null or platform_fee_refunded <= platform_fee)),
+    constraint payments_fee_rate_check
+      check (fee_rate is null or fee_rate between 0 and 1),
+    constraint payments_platform_fee_check
+      check (platform_fee is null
+             or (platform_fee >= 0 and platform_fee <= amount
+                 and (fee_basis_amount is null or platform_fee <= fee_basis_amount))),
     unique (id, account_id)
   );
 `;
@@ -269,34 +302,38 @@ async function main() {
   check('the payment is still settled exactly once after redelivery',
     afterReplay.rows[0].n === 1, `n=${afterReplay.rows[0].n}`);
 
-  // 7. A never-refunded payment must be claimable however that is recorded.
-  //    Every other consumer in this codebase reads a null refunded_amount as
-  //    zero -- migration 20260816093000 coalesces it in five places, and the
-  //    webhook route does `Number(...) || 0` -- so a null here means "no refunds"
-  //    and not "unknown". A scope check that refuses it would mean no destination
-  //    payment can ever be claimed on a database where that column was added
-  //    without a backfill, and it would fail as a silent refusal rather than an
-  //    error.
-  const NULL_REFUND_PAYMENT = '33333333-3333-4333-8333-333333333333';
+  // 7. The refund scope check, against the shape production actually has.
+  //    refunded_amount is NOT NULL DEFAULT 0, so `is distinct from 0` and a
+  //    coalesced form are equivalent and the guard is exercised only by a real
+  //    non-zero refund. Asserting both directions keeps that honest: a default
+  //    row claims, a partially refunded one does not.
+  const REFUNDED_PAYMENT = '33333333-3333-4333-8333-333333333333';
   await reset(client, { withPointer: false });
   await client.query(foundation);
   await client.query(
-    `insert into public.payments
-       (id, account_id, amount, charge_model, status, stripe_checkout_session, refunded_amount)
-     values ($1,$2,'125.00','destination','requested',null,null)`,
-    [NULL_REFUND_PAYMENT, ACCOUNT],
+    `insert into public.payments (id, account_id, amount, charge_model, status)
+     values ($1,$2,'125.00','destination','requested')`,
+    [REFUNDED_PAYMENT, ACCOUNT],
   );
-  let nullRefundError = null;
-  let nullRefundStatus = null;
+  const defaulted = await client.query(claimSql, [REFUNDED_PAYMENT, ...args.slice(1)]);
+  check('a payment at the default refund state is claimable',
+    defaulted.rows[0].claim_status === 'claimed', `status=${defaulted.rows[0].claim_status}`);
+
+  const PARTIAL_REFUND = '44444444-4444-4444-8444-444444444444';
+  await client.query(
+    `insert into public.payments (id, account_id, amount, charge_model, status, refunded_amount)
+     values ($1,$2,'125.00','destination','requested','25.00')`,
+    [PARTIAL_REFUND, ACCOUNT],
+  );
+  let refundedError = null;
   try {
-    const r = await client.query(claimSql, [NULL_REFUND_PAYMENT, ...args.slice(1)]);
-    nullRefundStatus = r.rows[0].claim_status;
+    await client.query(claimSql, [PARTIAL_REFUND, ...args.slice(1)]);
   } catch (error) {
-    nullRefundError = error.message;
+    refundedError = error.message;
   }
-  check('a payment with a null refunded_amount is claimable',
-    nullRefundError === null && nullRefundStatus === 'claimed',
-    nullRefundError ? `raised: ${nullRefundError}` : `status=${nullRefundStatus}`);
+  check('a partially refunded payment is refused as out of scope',
+    refundedError !== null && /not claimable/i.test(refundedError),
+    refundedError ? refundedError.slice(0, 70) : 'claim was granted');
 
   // 8. The failure side. The projection gate stands failure down as well as
   //    settlement, so the classifier owning it has to actually mark the payment

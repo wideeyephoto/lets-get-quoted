@@ -73,13 +73,21 @@ async function main() {
       id uuid primary key,
       stripe_connect_id text
     );
+    create type public.payment_status as enum (
+      'requested','processing','paid','failed','refunded','disputed'
+    );
     create table public.payments (
-      id uuid primary key,
+      id uuid primary key default gen_random_uuid(),
       account_id uuid not null references public.accounts(id),
       amount numeric(12,2) not null,
-      charge_model text,
-      status text not null,
+      charge_model text not null default 'destination',
+      status public.payment_status not null default 'requested',
       stripe_checkout_session text,
+      refunded_amount numeric(12,2) not null default 0,
+      constraint payments_charge_model_check
+        check (charge_model in ('destination','direct')),
+      constraint payments_refunded_amount_check
+        check (refunded_amount >= 0 and refunded_amount <= amount),
       unique (id, account_id)
     );
   `);
