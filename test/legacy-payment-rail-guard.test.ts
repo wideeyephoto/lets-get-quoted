@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   admin: null as unknown,
@@ -875,6 +875,115 @@ describe('legacy platform webhook rail boundary', () => {
     expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
     expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
     expect(mocks.confirmQuickStopPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe('legacy destination settlement handover to the generation ledger', () => {
+  const FLAG = 'LGQ_LEGACY_DESTINATION_CHECKOUT_PROJECTION_ENABLED';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_rail';
+    process.env[FLAG] = '1';
+    mocks.getStripeClient.mockReturnValue({
+      webhooks: { constructEvent: () => mocks.event },
+    });
+  });
+
+  afterEach(() => {
+    delete process.env[FLAG];
+  });
+
+  /**
+   * The route handles seven of the eight event types the classifier claims;
+   * charge.succeeded is not one of its branches. Each of these settles or fails
+   * a payment today, so each must stop doing so once the ledger owns the rail.
+   */
+  const handedOver = [
+    ['checkout completed', { type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } } }, 'requested'],
+    ['async checkout succeeded', { type: 'checkout.session.async_payment_succeeded', data: { object: { metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } } }, 'processing'],
+    ['async checkout failed', { type: 'checkout.session.async_payment_failed', data: { object: { metadata: { payment_id: 'pay_guard' } } } }, 'processing'],
+    ['checkout expired', { type: 'checkout.session.expired', data: { object: { id: 'cs_guard', metadata: { payment_id: 'pay_guard' } } } }, 'processing'],
+    ['charge failed', { type: 'charge.failed', data: { object: { metadata: { payment_id: 'pay_guard' }, failure_message: 'declined' } } }, 'processing'],
+    ['payment intent failed', { type: 'payment_intent.payment_failed', data: { object: { metadata: { payment_id: 'pay_guard' }, last_payment_error: null } } }, 'processing'],
+    ['payment intent succeeded', { type: 'payment_intent.succeeded', data: { object: { id: 'pi_guard', metadata: { payment_id: 'pay_guard' } } } }, 'processing'],
+  ] as const;
+
+  it.each(handedOver)(
+    'stops %s from settling a destination row while the ledger owns it',
+    async (_label, event, status) => {
+      // allowUpdates stays false, so any write attempt throws rather than being
+      // asserted after the fact: two authorities on this rail is the whole bug.
+      const db = webhookAdmin({
+        id: 'pay_guard',
+        account_id: 'acct_guard',
+        job_id: 'job_guard',
+        invoice_id: null,
+        status,
+        charge_model: 'destination',
+      });
+      mocks.admin = db.admin;
+      mocks.event = event;
+
+      const response = await legacyStripeWebhook(webhookRequest());
+
+      // Still acknowledged: standing down is not a delivery failure, and a 500
+      // here would make Stripe retry forever once the flag is on.
+      expect(response.status).toBe(200);
+      expect(db.update).not.toHaveBeenCalled();
+      expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+      expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
+      expect(mocks.handlePlanPaymentSettled).not.toHaveBeenCalled();
+      expect(mocks.handlePlanPaymentFailed).not.toHaveBeenCalled();
+      expect(mocks.confirmQuickStopPayment).not.toHaveBeenCalled();
+      expect(mocks.markInvoicePaidForPayment).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['won', 'won'],
+    ['lost', 'lost'],
+  ])('still resolves a dispute closed as %s, which the ledger does not own', async (_label, status) => {
+    // The classifier covers eight event types and no dispute is among them, so
+    // over-applying the stand-down here would leave disputes open forever --
+    // the same silent-stall shape as the ACH gap, just self-inflicted.
+    const db = webhookAdmin({
+      id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null,
+      status: 'disputed', charge_model: 'destination',
+    }, true);
+    mocks.admin = db.admin;
+    mocks.event = { type: 'charge.dispute.closed', data: { object: { payment_intent: 'pi_guard', status } } };
+
+    const response = await legacyStripeWebhook(webhookRequest());
+
+    expect(response.status).toBe(200);
+    expect(db.update).toHaveBeenCalled();
+    expect(mocks.createDisputeFeedEvent).toHaveBeenCalled();
+  });
+
+  // charge.refunded is deliberately not covered here. It is outside the
+  // classifier's eight event types like the disputes above, and it reaches its
+  // own untouched rail guard rather than either stand-down, so this flag cannot
+  // affect it. Driving it through this harness needs provider mocks the file
+  // does not set up, and a fixture bent until it returns 200 would assert the
+  // fixture rather than the guard.
+
+  it('settles normally again the moment the flag is not exactly 1', async () => {
+    process.env[FLAG] = 'true';
+    const db = webhookAdmin({
+      id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', status: 'requested', charge_model: 'destination',
+    }, true);
+    mocks.admin = db.admin;
+    mocks.event = {
+      type: 'checkout.session.completed',
+      data: { object: { mode: 'payment', payment_status: 'paid', metadata: { payment_id: 'pay_guard' }, payment_intent: 'pi_guard' } },
+    };
+
+    const response = await legacyStripeWebhook(webhookRequest());
+
+    expect(response.status).toBe(200);
+    expect(db.filters).toContainEqual(['charge_model', 'destination']);
+    expect(mocks.sendPaymentSmsEvent).toHaveBeenCalledWith('pay_guard', 'payment_paid');
   });
 });
 
