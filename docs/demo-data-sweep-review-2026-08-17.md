@@ -5,9 +5,15 @@ query below ran under `set default_transaction_read_only = on`, using the
 script's own match predicates copied verbatim so this cannot report on a
 different match than the one that would delete.
 
-**Verdict: do not run it as-is on any account.** Not because it deletes too
-much. It deletes too little, and the arm that does fire silently damages data it
-is supposed to preserve.
+**Original verdict: do not run it as-is on any account.** Not because it deletes
+too much. It deletes too little, and the arm that does fire silently damages data
+it is supposed to preserve.
+
+**Status: patched the same day.** All five items under "What the script needed"
+are done, and `--rehearse` is clean on all five accounts — 264 of 264 seeded
+payments removed, 0 unmarked payments touched, 0 survivors orphaned. The findings
+below are kept as written, because they are the reasoning the patch rests on.
+Nothing has been run with `--apply`.
 
 ## The shape of the account fleet
 
@@ -113,19 +119,134 @@ the failure would land halfway through a teardown.
 `--rehearse` would catch this, and is the right thing to run first. It is also
 the reason `--rehearse` exists.
 
-## What the script needs before it runs
+## What the script needed — all five done
 
-1. Widen the job predicate to `test_marker is not null`, excluding any job that
-   holds an unmarked payment.
-2. Stop orphaning survivors: either delete a demo client only when nothing
-   surviving still references it, or delete its jobs in the same pass.
-3. Report what points at the clients, not just how many clients match — the dry
-   run's whole claim is that damage is visible before it is destructive.
-4. Preflight the RESTRICT tables so a future run fails at statement 1 with a
-   legible message rather than at statement 7 with `23503`.
-5. `loadEnv` reads `../.env.local`, which does not exist in this worktree. It
-   will exit on "No DATABASE_URL" before touching anything — harmless, but it
-   means nobody has ever run this here.
+1. ~~Widen the job predicate to `test_marker is not null`, excluding any job that
+   holds an unmarked payment.~~ `JOB_MATCH` now does both.
+2. ~~Stop orphaning survivors.~~ The client delete carries a guard, and a
+   post-delete check rolls the transaction back if a survivor loses its customer.
+3. ~~Report what points at the clients.~~ The dry run now lists the held-back jobs
+   and the kept clients with their job refs.
+4. ~~Preflight the RESTRICT tables.~~ Enumerated from `pg_catalog`, not
+   hardcoded, and run before `begin`.
+5. ~~`loadEnv` reads `../.env.local`, which does not exist in this worktree.~~ A
+   missing file is no longer fatal, so `DATABASE_URL` from the environment works.
+
+### The one invariant worth stating on its own
+
+> **No payment without a `test_marker` is ever deleted.**
+
+That is what the held-back rule buys, and it is stronger than protecting
+`6e2e7689` by id: it protects the next real payment too. The script asserts it
+before opening the transaction and aborts if it fails.
+
+The assertion is a tautology given the two predicates as written — a job only
+matches when nothing unmarked hangs off it, so nothing unmarked can reach the
+delete set by either route. Its value is as a regression guard, because the
+tempting simplification (`JOB_MATCH` → just `test_marker is not null`) makes the
+script delete *more* demo data, keeps every rehearsal green, and cascades the one
+real payment out of the ledger. `test/remove-demo-data-guards.test.ts` fails the
+build if the carve-out is removed; that assertion was mutation-tested.
+
+### Rehearsal results, all five accounts
+
+`--rehearse` runs every delete and rolls back. Projections matched the actual
+delete counts exactly on every account:
+
+| account | jobs | held back | payments cascaded | deleted directly | kept | clients | leads | orphaned |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `831ab32c` | 244 | 0 | 156 | 0 | 1 | 188 | 100 | **0** |
+| `5676eb6a` | 100 | **1** (J-1038) | 65 | 0 | 2 | 42 | 100 | **0** |
+| `d3202ae8` | 90 | 0 | 34 | **3** | 1 | 106 | 103 | **0** |
+| `c63293b4` | 39 | 0 | 6 | 0 | 0 | 26 | 11 | **0** |
+| `c7632694` | 0 | 0 | 0 | 0 | 0 | 1 | 1 | **0** |
+
+(Client counts are after the SET NULL fix below; 23 clients that the first draft
+would have deleted are now held back because a recurring plan still points at
+them. The orphan column is checked across all five parent tables.)
+
+261 cascaded + 3 direct = **264 of 264** marked payments, and the 4 unmarked ones
+survive. Before the patch: 32 of 264, with 392 jobs and 155 leads orphaned.
+
+The three deleted directly are on account `d3202ae8`, on job `J-1001` — an
+*unmarked* job holding marked payments, which is the case the job cascade alone
+can never reach.
+
+### What an adversarial review of the patch found
+
+Five independent reviewers, then a refuter per finding instructed to default to
+"refuted". Seven findings survived. **All five lenses independently found the
+same one**, and it was the worst:
+
+**The client guard knew two of the five SET NULL parents of `clients`.** They are
+`jobs`, `leads`, `recurring_plans`, `warranties` and `extra_stop_requests`. I
+enumerated the first two by hand — then wrote the post-delete orphan check from
+the same hand-written pair, so the check agreed with the guard by construction
+and verified nothing. **23 recurring plans across three accounts** would have
+been silently detached from their customer while the run printed a clean bill.
+
+That is precisely the failure this document accuses the *original* script of, one
+table over: the dry run counted clients and never asked what pointed at them.
+`src/app/dashboard/clients/actions.ts:210` already knew the answer — its merge
+path repoints four of the five before deleting a duplicate.
+
+The fix is not a longer list. Both the guard and the post-check now read the
+parents from `pg_catalog`, and a child table the script does not delete from
+counts as a survivor whenever it holds any row — so a sixth one added later holds
+clients back by default instead of losing them.
+
+The other six:
+
+- **`recurring_plans` is never swept**, and nothing else deletes it. 23 seeded
+  plans keep their schedule, so the cron re-creates seeded visit jobs and fresh
+  `@example.com` clients afterwards. The sweep does not leave the account clean;
+  it leaves it able to regrow. Now reported loudly, with amount, frequency,
+  next run date and whether a card is attached — *not* deleted, because removing
+  a billing schedule is a different decision from removing seeded history.
+- **The preflight treated `NO ACTION` as `RESTRICT`.** The one such key here,
+  `payment_plans_payoff_payment_same_plan_fkey`, is `DEFERRABLE INITIALLY
+  DEFERRED`: a plan and its payoff payment on the same seeded job both vanish
+  inside step 4, so there is nothing to violate at COMMIT. Aborting would have
+  refused a run that would have committed, and sent the operator to hand-edit a
+  live billing pointer. RESTRICT now aborts; NO ACTION warns. (A refuter
+  confirmed this on a throwaway PG17 with the same FK topology, including that
+  `--rehearse` can never exercise a deferred key, because it rolls back before
+  the only point at which that key is checked.)
+- **The held-back report said marked payments "also survive on it"** — step 5
+  deletes exactly those. My sentence, and the opposite of the truth.
+- **The kept-client report counted every job and lead**, including the ones about
+  to be deleted. The row *filter* was survivor-aware; the numbers next to it were
+  not, so a client held back by one surviving job was listed with six.
+- **The `empty pay periods` delete had no dry-run line**, and its `period_id`
+  cascade removes roughly twice the append-only pay events the run reports.
+- **A kept crew member's labor costs on a seeded job** are destroyed by the
+  widened cascade with no count and no rule of their own. Zero rows today, but
+  the widening is what made it possible.
+
+The last three are now reported under a "Collateral (deleted, but not by a rule
+of its own)" heading. One finding was refuted and dropped.
+
+Known limitation, left in deliberately: the preflight looks one level deep, at
+foreign keys into `payments` and `jobs`. A RESTRICT key on a *grandchild* — say
+something referencing `invoices`, which cascades from `jobs` — is not counted.
+Those constraints are immediate rather than deferred, so `--rehearse` does
+surface them, which is one more reason the rehearsal is not optional.
+
+### Two bugs the patch introduced, and how they surfaced
+
+Both were mine, both were caught by running the thing rather than reading it,
+and both were the same shape — a predicate that means one thing when it reports
+and another when it deletes, which is the exact failure this file's header warns
+about.
+
+- The client guard asked whether *anything* referenced the client. Correct at
+  delete time; at report time nothing has been deleted yet, so the dry run
+  announced `demo clients 0` for an account where `--apply` would then have
+  removed 52. Fixed by projecting the job delete into the predicate, which makes
+  one spelling correct in both places.
+- The "these are NOT demo jobs, their costs will drop" warning still filtered on
+  `ref not like 'J-DEMO-%'`, which meant "not a demo job" only while that prefix
+  was the whole match. It listed 64 jobs that step 4 was itself about to delete.
 
 ## Incidental
 
