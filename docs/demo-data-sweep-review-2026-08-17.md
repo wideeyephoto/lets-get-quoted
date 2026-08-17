@@ -9,11 +9,34 @@ different match than the one that would delete.
 too much. It deletes too little, and the arm that does fire silently damages data
 it is supposed to preserve.
 
-**Status: patched the same day.** All five items under "What the script needed"
-are done, and `--rehearse` is clean on all five accounts — 264 of 264 seeded
-payments removed, 0 unmarked payments touched, 0 survivors orphaned. The findings
-below are kept as written, because they are the reasoning the patch rests on.
-Nothing has been run with `--apply`.
+**Status: patched and applied the same day, all five accounts.** Every item under
+"What the script needed" is done. The findings below are kept as written, because
+they are the reasoning the patch rests on.
+
+| account | jobs | payments | clients | leads | crew | plans |
+| --- | --- | --- | --- | --- | --- | --- |
+| `c7632694` All is Bright | 0 | 0 | 1 | 1 | 0 | 0 |
+| `c63293b4` BIGFATPIPEGUYS | 39 | 6 | 29 | 11 | 11 | **3** |
+| `d3202ae8` Fences and Friends | 90 | 34 + 3 direct | 106 | 103 | 4 | 0 |
+| `5676eb6a` My Business | 100 | 65 | 52 | 100 | 5 | **12** |
+| `831ab32c` My Business | 244 | 156 | 198 | 100 | 5 | **12** |
+| **total** | **473** | **264** | **386** | **315** | **25** | **27** |
+
+Verified afterwards, read-only:
+
+- **`payments` now holds 4 rows, all unmarked, $275.50.** Every one of the 264
+  seeded payments is gone — 261 cascaded from their jobs, 3 deleted directly.
+- **`6e2e7689` survives** — `refunded`, $0.50, still on job `J-1038`, still
+  carrying its `cs_live_` Session. The held-back rule fired in production exactly
+  as rehearsed: `J-1038 · Anders Ivanov · unmarked payment(s) 6e2e7689`.
+- **Zero orphans**, across all five SET NULL parents of `clients`. (Mid-sweep
+  there were 76 leads with a null `client_id`; all were on the last unswept
+  account with no `updated_at` later than 2026-08-10, i.e. pre-existing, and they
+  went with it.)
+- **No seeded recurring plans remain anywhere**, so the cron has nothing left to
+  regrow the accounts from.
+- Deliberately still seeded: **1 job and 4 clients** — `J-1038` and the customers
+  that surviving rows still point at. That is the guard working, not residue.
 
 ## The shape of the account fleet
 
