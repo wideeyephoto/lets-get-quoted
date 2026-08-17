@@ -235,15 +235,18 @@ function hasNoAlternateCurrencyOptions(price: Record<string, unknown>): boolean 
   const baseCurrency = typeof price.currency === 'string' ? price.currency : null;
   if (!baseCurrency) return false;
 
-  return Object.entries(currencyOptions).every(([code, rawOption]) => {
-    if (code !== baseCurrency) return false;
-    const option = record(rawOption);
-    if (!option) return false;
-    return option.unit_amount === price.unit_amount
-      && option.tax_behavior === price.tax_behavior
-      && option.custom_unit_amount == null
-      && option.tiers == null;
-  });
+  // Exactly the base currency, never zero keys. An empty map would satisfy a
+  // vacuous every() while proving nothing about the expanded amount, which is
+  // the whole point of expanding this field.
+  const currencyCodes = Object.keys(currencyOptions);
+  if (currencyCodes.length !== 1 || currencyCodes[0] !== baseCurrency) return false;
+
+  const option = record(currencyOptions[baseCurrency]);
+  if (!option) return false;
+  return option.unit_amount === price.unit_amount
+    && option.tax_behavior === price.tax_behavior
+    && option.custom_unit_amount == null
+    && option.tiers == null;
 }
 
 function validatePrice(

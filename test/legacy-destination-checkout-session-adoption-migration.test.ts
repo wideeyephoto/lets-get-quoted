@@ -42,11 +42,16 @@ describe('legacy destination Checkout Session adoption migration', () => {
     expect(flat).not.toContain('pg_catalog.pg_get_functiondef');
   });
 
-  it('is ordered before the generation foundation it unblocks', () => {
+  it('is ordered before the foundation but does not itself unblock it', () => {
     // 20260816220000 < 20260816221500. The foundation's preflight is atomic with
     // its own ledger, so the audit record can only ever be written beforehand.
     expect(migrationPath).toContain('20260816220000');
     expect(Number('20260816220000')).toBeLessThan(Number('20260816221500'));
+    // This migration only records evidence. The foundation consults nothing here
+    // today, so installing this does NOT make the foundation installable; that
+    // still needs a separately reviewed amendment to the foundation's preflight.
+    expect(flat).not.toContain('20260816221500_legacy_destination_checkout_generation_foundation');
+    expect(flat).toContain('a future reviewed amendment');
   });
 
   it('uses a private FORCE-RLS append-only adoption ledger', () => {
