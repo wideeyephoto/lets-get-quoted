@@ -269,6 +269,41 @@ async function main() {
   check('the payment is still settled exactly once after redelivery',
     afterReplay.rows[0].n === 1, `n=${afterReplay.rows[0].n}`);
 
+  // 7. The failure side. The projection gate stands failure down as well as
+  //    settlement, so the classifier owning it has to actually mark the payment
+  //    failed -- otherwise an expired Checkout leaves the row stuck forever.
+  const FAIL_SESSION = 'cs_live_expiredAAAAAAAAAAAAAAAAAAAAAAAAAA';
+  await reset(client, { withPointer: false });
+  await client.query(foundation);
+  const fc = (await client.query(claimSql, args)).rows[0];
+  await client.query('select public.begin_legacy_destination_checkout_submission($1,$2)', [fc.operation_pk, fc.claim_token]);
+  await client.query(
+    `select public.complete_legacy_destination_checkout_operation($1,$2,$3,'open','unpaid',$4)`,
+    [fc.operation_pk, fc.claim_token, FAIL_SESSION, new Date(Date.now() + 3600_000).toISOString()]);
+
+  const failObserved = new Date().toISOString();
+  const failClass = await client.query(
+    `select * from public.classify_legacy_destination_checkout_event(
+       $1,'checkout.session.expired',$2,$3,$2,null,true,'failure','expired','unpaid',$4::timestamptz)`,
+    ['evt_expired12345678', FAIL_SESSION, PAYMENT_ID, failObserved]);
+  check('an expired Checkout classifies as a current failure',
+    failClass.rows[0].projection_allowed === true,
+    JSON.stringify({ status: failClass.rows[0].event_status, allowed: failClass.rows[0].projection_allowed }));
+
+  const failed = await client.query('select status from public.payments where id=$1', [PAYMENT_ID]);
+  check('the payment is marked failed rather than left stuck',
+    failed.rows[0].status === 'failed', `status=${failed.rows[0].status}`);
+
+  // A failure must never overwrite a settled payment.
+  await client.query("update public.payments set status='paid' where id=$1", [PAYMENT_ID]);
+  await client.query(
+    `select * from public.classify_legacy_destination_checkout_event(
+       $1,'checkout.session.expired',$2,$3,$2,null,true,'failure','expired','unpaid',$4::timestamptz)`,
+    ['evt_expired87654321', FAIL_SESSION, PAYMENT_ID, new Date().toISOString()]);
+  const stillPaid = await client.query('select status from public.payments where id=$1', [PAYMENT_ID]);
+  check('a late failure cannot demote an already-paid payment',
+    stillPaid.rows[0].status === 'paid', `status=${stillPaid.rows[0].status}`);
+
   await client.end();
   report();
 }
