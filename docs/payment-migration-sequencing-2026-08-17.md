@@ -189,31 +189,52 @@ call*, not the payment, so it only accepts an `open`/`unpaid` Session. And the
 replay check compares the whole signed-event input including `observed_at`, so a
 genuine redelivery must carry the original timestamp rather than a fresh one.
 
-## Fixed: a null `refunded_amount` made every payment unclaimable
+## Retracted: the `refunded_amount` guards were always fine
 
-The claim RPC's scope check read `v_payment.refunded_amount is distinct from 0`.
-That is true for **null** as well as for a non-zero amount, so a payment whose
-`refunded_amount` was null got refused with "payment scope is not claimable"
-exactly as a refunded one would. On a database where that column was added
-without a backfill, no destination payment could ever be claimed — and because
-the failure is a refusal rather than an error, it would have looked like the rail
-simply never engaging.
+I reported that `v_payment.refunded_amount is distinct from 0` was a defect,
+because it is true for null as well as for a non-zero amount and application
+inserts never supply the column. That was wrong, and the correction is worth
+keeping because of how it happened.
 
-Null means "no refunds" everywhere else in this schema, which is what settles it
-as a defect rather than a deliberate fail-closed choice: `20260816093000`
-coalesces the same column in five places, the webhook route reads
-`Number(payment.refunded_amount) || 0` against a `number | null` type, and the
-admin surfaces test `Number(...) > 0`. One predicate disagreeing with every other
-consumer, including a sibling migration from the same batch, is an oversight.
+Production, read from the catalog on 2026-08-17:
 
-Now `coalesce(v_payment.refunded_amount, 0) <> 0`. Reproduced against PostgreSQL
-17 first — a payment with a null `refunded_amount` was refused — then confirmed
-claimable after the change, and pinned by a case in
-`scripts/verify-destination-generation-contract.mjs`.
+| Column | Nullable | Default | Null rows |
+|---|---|---|---:|
+| `refunded_amount` | **NO** | `0` | 0 |
+| `platform_fee_refunded` | **NO** | `0` | 0 |
+| `eligible_service_refunded_amount` | YES | `0` | 0 |
 
-The migration is unapplied everywhere, so this is corrected in place rather than
-by an amendment; there is no deployed schema carrying the old predicate. No
-production backfill is needed as a result.
+With `refunded_amount` NOT NULL, `is distinct from 0` and a coalesced form are
+identical, so the predicate was never reachable in the way I described. The
+change has been reverted and the fifteen sibling guards across six migrations are
+left exactly as written.
+
+**The cause was my own stub.** It declared `refunded_amount` nullable when
+production has it NOT NULL, so the harness could seed a state the database cannot
+hold, and the "defect" was an artifact of the fixture rather than a property of
+the migration. That is precisely the failure this document credits elsewhere for
+letting the Price `currency_options` defect survive — a fixture asserting a shape
+reality never produces — arrived at from the opposite direction. A stub that is
+wrong permissively invents defects; one that is wrong strictly hides them.
+
+Both harness stubs now mirror the real definitions — enums, nullability,
+defaults, and the relevant CHECK constraints — and both suites pass against them.
+The refund scope check is exercised in both directions instead: a payment at the
+default refund state claims, and a partially refunded one is refused.
+
+One residual, narrower than the original claim:
+`eligible_service_refunded_amount` **is** nullable, and its CHECK explicitly
+permits null. Nothing writes null to it today, and no row currently holds one, so
+the guards reading it are safe in practice — but unlike the other two that is a
+property of current behavior rather than of the schema.
+
+## Confirmed independently: the skipped migration really is missing
+
+The same catalog read shows production has neither `claim_token` nor
+`submission_started_at` on `billing_payment_operations`, and lacks
+`billing_payment_operations_one_checkout_per_payment`. Those are exactly the
+artifacts `20260815224559` installs, so the hole documented above is confirmed
+from the database side and not only from migration history.
 
 ## Before starting: check for drift
 
