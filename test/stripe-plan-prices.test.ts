@@ -264,6 +264,15 @@ describe('dark Stripe Billing Price binding adapter', () => {
     ['wrong currency', { currency: 'eur' }],
     ['unexpanded currency options', { currency_options: undefined }],
     ['alternate currency amount', { currency_options: { eur: { unit_amount: 3_500 } } }],
+    ['empty currency options', { currency_options: {} }],
+    ['base currency alongside an alternate', {
+      currency_options: {
+        usd: {
+          unit_amount: 3_900, tax_behavior: 'exclusive', custom_unit_amount: null, tiers: null,
+        },
+        eur: { unit_amount: 3_500 },
+      },
+    }],
     ['base currency localized to another amount', {
       currency_options: {
         usd: {
