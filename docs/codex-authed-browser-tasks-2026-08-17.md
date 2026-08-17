@@ -1,5 +1,85 @@
 # Codex browser tasks — the three things a session key cannot do
 
+## Results, 2026-08-17
+
+**Tasks 1 and 2 are done. Task 3 stopped at its key-mode check, correctly.** No gate,
+webhook, secret, deployment or Vercel variable was changed.
+
+The six live Prices on `acct_1TuCWJGqh5LFKuTC`, across three products
+(`prod_V5gebgwhmDFYYL` Solo, `prod_V5ggmrKd8yNWB2` Growth, `prod_V5ghUzoImsDjEI` Scale):
+
+| Env var | Price id |
+|---|---|
+| `STRIPE_PRICE_SOLO_MONTHLY` | `price_1U5VGoGqh5LFKuTCkR17qlzm` |
+| `STRIPE_PRICE_SOLO_ANNUAL` | `price_1U5VI6Gqh5LFKuTCmPmK5Q9W` |
+| `STRIPE_PRICE_GROWTH_MONTHLY` | `price_1U5VItGqh5LFKuTC97CtsoRT` |
+| `STRIPE_PRICE_GROWTH_ANNUAL` | `price_1U5VJbGqh5LFKuTCh04wqbAH` |
+| `STRIPE_PRICE_SCALE_MONTHLY` | `price_1U5VK1Gqh5LFKuTCPdCT2UUa` |
+| `STRIPE_PRICE_SCALE_ANNUAL` | `price_1U5VKZGqh5LFKuTCpzLfXMNC` |
+
+All six are well-formed, distinct, and carry the production account marker
+`Gqh5LFKuTC` rather than the sandbox's `PqCWgR3Ww0` — which is what
+`readBindingConfig` enforces, checked locally. The reported field-by-field audit of
+Scale annual matches the contract below on every property including the expanded
+`currency_options` single-`usd` entry. **The Prices themselves have not been
+independently retrieved**, because doing so needs a live key; the only local key is
+test-mode on the sandbox.
+
+Task 2 is **resolved**: endpoint `we_1TuE0BGqh5LFKuTCEyt5d4jh` is active at
+`https://letsgetquoted.com/api/stripe/webhook`, API version `2026-06-24.dahlia`, and
+subscribed to exactly the eleven required events. That was the last claim from
+2026-08-17 that could not be verified locally.
+
+### Why Task 3 stopped, and why that was right
+
+Production's `STRIPE_SECRET_KEY` is marked Sensitive in Vercel and cannot be read
+back, but the Production **publishable** key is visibly `pk_test_…`. Setting
+`LGQ_STRIPE_BILLING_LIVEMODE=1` against a test secret fails with
+`credential_mode_mismatch`, so stopping was correct.
+
+The database agrees, and rules out the contradiction this first looked like. The
+adoption ledger holds a genuine `cs_live_…` Session, which only a live key can create
+— but read-only against production:
+
+- `stripe_livemode` is **null on all 267 payments**. The app has never recorded a
+  livemode on anything.
+- 0 payments carry a charge id; only 2 carry a PaymentIntent, and both are the
+  test-marked rows whose PaymentIntents 404 on this platform.
+- 264 of 267 rows carry the demo `test_marker`.
+
+So the single live Session is a historical artifact — expired, unpaid, nothing
+collected, already adopted as `inert_terminal` — and **production has never
+meaningfully transacted in live mode**. `pk_test_` is consistent with the real state.
+
+### What flipping that key actually means
+
+`STRIPE_SECRET_KEY` is **not billing-scoped**. It is the single client the whole app
+constructs (`src/lib/stripe.ts:14`). Switching Production from a test key to a live
+one does not just unblock the six Prices — it turns *every* Stripe call in production
+live, including the destination-charge `/pay` rail that all 267 demo payments used,
+and it makes the live webhook endpoint's events resolvable for the first time.
+
+That is the actual go-live moment for payments, and it is a sequencing decision rather
+than one more environment variable. It should not happen as a side effect of wiring up
+Prices. Note the ordering already documented elsewhere: the live endpoint is
+subscribed to live events today while production runs a test key, so those events
+reference objects the app currently cannot retrieve. Harmless while no live objects
+exist; it stops being harmless the moment the key changes.
+
+### Task 4 — what to check before anyone flips it
+
+1. **Establish the Production key's mode authoritatively**, since Sensitive hides it.
+   Stripe Dashboard → Developers → **API request logs, in live mode**. If production
+   traffic appears there, the deployed key is live; if live-mode logs are empty while
+   the site is serving, it is test. This is read-only and settles it without needing
+   to read the secret.
+2. **Check whether a test-mode webhook endpoint also exists.** If production runs a
+   test key, test-mode events have nowhere to go unless one is configured. Report the
+   list; change nothing.
+3. **Do not set a live key to satisfy the Price binding.** If the decision is to go
+   live, it is its own sequenced change with the payment rail considered, not a step
+   in Task 3.
+
 Written 2026-08-17, after all sixteen payment migrations landed. Everything in the
 database is done. What remains is entirely on Stripe and Vercel, and it is blocked on
 **credentials, not permission**: the local `STRIPE_SECRET_KEY` is a *test* key on the
