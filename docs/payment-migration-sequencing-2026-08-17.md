@@ -131,6 +131,35 @@ capture and matches on everything the validator reads. That check exists because
 the Price `currency_options` defect survived precisely by having a fixture assert
 a shape Stripe never returns.
 
+## Billing validators verified against a real test-clock subscription
+
+Also 2026-08-17, at the same pinned version: a test clock, customer, saved card
+and subscription on the real `solo` monthly Price, then the resulting invoice.
+Both validators in `stripe-billing-subscription-events.ts` hold, and they hold for
+a reason worth recording, because two fields have **moved** in this API version:
+
+- `subscription.current_period_start` / `current_period_end` are **absent** from
+  the subscription object. The periods live on the subscription item, and
+  `normalizeSubscription` correctly reads `item?.current_period_*`. Code reading
+  them off the subscription would silently get `undefined`.
+- `invoice.subscription` is **absent** too. The link is
+  `invoice.parent.subscription_details.subscription` with
+  `parent.type === 'subscription_details'`, which is exactly what
+  `normalizeInvoice` requires.
+
+Everything else the validators demand was confirmed present in the real objects:
+`automatic_tax.enabled === false` (as a populated object, not an absent one),
+`application`, `application_fee_percent`, `on_behalf_of` and `transfer_data` all
+present and null, `collection_method === 'charge_automatically'`, `currency` usd,
+exactly one subscription item, and `price.product` as a plain product id.
+
+Both were previously documentation-derived. They are now evidence-backed, and no
+defect was found in either — unlike the two Price-validator defects, which is the
+useful contrast: the same technique that found those confirms these.
+
+All test-clock artifacts were deleted afterward; deleting the clock cascades to
+the customer, subscription and invoice.
+
 ## Before starting: check for drift
 
 `20260815224559` uses `create or replace function` throughout, which will
