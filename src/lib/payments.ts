@@ -531,10 +531,22 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   try {
     session = await stripe.checkout.sessions.create(params);
   } catch (err) {
-    // If ACH isn't activated/eligible on this account, fall back to card-only so
-    // a large payment is never left un-payable.
+    // If ACH isn't activated on the PLATFORM account, fall back to card-only so a
+    // large payment is never left un-payable.
+    //
+    // The platform's capability, not the contractor's, and the distinction costs
+    // an afternoon if you get it the wrong way round. This is a destination
+    // charge — `transfer_data.destination` above, on a Stripe client carrying no
+    // `stripeAccount` header — so the Session and its Charge are created on the
+    // platform account and settled onward. `us_bank_account` therefore has to be
+    // active on the platform. The connected account's own capabilities do not
+    // enter into it, which is why the log line below names both: the account id
+    // is the payee, and it is NOT the account whose capability just refused.
     if (offerAch && err instanceof Error && /us_bank_account/i.test(err.message)) {
-      console.warn(`ACH unavailable for account ${payment.account_id}; falling back to card-only: ${err.message}`);
+      console.warn(
+        `ACH unavailable on the platform account (payee account ${payment.account_id}); `
+        + `falling back to card-only: ${err.message}`,
+      );
       session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
     } else {
       throw err;
