@@ -75,6 +75,29 @@ try {
   }
   console.log(`test_marker convention confirmed on ${marker.rows[0].n} rows`);
 
+  // Target fingerprint. There is more than one database behind this account and
+  // the wrong one is a plausible paste, so identity is checked against data
+  // rather than trusting the connection string: all four payments must be
+  // present, on the destination rail, at their known amounts. Statuses and
+  // amounts are untouched by this script, so this still holds on a re-run.
+  const EXPECTED = [
+    [LIVE_PAYMENT, '125.00'], [STALE[0], '2500.00'],
+    [STALE[1], '2500.00'], [STALE[2], '100.00'],
+  ];
+  const found = await client.query(
+    `select id::text as id, amount::text as amount from public.payments
+      where id = any($1::uuid[]) and charge_model = 'destination'`,
+    [EXPECTED.map(([id]) => id)]);
+  const byId = new Map(found.rows.map((r) => [r.id, r.amount]));
+  const wrong = EXPECTED.filter(([id, amt]) => byId.get(id) !== amt);
+  if (wrong.length) {
+    throw new Error(
+      `this is not the expected database: ${wrong.length} of 4 target payments missing or at an `
+      + `unexpected amount (${wrong.map(([id]) => id.slice(0, 8)).join(', ')}). `
+      + 'Expected LETSGETQUOTED-DB (mfuvvtrkipkigwqqtcal), not staging.');
+  }
+  console.log('target fingerprint confirmed: all 4 destination payments present at expected amounts');
+
   // ---- A1: adoption ledger -------------------------------------------------
   step(1, 'adoption ledger migration');
   const exists = await client.query(
