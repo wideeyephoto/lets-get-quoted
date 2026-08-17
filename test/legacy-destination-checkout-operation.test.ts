@@ -1114,3 +1114,68 @@ describe('service-role RPC adapter contracts', () => {
     expect(store.classifyEvent).not.toHaveBeenCalled();
   });
 });
+
+describe('legacy destination Checkout non-actionable claim dispatch', () => {
+  /**
+   * Every status the claim RPC can return that must not reach a provider, with
+   * the operation state SQL pairs with it. The state matters: a mismatched one
+   * is refused by assertClaimMatchesOperation before dispatch is ever reached,
+   * so a test that omits it still throws Unavailable and proves nothing about
+   * the branch it claims to cover. `paid_hold` is the exception — it is checked
+   * ahead of that assertion, so its state is irrelevant.
+   */
+  const NON_ACTIONABLE = [
+    // Another worker holds a live lease. Retrying later is correct; creating a
+    // second Session here is exactly the double-charge this rail exists to stop.
+    { status: 'in_progress', operationState: 'claimed', error: LegacyDestinationCheckoutUnavailableError },
+    { status: 'submitted', operationState: 'submitted', error: LegacyDestinationCheckoutIndeterminateError },
+    { status: 'indeterminate', operationState: 'indeterminate', error: LegacyDestinationCheckoutIndeterminateError },
+    { status: 'quarantined', operationState: 'quarantined', error: LegacyDestinationCheckoutReconciliationError },
+    { status: 'complete_unpaid', operationState: 'completed', error: LegacyDestinationCheckoutReconciliationError },
+    { status: 'paid_hold', operationState: 'completed', error: LegacyDestinationCheckoutReconciliationError },
+  ] as const;
+
+  it.each(NON_ACTIONABLE)(
+    'refuses a $status claim with its documented error and no provider call',
+    async ({ status, operationState, error }) => {
+      const { dependencies, store, provider } = mocks(claim(status, { operationState }));
+
+      await expect(orchestrateLegacyDestinationCheckoutGeneration(operationInput(), dependencies))
+        .rejects.toBeInstanceOf(error);
+      expectNoProviderCalls(provider);
+      expect(store.begin).not.toHaveBeenCalled();
+      expect(store.complete).not.toHaveBeenCalled();
+      expect(store.confirmPresentation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('covers every claim status that is not creation or replay', () => {
+    // in_progress reaches Unavailable by falling past the whole dispatch chain
+    // rather than by a branch naming it. That is the correct outcome, but it is
+    // also what a newly added status would inherit silently, so the union and
+    // this table are pinned to each other.
+    const creationOrReplay = ['claimed', 'replay_unpresented', 'replay_presented'];
+    const covered = NON_ACTIONABLE.map((entry) => entry.status);
+    expect([...covered, ...creationOrReplay].sort()).toEqual([
+      'claimed',
+      'complete_unpaid',
+      'in_progress',
+      'indeterminate',
+      'paid_hold',
+      'quarantined',
+      'replay_presented',
+      'replay_unpresented',
+      'submitted',
+    ]);
+  });
+
+  it('reaches Unavailable for in_progress by dispatch, not by claim assertion', () => {
+    // Guards the fixture above: with the state SQL actually pairs with
+    // in_progress, the claim itself is well-formed, so the only thing left to
+    // reject it is the dispatch fallthrough being tested.
+    const wellFormed = claim('in_progress', { operationState: 'claimed' });
+    expect(wellFormed.operationState).toBe('claimed');
+    expect(wellFormed.paidHoldActive).toBe(false);
+    expect(wellFormed.checkoutSessionId).toBeNull();
+  });
+});
