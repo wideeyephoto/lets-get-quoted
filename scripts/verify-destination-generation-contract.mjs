@@ -269,7 +269,36 @@ async function main() {
   check('the payment is still settled exactly once after redelivery',
     afterReplay.rows[0].n === 1, `n=${afterReplay.rows[0].n}`);
 
-  // 7. The failure side. The projection gate stands failure down as well as
+  // 7. A never-refunded payment must be claimable however that is recorded.
+  //    Every other consumer in this codebase reads a null refunded_amount as
+  //    zero -- migration 20260816093000 coalesces it in five places, and the
+  //    webhook route does `Number(...) || 0` -- so a null here means "no refunds"
+  //    and not "unknown". A scope check that refuses it would mean no destination
+  //    payment can ever be claimed on a database where that column was added
+  //    without a backfill, and it would fail as a silent refusal rather than an
+  //    error.
+  const NULL_REFUND_PAYMENT = '33333333-3333-4333-8333-333333333333';
+  await reset(client, { withPointer: false });
+  await client.query(foundation);
+  await client.query(
+    `insert into public.payments
+       (id, account_id, amount, charge_model, status, stripe_checkout_session, refunded_amount)
+     values ($1,$2,'125.00','destination','requested',null,null)`,
+    [NULL_REFUND_PAYMENT, ACCOUNT],
+  );
+  let nullRefundError = null;
+  let nullRefundStatus = null;
+  try {
+    const r = await client.query(claimSql, [NULL_REFUND_PAYMENT, ...args.slice(1)]);
+    nullRefundStatus = r.rows[0].claim_status;
+  } catch (error) {
+    nullRefundError = error.message;
+  }
+  check('a payment with a null refunded_amount is claimable',
+    nullRefundError === null && nullRefundStatus === 'claimed',
+    nullRefundError ? `raised: ${nullRefundError}` : `status=${nullRefundStatus}`);
+
+  // 8. The failure side. The projection gate stands failure down as well as
   //    settlement, so the classifier owning it has to actually mark the payment
   //    failed -- otherwise an expired Checkout leaves the row stuck forever.
   const FAIL_SESSION = 'cs_live_expiredAAAAAAAAAAAAAAAAAAAAAAAAAA';
