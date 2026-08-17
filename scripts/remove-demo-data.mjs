@@ -225,6 +225,26 @@ const clientReferenceGuard = (parents) =>
     })
     .join('\n  or ')}\n)`;
 
+// A seeded recurring plan. Matched on the plan's own denormalised contact as
+// well as on the joined client, because a plan whose client_id is already null
+// still carries client_email and client_phone and is just as seeded.
+//
+// These are deleted rather than reported since 2026-08-17. Leaving them was the
+// wrong end state: nothing else in this script or in the schema removes them
+// (their only CASCADE parent is accounts), so a swept account keeps 23 live
+// schedules and the recurring cron refills it within days — with fresh clients,
+// because createVisitJob passes the plan's denormalised contact to
+// findOrCreateClientId and a brand new @example.com row appears. A sweep whose
+// result is undone by a cron job the following morning is not a sweep.
+//
+// `x` is the caller's recurring_plans alias; `t` is the LEFT JOINed client, so
+// the whole thing has to tolerate t.id being null.
+const PLAN_SEEDED = `(
+  coalesce(${customerMarkers('t')}, false)
+  or coalesce(x.client_email ilike '%@example.com'
+              or regexp_replace(x.client_phone, '\\D', '', 'g') ~ '555[0-9]{4}$', false)
+)`;
+
 const money = (value) => `$${(Number(value) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 await loadEnv();
@@ -371,36 +391,43 @@ try {
   console.log(`  empty pay periods  ${counts['empty pay periods'].n}   <- emptied by the crew delete above`);
   console.log(`  their pay events   ${counts['period-cascaded events'].n}   <- cascade off period_id; append-only in the app`);
 
-  // Seeded recurring plans are NOT deleted by this script — nothing here matches
-  // them, and their only CASCADE parent is accounts. They keep their schedule, so
-  // the recurring cron re-creates visit jobs afterwards, with fresh clients from
-  // findOrCreateClientId, and the account fills back up with demo data that this
-  // run has no marker for. Reported rather than deleted, because removing a
-  // billing schedule is a different decision from removing seeded history and
-  // should be made deliberately.
-  // Matched on the plan's own denormalised contact as well as the joined client,
-  // because a plan whose client_id was already null still carries client_email
-  // and client_phone, and is just as seeded.
-  const { rows: survivingPlans } = await client.query(
+  // Seeded recurring plans, deleted in step 6 — see PLAN_SEEDED for why they are
+  // not merely reported. Listed in full rather than counted, because a schedule
+  // that bills somebody is worth reading before it is removed, and because a plan
+  // with a real saved card would be a reason to stop.
+  const { rows: doomedPlans } = await client.query(
     `select x.id, x.title, x.active, x.auto_charge, x.next_run_date, x.amount, x.frequency,
-            (x.stripe_payment_method_id is not null) as has_card
+            (x.stripe_payment_method_id is not null) as has_card,
+            (select count(*)::int from jobs j
+              where j.recurring_plan_id = x.id and not (${JOB_MATCH})) as surviving_jobs
        from recurring_plans x left join clients t on t.id = x.client_id
-      where x.account_id = $1
-        and (${CUSTOMER_MATCH}
-             or coalesce(x.client_email ilike '%@example.com'
-                         or regexp_replace(x.client_phone, '\\D', '', 'g') ~ '555[0-9]{4}$', false))
+      where x.account_id = $1 and ${PLAN_SEEDED}
       order by x.active desc, x.next_run_date nulls last`,
     [ACCOUNT],
   );
-  if (survivingPlans.length > 0) {
-    const active = survivingPlans.filter((p) => p.active).length;
-    console.log(`\nSeeded recurring plans this script does NOT delete (${survivingPlans.length}, ${active} active):`);
-    for (const p of survivingPlans.slice(0, 12)) {
-      console.log(`  ${p.active ? 'active' : 'paused'} · ${p.title ?? '(untitled)'} · ${money(p.amount)} ${p.frequency ?? ''}${p.auto_charge ? ' · auto_charge' : ''}${p.has_card ? ' · HAS A SAVED CARD' : ''} · next ${p.next_run_date ? String(p.next_run_date).slice(0, 10) : 'never'}`);
+  const plansWithCard = doomedPlans.filter((p) => p.has_card);
+  if (doomedPlans.length > 0) {
+    const active = doomedPlans.filter((p) => p.active).length;
+    console.log(`\nSeeded recurring plans to delete (${doomedPlans.length}, ${active} active):`);
+    for (const p of doomedPlans) {
+      console.log(
+        `  ${p.active ? 'active' : 'paused'} · ${p.title ?? '(untitled)'} · ${money(p.amount)} ${p.frequency ?? ''}` +
+          `${p.auto_charge ? ' · auto_charge' : ''}${p.has_card ? ' · HAS A SAVED CARD' : ''}` +
+          ` · next ${p.next_run_date ? String(p.next_run_date).slice(0, 10) : 'never'}` +
+          `${p.surviving_jobs > 0 ? ` · ${p.surviving_jobs} surviving job(s) lose their plan link` : ''}`,
+      );
     }
-    if (survivingPlans.length > 12) console.log(`  … ${survivingPlans.length - 12} more`);
-    console.log('  These keep running after the sweep and will re-create seeded visit jobs and clients.');
-    console.log('  Pause or delete them separately if the account is meant to stay clean.');
+    console.log('  Left in place these re-create seeded visit jobs and fresh @example.com clients within days.');
+  }
+  // A plan that can actually take money is not demo data whatever its email says,
+  // and deleting it would cancel real billing. Nothing on this platform has one
+  // today — the seeder writes card_brand/card_last4 for display and never a
+  // payment method — so this is a tripwire, not a workflow.
+  if (plansWithCard.length > 0) {
+    console.error(`\nABORT: ${plansWithCard.length} of those plans has a saved Stripe payment method.`);
+    for (const p of plansWithCard) console.error(`  ${p.title ?? '(untitled)'} · ${money(p.amount)} ${p.frequency}`);
+    console.error('\nA plan that can charge a card is not demo data. Nothing was changed.');
+    process.exit(1);
   }
 
   // Labor costs sitting on jobs that will SURVIVE are worth calling out: removing
@@ -646,7 +673,22 @@ try {
   //    money out of the ledger.
   await del('leftover marked payments', `delete from payments p where ${LEFTOVER_PAYMENTS}`, [ACCOUNT]);
 
-  // 6. Seeded customers. Leads first — leads.client_id is SET NULL, so removing
+  // 6. Seeded recurring plans, BEFORE the clients they point at. recurring_plans
+  //    .client_id is SET NULL, so a plan still standing here would either hold
+  //    its client back (the guard doing its job) or lose it silently (the guard
+  //    not existing yet, which is what the review caught). Removing the plan
+  //    first dissolves the reference, and step 7 can then take the client.
+  //    Spelled as `id in (<the report's own select>)` rather than DELETE ... USING,
+  //    because USING is an inner join: a plan whose client_id is already null has
+  //    no clients row to join to and would be quietly skipped — exactly the plans
+  //    most likely to be orphaned leftovers. This way the delete runs the same
+  //    query the report printed, so the two cannot disagree.
+  await del('seeded recurring plans', `delete from recurring_plans p
+     where p.account_id = $1 and p.id in (
+       select x.id from recurring_plans x left join clients t on t.id = x.client_id
+        where x.account_id = $1 and ${PLAN_SEEDED})`, [ACCOUNT]);
+
+  // 7. Seeded customers. Leads first — leads.client_id is SET NULL, so removing
   //    the client first would leave a lead on the board with no customer behind
   //    it rather than removing the pair.
   await del('demo leads', `delete from leads t where t.account_id = $1 and ${CUSTOMER_MATCH}`, [ACCOUNT]);
