@@ -112,6 +112,39 @@ describe('remove-demo-data keeps the guards that protect real payments', () => {
     contains('ROLLED BACK: this run orphaned a survivor');
   });
 
+  it('deletes seeded recurring plans, and does it before the clients they point at', () => {
+    // Left standing, these regrow the account: nothing else deletes them, and the
+    // recurring cron re-creates visit jobs and fresh @example.com clients within
+    // days. A sweep undone by a cron job the next morning is not a sweep.
+    // Anchored on the del() call, not on the SQL text: asserting the string
+    // exists somewhere passes just as happily when the statement has been
+    // commented out or guarded off, which is what a regression looks like.
+    contains("await del('seeded recurring plans', `delete from recurring_plans p");
+    // DELETE ... USING is an inner join and would skip a plan whose client_id is
+    // already null — the ones most likely to be orphaned leftovers.
+    expect(FLAT).not.toMatch(loose('delete from recurring_plans x using'));
+    // A source-text assertion cannot tell whether a line is reachable, so the one
+    // mutation it misses is the statement being commented out rather than removed.
+    // Check for that shape directly; it is the whole gap.
+    expect(FLAT).not.toContain("// await del('seeded recurring plans'");
+    const plansAt = positionOf("await del('seeded recurring plans'");
+    const clientsAt = positionOf('delete from clients t where t.account_id');
+    expect(plansAt).toBeGreaterThan(0);
+    expect(clientsAt).toBeGreaterThan(0);
+    expect(plansAt).toBeLessThan(clientsAt);
+  });
+
+  it('refuses to delete a recurring plan that has a real saved card', () => {
+    // A plan that can actually take money is not demo data whatever its email
+    // says. Nothing has one today; this is a tripwire, not a workflow.
+    contains('of those plans has a saved Stripe payment method');
+    contains('(x.stripe_payment_method_id is not null) as has_card');
+    const abortAt = positionOf('of those plans has a saved Stripe payment method');
+    const beginAt = positionOf("await client.query('begin')");
+    expect(abortAt).toBeGreaterThan(0);
+    expect(abortAt).toBeLessThan(beginAt);
+  });
+
   it('still refuses to default to an account', () => {
     contains('Never defaults to an account.');
     contains("const APPLY = process.argv.includes('--apply') || REHEARSE;");
