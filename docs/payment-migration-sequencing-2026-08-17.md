@@ -18,15 +18,15 @@ the hottest write paths.
 
 ## Status — COMPLETE, 2026-08-17 (second session)
 
-**All sixteen are applied to `mfuvvtrkipkigwqqtcal`, plus one new repair migration.
+**All sixteen are applied to `mfuvvtrkipkigwqqtcal`, plus two new repair migrations.
 Every one of the 17 gates is still absent or 0. Nothing is live.** The apply order
 below is kept for the record; it is done.
 
 | | |
 |---|---|
-| Applied this session | `20260815224559`, then `073000` `080000` `083000` `084500` `090000` `091500` `093000` `094500` `100000` `161844` `175955`, then `20260817120000`, then `194056` `213000` `221500` |
+| Applied this session | `20260815224559`, then `073000` `080000` `083000` `084500` `090000` `091500` `093000` `094500` `100000` `161844` `175955`, then `20260817120000`, then `194056` `213000` `221500`, then `20260817130000` |
 | Already applied before it | `20260816220000` (adoption ledger) — **skipped, correctly; see below** |
-| History rows written | none — `run-migration.mjs` does not write them (see "Migration history") |
+| History rows | 39, high-water `20260817130000` — recorded by `20260817130000`, each gated on a catalogue probe |
 
 `20260816194056` refused on the first attempt with `direct refund plan hold source
 contract drifted`, which is how the line-ending problem below was found. It applied
@@ -112,19 +112,29 @@ out-of-timestamp-order situation as `20260815224559`.
 ## Migration history is not written by the runner
 
 `scripts/run-migration.mjs` records nothing in `supabase_migrations.schema_migrations`.
-The only thing that has ever written a row is the bespoke
+The only thing that had ever written a row was the bespoke
 `scripts/prod-adopt-and-clean-destination-pointers.mjs` (lines 141-148), which does
-it idempotently for its own version. So production's history table still reads
-`20260816220000` as its high-water while the schema is now twelve migrations ahead
-of it, and the twelve applied this session have no rows.
+it idempotently for its own version. So when the sequence landed, production's
+history read `20260816220000` as its high-water while the schema was sixteen
+migrations ahead of it.
 
-That is survivable because nothing here reads the history table — there is no
+**Resolved by `20260817130000_record_history_for_applied_migrations.sql`.** History
+is now 39 rows with a high-water of `20260817130000`; 17 were inserted.
+
+The distinction that makes this legitimate is worth keeping. "Do not resolve a
+numeric version gap by inventing a history row" prohibits asserting a migration ran
+when it did not. That migration does the opposite: **every row is gated on a
+distinctive artifact of its own migration being present in the catalogue at the
+moment it runs**, and the whole transaction refuses with `55000` if any probe fails.
+`20260817120000` creates no object, so its probe is the absence it asserts — zero
+CRLF function bodies. It records only what it can prove, is idempotent, and on a
+database where these migrations did not run it refuses rather than lying.
+
+Note this does not make the history table an authority. It never was: there is no
 Supabase CLI in this environment, and `scripts/audit-migration-dependencies.mjs`
-matches against the live catalogue rather than against history, which this document
-already argues is the only safe method given the numbering divergence. It is still
-worth deciding explicitly rather than by omission. Writing rows for migrations that
-genuinely were applied is not what the warning below prohibits; that warning is
-about fabricating a row to paper over a migration that never ran.
+deliberately matches against the live catalogue because the numbering diverged. The
+rows are documentation that now agrees with the catalogue, not a second source of
+truth.
 
 ## Where production actually is
 
@@ -409,13 +419,44 @@ rows exist; and the preflight's *second* fail-closed arm (the
 the suite at `22/22`.
 
 None of this is a defect in the migrations, and none of it changed what was applied.
-It is a defect in the evidence: the harness's headline replay claim is the one property
-it does not robustly guard. The fixes are small — `||` to `&&` at `:297`, assert on
-`paid_at`/`stripe_payment_intent` stability rather than a primary-key count at `:301`,
-add `rowCount === 1`, add a `reset()` variant seeding a non-null lineage pointer, and
-drop the invented `kind` default while naming `kind` in the fixture insert. They are
-deliberately **not** applied here, because changing a verification harness without
-running it is how you get a harness that passes for a new reason.
+It was a defect in the *evidence*: the harness's headline replay claim was the one
+property it did not robustly guard.
+
+### Fixed, and the fixes are mutation-proven
+
+All five are now applied to `verify-destination-generation-contract.mjs`, against a
+throwaway PG17 rather than by inspection:
+
+- `:297` `||` → `&&`, so a replay must be *both* labelled `replay` and refused
+  projection. The real SQL satisfies both — it returns `{"status":"replay","allowed":false}`.
+- `:301` no longer counts by primary key. It snapshots `status`, `paid_at`,
+  `stripe_payment_intent`, `stripe_checkout_session` and `platform_fee` before the
+  replay and asserts the row is untouched afterwards, which is what a second
+  settlement would actually disturb.
+- the idempotency-key check asserts `rowCount === 1`, so its label is true.
+- a `reset({ withLineage: true })` variant seeds `current_checkout_operation_pk`, and
+  two new checks exercise the preflight's second arm.
+- the stub drops the invented `kind` default and every fixture insert names `kind`.
+
+The suite went 22 → **24/24**. Then each repaired check was mutation-tested by
+breaking exactly what it is meant to catch, with the repo copies untouched (a patched
+harness reading the migration from `$MUT_FOUNDATION`, against mutated copies in a
+scratchpad):
+
+| Mutation | Before the fix | After |
+|---|---|---|
+| replay return yields `projection_allowed = true` | green 22/22 | **23/24 — red** |
+| preflight lineage arm deleted entirely | green 22/22 | **22/24 — both red** |
+| control, unmutated | 22/22 | 24/24 |
+
+`verify-adoption-contract.mjs` is untouched and still `20/20`.
+
+One thing deliberately **not** changed: neither stub declares `payments.job_id`,
+`accounts.business_name` or `accounts.account_number`, all NOT NULL in production. Both
+script headers disclose the minimalism — they declare only what these migrations read —
+and adding a NOT NULL column whose FK target does not exist in the stub would be its
+own kind of wrong. The `kind` default was different: a column the stub already declared,
+declared *wrongly*, in the permissive direction.
 
 Two naming subtleties, both of which cost a wrong first attempt:
 `complete_legacy_destination_checkout_operation` completes the *provider create

@@ -33,6 +33,9 @@ const CONNECT = 'acct_1TuEg3GjJLVfg2pQ';
 // The RPC requires ^[0-9a-f]{64}$ -- a request fingerprint is a digest, and it
 // refuses anything that is not shaped like one.
 const FINGERPRINT = 'a1b2c3d4'.repeat(8);
+// Any uuid will do: the preflight's second arm only tests the pointer for null,
+// and the stub declares no FK on it.
+const LINEAGE_PK = '55555555-5555-4555-8555-555555555555';
 
 const results = [];
 function check(name, pass, detail) {
@@ -81,7 +84,11 @@ const STUB = `
     id uuid primary key default gen_random_uuid(),
     account_id uuid not null references public.accounts(id),
     amount numeric(12,2) not null,
-    kind public.payment_kind not null default 'deposit',
+    -- No default, because production has none. An earlier version of this stub
+    -- invented a 'deposit' default, which let the fixture insert a payment without
+    -- naming kind -- an INSERT production rejects with 23502. That is the same
+    -- permissive direction as the refunded_amount error described above.
+    kind public.payment_kind not null,
     status public.payment_status not null default 'requested',
     charge_model text not null default 'destination',
     stripe_checkout_session text,
@@ -115,7 +122,7 @@ const STUB = `
   );
 `;
 
-async function reset(client, { withPointer }) {
+async function reset(client, { withPointer, withLineage = false }) {
   await client.query(STUB);
   await client.query(
     'insert into public.accounts (id, stripe_connect_id, connect_onboarded) values ($1,$2,true)',
@@ -124,11 +131,22 @@ async function reset(client, { withPointer }) {
   // refunded_amount is 0 rather than null on purpose: the claim RPC tests
   // `refunded_amount is distinct from 0`, so a null there makes a payment
   // unclaimable exactly like a refunded one would. See the note in the report.
+  //
+  // kind is named explicitly because the stub, like production, gives it no
+  // default. withLineage seeds current_checkout_operation_pk so the preflight's
+  // SECOND fail-closed arm can be exercised; leave the Session pointer null for
+  // that case, or arm one refuses first and arm two is never reached.
   await client.query(
     `insert into public.payments
-       (id, account_id, amount, charge_model, status, stripe_checkout_session, refunded_amount)
-     values ($1,$2,'125.00','destination','requested',$3,0)`,
-    ['bf0df2cb-b402-4397-a38b-b9572d592f09', ACCOUNT, withPointer ? 'cs_live_leftoverpointerAAAAAAAAAAAA' : null],
+       (id, account_id, amount, kind, charge_model, status,
+        stripe_checkout_session, current_checkout_operation_pk, refunded_amount)
+     values ($1,$2,'125.00','deposit','destination','requested',$3,$4,0)`,
+    [
+      'bf0df2cb-b402-4397-a38b-b9572d592f09',
+      ACCOUNT,
+      withPointer ? 'cs_live_leftoverpointerAAAAAAAAAAAA' : null,
+      withLineage ? LINEAGE_PK : null,
+    ],
   );
 }
 
@@ -158,6 +176,29 @@ async function main() {
   );
   check('and refuses with 55000, not a syntax or missing-column error',
     refusal?.code === '55000', `code=${refusal?.code}`);
+
+  // 1b. The preflight's OTHER fail-closed arm: a destination payment carrying a
+  //     direct-rail Checkout lineage pointer, which is the cross-rail mix the
+  //     migration header calls out. Until this case existed the arm was dead in the
+  //     harness -- deleting it outright left the suite fully green -- so a refactor
+  //     could have dropped the guard with nothing turning red.
+  await reset(client, { withPointer: false, withLineage: true });
+  let lineageRefusal = null;
+  try {
+    await client.query(foundation);
+  } catch (error) {
+    lineageRefusal = error;
+    await client.query('rollback').catch(() => {});
+  }
+  check(
+    'preflight refuses a destination payment holding a direct Checkout lineage pointer',
+    lineageRefusal !== null && /unexpected direct Checkout lineage pointer/i.test(lineageRefusal.message),
+    lineageRefusal
+      ? `${lineageRefusal.code} ${lineageRefusal.message.slice(0, 70)}`
+      : 'migration installed anyway',
+  );
+  check('and that refusal is 55000 as well',
+    lineageRefusal?.code === '55000', `code=${lineageRefusal?.code}`);
 
   // 2. The same migration installs once the pointer is cleared.
   await reset(client, { withPointer: false });
@@ -228,11 +269,15 @@ async function main() {
 
   const keys = await client.query(
     'select ach_stripe_idempotency_key, card_stripe_idempotency_key from public.legacy_destination_checkout_operations');
+  // rowCount is asserted so the label is true: reading rows[0] alone would inspect
+  // the first of however many operation rows exist, and stay green in exactly the
+  // double-mint this section is here to catch.
   check('the surviving operation carries two distinct provider idempotency keys',
-    keys.rows[0].ach_stripe_idempotency_key !== keys.rows[0].card_stripe_idempotency_key
+    keys.rowCount === 1
+    && keys.rows[0].ach_stripe_idempotency_key !== keys.rows[0].card_stripe_idempotency_key
     && /:ach$/.test(keys.rows[0].ach_stripe_idempotency_key)
     && /:card$/.test(keys.rows[0].card_stripe_idempotency_key),
-    `${keys.rows[0].ach_stripe_idempotency_key} | ${keys.rows[0].card_stripe_idempotency_key}`);
+    `rows=${keys.rowCount} ${keys.rows[0].ach_stripe_idempotency_key} | ${keys.rows[0].card_stripe_idempotency_key}`);
 
   await a.end();
   await b.end();
@@ -293,14 +338,33 @@ async function main() {
     `select * from public.classify_legacy_destination_checkout_event(
        $1,'checkout.session.completed',$2,$3,$2,$4,true,'success','complete','paid',$5::timestamptz)`,
     ['evt_lifecycle12345678', SESSION_ID, PAYMENT_ID, PI_ID, OBSERVED]);
-  check('a redelivery of the same event is recognized as a replay',
-    replayed.rows[0].event_status === 'replay' || replayed.rows[0].projection_allowed === false,
+  // A conjunction, not a disjunction. As `||` this passed on either half alone, so
+  // flipping projection_allowed to true in the replay return left the suite green --
+  // which is precisely the double-settlement regression the check is cited for.
+  check('a redelivery is recognized as a replay AND refused projection',
+    replayed.rows[0].event_status === 'replay' && replayed.rows[0].projection_allowed === false,
     JSON.stringify({ status: replayed.rows[0].event_status, allowed: replayed.rows[0].projection_allowed }));
 
+  // Not a row count. `id` is the primary key, so `count(*) where id=$1` is 0 or 1 by
+  // construction and can never show a second settlement. A double settlement would
+  // show up as the settled row being rewritten -- a fresh paid_at, a re-bound
+  // PaymentIntent, a recomputed fee -- so compare against the snapshot taken before
+  // the replay.
   const afterReplay = await client.query(
-    'select count(*)::int as n from public.payments where id=$1 and status=$2', [PAYMENT_ID, 'paid']);
-  check('the payment is still settled exactly once after redelivery',
-    afterReplay.rows[0].n === 1, `n=${afterReplay.rows[0].n}`);
+    'select status, paid_at, stripe_payment_intent, stripe_checkout_session, platform_fee from public.payments where id=$1',
+    [PAYMENT_ID]);
+  const stamp = (row) => JSON.stringify({
+    status: row.status,
+    paid_at: row.paid_at instanceof Date ? row.paid_at.toISOString() : row.paid_at,
+    pi: row.stripe_payment_intent,
+    session: row.stripe_checkout_session,
+    fee: String(row.platform_fee),
+  });
+  const beforeStamp = stamp(settled.rows[0]);
+  const afterStamp = afterReplay.rowCount === 1 ? stamp(afterReplay.rows[0]) : `rows=${afterReplay.rowCount}`;
+  check('the redelivery left the settled row untouched, not re-settled',
+    beforeStamp === afterStamp,
+    beforeStamp === afterStamp ? `unchanged ${afterStamp}` : `before ${beforeStamp} after ${afterStamp}`);
 
   // 7. The refund scope check, against the shape production actually has.
   //    refunded_amount is NOT NULL DEFAULT 0, so `is distinct from 0` and a
@@ -311,8 +375,8 @@ async function main() {
   await reset(client, { withPointer: false });
   await client.query(foundation);
   await client.query(
-    `insert into public.payments (id, account_id, amount, charge_model, status)
-     values ($1,$2,'125.00','destination','requested')`,
+    `insert into public.payments (id, account_id, amount, kind, charge_model, status)
+     values ($1,$2,'125.00','deposit','destination','requested')`,
     [REFUNDED_PAYMENT, ACCOUNT],
   );
   const defaulted = await client.query(claimSql, [REFUNDED_PAYMENT, ...args.slice(1)]);
@@ -321,8 +385,8 @@ async function main() {
 
   const PARTIAL_REFUND = '44444444-4444-4444-8444-444444444444';
   await client.query(
-    `insert into public.payments (id, account_id, amount, charge_model, status, refunded_amount)
-     values ($1,$2,'125.00','destination','requested','25.00')`,
+    `insert into public.payments (id, account_id, amount, kind, charge_model, status, refunded_amount)
+     values ($1,$2,'125.00','deposit','destination','requested','25.00')`,
     [PARTIAL_REFUND, ACCOUNT],
   );
   let refundedError = null;
