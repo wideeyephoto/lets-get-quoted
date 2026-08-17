@@ -223,12 +223,27 @@ function metadataMatches(value: unknown, expected: StripePlanPriceContractMetada
 }
 
 function hasNoAlternateCurrencyOptions(price: Record<string, unknown>): boolean {
-  // Stripe omits currency_options unless explicitly expanded. Require proof of
-  // an expanded, empty dictionary so Checkout cannot localize this binding to
-  // an unverified currency or amount.
+  // Stripe omits currency_options unless explicitly expanded, so an absent
+  // dictionary is still unproven. Once expanded, Stripe always echoes the
+  // price's own currency, so the contract is "no currency other than the base",
+  // not "empty" — requiring empty is unsatisfiable and fails every real Price.
+  // The base entry must also restate the exact verified amount and tax
+  // behavior, so Checkout cannot localize this binding to an unverified amount.
   if (!Object.prototype.hasOwnProperty.call(price, 'currency_options')) return false;
   const currencyOptions = record(price.currency_options);
-  return currencyOptions !== null && Object.keys(currencyOptions).length === 0;
+  if (currencyOptions === null) return false;
+  const baseCurrency = typeof price.currency === 'string' ? price.currency : null;
+  if (!baseCurrency) return false;
+
+  return Object.entries(currencyOptions).every(([code, rawOption]) => {
+    if (code !== baseCurrency) return false;
+    const option = record(rawOption);
+    if (!option) return false;
+    return option.unit_amount === price.unit_amount
+      && option.tax_behavior === price.tax_behavior
+      && option.custom_unit_amount == null
+      && option.tiers == null;
+  });
 }
 
 function validatePrice(
