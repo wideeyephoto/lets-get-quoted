@@ -323,12 +323,6 @@ export async function runStripeBillingSubscriptionProjectionBatch(
     }
     if (!claim) break;
     claimedCount += 1;
-    // TEMPORARY DIAGNOSTIC (branch only, never main). Three deployed runs
-    // reported claimed:10 while the database recorded no claim at all; the
-    // same source run locally against the same database behaves correctly.
-    // If this line is absent from the runtime log, the deployed build is not
-    // this code.
-    console.log('[LGQ-PROBE-7F3A] claim', claimedCount, claim.providerEventId, claim.eventType);
 
     try {
       results.push(await dependencies.process(claim));
