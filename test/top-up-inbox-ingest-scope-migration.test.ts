@@ -83,11 +83,15 @@ describe('the top-up inbox ingest scope', () => {
     expect(compact).toContain('unsupported stripe event scope');
   });
 
-  it('matches the anchor with LF, the way the runner stores a body', () => {
+  it('compares line endings on LF on both sides, so transport cannot block it', () => {
     // pg_get_functiondef returns a plpgsql body verbatim, line endings included.
-    // scripts/run-migration.mjs normalises CRLF at the read site, so a needle
-    // written with CRLF could never match. Keep this file LF.
+    // The stored body depends on how the prerequisite was applied (20260817120000
+    // repaired CRLF bodies), and this file's depend on how it reached the server:
+    // pasting it into a browser SQL editor can turn every LF into CRLF. Normalise
+    // both, or the needle is unmatchable for reasons that are purely transport.
     expect(sql).not.toContain('\r');
+    expect(compact).toContain('v_before := pg_catalog.replace(v_before, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10))');
+    expect(compact).toContain('v_old := pg_catalog.replace(v_old, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10))');
     const runner = read('scripts/run-migration.mjs');
     expect(runner).toContain("replace(/\\r\\n/g, '\\n')");
   });

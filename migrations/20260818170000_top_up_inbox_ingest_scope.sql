@@ -61,6 +61,16 @@ begin
       ::pg_catalog.regprocedure
   );
 
+  -- Compare on LF alone, on BOTH sides. The stored body's line endings depend on
+  -- how the prerequisite was applied (see 20260817120000), and this file's
+  -- depend on how it reached the server -- pasting it into a browser SQL editor
+  -- can turn every LF into CRLF, which would make the needle unmatchable against
+  -- an LF body. Normalising both keeps the exactly-once assertion meaningful
+  -- while removing a failure mode that is purely about transport.
+  v_before := pg_catalog.replace(v_before, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
+  v_old := pg_catalog.replace(v_old, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
+  v_new := pg_catalog.replace(v_new, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
+
   -- The replacement ends with the anchor it replaced, so the needle still
   -- occurs exactly once afterwards and a second apply would append a second,
   -- unreachable copy of the branch. Skip instead.
