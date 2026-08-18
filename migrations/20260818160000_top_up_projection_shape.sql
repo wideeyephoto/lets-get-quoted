@@ -54,9 +54,24 @@ begin;
 -- A top-up row that already carries processing history predates this projector
 -- and cannot be classified from here --- including one marked terminal through the
 -- gap described above.
+--
+-- The guard asks about the state BEFORE this migration, so it must not fire on a
+-- database where this migration has already run: by then the projector is live
+-- and processing history is exactly what is supposed to be there. Without the
+-- early return, re-applying this file after the first purchase fails with a
+-- message that reads like data corruption and is only a re-run.
 lock table public.billing_events in share row exclusive mode;
 do $$
 begin
+  if exists (
+    select 1
+      from pg_constraint
+     where conrelid = 'public.billing_events'::regclass
+       and conname = 'billing_events_top_up_projection_completeness_check'
+  ) then
+    return;
+  end if;
+
   if exists (
     select 1
       from public.billing_events e

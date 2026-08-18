@@ -95,6 +95,17 @@ describe('the top-up projection shape', () => {
     expect(compact).toContain('top-up inbox contains pre-projector processing history');
   });
 
+  it('does not mistake its own success for that history', () => {
+    // The guard asks about the state BEFORE this migration. Once it has run, the
+    // projector is live and processing history is exactly what should be there,
+    // so re-applying the file must not fail with a message that reads like data
+    // corruption. The early return is what makes it re-runnable in every state.
+    expect(compact).toContain(
+      "select 1 from pg_constraint where conrelid = 'public.billing_events'::regclass"
+      + " and conname = 'billing_events_top_up_projection_completeness_check' ) then return;",
+    );
+  });
+
   it('proves the outcome rather than assuming it', () => {
     expect(compact).toContain('terminal shape does not admit the top-up projection schema');
     expect(compact).toContain('terminal shape lost an existing scope');
