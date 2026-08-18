@@ -69,6 +69,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/top-up-projection",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/direct-payment-settlement",
       "schedule": "*/5 * * * *"
     },

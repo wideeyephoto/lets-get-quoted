@@ -9,6 +9,10 @@ import {
   type ConnectedPaymentProjectionWorkerBatchResult,
 } from '@/lib/billing/connected-payment-projection-worker';
 import {
+  runTopUpProjectionBatch,
+  type TopUpProjectionWorkerBatchResult,
+} from '@/lib/billing/top-up-projection-worker';
+import {
   runDirectPaymentSettlementBatch,
   type RunDirectPaymentSettlementBatchResult,
 } from '@/lib/billing/direct-payment-settlement-worker';
@@ -38,6 +42,8 @@ export const STRIPE_SUBSCRIPTION_PROJECTION_WORKER_FLAG =
   'LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED';
 export const STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG =
   'LGQ_STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_ENABLED';
+export const STRIPE_TOP_UP_PROJECTION_WORKER_FLAG =
+  'LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED';
 export const PAID_PLAN_ALLOWANCE_RESET_WORKER_FLAG =
   'LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED';
 export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
@@ -50,6 +56,7 @@ export const LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG =
 // unbounded provider or database loop.
 export const STRIPE_SUBSCRIPTION_PROJECTION_BATCH_SIZE = 10;
 export const STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE = 10;
+export const STRIPE_TOP_UP_PROJECTION_BATCH_SIZE = 10;
 export const PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE = 10;
 export const DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE = 10;
 export const LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE = 10;
@@ -66,6 +73,12 @@ export function stripeConnectedPaymentProjectionWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_FLAG] === '1';
+}
+
+export function stripeTopUpProjectionWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[STRIPE_TOP_UP_PROJECTION_WORKER_FLAG] === '1';
 }
 
 export function paidPlanAllowanceResetWorkerEnabled(
@@ -324,6 +337,131 @@ ConnectedPaymentProjectionCronSummary
     return summarizeConnectedPaymentProjectionBatch({
       status: 'completed',
       requestedBatchSize: STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
+      selectedCount: 0,
+      claimedCount: 0,
+      results: [],
+      errorCode: null,
+    }, 1);
+  }
+}
+
+export type TopUpProjectionCronSummary = Readonly<{
+  requested: number;
+  selected: number;
+  claimed: number;
+  dead_lettered_without_provider: number;
+  granted: number;
+  already_granted: number;
+  awaiting_async_payment: number;
+  not_granted: number;
+  replayed: number;
+  in_progress: number;
+  retryable_failures: number;
+  terminal_failures: number;
+  worker_errors: number;
+  claim_errors: number;
+  failures: number;
+}>;
+
+/**
+ * Collapse workspace, Session and credit-lot identifiers before cron_runs sees
+ * them, and count the outcomes an operator actually needs to act on.
+ *
+ * `not_granted` is the one to watch. It counts paid Sessions this projector
+ * deliberately did not turn into credit — a withheld SKU, or a recurring
+ * capacity SKU whose fulfillment does not exist yet. Those are not failures, so
+ * they must not inflate `failures` and page someone; they are money taken that
+ * somebody still has to answer for, so they must not be invisible either.
+ */
+export function summarizeTopUpProjectionBatch(
+  result: TopUpProjectionWorkerBatchResult,
+  topLevelWorkerErrors = 0,
+): TopUpProjectionCronSummary {
+  let granted = 0;
+  let alreadyGranted = 0;
+  let awaitingAsyncPayment = 0;
+  let notGranted = 0;
+  let replayed = 0;
+  let inProgress = 0;
+  let retryableFailures = 0;
+  let terminalFailures = 0;
+  let itemWorkerErrors = 0;
+
+  for (const item of result.results) {
+    switch (item.status) {
+      case 'projected':
+        switch (item.projectionResult) {
+          case 'top_up_credits_granted':
+            granted += 1;
+            break;
+          case 'top_up_credits_already_granted':
+            alreadyGranted += 1;
+            break;
+          case 'top_up_awaiting_async_payment':
+            awaitingAsyncPayment += 1;
+            break;
+          case 'top_up_fulfillment_withheld':
+          case 'top_up_capacity_fulfillment_deferred':
+            notGranted += 1;
+            break;
+          default:
+            // top_up_payment_failed, top_up_checkout_expired and
+            // top_up_not_a_purchase are ordinary terminal outcomes with nothing
+            // owed to anyone, so they need no counter of their own.
+            break;
+        }
+        break;
+      case 'replay_processed':
+      case 'replay_ignored':
+        replayed += 1;
+        break;
+      case 'in_progress':
+        inProgress += 1;
+        break;
+      case 'failed_retryable':
+        retryableFailures += 1;
+        break;
+      case 'failed_terminal':
+        terminalFailures += 1;
+        break;
+      case 'worker_error':
+        itemWorkerErrors += 1;
+        break;
+    }
+  }
+
+  const workerErrors = itemWorkerErrors + topLevelWorkerErrors;
+  const claimErrors = result.status === 'claim_failed' ? 1 : 0;
+  const failures = retryableFailures + terminalFailures + workerErrors + claimErrors;
+  return Object.freeze({
+    requested: result.requestedBatchSize,
+    selected: result.selectedCount,
+    claimed: result.claimedCount,
+    dead_lettered_without_provider: result.selectedCount - result.claimedCount,
+    granted,
+    already_granted: alreadyGranted,
+    awaiting_async_payment: awaitingAsyncPayment,
+    not_granted: notGranted,
+    replayed,
+    in_progress: inProgress,
+    retryable_failures: retryableFailures,
+    terminal_failures: terminalFailures,
+    worker_errors: workerErrors,
+    claim_errors: claimErrors,
+    failures,
+  });
+}
+
+export async function runTopUpProjectionCronBatch(): Promise<TopUpProjectionCronSummary> {
+  try {
+    const result = await runTopUpProjectionBatch(STRIPE_TOP_UP_PROJECTION_BATCH_SIZE);
+    return summarizeTopUpProjectionBatch(result);
+  } catch {
+    // Initialization/configuration exceptions are reduced to one count. Never
+    // let a provider, workspace, event, or database error string reach cron_runs.
+    return summarizeTopUpProjectionBatch({
+      status: 'completed',
+      requestedBatchSize: STRIPE_TOP_UP_PROJECTION_BATCH_SIZE,
       selectedCount: 0,
       claimedCount: 0,
       results: [],

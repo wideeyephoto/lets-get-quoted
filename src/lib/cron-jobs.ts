@@ -45,6 +45,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Signed connected-account Checkout success events stop marking direct payments paid and reconciled.',
   },
   {
+    job: 'top-up-projection',
+    label: 'Top-up projection',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Paid top-up purchases stop becoming usage credit, so a workspace is charged and receives nothing.',
+  },
+  {
     job: 'direct-payment-settlement',
     label: 'Direct payment settlement',
     schedule: '*/5 * * * *',
