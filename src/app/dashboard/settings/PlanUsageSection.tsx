@@ -5,6 +5,7 @@ import type {
   WorkspacePlanUsage,
 } from '@/lib/billing/plan-usage';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
+import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -64,9 +65,13 @@ function balanceNote(balance: Extract<WorkspacePlanUsage['balances'], { kind: 'r
 export default function PlanUsageSection({
   data,
   showSubscriptionCheckout = false,
+  showTopUpPurchase = false,
+  topUpCheckoutStatus = null,
 }: {
   data: WorkspacePlanUsage;
   showSubscriptionCheckout?: boolean;
+  showTopUpPurchase?: boolean;
+  topUpCheckoutStatus?: 'success' | 'canceled' | null;
 }) {
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
   const canStartFirstSubscription = data.plan.kind === 'ready'
@@ -170,6 +175,13 @@ export default function PlanUsageSection({
           </div>
         )}
       </section>
+
+      {data.plan.kind === 'ready' && showTopUpPurchase ? (
+        <TopUpPurchaseCheckout
+          planCode={data.plan.planCode}
+          returnStatus={topUpCheckoutStatus}
+        />
+      ) : null}
 
       {data.plan.kind === 'ready' && limits.length > 0 ? (
         <section className="panel workspace-section-card" id="included-limits">

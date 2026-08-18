@@ -32,6 +32,7 @@ import {
   loadMerchantOnboardingSurfaceForOwner,
   stripeMerchantOnboardingV2Enabled,
 } from '@/lib/billing/merchant-onboarding-entrypoint';
+import { topUpPurchaseEnabled } from '@/lib/billing/top-up-purchase-entrypoint';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import PlanUsageSection from './PlanUsageSection';
 import MerchantOnboardingSection from './MerchantOnboardingSection';
@@ -45,11 +46,12 @@ function formatDate(value: string): string {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { year?: string; quickbooks?: string; merchant_onboarding?: string };
+  searchParams: { year?: string; quickbooks?: string; merchant_onboarding?: string; top_up_checkout?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const pricingDashboardEnabled = planUsageDashboardEnabled();
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
+  const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
   const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding] =
@@ -191,6 +193,18 @@ export default async function SettingsPage({
     && planUsage.plan.billingStatus === 'free'
     && planUsage.plan.entitlementState === 'active';
 
+  // Add-ons need no first-subscription eligibility: every plan including Flex
+  // may buy credits. Only an active entitlement and the dark switch gate it,
+  // and which SKUs appear is the catalog's answer, not this page's.
+  const showTopUpPurchase = topUpPurchaseCheckoutEnabled
+    && planUsage?.plan.kind === 'ready'
+    && planUsage.plan.entitlementState === 'active';
+  const topUpCheckoutStatus = searchParams.top_up_checkout === 'success'
+    ? 'success' as const
+    : searchParams.top_up_checkout === 'canceled'
+      ? 'canceled' as const
+      : null;
+
   // "Is my account actually set up?" — the one thing the Business tab could not
   // answer without opening all eight of its forms.
   const setup = businessSetup({
@@ -311,12 +325,15 @@ export default async function SettingsPage({
               'platform-fee',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
               'usage-balances',
+              ...(showTopUpPurchase ? ['buy-credits'] : []),
               'included-limits',
             ],
             content: (
               <PlanUsageSection
                 data={planUsage}
                 showSubscriptionCheckout={showSubscriptionCheckout}
+                showTopUpPurchase={showTopUpPurchase}
+                topUpCheckoutStatus={topUpCheckoutStatus}
               />
             ),
           }] : []),
