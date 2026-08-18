@@ -39,6 +39,18 @@
 -- house pattern -- see 20260818170000_top_up_inbox_ingest_scope.sql. Unlike that
 -- one, this replacement does NOT re-include its own anchor, so the needle is gone
 -- afterwards; re-running is guarded on the new value instead.
+--
+-- EVERY dollar-quote inside the DO bodies below is TAG-DELIMITED (probe, needle,
+-- replacement). An untagged pair would close the enclosing DO body at its first
+-- delimiter, and the remainder would be parsed as top-level SQL -- surfacing as a
+-- syntax error thousands of characters away from the actual mistake.
+--
+-- This note lives out here, above the blocks, for the same reason. A SQL comment
+-- inside a dollar-quoted body is NOT a comment to the outer lexer: the body is
+-- scanned as raw string content, so an untagged pair written inside a `--` line
+-- still terminates the block. This file failed that way twice -- once in code,
+-- then again in the comment written to explain the first failure. PostgreSQL
+-- found both; reading it did not.
 
 begin;
 
@@ -75,13 +87,8 @@ begin
   v_new := pg_catalog.replace(v_new, pg_catalog.chr(13) || pg_catalog.chr(10), pg_catalog.chr(10));
 
   -- Already applied. Keyed on the corrected pair rather than on the anchor,
-  -- because this replacement consumes its anchor entirely.
-  --
-  -- The probe is $probe$-tagged, NOT bare $$. A bare $$ here closes the enclosing
-  -- `do $$` body at the first delimiter, and the rest of the block is then parsed
-  -- as top-level SQL -- which is a syntax error at the next comma, thousands of
-  -- characters from anything that looks wrong. This file did exactly that and
-  -- never applied; PostgreSQL 17 found it, reading it twice did not.
+  -- because this replacement consumes its anchor entirely. The probe is
+  -- tag-delimited; see the header note on why it must be.
   if pg_catalog.strpos(v_before, $probe$'office_users', 15, 'crew_users', 50$probe$) > 0 then
     return;
   end if;

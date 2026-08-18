@@ -112,16 +112,39 @@ describe('SQL grammar constructs are never schema-qualified', () => {
   });
 });
 
+/**
+ * CRITICAL: these two sweeps scan EVERY line, comments included.
+ *
+ * That is the opposite of the grammar sweep above, and the difference is the
+ * whole lesson. A comment mentioning `pg_catalog.coalesce` is harmless prose. A
+ * comment containing a bare `$$` is a live delimiter: inside a dollar-quoted
+ * body the outer lexer sees raw string content, not comments, so a `--` line
+ * closes the block just as surely as code does.
+ *
+ * This file learned that the hard way. The first version stripped comments here
+ * too, so when the fix for the original bug was written as a comment EXPLAINING
+ * the bug -- containing two bare `$$` -- the guard passed and PostgreSQL failed
+ * the migration a second time, at a syntax error 4,150 characters in.
+ */
+const INLINE_PAIR = /\$\$[^$]*\$\$/;
+
+function allLines(source: string): Array<{ line: string; number: number }> {
+  return source
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line, index) => ({ line, number: index + 1 }));
+}
+
 describe('dollar-quoted blocks never nest a bare delimiter', () => {
-  it('has no inline bare $$ literal in any migration', () => {
-    // A bare $$ inside a `do $$ ... $$` body closes that body at the FIRST
-    // delimiter. Everything after is parsed as top-level SQL, and the error
-    // surfaces at whatever punctuation comes next -- thousands of characters
-    // from the mistake. Use a tagged delimiter ($probe$, $needle$) instead.
+  it('has no bare $$ inside any SQL comment', () => {
+    // Zero of these exist across the tree, so this is a real invariant rather
+    // than a threshold. `do $$ begin` and `end $$;` are legitimate and common,
+    // which is why the rule targets comments rather than line shape.
     const offenders: string[] = [];
     for (const file of SQL_FILES) {
-      for (const { line, number } of executableLines(readFileSync(file, 'utf8'))) {
-        if (/\$\$[^$]*\$\$/.test(line)) {
+      for (const { line, number } of allLines(readFileSync(file, 'utf8'))) {
+        const comment = line.indexOf('--');
+        if (comment >= 0 && line.slice(comment).includes('$$')) {
           offenders.push(`${file.slice(ROOT.length + 1)}:${number} ${line.trim()}`);
         }
       }
@@ -129,13 +152,35 @@ describe('dollar-quoted blocks never nest a bare delimiter', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('would catch the bug that actually happened', () => {
-    const broken = "  if pg_catalog.strpos(v_before, $$'office_users', 15$$) > 0 then";
+  it('has no inline bare $$ literal, in code or in prose', () => {
+    const offenders: string[] = [];
+    for (const file of SQL_FILES) {
+      for (const { line, number } of allLines(readFileSync(file, 'utf8'))) {
+        if (INLINE_PAIR.test(line)) {
+          offenders.push(`${file.slice(ROOT.length + 1)}:${number} ${line.trim()}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('would catch BOTH versions of the bug that actually happened', () => {
+    // Round one: in code.
+    const inCode = "  if pg_catalog.strpos(v_before, $$'office_users', 15$$) > 0 then";
+    expect(INLINE_PAIR.test(inCode)).toBe(true);
+
+    // Round two: in the comment written to explain round one. The old guard
+    // stripped comments and waved this through.
+    const inComment = '  -- The probe is $probe$-tagged, NOT bare $$. A bare $$ here closes it';
+    expect(INLINE_PAIR.test(inComment)).toBe(true);
+    const commentAt = inComment.indexOf('--');
+    expect(inComment.slice(commentAt).includes('$$')).toBe(true);
+
+    // The fix, and ordinary block syntax, must not trip either rule.
     const fixed = "  if pg_catalog.strpos(v_before, $probe$'office_users', 15$probe$) > 0 then";
-    expect(/\$\$[^$]*\$\$/.test(broken)).toBe(true);
-    expect(/\$\$[^$]*\$\$/.test(fixed)).toBe(false);
-    // The ordinary opening and closing of a block body must not trip it.
-    expect(/\$\$[^$]*\$\$/.test('as $$')).toBe(false);
-    expect(/\$\$[^$]*\$\$/.test('$$;')).toBe(false);
+    expect(INLINE_PAIR.test(fixed)).toBe(false);
+    for (const ordinary of ['do $$', 'as $$', '$$;', 'do $$ begin', 'exception when duplicate_object then null; end $$;']) {
+      expect(INLINE_PAIR.test(ordinary), ordinary).toBe(false);
+    }
   });
 });
