@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
+import { PRICING_CATALOG_VERSION } from '@/lib/billing/catalog';
+
 import {
   closeDisposablePg17Clients,
   disposablePg17ApplicationNames,
@@ -146,7 +148,13 @@ async function prepareCurrentExpiration(
       recovered_from: null,
       payment_intent_id: null,
       fee_plan_code: 'flex',
-      fee_catalog_version: '2026-08-15-preview',
+      // From the catalog, not a literal. This was the SECOND hardcoded copy of
+      // '2026-08-15-preview'; fixing only the fixture's left this one, and the
+      // projector correctly rejected the mismatch against live 2026-08-18
+      // evidence as expiration_payment_evidence_conflict -- BEFORE taking the
+      // session mutex, which is why no lock wait ever happened either. One
+      // stale literal, two failing tests, neither of them about the race.
+      fee_catalog_version: PRICING_CATALOG_VERSION,
       fee_rate_bps: 125,
       fee_basis_amount_cents: 10_000,
       application_fee_cents: 125,
@@ -496,10 +504,18 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
       if (completion) await completion;
     }
 
+    // confirm_one_off_direct_checkout_presentation, not
+    // can_present_one_off_direct_checkout_session. The latter never existed --
+    // two call sites, zero definitions, introduced by fb5b7d57 alongside these
+    // tests, so this assertion has never once run. Despite the `confirm_` name
+    // the existing function performs no INSERT, UPDATE or DELETE: it is the
+    // locking read gate the application itself calls via confirmPresentation(),
+    // and its own comment says "false means the Session must remain
+    // undisclosed" -- exactly what is being asserted here.
     const state = row(await pg().control.query(
       `select o.state, o.provider_object_id,
               p.stripe_checkout_session, p.late_checkout_success_task_pk,
-              public.can_present_one_off_direct_checkout_session(o.id, $2)
+              public.confirm_one_off_direct_checkout_presentation(o.id, $2)
                 as can_present,
               public.direct_checkout_late_success_has_active_hold(p.id)
                 as active_hold
@@ -549,7 +565,7 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
 
     const fenced = row(await pg().control.query(
       `select
-         public.can_present_one_off_direct_checkout_session($1, $2)
+         public.confirm_one_off_direct_checkout_presentation($1, $2)
            as can_present,
          public.direct_checkout_late_success_has_active_hold($3)
            as active_hold,
