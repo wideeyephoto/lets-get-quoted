@@ -310,8 +310,9 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     'office seats are dark - no invite lifecycle, no last-owner protection, and an '
     + 'added office user would hold full owner authority',
   crew_user:
-    'crew-seat entitlement sits behind its exact-1 rollout gate, so a purchased seat '
-    + 'would enforce nothing until that gate is on',
+    'a purchased seat now has a ledger and both seat gates count it, but nothing '
+    + 'fills that ledger on payment and nothing empties it when the subscription '
+    + 'lapses - selling it would charge $5 a month and grant no seat',
 });
 
 /** SKUs that may be sold today. */
