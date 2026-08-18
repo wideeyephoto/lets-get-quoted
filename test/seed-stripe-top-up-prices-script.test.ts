@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { PRICING_CATALOG_VERSION, TOP_UPS } from '@/lib/billing/catalog';
+import { PRICING_CATALOG_VERSION, TOP_UPS, TOP_UPS_WITHHELD } from '@/lib/billing/catalog';
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n');
 const SCRIPT = read('scripts/seed-stripe-top-up-prices.mjs');
@@ -48,16 +48,22 @@ describe('the top-up SKU seeder', () => {
     expect(SCRIPT).toContain('Refusing to report success');
   });
 
-  it('withholds the two SKUs that are not safe to sell, and says why', () => {
+  it('reads the withheld list from the catalog rather than keeping its own', () => {
+    // Two copies of this list would eventually disagree, and the disagreement
+    // would be a SKU sold that should not have been.
+    expect(SCRIPT).toContain('TOP_UPS_WITHHELD');
+    expect(SCRIPT).not.toContain("office_user:");
+    expect(SCRIPT).not.toContain("crew_user:");
     // Silently skipping them would make the run read as "all eight are live",
     // which is the confusion the appendix status key exists to prevent.
-    expect(SCRIPT).toContain('office_user:');
-    expect(SCRIPT).toContain('crew_user:');
-    expect(SCRIPT).toContain('WITHHELD');
-    // Both are still in the canonical catalog — withholding is a sales decision
-    // here, not a deletion from the price book.
+    expect(SCRIPT).toContain('WITHHELD -');
+    expect(Object.keys(TOP_UPS_WITHHELD).sort()).toEqual(['crew_user', 'office_user']);
+    // Both remain in the price book; what is withheld is the sale.
     expect(TOP_UPS.office_user).toBeTruthy();
     expect(TOP_UPS.crew_user).toBeTruthy();
+    for (const reason of Object.values(TOP_UPS_WITHHELD)) {
+      expect(reason?.length ?? 0).toBeGreaterThan(20);
+    }
   });
 
   it('stamps the catalog version it read rather than a literal', () => {

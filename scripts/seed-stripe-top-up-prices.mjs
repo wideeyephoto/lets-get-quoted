@@ -37,17 +37,14 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const WANT_LIVE = process.argv.includes('--live');
 const CATALOG_MODULE = new URL('../src/lib/billing/catalog.ts', import.meta.url);
 
-// Not every published SKU may be sold yet. Skipping silently would make this
-// script read as "all eight are live", which is the exact confusion the
-// appendix's own status key exists to prevent.
-const WITHHELD = {
-  office_user:
-    'office seats are dark - no invite lifecycle, no last-owner protection, and an '
-    + 'added office user would receive full owner authority (appendix section 6)',
-  crew_user:
-    'crew-seat entitlement sits behind its exact-1 rollout gate, so a purchased seat '
-    + 'would enforce nothing until that gate is on',
-};
+// Which SKUs may not be sold yet is a catalog fact, not a script opinion, so it
+// is parsed from TOP_UPS_WITHHELD rather than restated here. Two copies of that
+// list would eventually disagree, and the disagreement would be a SKU sold that
+// should not have been.
+//
+// Skipping them silently would make a run read as "all eight are live", which is
+// the confusion the appendix status key exists to prevent, so each one is printed
+// with its reason.
 
 async function loadEnv() {
   for (const candidate of ['../.env.local', '../../CLAUDE CODE FOLDER/.env.local']) {
@@ -93,8 +90,19 @@ async function catalog() {
       units: num('units'),
     });
   }
+
+  const withheldBlock = source.match(/export const TOP_UPS_WITHHELD[^=]*= Object\.freeze\(\{([\s\S]*?)\}\);/);
+  const withheld = {};
+  if (withheldBlock) {
+    for (const entry of withheldBlock[1].split(/^  (?=[a-z])/m)) {
+      const id = entry.match(/^([a-z0-9_]+):/)?.[1];
+      if (!id) continue;
+      withheld[id] = [...entry.matchAll(/'([^']*)'/g)].map((m) => m[1]).join('');
+    }
+  }
+
   if (skus.length === 0) throw new Error('Parsed no top-up SKUs. Refusing to report success.');
-  return { version, skus };
+  return { version, skus, withheld };
 }
 
 await loadEnv();
@@ -123,7 +131,7 @@ if (keyMode === 'unrecognised') {
   process.exit(2);
 }
 
-const { version, skus } = await catalog();
+const { version, skus, withheld: WITHHELD } = await catalog();
 const stripe = new Stripe(secretKey, { apiVersion: process.env.STRIPE_API_VERSION || undefined });
 
 console.log(`mode            ${keyMode}${DRY_RUN ? '  (dry run - creating nothing)' : ''}`);

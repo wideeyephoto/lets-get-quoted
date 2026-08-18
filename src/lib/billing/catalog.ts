@@ -293,6 +293,29 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
   },
 } as const;
 
+/**
+ * Published SKUs that must not be sold yet, and why.
+ *
+ * They stay in TOP_UPS because the price book is settled and the appendix
+ * publishes them. What is withheld is the sale, not the price. Keeping the
+ * reason next to the catalog means the seeder and the purchase path cannot
+ * disagree about which SKUs are live -- and a reader is told why rather than
+ * finding a SKU quietly missing from a list.
+ */
+export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
+  office_user:
+    'office seats are dark - no invite lifecycle, no last-owner protection, and an '
+    + 'added office user would hold full owner authority',
+  crew_user:
+    'crew-seat entitlement sits behind its exact-1 rollout gate, so a purchased seat '
+    + 'would enforce nothing until that gate is on',
+});
+
+/** SKUs that may be sold today. */
+export const SELLABLE_TOP_UP_IDS = Object.freeze(
+  (Object.keys(TOP_UPS) as TopUpId[]).filter((id) => !(id in TOP_UPS_WITHHELD)),
+);
+
 export const ENTERPRISE_PRICING = {
   startingMonthlyCents: 79_900,
   includedWorkspaces: 2,
