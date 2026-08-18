@@ -339,3 +339,52 @@ describe('dark Account -> Plan UI wiring', () => {
     expect(component).not.toMatch(/name="(?:workspaceId|accountId|priceId|amount|amountCents)"/);
   });
 });
+
+describe('the deployed-origin guard on subscription redirect URLs', () => {
+  // The 2026-08-18 Preview rehearsal completed a real test-mode subscription and
+  // then returned the customer to http://localhost:3010/dashboard/settings.
+  // APP_ORIGIN falls back to localhost whenever NEXT_PUBLIC_APP_URL is unset, and
+  // Preview deliberately leaves it unset. Stripe had already taken the money.
+  const withVercelEnv = (value: string | undefined, run: () => void) => {
+    const previous = process.env.VERCEL_ENV;
+    if (value === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = value;
+    try { run(); } finally {
+      if (previous === undefined) delete process.env.VERCEL_ENV;
+      else process.env.VERCEL_ENV = previous;
+    }
+  };
+
+  it('refuses a localhost origin on a deployed environment', () => {
+    for (const env of ['preview', 'production', 'development']) {
+      withVercelEnv(env, () => {
+        expect(() => buildBasePlanSubscriptionRedirectUrls('http://localhost:3010'))
+          .toThrow(/not configured for a deployed environment/i);
+      });
+    }
+  });
+
+  it('still allows localhost when not deployed, which is how the app runs locally', () => {
+    withVercelEnv(undefined, () => {
+      expect(buildBasePlanSubscriptionRedirectUrls('http://localhost:3010').successUrl)
+        .toBe('http://localhost:3010/dashboard/settings?subscription_checkout=success#plan');
+    });
+  });
+
+  it('allows a real https origin on a deployed environment', () => {
+    withVercelEnv('production', () => {
+      expect(buildBasePlanSubscriptionRedirectUrls('https://letsgetquoted.com').successUrl)
+        .toBe('https://letsgetquoted.com/dashboard/settings?subscription_checkout=success#plan');
+    });
+  });
+
+  it('fails before Stripe is called, not after the money moves', () => {
+    // The guard sits in the redirect builder, which runs while the Session is
+    // being constructed. A wrong success_url is only discoverable after payment.
+    const source = readFileSync('src/lib/billing/base-plan-subscription-entrypoint.ts', 'utf8');
+    const guard = source.indexOf('not configured for a deployed environment');
+    const success = source.indexOf("success.searchParams.set('subscription_checkout'");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(success);
+  });
+});
