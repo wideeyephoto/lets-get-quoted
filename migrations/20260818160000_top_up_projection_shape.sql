@@ -36,11 +36,14 @@
 --   top_up_fulfillment_withheld       a withheld or plan-ineligible SKU was paid
 --   top_up_capacity_fulfillment_deferred  a recurring-capacity SKU was paid
 --
--- The last two are not tidiness. storage_100gb is sellable today and its
--- fulfillment is 'recurring_capacity', not a credit lot; office_user and
--- crew_user are withheld. Money can therefore be taken for something this
--- projector must not grant, and that has to be a named, queryable outcome rather
--- than a silent success or a stuck queue.
+-- The last two are not tidiness. Every recurring-capacity SKU is withheld in the
+-- catalog --- storage_100gb because nothing fulfils a purchased capacity increase,
+-- office_user and crew_user because a bought seat would enforce nothing --- so
+-- money can still be taken for something this projector must not grant. That has
+-- to be a named, queryable outcome rather than a silent success or a stuck
+-- queue. capacity_fulfillment_deferred is unreachable while all three are
+-- withheld, and stays in the vocabulary as the safety net for the day one is
+-- sold before its fulfillment exists.
 --
 -- Granting goes through grant_usage_credits, which already owns positive-unit
 -- checks, resource-code shape, a per-workspace advisory lock, and idempotency.

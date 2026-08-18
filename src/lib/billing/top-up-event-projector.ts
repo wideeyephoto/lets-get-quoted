@@ -31,13 +31,20 @@ import { getStripeClient } from '@/lib/stripe';
  * bought; the catalog says how much that SKU grants. fulfillmentFromMetadata
  * already enforces that split and is reused here rather than reimplemented.
  *
- * WHY A PAID SESSION CAN STILL GRANT NOTHING. Two sellable outcomes are not
- * credit lots. storage_100gb is fulfillment 'recurring_capacity' --- capacity, not
- * a consumable balance --- and office_user and crew_user are withheld in the
- * catalog. Both are money taken for something this projector must not grant, so
- * both get a named terminal result rather than a silent success or a stuck
- * queue. Someone has to answer for those rows; they are findable by workspace
- * because the projector binds the workspace even when it grants nothing.
+ * WHY A PAID SESSION CAN STILL GRANT NOTHING. Every recurring-capacity SKU is
+ * currently withheld in the catalog --- storage_100gb because nothing fulfils a
+ * purchased capacity increase, office_user and crew_user because a bought seat
+ * would enforce nothing. So a paid Session for one of them is money taken for
+ * something this projector must not grant, and it gets a named terminal result
+ * rather than a silent success or a stuck queue. Someone has to answer for those
+ * rows; they are findable by workspace, because the projector binds the
+ * workspace even when it grants nothing.
+ *
+ * The withheld check runs BEFORE the fulfillment-kind check, so today every such
+ * SKU reports top_up_fulfillment_withheld and capacity_fulfillment_deferred is
+ * unreachable. That is deliberate: "the catalog says do not sell this" is the
+ * anomaly worth surfacing, and the capacity branch stays as the safety net for
+ * the day a capacity SKU becomes sellable before its fulfillment exists.
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

@@ -303,6 +303,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  * finding a SKU quietly missing from a list.
  */
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
+  storage_100gb:
+    'storage is recurring capacity rather than a consumable balance, and nothing '
+    + 'fulfils a purchased capacity increase yet - a paid one would grant nothing',
   office_user:
     'office seats are dark - no invite lifecycle, no last-owner protection, and an '
     + 'added office user would hold full owner authority',

@@ -13,7 +13,12 @@ vi.mock('@/lib/stripe', () => ({
   },
 }));
 
-import { PRICING_CATALOG_VERSION, TOP_UPS } from '@/lib/billing/catalog';
+import {
+  PRICING_CATALOG_VERSION,
+  TOP_UPS,
+  TOP_UPS_WITHHELD,
+  type TopUpId,
+} from '@/lib/billing/catalog';
 import {
   BASE_PLAN_SUBSCRIPTION_PURPOSE,
   SUBSCRIPTION_CHECKOUT_METADATA_KEYS,
@@ -146,26 +151,34 @@ describe('deciding what one top-up event means', () => {
     expect(projection.units).toBeUndefined();
   });
 
-  it('defers a paid recurring-capacity SKU instead of granting it as credit', () => {
-    // storage_100gb is sellable, and its fulfillment is capacity rather than a
-    // consumable balance. Granting it as a credit lot would be the wrong wallet.
-    expect(TOP_UPS.storage_100gb.fulfillment).toBe('recurring_capacity');
+  it.each(Object.keys(TOP_UPS_WITHHELD))('never grants credit for a paid but withheld %s', (id) => {
+    const sku = TOP_UPS[id as TopUpId];
     const projection = decideTopUpProjection(
       claim(),
-      session({ metadata: metadata({ lgq_top_up_id: 'storage_100gb', lgq_resource_code: 'storage_gb' }) as Stripe.Metadata }),
+      session({
+        metadata: metadata({ lgq_top_up_id: id, lgq_resource_code: sku.resourceCode }) as Stripe.Metadata,
+      }),
     );
-    expect(projection.outcome).toBe('capacity_fulfillment_deferred');
+    expect(projection.outcome).toBe('fulfillment_withheld');
+    expect(projection.units).toBeUndefined();
+    // The workspace is still named: someone has to answer for money taken.
     expect(projection.account_id).toBe(WORKSPACE_ID);
   });
 
-  it('withholds a paid SKU the catalog says must not be sold', () => {
-    const projection = decideTopUpProjection(
-      claim(),
-      session({ metadata: metadata({ lgq_top_up_id: 'crew_user', lgq_resource_code: 'crew_users' }) as Stripe.Metadata }),
-    );
-    expect(projection.outcome).toBe('fulfillment_withheld');
-    // The workspace is still named: someone has to answer for money taken.
-    expect(projection.account_id).toBe(WORKSPACE_ID);
+  it('withholds every recurring-capacity SKU, so no capacity purchase can grant', () => {
+    // A capacity SKU is not a consumable balance, and granting one as a credit
+    // lot would be the wrong wallet. Rather than rely on the projector catching
+    // that after the money moved, the catalog stops the sale.
+    const capacity = (Object.keys(TOP_UPS) as TopUpId[])
+      .filter((id) => TOP_UPS[id].fulfillment === 'recurring_capacity');
+    expect(capacity).not.toHaveLength(0);
+    for (const id of capacity) {
+      expect(id in TOP_UPS_WITHHELD, `${id} is capacity and must be withheld`).toBe(true);
+    }
+    // Which makes capacity_fulfillment_deferred unreachable today. It stays as
+    // the safety net for the day a capacity SKU is sold before it can be filled,
+    // so the withheld check running first is what decides the outcome.
+    expect(TOP_UPS.storage_100gb.fulfillment).toBe('recurring_capacity');
   });
 
   it('keys idempotency on the Session, so two events for one purchase agree', () => {

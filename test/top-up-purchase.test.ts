@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { PRICING_CATALOG_VERSION, TOP_UPS } from '@/lib/billing/catalog';
+import {
+  PRICING_CATALOG_VERSION,
+  TOP_UPS,
+  TOP_UPS_WITHHELD,
+  type TopUpId,
+} from '@/lib/billing/catalog';
 import {
   PURCHASED_LOT_SOURCE_TYPE,
   TOP_UP_PURCHASE_FLAG,
@@ -43,15 +48,15 @@ describe('top-up purchase', () => {
   });
 
   it('refuses the SKUs that are published but withheld', () => {
-    // Both remain in the price book; what is withheld is the sale.
-    for (const id of ['office_user', 'crew_user']) {
+    // They remain in the price book; what is withheld is the sale.
+    for (const id of Object.keys(TOP_UPS_WITHHELD)) {
       expect(() => requireSellableTopUp(id, 'scale')).toThrow(TopUpPurchaseError);
       try {
         requireSellableTopUp(id, 'scale');
       } catch (error) {
         expect((error as TopUpPurchaseError).code).toBe('sku_withheld');
       }
-      expect(TOP_UPS[id as 'office_user']).toBeTruthy();
+      expect(TOP_UPS[id as TopUpId]).toBeTruthy();
     }
   });
 
