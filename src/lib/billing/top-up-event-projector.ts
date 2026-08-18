@@ -49,6 +49,10 @@ import { getStripeClient } from '@/lib/stripe';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHECKOUT_SESSION_ID_PATTERN = /^cs_[A-Za-z0-9_]+$/;
+// Matches workspace_purchased_capacity.stripe_subscription_id's own CHECK. A
+// subscription ID carries no test/live prefix the way a Session ID does, so the
+// mode is carried by the row's livemode column instead of by this shape.
+const SUBSCRIPTION_ID_PATTERN = /^sub_[A-Za-z0-9]{8,}$/;
 const STRIPE_SECRET_KEY_MODE_PATTERN = /^(?:sk|rk)_(test|live)_/;
 
 export const PLATFORM_TOP_UP_PROJECTION_SCHEMA = 'stripe_platform_top_up_projection_v1' as const;
@@ -89,6 +93,7 @@ export type TopUpOutcome =
   | 'checkout_expired'
   | 'not_a_purchase'
   | 'fulfillment_withheld'
+  | 'capacity_granted'
   | 'capacity_fulfillment_deferred';
 
 export type TopUpProjection = Readonly<{
@@ -100,6 +105,9 @@ export type TopUpProjection = Readonly<{
   catalog_version?: string;
   top_up_id?: TopUpId;
   idempotency_key?: string;
+  /** Only on capacity_granted: the subscription whose lifecycle owns the seat. */
+  stripe_subscription_id?: string;
+  unit_amount_cents?: number;
 }>;
 
 export type TopUpProjectionResult = Readonly<{
@@ -302,15 +310,21 @@ export function createTopUpProjectionResolver(
   });
 }
 
-function sellableUsageCreditSku(topUpId: string | undefined): {
+function sellableSku(topUpId: string | undefined): {
   sku: TopUpDefinition | null;
   blocked: TopUpOutcome | null;
 } {
   const sku = topUpId ? (TOP_UPS as Record<string, TopUpDefinition | undefined>)[topUpId] : undefined;
   if (!sku) return { sku: null, blocked: 'not_a_purchase' };
+  // Withheld is checked FIRST and still wins over everything below. A SKU the
+  // catalog refuses to sell must not be fulfilled by either path, whatever its
+  // fulfillment kind is.
   if (sku.id in TOP_UPS_WITHHELD) return { sku, blocked: 'fulfillment_withheld' };
-  if (sku.fulfillment !== 'usage_credit') return { sku, blocked: 'capacity_fulfillment_deferred' };
-  return { sku, blocked: null };
+  if (sku.fulfillment === 'usage_credit' || sku.fulfillment === 'recurring_capacity') {
+    return { sku, blocked: null };
+  }
+  // A fulfillment kind nobody has written a path for. Named, not silent.
+  return { sku, blocked: 'capacity_fulfillment_deferred' };
 }
 
 /**
@@ -356,12 +370,44 @@ export function decideTopUpProjection(
     });
   }
 
-  const { blocked } = sellableUsageCreditSku(metadata.lgq_top_up_id);
+  const { sku, blocked } = sellableSku(metadata.lgq_top_up_id);
   if (blocked) {
     return Object.freeze({ outcome: blocked, checkout_session_id: sessionId, account_id: accountId });
   }
   if (!accountId) {
     return Object.freeze({ outcome: 'not_a_purchase', checkout_session_id: sessionId, account_id: null });
+  }
+
+  // Recurring capacity raises a limit instead of granting a consumable balance,
+  // so it lands in workspace_purchased_capacity rather than usage_credit_lots.
+  // The seat is owned by the SUBSCRIPTION, not by this Session: the Session is
+  // projected once, while the subscription goes on to change state without one.
+  // Without that id nothing could ever cancel the seat, so refuse rather than
+  // grant capacity nobody can take back.
+  if (sku && sku.fulfillment === 'recurring_capacity') {
+    const subscription = typeof session.subscription === 'string'
+      ? session.subscription
+      : session.subscription?.id;
+    if (!subscription || !SUBSCRIPTION_ID_PATTERN.test(subscription)) {
+      return Object.freeze({
+        outcome: 'capacity_fulfillment_deferred',
+        checkout_session_id: sessionId,
+        account_id: accountId,
+      });
+    }
+    return Object.freeze({
+      outcome: 'capacity_granted',
+      checkout_session_id: sessionId,
+      account_id: accountId,
+      resource_code: fulfillment.resourceCode,
+      units: fulfillment.units,
+      catalog_version: fulfillment.catalogVersion,
+      top_up_id: sku.id,
+      idempotency_key: fulfillment.idempotencyKey,
+      stripe_subscription_id: subscription,
+      // From the catalog, never from the Session. An amount is not an identity.
+      unit_amount_cents: sku.priceCents,
+    });
   }
 
   return Object.freeze({
