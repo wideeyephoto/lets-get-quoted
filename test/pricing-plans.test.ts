@@ -28,7 +28,7 @@ function comparisonRow(label: string) {
 
 describe('the contractor pricing catalog', () => {
   it('pins the exact base prices and LGQ platform fees', () => {
-    expect(PRICING_CATALOG_VERSION).toBe('2026-08-15-preview');
+    expect(PRICING_CATALOG_VERSION).toBe('2026-08-18-preview');
     expect(
       PLANS.map(({ id, monthly, annualMonthly, paymentFeePct }) => ({
         id,
@@ -99,41 +99,42 @@ describe('the contractor pricing catalog', () => {
     expect(annualPlanEstimate(plan('growth'), 'annual', 600_000, false, 6, true)).toBe(2_868);
   });
 
-  it('keeps Scale core team and monthly capacity aligned with Growth', () => {
+  it('shows Scale beating Growth on every metered row of the public table', () => {
+    // The public table used to repeat Growth's numbers in the Scale column, and
+    // a feature bullet said so out loud: "Growth-level team, messaging, AI Intake,
+    // and storage capacity". Catalog 2026-08-18-preview separates them, so the
+    // customer-facing copy has to move with it or the page undersells the plan.
     const growth = plan('growth');
     const scale = plan('scale');
 
-    expect({
-      officeUsers: scale.officeUsers,
-      crewUsers: scale.crewUsers,
-      textCredits: scale.textCredits,
-      messagingSummary: scale.messagingSummary,
-    }).toEqual({
-      officeUsers: growth.officeUsers,
-      crewUsers: growth.crewUsers,
-      textCredits: growth.textCredits,
-      messagingSummary: growth.messagingSummary,
-    });
+    expect(scale.officeUsers).toBeGreaterThan(growth.officeUsers);
+    expect(scale.crewUsers).toBeGreaterThan(growth.crewUsers);
+    expect(scale.textCredits).toBe('3,000/month');
+    expect(scale.messagingSummary).toBe('3,000 text credits/month · dedicated number');
 
-    for (const label of [
-      'Office / admin users',
-      'Crew-only users',
-      'Custom-domain connections',
-      'Business number',
-      'Basic call forwarding & voicemail',
-      'Text credits',
-      'Marketing email sends',
-      'Transactional emails',
-      'AI Intake credits',
-      'AI writing drafts',
-      'File & photo storage',
-      'QuickBooks Online',
-    ]) {
+    for (const [label, expected] of [
+      ['Office / admin users', '15'],
+      ['Crew-only users', '50'],
+      ['Text credits', '3,000/month'],
+      ['Marketing email sends', '5,000/month'],
+      ['AI Intake credits', '1,000/month'],
+      ['AI writing drafts', '500/month'],
+      ['File & photo storage', '250 GB'],
+      ['Basic call forwarding & voicemail', '200 min/month'],
+    ] as const) {
       const [, , , growthValue, scaleValue] = comparisonRow(label);
-      expect(scaleValue, `${label} should match Growth`).toBe(growthValue);
+      expect(scaleValue, `${label} Scale column`).toBe(expected);
+      expect(scaleValue, `${label} must not repeat Growth`).not.toBe(growthValue);
     }
 
-    expect(scale.features).toContain('Growth-level team, messaging, AI Intake, and storage capacity');
+    // Genuinely shared, and it should stay that way: one legal business.
+    for (const label of ['Custom-domain connections', 'QuickBooks Online'] as const) {
+      const [, , , growthValue, scaleValue] = comparisonRow(label);
+      expect(scaleValue).toBe(growthValue);
+    }
+
+    expect(scale.features).not.toContain('Growth-level team, messaging, AI Intake, and storage capacity');
+    expect(scale.features).toContain('15 office users + 50 crew users');
   });
 
   it('states that Flex starter usage never automatically refills', () => {

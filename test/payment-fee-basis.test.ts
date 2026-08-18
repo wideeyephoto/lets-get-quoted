@@ -91,7 +91,7 @@ describe('LGQ payment fee basis', () => {
 
     expect(snapshot).toEqual({
       planCode: 'scale',
-      catalogVersion: '2026-08-15-preview',
+      catalogVersion: '2026-08-18-preview',
       feeRateBps: 10,
       feeRate: 0.001,
       grossAmountCents: 108_00,
