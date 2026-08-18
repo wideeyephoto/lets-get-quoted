@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -62,6 +63,7 @@ vi.mock('@/lib/email', () => ({
 
 import { POST as legacyStripeWebhook } from '@/app/api/stripe/webhook/route';
 import {
+  ACH_MIN_AMOUNT,
   cancelPaymentRequest,
   createCheckoutSessionForPayment,
   inspectLegacyDestinationPaymentRail,
@@ -184,6 +186,9 @@ function checkoutRaceAdmin(
   existingSessionId: string | null = null,
   finalChargeModel: 'destination' | 'direct' = 'direct',
   paymentPlanId: string | null = null,
+  // Default 100 keeps every existing case card-only and their fee maths intact.
+  // The ACH cases below raise it past the threshold.
+  amount = 100,
 ) {
   let railReads = 0;
   const update = vi.fn(() => {
@@ -206,7 +211,7 @@ function checkoutRaceAdmin(
     invoice_id: null,
     kind: 'final',
     label: 'Final payment',
-    amount: 100,
+    amount,
     status: 'requested',
     platform_fee: null,
     fee_rate: null,
@@ -1050,5 +1055,94 @@ describe('contractor and homeowner surfaces do not advertise the legacy rail for
     expect(page).toContain("&& isLegacyDestinationPayment(linkedPayment)");
     expect(page).toContain("&& isLegacyDestinationPayment(payment) ? (");
     expect(page).toContain("isLegacyDestinationPayment(payment) && payment.sms_events?.some");
+  });
+});
+
+describe('the ACH branch of the live payment rail', () => {
+  // Until now nothing tested this. Every us_bank_account assertion in the suite
+  // belongs to legacy-destination-checkout, a module behind a disabled gate. The
+  // rail that actually takes money offers ACH on any one-off payment at or above
+  // ACH_MIN_AMOUNT, with no flag and no capability read, and the largest payment
+  // this platform has ever taken is $125 — so this branch has never executed in
+  // production, and nothing here could tell you whether it would.
+  // The params have to be typed for mock.calls to be indexable — an untyped
+  // vi.fn() gives calls the empty tuple, so every assertion below would be a
+  // compile error rather than a check.
+  type SessionParams = Stripe.Checkout.SessionCreateParams;
+  const stripeCreating = (create: (params: SessionParams) => Promise<unknown>) => {
+    mocks.getStripeClient.mockReturnValue({
+      checkout: { sessions: { create, expire: vi.fn(), retrieve: vi.fn() } },
+    });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('offers bank debit alongside card at the threshold', async () => {
+    const db = checkoutRaceAdmin(null, 'destination', null, ACH_MIN_AMOUNT);
+    const createSession = vi.fn(async (_params: SessionParams) => ({ id: 'cs_ach', url: 'https://checkout.stripe.test/ach' }));
+    mocks.admin = db.admin;
+    stripeCreating(createSession);
+
+    await expect(createCheckoutSessionForPayment('pay_guard', 'https://letsgetquoted.com'))
+      .resolves.toBe('https://checkout.stripe.test/ach');
+
+    // Card is always offered alongside ACH — never bank-only.
+    expect(createSession.mock.calls[0][0].payment_method_types).toEqual(['card', 'us_bank_account']);
+  });
+
+  it('stays card-only one dollar below the threshold', async () => {
+    const db = checkoutRaceAdmin(null, 'destination', null, ACH_MIN_AMOUNT - 1);
+    const createSession = vi.fn(async (_params: SessionParams) => ({ id: 'cs_card', url: 'https://checkout.stripe.test/card' }));
+    mocks.admin = db.admin;
+    stripeCreating(createSession);
+
+    await expect(createCheckoutSessionForPayment('pay_guard', 'https://letsgetquoted.com'))
+      .resolves.toBe('https://checkout.stripe.test/card');
+
+    // The key is omitted entirely rather than set to ['card'], which lets Stripe
+    // apply the account's own enabled methods.
+    expect(createSession.mock.calls[0][0]).not.toHaveProperty('payment_method_types');
+  });
+
+  it('falls back to card-only when the platform refuses us_bank_account', async () => {
+    // The fallback exists so a large payment is never left un-payable. It has
+    // never fired in production; this is the only place it has ever run.
+    const db = checkoutRaceAdmin(null, 'destination', null, 1200);
+    const createSession = vi.fn(async (_params: SessionParams) => (
+      { id: 'cs_fallback', url: 'https://checkout.stripe.test/fallback' }
+    ));
+    // First call refuses the way Stripe refuses an unactivated method; the retry
+    // falls through to the implementation above.
+    createSession.mockRejectedValueOnce(new Error('The payment method type provided: us_bank_account is invalid'));
+    mocks.admin = db.admin;
+    stripeCreating(createSession);
+
+    await expect(createCheckoutSessionForPayment('pay_guard', 'https://letsgetquoted.com'))
+      .resolves.toBe('https://checkout.stripe.test/fallback');
+
+    expect(createSession).toHaveBeenCalledTimes(2);
+    expect(createSession.mock.calls[1][0].payment_method_types).toEqual(['card']);
+    // The retry must be the same charge otherwise: same destination, same fee.
+    expect(createSession.mock.calls[1][0].payment_intent_data).toEqual(
+      createSession.mock.calls[0][0].payment_intent_data,
+    );
+  });
+
+  it('rethrows an unrelated failure instead of quietly retrying card-only', async () => {
+    // The fallback is keyed on the TEXT of a Stripe error. A retry on anything
+    // else would turn an unrelated fault into a second charge attempt.
+    const db = checkoutRaceAdmin(null, 'destination', null, 1200);
+    const createSession = vi.fn(async (_params: SessionParams): Promise<unknown> => {
+      throw new Error('Amount must be no more than $999,999.99');
+    });
+    mocks.admin = db.admin;
+    stripeCreating(createSession);
+
+    await expect(createCheckoutSessionForPayment('pay_guard', 'https://letsgetquoted.com'))
+      .rejects.toThrow('Amount must be no more than');
+
+    expect(createSession).toHaveBeenCalledTimes(1);
   });
 });
