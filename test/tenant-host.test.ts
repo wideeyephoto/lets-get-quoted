@@ -41,6 +41,30 @@ describe('resolveTenantHost', () => {
     expect(resolveTenantHost('127.0.0.1:3010', ROOT)).toEqual({ kind: 'platform' });
   });
 
+  /**
+   * A deployment URL is us, not a contractor. Classified as a customDomain it
+   * made the middleware rewrite every request on a preview build to
+   * /site-domain/<the vercel host>, which matches no site — so preview
+   * deployments answered 404 on every route, marketing pages included.
+   *
+   * This is the second time it has bitten: the fix landed on another branch on
+   * 2026-08-15 and never reached this line, so the subscription rehearsal hit
+   * the identical 404 on 2026-08-18.
+   */
+  it('treats a Vercel deployment URL as the platform', () => {
+    expect(resolveTenantHost('lets-get-quoted-git-subscription-rehearsal-lets-get-quoted.vercel.app', ROOT)).toEqual({
+      kind: 'platform',
+    });
+    expect(resolveTenantHost('vercel.app', ROOT)).toEqual({ kind: 'platform' });
+    expect(resolveTenantHost('lets-get-quoted.vercel.app:443', ROOT)).toEqual({ kind: 'platform' });
+  });
+
+  it('does not reserve a lookalike of the deployment domain', () => {
+    // Only a real label boundary counts here too — "notvercel.app" is somebody
+    // else's domain and must still resolve as one.
+    expect(resolveTenantHost('notvercel.app', ROOT)).toEqual({ kind: 'customDomain', domain: 'notvercel.app' });
+  });
+
   it('routes a nested label to a subdomain lookup, not the marketing site', () => {
     // Matches what the middleware has always done. The lookup misses and the
     // visitor gets a 404 — better than serving our marketing site on a host

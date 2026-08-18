@@ -41,6 +41,17 @@ export function resolveTenantHost(hostHeader: string | null | undefined, rootDom
   // Local development is the platform, not somebody's custom domain.
   if (hostname === 'localhost' || hostname === '127.0.0.1') return { kind: 'platform' };
 
+  // Neither is a Vercel deployment URL, and this one cost a working preview
+  // environment. Every build is served from <project>-<hash>.vercel.app, which
+  // fell through to customDomain — so the middleware rewrote EVERY request on a
+  // preview to /site-domain/<that host>, no site matched, and the whole
+  // deployment answered 404. Marketing pages, /login, the dashboard, all of it.
+  //
+  // Safe to reserve outright: vercel.app is Vercel's own domain and a
+  // contractor cannot hold a name under it, so no real custom domain is being
+  // shadowed here.
+  if (hostname === 'vercel.app' || hostname.endsWith('.vercel.app')) return { kind: 'platform' };
+
   return { kind: 'customDomain', domain: hostname };
 }
 
