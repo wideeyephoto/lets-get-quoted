@@ -55,6 +55,16 @@ describe('the purchased capacity ledger', () => {
     expect(store.trimEnd().endsWith('commit;')).toBe(true);
   });
 
+  it('can be applied twice, which PostgreSQL proved it could not', () => {
+    // The first real-engine run failed the re-apply with 42P07 "relation
+    // already exists". Guarding only the table would have surfaced the two
+    // indexes next, one round trip later.
+    expect(storeStatements).toContain('create table if not exists public.workspace_purchased_capacity');
+    const unguardedIndexes = storeStatements.match(/^create index (?!if not exists)/gm) ?? [];
+    expect(unguardedIndexes).toEqual([]);
+    expect(storeStatements.match(/create index if not exists/g) ?? []).toHaveLength(2);
+  });
+
   it('binds every capacity SKU to the published price book', () => {
     // All three are bound, not just the one heading for sale. The price book is
     // settled; which may be SOLD is TOP_UPS_WITHHELD's decision, not a shape the

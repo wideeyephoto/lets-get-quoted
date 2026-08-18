@@ -76,7 +76,13 @@ begin
 
   -- Already applied. Keyed on the corrected pair rather than on the anchor,
   -- because this replacement consumes its anchor entirely.
-  if pg_catalog.strpos(v_before, $$'office_users', 15, 'crew_users', 50$$) > 0 then
+  --
+  -- The probe is $probe$-tagged, NOT bare $$. A bare $$ here closes the enclosing
+  -- `do $$` body at the first delimiter, and the rest of the block is then parsed
+  -- as top-level SQL -- which is a syntax error at the next comma, thousands of
+  -- characters from anything that looks wrong. This file did exactly that and
+  -- never applied; PostgreSQL 17 found it, reading it twice did not.
+  if pg_catalog.strpos(v_before, $probe$'office_users', 15, 'crew_users', 50$probe$) > 0 then
     return;
   end if;
 

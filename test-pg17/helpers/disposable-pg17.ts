@@ -179,6 +179,13 @@ async function assertServerIdentity(
   client: Client,
   expectedDatabaseName: string,
 ): Promise<void> {
+  // `current_user` is unqualified on purpose. It is SQL grammar, not a function,
+  // so `pg_catalog.current_user` parses as a column reference and the whole
+  // query fails 42P01 "missing FROM-clause entry for table pg_catalog" -- which
+  // meant this helper could never open a connection, and every test behind it
+  // was unreachable rather than failing. Same trap as coalesce and nullif.
+  // `current_database()` and `current_setting()` ARE real functions and stay
+  // qualified.
   const row = await one(
     client,
     `select
@@ -188,7 +195,7 @@ async function assertServerIdentity(
        pg_catalog.shobj_description(d.oid, 'pg_database') as database_comment,
        r.rolsuper as is_superuser
      from pg_catalog.pg_database d
-     join pg_catalog.pg_roles r on r.rolname = pg_catalog.current_user
+     join pg_catalog.pg_roles r on r.rolname = current_user
      where d.datname = pg_catalog.current_database()`,
   );
 

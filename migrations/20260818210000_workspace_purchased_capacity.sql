@@ -40,7 +40,14 @@
 
 begin;
 
-create table public.workspace_purchased_capacity (
+-- `if not exists` on the table and both indexes so a re-apply is a no-op.
+-- 20260818190000 creates its table unguarded and would fail a second apply, so
+-- this is a stronger bar than the house pattern rather than a match for it. The
+-- tradeoff is real and worth naming: a re-apply against a table that has DRIFTED
+-- passes silently instead of complaining. That is the right trade here because
+-- the guarded objects are append-only and their protections are `create or
+-- replace`d below, so a drifted table would still fail its own constraints.
+create table if not exists public.workspace_purchased_capacity (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete restrict,
   top_up_id text not null check (
@@ -97,10 +104,10 @@ create table public.workspace_purchased_capacity (
 );
 
 -- The read the seat gates make, on every create and every reactivate.
-create index workspace_purchased_capacity_counted_idx
+create index if not exists workspace_purchased_capacity_counted_idx
   on public.workspace_purchased_capacity (account_id, resource_code)
   where status in ('active', 'past_due');
-create index workspace_purchased_capacity_account_created_idx
+create index if not exists workspace_purchased_capacity_account_created_idx
   on public.workspace_purchased_capacity (account_id, created_at desc);
 
 alter table public.workspace_purchased_capacity enable row level security;

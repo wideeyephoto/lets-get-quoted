@@ -153,7 +153,15 @@ describe('the drift migration itself', () => {
     // This replacement does not re-include its own anchor, so a second apply
     // would find no needle and the exactly-once assertion would raise. The skip
     // has to key on the new text.
-    expect(patch).toContain("strpos(v_before, $$'office_users', 15, 'crew_users', 50$$) > 0");
+    //
+    // The probe MUST be tagged. Written as a bare $$ it closed the enclosing
+    // `do $$` body at the first delimiter and the file would not parse at all --
+    // PostgreSQL 17 reported it as a syntax error at a comma 4,149 characters
+    // in, nowhere near the mistake. See test/sql-grammar-construct-guards.
+    // The nested-delimiter sweep itself lives in
+    // test/sql-grammar-construct-guards.test.ts, which strips comments first --
+    // asserting it here trips on the comment above explaining the bug.
+    expect(patch).toContain("strpos(v_before, $probe$'office_users', 15, 'crew_users', 50$probe$) > 0");
   });
 
   it('proves afterwards that the other plans and the equality guard survived', () => {
