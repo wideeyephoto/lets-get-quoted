@@ -6,10 +6,12 @@ import {
   REQUIRED_LIVE_WEBHOOK_EVENTS,
   missingLiveWebhookEvents,
 } from '@/lib/billing/stripe-webhook-subscription';
+import { PLATFORM_SUBSCRIPTION_EVENT_TYPES } from '@/lib/billing/stripe-event-inbox';
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n');
 const SCRIPT = read('scripts/verify-webhook-subscription.mjs');
 const MODULE = read('src/lib/billing/stripe-webhook-subscription.ts');
+const INBOX = read('src/lib/billing/stripe-event-inbox.ts');
 
 // scripts/verify-webhook-subscription.mjs is plain ESM run by node, so it cannot
 // import the TypeScript module. It parses the required list out of the source
@@ -60,6 +62,28 @@ describe('the live webhook verification script', () => {
     for (const mutation of ['webhookEndpoints.create', 'webhookEndpoints.update', 'webhookEndpoints.del']) {
       expect(SCRIPT).not.toContain(mutation);
     }
+  });
+
+  it('parses exactly the subscription scope the inbox module exports', () => {
+    const block = INBOX.match(/export const PLATFORM_SUBSCRIPTION_EVENT_TYPES = \[([\s\S]*?)\] as const/);
+    const parsed = block ? [...block[1].matchAll(/'([a-z0-9_.]+)'/g)].map((m) => m[1]) : [];
+    expect(parsed).toEqual([...PLATFORM_SUBSCRIPTION_EVENT_TYPES]);
+    expect(parsed.length).toBeGreaterThan(0);
+  });
+
+  it('checks the billing endpoint in both directions, not just for missing events', () => {
+    // The payment endpoint only needs its required events present. The billing
+    // route rejects anything outside the scope it declares, so an EXTRA event
+    // yields an endpoint Stripe reports as healthy, returning 200, while nothing
+    // projects. Counting events sees neither fault.
+    expect(SCRIPT).toContain('extraFor');
+    expect(SCRIPT).toContain('OUT OF SCOPE');
+    expect(SCRIPT).toContain('subscriptionRequired');
+  });
+
+  it('fails the run when the billing endpoint is out of scope', () => {
+    // A billing fault must reach the exit code, not merely the transcript.
+    expect(SCRIPT).toMatch(/billingEndpoints\.filter\(\(e\) => e\.missing\.length > 0 \|\| e\.extra\.length > 0\)/);
   });
 
   it('treats a wildcard subscription as complete', () => {

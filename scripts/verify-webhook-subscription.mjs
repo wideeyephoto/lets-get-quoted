@@ -27,6 +27,7 @@ import Stripe from 'stripe';
 
 const JSON_OUT = process.argv.includes('--json');
 const SUBSCRIPTION_MODULE = new URL('../src/lib/billing/stripe-webhook-subscription.ts', import.meta.url);
+const INBOX_MODULE = new URL('../src/lib/billing/stripe-event-inbox.ts', import.meta.url);
 
 async function loadEnv() {
   // Same tolerance as scripts/remove-demo-data.mjs: this repo is checked out as a
@@ -67,6 +68,26 @@ async function requiredEvents() {
   return events;
 }
 
+/**
+ * The subscription scope, parsed the same way out of the inbox module.
+ *
+ * The billing endpoint is checked in BOTH directions, unlike the payment one.
+ * A missing event means a subscription change nothing ever hears about. An EXTRA
+ * event is just as bad and far more deceptive: the route validates every delivery
+ * against the scope it declares and rejects anything outside it, so a stray
+ * checkout.session.completed produces an endpoint Stripe shows as healthy,
+ * returning 200, while the product silently never updates. Counting events cannot
+ * see either fault — which is exactly how "18 event(s)" would have read as a pass.
+ */
+async function subscriptionEvents() {
+  const source = (await readFile(INBOX_MODULE, 'utf8')).replace(/\r\n/g, '\n');
+  const block = source.match(/export const PLATFORM_SUBSCRIPTION_EVENT_TYPES = \[([\s\S]*?)\] as const/);
+  if (!block) throw new Error('Could not find PLATFORM_SUBSCRIPTION_EVENT_TYPES in stripe-event-inbox.ts.');
+  const events = [...block[1].matchAll(/'([a-z0-9_.]+)'/g)].map((m) => m[1]);
+  if (events.length === 0) throw new Error('Parsed PLATFORM_SUBSCRIPTION_EVENT_TYPES as empty. Refusing to report success.');
+  return events;
+}
+
 await loadEnv();
 const secretKey = process.env.STRIPE_SECRET_KEY;
 if (!secretKey) {
@@ -86,6 +107,7 @@ const keyMode = /^(sk|rk)_live_/.test(secretKey)
     : 'unrecognised';
 
 const required = await requiredEvents();
+const subscriptionRequired = await subscriptionEvents();
 const stripe = new Stripe(secretKey, { apiVersion: process.env.STRIPE_API_VERSION || undefined });
 
 let endpoints;
@@ -97,10 +119,18 @@ try {
 }
 
 // `enabled_events: ['*']` means every event, so nothing can be missing.
-const missingFor = (endpoint) =>
+const missingFrom = (endpoint, wanted) =>
   endpoint.enabled_events?.includes('*')
     ? []
-    : required.filter((event) => !endpoint.enabled_events?.includes(event));
+    : wanted.filter((event) => !endpoint.enabled_events?.includes(event));
+
+const missingFor = (endpoint) => missingFrom(endpoint, required);
+
+// Only meaningful for the billing endpoint, whose route rejects out-of-scope
+// deliveries. A wildcard is NOT a pass here: it subscribes the endpoint to every
+// event Stripe emits, most of which that route will refuse.
+const extraFor = (endpoint, wanted) =>
+  (endpoint.enabled_events ?? []).filter((event) => !wanted.includes(event));
 
 const PAYMENT_ROUTE = '/api/stripe/webhook';
 const BILLING_ROUTE = '/api/stripe/billing/webhook';
@@ -118,12 +148,20 @@ const report = endpoints.map((endpoint) => ({
     : endpoint.url?.endsWith(BILLING_ROUTE)
       ? 'billing'
       : 'other',
-  missing: endpoint.url?.endsWith(PAYMENT_ROUTE) ? missingFor(endpoint) : [],
+  missing: endpoint.url?.endsWith(PAYMENT_ROUTE)
+    ? missingFor(endpoint)
+    : endpoint.url?.endsWith(BILLING_ROUTE)
+      ? missingFrom(endpoint, subscriptionRequired)
+      : [],
+  extra: endpoint.url?.endsWith(BILLING_ROUTE) ? extraFor(endpoint, subscriptionRequired) : [],
 }));
 
 const paymentEndpoints = report.filter((e) => e.serves === 'payment' && e.status === 'enabled');
 const billingEndpoints = report.filter((e) => e.serves === 'billing' && e.status === 'enabled');
-const broken = paymentEndpoints.filter((e) => e.missing.length > 0);
+const broken = [
+  ...paymentEndpoints.filter((e) => e.missing.length > 0),
+  ...billingEndpoints.filter((e) => e.missing.length > 0 || e.extra.length > 0),
+];
 
 if (JSON_OUT) {
   console.log(JSON.stringify({
@@ -152,6 +190,15 @@ if (JSON_OUT) {
       console.log(e.missing.length === 0
         ? '  all required events present'
         : `  MISSING ${e.missing.length}: ${e.missing.join(', ')}`);
+    }
+    if (e.serves === 'billing') {
+      if (e.missing.length === 0 && e.extra.length === 0) {
+        console.log('  exactly the subscription scope, no more and no less');
+      }
+      if (e.missing.length > 0) console.log(`  MISSING ${e.missing.length}: ${e.missing.join(', ')}`);
+      // Out-of-scope events are the quiet failure: Stripe reports the delivery
+      // healthy, the route returns 200, and nothing projects.
+      if (e.extra.length > 0) console.log(`  OUT OF SCOPE ${e.extra.length}: ${e.extra.join(', ')}`);
     }
     console.log('');
   }
