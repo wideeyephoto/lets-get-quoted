@@ -151,6 +151,25 @@ export function buildBasePlanSubscriptionRedirectUrls(
   appOrigin: string = APP_ORIGIN,
 ): Readonly<{ successUrl: string; cancelUrl: string }> {
   const origin = configuredAppOrigin(appOrigin);
+
+  // A DEPLOYED environment must never send a paying customer to localhost.
+  // APP_ORIGIN falls back to http://localhost:3010 whenever NEXT_PUBLIC_APP_URL
+  // is unset, and Preview deliberately leaves it unset — so the 2026-08-18
+  // rehearsal completed a real test-mode subscription and then redirected the
+  // customer to http://localhost:3010/dashboard/settings. Stripe had already
+  // taken the money; only the return trip was wrong, which is the worst place
+  // for this to break because nothing fails loudly.
+  //
+  // One-off payments are immune: they take the origin from the live request
+  // (app/pay/[id]/actions.ts), so nobody noticed the constant was load-bearing
+  // for subscriptions alone.
+  //
+  // Refusing is better than guessing a host. A thrown configuration error
+  // stops checkout BEFORE Stripe charges anyone; a wrong success_url is only
+  // discovered after.
+  if (process.env.VERCEL_ENV && new URL(origin).protocol !== 'https:') {
+    throw new Error('Application origin is not configured for a deployed environment.');
+  }
   const success = new URL('/dashboard/settings', origin);
   success.searchParams.set('subscription_checkout', 'success');
   success.hash = 'plan';
