@@ -596,6 +596,92 @@ describe('durable top-up purchase orchestration', () => {
     expect(store.markIndeterminate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['plain http on a public host', 'http://app.letsgetquoted.com/ok'],
+    ['credentials in the URL', 'https://user:pass@app.letsgetquoted.com/ok'],
+    ['not a URL at all', '/dashboard/settings'],
+    ['an empty string', ''],
+  ])('refuses a return URL with %s before anything is claimed', async (_label, successUrl) => {
+    // A wrong success_url is only ever discovered AFTER the money has moved.
+    const { dependencies, store } = mocks();
+    await expect(orchestrateTopUpPurchaseCheckout(
+      { ...orchestrationInput(), successUrl },
+      dependencies,
+    )).rejects.toThrow(/successUrl is invalid/i);
+    expect(store.claim).not.toHaveBeenCalled();
+  });
+
+  it('still allows a localhost return URL, which is how the app runs locally', () => {
+    expect(() => callFor('text_1000', {
+      successUrl: 'http://localhost:3010/dashboard/settings?top_up_checkout=success',
+      cancelUrl: 'http://127.0.0.1:3010/dashboard/settings?top_up_checkout=canceled',
+    })).not.toThrow();
+  });
+
+  it('does not fall back to creating when a replayed Session cannot be read', async () => {
+    // The Session exists; this process simply could not read it. Creating a
+    // second one is the failure the whole ledger exists to prevent.
+    const { dependencies, store, retrieveSession, createSession } = mocks(
+      replayed('checkout_created', 'cs_test_topUp123'),
+    );
+    retrieveSession.mockRejectedValue(new Error('socket hang up'));
+
+    await expect(orchestrateTopUpPurchaseCheckout(orchestrationInput(), dependencies))
+      .rejects.toThrow(/socket hang up/);
+    expect(createSession).not.toHaveBeenCalled();
+    expect(store.beginSubmission).not.toHaveBeenCalled();
+    expect(store.fail).not.toHaveBeenCalled();
+    expect(store.markIndeterminate).not.toHaveBeenCalled();
+  });
+
+  it('does not adopt the owner token a replay hands back for an unfinished attempt', async () => {
+    // claim_stripe_top_up_purchase returns the ORIGINAL claim_token on a replay
+    // of a claimed, submitted or indeterminate row. Using it would make this
+    // process a second owner of somebody else's in-flight operation.
+    for (const operationState of ['claimed', 'submitted', 'indeterminate'] as const) {
+      const claim = replayed(operationState);
+      expect(claim.claimToken).toBe(CLAIM_TOKEN);
+      const { dependencies, store } = mocks(claim);
+
+      await expect(orchestrateTopUpPurchaseCheckout(orchestrationInput(), dependencies))
+        .rejects.toBeInstanceOf(TopUpPurchaseCheckoutUnavailableError);
+      expect(store.beginSubmission).not.toHaveBeenCalled();
+      expect(store.complete).not.toHaveBeenCalled();
+      expect(store.fail).not.toHaveBeenCalled();
+      expect(store.markIndeterminate).not.toHaveBeenCalled();
+    }
+  });
+
+  it('refuses a replayed Session created in the other Stripe mode', async () => {
+    const { dependencies, retrieveSession } = mocks(replayed('checkout_created', 'cs_test_topUp123'));
+    retrieveSession.mockImplementation(async () => sessionFor(callFor(), {
+      id: 'cs_live_topUp123',
+      livemode: true,
+    }));
+
+    await expect(orchestrateTopUpPurchaseCheckout(orchestrationInput(), dependencies))
+      .rejects.toThrow(/outside the claimed top-up contract/i);
+  });
+
+  it('refuses a replayed Session that belongs to a different SKU', async () => {
+    const { dependencies, retrieveSession } = mocks(replayed('checkout_created', 'cs_test_topUp123'));
+    // Same price point, different product: only the metadata tells them apart,
+    // and the metadata is what fulfillment will read back.
+    retrieveSession.mockImplementation(async () => sessionFor(callFor('ai_intake_100')));
+
+    await expect(orchestrateTopUpPurchaseCheckout(orchestrationInput('ai_writing_250'), dependencies))
+      .rejects.toThrow(/outside the claimed top-up contract/i);
+  });
+
+  it('refuses a fresh claim whose row is not actually in the claimed state', async () => {
+    const { dependencies, store } = mocks(claimed({ operationState: 'submitted' }));
+
+    await expect(orchestrateTopUpPurchaseCheckout(orchestrationInput(), dependencies))
+      .rejects.toThrow(/owner token/i);
+    expect(store.beginSubmission).not.toHaveBeenCalled();
+    expect(store.fail).not.toHaveBeenCalled();
+  });
+
   it('refuses a claimed row with no owner token instead of proceeding unowned', async () => {
     const { dependencies, store } = mocks(claimed({ claimToken: null }));
 

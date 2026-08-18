@@ -95,6 +95,34 @@ function requireOperationId(value: string): string {
   return value;
 }
 
+const LOCAL_HTTP_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * A return URL a customer may actually be sent to after paying.
+ *
+ * The entrypoint already derives the origin from the live request, but this is
+ * the layer that hands the URL to Stripe, and a success_url is only ever found
+ * to be wrong AFTER the money has moved. Validating here means no future caller
+ * -- a route, a script, a retry harness -- can put a plain-http or
+ * credential-bearing URL on a Session.
+ */
+function requireReturnUrl(value: string, label: string): string {
+  if (typeof value !== 'string' || !value.trim() || value.length > 2_048 || /\p{Cc}/u.test(value)) {
+    throw new Error(`Top-up purchase ${label} is invalid.`);
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`Top-up purchase ${label} is invalid.`);
+  }
+  const localHttp = parsed.protocol === 'http:' && LOCAL_HTTP_HOSTS.has(parsed.hostname);
+  if ((parsed.protocol !== 'https:' && !localHttp) || parsed.username || parsed.password) {
+    throw new Error(`Top-up purchase ${label} is invalid.`);
+  }
+  return parsed.toString();
+}
+
 function requireResolvedPrice(price: ResolvedTopUpPrice, sku: TopUpDefinition): ResolvedTopUpPrice {
   if (
     !price
@@ -219,8 +247,8 @@ export function buildTopUpPurchaseCheckoutCall(
     accountId: workspaceId,
     sku,
     price,
-    successUrl: input.successUrl,
-    cancelUrl: input.cancelUrl,
+    successUrl: requireReturnUrl(input.successUrl, 'successUrl'),
+    cancelUrl: requireReturnUrl(input.cancelUrl, 'cancelUrl'),
     catalogVersion: PRICING_CATALOG_VERSION,
   })) as Readonly<Stripe.Checkout.SessionCreateParams>;
 

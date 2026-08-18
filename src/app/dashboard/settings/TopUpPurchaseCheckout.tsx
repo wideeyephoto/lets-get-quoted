@@ -36,11 +36,15 @@ type PlanCode = BillingPlanId | 'enterprise';
 
 const INITIAL_STATE: TopUpPurchaseCheckoutActionState | null = null;
 
-function BuyButton({ label }: { label: string }) {
+function BuyButton({ label, frozen }: { label: string; frozen: boolean }) {
   const { pending } = useFormStatus();
+  // `frozen` is the whole card, not this form: once one SKU has produced a
+  // checkout URL the browser is already navigating to Stripe, and a second
+  // click would claim a second intent nobody will ever pay.
+  const busy = pending || frozen;
   return (
-    <button className="btn primary" type="submit" disabled={pending} aria-busy={pending}>
-      {pending ? 'Opening secure checkout…' : label}
+    <button className="btn primary" type="submit" disabled={busy} aria-busy={busy}>
+      {busy ? 'Opening secure checkout…' : label}
     </button>
   );
 }
@@ -125,8 +129,8 @@ export default function TopUpPurchaseCheckout({
 
       {returnStatus === 'success' ? (
         <p className="plan-usage-note" role="status">
-          Thanks — your payment was received. Credits appear in the balances above once Stripe confirms
-          the charge, usually within a minute.
+          Thanks — your payment was received. Credits are added to the balances above once Stripe
+          confirms the charge; refresh this page to see them. Nothing is lost if that takes a while.
         </p>
       ) : null}
       {returnStatus === 'canceled' ? (
@@ -145,7 +149,10 @@ export default function TopUpPurchaseCheckout({
               <input type="hidden" name="topUpId" value={sku.id} />
               <input type="hidden" name="operationId" value={operationIds[sku.id] ?? ''} />
               {operationIds[sku.id] ? (
-                <BuyButton label={`Buy for ${formatUsdFromCents(sku.priceCents)}`} />
+                <BuyButton
+                  label={`Buy for ${formatUsdFromCents(sku.priceCents)}`}
+                  frozen={Boolean(state?.ok) && !clientRedirectError}
+                />
               ) : (
                 <button className="btn primary" type="button" disabled>Preparing secure checkout…</button>
               )}
@@ -158,18 +165,20 @@ export default function TopUpPurchaseCheckout({
         Stripe securely collects your payment details. Nothing is charged on this page.
       </p>
 
-      {state && !state.ok ? (
-        <p className="plan-usage-note warning" role="alert">{state.message}</p>
-      ) : null}
-      {state?.ok ? (
-        <p className="plan-usage-note" role="status">Opening Stripe&apos;s secure checkout…</p>
-      ) : null}
-      {clientRedirectError ? (
-        <p className="plan-usage-note warning" role="alert">
-          The checkout link could not be verified in this browser. LGQ did not submit another request;
-          contact support so we can reconcile the existing checkout safely.
-        </p>
-      ) : null}
+      <div aria-live="polite">
+        {state && !state.ok ? (
+          <p className="plan-usage-note warning" role="alert">{state.message}</p>
+        ) : null}
+        {state?.ok && !clientRedirectError ? (
+          <p className="plan-usage-note" role="status">Opening Stripe&apos;s secure checkout…</p>
+        ) : null}
+        {clientRedirectError ? (
+          <p className="plan-usage-note warning" role="alert">
+            The checkout link could not be verified in this browser. LGQ did not submit another request;
+            contact support so we can reconcile the existing checkout safely.
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }
