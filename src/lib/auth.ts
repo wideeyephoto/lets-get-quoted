@@ -10,11 +10,36 @@ import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
 
 // Service-role client bypasses RLS for trusted server-side writes.
 // Never expose this client or its key to the browser.
+/**
+ * Every Supabase request must reach Postgres, never Next's data cache.
+ *
+ * Next.js patches global fetch in the server runtime and supabase-js uses it, so
+ * an identical outbound request can be served from cache instead of being sent.
+ * On 2026-08-18 that silently broke the billing projection worker: its claim RPC
+ * returned the SAME already-processed event on all ten iterations of a batch,
+ * because only the first call left the process. The worker reported
+ * claimed:10 processed:10 failures:0 while the database recorded no claim at all,
+ * and it would have spun on one event every five minutes forever without ever
+ * draining the queue.
+ *
+ * It only reproduces when deployed. Under vitest global fetch is unpatched, so the
+ * same code claimed distinct rows and stopped correctly — which is why the suite
+ * was green and three verified-correct layers each looked innocent.
+ *
+ * A database read is never a cacheable fetch. This applies to all of them.
+ */
+export const noStoreFetch: typeof fetch = (input, init) => (
+  fetch(input, { ...init, cache: 'no-store' })
+);
+
 export function createAdminClient() {
   return createClient(
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { fetch: noStoreFetch },
+    }
   );
 }
 
