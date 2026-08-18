@@ -356,6 +356,7 @@ function validateDelivery(delivery: StripeEventInboxDelivery): void {
   if (
     delivery.expectedScope !== 'connected_payment'
     && delivery.expectedScope !== 'platform_subscription'
+    && delivery.expectedScope !== 'platform_top_up'
   ) {
     invalid('Stripe event endpoint scope is invalid.');
   }

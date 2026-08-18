@@ -15,6 +15,10 @@ vi.mock('@/lib/stripe', () => ({
 
 import { PRICING_CATALOG_VERSION, TOP_UPS } from '@/lib/billing/catalog';
 import {
+  BASE_PLAN_SUBSCRIPTION_PURPOSE,
+  SUBSCRIPTION_CHECKOUT_METADATA_KEYS,
+} from '@/lib/billing/stripe-billing-subscription-checkout';
+import {
   PLATFORM_TOP_UP_PROJECTION_SCHEMA,
   TopUpProjectionProviderError,
   createTopUpProjectionResolver,
@@ -124,6 +128,22 @@ describe('deciding what one top-up event means', () => {
     );
     expect(projection.outcome).toBe('not_a_purchase');
     expect(projection.account_id).toBeNull();
+  });
+
+  it('ignores a base-plan subscription checkout, which lands on the same endpoint', () => {
+    // Not hypothetical. Subscription signup creates a Checkout Session on the
+    // SAME platform account, so a top-up destination enabled for
+    // checkout.session.completed receives those completions too. They carry
+    // lgq_billing_purpose, never lgq_purpose, and must never grant credit.
+    const projection = decideTopUpProjection(claim(), session({
+      metadata: {
+        [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.purpose]: BASE_PLAN_SUBSCRIPTION_PURPOSE,
+        [SUBSCRIPTION_CHECKOUT_METADATA_KEYS.workspaceId]: WORKSPACE_ID,
+      } as Stripe.Metadata,
+    }));
+    expect(projection.outcome).toBe('not_a_purchase');
+    expect(projection.account_id).toBeNull();
+    expect(projection.units).toBeUndefined();
   });
 
   it('defers a paid recurring-capacity SKU instead of granting it as credit', () => {
