@@ -37,6 +37,25 @@ export const CONNECTED_PAYMENT_EVENT_TYPES = [
   'refund.failed',
 ] as const satisfies readonly Stripe.Event.Type[];
 
+/**
+ * A top-up is bought with a one-off Checkout Session on the PLATFORM account.
+ *
+ * These types overlap with the connected-payment list, which is why the scope
+ * has to be declared by the route rather than inferred from the type: the same
+ * checkout.session.completed means a contractor was paid under one scope and a
+ * workspace bought credits under the other, and they bind to different columns.
+ *
+ * Receipt only for now. The database permits this scope to be recorded and
+ * refuses any projected shape for it, so an event cannot be half-processed while
+ * the projector is still being written.
+ */
+export const PLATFORM_TOP_UP_EVENT_TYPES = [
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded',
+  'checkout.session.async_payment_failed',
+  'checkout.session.expired',
+] as const satisfies readonly Stripe.Event.Type[];
+
 export const PLATFORM_SUBSCRIPTION_EVENT_TYPES = [
   'customer.subscription.created',
   'customer.subscription.updated',
@@ -59,12 +78,14 @@ export const PLATFORM_SUBSCRIPTION_EVENT_TYPES = [
 ] as const satisfies readonly Stripe.Event.Type[];
 
 export type ConnectedPaymentEventType = typeof CONNECTED_PAYMENT_EVENT_TYPES[number];
+export type PlatformTopUpEventType = typeof PLATFORM_TOP_UP_EVENT_TYPES[number];
 export type PlatformSubscriptionEventType = typeof PLATFORM_SUBSCRIPTION_EVENT_TYPES[number];
 export type StripeInboxEventType = ConnectedPaymentEventType | PlatformSubscriptionEventType;
-export type StripeBillingEventScope = 'connected_payment' | 'platform_subscription';
+export type StripeBillingEventScope = 'connected_payment' | 'platform_subscription' | 'platform_top_up';
 
 const CONNECTED_PAYMENT_TYPES = new Set<string>(CONNECTED_PAYMENT_EVENT_TYPES);
 const PLATFORM_SUBSCRIPTION_TYPES = new Set<string>(PLATFORM_SUBSCRIPTION_EVENT_TYPES);
+const PLATFORM_TOP_UP_TYPES = new Set<string>(PLATFORM_TOP_UP_EVENT_TYPES);
 const EVENT_ID_PATTERN = /^evt_[A-Za-z0-9_]{8,}$/;
 const ACCOUNT_ID_PATTERN = /^acct_[A-Za-z0-9]{8,}$/;
 const EVENT_TYPE_PATTERN = /^[a-z0-9_]+(?:\.[a-z0-9_]+)+$/;
@@ -247,6 +268,16 @@ function scopeAndObjectType(eventType: string, expectedScope: StripeBillingEvent
       scope: 'platform_subscription',
       eventType: eventType as PlatformSubscriptionEventType,
       objectType: eventType.startsWith('customer.subscription.') ? 'subscription' : 'invoice',
+    };
+  }
+  if (expectedScope === 'platform_top_up') {
+    if (!PLATFORM_TOP_UP_TYPES.has(eventType)) {
+      return invalid(`Unsupported Stripe top-up event type: ${eventType}.`);
+    }
+    return {
+      scope: 'platform_top_up',
+      eventType: eventType as PlatformTopUpEventType,
+      objectType: 'checkout.session',
     };
   }
   return invalid(`Unsupported Stripe event type: ${eventType}.`);
