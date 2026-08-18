@@ -7,7 +7,7 @@
  * page and the payment engine cannot drift through floating-point constants.
  */
 
-export const PRICING_CATALOG_VERSION = '2026-08-15-preview' as const;
+export const PRICING_CATALOG_VERSION = '2026-08-18-preview' as const;
 
 export const BILLING_PLAN_IDS = ['flex', 'solo', 'growth', 'scale'] as const;
 export type BillingPlanId = (typeof BILLING_PLAN_IDS)[number];
@@ -149,16 +149,16 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     platformFeeBps: 10,
     allowances: {
       cadence: 'monthly',
-      officeUsers: 5,
-      crewUsers: 10,
+      officeUsers: 15,
+      crewUsers: 50,
       customDomainConnections: 1,
       dedicatedBusinessNumbers: 1,
-      textCredits: 1_500,
-      marketingEmailSends: 2_500,
-      aiIntakeCredits: 500,
-      aiWritingDrafts: 250,
-      storageGb: 100,
-      forwardingMinutes: 100,
+      textCredits: 3_000,
+      marketingEmailSends: 5_000,
+      aiIntakeCredits: 1_000,
+      aiWritingDrafts: 500,
+      storageGb: 250,
+      forwardingMinutes: 200,
     },
     voice: {
       monthlyPriceCents: 0,

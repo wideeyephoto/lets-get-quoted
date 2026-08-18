@@ -14,7 +14,7 @@ import {
 
 describe('canonical billing catalog', () => {
   it('pins every base price and plan fee in integer units', () => {
-    expect(PRICING_CATALOG_VERSION).toBe('2026-08-15-preview');
+    expect(PRICING_CATALOG_VERSION).toBe('2026-08-18-preview');
     expect(BILLING_PLANS.flex).toMatchObject({ monthlyPriceCents: 0, annualPriceCents: 0, platformFeeBps: 125 });
     expect(BILLING_PLANS.solo).toMatchObject({ monthlyPriceCents: 3_900, annualPriceCents: 42_000, platformFeeBps: 50 });
     expect(BILLING_PLANS.growth).toMatchObject({ monthlyPriceCents: 12_900, annualPriceCents: 118_800, platformFeeBps: 25 });
@@ -65,8 +65,36 @@ describe('canonical billing catalog', () => {
     });
   });
 
-  it('right-sizes Scale to Growth capacity while retaining the approved Voice differences', () => {
-    expect(BILLING_PLANS.scale.allowances).toEqual(BILLING_PLANS.growth.allowances);
+  it('gives Scale more of every metered resource than Growth', () => {
+    // Scale duplicated Growth's allowances field for field while costing 2.55x,
+    // and a test asserted that equality outright — so the duplication read as a
+    // decision rather than the copy it was. Catalog 2026-08-18-preview separates
+    // them. Every capacity field must now EXCEED Growth, not merely differ, so a
+    // future copy-paste cannot pass by moving one number the wrong way.
+    const growth = BILLING_PLANS.growth.allowances;
+    const scale = BILLING_PLANS.scale.allowances;
+    for (const field of [
+      'officeUsers', 'crewUsers', 'textCredits', 'marketingEmailSends',
+      'aiIntakeCredits', 'aiWritingDrafts', 'storageGb', 'forwardingMinutes',
+    ] as const) {
+      expect(scale[field], `scale.${field} must exceed growth`).toBeGreaterThan(growth[field]);
+    }
+    expect(scale).toMatchObject({
+      officeUsers: 15,
+      crewUsers: 50,
+      textCredits: 3_000,
+      marketingEmailSends: 5_000,
+      aiIntakeCredits: 1_000,
+      aiWritingDrafts: 500,
+      storageGb: 250,
+      forwardingMinutes: 200,
+    });
+    // Unchanged by design: one business, one domain, one QuickBooks connection.
+    expect(scale.customDomainConnections).toBe(growth.customDomainConnections);
+    expect(scale.dedicatedBusinessNumbers).toBe(growth.dedicatedBusinessNumbers);
+  });
+
+  it('retains the approved Voice differences between Growth and Scale', () => {
     expect(BILLING_PLANS.growth.voice).toMatchObject({
       monthlyPriceCents: 5_500,
       includedMinutes: 200,

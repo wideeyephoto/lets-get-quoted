@@ -37,7 +37,7 @@ function validRow(overrides: Record<string, unknown> = {}) {
     merchant_account_id: 'acct_merchant123',
     livemode: false,
     plan_code: 'growth',
-    catalog_version: '2026-08-15-preview',
+    catalog_version: '2026-08-18-preview',
     fee_rate_bps: 25,
     fee_rate: '0.0025',
     gross_amount_cents: '10800',
@@ -93,7 +93,7 @@ describe('service-only direct payment preparation adapter', () => {
       reconciliationStatus: 'pending',
       feeSnapshot: {
         planCode: 'growth',
-        catalogVersion: '2026-08-15-preview',
+        catalogVersion: '2026-08-18-preview',
         feeRateBps: 25,
         feeRate: 0.0025,
         grossAmountCents: 10_800,
