@@ -62,7 +62,7 @@ export const PLANS: readonly PricingPlan[] = [
       '50 text + 30 AI Intake one-time starter credits',
       '100 marketing emails + 25 AI writing drafts to start',
       'No automatic refills; optional paid top-ups',
-      'AI Voice Receptionist available for $69/month',
+      'AI Voice Receptionist coming soon',
     ],
   },
   {
@@ -91,7 +91,7 @@ export const PLANS: readonly PricingPlan[] = [
       '500 text credits + 500 marketing emails/month',
       '250 AI Intake + 50 AI writing drafts/month',
       '100 domestic forwarding/voicemail minutes/month',
-      'AI Voice Receptionist available for $59/month',
+      'AI Voice Receptionist coming soon',
     ],
   },
   {
@@ -120,7 +120,7 @@ export const PLANS: readonly PricingPlan[] = [
       '1,500 text credits + 2,500 marketing emails/month',
       '500 AI Intake + 250 AI writing drafts/month',
       '100 domestic forwarding/voicemail minutes/month',
-      'AI Voice Receptionist available for $55/month',
+      'AI Voice Receptionist coming soon',
     ],
   },
   {
@@ -143,10 +143,10 @@ export const PLANS: readonly PricingPlan[] = [
     features: [
       'The highest team, messaging, AI, and storage capacity',
       '0.1% LGQ platform fee',
-      'AI Voice Receptionist included with 100 minutes',
-      '3 simultaneous AI calls + advanced routing',
+      'AI Voice Receptionist coming soon',
+      'Highest AI Voice Receptionist capacity when it launches',
       '15 office users + 50 crew users',
-      '90-day AI Voice Receptionist call history',
+      '90-day AI Voice Receptionist call history at launch',
       '1 custom-domain connection',
       '1 dedicated voice/text business number',
       '3,000 text credits + 5,000 marketing emails/month',
@@ -157,6 +157,28 @@ export const PLANS: readonly PricingPlan[] = [
     ],
   },
 ] as const;
+
+/**
+ * Whether AI Voice Receptionist can be bought today. It cannot.
+ *
+ * The price book is settled -- $69 Flex, $59 Solo, $55 Growth, included on
+ * Scale, plus a $35 hundred-minute top-up and $0.35 approved overage -- and
+ * `VOICE_MONTHLY_BY_PLAN` below still carries those numbers, because they are
+ * correct and will be needed. What is false is that any of it is purchasable:
+ * there is no provisioning, no usage ledger, no checkout SKU and no agent.
+ *
+ * So this is ONE constant rather than copy edited in a dozen places. While it is
+ * false the page captures demand and promises nothing: no voice money in the
+ * calculator, none in the plan crossover, no `voice=1` on a signup link, and no
+ * claim that Scale includes it today. Flipping it to true, restoring the toggle
+ * and putting the prices back is the launch change, and it is meant to be small.
+ *
+ * See docs/ai-voice-v1-decisions.md section 10 for what must be true first.
+ */
+export const VOICE_PURCHASABLE = false;
+
+/** What the page may say about price while `VOICE_PURCHASABLE` is false. */
+export const VOICE_PLANNED_PRICE_LABEL = 'Planned launch pricing from $55/month';
 
 export const VOICE_MONTHLY_BY_PLAN: Record<PlanId, number> = {
   flex: BILLING_PLANS.flex.voice.monthlyPriceCents / 100,
@@ -175,7 +197,7 @@ export const COMPARISON_ROWS = [
   ['Operating locations for one legal business', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
   ['Custom-domain connections', '1', '1', '1', '1'],
   ['Business number', 'Shared LGQ texting number', '1 dedicated voice/text number', '1 dedicated voice/text number', '1 dedicated voice/text number'],
-  ['Basic call forwarding & voicemail', 'With active AI Voice Receptionist', '100 min/month', '100 min/month', '200 min/month'],
+  ['Basic call forwarding & voicemail', 'With AI Voice Receptionist at launch', '100 min/month', '100 min/month', '200 min/month'],
   ['Text credits', '50 one-time starter credits', '500/month', '1,500/month', '3,000/month'],
   ['Marketing email sends', '100 one-time starter sends', '500/month', '2,500/month', '5,000/month'],
   ['Transactional emails', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)', 'Unlimited (fair use)'],
@@ -183,10 +205,10 @@ export const COMPARISON_ROWS = [
   ['AI writing drafts', '25 one-time starter drafts', '50/month', '250/month', '500/month'],
   ['File & photo storage', '5 GB', '10 GB', '100 GB', '250 GB'],
   ['QuickBooks Online', '1 connection included', '1 connection included', '1 connection included', '1 connection included'],
-  ['AI Voice Receptionist', '$69 add-on / 100 min', '$59 add-on / 100 min', '$55 add-on / 200 min', 'Included / 100 min'],
-  ['Simultaneous AI Voice Receptionist calls', '1', '1', '1', '3'],
-  ['AI Voice Receptionist routing', 'Standard', 'Standard', 'Standard', 'Advanced'],
-  ['AI Voice Receptionist call history', '30 days', '30 days', '30 days', '90 days'],
+  ['AI Voice Receptionist', 'Coming soon', 'Coming soon', 'Coming soon', 'Coming soon'],
+  ['Simultaneous AI Voice Receptionist calls', 'At launch: 1', 'At launch: 1', 'At launch: 1', 'At launch: 3'],
+  ['AI Voice Receptionist routing', 'At launch: Standard', 'At launch: Standard', 'At launch: Standard', 'At launch: Advanced'],
+  ['AI Voice Receptionist call history', 'At launch: 30 days', 'At launch: 30 days', 'At launch: 30 days', 'At launch: 90 days'],
   // Every plan answers this the same way, and that is the honest row. The Scale
   // column used to promise "enabled overages with a spending cap", which is a
   // mechanism that does not exist anywhere in the product -- see the FAQ below.
