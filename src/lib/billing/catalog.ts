@@ -309,8 +309,12 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     + 'Price exists for it, so it cannot be bought at all, and the cap is not '
     + 'enforced, so buying headroom would change nothing a workspace can feel',
   office_user:
-    'office seats are dark - no invite lifecycle, no last-owner protection, and an '
-    + 'added office user would hold full owner authority',
+    'office seats are dark, though two of the three reasons are now closed: an office '
+    + 'user is its own membership role holding no authority at all rather than a second '
+    + 'owner, and the last owner of a workspace can no longer be removed. What is left '
+    + 'is the whole lifecycle - no invitation, acceptance, expiry, resend or removal - '
+    + 'and no way for an added person to REACH the workspace they were added to, since '
+    + 'signing in provisions them an empty workspace of their own instead',
   crew_user:
     'a purchased seat now has a ledger and both seat gates count it, but nothing '
     + 'fills that ledger on payment and nothing empties it when the subscription '
