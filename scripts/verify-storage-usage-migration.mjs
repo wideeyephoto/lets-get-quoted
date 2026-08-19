@@ -120,9 +120,11 @@ try {
   await q(PREREQS);
   await q(migration('20260818210000_workspace_purchased_capacity.sql'));
   await q(migration('20260819000000_workspace_storage_usage.sql'));
+  await q(migration('20260819050000_storage_usage_covers_empty_workspaces.sql'));
   check('migration applies on a real engine', true);
 
   await q(migration('20260819000000_workspace_storage_usage.sql'));
+  await q(migration('20260819050000_storage_usage_covers_empty_workspaces.sql'));
   check('migration re-applies as a no-op', true);
 
   const A = '11111111-1111-4111-8111-111111111111';
@@ -217,6 +219,32 @@ try {
 
   const untouched = await one('select * from public.workspace_storage_usage where account_id = $1', [B]);
   check('the other workspace is untouched by the zeroing pass', untouched.bytes_used === '9000', `bytes=${untouched.bytes_used}`);
+
+  // An account that has never uploaded anything is EMPTY, not unmeasured. Before
+  // 20260819050000 it never got a row at all and the surface said "not measured
+  // yet" for ever -- production showed four rows for six accounts on the first
+  // real sweep.
+  const seeded = await one('select * from public.workspace_storage_usage where account_id = $1', [UNSWEPT]);
+  check('a workspace that has stored nothing is measured at zero',
+    seeded?.bytes_used === '0' && seeded?.object_count === '0', JSON.stringify(seeded ?? null));
+
+  // The fail-open window still exists and still means what the guard assumes: an
+  // account created between sweeps has no row until the next one reaches it.
+  const FRESH = '55555555-5555-4555-8555-555555555555';
+  await q('insert into public.accounts (id) values ($1)', [FRESH]);
+  const beforeSweep = await q('select * from public.workspace_storage_usage where account_id = $1', [FRESH]);
+  check('an account created between sweeps is still unmeasured', beforeSweep.rowCount === 0);
+  const freshState = await q('select * from public.workspace_storage_state_v1($1)', [FRESH]);
+  check('and reads as unknown rather than zero',
+    freshState.rows[0]?.bytes_used === null, JSON.stringify(freshState.rows[0] ?? null));
+
+  await q('select * from public.reconcile_workspace_storage_usage_v1()');
+  const afterSweep = await one('select * from public.workspace_storage_usage where account_id = $1', [FRESH]);
+  check('the next sweep measures it at zero', afterSweep?.bytes_used === '0', JSON.stringify(afterSweep ?? null));
+
+  // Seeding must not disturb a workspace that has files.
+  const stillThere = await one('select * from public.workspace_storage_usage where account_id = $1', [B]);
+  check('seeding did not touch a workspace with objects', stillThere.bytes_used === '9000', `bytes=${stillThere.bytes_used}`);
 } catch (error) {
   check('harness completed without throwing', false, String(error?.message ?? error));
 } finally {

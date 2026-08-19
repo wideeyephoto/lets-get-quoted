@@ -15,6 +15,7 @@
     "test:pg17:capacity-grant": "node scripts/verify-top-up-capacity-grant.mjs",
     "test:pg17:capacity-lifecycle": "node scripts/verify-purchased-capacity-lifecycle.mjs",
     "test:pg17:proconfig": "node scripts/verify-late-success-proconfig.mjs",
+    "test:pg17:catalog-bump": "node scripts/verify-entitlement-catalog-bump.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
     "test:stock": "node --test src/lib/stock/stock.test.mjs"
   },
