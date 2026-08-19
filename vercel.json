@@ -83,6 +83,10 @@
     {
       "path": "/api/cron/storage-usage-sweep",
       "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/capacity-lifecycle",
+      "schedule": "37 * * * *"
     }
   ]
 }

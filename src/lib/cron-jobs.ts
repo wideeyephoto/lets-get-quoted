@@ -173,6 +173,17 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Addresses without coordinates stay unmapped, degrading routing and drive times over time.',
   },
   {
+    job: 'capacity-lifecycle',
+    label: 'Purchased capacity lifecycle',
+    schedule: '37 * * * *',
+    // Money, not housekeeping, the moment a capacity SKU is sellable: this is
+    // the only thing that stops a cancelled subscription from granting seats and
+    // storage for ever. While every capacity SKU is withheld it has no rows to
+    // sweep, and the importance is stated for the world it is being built for.
+    importance: 'money',
+    consequence: 'Cancelled capacity subscriptions keep granting seats and storage, and lapsed ones are never marked past due.',
+  },
+  {
     job: 'storage-usage-sweep',
     label: 'Storage usage sweep',
     schedule: '17 * * * *',

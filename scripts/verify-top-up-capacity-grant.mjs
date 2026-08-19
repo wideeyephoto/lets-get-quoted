@@ -168,6 +168,66 @@ try {
     def.includes('public.grant_usage_credits(') && def.includes('top_up_credits_already_granted'));
   ck('the claim lock and Session binding survived the patch',
     def.includes('for update') && def.includes('names a different Checkout Session'));
+
+  // ---- The foreign-subscription ignore rail (20260819030000) ----
+  // Verified here rather than in its own harness because this is the only place
+  // billing_events carries the real projection_result and terminal-shape
+  // constraints, which are exactly what an ignored row has to satisfy.
+  await c.query(m('20260819030000_ignore_foreign_subscription_event.sql'));
+  ck('foreign-ignore migration applies', true);
+  await c.query(m('20260819030000_ignore_foreign_subscription_event.sql'));
+  ck('foreign-ignore migration re-applies as a no-op', true);
+
+  const mkSubEvent = async (evt, sub) => (await c.query(
+    `insert into public.billing_events (
+       provider_event_id, event_type, event_scope, livemode, payload,
+       processing_status, processing_started_at, projection_claim_token,
+       projection_lease_expires_at, provider_created_at, payload_sha256)
+     values ($1, 'customer.subscription.updated', 'platform_subscription', false,
+       jsonb_build_object('data_object', jsonb_build_object('id', $2::text, 'object', 'subscription')),
+       'processing', now(), gen_random_uuid(), now() + interval '5 min',
+       now(), md5($1::text) || md5($2::text))
+     returning id, projection_claim_token`,
+    [evt, sub],
+  )).rows[0];
+
+  const sev = await mkSubEvent('evt_foreign_sub_0001', 'sub_FOREIGNcapacity1');
+  const ignored = (await c.query(
+    'select public.ignore_foreign_stripe_billing_subscription_event($1,$2) as r',
+    [sev.id, sev.projection_claim_token],
+  )).rows[0].r;
+  ck('a foreign subscription event is ignored, not failed',
+    ignored === 'subscription_not_our_rail', `r=${ignored}`);
+
+  const sevRow = (await c.query('select * from public.billing_events where id=$1', [sev.id])).rows[0];
+  ck('the ignored row satisfies the terminal shape',
+    sevRow.processing_status === 'ignored'
+    && sevRow.processed_at !== null
+    && sevRow.projection_schema_version === 'stripe_subscription_projection_v1'
+    && sevRow.projection_applied === false
+    && sevRow.projection_result === 'subscription_not_our_rail'
+    && sevRow.last_error === null
+    && sevRow.next_attempt_at === null,
+    JSON.stringify(sevRow));
+  ck('the claim was released', sevRow.projection_claim_token === null);
+
+  // A worker whose lease has gone must not be able to overwrite the holder.
+  const sev2 = await mkSubEvent('evt_foreign_sub_0002', 'sub_FOREIGNcapacity2');
+  let wrongToken = false;
+  try {
+    await c.query('select public.ignore_foreign_stripe_billing_subscription_event($1,$2)',
+      [sev2.id, '99999999-9999-4999-8999-999999999999']);
+  } catch (err) { wrongToken = err.code === '55000'; }
+  ck('an unowned claim cannot be ignored', wrongToken);
+
+  // The top-up scope must not be reachable through this door.
+  const wrongScope = await mkEvent('evt_foreign_sub_0003', 'cs_test_capacity0009');
+  let scoped = false;
+  try {
+    await c.query('select public.ignore_foreign_stripe_billing_subscription_event($1,$2)',
+      [wrongScope.id, wrongScope.projection_claim_token]);
+  } catch (err) { scoped = err.code === '55000'; }
+  ck('a platform_top_up event cannot be ignored as a foreign subscription', scoped);
 } catch (err) {
   ck('harness completed without throwing', false, String(err?.message ?? err).slice(0, 240));
 } finally {

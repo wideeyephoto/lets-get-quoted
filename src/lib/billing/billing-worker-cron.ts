@@ -31,6 +31,10 @@ import {
   runWorkspaceStorageUsageSweep,
   type StorageUsageSweepResult,
 } from '@/lib/billing/storage-usage-sweep-worker';
+import {
+  runPurchasedCapacityLifecycleSweep,
+  type CapacityLifecycleSweepResult,
+} from '@/lib/billing/capacity-lifecycle-worker';
 
 /**
  * DARK scheduler boundary for the durable billing workers.
@@ -56,6 +60,8 @@ export const LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG =
   'LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED';
 export const WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG =
   'LGQ_WORKSPACE_STORAGE_USAGE_SWEEP_ENABLED';
+export const PURCHASED_CAPACITY_LIFECYCLE_WORKER_FLAG =
+  'LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED';
 
 // Request input never controls these bounds. Increasing either value requires
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
@@ -111,6 +117,12 @@ export function workspaceStorageUsageSweepWorkerEnabled(
   return env[WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG] === '1';
 }
 
+export function purchasedCapacityLifecycleWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[PURCHASED_CAPACITY_LIFECYCLE_WORKER_FLAG] === '1';
+}
+
 export type StripeSubscriptionProjectionCronSummary = Readonly<{
   requested: number;
   claimed: number;
@@ -143,6 +155,11 @@ export function summarizeStripeSubscriptionProjectionBatch(
         processed += 1;
         break;
       case 'ignored':
+      // A subscription belonging to the purchased-capacity rail. Counted with
+      // the other ignores rather than given its own key: an operator reading a
+      // heartbeat wants "not projected, not a problem", and a new counter would
+      // change the summary shape every consumer already asserts on.
+      case 'ignored_foreign_rail':
         ignored += 1;
         break;
       case 'replay_processed':
@@ -731,4 +748,62 @@ export async function runWorkspaceStorageUsageSweepCron(): Promise<
 WorkspaceStorageUsageSweepCronSummary
 > {
   return summarizeWorkspaceStorageUsageSweep(await runWorkspaceStorageUsageSweep());
+}
+
+export type PurchasedCapacityLifecycleCronSummary = Readonly<{
+  status: CapacityLifecycleSweepResult['status'];
+  examined: number;
+  canceled: number;
+  changed: number;
+  unchanged: number;
+  unmapped: number;
+  missing: number;
+  provider_errors: number;
+  failures: number;
+}>;
+
+/**
+ * `unmapped` and `missing` are the two to watch, and neither is a failure.
+ *
+ * `unmapped` counts subscriptions whose Stripe status this app does not
+ * translate — a status Stripe added since. Nothing was written for them, which
+ * is correct and also means they are invisible unless counted here.
+ *
+ * `missing` counts subscriptions Stripe no longer has. Those are deliberately
+ * NOT treated as cancellations: canceled is terminal in the ledger, and a 404
+ * from a transient fault would destroy entitlement no later sweep could restore.
+ */
+export function summarizePurchasedCapacityLifecycleSweep(
+  result: CapacityLifecycleSweepResult,
+): PurchasedCapacityLifecycleCronSummary {
+  if (result.status === 'failed') {
+    return Object.freeze({
+      status: 'failed' as const,
+      examined: 0,
+      canceled: 0,
+      changed: 0,
+      unchanged: 0,
+      unmapped: 0,
+      missing: 0,
+      provider_errors: 0,
+      failures: 1,
+    });
+  }
+  return Object.freeze({
+    status: result.status,
+    examined: result.examined,
+    canceled: result.canceled,
+    changed: result.changed,
+    unchanged: result.unchanged,
+    unmapped: result.unmapped,
+    missing: result.missing,
+    provider_errors: result.providerErrors,
+    failures: result.providerErrors,
+  });
+}
+
+export async function runPurchasedCapacityLifecycleCron(): Promise<
+PurchasedCapacityLifecycleCronSummary
+> {
+  return summarizePurchasedCapacityLifecycleSweep(await runPurchasedCapacityLifecycleSweep());
 }

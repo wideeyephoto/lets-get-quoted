@@ -6,6 +6,7 @@ import type { PaidBillingPlanId } from '@/lib/billing/stripe-billing-subscriptio
 import type { PlatformSubscriptionEventType } from '@/lib/billing/stripe-event-inbox';
 import {
   createStripeBillingSubscriptionProjectionResolver,
+  ForeignSubscriptionRailError,
   StripeSubscriptionProjectionProviderError,
 } from '@/lib/billing/stripe-billing-subscription-events';
 
@@ -189,6 +190,11 @@ export interface StripeBillingSubscriptionProjectionStore {
     errorCode: string;
     retryable: boolean;
     nextAttemptAt: string | null;
+  }): Promise<void>;
+  /** Record a claimed event as belonging to another rail. Never a failure. */
+  ignoreForeignRail(input: {
+    billingEventId: string;
+    claimToken: string;
   }): Promise<void>;
 }
 
@@ -451,11 +457,27 @@ implements StripeBillingSubscriptionProjectionStore {
     if (error) throw rpcFailure('Unable to record Stripe subscription projection failure', error);
     if (data !== true) throw new Error('Stripe subscription projection failure RPC was not acknowledged.');
   }
+
+  async ignoreForeignRail(input: {
+    billingEventId: string;
+    claimToken: string;
+  }): Promise<void> {
+    const { data, error } = await this.admin.rpc('ignore_foreign_stripe_billing_subscription_event', {
+      p_billing_event_id: requiredUuid(input.billingEventId, 'billing event ID'),
+      p_claim_token: requiredUuid(input.claimToken, 'claim token'),
+    });
+    if (error) throw rpcFailure('Unable to record a foreign Stripe subscription event', error);
+    if (data !== 'subscription_not_our_rail') {
+      throw new Error('Foreign Stripe subscription ignore RPC was not acknowledged.');
+    }
+  }
 }
 
 export type ProjectStripeBillingSubscriptionEventResult =
   | Readonly<{
-    status: 'in_progress' | 'replay_processed' | 'replay_ignored' | 'failed_terminal';
+    status: 'in_progress' | 'replay_processed' | 'replay_ignored' | 'failed_terminal'
+      // Another rail owns this subscription. Terminal, and not a failure.
+      | 'ignored_foreign_rail';
     billingEventId: string;
   }>
   | (StripeSubscriptionProjectResult & Readonly<{ billingEventId: string }> )
@@ -533,6 +555,19 @@ export async function projectStripeBillingSubscriptionEvent(
     });
     return Object.freeze({ ...result, billingEventId: claim.billingEventId });
   } catch (error) {
+    // Another rail's subscription. Not a failure and not a retry: recorded as
+    // ignored so the event is accounted for, and left for the purchased-capacity
+    // lifecycle sweep, which reads Stripe directly rather than these events.
+    if (error instanceof ForeignSubscriptionRailError) {
+      await dependencies.store.ignoreForeignRail({
+        billingEventId: claim.billingEventId,
+        claimToken,
+      });
+      return Object.freeze({
+        status: 'ignored_foreign_rail' as const,
+        billingEventId: claim.billingEventId,
+      });
+    }
     const failure = fixedFailure(error);
     const now = dependencies.now();
     const nextAttemptAt = failure.retryable ? retryAt(now, claim.attemptCount) : null;

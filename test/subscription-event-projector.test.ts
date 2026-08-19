@@ -319,6 +319,7 @@ describe('dark Stripe Billing subscription event projector', () => {
       resolveBinding: vi.fn(),
       project: vi.fn(),
       fail: vi.fn(),
+      ignoreForeignRail: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const provider = {
       loadProviderContext: vi.fn(),
@@ -342,6 +343,7 @@ describe('dark Stripe Billing subscription event projector', () => {
       resolveBinding: vi.fn(),
       project: vi.fn(),
       fail: failStore,
+      ignoreForeignRail: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const provider = {
       loadProviderContext: vi.fn().mockRejectedValue(

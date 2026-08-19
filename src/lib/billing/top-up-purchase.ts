@@ -152,6 +152,18 @@ export type TopUpCheckoutRequest = Readonly<{
 }>;
 
 /**
+ * The value of `lgq_purpose` on every top-up Session and, for a recurring SKU,
+ * on the Subscription it creates via subscription_data.metadata.
+ *
+ * Exported because it is now read by a THIRD party: the base-plan subscription
+ * projector uses it to recognise a capacity subscription as belonging to another
+ * rail instead of dead-lettering it. Three literal copies of a discriminator
+ * that decides whether a live billing event is projected or ignored is two too
+ * many.
+ */
+export const TOP_UP_SUBSCRIPTION_PURPOSE = 'top_up' as const;
+
+/**
  * Session parameters for one top-up purchase.
  *
  * Storage is the only recurring SKU among those sellable today, so mode is
@@ -167,7 +179,7 @@ export function buildTopUpCheckoutParams(
   // Carried on the Session AND the resulting object, because fulfillment reads
   // it back from whichever Stripe hands us and must never infer the workspace.
   const metadata = {
-    lgq_purpose: 'top_up',
+    lgq_purpose: TOP_UP_SUBSCRIPTION_PURPOSE,
     lgq_top_up_id: sku.id,
     lgq_account_id: accountId,
     lgq_resource_code: sku.resourceCode,
@@ -209,7 +221,7 @@ export function fulfillmentFromMetadata(
   idempotencyKey: string,
   billingEventId: string | null = null,
 ): TopUpFulfillment | null {
-  if (!metadata || metadata.lgq_purpose !== 'top_up') return null;
+  if (!metadata || metadata.lgq_purpose !== TOP_UP_SUBSCRIPTION_PURPOSE) return null;
 
   const topUpId = metadata.lgq_top_up_id as TopUpId | undefined;
   const accountId = metadata.lgq_account_id;
