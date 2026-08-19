@@ -123,6 +123,14 @@ const METERS = [
   readMeter('marketing-email-usage', 1),
   readMeter('ai-writing-usage', 1),
   readMeter('ai-intake-usage', 1),
+  // Voice holds the published 60-minute safety cap, because a call's length is
+  // unknown at admission. Its real settlement is a PARTIAL commit and is proved
+  // separately by verify-partial-commit.mjs; what is proved here is the half
+  // that can fail open -- that the ledger accepts this meter's resource code,
+  // operation type and metadata at all. A wrong shape would be reported as
+  // `ledger_unavailable`, every call would be answered unbilled, and the meter
+  // would look like it was working.
+  readMeter('voice-minute-usage', 60),
 ];
 
 /** The regex every meter uses to recognise a genuine shortfall. */
@@ -183,20 +191,26 @@ try {
 
   for (const spec of METERS) {
     const label = `${spec.meter} (${spec.resource})`;
+    // Each meter is reserved from twice below -- once committed, once released --
+    // so a flat seed silently starves whichever meter reserves most. Voice holds
+    // a 60-minute cap and would have hit a real shortfall in the middle of a
+    // test asserting success, which reads as a broken ledger rather than a
+    // starved fixture.
+    const seed = Math.max(100, spec.units * 4);
 
     await c.query(
       `select public.grant_usage_credits($1, $2, 'plan_period', $3, null, null, $4, null, null)`,
-      [ACCOUNT, spec.resource, `seed:${spec.resource}`, 100],
+      [ACCOUNT, spec.resource, `seed:${spec.resource}`, seed],
     ).catch(async () => {
       // Signature differs across versions; fall back to named defaults.
       await c.query(
         `select public.grant_usage_credits(
            p_account_id => $1, p_resource_code => $2, p_source_type => 'plan_period',
            p_idempotency_key => $3, p_units => $4)`,
-        [ACCOUNT, spec.resource, `seed:${spec.resource}`, 100],
+        [ACCOUNT, spec.resource, `seed:${spec.resource}`, seed],
       );
     });
-    ck(`${label}: the resource code is one the ledger accepts`, await available(spec.resource) === 100);
+    ck(`${label}: the resource code is one the ledger accepts`, await available(spec.resource) === seed);
 
     // The exact call each meter makes.
     const reserve = (key, units = spec.units) => c.query(
@@ -213,7 +227,7 @@ try {
     const reservationId = held.rows[0].id;
     ck(`${label}: the operation type passes validation`, typeof reservationId === 'string' && reservationId.length > 0);
     ck(`${label}: the 15-minute TTL is inside the ledger's 24-hour bound`, true);
-    ck(`${label}: reserving lowers the balance`, await available(spec.resource) === 100 - spec.units);
+    ck(`${label}: reserving lowers the balance`, await available(spec.resource) === seed - spec.units);
 
     // The finalization key is a REPLAY guard, not an authorization check: the
     // ledger stores it on the first commit and only refuses a LATER commit that
