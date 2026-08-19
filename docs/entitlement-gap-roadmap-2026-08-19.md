@@ -17,8 +17,8 @@ calendar estimates.
 | AI Intake credits | yes | yes | yes | `api/public/leads/classify-estimate` | `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` | **absent** |
 | File storage | yes | yes | yes | five workspace `*-storage.ts` libs | `LGQ_STORAGE_CAP_ENFORCED` | **absent** |
 | Office seats | yes | yes | yes | **none** | `LGQ_OFFICE_SEAT_ENTITLEMENT_GATE_ENABLED` | **absent** |
-| Text credits | yes | no | no | no | none | n/a |
-| Marketing email sends | yes | no | no | no | none | n/a |
+| Text credits | yes | yes | yes | **none yet** | `LGQ_TEXT_CREDIT_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
+| Marketing email sends | yes | yes | yes | `lib/campaigns.ts` | `LGQ_MARKETING_EMAIL_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | AI writing drafts | yes | no | no | no | none | n/a |
 | Custom domains | yes | no | no | no | none | n/a |
 | Dedicated numbers | yes | no | no | no | none | n/a |
@@ -29,7 +29,8 @@ calendar estimates.
 | `featureFlags` block | yes | n/a | no | no | none | n/a |
 
 Office seats being callerless is expected and documented (`docs/office-seat-activation.md`).
-Everything below that row is not.
+Text credits being callerless is 1.2, and is blocked on a product decision rather than on code.
+Everything below those rows is not expected.
 
 **Nothing in this table is enforced in production today.** Every gate is exact-`'1'` and all four
 flag names are absent from the Production environment (verified 2026-08-19), so each fails open.
@@ -359,9 +360,42 @@ Then flip to enforcing, one meter at a time.
 These are in the entitlement snapshot and rendered in `PlanUsageSection.tsx`, and read by no
 enforcement point.
 
-### 2.1 Custom domain connections — S
+### 2.1 Custom domain connections — S — **may already be structural; needs a schema read first**
 
-Limit is 1 on every plan. Enforce at domain-connect, cap-check pattern.
+Limit is 1 on every plan. Before writing a gate, note what the connect path actually does:
+`verifyCustomDomainAction` (`dashboard/sites/actions.ts:572`) ends with
+
+```ts
+.update({ custom_domain: domain, custom_domain_verified_at: ... }).eq('account_id', accountId)
+```
+
+— it writes the domain to **every** site row the account owns. Verifying a second domain therefore
+overwrites the first everywhere rather than adding to it, so that path cannot produce two verified
+connections. `publishSiteAction` and its neighbours all read `.eq('account_id', accountId).limit(1)`,
+which is the same one-site-per-account assumption expressed a different way.
+
+If an account can only hold one site row, this limit is enforced by the schema exactly as
+`quickbooks_connections` is, and a gate here would be a check that can never fire.
+
+**What is not knowable from this repository:** whether `sites.account_id` is unique. The `sites`
+table predates the `migrations/` directory and is defined nowhere in the tree, so its constraints
+cannot be read here — and inferring a live schema from repository source is precisely the error
+that produced the first draft of 0.0. Settle it with a read before writing anything:
+
+```sql
+select count(*) as accounts_with_more_than_one_site from (
+  select account_id from public.sites group by account_id having count(*) > 1
+) t;
+
+select conname, pg_get_constraintdef(oid)
+  from pg_constraint
+ where conrelid = 'public.sites'::regclass and contype in ('u', 'p');
+```
+
+Zero and a unique constraint on `account_id` means this item closes as "already structural" and the
+per-plan allowance becomes documentation rather than a gate. Anything else means the site editor
+(`updateSite`, per-`siteId`) can set different `custom_domain` values on different rows, and the
+cap-check belongs there rather than at verification.
 
 ### 2.2 Dedicated business numbers — M
 
