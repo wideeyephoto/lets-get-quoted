@@ -272,6 +272,44 @@ currently optional, and finding every caller that omits it), and wrap the 32 cal
 reserve/send/commit — committing only on a real provider ID, never on `SIMULATED_PROVIDER_ID`,
 which means the message was composed and went nowhere.
 
+#### The exempt-set decision, in one table
+
+Every helper that reaches a carrier, grouped by the question each group raises. Only the last
+column needs answering; everything else here is read out of the code.
+
+**Plainly billable — customer-facing work the plan sells.** No question raised.
+
+`sendCampaignSms` · `sendReviewRequestSms` · `sendRebookInviteSms` · `sendQuoteFollowupSms` ·
+`sendAppointmentReminderSms` · `sendArrivalSms` · `sendArrivalTimeChangedSms` ·
+`sendBookingDecisionSms` · `sendEstimateOfferSms` · `sendSchedulingOptionsSms` ·
+`sendLeadQuoteVisitSms` · `sendLeadQuoteVisitOptionsSms` · `sendLeadDeclineSms` ·
+`sendJobUpdateSms` · `sendQuoteUpdatedSms` · `sendClientJobDashboardSms` ·
+`sendClientPortalLinkSms` · `sendSelectionRequestSms` · `sendMissedCallTextBack` ·
+`deliverCrewSms` · `sendSubcontractorSms`
+
+**Q1 — is a contractor charged to be told about their own business?** `sendOwnerHighValueLeadSms`
+and `sendOwnerEstimateAcceptedSms` text the owner on their **own mobile**. They cost the same at
+the carrier as any other segment. Charging a credit to receive your own lead alert is defensible
+as cost recovery and indefensible as product.
+
+**Q2 — does a workspace out of credits still get the messages that get it paid?**
+`sendCardUpdateSms` is dunning after a declined card. `sendQuickStopOfferSms`,
+`sendQuickStopConfirmedSms`, `sendQuickStopStatusSms` and `sendCardSetupSms` carry pay links and
+payment state. Metering these means a contractor who ran out of texts also stops being able to
+collect — which is the moment they can least afford it, and the moment LGQ earns its platform fee.
+
+**Q3 — signup codes.** `sendVerificationCodeSms` verifies a *lead's* phone before intake submits.
+There is often no workspace relationship yet, and refusing it does not save a credit, it blocks
+lead capture. This one is exempt unless someone argues otherwise.
+
+**Q4 — the two that should bill and cannot.** `sendInboxReplySms` is a contractor replying by hand
+from the two-way inbox — unambiguously their own outbound message, and it has no `accountId`
+threaded to it at all. `sendPaymentSmsEvent` likewise. These are not exemptions, they are missing
+plumbing, and they are the two most likely to be forgotten because they will not show up as a
+compile error.
+
+Answer Q1–Q3, and the wiring becomes mechanical.
+
 **Semantics from the book.** Outbound only — inbound replies do not consume, subject to fair-use
 controls. Count segments, not messages. Note that `sendProviderMessage` returns a
 `SIMULATED_PROVIDER_ID` sentinel when suppressed; a suppressed message was composed but never
