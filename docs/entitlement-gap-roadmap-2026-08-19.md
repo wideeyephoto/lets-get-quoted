@@ -224,17 +224,52 @@ are the messages sitting closest to a boundary where a customer is most likely t
 they are charged come from one function. All 30 existing campaign-guard assertions still pass
 unchanged; two were added for the emoji case and for not over-warning on an accented customer name.
 
-### 1.2 Text credit meter — L
+### 1.2 Text credit meter — L — **metering built; wiring blocked on a product decision**
 
 **Seam decision.** `sendProviderMessage(to, body)` at `src/lib/sms-provider.ts:327` is the single
-funnel every outbound message passes through — but it takes no `accountId`. Every `sendXxxSms`
-helper in `src/lib/sms.ts` does have one; it is already required for the opt-out check
-(`sms.ts:117-118`).
+funnel every outbound message passes through — but it takes no `accountId`. Threading it there
+rather than metering at the helper layer buys the property that matters: exactly one place a
+segment can escape unmetered.
 
-Recommend threading `accountId` into `sendProviderMessage` rather than metering at the helper
-layer. It is one signature change across 42 importing files, most of which route through the
-sms.ts helpers, and it buys the property that matters: exactly one place a segment can escape
-unmetered. Metering at the helper layer leaves every future caller free to skip it.
+*Two corrections to the original estimate, both found while building 1.1.* It is **not** "42
+importing files" — only four files import `sendProviderMessage` at all, and 31 of the 32 call
+sites are inside `sms.ts`. That makes the seam far narrower than this said.
+
+But the second correction cuts the other way, and is why the wiring is not mechanical: **it is not
+true that every helper has an `accountId`.** Fifteen declare it `accountId?: string` — optional —
+and two have none at all. `sendVerificationCodeSms` is a signup code with no workspace to bill
+yet, which is legitimately exempt. `sendInboxReplySms` is a contractor replying to a customer,
+which certainly should bill, and simply never had the account threaded to it.
+
+So 1.2 contains a product decision of the same kind as 1.4: **which outbound messages are exempt
+from a workspace's balance.** Signup verification codes plainly are. Payment receipts and
+card-update requests are arguable — a contractor whose text credits ran out arguably still needs
+the message that gets them paid. That set has to be settled before 31 live send paths are rewired,
+because guessing it wrong either bills for messages nobody agreed to pay for or silently exempts
+the highest-volume ones.
+
+**Built: the metering, not the wiring.** `src/lib/billing/text-credit-usage.ts` is complete and
+tested — reserve, commit, release, in the `ai-intake-usage.ts` shape as the "no third pattern" rule
+requires. No call site uses it yet.
+
+Two things in it are worth knowing before wiring:
+
+**It must not fail closed.** AI Intake fails closed on any uncertainty because falling back to the
+ordinary quote form loses nothing. This channel carries appointment reminders, arrival texts and
+payment receipts; a message not sent because a ledger read timed out is a contractor on a roof
+whose customer was never told they were coming. So refusal requires a *definite* answer — the
+P0001 "insufficient usage credits" raise, and nothing else. Timeouts, transport errors and
+unusable responses all admit the message and name the reason.
+
+**Enforcement takes two flags.** `LGQ_TEXT_CREDIT_METER_ENABLED` starts the ledger writing;
+`LGQ_TEXT_CREDIT_GATE_ENABLED` additionally lets it refuse, and reads both. The measure-first
+rollout 1.5 asks for is therefore a type, not a note somebody has to remember: there is no way to
+express "refuse" without having first expressed "measure".
+
+**Remaining for 1.2:** settle the exempt set, thread `accountId` (making it required where it is
+currently optional, and finding every caller that omits it), and wrap the 32 call sites in
+reserve/send/commit — committing only on a real provider ID, never on `SIMULATED_PROVIDER_ID`,
+which means the message was composed and went nowhere.
 
 **Semantics from the book.** Outbound only — inbound replies do not consume, subject to fair-use
 controls. Count segments, not messages. Note that `sendProviderMessage` returns a
