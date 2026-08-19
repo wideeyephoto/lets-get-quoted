@@ -84,8 +84,36 @@ describe('the drop-and-recreate cannot quietly change how the function runs', ()
   });
 
   it('refuses to proceed if the recreate would change search_path or timezone', () => {
-    expect(patch).toContain("v_config is distinct from array['search_path=', 'timezone=UTC']");
+    // Checked by PROPERTY, not by a literal array. The literal this used to
+    // assert -- array['search_path=', 'timezone=UTC'] -- was written from the
+    // DDL text, and PostgreSQL stores the normalised form instead:
+    // search_path="" with quotes, and the GUC canonicalised to TimeZone. It
+    // matched nothing on any engine, so the migration could never run, and this
+    // test passed the whole time because it asserted the same wrong string.
+    expect(patch).toContain("pg_catalog.array_length(v_config, 1) is distinct from 2");
+    expect(patch).toContain("'search_path=\"\"', 'search_path='");
+    expect(patch).toContain("= 'timezone=utc'");
     expect(patch).toContain('late-success settle config would change on recreate');
+  });
+
+  it('does not compare the config against the DDL spelling', () => {
+    // The specific regression: an expectation built from what the CREATE says
+    // rather than from what pg_proc.proconfig holds. Verified against a real
+    // PostgreSQL 17 by scripts/verify-late-success-proconfig.mjs.
+    //
+    // Executable SQL only — the file's comment quotes the broken array to
+    // explain it, and asserting over the prose fails on the explanation.
+    const statements = patch
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n');
+    expect(statements).not.toContain("array['search_path=', 'timezone=UTC']");
+  });
+
+  it('names the offending value when it refuses', () => {
+    // The original raised a bare sentence. Diagnosing it needed a separate
+    // read-only round trip to production to discover what the value actually was.
+    expect(patch).toMatch(/config would change on recreate: %', v_config/);
   });
 
   it('restates the settings on the recreated function', () => {

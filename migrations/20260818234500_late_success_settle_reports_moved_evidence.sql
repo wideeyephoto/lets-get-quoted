@@ -73,8 +73,33 @@ begin
     raise exception 'late-success settle owner would change on recreate'
       using errcode = '55000';
   end if;
-  if v_config is distinct from array['search_path=', 'timezone=UTC'] then
-    raise exception 'late-success settle config would change on recreate'
+  -- POSTGRESQL STORES WHAT IT NORMALISES, NOT WHAT THE DDL SAYS. `set
+  -- search_path = ''` is stored as search_path="" (with the quotes), and the GUC
+  -- name is canonicalised to TimeZone. This comparison was originally written
+  -- from the DDL text below -- array['search_path=', 'timezone=UTC'] -- which
+  -- matches nothing on any PostgreSQL, so this migration could never have run
+  -- anywhere. Production refused it at 55000 with a config that was completely
+  -- healthy, and 63 other functions there carry the identical shape.
+  --
+  -- Checked semantically rather than against a second hand-written literal,
+  -- because a literal is what failed. What must survive the recreate is the
+  -- property, not the spelling: this SECURITY DEFINER function keeps an EMPTY
+  -- pinned search_path, keeps UTC, and carries nothing else. Both spellings of
+  -- an empty search_path are accepted; anything that is not empty is not.
+  if pg_catalog.array_length(v_config, 1) is distinct from 2
+     or not exists (
+       select 1
+         from pg_catalog.unnest(v_config) as s
+        where pg_catalog.btrim(s) in ('search_path=""', 'search_path=')
+     )
+     or not exists (
+       select 1
+         from pg_catalog.unnest(v_config) as s
+        where pg_catalog.lower(pg_catalog.btrim(s)) = 'timezone=utc'
+     ) then
+    -- The value is named in the message. Diagnosing the original failure cost a
+    -- round trip to production precisely because it was not.
+    raise exception 'late-success settle config would change on recreate: %', v_config
       using errcode = '55000';
   end if;
 
@@ -174,13 +199,27 @@ begin
     raise exception 'late-success settle lost its session mutex';
   end if;
 
+  -- The SAME normalisation trap as the pre-flight guard above, and the reason
+  -- fixing only that one would have moved the failure rather than removed it:
+  -- this runs AFTER the recreate, so it would have rolled back a function that
+  -- had just been rebuilt correctly. Checked by property for the same reason.
   if not exists (
     select 1 from pg_catalog.pg_proc p
      where p.oid = v_oid
        and p.prosecdef
        and p.proretset
        and p.provolatile = 'v'
-       and p.proconfig = array['search_path=', 'timezone=UTC']
+       and pg_catalog.array_length(p.proconfig, 1) = 2
+       and exists (
+         select 1
+           from pg_catalog.unnest(p.proconfig) as s
+          where pg_catalog.btrim(s) in ('search_path=""', 'search_path=')
+       )
+       and exists (
+         select 1
+           from pg_catalog.unnest(p.proconfig) as s
+          where pg_catalog.lower(pg_catalog.btrim(s)) = 'timezone=utc'
+       )
   ) then
     raise exception 'late-success settle recreate changed how the function runs';
   end if;
