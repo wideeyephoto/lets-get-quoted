@@ -717,9 +717,30 @@ refusal, never a silent charge.
 
 The gate, trigger, RPC, and flag are all built; `office-seat-entitlement.ts` has no product
 caller. Requirements are already written up in `docs/office-seat-activation.md`: role design,
-invitation lifecycle, last-owner protection, promotion rules. The blocking constraint is
-unchanged — an added office user currently receives full owner-dashboard authority, so a narrower
-role has to exist before the seat can be sold.
+invitation lifecycle, last-owner protection, promotion rules.
+
+**Corrected 2026-08-19.** This section, and the activation doc, both described the blocker as
+"an added office user receives full owner-dashboard authority, so a narrower role has to exist".
+That understates it. The foundation as built cannot function at all, and
+`scripts/verify-office-seat-collision.mjs` proves it against a real PostgreSQL 17 (9/9):
+
+- the RPC inserts `memberships.role = 'owner'`;
+- production carries `memberships_one_owner_per_user_idx`, UNIQUE on `(user_id)`
+  `where role = 'owner'` (`2026-08-03-one-owner-account.sql`).
+
+Each is right on its own. Together, an office invitation has exactly two outcomes. If the invitee
+already owns any workspace, the insert trips the unique index and the RPC masks it as
+`office_user_target_unavailable` — impossible, not merely gated, and the error names the *person*
+rather than the real cause. If the invitee owns nothing, it succeeds, and they now hold the single
+owner row they are permitted, on their employer's workspace. `ensureAccountMembership` reads that
+row as "this user owns a business", so the employer's dashboard becomes their own and they can
+never own theirs. The activation doc files this under item 5 as an edge case for people who
+"already own another workspace". It is every case, in one direction or the other.
+
+The seat accounting is sound — outsiders refused, the founder counted, re-invites idempotent, the
+limit enforced under a row lock. So the fix is a role change, not a rewrite: office users need a
+third `memberships.role`, which is also what a narrower permission set attaches to and what keeps
+the partial unique index off them. Sequenced in `docs/office-seat-activation.md`.
 
 The `office_user` top-up SKU ($15/mo) should stay unpurchasable until this lands.
 

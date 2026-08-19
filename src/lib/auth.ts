@@ -45,7 +45,18 @@ export function createAdminClient() {
 
 export type CurrentMembership = {
   accountId: string | null;
-  role: 'owner' | 'crew' | null;
+  /**
+   * `office` exists in `member_role` as of 20260819090000 and no code writes it
+   * yet — the seat RPC that does is granted to no API role. It is in this type
+   * anyway so the compiler forces every reader to say what it does with one,
+   * rather than letting `'owner' | 'crew'` quietly imply the case cannot arise.
+   *
+   * Today every reader treats it as "not an owner", which is the fail-closed
+   * answer: `requireOwnerContext` sends them to /login. See
+   * docs/office-seat-activation.md for what has to exist before that changes,
+   * including the part `ensureAccountMembership` gets wrong below.
+   */
+  role: 'owner' | 'crew' | 'office' | null;
 };
 
 export async function getCurrentMembership(userId: string): Promise<CurrentMembership> {
@@ -79,6 +90,14 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
 export async function ensureAccountMembership(userId: string) {
   const admin = createAdminClient();
 
+  // NOT YET HANDLED, and deliberately left visible rather than papered over: a
+  // user whose only membership is `office` has no owner row, so the block below
+  // provisions them a brand-new empty workspace on sign-in and drops them into
+  // it. Their employer's workspace is unreachable from here. Nothing creates an
+  // office membership today, so this is latent — but it is the real remaining
+  // scope of the team screen, because reaching the employer means CHOOSING
+  // between workspaces, which this product has never had to do.
+  //
   // Return an existing OWNER membership if the user already owns an account.
   // Deliberately do NOT short-circuit on a crew-only membership: being on someone
   // else's crew must not lock you out of owning your own account. This runs only

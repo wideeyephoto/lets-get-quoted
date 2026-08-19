@@ -37,3 +37,54 @@ be called through the API until a separate activation migration both adds the
 approved invitation/acceptance authorization and grants the narrow execution
 privilege. This foundation does not backfill, remove, disable, or otherwise
 rewrite existing memberships.
+
+## Correction, 2026-08-19: this foundation cannot function as built
+
+Everything above describes the blocker as a missing permission model. That is
+true but incomplete, and the incompleteness matters, because it reads as "add a
+role and this works" when in fact the counted identity is itself wrong.
+
+The RPC inserts `memberships.role = 'owner'`. Production also carries
+`memberships_one_owner_per_user_idx`, a UNIQUE index on `(user_id)` where
+`role = 'owner'`, added by `2026-08-03-one-owner-account.sql` to stop the
+signup race that once created two accounts six milliseconds apart. Each is
+correct alone. Together they leave an office invitation exactly two outcomes:
+
+1. **The invitee already owns a workspace.** The insert trips the unique index.
+   The RPC catches `unique_violation` and raises
+   `office_user_target_unavailable`, which names the person rather than the
+   cause. This is not a gap to be gated later; it can never succeed.
+2. **The invitee owns nothing.** It succeeds — and this is the worse outcome.
+   They now hold the one owner row they are permitted, on their employer's
+   workspace, indistinguishable in the schema from the founder.
+   `ensureAccountMembership` looks for exactly that row to answer "does this
+   user own a business", so the employer's workspace becomes their own, and
+   they can never create theirs.
+
+Item 5 above frames this as handling a constraint for people who already own
+another workspace. It is not that narrow. It is every invitation, in one
+direction or the other.
+
+`scripts/verify-office-seat-collision.mjs` applies both migrations to a real
+PostgreSQL 17 and demonstrates all of it (9/9). Run it before changing any of
+this; it is faster to re-run than to re-reason about.
+
+### What this changes about the plan
+
+The seat accounting is sound. The verification also confirms outsiders are
+refused, the founder is counted, re-invites are idempotent, and the limit is
+enforced under a row lock taken before the count. So this is a role change, not
+a rewrite.
+
+An office user must be a third `memberships.role` — not `owner`. That one
+change resolves three of the six blockers at once:
+
+- the partial unique index is `where role = 'owner'`, so it stops applying;
+- `ensureAccountMembership` no longer mistakes employment for ownership;
+- a distinct role is the thing a narrower permission set attaches to.
+
+It also surfaces a question the owner-role design hid: an office user with no
+owner row of their own signs in and `ensureAccountMembership` provisions them
+a fresh empty workspace. Reaching the employer's workspace then requires
+choosing between workspaces, which the product has never needed before. That is
+the real remaining scope of item 6, and it is larger than a team screen.
