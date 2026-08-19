@@ -79,6 +79,13 @@ function resultRow(overrides: Record<string, unknown> = {}): Record<string, unkn
   };
 }
 
+// Only the settle RPC returns evidence_moved, so only settle fixtures carry it.
+// Passing a settleRow() to retainHold (or vice versa) is a real contract
+// violation and the parser is expected to reject it -- that is asserted below.
+function settleRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return { ...resultRow(), evidence_moved: false, ...overrides };
+}
+
 function mutationInput(planValue = plan()) {
   return {
     plan: planValue,
@@ -117,7 +124,7 @@ describe('direct Checkout late-success operator-resolution service store', () =>
   });
 
   it('settles only an eligible exact plan and passes every immutable CAS value', async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: [resultRow()], error: null });
+    const rpc = vi.fn().mockResolvedValue({ data: [settleRow()], error: null });
     const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
 
     await expect(store.settle(mutationInput())).resolves.toEqual({
@@ -128,6 +135,7 @@ describe('direct Checkout late-success operator-resolution service store', () =>
       paymentId: PAYMENT_ID,
       taskId: TASK_ID,
       paidOperationPk: PAID_OPERATION_PK,
+      evidenceMoved: false,
     });
     expect(rpc).toHaveBeenCalledWith('settle_direct_checkout_late_success_task', {
       p_account_id: ACCOUNT_ID,
@@ -143,7 +151,7 @@ describe('direct Checkout late-success operator-resolution service store', () =>
 
   it('accepts a fixed replay result without claiming that it applied twice', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: [resultRow({
+      data: [settleRow({
         applied: false,
         result_code: 'already_settled',
       })],
@@ -154,7 +162,94 @@ describe('direct Checkout late-success operator-resolution service store', () =>
     await expect(store.settle(mutationInput())).resolves.toMatchObject({
       applied: false,
       resultCode: 'already_settled',
+      evidenceMoved: false,
     });
+  });
+
+  it('reports a replay whose evidence has moved instead of failing the call', async () => {
+    // The decision this encodes. A settle replay stays idempotent even after a
+    // second paid fact lands, because 'already_settled' exists precisely so an
+    // honest retry gets an identical answer; turning a network retry into an
+    // error on a rail carrying real payments would trade a reporting gap for an
+    // availability one. The hold still blocks refund release either way, so the
+    // staleness is information the caller needs, not a reason to fail. The call
+    // succeeds and says so.
+    const rpc = vi.fn().mockResolvedValue({
+      data: [settleRow({
+        applied: false,
+        result_code: 'already_settled',
+        evidence_moved: true,
+      })],
+      error: null,
+    });
+    const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
+
+    await expect(store.settle(mutationInput())).resolves.toMatchObject({
+      applied: false,
+      resultCode: 'already_settled',
+      evidenceMoved: true,
+    });
+  });
+
+  it('refuses a settle result that omits the moved-evidence flag', async () => {
+    // Never coerce this one. An absent column collapses to falsey, which reads
+    // as 'evidence has not moved' -- the exact claim the flag exists to stop the
+    // RPC making when it cannot back it up.
+    const rpc = vi.fn().mockResolvedValue({ data: [resultRow()], error: null });
+    const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
+
+    await expect(store.settle(mutationInput())).rejects.toThrow(/moved-evidence flag/i);
+  });
+
+  it.each<[string, unknown]>([
+    ['null', null],
+    ['a string', 'false'],
+    ['a number', 0],
+  ])('refuses a settle result whose moved-evidence flag is %s', async (_label, value) => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [settleRow({ evidence_moved: value })],
+      error: null,
+    });
+    const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
+
+    await expect(store.settle(mutationInput())).rejects.toThrow(/moved-evidence flag/i);
+  });
+
+  it('leaves the flag null for retain-hold, which does not report it', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [resultRow({ result_code: 'hold_retained' })],
+      error: null,
+    });
+    const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
+
+    await expect(store.retainHold({
+      ...mutationInput(plan({
+        action: 'retain_hold',
+        decisionCode: 'retain_operator_hold',
+        reasonCode: 'operator_hold_requested',
+      })),
+      disposition: 'additional_paid_truth_requires_review',
+    })).resolves.toMatchObject({ evidenceMoved: null });
+  });
+
+  it('refuses a retain-hold result reporting a flag it has no business reporting', async () => {
+    // null here means 'this RPC does not answer that question', not 'nothing
+    // moved'. A flag arriving on the retain-hold path means its shape changed
+    // underneath us, and silently accepting it would let the two RPCs drift.
+    const rpc = vi.fn().mockResolvedValue({
+      data: [settleRow({ result_code: 'hold_retained' })],
+      error: null,
+    });
+    const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
+
+    await expect(store.retainHold({
+      ...mutationInput(plan({
+        action: 'retain_hold',
+        decisionCode: 'retain_operator_hold',
+        reasonCode: 'operator_hold_requested',
+      })),
+      disposition: 'additional_paid_truth_requires_review',
+    })).rejects.toThrow(/moved-evidence flag/i);
   });
 
   it('records only a fixed manual disposition through the dedicated retain-hold RPC', async () => {
@@ -374,7 +469,7 @@ describe('direct Checkout late-success operator-resolution service store', () =>
     ['identity drift', { paid_operation_pk: CURRENT_OPERATION_PK }],
     ['schema drift', { resolution_schema: 'legacy_v0' }],
   ])('fails closed for a malformed mutation result: %s', async (_label, override) => {
-    const rpc = vi.fn().mockResolvedValue({ data: [resultRow(override)], error: null });
+    const rpc = vi.fn().mockResolvedValue({ data: [settleRow(override)], error: null });
     const store = new SupabaseDirectCheckoutLateSuccessOperatorResolutionStore({ rpc } as never);
 
     await expect(store.settle(mutationInput())).rejects.toThrow();

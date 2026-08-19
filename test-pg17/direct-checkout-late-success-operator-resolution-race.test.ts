@@ -402,11 +402,19 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
 
     const applied = row(await pg().b.query(SETTLE_RPC_SQL, parameters));
     const replay = row(await pg().b.query(SETTLE_RPC_SQL, parameters));
-    expect(applied).toMatchObject({ applied: true, result_code: 'settled' });
+    expect(applied).toMatchObject({
+      applied: true,
+      result_code: 'settled',
+      evidence_moved: false,
+    });
+    // The baseline that gives the moved-evidence assertion in the next test its
+    // meaning: nothing has changed here, so the replay has to say nothing has
+    // changed. A flag hardwired to true would pass there and fail here.
     expect(replay).toMatchObject({
       applied: false,
       result_code: 'already_settled',
       resolution_id: applied.resolution_id,
+      evidence_moved: false,
     });
   });
 
@@ -462,7 +470,20 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
       reasonCode: 'additional_paid_truth_present',
     });
     expect(changedPlan.taskSetSha256).not.toBe(plan.taskSetSha256);
-    await expectSqlState(pg().control.query(SETTLE_RPC_SQL, parameters), '22000');
+    // This demanded 22000 before, and the RPC never raised it -- the replay
+    // branch returns before the freshly computed fingerprints are ever
+    // compared. Raising was the smaller fix and was rejected on purpose:
+    // already_settled exists so an honest retry gets an identical answer, and
+    // failing a retry on a rail carrying real payments trades a reporting gap
+    // for an availability one. The hold still blocks refund release either way.
+    // What it must no longer do is describe a stale resolution as current.
+    // See 20260818234500.
+    const staleReplay = row(await pg().control.query(SETTLE_RPC_SQL, parameters));
+    expect(staleReplay).toMatchObject({
+      applied: false,
+      result_code: 'already_settled',
+      evidence_moved: true,
+    });
 
     await expectSqlState(
       pg().control.query(
