@@ -624,7 +624,7 @@ export default function PricingExperience() {
           </div>
           <p className={styles.sectionFinePrint}>
             AI-connected minutes are separate from text and AI Intake credits. Ringing, failed calls, blocked spam, and
-            time after a completed transfer do not use AI minutes. Extra usage requires your approval and spending cap.
+            time after a completed transfer do not use AI minutes. Extra usage is a top-up you choose to buy.
           </p>
         </div>
       </section>
@@ -715,7 +715,7 @@ export default function PricingExperience() {
 
       <section className={styles.promiseSection}>
         <div><strong>Unlimited core work</strong><span>Leads, clients, quotes, jobs, invoices, and standard forms.</span></div>
-        <div><strong>No unapproved overages</strong><span>Top up once or deliberately enable a spending cap.</span></div>
+        <div><strong>No unapproved overages</strong><span>Extra capacity is a one-time top-up you choose to buy.</span></div>
         <div><strong>No lost website leads</strong><span>When AI Intake ends, LGQ switches to the normal quote form.</span></div>
         <div><strong>Bring your books</strong><span>One QuickBooks Online connection is included on every plan.</span></div>
       </section>

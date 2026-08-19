@@ -101,12 +101,6 @@ appears once per function and means one thing. It is not safe where the same fun
 sweep like that — there were two such functions here, and the sweep got one of them right only
 because `20260818200000` had already corrected it for an unrelated reason.
 
-The fix is a source-patching migration in the shape already used elsewhere in this tree: bump the
-pinned string in all six sites, widen the two CHECK constraints, and correct the Scale map.
-Verify on a real engine (`scripts/verify-*.mjs` pattern) rather than by reading, because a
-constraint that is widened wrongly fails at the worst possible moment — a customer's first
-payment.
-
 ### 0.1 Wire the reservation expiry sweeper — S — **latent; must precede the AI Intake gate**
 
 `expire_usage_reservations` is a properly built sweeper (batch limit, `for update skip locked`,
@@ -121,37 +115,78 @@ the one meter with a consumer, so this becomes reachable the moment
 Production and `usage_reservations` held zero rows when checked on 2026-08-19. Latent, not live --
 but it must land before the gate, not after.
 
+**Built.** `/api/cron/usage-reservation-expiry` every 15 minutes, gated on
+`LGQ_USAGE_RESERVATION_EXPIRY_ENABLED`, following the same shape as the other eight workers: the
+flag is checked *before* `cronRoute`, so a disabled job reads no secret, creates no service-role
+client and writes no heartbeat. Reservations live 15 minutes, so a stranded credit comes back
+within half an hour at worst.
+
+One deliberate choice worth knowing: the sweep does **not** loop until empty. It takes one batch of
+250 and reports `saturated` when the batch comes back full. Looping would hold a transaction open
+across an unbounded backlog, and a backlog that large is a signal worth seeing in `cron_runs`
+rather than absorbing silently — `expired: 0` is the healthy steady state, because a request that
+can run its own cleanup already does.
+
+Registered in `cron-jobs.ts` as **money**, not housekeeping. Nothing errors when it is missing; a
+workspace simply loses balance it paid for, permanently and quietly.
+
 The code already anticipates the sweeper's absence — `ai-intake-usage.ts` declines to spend a
 provider call on a stale row "while waiting for the expiry sweeper."
-
-Add `/api/cron/usage-reservation-expiry` following the existing `billing-worker-cron.ts` pattern
-used by the other eight routes, plus a `vercel.json` entry. Gate it on its own flag for symmetry.
 
 ### 0.2 Reconcile the overage / spending-cap copy — S — **public claim, no implementation**
 
 There is no overage or spending-cap mechanism in `src` or `migrations`. The only `overage` in the
-product is job-price overage (`lib/job-lifecycle.ts`), unrelated. But the capability is already
-stated publicly in three places:
+product is job-price overage (`lib/job-lifecycle.ts`), unrelated. The capability was nonetheless
+stated publicly in **five** places — this document originally found three:
 
-- `src/app/pricing/pricing-catalog.ts:190` — "Top-ups or enabled overages with a spending cap"
-- `src/app/pricing/pricing-catalog.ts:234-235` — FAQ: "an overage setting you deliberately enable with a spending cap"
-- `src/app/pricing/PricingExperience.tsx:718` — "Top up once or deliberately enable a spending cap"
+- `pricing-catalog.ts:156` — Scale bullet, "opt-in through top-ups or a spending cap"
+- `pricing-catalog.ts:190` — compare table, "Top-ups or enabled overages with a spending cap"
+- `pricing-catalog.ts:234` — FAQ, "an overage setting you deliberately enable with a spending cap"
+- `PricingExperience.tsx:627` — voice fine print, "requires your approval and spending cap"
+- `PricingExperience.tsx:718` — promise band, "deliberately enable a spending cap"
 
-Until Phase 3.2 ships, soften these to what is true: extra capacity requires a top-up, and LGQ
-never charges an unapproved overage. That second half is trivially true today — because there is
-no overage at all — and is the more valuable promise anyway.
+**Done.** Each keeps the promise and drops the mechanism. The FAQ answer is now stronger than
+what it replaced, and true: *"No. There is no automatic overage and no setting that turns one on,
+so nothing can bill past your plan without you buying it."* The compare row now reads
+`Approved top-ups` in all four columns, because that is what every plan actually does — the Scale
+column's differentiation was the imaginary feature. `No unapproved overages` survives as a
+heading; it is trivially true while no overage exists and stays true if 3.2 ever ships.
 
-### 0.3 Correct the appendix status table — S
+If 3.2 does ship, this copy comes back — but promising a spending cap the product cannot honor is
+worse than promising less than it will one day do.
 
-Four rows in section 10 read more complete than the code is:
+### 0.3 Correct the appendix status table — S — **blocked: the appendix is not in this repo**
 
-- *Flex starter allowances / "enforcement coverage is incomplete"* — understates it. Text,
-  marketing email, and AI writing have no enforcement on **any** plan, not just Flex.
-- *Top-ups / "purchase/fulfillment not fully active"* — the purchase rail is built; fulfillment is
-  only meaningful for AI Intake, storage, and crew seats. Four of the five one-time SKUs sell
-  credits into a wallet nothing draws from.
-- Add a row: **AI Voice — priced, not built.**
-- Add a row: **Overage / spending cap — published, not built.**
+The price book appendix is referenced from `catalog.ts:299`, `top-up-purchase.ts:16` and
+`TopUpPurchaseCheckout.tsx:26` as the settled source of truth, but it lives outside this
+repository — a full-text search finds no copy of it here. So this item cannot be executed from the
+codebase; it needs whoever holds that document. What follows is the finished replacement text, so
+applying it is a paste rather than a re-derivation.
+
+**Replace** the Flex starter allowances note. "Enforcement coverage is incomplete" understates it:
+
+> Text credits, marketing email sends, and AI writing drafts have no enforcement on **any** plan.
+> The credit ledger has exactly one consumer — AI Intake — and its gate is off in production, so
+> no balance currently decreases.
+
+**Replace** the top-ups note. "Purchase/fulfillment not fully active" describes the wrong half:
+
+> The purchase rail is built and the fulfillment rail is built. What is missing is consumption:
+> four of the five sellable SKUs — `text_1000`, `flex_text_250`, `marketing_email_5000`,
+> `ai_writing_250` — grant units that nothing in the product spends. `ai_intake_100` is the one
+> with a consumer.
+
+**Add** a row:
+
+> **AI Voice Receptionist — priced on all four plans, not built.** No implementation, no minute
+> meter, no concurrency limiter, no history retention. Also not purchasable: there is no Voice
+> add-on SKU, so the three plans that price it as a monthly add-on have no way to buy it.
+
+**Add** a row:
+
+> **Overage / spending cap — published, not built.** No mechanism exists. The public pricing copy
+> claiming one was corrected on 2026-08-19 (see 0.2); the appendix is the remaining copy that
+> still describes it.
 
 ---
 

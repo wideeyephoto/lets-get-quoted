@@ -153,7 +153,7 @@ export const PLANS: readonly PricingPlan[] = [
       '1,000 AI Intake + 500 AI writing drafts/month',
       '250 GB file and photo storage',
       'QuickBooks Online connection included',
-      'Extra usage is opt-in through top-ups or a spending cap',
+      'Extra usage is opt-in through one-time top-ups',
     ],
   },
 ] as const;
@@ -187,7 +187,10 @@ export const COMPARISON_ROWS = [
   ['Simultaneous AI Voice Receptionist calls', '1', '1', '1', '3'],
   ['AI Voice Receptionist routing', 'Standard', 'Standard', 'Standard', 'Advanced'],
   ['AI Voice Receptionist call history', '30 days', '30 days', '30 days', '90 days'],
-  ['Usage beyond included limits', 'Approved top-ups', 'Approved top-ups', 'Approved top-ups', 'Top-ups or enabled overages with a spending cap'],
+  // Every plan answers this the same way, and that is the honest row. The Scale
+  // column used to promise "enabled overages with a spending cap", which is a
+  // mechanism that does not exist anywhere in the product -- see the FAQ below.
+  ['Usage beyond included limits', 'Approved top-ups', 'Approved top-ups', 'Approved top-ups', 'Approved top-ups'],
   ['Free onboarding + quick tour', 'Included', 'Included', 'Included', 'Included'],
 ] as const;
 
@@ -232,7 +235,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Can LGQ charge an overage automatically?',
-    a: 'Not without approval. Extra capacity requires a one-time top-up or an overage setting you deliberately enable with a spending cap.',
+    a: 'No. There is no automatic overage and no setting that turns one on, so nothing can bill past your plan without you buying it. Extra capacity is a one-time top-up you choose, at a price you see before you pay.',
   },
   {
     q: 'What does a dedicated business number do without the AI Voice Receptionist?',
