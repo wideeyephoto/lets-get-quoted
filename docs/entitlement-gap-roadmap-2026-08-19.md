@@ -3,32 +3,39 @@
 The gating *machinery* is sound: a reserve/commit/release credit ledger, purchased-capacity
 tables, DB-level trigger guards, the exact-`'1'` flag convention, and all eight billing worker
 cron routes already scheduled in `vercel.json`. What is missing is **coverage**. Of the fourteen
-metered items the price book sells, three have an enforcement path with a live caller.
+metered items the price book sells, three have an enforcement path with a live caller -- and
+none of those three is switched on in production.
 
 This roadmap is ordered by what unblocks what, not by size. Sizes are relative (S/M/L), not
 calendar estimates.
 
 ## Where we actually are
 
-| Item | Limit | Measured | Enforced | Live caller | Flag |
-|---|---|---|---|---|---|
-| Crew seats | yes | yes | yes | `dashboard/crew/actions.ts` | `LGQ_CREW_SEAT_ENTITLEMENT_GATE_ENABLED` |
-| AI Intake credits | yes | yes | yes | `api/public/leads/classify-estimate` | `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` |
-| File storage | yes | yes | yes | six `*-storage.ts` libs | `LGQ_STORAGE_CAP_ENFORCED` |
-| Office seats | yes | yes | yes | **none** | `LGQ_OFFICE_SEAT_ENTITLEMENT_GATE_ENABLED` |
-| Text credits | yes | no | no | no | none |
-| Marketing email sends | yes | no | no | no | none |
-| AI writing drafts | yes | no | no | no | none |
-| Custom domains | yes | no | no | no | none |
-| Dedicated numbers | yes | no | no | no | none |
-| Forwarding minutes | yes | no | no | no | none |
-| AI Voice minutes | yes | no | no | no | none |
-| Voice concurrency | yes | no | no | no | none |
-| Voice history days | yes | no | no | no | none |
-| `featureFlags` block | yes | n/a | no | no | none |
+| Item | Limit | Measured | Enforced in code | Live caller | Flag | Flag set in Production |
+|---|---|---|---|---|---|---|
+| Crew seats | yes | yes | yes | `dashboard/crew/actions.ts` | `LGQ_CREW_SEAT_ENTITLEMENT_GATE_ENABLED` | **absent** |
+| AI Intake credits | yes | yes | yes | `api/public/leads/classify-estimate` | `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` | **absent** |
+| File storage | yes | yes | yes | five workspace `*-storage.ts` libs | `LGQ_STORAGE_CAP_ENFORCED` | **absent** |
+| Office seats | yes | yes | yes | **none** | `LGQ_OFFICE_SEAT_ENTITLEMENT_GATE_ENABLED` | **absent** |
+| Text credits | yes | no | no | no | none | n/a |
+| Marketing email sends | yes | no | no | no | none | n/a |
+| AI writing drafts | yes | no | no | no | none | n/a |
+| Custom domains | yes | no | no | no | none | n/a |
+| Dedicated numbers | yes | no | no | no | none | n/a |
+| Forwarding minutes | yes | no | no | no | none | n/a |
+| AI Voice minutes | yes | no | no | no | none | n/a |
+| Voice concurrency | yes | no | no | no | none | n/a |
+| Voice history days | yes | no | no | no | none | n/a |
+| `featureFlags` block | yes | n/a | no | no | none | n/a |
 
 Office seats being callerless is expected and documented (`docs/office-seat-activation.md`).
 Everything below that row is not.
+
+**Nothing in this table is enforced in production today.** Every gate is exact-`'1'` and all four
+flag names are absent from the Production environment (verified 2026-08-19), so each fails open.
+"Enforced in code" means a code path exists, which is a different claim from a limit a workspace
+can actually hit. Public lead-photo uploads are ungated on purpose -- a homeowner's photos are
+never refused over the contractor's storage bill.
 
 ## The two enforcement templates
 
@@ -48,10 +55,47 @@ numbers, and voice concurrency.
 
 ## Phase 0 — Repair and truth-telling
 
-Small, independent, and worth doing before anything else: one is a live defect, one is a public
-claim we cannot currently honor.
+Small, independent, and worth doing before anything else. One of them blocks base-plan checkout
+outright; one is latent until a flag is set; one is a public claim we cannot currently honor.
 
-### 0.1 Wire the reservation expiry sweeper — S — **live defect**
+### 0.0 Unpin the database from `2026-08-15-preview` — M — **blocks base-plan checkout entirely**
+
+`PRICING_CATALOG_VERSION` is `'2026-08-18-preview'`, and `expectedMetadata()` in
+`stripe-plan-prices.ts:205-211` fails price loading with `price_contract_mismatch` unless the
+bound Stripe Price carries that version. The database disagrees, in six hardcoded places:
+
+| Location | Kind |
+|---|---|
+| `20260816041255:123` | **CHECK constraint** on `billing_subscription_checkout_operations` |
+| `20260816041255:405` | function guard |
+| `20260816054500:23` | **CHECK constraint** on recurring-consent evidence |
+| `20260816054500:156` | function guard |
+| `20260816060000:609` | subscription projector guard |
+| `20260815213142:1280-1330` | `initialize_workspace_pricing` provisions new workspaces |
+
+These cannot both be satisfied. Checkout will only accept a 2026-08-18 Price; the claim insert
+will only accept a 2026-08-15 catalog version, at a constraint. Enabling
+`LGQ_BASE_PLAN_SUBSCRIPTION_CHECKOUT_ENABLED` today produces a constraint violation, not a sale.
+
+Two consequences that are easy to miss:
+
+**`initialize_workspace_pricing` puts every NEW workspace on the old catalog.** Migration
+`20260819040000` moved the six existing rows to `2026-08-18-preview`; account seven arrives on
+`2026-08-15-preview` and needs moving again. That is a treadmill until this is fixed.
+
+**The projector's embedded Scale limits are stale.** `20260816060000:668-673` writes
+`office_users 5, crew_users 10, storage_gb 100, forwarding_minutes 100`. The current catalog says
+`15, 50, 250, 200`. Solo and Growth match; only Scale diverges. A paying Scale customer would be
+provisioned at roughly a third of what they bought — and unlike the version pin, this one fails
+silently rather than at a constraint.
+
+The fix is a source-patching migration in the shape already used elsewhere in this tree: bump the
+pinned string in all six sites, widen the two CHECK constraints, and correct the Scale map.
+Verify on a real engine (`scripts/verify-*.mjs` pattern) rather than by reading, because a
+constraint that is widened wrongly fails at the worst possible moment — a customer's first
+payment.
+
+### 0.1 Wire the reservation expiry sweeper — S — **latent; must precede the AI Intake gate**
 
 `expire_usage_reservations` is a properly built sweeper (batch limit, `for update skip locked`,
 advisory locks) in `migrations/20260815213142_pricing_entitlements.sql`, and
@@ -60,8 +104,10 @@ anywhere in `src`, `migrations`, or `scripts`, and no cron route.
 
 Because `available = granted − consumed − reserved − revoked`, an AI Intake reservation abandoned
 mid-request (crashed process, dropped connection) strands those credits permanently. AI Intake is
-the one meter that *is* enforced, so this is reachable in production the moment
-`LGQ_AI_INTAKE_USAGE_GATE_ENABLED=1`.
+the one meter with a consumer, so this becomes reachable the moment
+`LGQ_AI_INTAKE_USAGE_GATE_ENABLED=1`. It is not reachable today: that flag is absent from
+Production and `usage_reservations` held zero rows when checked on 2026-08-19. Latent, not live --
+but it must land before the gate, not after.
 
 The code already anticipates the sweeper's absence — `ai-intake-usage.ts` declines to spend a
 provider call on a stale row "while waiting for the expiry sweeper."
@@ -296,7 +342,8 @@ clearly as coming. It is currently the only priced line item on the page with no
 
 ```
 Phase 0  ─────────────────────────────────────────►  independent, do now
-  0.1 expiry sweeper (live defect)
+  0.0 catalog-version pin (BLOCKS base-plan checkout outright)
+  0.1 expiry sweeper (latent; must precede the AI Intake gate)
   0.2 overage copy
   0.3 appendix rows
 
@@ -317,8 +364,10 @@ Phase 4  ───────────────────────�
   AI Voice, end to end
 ```
 
-**Before selling subscriptions:** Phase 0, Phase 1, and 3.1. Without 3.1 a non-paying workspace
-keeps everything; without Phase 1, four of the five one-time top-up SKUs sell nothing.
+**Before selling subscriptions:** 0.0 first and without exception -- until the database is unpinned
+from `2026-08-15-preview`, base-plan checkout does not fail gracefully, it violates a constraint.
+Then the rest of Phase 0, Phase 1, and 3.1. Without 3.1 a non-paying workspace keeps everything;
+without Phase 1, four of the five one-time top-up SKUs sell nothing.
 
 **Can ship after launch:** Phase 2, 3.2, 3.3, and Phase 4 — provided the public pricing page is
 truthful about them in the meantime, which is what 0.2 and the Phase 4 interim note are for.
