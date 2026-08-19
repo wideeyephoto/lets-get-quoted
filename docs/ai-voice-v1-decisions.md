@@ -274,18 +274,25 @@ What makes it sufficient is that **LGQ only settles calls it admitted**:
 `SWMLVars.userVariables.memberCallId`, all three identical in the measurement.
 Read the top-level one; assert the others agree.
 
-### Still to decide
+### Decided from the measurement
 
-**Rounding.** The measured call was 32.8 AI-connected seconds. Nothing above says
-whether that is a minute. Telecom convention — round up to the whole minute, first
-minute always charged — bills it as one minute: $0.35 retail against $0.1666 cost.
-That is the recommendation, and it needs saying out loud rather than falling out
-of whichever `Math` call gets typed first.
+**Rounding: up, to the whole minute, first minute always charged.** The measured
+call was 32.8 AI-connected seconds and bills as one minute — $0.35 retail against
+$0.1666 cost. Telecom convention, and it is written here rather than left to fall
+out of whichever `Math` call gets typed first, because `floor` would have billed
+that call as zero and `round` would bill a 91-second call the same as a 61-second
+one. The unit the ledger reserves and settles is therefore a whole minute, which
+is also why `commit_usage_reservation_partial` takes a `bigint`.
 
-**Payload size.** 10,374 bytes for a 33-second call, carrying full transcripts
-twice (`call_log` and `raw_call_log`) plus a `call_timeline`. Retention policy is
-30/90 days by plan; what gets stored, and whether both copies of the transcript
-do, is a storage-metering question and not only a privacy one.
+**Store one transcript, not three.** The receipt is 10,374 bytes for a 33-second
+call and carries the conversation three times: `call_log`, `raw_call_log`, and
+`call_timeline`. LGQ keeps `call_log` — the one with resolved pronunciation and
+without the per-token latency instrumentation — plus the derived summary and
+disposition. The other two are provider telemetry, they are not evidence of
+anything a contractor is charged for, and at 30-to-90-day retention across every
+call on every workspace they are storage LGQ meters and pays for. Keeping the
+whole payload "just in case" would triple that to hold two copies of the same
+sentences.
 
 **A long reservation cannot draw on a lot that expires sooner than it does.**
 `reserve_usage_credits` only considers lots where `l.expires_at > p_expires_at`
@@ -311,6 +318,33 @@ chosen rather than discovered:
 
 The ledger's own bound is 24 hours, so a 90-minute hold is legal; this is about
 lot eligibility, not the TTL limit.
+
+## 12. The adapter seam, and the guard it conflicts with
+
+§1 requires a `VoiceProvider` adapter. Two things in the repo argue against one,
+and both were put there deliberately:
+
+- `src/lib/sms-provider.ts` opens with a written case against "an interface with
+  two implementations", on the grounds that a class per provider restates every
+  agreement in order to isolate the disagreements;
+- `test/sms-provider.test.ts` fails the build if any file under `src/` other than
+  `sms-provider.ts` names a provider host, and `test/setup/no-provider-egress.ts`
+  blocks those hosts at the fetch layer in tests.
+
+**Both positions are right about different things, and the difference is the
+number of agreements.** Twilio and SignalWire messaging share one REST surface —
+same 2010-04-01 paths, same form encoding, same Basic auth — so a struct that
+holds the handful of differing values genuinely is the smaller thing. SignalWire
+AI Agents, Retell and Vapi share nothing: not the transport, not the payload, not
+the authentication, not even how many callbacks arrive. §11 makes that concrete —
+this provider sends one JSON receipt, at the end, with no signature. A struct of
+differences between two things with nothing in common is just two things.
+
+**So: an adapter for voice, and the containment assertion gains a second entry
+deliberately, with the reason written next to it.** Not silently widened to a
+prefix match or a directory — an explicit second filename, so the next file that
+wants to name a provider host still has to argue for itself. The messaging struct
+is not touched; it remains correct about messaging.
 
 > Superseded: an earlier instruction on 2026-08-19 was to leave the page exactly
 > as it stood. It was reversed the same day, before any work was done under it.
