@@ -1,0 +1,190 @@
+import { timingSafeEqual } from 'node:crypto';
+import { NextResponse } from 'next/server';
+
+import { createAdminClient } from '@/lib/auth';
+import { logWebhookFailure } from '@/lib/webhook-failures';
+import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
+import { settleVoiceReceipt } from '@/lib/voice/settlement';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+/**
+ * Where the end-of-call receipt arrives.
+ *
+ * A DIFFERENT AUTHENTICATION POSTURE FROM EVERY OTHER WEBHOOK HERE, because the
+ * provider offers nothing else. Measured against a live agent
+ * (docs/ai-voice-v1-decisions.md §11): no signature header of any kind, no
+ * signing secret anywhere in the dashboard, and the project API token neither
+ * sent nor used to sign. Basic credentials embedded in the callback URL are the
+ * only supported mechanism, and they stay readable there after saving.
+ *
+ * So this route does not pretend a signature exists. It checks four things,
+ * none of which is sufficient alone:
+ *
+ *   1. Basic credentials, dedicated to this endpoint and used nowhere else.
+ *   2. The payload names OUR project and space (checked in the ingest RPC).
+ *   3. The call id matches an admission LGQ made — the one that actually
+ *      matters, because a receipt for a call LGQ never admitted is inert.
+ *   4. Replay is byte-identical or refused, and settlement is idempotent.
+ *
+ * A leaked credential therefore buys an attacker the ability to restate a call
+ * they already caused, bounded by a hold LGQ took at admission. It does not buy
+ * them the ability to invent one.
+ *
+ * ALWAYS 200 ON A DELIVERED RECEIPT IT ACCEPTED. The provider retries on 5xx and
+ * there is exactly one receipt per call; a transient 500 here loses the only
+ * record of what a call cost.
+ */
+
+const CREDENTIAL_ENV = 'LGQ_VOICE_RECEIPT_BASIC' as const;
+
+function constantTimeEquals(a: string, b: string): boolean {
+  const left = Buffer.from(a, 'utf8');
+  const right = Buffer.from(b, 'utf8');
+  // Compare lengths without branching on the secret: unequal lengths still do
+  // a full comparison against a same-length buffer.
+  if (left.length !== right.length) {
+    timingSafeEqual(left, left);
+    return false;
+  }
+  return timingSafeEqual(left, right);
+}
+
+/**
+ * The configured credential, or null when the endpoint is not set up.
+ *
+ * Absent means CLOSED, not open. An unset secret on an endpoint whose whole job
+ * is to accept unsigned billing evidence would be the single worst default in
+ * the product.
+ */
+function expectedCredential(): string | null {
+  const raw = (process.env[CREDENTIAL_ENV] ?? '').trim();
+  return raw.length > 0 && raw.includes(':') ? raw : null;
+}
+
+function authorized(request: Request): boolean {
+  const expected = expectedCredential();
+  if (!expected) return false;
+
+  const header = request.headers.get('authorization') ?? '';
+  const [scheme, encoded] = header.split(' ');
+  if (!scheme || scheme.toLowerCase() !== 'basic' || !encoded) return false;
+
+  let presented: string;
+  try {
+    presented = Buffer.from(encoded, 'base64').toString('utf8');
+  } catch {
+    return false;
+  }
+  return constantTimeEquals(presented, expected);
+}
+
+export async function POST(request: Request) {
+  if (!authorized(request)) {
+    // Deliberately terse and bodyless. Nothing here tells a prober whether the
+    // endpoint exists, whether a credential is configured, or which half of one
+    // was wrong.
+    await logWebhookFailure({
+      source: 'ai_voice',
+      errorMessage: 'Voice receipt rejected: missing or invalid credentials',
+    });
+    return new NextResponse(null, { status: 401 });
+  }
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    await logWebhookFailure({ source: 'ai_voice', errorMessage: 'Voice receipt was not JSON' });
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+  }
+
+  const parsed = signalwireVoiceProvider.parseReceipt(payload);
+  if (!parsed.ok) {
+    await logWebhookFailure({
+      source: 'ai_voice',
+      errorMessage: `Voice receipt rejected: ${parsed.reason}`,
+    });
+    // 400, not 500: the provider must not retry a payload that can never parse.
+    return NextResponse.json({ error: parsed.reason }, { status: 400 });
+  }
+
+  const receipt = parsed.receipt;
+  const admin = createAdminClient();
+
+  try {
+    const { data, error } = await admin.rpc('ingest_voice_event', {
+      p_provider_call_id: receipt.providerCallId,
+      p_event_type: receipt.eventType,
+      p_provider_project_id: receipt.projectId,
+      p_provider_space_id: receipt.spaceId,
+      p_expected_project_id: process.env.SIGNALWIRE_PROJECT_ID || null,
+      p_expected_space_id: process.env.SIGNALWIRE_SPACE_ID || null,
+      p_payload: payload,
+    });
+
+    if (error) {
+      // 23505 is a receipt that changed between deliveries; 22023 is one that
+      // does not belong here. Neither is retryable, and returning 500 for either
+      // would have the provider redeliver it for ever.
+      const terminal = error.code === '23505' || error.code === '22023';
+      await logWebhookFailure({
+        source: 'ai_voice',
+        referenceId: receipt.providerCallId,
+        errorMessage: `ingest_voice_event failed (${error.code ?? 'unknown'}): ${error.message}`,
+      });
+      return NextResponse.json({ error: 'rejected' }, { status: terminal ? 400 : 500 });
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    const inserted = Boolean(row?.inserted);
+    const admitted = Boolean(row?.admitted);
+
+    // Stored, attributed to nobody, settled not at all. This is the shape of a
+    // forged receipt and of a genuine misconfiguration, and they are worth
+    // telling apart later — so it is logged rather than silently accepted.
+    if (!admitted) {
+      await logWebhookFailure({
+        source: 'ai_voice',
+        referenceId: receipt.providerCallId,
+        errorMessage: 'Voice receipt for a call this deployment never admitted',
+      });
+      return NextResponse.json({ ok: true, settled: false }, { status: 200 });
+    }
+
+    // A replay must not settle twice. The ledger's finalization key would refuse
+    // it anyway, but there is no reason to ask.
+    if (!inserted) return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
+
+    const settlement = await settleVoiceReceipt(admin, receipt);
+    if (settlement.reconcile) {
+      await logWebhookFailure({
+        source: 'ai_voice',
+        referenceId: receipt.providerCallId,
+        errorMessage: `Voice receipt needs reconciliation: ${settlement.reconcile}`,
+      });
+    }
+
+    await admin
+      .from('voice_events')
+      .update({
+        processing_status: settlement.reconcile ? 'failed' : 'processed',
+        processed_at: settlement.reconcile ? null : new Date().toISOString(),
+        last_error: settlement.reconcile,
+      })
+      .eq('provider_call_id', receipt.providerCallId);
+
+    return NextResponse.json({ ok: true, minutes: settlement.minutes }, { status: 200 });
+  } catch (error) {
+    console.error('Voice receipt handler threw:', error);
+    await logWebhookFailure({
+      source: 'ai_voice',
+      referenceId: receipt.providerCallId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    // 500 here IS correct: an unexpected throw may be transient, and there is
+    // exactly one receipt per call, so a retry is the only way to get it back.
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
+}

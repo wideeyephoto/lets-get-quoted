@@ -4,7 +4,7 @@ import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
 
-export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
+export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export type LeadScore = 'hot' | 'warm' | 'low';
@@ -281,6 +281,7 @@ export function formatLeadSource(source: LeadSource): string {
   if (source === 'website_form') return 'Website form';
   if (source === 'missed_call') return 'Missed call';
   if (source === 'referral') return 'Referral';
+  if (source === 'ai_voice') return 'AI receptionist';
   return 'Manual';
 }
 

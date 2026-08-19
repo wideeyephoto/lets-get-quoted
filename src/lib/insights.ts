@@ -725,6 +725,7 @@ const SOURCE_LABELS: Record<string, string> = {
   website_form: 'Website form',
   manual: 'Added by hand',
   missed_call: 'Missed call',
+  ai_voice: 'AI receptionist',
   referral: 'Referral',
   booking: 'Online booking',
 };

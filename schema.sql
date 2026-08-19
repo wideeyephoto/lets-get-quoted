@@ -45,7 +45,7 @@ begin
   end if;
 
   if not exists (select 1 from pg_type where typname = 'lead_source') then
-    create type lead_source as enum ('website_form', 'missed_call', 'manual', 'referral');
+    create type lead_source as enum ('website_form', 'missed_call', 'manual', 'referral', 'ai_voice');
   end if;
 
   if not exists (select 1 from pg_type where typname = 'lead_status') then

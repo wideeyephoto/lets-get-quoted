@@ -31,6 +31,7 @@ const DEMAND_WINDOW_DAYS = 90;
 const LEAD_SOURCE_LABEL: Record<string, string> = {
   website_form: 'Website lead',
   missed_call: 'Missed call',
+  ai_voice: 'AI receptionist',
   manual: 'Added by you',
   referral: 'Referral',
 };
