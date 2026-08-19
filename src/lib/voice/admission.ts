@@ -7,6 +7,7 @@ import {
   admitVoiceCall,
   voiceMinuteMode,
 } from '@/lib/billing/voice-minute-usage';
+import { isWithinBusinessHours, type BusinessHours } from '@/lib/voice/business-hours';
 import type { InboundCall, VoiceAnswerPlan } from '@/lib/voice/provider';
 
 /**
@@ -53,10 +54,21 @@ const DEFAULT_GREETING =
 /** How long an admission is assumed live without a receipt, for counting. */
 const OPEN_CALL_WINDOW_MINUTES = VOICE_CALL_CAP_MINUTES;
 
+export type VoiceSettings = Readonly<{
+  status: 'off' | 'active' | 'paused';
+  answerMode: 'always' | 'after_hours';
+  businessHours: BusinessHours;
+  greeting: string | null;
+  transferNumber: string | null;
+}>;
+
 export type VoiceWorkspace = Readonly<{
   accountId: string;
   callForwardNumber: string | null;
   concurrentCallLimit: number;
+  timezone: string;
+  /** Null when this workspace has never configured the receptionist. */
+  settings: VoiceSettings | null;
 }>;
 
 function positiveInteger(value: unknown, fallback: number): number {
@@ -81,7 +93,7 @@ export async function resolveVoiceWorkspace(
     // turns into null, which sends EVERY caller to the unavailable message. A
     // read written ahead of its column does not degrade; it fails closed for
     // everyone. The greeting lands with the settings screen that edits it.
-    .select('id, call_forward_number')
+    .select('id, call_forward_number, timezone')
     .eq('call_tracking_number', toNumber)
     .maybeSingle();
 
@@ -102,10 +114,31 @@ export async function resolveVoiceWorkspace(
 
   const limits = (entitlement?.feature_limits ?? {}) as Record<string, unknown>;
 
+  // No row means never configured, which is off. Read separately and
+  // defensively for the same reason as the entitlement: an unreadable row must
+  // not become a permissive default on the one surface that answers a phone.
+  const { data: configured } = await admin
+    .from('voice_settings')
+    .select('status, answer_mode, business_hours, greeting, transfer_number')
+    .eq('account_id', account.id)
+    .maybeSingle();
+
+  const row = configured as Record<string, unknown> | null;
+
   return Object.freeze({
     accountId: String(account.id),
     callForwardNumber: (account.call_forward_number as string | null) ?? null,
     concurrentCallLimit: positiveInteger(limits.voice_concurrent_calls, 0),
+    timezone: (account.timezone as string | null) || 'America/New_York',
+    settings: row
+      ? Object.freeze({
+        status: (row.status as VoiceSettings['status']) ?? 'off',
+        answerMode: (row.answer_mode as VoiceSettings['answerMode']) ?? 'after_hours',
+        businessHours: (row.business_hours ?? {}) as BusinessHours,
+        greeting: (row.greeting as string | null) ?? null,
+        transferNumber: (row.transfer_number as string | null) ?? null,
+      })
+      : null,
   });
 }
 
@@ -167,7 +200,8 @@ export type VoiceCallPlan = Readonly<{
   accountId: string | null;
   /** Why the AI did not answer, when it did not. For the failure log. */
   declineReason:
-  | 'no_workspace' | 'product_off' | 'no_seat' | 'at_capacity' | 'no_allowance' | null;
+  | 'no_workspace' | 'product_off' | 'not_configured' | 'paused' | 'within_business_hours'
+  | 'no_seat' | 'at_capacity' | 'no_allowance' | null;
 }>;
 
 export type PlanInboundOptions = Readonly<{
@@ -215,6 +249,19 @@ export async function planInboundCall(
   if (!workspace) return fallback(null, 'no_workspace');
 
   if (!(options.enabled ?? aiVoiceEnabled())) return fallback(workspace, 'product_off');
+
+  const settings = workspace.settings;
+  if (!settings || settings.status === 'off') return fallback(workspace, 'not_configured');
+  if (settings.status === 'paused') return fallback(workspace, 'paused');
+
+  // The common configuration: the contractor takes their own calls during the
+  // day and wants the evenings covered. Answering during business hours would
+  // put the AI in front of customers who expected a person.
+  if (settings.answerMode === 'after_hours'
+    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
+    return fallback(workspace, 'within_business_hours');
+  }
+
   if (workspace.concurrentCallLimit < 1) return fallback(workspace, 'no_seat');
 
   const open = await countOpenAiCalls(
@@ -236,9 +283,11 @@ export async function planInboundCall(
     plan: Object.freeze({
       kind: 'ai_agent' as const,
       receiptUrl: options.receiptUrl(workspace.accountId),
-      greeting: DEFAULT_GREETING,
+      greeting: settings.greeting?.trim() || DEFAULT_GREETING,
       capMinutes: VOICE_CALL_CAP_MINUTES,
-      transferTo: workspace.callForwardNumber,
+      // The configured hand-off, falling back to the line the contractor
+      // already forwards to. Null is a valid setup, not a broken one.
+      transferTo: settings.transferNumber || workspace.callForwardNumber,
     }),
   });
 }

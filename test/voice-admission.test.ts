@@ -46,10 +46,21 @@ const options = {
   enabled: true,
 };
 
-const workspace = (limits: Record<string, unknown>, forward: string | null = '+15557654321') => {
+const ACTIVE = {
+  status: 'active', answer_mode: 'always', business_hours: {},
+  greeting: null, transfer_number: null,
+};
+
+const workspace = (
+  limits: Record<string, unknown>,
+  forward: string | null = '+15557654321',
+  settings: Record<string, unknown> | null = ACTIVE,
+  timezone = 'America/New_York',
+) => {
   replies = {
-    accounts: { data: { id: ACCOUNT, call_forward_number: forward }, error: null },
+    accounts: { data: { id: ACCOUNT, call_forward_number: forward, timezone }, error: null },
     workspace_entitlements: { data: { feature_limits: limits }, error: null },
+    voice_settings: { data: settings, error: null },
     voice_call_admissions: { data: [], error: null },
     voice_events: { data: [], error: null },
   };
@@ -196,5 +207,61 @@ describe('concurrency, without a call-started event to count from', () => {
     workspace({ voice_concurrent_calls: 3 });
     replies.voice_call_admissions = twoLive;
     expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
+  });
+});
+
+describe('when the receptionist is meant to pick up', () => {
+  it('does not answer for a workspace that never configured it', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', null);
+    const result = await planInboundCall(admin, call, options);
+    expect(result).toMatchObject({ declineReason: 'not_configured' });
+    expect(result.plan.kind).toBe('forward');
+  });
+
+  it('stays quiet while paused, without losing the configuration', async () => {
+    // Paused is not off. A contractor reaches for it during a holiday and
+    // expects to undo it without setting everything up again.
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', { ...ACTIVE, status: 'paused' });
+    expect((await planInboundCall(admin, call, options))).toMatchObject({ declineReason: 'paused' });
+  });
+
+  it('lets a person answer during business hours when that is the setup', async () => {
+    // Tuesday 10:00 in Detroit. Answering here would put an AI in front of a
+    // customer who rang expecting the contractor.
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'after_hours', business_hours: { 2: ['08:00', '17:00'] },
+    }, 'America/Detroit');
+    const at = new Date('2026-08-18T14:00:00Z'); // 10:00 EDT
+    const result = await planInboundCall(admin, call, { ...options, now: () => at });
+    expect(result).toMatchObject({ declineReason: 'within_business_hours' });
+  });
+
+  it('answers the same Tuesday once the office has shut', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'after_hours', business_hours: { 2: ['08:00', '17:00'] },
+    }, 'America/Detroit');
+    const at = new Date('2026-08-18T23:00:00Z'); // 19:00 EDT
+    expect((await planInboundCall(admin, call, { ...options, now: () => at })).plan.kind)
+      .toBe('ai_agent');
+  });
+
+  it('answers everything when the mode says always, hours or not', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'always', business_hours: { 2: ['08:00', '17:00'] },
+    }, 'America/Detroit');
+    const at = new Date('2026-08-18T14:00:00Z');
+    expect((await planInboundCall(admin, call, { ...options, now: () => at })).plan.kind)
+      .toBe('ai_agent');
+  });
+
+  it('uses the configured greeting and hand-off when they are set', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, greeting: 'Rivera Plumbing, how can I help?', transfer_number: '+15550001111',
+    });
+    const result = await planInboundCall(admin, call, options);
+    if (result.plan.kind !== 'ai_agent') throw new Error('expected the agent');
+    expect(result.plan.greeting).toBe('Rivera Plumbing, how can I help?');
+    // The configured hand-off wins over the general forwarding number.
+    expect(result.plan.transferTo).toBe('+15550001111');
   });
 });

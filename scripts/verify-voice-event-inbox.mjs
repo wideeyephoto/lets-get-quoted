@@ -43,6 +43,7 @@ try {
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
 const LEDGER = m('20260815213142_pricing_entitlements.sql');
 const INBOX = m('20260819120000_voice_event_inbox.sql');
+const SETTINGS = m('20260819140000_voice_settings.sql');
 
 function liftTable(name) {
   const start = LEDGER.indexOf(`create table if not exists public.${name} (`);
@@ -99,8 +100,23 @@ try {
       if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role; end if;
     end $roles$;
     create schema if not exists extensions;
+    create schema if not exists auth;
     create extension if not exists pgcrypto with schema extensions;
+    create table auth.users (id uuid primary key);
     create table public.accounts (id uuid primary key);
+    -- Lifted in shape from schema.sql: the settings policy is built on it.
+    create table public.memberships (
+      id uuid primary key default gen_random_uuid(),
+      account_id uuid not null, user_id uuid not null, role text not null
+    );
+    create function auth.uid() returns uuid language sql stable as $u$
+      select nullif(current_setting('lgq.actor', true), '')::uuid $u$;
+    create function public.is_owner(acc uuid)
+    returns boolean language sql stable security definer set search_path = public as $o$
+      select exists (
+        select 1 from memberships m
+        where m.account_id = acc and m.user_id = auth.uid() and m.role = 'owner'
+      ) $o$;
     create table public.billing_events (id uuid primary key, account_id uuid);
   `);
   for (const t of ['workspace_entitlements', 'usage_credit_lots', 'usage_reservations', 'usage_reservation_allocations']) {
@@ -210,6 +226,37 @@ try {
   ck('row level security is on, with no policy, so a browser sees nothing',
     (await q(`select relrowsecurity from pg_class where relname = 'voice_events'`)).rows[0].relrowsecurity === true
     && Number((await q(`select count(*)::int as n from pg_policies where tablename = 'voice_events'`)).rows[0].n) === 0);
+
+  // -------------------------------------------------------------------
+  // 8b. Voice settings: the rule that must be unrepresentable.
+  // -------------------------------------------------------------------
+  await q(SETTINGS);
+  ck('the settings migration applies, disclosure post-check included', true);
+
+  const noDisclosure = await fails(
+    `insert into public.voice_settings (account_id, recording_enabled) values ($1, true)`,
+    [ACCOUNT]);
+  ck('recording cannot be switched on without a disclosure',
+    /voice_settings_recording_requires_disclosure/.test(noDisclosure ?? ''), noDisclosure);
+
+  await q(`insert into public.voice_settings (account_id, recording_enabled, recording_disclosure_accepted_at)
+           values ($1, true, now())`, [ACCOUNT]);
+  ck('recording is allowed once somebody accepted the disclosure', true);
+
+  const revoke = await fails(
+    `update public.voice_settings set recording_disclosure_accepted_at = null where account_id = $1`,
+    [ACCOUNT]);
+  ck('...and the disclosure cannot be taken back while recording stays on',
+    /voice_settings_recording_requires_disclosure/.test(revoke ?? ''), revoke);
+
+  const before = (await q('select updated_at from public.voice_settings where account_id = $1', [ACCOUNT])).rows[0];
+  await q(`update public.voice_settings set status = 'paused' where account_id = $1`, [ACCOUNT]);
+  const after = (await q('select updated_at, status from public.voice_settings where account_id = $1', [ACCOUNT])).rows[0];
+  ck('an edit stamps updated_at, so "when did this change" has an answer',
+    after.updated_at > before.updated_at && after.status === 'paused', after);
+
+  ck('a workspace that never configured this has no row, which is how off is stored',
+    Number((await q('select count(*)::int as n from public.voice_settings')).rows[0].n) === 1);
 
   // -------------------------------------------------------------------
   // 8. The billable interval, computed from the measured receipt.
