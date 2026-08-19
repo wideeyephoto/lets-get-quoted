@@ -32,6 +32,14 @@ export type AiWritingKind =
    */
   | 'import_assist'
   /**
+   * Generating the example copy for a contractor's own website.
+   *
+   * UNDECIDED, for the same reason as import assistance: it is real model work
+   * the contractor asked for, but it happens during setup, and charging drafts
+   * to fill in your own website is charging for onboarding.
+   */
+  | 'site_copy'
+  /**
    * A guard that reads finished work back and reports what is missing or risky.
    *
    * Exempt. The contractor did not ask for it, it runs whether they want it or
@@ -62,6 +70,7 @@ const BILLABLE: Readonly<Record<AiWritingKind, boolean>> = Object.freeze({
   change_order_draft: true,
   marketing_draft: true,
   import_assist: false, // UNDECIDED - see the kind doc above
+  site_copy: false, // UNDECIDED - see the kind doc above
   guard: false,
   qualifier: false,
   transcription: false,
@@ -69,7 +78,10 @@ const BILLABLE: Readonly<Record<AiWritingKind, boolean>> = Object.freeze({
 });
 
 /** Kinds whose answer is a placeholder rather than a decision. */
-export const UNDECIDED_KINDS: readonly AiWritingKind[] = Object.freeze(['import_assist']);
+export const UNDECIDED_KINDS: readonly AiWritingKind[] = Object.freeze([
+  'import_assist',
+  'site_copy',
+]);
 
 export type AiWritingContext = Readonly<{
   /**

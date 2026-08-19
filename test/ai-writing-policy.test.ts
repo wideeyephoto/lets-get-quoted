@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -58,7 +58,8 @@ describe('what a draft credit is spent on', () => {
 describe('the answer that is a placeholder, not a decision', () => {
   it('does not yet charge for import assistance', () => {
     expect(bills('import_assist')).toBe(false);
-    expect([...UNDECIDED_KINDS]).toEqual(['import_assist']);
+    expect(bills('site_copy')).toBe(false);
+    expect([...UNDECIDED_KINDS]).toEqual(['import_assist', 'site_copy']);
   });
 
   it('defaults it to exempt rather than billed', () => {
@@ -83,6 +84,30 @@ describe('the gap that would otherwise be silent', () => {
     const caller = readFileSync(join(process.cwd(), 'src/lib/ai-model-call.ts'), 'utf8');
     expect(caller).toContain('context: AiWritingContext,');
     expect(caller).not.toContain('context?: AiWritingContext');
+  });
+
+  it('leaves only the two known places that talk to the model', () => {
+    // The point of callModel: ten modules each holding their own fetch is fine
+    // until something has to be true of every model call, and drafts are sold
+    // per generation. A new module reaching for the endpoint directly would
+    // bill nothing and nobody would notice - which is what this catches.
+    //
+    // AI Intake is the deliberate exception, and writing it down is the whole
+    // reason this list is exact rather than a count. That route bills a
+    // different resource entirely (`ai_intake_threads`, via ai-intake-usage.ts,
+    // not writing drafts), and it wraps its fetch in a per-request provider
+    // attempt budget that callModel has no notion of. Routing it through here
+    // would mean teaching callModel about a meter it does not own.
+    const files = readdirSync(join(process.cwd(), 'src'), { recursive: true, encoding: 'utf8' })
+      .filter((f): f is string => typeof f === 'string' && /\.(ts|tsx)$/.test(f));
+    const direct = files
+      .filter((f) => readFileSync(join(process.cwd(), 'src', f), 'utf8').includes('api.openai.com'))
+      .map((f) => f.replace(/\\/g, '/'))
+      .sort();
+    expect(direct).toEqual([
+      'app/api/public/leads/classify-estimate/route.ts',
+      'lib/ai-model-call.ts',
+    ]);
   });
 });
 

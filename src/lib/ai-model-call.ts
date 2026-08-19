@@ -64,8 +64,13 @@ export class AiDraftsExhaustedError extends Error {
 export async function callModel(
   body: ModelRequestBody,
   context: AiWritingContext,
+  options: Readonly<{ apiKey?: string | null }> = {},
 ): Promise<Response> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  // `apiKey` is an override rather than the usual source. quick-stop-qualify
+  // accepts one through its options so a caller can supply a key explicitly;
+  // reading only the environment here would have left that seam silently doing
+  // nothing, which is worse than not having it.
+  const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
   if (!apiKey) throw new AiNotConfiguredError();
 
   // Dark by default: no service-role client and no ledger round trip when the

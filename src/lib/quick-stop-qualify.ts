@@ -8,6 +8,7 @@
 //      is a simple, single-technician, short visit and estimates its duration.
 // The screener is pure and dependency-free so it can be unit-tested exhaustively.
 import { QuickStopSettings } from './quick-stop';
+import { callModel } from '@/lib/ai-model-call';
 
 export type QuickStopComplexity = 'simple' | 'moderate' | 'complex';
 
@@ -304,17 +305,13 @@ export async function qualifyQuickStop(
     `Getting worse: ${input.worsening || '(unknown)'}\nProperty type: ${input.propertyType || '(unknown)'}\n\nRespond with json only.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        instructions,
-        input: inputText,
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      instructions,
+      input: inputText,
+      text: { format: { type: 'json_object' } },
+    }, { accountId: null, kind: 'qualifier' }, { apiKey });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     const payload = await response.json();
     const parsed = JSON.parse(extractOutputText(payload)) as {

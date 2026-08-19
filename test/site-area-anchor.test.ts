@@ -170,7 +170,10 @@ describe('the generator wires the lookup in', () => {
 
   it('resolves the ZIP before it asks the model anything', () => {
     expect(ACTIONS).toContain('const resolvedZipPlace = zip ? await geocodeArea(zip) : null;');
-    expect(ACTIONS.indexOf('resolvedZipPlace')).toBeLessThan(ACTIONS.indexOf('api.openai.com'));
+    // The model call used to be a bare fetch to api.openai.com and is now
+    // callModel, so that every generation passes one metered egress point. The
+    // ordering this test protects is unchanged; only the spelling moved.
+    expect(ACTIONS.indexOf('resolvedZipPlace')).toBeLessThan(ACTIONS.indexOf('await callModel('));
   });
 
   it('tells the model the answer instead of asking for it', () => {

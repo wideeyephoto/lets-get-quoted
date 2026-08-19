@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { CrewMember } from '@/lib/crew';
 import type { CostType } from '@/lib/jobs';
 import { COST_SOURCE_LABEL, COST_SOURCE_NOTE, SELECTABLE_COST_SOURCES, type CostSource } from '@/lib/cost-truth';
-import { describeReceiptRead, type ReceiptRead } from '@/lib/receipt-ocr';
+import { describeReceiptRead, type ReceiptRead } from '@/lib/receipt-read';
 
 type JobExpenseFieldsProps = {
   crew: CrewMember[];
