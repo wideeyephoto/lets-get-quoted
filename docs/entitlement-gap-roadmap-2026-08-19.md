@@ -9,6 +9,12 @@ none of those three is switched on in production.
 This roadmap is ordered by what unblocks what, not by size. Sizes are relative (S/M/L), not
 calendar estimates.
 
+> **Read 2.2 first if you read nothing else.** "1 dedicated voice/text business number" is sold in
+> six places on the pricing page and is the compare-table row separating every paid plan from Flex.
+> No code provisions one. Every workspace on every plan sends from the same platform number. It is
+> not a missing gate — it is a missing feature, on a headline differentiator, across three paid
+> tiers.
+
 ## Where we actually are
 
 | Item | Limit | Measured | Enforced in code | Live caller | Flag | Flag set in Production |
@@ -435,13 +441,47 @@ per-plan allowance becomes documentation rather than a gate. Anything else means
 (`updateSite`, per-`siteId`) can set different `custom_domain` values on different rows, and the
 cap-check belongs there rather than at verification.
 
-### 2.2 Dedicated business numbers — M
+### 2.2 Dedicated business numbers — **not a gate. Priced on three plans and not built.**
 
-`dedicatedBusinessNumbers` is 0 on Flex and 1 elsewhere. Nothing prevents a Flex workspace
-attaching a dedicated number today. Enforce at number attach.
+*This item said "nothing prevents a Flex workspace attaching a dedicated number today — enforce at
+number attach." There is no attach path to enforce at. The feature does not exist.*
 
-Coupled to the already-open carrier-registration item — two-way messaging is sold on every plan
-and blocked on carrier registration regardless. Sequence these together.
+`dedicated_business_numbers` appears in exactly three places in `src`: the catalog that defines the
+allowance, the entitlement snapshot that copies it, and the Plan & usage card that **displays** it.
+Nothing provisions, stores, or sends from a per-workspace number. There is no column, no table, and
+no provisioning code — `sms-provider.ts` says so in its own header, under "WHAT IS DELIBERATELY NOT
+HERE… number provisioning".
+
+Every message from every workspace on every plan is sent the same way
+(`sms-provider.ts:214-215`):
+
+```ts
+if (config.senderPoolId) data.set('MessagingServiceSid', config.senderPoolId);
+else if (config.from) data.set('From', config.from);
+```
+
+Both come from the environment — one shared messaging service, one platform number — so a Scale
+customer at $329/month sends from the same number as a free Flex workspace.
+
+**What is sold.** "1 dedicated voice/text business number" appears in six places on the pricing
+page: the Solo, Growth and Scale feature lists (`pricing-catalog.ts:89, 118, 151`), all three
+`messagingSummary` lines, and the compare table at `:177`, where it is the row that distinguishes
+every paid plan from Flex's "Shared LGQ texting number". The FAQ at `:241` describes what the
+number does. It is a headline differentiator, not a footnote.
+
+**This is the same class of problem as the spending cap in 0.2, and larger.** That copy was
+corrected unilaterally because the honest version was strictly stronger — "we never charge an
+unapproved overage" beats "you can enable one". Nothing equivalent is available here: the honest
+version is *smaller*, and removing a headline differentiator from three paid tiers is a pricing
+decision, not an engineering one. So it is flagged, not fixed.
+
+**The options, briefly.** Build it — per-workspace provisioning is real work on a different
+provider API surface (SignalWire Relay REST, not the compatibility surface this codebase speaks),
+plus carrier registration, which is already open and blocks two-way messaging regardless. Or
+correct the copy to what Flex already says truthfully, and price the dedicated number as an add-on
+when it exists. Either way, **selling three plans on a differentiator that does not exist should
+not survive go-live**, and of everything in this document this is the item most likely to be
+noticed by a paying customer in week one.
 
 ### 2.3 Decide the fate of `featureFlags` — S
 
