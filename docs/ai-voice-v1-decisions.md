@@ -340,11 +340,18 @@ the authentication, not even how many callbacks arrive. §11 makes that concrete
 this provider sends one JSON receipt, at the end, with no signature. A struct of
 differences between two things with nothing in common is just two things.
 
-**So: an adapter for voice, and the containment assertion gains a second entry
-deliberately, with the reason written next to it.** Not silently widened to a
-prefix match or a directory — an explicit second filename, so the next file that
-wants to name a provider host still has to argue for itself. The messaging struct
-is not touched; it remains correct about messaging.
+**So: an adapter for voice.** The messaging struct is not touched; it remains
+correct about messaging.
+
+**Correction, on building it: the containment assertion needed no change at
+all.** The expectation above was that it would gain a second filename. It did
+not, because LGQ never dials a provider to run a call — it answers a request the
+provider made, and the receipt arrives at a URL LGQ owns. No host appears in
+`src/lib/voice/*`, the assertion still lists exactly `sms-provider.ts`, and the
+guard someone put there deliberately keeps its full strength. Left recorded
+because "we will have to weaken a guard" was wrong in a useful direction, and the
+next person weighing a seam here should know the constraint is cheaper than it
+looks.
 
 > Superseded: an earlier instruction on 2026-08-19 was to leave the page exactly
 > as it stood. It was reversed the same day, before any work was done under it.
