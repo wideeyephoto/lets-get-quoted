@@ -194,6 +194,17 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'housekeeping',
     consequence: 'Workspace storage measurements freeze, so Plan & usage shows a stale figure and the upload cap is enforced against it.',
   },
+  {
+    job: 'usage-reservation-expiry',
+    label: 'Usage reservation expiry',
+    schedule: '*/15 * * * *',
+    // Money, and the quiet kind. Credits held by a reservation that died
+    // mid-request are subtracted from a workspace's balance and never given
+    // back, because available = granted - consumed - reserved - revoked. Nothing
+    // errors; the balance is simply wrong and stays wrong.
+    importance: 'money',
+    consequence: 'Credits held by requests that died mid-flight are never released, so a workspace permanently loses balance it paid for.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

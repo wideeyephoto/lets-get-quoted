@@ -35,6 +35,11 @@ import {
   runPurchasedCapacityLifecycleSweep,
   type CapacityLifecycleSweepResult,
 } from '@/lib/billing/capacity-lifecycle-worker';
+import {
+  runUsageReservationExpirySweep,
+  USAGE_RESERVATION_EXPIRY_BATCH_SIZE,
+  type UsageReservationExpiryResult,
+} from '@/lib/billing/usage-reservation-expiry-worker';
 
 /**
  * DARK scheduler boundary for the durable billing workers.
@@ -62,6 +67,8 @@ export const WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG =
   'LGQ_WORKSPACE_STORAGE_USAGE_SWEEP_ENABLED';
 export const PURCHASED_CAPACITY_LIFECYCLE_WORKER_FLAG =
   'LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED';
+export const USAGE_RESERVATION_EXPIRY_WORKER_FLAG =
+  'LGQ_USAGE_RESERVATION_EXPIRY_ENABLED';
 
 // Request input never controls these bounds. Increasing either value requires
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
@@ -121,6 +128,12 @@ export function purchasedCapacityLifecycleWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[PURCHASED_CAPACITY_LIFECYCLE_WORKER_FLAG] === '1';
+}
+
+export function usageReservationExpiryWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[USAGE_RESERVATION_EXPIRY_WORKER_FLAG] === '1';
 }
 
 export type StripeSubscriptionProjectionCronSummary = Readonly<{
@@ -806,4 +819,44 @@ export async function runPurchasedCapacityLifecycleCron(): Promise<
 PurchasedCapacityLifecycleCronSummary
 > {
   return summarizePurchasedCapacityLifecycleSweep(await runPurchasedCapacityLifecycleSweep());
+}
+
+export type UsageReservationExpiryCronSummary = Readonly<{
+  status: UsageReservationExpiryResult['status'];
+  expired: number;
+  saturated: boolean;
+  batch_size: number;
+}>;
+
+/**
+ * `expired: 0` is the healthy steady state here, not a sign nothing ran.
+ *
+ * Almost every request either commits or releases its own reservation, so this
+ * sweep exists for the ones that could not -- a crashed process cannot run its
+ * own finally block. A non-zero count means requests are dying mid-flight, and a
+ * saturated batch means enough of them are that one run cannot keep up.
+ */
+export function summarizeUsageReservationExpirySweep(
+  result: UsageReservationExpiryResult,
+): UsageReservationExpiryCronSummary {
+  if (result.status === 'failed') {
+    return Object.freeze({
+      status: 'failed' as const,
+      expired: 0,
+      saturated: false,
+      batch_size: USAGE_RESERVATION_EXPIRY_BATCH_SIZE,
+    });
+  }
+  return Object.freeze({
+    status: result.status,
+    expired: result.expired,
+    saturated: result.saturated,
+    batch_size: USAGE_RESERVATION_EXPIRY_BATCH_SIZE,
+  });
+}
+
+export async function runUsageReservationExpiryCron(): Promise<
+UsageReservationExpiryCronSummary
+> {
+  return summarizeUsageReservationExpirySweep(await runUsageReservationExpirySweep());
 }
