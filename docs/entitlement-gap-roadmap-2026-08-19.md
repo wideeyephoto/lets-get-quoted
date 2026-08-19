@@ -101,7 +101,11 @@ Fixed by `20260819060000_new_workspace_gets_current_flex_limits.sql`: source-pat
 refuses to run before `20260818120000` (eight limits is *correct* under the old catalog, so moving
 the map without the label would manufacture the mirror-image defect), and repairs already-created
 rows by **adding** the two missing keys rather than overwriting the map, so a deliberately raised
-limit survives. Verified 18/18 on PostgreSQL 17 by `scripts/verify-new-workspace-flex-limits.mjs`.
+limit survives. Verified 18/18 on PostgreSQL 17 by `scripts/verify-new-workspace-flex-limits.mjs`,
+and **applied to production 2026-08-19** -- `initialize_workspace_pricing` now writes ten limits
+and no longer names the old catalog. The repair matched zero rows, which is the correct outcome:
+the six existing workspaces already had their keys, and the defect only bites accounts created
+after 20260818120000.
 
 **The lesson worth keeping.** A blanket `REPLACE` over function bodies is safe for a value that
 appears once per function and means one thing. It is not safe where the same function carries a
@@ -675,6 +679,11 @@ the four bodies verbatim out of the migrations that define them, reproduces the 
 anchors are tested against the text a live database actually holds. It also proves the
 replacements compile, which is the failure that would otherwise surface as a broken payment rail
 at apply time.
+
+**Applied to production 2026-08-19.** All four functions admit `('active', 'grace')`, all four
+still pin `platform_fee_bps` and `catalog_version`, and none mentions `restricted`.
+`prepare_one_off_direct_invoice_payment` reports no `past_due` clause, which is correct rather
+than partial -- it carries no period test, so only its state check moved.
 
 Flex is unaffected -- `billing_status = 'free'` and the projector only writes this for
 subscription events -- so this cannot be seen today no matter how the product is used.
