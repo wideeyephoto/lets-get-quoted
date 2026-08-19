@@ -25,7 +25,7 @@ calendar estimates.
 | Office seats | yes | yes | yes | **none** | `LGQ_OFFICE_SEAT_ENTITLEMENT_GATE_ENABLED` | **absent** |
 | Text credits | yes | yes | yes | `sms-provider.ts` (all 32 sites) | `LGQ_TEXT_CREDIT_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | Marketing email sends | yes | yes | yes | `lib/campaigns.ts` | `LGQ_MARKETING_EMAIL_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
-| AI writing drafts | yes | yes | yes | `quote-draft-ai.ts` (1 of 10 modules) | `LGQ_AI_WRITING_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
+| AI writing drafts | yes | yes | yes | `ai-model-call.ts` (all 11 sites) | `LGQ_AI_WRITING_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | Custom domains | yes | no | no | no | none | n/a |
 | Dedicated numbers | yes | no | no | no | none | n/a |
 | Forwarding minutes | yes | no | no | no | none | n/a |
@@ -35,9 +35,9 @@ calendar estimates.
 | `featureFlags` block | yes | n/a | no | no | none | n/a |
 
 Office seats being callerless is expected and documented (`docs/office-seat-activation.md`).
-Text credits are metered at the single egress point, so every outbound text is classified. Which
-categories bill is two entries in sms-billing-policy.ts that are still placeholders, not decisions.
-Everything below those rows is not expected.
+Text credits and AI writing drafts are metered at their single egress points, so every outbound
+text and every generation is classified. What bills is four entries across the two policy tables
+that remain placeholders rather than decisions. Everything below those rows is not expected.
 
 **Nothing in this table is enforced in production today.** Every gate is exact-`'1'` and all four
 flag names are absent from the Production environment (verified 2026-08-19), so each fails open.
@@ -403,7 +403,7 @@ parts are genuinely common — and the two that exist already disagree about the
 part, which is what happens when the ledger cannot answer. At three, extract the shared core;
 leave `ai-intake-usage.ts` alone when doing it, since it is the only one with a live caller.
 
-### 1.4 AI writing drafts meter — M — **built; one pricing answer and two threadings outstanding**
+### 1.4 AI writing drafts meter — M — **built and wired; two pricing answers outstanding**
 
 Ten modules call a model. The book sells "AI writing drafts" at 25/50/250/500 without defining
 which generations count, and the answer changes the effective value of every plan:
@@ -443,12 +443,17 @@ payment receipts and must never refuse on uncertainty. That difference is why th
 usage modules rather than one parameterised core — a shared core would carry it as a flag, and a
 flag is a worse place for it than a paragraph.
 
-**What remains.** One pricing answer (`import_assist`), and two threadings:
-`change-order-ai.ts` and `marketing-draft.ts` bill by kind but have no `accountId` in scope, so
-today they generate unbilled. `AI_WRITING_CALLS_REQUIRING_ACCOUNT` names them, because a billable
-generation with a null account does not bill and looks identical to one that is exempt on purpose.
-Only `quote-draft-ai.ts` is wired end to end; the other seven are exempt and therefore already
-final.
+**What remains is two pricing answers, and nothing else.** `import_assist` and `site_copy` are
+both named in `UNDECIDED_KINDS` and both default to exempt. Every billable kind now has its
+`accountId` threaded, and `AI_WRITING_CALLS_REQUIRING_ACCOUNT` is empty -- kept rather than
+deleted, as the place to record the next such gap.
+
+**Two call sites this document had missed.** There were twelve, not ten. A test now lists every
+file in `src` that mentions the endpoint, which is how they surfaced. AI Intake is a named
+exception: it bills `ai_intake_threads` rather than writing drafts and wraps its fetch in a
+per-request provider attempt budget, so forcing it through `callModel` would mean teaching that
+function about a meter it does not own. The site copy generator was simply missed, because the
+search pattern assumed single-line headers and that one spans several.
 
 Flags: `LGQ_AI_WRITING_METER_ENABLED`, then `LGQ_AI_WRITING_GATE_ENABLED`.
 
