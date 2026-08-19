@@ -20,6 +20,7 @@
     "test:pg17:grace-collect": "node scripts/verify-grace-may-still-collect.mjs",
     "test:pg17:ledger-contract": "node scripts/verify-usage-meter-ledger-contract.mjs",
     "test:pg17:office-collision": "node scripts/verify-office-seat-collision.mjs",
+    "test:pg17:voice-inbox": "node scripts/verify-voice-event-inbox.mjs",
     "test:pg17:partial-commit": "node scripts/verify-partial-commit.mjs",
     "test:pg17:overage": "node scripts/verify-usage-overage-authorization.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",

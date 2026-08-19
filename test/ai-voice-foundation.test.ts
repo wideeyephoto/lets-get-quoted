@@ -69,3 +69,63 @@ describe('the AI voice failure log can record a failure', () => {
     expect(migration()).toContain('APPLY THIS BEFORE');
   });
 });
+
+describe('the receipt boundary settles only calls LGQ admitted', () => {
+  const migration = () => read('migrations', '20260819120000_voice_event_inbox.sql');
+
+  // Proven end to end against a real PostgreSQL 17 by
+  // scripts/verify-voice-event-inbox.mjs (npm run test:pg17:voice-inbox), 23/23.
+  // These are the cheap half, and they run in the default suite.
+
+  it('binds an unadmitted receipt to no workspace', () => {
+    // The measured provider sends no signature and offers no signing secret, so
+    // the transport cannot be what a bill rests on. This is what can: a receipt
+    // whose call id matches no admission reaches no ledger function.
+    const sql = migration();
+    expect(sql).toContain('create table if not exists public.voice_call_admissions');
+    expect(sql).toContain('provider_call_id = p_provider_call_id');
+    expect(sql).toContain("v_status := 'ignored'");
+  });
+
+  it('keeps an unexplained receipt rather than dropping it', () => {
+    // Silently discarding one would hide an attack and a misconfiguration
+    // equally well.
+    expect(migration()).toMatch(/still (written|stored)|worth being able to find/);
+  });
+
+  it('refuses a receipt that changed between deliveries', () => {
+    // A retry is byte-identical. Anything else would let a second delivery
+    // restate what a call cost after the first was settled.
+    expect(migration()).toContain('different immutable input');
+  });
+
+  it('checks the two identifiers a signature would otherwise cover', () => {
+    expect(migration()).toContain('project does not match this deployment');
+    expect(migration()).toContain('space does not match this deployment');
+  });
+
+  it('keeps the event type in the dedupe key', () => {
+    // One receipt per call today, so the bare call id would be unique -- and a
+    // second event type would then collide with the first and be rejected as a
+    // duplicate of something it is not.
+    expect(migration()).toContain("v_event_id := p_provider_call_id || ':' || p_event_type");
+  });
+
+  it('asserts the RPC handles every event type its own table admits', () => {
+    // 20260818170000 exists because those two lists drifted: a verified delivery
+    // reached the RPC, came back 22023, became a 500, and was retried forever.
+    // Mutation-checked -- widening only the table CHECK fails the migration with
+    // "does not handle event type call_started, which its table admits".
+    const sql = migration();
+    expect(sql).toContain('does not handle event type %, which its table admits');
+    expect(sql).toContain('pg_get_constraintdef');
+  });
+
+  it('keeps transcripts away from every browser role', () => {
+    const sql = migration();
+    expect(sql).toContain('alter table public.voice_events enable row level security');
+    expect(sql).toContain('revoke all on table public.voice_events from public, anon, authenticated');
+    expect(sql).not.toMatch(/create policy[\s\S]*voice_events/i);
+    expect(sql).toMatch(/grant execute on function public\.ingest_voice_event[\s\S]{0,120}to service_role/);
+  });
+});
