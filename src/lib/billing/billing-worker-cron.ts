@@ -403,10 +403,15 @@ export function summarizeTopUpProjectionBatch(
     switch (item.status) {
       case 'projected':
         switch (item.projectionResult) {
+          // Capacity counts as granted alongside credit. They are different
+          // ledgers but the same fact for an operator reading this: money was
+          // taken and the workspace received what it paid for.
           case 'top_up_credits_granted':
+          case 'top_up_capacity_granted':
             granted += 1;
             break;
           case 'top_up_credits_already_granted':
+          case 'top_up_capacity_already_granted':
             alreadyGranted += 1;
             break;
           case 'top_up_awaiting_async_payment':
