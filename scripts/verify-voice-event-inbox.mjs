@@ -44,6 +44,7 @@ const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n
 const LEDGER = m('20260815213142_pricing_entitlements.sql');
 const INBOX = m('20260819120000_voice_event_inbox.sql');
 const SETTINGS = m('20260819140000_voice_settings.sql');
+const CALLS = m('20260819150000_voice_calls.sql');
 
 function liftTable(name) {
   const start = LEDGER.indexOf(`create table if not exists public.${name} (`);
@@ -104,6 +105,7 @@ try {
     create extension if not exists pgcrypto with schema extensions;
     create table auth.users (id uuid primary key);
     create table public.accounts (id uuid primary key);
+    create table public.leads (id uuid primary key default gen_random_uuid());
     -- Lifted in shape from schema.sql: the settings policy is built on it.
     create table public.memberships (
       id uuid primary key default gen_random_uuid(),
@@ -257,6 +259,42 @@ try {
 
   ck('a workspace that never configured this has no row, which is how off is stored',
     Number((await q('select count(*)::int as n from public.voice_settings')).rows[0].n) === 1);
+
+  // -------------------------------------------------------------------
+  // 8c. Call history: readable by its owner, writable by nobody in a browser.
+  // -------------------------------------------------------------------
+  await q(CALLS);
+  ck('the call-history migration applies, write-guard post-check included', true);
+
+  for (const role of ['anon', 'authenticated']) {
+    const writes = (await q(
+      `select has_table_privilege($1, 'public.voice_calls', 'INSERT') as ins,
+              has_table_privilege($1, 'public.voice_calls', 'UPDATE') as upd,
+              has_table_privilege($1, 'public.voice_calls', 'DELETE') as del`, [role])).rows[0];
+    ck(`${role} cannot write call history`, !writes.ins && !writes.upd && !writes.del, writes);
+  }
+  ck('an owner may READ their own history, which is the whole point',
+    Number((await q(`select count(*)::int as n from pg_policies
+                     where tablename = 'voice_calls' and cmd = 'SELECT'`)).rows[0].n) === 1);
+
+  // The separation the billing rule depends on: history is mutable, the receipt
+  // is not, and nothing may compute a bill from the mutable one.
+  await q(`insert into public.voice_calls
+             (account_id, provider, provider_call_id, ai_seconds, billed_minutes, settlement)
+           values ($1, 'signalwire', $2, 33, 1, 'allowance')`, [ACCOUNT, other]);
+  const corrected = await fails(
+    `update public.voice_calls set outcome = 'transferred' where provider_call_id = $1`, [other]);
+  ck('a disposition can be corrected, which is why billing must not read it',
+    corrected === null, corrected);
+
+  ck('a call cannot be recorded twice for one provider call id',
+    /voice_calls_provider_call_unique/.test(await fails(
+      `insert into public.voice_calls (account_id, provider, provider_call_id)
+       values ($1, 'signalwire', $2)`, [ACCOUNT, other]) ?? ''));
+
+  ck('an impossible settlement state is refused',
+    /voice_calls_settlement_check/.test(await fails(
+      `update public.voice_calls set settlement = 'free' where provider_call_id = $1`, [other]) ?? ''));
 
   // -------------------------------------------------------------------
   // 8. The billable interval, computed from the measured receipt.

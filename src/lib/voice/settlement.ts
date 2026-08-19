@@ -7,6 +7,8 @@ import { createLead } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceReceipt } from '@/lib/voice/provider';
 
+const MICROS_PER_SECOND = 1_000_000;
+
 /**
  * Turning a receipt into a bill and a lead, in that order of certainty.
  *
@@ -123,10 +125,71 @@ export async function settleVoiceReceipt(
     console.error('AI voice lead creation failed:', error);
   }
 
+  // The contractor-facing record, written last and never allowed to fail the
+  // two things above it. Billing must never READ this row -- see the migration
+  // header -- so a failure to write it costs a history entry, not a settlement.
+  await recordCallHistory(admin, receipt, {
+    accountId: row.account_id,
+    minutes: settled,
+    unmetered: row.reservation_id === null,
+    unbillable: minutes === null,
+    leadId,
+  });
+
   return Object.freeze({
     minutes: settled,
     billed: settled !== null && settled > 0,
     leadId,
     reconcile,
   });
+}
+
+function instant(micros: number | null): string | null {
+  if (micros === null) return null;
+  const ms = Math.round(micros / 1000);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+/** Never throws: a report must not break the thing it reports on. */
+async function recordCallHistory(
+  admin: SupabaseClient,
+  receipt: VoiceReceipt,
+  facts: Readonly<{
+    accountId: string;
+    minutes: number | null;
+    unmetered: boolean;
+    unbillable: boolean;
+    leadId: string | null;
+  }>,
+): Promise<void> {
+  const seconds = receipt.aiStartMicros !== null && receipt.aiEndMicros !== null
+    && receipt.aiEndMicros >= receipt.aiStartMicros
+    ? Math.round((receipt.aiEndMicros - receipt.aiStartMicros) / MICROS_PER_SECOND)
+    : null;
+
+  // `unmetered` is a real outcome, not a failure: the meter fails open when the
+  // ledger cannot answer, and such a call must look different from a free one.
+  const settlement = facts.unbillable ? 'unbillable'
+    : facts.unmetered ? 'unmetered'
+      : facts.minutes === null ? 'unsettled' : 'allowance';
+
+  try {
+    const { error } = await admin.from('voice_calls').upsert({
+      account_id: facts.accountId,
+      provider: receipt.provider,
+      provider_call_id: receipt.providerCallId,
+      caller_number: callerPhone(receipt),
+      started_at: instant(receipt.callStartMicros),
+      answered_at: instant(receipt.callAnswerMicros),
+      ended_at: instant(receipt.callEndMicros),
+      ai_seconds: seconds,
+      billed_minutes: facts.minutes,
+      settlement,
+      summary: summaryLine(receipt),
+      lead_id: facts.leadId,
+    }, { onConflict: 'provider,provider_call_id' });
+    if (error) console.error('voice call history write failed:', error);
+  } catch (error) {
+    console.error('voice call history write threw:', error);
+  }
 }

@@ -16,11 +16,20 @@ const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
 
 let admissionRow: unknown;
+const history = vi.fn();
 const admin = {
-  from() {
+  from(table: string) {
     const chain: Record<string, unknown> = {};
     for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
     chain.maybeSingle = () => Promise.resolve({ data: admissionRow, error: null });
+    // The history write is a real call, not a no-op. Without this the whole
+    // recordCallHistory path threw into its own catch and these tests proved
+    // nothing about it -- which is exactly the shape of a green run that means
+    // nothing, and the reason the ledger harness stopped transcribing.
+    chain.upsert = (row: unknown) => {
+      if (table === 'voice_calls') history(row);
+      return Promise.resolve({ error: null });
+    };
     (chain as { then: unknown }).then = (r: (v: unknown) => unknown) => r({ data: null, error: null });
     return chain;
   },
@@ -47,6 +56,7 @@ beforeEach(() => {
   settleVoiceCall.mockResolvedValue(1);
   createLead.mockReset();
   createLead.mockResolvedValue({ id: 'lead-1' });
+  history.mockReset();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   admissionRow = { account_id: ACCOUNT, reservation_id: 'res-1', reserved_minutes: 60 };
 });
@@ -140,5 +150,54 @@ describe('when the two halves disagree', () => {
     // No lead either: inventing a customer from an unverifiable receipt would
     // put a stranger's details in a contractor's pipeline.
     expect(createLead).not.toHaveBeenCalled();
+  });
+});
+
+describe('the row the contractor will read', () => {
+  it('records the call, its length, and what it cost', async () => {
+    await settleVoiceReceipt(admin, receipt());
+    expect(history).toHaveBeenCalledWith(expect.objectContaining({
+      account_id: ACCOUNT,
+      provider_call_id: CALL,
+      ai_seconds: 33,          // 32.806429s, to the nearest second
+      billed_minutes: 1,       // rounded up
+      settlement: 'allowance',
+      lead_id: 'lead-1',
+    }));
+  });
+
+  it('keeps the exact seconds beside the rounded minutes', async () => {
+    // A contractor querying why a 61-second call cost two minutes needs to see
+    // 61, not a number that already agrees with the bill.
+    const start = 1_000_000_000;
+    await settleVoiceReceipt(admin, receipt({
+      aiStartMicros: start, aiEndMicros: start + 61 * 1_000_000,
+    }));
+    expect(history.mock.calls[0][0]).toMatchObject({ ai_seconds: 61, billed_minutes: 1 });
+  });
+
+  it('marks an unmetered call as answered-not-billed, not as free', async () => {
+    admissionRow = { account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0 };
+    await settleVoiceReceipt(admin, receipt());
+    expect(history.mock.calls[0][0]).toMatchObject({ settlement: 'unmetered', billed_minutes: null });
+  });
+
+  it('flags an unbillable receipt for review rather than recording a zero', async () => {
+    await settleVoiceReceipt(admin, receipt({ aiEndMicros: null }));
+    expect(history.mock.calls[0][0]).toMatchObject({ settlement: 'unbillable', ai_seconds: null });
+  });
+
+  it('writes no history for a call this deployment never admitted', async () => {
+    admissionRow = null;
+    await settleVoiceReceipt(admin, receipt());
+    expect(history).not.toHaveBeenCalled();
+  });
+
+  it('keys on the provider call id, so a replay updates rather than duplicates', async () => {
+    await settleVoiceReceipt(admin, receipt());
+    await settleVoiceReceipt(admin, receipt());
+    for (const [row] of history.mock.calls) {
+      expect(row).toMatchObject({ provider_call_id: CALL });
+    }
   });
 });
