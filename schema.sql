@@ -2401,7 +2401,7 @@ alter table admin_actions enable row level security;
 -- insert error. The old two are still legal so existing rows stay readable.
 create table if not exists webhook_failures (
   id               uuid primary key default gen_random_uuid(),
-  source           text not null check (source in ('stripe','resend','twilio_inbound','twilio_status','sms_inbound','sms_status','sms_voice')),
+  source           text not null check (source in ('stripe','resend','twilio_inbound','twilio_status','sms_inbound','sms_status','sms_voice','ai_voice')),
   event_type       text,              -- Stripe event.type / SMS MessageStatus / Resend event type, when we got far enough to know it
   reference_id     text,              -- Stripe event id / SMS provider message id / Resend email_id, when known
   error_message    text not null,
