@@ -1,14 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
-import {
-  beginTextCreditUsage,
-  commitTextCreditUsage,
-  releaseTextCreditUsage,
-  textCreditMode,
-  type TextCreditLease,
-} from '@/lib/billing/text-credit-usage';
 import {
   appointmentReminderText,
   arrivalTimeChangedText,
@@ -141,7 +133,7 @@ export async function sendOwnerHighValueLeadSms(input: {
     if (!to) return;
     if (await isPhoneOptedOut(input.accountId, to)) return;
     const body = ownerHighValueLeadText(input);
-    await sendProviderMessage(to, body);
+    await sendProviderMessage(to, body, { accountId: input.accountId ?? null, category: 'owner_alert' });
   } catch (error) {
     console.error('Owner high-value lead SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -159,7 +151,7 @@ export async function sendEstimateOfferSms(input: {
   toPhone: string;
   message: string;
 }): Promise<string> {
-  const providerId = await sendProviderMessage(input.toPhone, input.message);
+  const providerId = await sendProviderMessage(input.toPhone, input.message, { accountId: input.accountId ?? null, category: 'customer_message' });
   await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
   return providerId;
 }
@@ -182,7 +174,7 @@ export async function sendBookingDecisionSms(input: {
 }): Promise<void> {
   try {
     if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
-    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message));
+    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message), { accountId: input.accountId ?? null, category: 'customer_message' });
     await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
   } catch (error) {
     console.error('Booking decision SMS failed:', error instanceof Error ? error.message : error);
@@ -212,7 +204,7 @@ export async function sendClientPortalLinkSms(input: {
 }): Promise<void> {
   try {
     if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
-    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message));
+    const providerId = await sendProviderMessage(input.toPhone, withOptOut(input.message), { accountId: input.accountId ?? null, category: 'customer_message' });
     await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
   } catch (error) {
     console.error('Portal link SMS failed:', error instanceof Error ? error.message : error);
@@ -236,7 +228,7 @@ export async function sendOwnerEstimateAcceptedSms(input: {
     const to = normalizeUsPhone(input.alertPhone);
     if (!to) return;
     if (await isPhoneOptedOut(input.accountId, to)) return;
-    await sendProviderMessage(to, withOptOut(input.message));
+    await sendProviderMessage(to, withOptOut(input.message), { accountId: input.accountId ?? null, category: 'owner_alert' });
   } catch (error) {
     console.error('Owner estimate-offer alert SMS failed:', error instanceof Error ? error.message : error);
   }
@@ -259,7 +251,7 @@ export async function sendQuickStopOfferSms(input: {
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = quickStopOfferText(input);
-    const sid = await sendProviderMessage(to, body);
+    const sid = await sendProviderMessage(to, body, { accountId: input.accountId ?? null, category: 'payment_message' });
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
     console.error('Quick Stop offer SMS failed:', error instanceof Error ? error.message : error);
@@ -279,7 +271,7 @@ export async function sendQuickStopConfirmedSms(input: {
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = quickStopConfirmedText(input);
-    const sid = await sendProviderMessage(to, body);
+    const sid = await sendProviderMessage(to, body, { accountId: input.accountId ?? null, category: 'payment_message' });
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
     console.error('Quick Stop confirmed SMS failed:', error instanceof Error ? error.message : error);
@@ -298,7 +290,7 @@ export async function sendQuickStopStatusSms(input: {
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
     const body = withOptOut(input.message);
-    const sid = await sendProviderMessage(to, body);
+    const sid = await sendProviderMessage(to, body, { accountId: input.accountId ?? null, category: 'payment_message' });
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
     console.error('Quick Stop status SMS failed:', error instanceof Error ? error.message : error);
@@ -506,7 +498,7 @@ async function deliverCrewSms(params: {
   const { data: event } = await admin.from('sms_events').insert({ ...base, status: 'pending' }).select('id').single();
 
   try {
-    const providerId = await sendProviderMessage(normalized, params.body);
+    const providerId = await sendProviderMessage(normalized, params.body, { accountId: params.accountId ?? null, category: 'crew_message' });
     if (event) await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
     return { status: 'sent' };
   } catch (sendError) {
@@ -631,7 +623,7 @@ export async function sendSubcontractorSms(params: {
   }
 
   try {
-    const providerId = await sendProviderMessage(normalized, params.body);
+    const providerId = await sendProviderMessage(normalized, params.body, { accountId: params.accountId ?? null, category: 'crew_message' });
     await record({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() });
     return { status: providerId === SIMULATED_PROVIDER_ID ? 'simulated' : 'sent', providerId };
   } catch (error) {
@@ -676,7 +668,7 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
   }
 
   try {
-    const providerId = await sendProviderMessage(payment.homeowner_phone, body);
+    const providerId = await sendProviderMessage(payment.homeowner_phone, body, { accountId: payment.account_id, category: 'payment_message' });
     await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
     await logOutboundToInbox(payment.account_id, payment.homeowner_phone, body, providerId);
     return { status: 'sent' as const };
@@ -745,7 +737,7 @@ export async function sendJobUpdateSms(params: {
   accountId?: string;
 }) {
   const message = jobUpdateText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -759,7 +751,7 @@ export async function sendClientJobDashboardSms(params: {
   accountId?: string;
 }) {
   const message = clientJobDashboardText({ ...params, link: clientJobLink(params.token) });
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -781,7 +773,7 @@ export async function sendQuoteUpdatedSms(params: {
   accountId?: string;
 }) {
   const message = quoteUpdatedText({ ...params, link: clientJobLink(params.token) });
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -795,7 +787,7 @@ export function isSmsConfigured(): boolean {
 // One-time code for verifying a lead's phone number before intake submits.
 export async function sendVerificationCodeSms(params: { phone: string; businessName: string; code: string }) {
   const message = verificationCodeText(params);
-  return sendProviderMessage(params.phone, message);
+  return sendProviderMessage(params.phone, message, { accountId: null, category: 'verification' });
 }
 
 // One-tap polite decline for a lead that isn't a fit — closing the loop in one
@@ -808,7 +800,7 @@ export async function sendLeadDeclineSms(params: {
   accountId?: string;
 }) {
   const message = leadDeclineText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -823,7 +815,7 @@ export async function sendLeadQuoteVisitSms(params: {
   accountId?: string;
 }) {
   const message = leadQuoteVisitText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -837,7 +829,7 @@ export async function sendLeadQuoteVisitOptionsSms(params: {
   accountId?: string;
 }) {
   const message = leadQuoteVisitOptionsText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -851,7 +843,7 @@ export async function sendSchedulingOptionsSms(params: {
   accountId?: string;
 }) {
   const message = schedulingOptionsText({ ...params, link: scheduleLink(params.token) });
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -873,45 +865,10 @@ export async function sendInboxReplySms(params: {
   body: string;
   accountId: string;
 }): Promise<string> {
-  const text = inboxReplyText(params);
-
-  // Dark by default: no service-role client and no ledger call when the meter
-  // is off, so this costs exactly what it cost before.
-  const mode = textCreditMode();
-  let ledger: ReturnType<typeof createAdminClient> | null = null;
-  let lease: TextCreditLease | null = null;
-  if (mode !== 'off') {
-    ledger = createAdminClient();
-    const decision = await beginTextCreditUsage(ledger, {
-      accountId: params.accountId,
-      body: text,
-      // Fresh per invocation. A contractor who deliberately sends the same text
-      // twice is sending two texts, and the carrier bills both.
-      messageKey: `inbox-reply:${randomUUID()}`,
-    }, { mode });
-    if (decision.outcome === 'refused') {
-      throw new Error('You are out of text credits. Buy a top-up to keep texting customers.');
-    }
-    if (decision.outcome === 'allowed') lease = decision.lease;
-  }
-
-  try {
-    const providerId = await sendProviderMessage(params.phone, text);
-    if (ledger && lease) {
-      // SIMULATED_PROVIDER_ID means the message was composed, addressed, and
-      // went nowhere. Committing here would charge for a text no customer
-      // received.
-      if (providerId === SIMULATED_PROVIDER_ID) {
-        await releaseTextCreditUsage(ledger, lease, 'outbound_suppressed');
-      } else {
-        await commitTextCreditUsage(ledger, lease);
-      }
-    }
-    return providerId;
-  } catch (error) {
-    if (ledger && lease) await releaseTextCreditUsage(ledger, lease, 'send_failed');
-    throw error;
-  }
+  return sendProviderMessage(params.phone, inboxReplyText(params), {
+    accountId: params.accountId,
+    category: 'customer_message',
+  });
 }
 
 // Gentle nudge on a quote the client hasn't approved yet. Sent by the follow-up
@@ -930,7 +887,7 @@ export async function sendQuoteFollowupSms(params: {
     clientName: params.clientName,
     url: params.url,
   });
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -945,7 +902,7 @@ export async function sendRebookInviteSms(params: {
   accountId?: string;
 }) {
   const message = rebookInviteText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -966,7 +923,7 @@ export async function sendAppointmentReminderSms(params: {
   // a hand-typed copy beside it, and it had already drifted: no "Let's Get
   // Quoted:" prefix, no address clause. Now the card renders this exact string.
   const message = appointmentReminderText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -995,7 +952,7 @@ export async function sendArrivalSms(params: {
   if (!smsProviderConfig()) return { status: 'not_configured' };
   if (await isPhoneOptedOut(params.accountId, to)) return { status: 'opted_out' };
   try {
-    const sid = await sendProviderMessage(to, params.message);
+    const sid = await sendProviderMessage(to, params.message, { accountId: params.accountId ?? null, category: 'customer_message' });
     await logOutboundToInbox(params.accountId, to, params.message, sid);
     return { status: 'sent', sid };
   } catch (error) {
@@ -1019,7 +976,7 @@ export async function sendArrivalTimeChangedSms(params: {
   // A window rather than a time on purpose: one slow job turns a promised
   // "8:07 AM" into a text that was wrong the moment it was sent.
   const message = arrivalTimeChangedText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -1032,7 +989,7 @@ export async function sendMissedCallTextBack(params: { accountId: string; phone:
   // Shared with the settings preview, so the words an owner reads there are the
   // words their caller gets. See lib/missed-call.
   const message = missedCallTextBack(params.businessName);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -1052,7 +1009,7 @@ export async function sendSelectionRequestSms(params: {
   message: string;
 }): Promise<string | null> {
   if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
-  const providerId = await sendProviderMessage(params.phone, params.message);
+  const providerId = await sendProviderMessage(params.phone, params.message, { accountId: params.accountId ?? null, category: 'customer_message' });
   await logOutboundToInbox(params.accountId, params.phone, params.message, providerId);
   return providerId;
 }
@@ -1067,7 +1024,7 @@ export async function sendCardSetupSms(params: {
   accountId?: string;
 }) {
   const message = cardSetupText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'payment_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -1081,7 +1038,7 @@ export async function sendCardUpdateSms(params: {
   accountId?: string;
 }) {
   const message = cardUpdateText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'payment_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -1098,7 +1055,7 @@ export async function sendCampaignSms(params: {
   accountId?: string;
 }) {
   const message = campaignText(params);
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }
@@ -1125,7 +1082,7 @@ export async function sendReviewRequestSms(params: {
     clientName: params.clientName,
     reviewUrl: params.reviewUrl,
   });
-  const providerId = await sendProviderMessage(params.phone, message);
+  const providerId = await sendProviderMessage(params.phone, message, { accountId: params.accountId ?? null, category: 'customer_message' });
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
 }

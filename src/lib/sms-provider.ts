@@ -1,4 +1,14 @@
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import {
+  beginTextCreditUsage,
+  commitTextCreditUsage,
+  releaseTextCreditUsage,
+  textCreditMode,
+  type TextCreditLease,
+} from '@/lib/billing/text-credit-usage';
+import { billsTextCredits, type SmsSendContext } from '@/lib/sms-billing-policy';
 
 /**
  * EVERY provider-shaped fact in the application lives in this file.
@@ -323,8 +333,22 @@ export function outboundSmsSuppression(): SmsSuppression | null {
   return null;
 }
 
-/** The one egress point in the application. */
-export async function sendProviderMessage(to: string, body: string): Promise<string> {
+/**
+ * The one egress point in the application, and therefore the one place a text
+ * credit can be spent.
+ *
+ * `context` is REQUIRED rather than optional on purpose. Metering at the helper
+ * layer would leave every future caller free to skip it; an optional argument
+ * here would do the same thing more quietly, by making "unmetered" the default
+ * for code nobody has written yet. Because it is required, a new outbound
+ * message cannot reach a carrier until someone has said what kind of message it
+ * is — and `sms-billing-policy.ts` says what that kind costs.
+ */
+export async function sendProviderMessage(
+  to: string,
+  body: string,
+  context: SmsSendContext,
+): Promise<string> {
   const suppressed = outboundSmsSuppression();
   if (suppressed === 'not-configured') throw new Error('SMS provider is not configured.');
   if (suppressed) {
@@ -332,22 +356,54 @@ export async function sendProviderMessage(to: string, body: string): Promise<str
     // than throwing keeps the caller's ledger row honest: the message was
     // built and would have gone, which is a different fact from the provider
     // rejecting it, and the two must not land in the same column.
+    //
+    // Returning HERE, before any reservation, is also why nothing downstream
+    // has to remember not to bill a suppressed message.
     console.info(`Outbound SMS suppressed (${suppressed}).`);
     return SIMULATED_PROVIDER_ID;
   }
 
   const config = smsProviderConfig();
   if (!config) throw new Error('SMS provider is not configured.');
+
+  // Hold the credits before the carrier call, spend them once it is accepted.
+  // Dark by default: with the meter off there is no service-role client and no
+  // ledger round trip, so a send costs exactly what it cost before.
+  const mode = textCreditMode();
+  let ledger: SupabaseClient | null = null;
+  let lease: TextCreditLease | null = null;
+  if (mode !== 'off' && billsTextCredits(context) && context.accountId) {
+    const { createAdminClient } = await import('@/lib/auth');
+    ledger = createAdminClient();
+    const decision = await beginTextCreditUsage(ledger, {
+      accountId: context.accountId,
+      body,
+      // Fresh per send. Two deliberate sends of the same text are two texts,
+      // and the carrier bills both.
+      messageKey: `sms:${randomUUID()}`,
+    }, { mode });
+    if (decision.outcome === 'refused') {
+      throw new Error('This workspace is out of text credits. Buy a top-up to keep texting.');
+    }
+    if (decision.outcome === 'allowed') lease = decision.lease;
+  }
+
   const request = buildSendRequest(config, to, body);
 
-  const response = await fetch(request.url, { method: 'POST', headers: request.headers, body: request.body });
-  // Read as text, once. Reading as JSON is what threw on non-JSON bodies, and a
-  // Response body can only be consumed one time — so there was no second chance
-  // to see what actually came back.
-  const raw = await response.text();
-  const result = parseSendResponse(response.ok, response.status, raw);
-  if ('error' in result) throw new Error(result.error);
-  return result.providerId;
+  try {
+    const response = await fetch(request.url, { method: 'POST', headers: request.headers, body: request.body });
+    // Read as text, once. Reading as JSON is what threw on non-JSON bodies, and a
+    // Response body can only be consumed one time — so there was no second chance
+    // to see what actually came back.
+    const raw = await response.text();
+    const result = parseSendResponse(response.ok, response.status, raw);
+    if ('error' in result) throw new Error(result.error);
+    if (ledger && lease) await commitTextCreditUsage(ledger, lease);
+    return result.providerId;
+  } catch (error) {
+    if (ledger && lease) await releaseTextCreditUsage(ledger, lease, 'send_failed');
+    throw error;
+  }
 }
 
 // -- inbound signatures --------------------------------------------------------

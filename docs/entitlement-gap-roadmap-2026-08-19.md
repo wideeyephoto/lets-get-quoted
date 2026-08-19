@@ -23,7 +23,7 @@ calendar estimates.
 | AI Intake credits | yes | yes | yes | `api/public/leads/classify-estimate` | `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` | **absent** |
 | File storage | yes | yes | yes | five workspace `*-storage.ts` libs | `LGQ_STORAGE_CAP_ENFORCED` | **absent** |
 | Office seats | yes | yes | yes | **none** | `LGQ_OFFICE_SEAT_ENTITLEMENT_GATE_ENABLED` | **absent** |
-| Text credits | yes | yes | yes | `lib/sms.ts` (inbox replies only) | `LGQ_TEXT_CREDIT_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
+| Text credits | yes | yes | yes | `sms-provider.ts` (all 32 sites) | `LGQ_TEXT_CREDIT_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | Marketing email sends | yes | yes | yes | `lib/campaigns.ts` | `LGQ_MARKETING_EMAIL_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | AI writing drafts | yes | no | no | no | none | n/a |
 | Custom domains | yes | no | no | no | none | n/a |
@@ -35,8 +35,8 @@ calendar estimates.
 | `featureFlags` block | yes | n/a | no | no | none | n/a |
 
 Office seats being callerless is expected and documented (`docs/office-seat-activation.md`).
-Text credits reach only inbox replies so far: that is the one message whose billing is not in
-question. The rest of 1.2 is blocked on a product decision rather than on code.
+Text credits are metered at the single egress point, so every outbound text is classified. Which
+categories bill is two entries in sms-billing-policy.ts that are still placeholders, not decisions.
 Everything below those rows is not expected.
 
 **Nothing in this table is enforced in production today.** Every gate is exact-`'1'` and all four
@@ -232,7 +232,7 @@ are the messages sitting closest to a boundary where a customer is most likely t
 they are charged come from one function. All 30 existing campaign-guard assertions still pass
 unchanged; two were added for the emoji case and for not over-warning on an accented customer name.
 
-### 1.2 Text credit meter — L — **metering built; wiring blocked on a product decision**
+### 1.2 Text credit meter — L — **built and wired; two pricing answers outstanding**
 
 **Seam decision.** `sendProviderMessage(to, body)` at `src/lib/sms-provider.ts:327` is the single
 funnel every outbound message passes through — but it takes no `accountId`. Threading it there
@@ -279,7 +279,36 @@ currently optional, and finding every caller that omits it), and wrap the 32 cal
 reserve/send/commit — committing only on a real provider ID, never on `SIMULATED_PROVIDER_ID`,
 which means the message was composed and went nowhere.
 
-#### The exempt-set decision, in one table
+#### Wired — all 32 sites, at the egress point
+
+`sendProviderMessage(to, body, context)` now takes a **required** third argument, and holds and
+spends the credits itself. Required rather than optional on purpose: metering in each helper would
+let a new caller skip it, and an optional argument would do the same thing more quietly by making
+unmetered the default for code nobody has written yet. Because it is required, the compiler
+enumerated every one of the 32 sites and a new outbound message cannot reach a carrier until
+someone says what kind of message it is.
+
+`context` carries an `accountId` and a **category**, and `src/lib/sms-billing-policy.ts` maps
+category to billable. That indirection is the point: 32 call sites each carrying their own boolean
+would let two texts of the same kind disagree, and would mean re-reading 32 functions every time
+the pricing answer moves. A call site states a fact about itself that does not change; one table
+states what that costs.
+
+Two smaller properties worth keeping:
+
+- **Suppression returns before any reservation.** `SIMULATED_PROVIDER_ID` means the message was
+  composed, addressed and went nowhere, so nothing downstream has to remember not to bill it.
+- **Dark by default.** With the meter off there is no service-role client and no ledger round trip,
+  so a send costs exactly what it cost before — on the hottest path in the product.
+
+#### The exempt-set decision, now one line each
+
+The three questions below are no longer spread across call sites. They are three entries in
+`BILLABLE` in `sms-billing-policy.ts`, and `UNDECIDED_CATEGORIES` names the two that are
+placeholders rather than decisions so a reader can tell a settled `false` from an unanswered one.
+Both default to **exempt**: billing for something nobody agreed to charge for is the harder mistake
+to undo, because a customer notices a charge they did not expect and does not notice one that never
+came.
 
 Every helper that reaches a carrier, grouped by the question each group raises. Only the last
 column needs answering; everything else here is read out of the code.

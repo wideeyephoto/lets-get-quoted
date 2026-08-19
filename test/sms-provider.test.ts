@@ -126,7 +126,7 @@ describe('the outbound off switch', () => {
   it('still throws when there is no provider at all, which is the local case', async () => {
     noProviders();
     expect(outboundSmsSuppression()).toBe('not-configured');
-    await expect(sendProviderMessage('+15551230000', 'hi')).rejects.toThrow(/not configured/i);
+    await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/not configured/i);
   });
 
   /**
@@ -159,7 +159,7 @@ describe('the outbound off switch', () => {
       live();
       apply();
       const spy = vi.spyOn(globalThis, 'fetch');
-      await expect(sendProviderMessage('+15551230000', 'hi')).resolves.toBe(SIMULATED_PROVIDER_ID);
+      await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).resolves.toBe(SIMULATED_PROVIDER_ID);
       expect(spy).not.toHaveBeenCalled();
       expect(isLiveMessagingEnvironment()).toBe(false);
       spy.mockRestore();
@@ -179,7 +179,7 @@ describe('the outbound off switch', () => {
     expect(isLiveMessagingEnvironment()).toBe(true);
     // The suite's own socket guard is what stops it here — proof that the
     // suppression, not the absence of an opportunity, is doing the work above.
-    await expect(sendProviderMessage('+15551230000', 'hi')).rejects.toThrow(/Blocked/);
+    await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/Blocked/);
   });
 });
 

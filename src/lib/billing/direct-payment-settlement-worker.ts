@@ -89,7 +89,7 @@ export interface DirectPaymentSettlementStore {
 
 export interface DirectPaymentSettlementMessenger {
   resolveEnvelope(claim: DirectPaymentSettlementClaim): Promise<DirectPaymentSettlementSmsEnvelope>;
-  send(phoneNumber: string, body: string): Promise<string>;
+  send(phoneNumber: string, body: string, accountId: string): Promise<string>;
 }
 
 type RpcError = Readonly<{ code?: string; message?: string }>;
@@ -425,10 +425,14 @@ implements DirectPaymentSettlementMessenger {
     return Object.freeze({ phoneNumber, body });
   }
 
-  send(phoneNumber: string, body: string): Promise<string> {
+  send(phoneNumber: string, body: string, accountId: string): Promise<string> {
     return sendProviderMessage(
       requiredString(phoneNumber, 'phone_number', PHONE_PATTERN),
       requiredString(body, 'sms_body'),
+      // A paid-invoice receipt. Exempt from text credits today -- see the
+      // payment_message category in lib/sms-billing-policy.ts, which is one
+      // of the two answers still outstanding.
+      { accountId, category: 'payment_message' },
     );
   }
 }
@@ -572,7 +576,7 @@ export async function runDirectPaymentSettlementBatch(
 
       let providerId: string;
       try {
-        providerId = await messenger.send(stage.phoneNumber, envelope.body);
+        providerId = await messenger.send(stage.phoneNumber, envelope.body, claim.workspaceId);
       } catch {
         // Egress was entered. Even a provider error may arrive after acceptance;
         // never turn this into a retryable send.
