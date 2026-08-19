@@ -160,6 +160,18 @@ revoke all on function public.guard_office_seat_entry()
 -- Enforced in the database rather than the action, because the action is not the
 -- only writer: support tooling, the service-role client and a future promotion
 -- flow all reach this table.
+--
+-- AUDITED AGAINST EVERY CURRENT WRITER before applying, since a guard that
+-- blocks a working path is worse than the hole it closes:
+--   * crew-auth.ts is the only code that deletes a membership, and it filters
+--     role = 'crew', which returns early here;
+--   * both account-deletion paths (admin and owner self-serve) delete the
+--     ACCOUNT and let the cascade take memberships, which this allows;
+--   * `auth.admin.deleteUser` cascades memberships too, so it would now fail for
+--     the last owner of a LIVE workspace. Both callers already run it only when
+--     the user has no memberships left, so neither changes behaviour -- but a
+--     future caller that does not check will be refused here, which is the
+--     correct answer rather than a surprise.
 create or replace function public.guard_last_owner()
 returns trigger
 language plpgsql
