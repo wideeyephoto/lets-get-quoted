@@ -187,6 +187,7 @@ describe('the beats themselves', () => {
 describe('buildMarketingInput', () => {
   const beat = BEATS[0];
   const input = {
+    accountId: 'acct',
     beat,
     channel: 'email' as const,
     businessName: 'BrokePipes',

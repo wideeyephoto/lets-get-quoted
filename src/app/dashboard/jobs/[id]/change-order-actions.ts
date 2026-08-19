@@ -69,6 +69,7 @@ export async function draftChangeOrderAction(
   }
 
   const draft = await draftChangeOrder({
+    accountId,
     trade: getSiteContent(site?.content as Record<string, unknown> | null).trade.trim() || null,
     jobScope: job.scope ?? '',
     fieldNote: order.fieldNote,

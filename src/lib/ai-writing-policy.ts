@@ -97,15 +97,13 @@ export type AiWritingContext = Readonly<{
 /**
  * Modules whose kind BILLS but which have no `accountId` in scope yet.
  *
- * Written down rather than left implicit, because the failure mode is silent: a
- * billable generation with a null account simply does not bill, and looks
- * identical to one that is exempt on purpose. Threading the account through
- * these three is what remains of roadmap item 1.4.
+ * Empty, and worth keeping empty. The failure mode it guards against is silent:
+ * a billable generation with a null account simply does not bill, and looks
+ * identical to one that is exempt on purpose. If a module is ever added that
+ * bills by kind before its account is threaded, name it here rather than
+ * leaving the gap to be discovered from a revenue report.
  */
-export const AI_WRITING_CALLS_REQUIRING_ACCOUNT: readonly string[] = Object.freeze([
-  'change-order-ai.ts',
-  'marketing-draft.ts',
-]);
+export const AI_WRITING_CALLS_REQUIRING_ACCOUNT: readonly string[] = Object.freeze([]);
 
 /** Whether this particular generation should hold and spend a draft credit. */
 export function billsAiWritingDrafts(context: AiWritingContext): boolean {

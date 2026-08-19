@@ -31,6 +31,8 @@ export type MarketingDraft = {
 };
 
 export type DraftInput = {
+  /** Whose AI-writing balance this draft is charged to. */
+  accountId: string;
   beat: Beat;
   channel: Channel;
   businessName: string;
@@ -170,7 +172,7 @@ export async function draftMarketing(input: DraftInput): Promise<MarketingDraft 
       instructions: INSTRUCTIONS,
       input: buildMarketingInput(input),
       text: { format: { type: 'json_object' } },
-    }, { accountId: null, kind: 'marketing_draft' });
+    }, { accountId: input.accountId, kind: 'marketing_draft' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     return normalizeMarketingDraft(JSON.parse(extractOutputText(await response.json())), input.year);
   } catch (error) {

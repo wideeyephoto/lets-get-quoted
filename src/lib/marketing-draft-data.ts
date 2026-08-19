@@ -29,6 +29,7 @@ export async function draftMarketingForAccount(
   const zone = climateZoneForState(stateFromAddress((account?.mailing_address as string | null) ?? site?.service_area ?? null));
 
   return draftMarketing({
+    accountId,
     beat,
     channel,
     // Feeds generated marketing copy, which becomes customer-facing.

@@ -68,11 +68,12 @@ describe('the answer that is a placeholder, not a decision', () => {
 });
 
 describe('the gap that would otherwise be silent', () => {
-  it('names the modules whose kind bills but which have no account yet', () => {
+  it('has no module billing by kind without an account to bill', () => {
     // A billable generation with a null account does not bill and looks exactly
-    // like one that is exempt on purpose. That is why the list is written down.
-    expect([...AI_WRITING_CALLS_REQUIRING_ACCOUNT].sort())
-      .toEqual(['change-order-ai.ts', 'marketing-draft.ts']);
+    // like one that is exempt on purpose, so the gap is named rather than left
+    // to be found in a revenue report. It is empty now: every billable kind has
+    // its account threaded.
+    expect(AI_WRITING_CALLS_REQUIRING_ACCOUNT).toEqual([]);
   });
 
   it('decides billing in one table and nowhere else', () => {

@@ -84,6 +84,7 @@ export async function draftMarketingAction(
   const zone = climateZoneForState(stateFromAddress((account?.mailing_address as string | null) ?? site?.service_area ?? null));
 
   const draft = await draftMarketing({
+    accountId,
     beat,
     channel,
     businessName: pickBusinessName(site, account, 'your business'),
