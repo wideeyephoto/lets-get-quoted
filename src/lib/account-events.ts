@@ -24,7 +24,16 @@ import { createAdminClient } from '@/lib/auth';
  * The column is free text with no check constraint, so adding a kind needs no
  * migration. The history page renders `summary` as written.
  */
-export type AccountEventKind = 'automation_toggled' | 'automation_settings_changed';
+/**
+ * `kind` is free text in the database, so this union is the only thing keeping
+ * the audit trail's vocabulary closed. Widen it deliberately; a typo'd kind
+ * writes happily and then never matches anything anybody filters on.
+ */
+export type AccountEventKind =
+  | 'automation_toggled'
+  | 'automation_settings_changed'
+  | 'ai_voice_settings_updated'
+  | 'ai_voice_recording_changed';
 
 export async function recordAccountEvent(input: {
   accountId: string;
