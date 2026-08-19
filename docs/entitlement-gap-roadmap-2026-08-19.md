@@ -624,19 +624,49 @@ and that costs one comment to prevent.
 
 ## Phase 3 — The gates the business model depends on
 
-### 3.1 Enforce `entitlement_state` — L — **blocks launch gate #5**
+### 3.1 Enforce `entitlement_state` — L — **blocks launch gate #5, and one surface already over-degrades**
 
 `active | grace | restricted | archived` is projected by the subscription event projector,
 admin-editable via `admin-plan-authority.ts`, and displayed in settings and the admin console.
 The only functional read is *checkout eligibility* — `base-plan-subscription-entrypoint.ts:229`
 uses it to decide whether a Flex workspace may start a paid plan.
 
-**No product surface degrades on `past_due`, `restricted`, or `canceled`.** A workspace that stops
-paying keeps everything. `/api/cron/dunning` is homeowner-invoice dunning, unrelated to
-subscriptions.
+*This item said no product surface degrades on `past_due`, `restricted` or `canceled` -- that a
+workspace which stops paying keeps everything. **That is wrong, and it is wrong in the worst
+direction.** One surface already degrades, and it is the one that should degrade last.*
+
+**A workspace in `grace` cannot take a payment at all.** The projector maps a `past_due`
+subscription to `grace` (`20260816060000:1005-1009`), and `prepare_direct_payment` requires
+`entitlement_state = active` for every non-replay payment:
+
+```sql
+if not v_entitlement_is_current then
+  raise exception 'direct payment requires the exact canonical active workspace entitlement'
+    using errcode = '55000';
+end if;
+```
+
+So the moment a contractor's card fails, they lose the ability to collect money from their own
+customers -- which is the single thing most likely to let them fix the failed card. They are not
+told why; they get a raw `55000`. `grace` is currently not a grace period, it is a harder stop
+than `restricted` sounds like.
+
+It is **latent**, not live: reaching `grace` requires the subscription projection worker, whose
+flag is absent from Production. It arms itself the day base plans go on sale, which is precisely
+when nobody will be looking for it.
+
+Flex is unaffected -- `billing_status = 'free'` and the projector only writes this for
+subscription events -- so this cannot be seen today no matter how the product is used.
+
+The other reads are narrower than this document implied. `base-plan-subscription-entrypoint.ts:229`
+gates starting a paid plan on `active`; the crew and office seat gates refuse only on `archived`
+(`20260816044858:165,326`, `20260816053000:116`). `/api/cron/dunning` is homeowner-invoice dunning,
+unrelated to subscriptions.
 
 This is the gate that makes a paid plan actually paid, and it cannot be skipped before selling
-subscriptions. It needs three things:
+subscriptions. The policy matrix below is now the ONLY thing standing between the states and a
+coherent product, because the mechanism to read them exists and one of them is already wired
+backwards. It needs three things:
 
 1. A policy matrix — what precisely does `grace` allow that `restricted` does not, and what does
    `archived` retain? The book already commits to some of this: archived Flex workspaces keep
