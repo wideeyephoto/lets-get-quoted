@@ -181,11 +181,20 @@ async function insertCurrentSuccess(
   suffix: string,
 ): Promise<string> {
   const eventId = randomUUID();
+  const providerEventId = `evt_success_${suffix}_${fixture.token}`;
+  // billing_events_stripe_identity_format_check is ^evt_[A-Za-z0-9_]{8,}$ --
+  // no hyphens, matching real Stripe IDs. A suffix of 'after-expiration' once
+  // produced an id the table refused, and the insert failed inside a race the
+  // test was mid-way through, so it surfaced as `expected false to be true`
+  // rather than as a bad identifier. Fail here, where the name is visible.
+  if (!/^evt_[A-Za-z0-9_]{8,}$/.test(providerEventId)) {
+    throw new Error(`Fixture built an invalid Stripe event id: ${providerEventId}`);
+  }
   await insertReceivedEvent(client, {
     id: eventId,
     accountId: fixture.accountId,
     stripeAccountId: fixture.stripeAccountId,
-    providerEventId: `evt_success_${suffix}_${fixture.token}`,
+    providerEventId,
     eventType: 'checkout.session.completed',
     checkoutSessionId: fixture.currentSessionId,
     providerCreatedAt: race.providerCreatedAt,
@@ -638,7 +647,7 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
         pg().b,
         fixture,
         race,
-        'after-expiration',
+        'after_expiration',
       ));
       const wait = await waitForApplicationLock(
         pg().control,
