@@ -505,6 +505,17 @@ as coming on the pricing page in the same words the dashboard already uses, and 
 add-on when it lands. What should not survive go-live is the two surfaces disagreeing — one selling
 it as included while the other tells the buyer it is not available yet.
 
+**And do not gate the attach path that does exist.** `updateMissedCallNumbersAction`
+(`settings/actions.ts:359`) writes `call_tracking_number` with no entitlement check, which looks
+like the missing gate this item asked for. It is not. That is a number the contractor **brings** —
+they buy it themselves and point its webhook at LGQ — and it drives missed-call text-back and call
+forwarding. The price book does not mention call tracking or missed-call text-back anywhere, on
+any plan, so it is not plan-differentiated. Gating it on `dedicated_business_numbers` would invent
+a restriction the price book does not state and would break the feature for every Flex workspace.
+
+So there is nothing here to enforce: the thing that is sold cannot be assigned yet, and the thing
+that can be attached is not the thing that is sold.
+
 ### 2.3 Decide the fate of `featureFlags` — S
 
 `entitlement-catalog.ts:78` builds `quickbooks`, `shared_lgq_texting_number`, `voice_included`,
