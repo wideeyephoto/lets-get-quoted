@@ -280,7 +280,7 @@ Reservation pattern: reserve N segments, send, commit on a provider ID, release 
 
 Flag: `LGQ_TEXT_CREDIT_GATE_ENABLED`.
 
-### 1.3 Marketing email meter — M
+### 1.3 Marketing email meter — M — **done and wired**
 
 A clean seam already exists. `sendCampaignEmail` is a dedicated marketing function called only
 from `src/lib/campaigns.ts`, which is also the only caller of `sendCampaignSms`.
@@ -290,11 +290,35 @@ email: Unlimited · fair use" on every plan — metering `email.ts` broadly woul
 and silently cap invoices, quotes, and portal links. The twenty-odd `send*Email` functions in
 `email.ts` are transactional and stay unmetered.
 
-`campaigns.ts:172` already chunks recipients into batches. Reserve the audience size at campaign
-start, commit per accepted delivery, release the remainder — a campaign that dies halfway should
-not bill for what it never sent.
+**Done, and wired — the first meter that runs end to end.** `sendCampaignEmail` takes
+`accountId: string` **required** and has exactly two callers, so unlike 1.2 there was no exempt set
+to settle and no optional parameter to make required.
 
-Flag: `LGQ_MARKETING_EMAIL_GATE_ENABLED`.
+*One design correction.* This document proposed reserving the audience size at campaign start and
+committing per accepted delivery. That cannot be expressed: `commit_usage_reservation(uuid, text)`
+takes **no unit count**, so a reservation commits whole or releases whole. Reserving the audience
+would mean either billing for a campaign that died on recipient three, or writing a partial-commit
+RPC. A campaign is capped at 250 recipients in batches of eight, so **one reservation per
+recipient** is bounded, exact, and needs no new SQL.
+
+`src/lib/billing/marketing-email-usage.ts` holds a credit before each send, commits when the
+provider accepts, releases on failure. `campaigns.ts` builds the service-role client lazily and
+only when the meter is on, so a dark meter changes neither the module's import graph nor what a
+campaign costs.
+
+**Where its failure posture differs from text credits.** Text may not refuse on uncertainty
+because it carries appointment reminders and payment receipts. A marketing campaign is
+discretionary, so this one may — but only for **one recipient, never the campaign**. A transient
+ledger error still sends: a campaign silently truncated while the contractor watches it run and
+reports success is worse than an unbilled email. And a genuine refusal increments `failed`, so the
+shortfall appears in the result the contractor is shown rather than being reported as fully sent.
+
+Flags: `LGQ_MARKETING_EMAIL_METER_ENABLED`, then `LGQ_MARKETING_EMAIL_GATE_ENABLED`.
+
+**Note for 1.4.** That will be the third module in this shape. Two was not enough to know which
+parts are genuinely common — and the two that exist already disagree about the most important
+part, which is what happens when the ledger cannot answer. At three, extract the shared core;
+leave `ai-intake-usage.ts` alone when doing it, since it is the only one with a live caller.
 
 ### 1.4 AI writing drafts meter — M — **needs a product decision first**
 

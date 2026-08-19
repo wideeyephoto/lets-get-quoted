@@ -1,5 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
+import {
+  beginMarketingEmailUsage,
+  commitMarketingEmailUsage,
+  marketingEmailMode,
+  releaseMarketingEmailUsage,
+  type MarketingEmailLease,
+} from '@/lib/billing/marketing-email-usage';
 import { listClientsWithStats } from '@/lib/clients';
 import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
@@ -169,6 +177,17 @@ export async function sendCampaign(
   let failed = 0;
   let skipped = 0;
 
+  // Metering is dark by default. The service-role client is built only when the
+  // meter is on, and imported lazily so a disabled meter changes neither this
+  // module's import graph nor what a campaign send costs.
+  const meterMode = marketingEmailMode();
+  const runId = randomUUID();
+  let ledger: SupabaseClient | null = null;
+  if (meterMode !== 'off') {
+    const { createAdminClient } = await import('@/lib/auth');
+    ledger = createAdminClient();
+  }
+
   for (const batch of chunk(targets, BATCH_SIZE)) {
     await Promise.all(
       batch.map(async (recipient) => {
@@ -181,19 +200,45 @@ export async function sendCampaign(
           return;
         }
         if (canEmail) {
-          try {
-            await sendCampaignEmail({
-              recipientEmail: recipient.email as string,
-              businessName: input.businessName,
-              subject: personalize(input.subject, recipient),
-              body: personalize(input.body, recipient),
-              accountId,
-              mailingAddress: input.mailingAddress,
-            });
-            emailSent++;
-          } catch (error) {
-            failed++;
-            console.error('Campaign email failed:', error instanceof Error ? error.message : error);
+          // Hold a credit before the send, spend it once the provider accepts,
+          // give it back on anything else. One reservation per recipient because
+          // commit_usage_reservation has no unit count -- see
+          // lib/billing/marketing-email-usage.ts.
+          let lease: MarketingEmailLease | null = null;
+          let mayEmail = true;
+          if (ledger) {
+            const decision = await beginMarketingEmailUsage(
+              ledger,
+              { accountId, sendKey: `${runId}:${recipient.email as string}` },
+              { mode: meterMode },
+            );
+            if (decision.outcome === 'refused') {
+              // Counted as a failure so the shortfall appears in the result the
+              // contractor is shown. Silently skipping would report a campaign
+              // as fully sent when part of it never went.
+              mayEmail = false;
+              failed++;
+            } else if (decision.outcome === 'allowed') {
+              lease = decision.lease;
+            }
+          }
+          if (mayEmail) {
+            try {
+              await sendCampaignEmail({
+                recipientEmail: recipient.email as string,
+                businessName: input.businessName,
+                subject: personalize(input.subject, recipient),
+                body: personalize(input.body, recipient),
+                accountId,
+                mailingAddress: input.mailingAddress,
+              });
+              emailSent++;
+              if (ledger && lease) await commitMarketingEmailUsage(ledger, lease);
+            } catch (error) {
+              failed++;
+              console.error('Campaign email failed:', error instanceof Error ? error.message : error);
+              if (ledger && lease) await releaseMarketingEmailUsage(ledger, lease, 'send_failed');
+            }
           }
         }
         if (canSms) {
