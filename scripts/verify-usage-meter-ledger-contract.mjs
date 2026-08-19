@@ -79,13 +79,50 @@ function liftFunction(name) {
   return LEDGER.slice(start, close + 4);
 }
 
-// The exact parameter shapes the meters send. Kept as data so a drift between
-// this file and a meter is visible rather than buried in a call.
+/**
+ * The exact parameter shapes the meters send, READ OUT OF THE METERS.
+ *
+ * These four rows used to be transcribed by hand, and the point of the whole
+ * script is that the meters and the ledger agree — so a hand-copied row makes it
+ * prove a contract nothing sends. It did: the ai-intake row declared operation
+ * `ai_intake_thread` where the meter sends `ai_intake`, and metadata schema
+ * `ai-intake.v1` where it sends `ai_intake_thread_v1`. Both passed, because the
+ * ledger accepts any operation matching its regex. A green run meant nothing for
+ * that meter.
+ *
+ * Parsing the source is uglier than a literal and worth it: the drift this
+ * catches is exactly the drift a literal cannot.
+ */
+function readMeter(meter, units) {
+  const src = readFileSync(join(REPO, 'src/lib/billing', `${meter}.ts`), 'utf8').replace(/\r\n/g, '\n');
+  const pick = (re, what) => {
+    const m = src.match(re);
+    if (!m) throw new Error(`${meter}: could not read ${what}`);
+    return m[1];
+  };
+  const resource = pick(/export const [A-Z_]*RESOURCE_CODE\s*=\s*'([^']+)'/, 'resource code');
+  const operation = pick(/export const [A-Z_]*OPERATION_TYPE\s*=\s*'([^']+)'/, 'operation type');
+
+  // Metadata schema is either an inline literal or a named constant.
+  const inline = src.match(/p_metadata:\s*\{\s*schema:\s*'([^']+)'/);
+  let schema;
+  if (inline) {
+    schema = inline[1];
+  } else {
+    const named = src.match(/schema:\s*([A-Z][A-Z0-9_]*)\s*,/);
+    if (!named) throw new Error(`${meter}: could not read metadata schema`);
+    schema = pick(new RegExp(`const ${named[1]}\\s*=\\s*'([^']+)'`), `${named[1]}`);
+  }
+  return { meter, resource, operation, units, schema };
+}
+
+// `units` stays declared: it is a property of the CALL, not of the module. Text
+// reserves one credit per carrier segment; the rest reserve one per thing.
 const METERS = [
-  { meter: 'text-credit-usage', resource: 'text_segments', operation: 'text_send', units: 3, schema: 'text-credit.v1' },
-  { meter: 'marketing-email-usage', resource: 'marketing_email_sends', operation: 'marketing_email_send', units: 1, schema: 'marketing-email.v1' },
-  { meter: 'ai-writing-usage', resource: 'ai_writing_drafts', operation: 'ai_writing_draft', units: 1, schema: 'ai-writing.v1' },
-  { meter: 'ai-intake-usage', resource: 'ai_intake_threads', operation: 'ai_intake_thread', units: 1, schema: 'ai-intake.v1' },
+  readMeter('text-credit-usage', 3),
+  readMeter('marketing-email-usage', 1),
+  readMeter('ai-writing-usage', 1),
+  readMeter('ai-intake-usage', 1),
 ];
 
 /** The regex every meter uses to recognise a genuine shortfall. */
@@ -127,6 +164,16 @@ try {
   }
   await c.query('insert into public.accounts (id) values ($1)', [ACCOUNT]);
   ck('the real ledger installs on a real engine', true);
+
+  // What was READ from each meter, printed. A parser that quietly matched the
+  // wrong constant would otherwise produce a green run that proves nothing --
+  // which is the exact failure this replaced.
+  ck(
+    'the meters’ parameters were read from the meters, not transcribed',
+    METERS.every((m) => m.resource && m.operation && m.schema)
+      && new Set(METERS.map((m) => m.operation)).size === METERS.length,
+    METERS.map((m) => `${m.meter} -> ${m.resource} / ${m.operation} / ${m.schema}`).join('; '),
+  );
 
   const available = async (resource) => Number((await c.query(
     `select coalesce(sum(granted_units - consumed_units - reserved_units - revoked_units), 0) as n
