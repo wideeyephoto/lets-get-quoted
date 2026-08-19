@@ -304,9 +304,10 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  */
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:
-    'the capacity rail is complete - payment writes the ledger and a sweep cancels '
-    + 'it when the subscription lapses - but none of that is applied or deployed to '
-    + 'production yet, so a paid one would still grant nothing',
+    'the capacity rail is applied and deployed - payment writes the ledger and the '
+    + 'lifecycle sweep cancels it when the subscription lapses - but no live recurring '
+    + 'Price exists for it, so it cannot be bought at all, and the cap is not '
+    + 'enforced, so buying headroom would change nothing a workspace can feel',
   office_user:
     'office seats are dark - no invite lifecycle, no last-owner protection, and an '
     + 'added office user would hold full owner authority',
