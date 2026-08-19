@@ -1,6 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
+import {
+  beginTextCreditUsage,
+  commitTextCreditUsage,
+  releaseTextCreditUsage,
+  textCreditMode,
+  type TextCreditLease,
+} from '@/lib/billing/text-credit-usage';
 import {
   appointmentReminderText,
   arrivalTimeChangedText,
@@ -851,8 +859,59 @@ export async function sendSchedulingOptionsSms(params: {
 // A free-form contractor reply from the two-way inbox. Prefixed with the
 // business name so the client knows who's texting from the shared number.
 // Returns the provider message id for the message log. Caller checks opt-out.
-export async function sendInboxReplySms(params: { phone: string; businessName: string; body: string }): Promise<string> {
-  return sendProviderMessage(params.phone, inboxReplyText(params));
+//
+// accountId is REQUIRED here, unlike most helpers in this file, and this is the
+// first caller of the text-credit meter. Both for the same reason: it is the one
+// outbound message whose billing is not in question. A contractor typing a reply
+// to their own customer is unambiguously their workspace's own text -- it is not
+// a self-alert, not a payment message, and not a signup code, which are the three
+// categories still undecided. See 1.2 in
+// docs/entitlement-gap-roadmap-2026-08-19.md.
+export async function sendInboxReplySms(params: {
+  phone: string;
+  businessName: string;
+  body: string;
+  accountId: string;
+}): Promise<string> {
+  const text = inboxReplyText(params);
+
+  // Dark by default: no service-role client and no ledger call when the meter
+  // is off, so this costs exactly what it cost before.
+  const mode = textCreditMode();
+  let ledger: ReturnType<typeof createAdminClient> | null = null;
+  let lease: TextCreditLease | null = null;
+  if (mode !== 'off') {
+    ledger = createAdminClient();
+    const decision = await beginTextCreditUsage(ledger, {
+      accountId: params.accountId,
+      body: text,
+      // Fresh per invocation. A contractor who deliberately sends the same text
+      // twice is sending two texts, and the carrier bills both.
+      messageKey: `inbox-reply:${randomUUID()}`,
+    }, { mode });
+    if (decision.outcome === 'refused') {
+      throw new Error('You are out of text credits. Buy a top-up to keep texting customers.');
+    }
+    if (decision.outcome === 'allowed') lease = decision.lease;
+  }
+
+  try {
+    const providerId = await sendProviderMessage(params.phone, text);
+    if (ledger && lease) {
+      // SIMULATED_PROVIDER_ID means the message was composed, addressed, and
+      // went nowhere. Committing here would charge for a text no customer
+      // received.
+      if (providerId === SIMULATED_PROVIDER_ID) {
+        await releaseTextCreditUsage(ledger, lease, 'outbound_suppressed');
+      } else {
+        await commitTextCreditUsage(ledger, lease);
+      }
+    }
+    return providerId;
+  } catch (error) {
+    if (ledger && lease) await releaseTextCreditUsage(ledger, lease, 'send_failed');
+    throw error;
+  }
 }
 
 // Gentle nudge on a quote the client hasn't approved yet. Sent by the follow-up

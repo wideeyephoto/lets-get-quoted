@@ -23,7 +23,7 @@ calendar estimates.
 | AI Intake credits | yes | yes | yes | `api/public/leads/classify-estimate` | `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` | **absent** |
 | File storage | yes | yes | yes | five workspace `*-storage.ts` libs | `LGQ_STORAGE_CAP_ENFORCED` | **absent** |
 | Office seats | yes | yes | yes | **none** | `LGQ_OFFICE_SEAT_ENTITLEMENT_GATE_ENABLED` | **absent** |
-| Text credits | yes | yes | yes | **none yet** | `LGQ_TEXT_CREDIT_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
+| Text credits | yes | yes | yes | `lib/sms.ts` (inbox replies only) | `LGQ_TEXT_CREDIT_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | Marketing email sends | yes | yes | yes | `lib/campaigns.ts` | `LGQ_MARKETING_EMAIL_METER_ENABLED` + `..._GATE_ENABLED` | **absent** |
 | AI writing drafts | yes | no | no | no | none | n/a |
 | Custom domains | yes | no | no | no | none | n/a |
@@ -35,7 +35,8 @@ calendar estimates.
 | `featureFlags` block | yes | n/a | no | no | none | n/a |
 
 Office seats being callerless is expected and documented (`docs/office-seat-activation.md`).
-Text credits being callerless is 1.2, and is blocked on a product decision rather than on code.
+Text credits reach only inbox replies so far: that is the one message whose billing is not in
+question. The rest of 1.2 is blocked on a product decision rather than on code.
 Everything below those rows is not expected.
 
 **Nothing in this table is enforced in production today.** Every gate is exact-`'1'` and all four
@@ -308,13 +309,21 @@ collect — which is the moment they can least afford it, and the moment LGQ ear
 There is often no workspace relationship yet, and refusing it does not save a credit, it blocks
 lead capture. This one is exempt unless someone argues otherwise.
 
-**Q4 — the two that should bill and cannot.** `sendInboxReplySms` is a contractor replying by hand
-from the two-way inbox — unambiguously their own outbound message, and it has no `accountId`
-threaded to it at all. `sendPaymentSmsEvent` likewise. These are not exemptions, they are missing
-plumbing, and they are the two most likely to be forgotten because they will not show up as a
-compile error.
+**Q4 — missing plumbing, now closed.** This listed two helpers with no `accountId`.
+`sendPaymentSmsEvent` was a false positive: the inventory checked signatures, and that one derives
+`payment.account_id` from the row it already loads. So there was one, and it is done.
 
-Answer Q1–Q3, and the wiring becomes mechanical.
+`sendInboxReplySms` now takes `accountId` as a **required** parameter and is **the text meter's
+first live caller**. It was the right one to wire first because its billing is not in question — a
+contractor typing a reply to their own customer is not a self-alert, not a payment message, and not
+a signup code, so none of Q1–Q3 touches it. Both callers already had the account in scope.
+
+It also pins the rule the other 30 sites will need: `sendProviderMessage` returns
+`SIMULATED_PROVIDER_ID` when outbound SMS is suppressed, meaning the message was composed,
+addressed and went nowhere. That path **releases** rather than commits. Committing would charge a
+contractor for a text no customer received.
+
+Answer Q1–Q3, and the rest is mechanical.
 
 **Semantics from the book.** Outbound only — inbound replies do not consume, subject to fair-use
 controls. Count segments, not messages. Note that `sendProviderMessage` returns a

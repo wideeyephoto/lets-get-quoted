@@ -33,7 +33,7 @@ export async function sendReplyAction(phone: string, formData: FormData) {
   // most likely to reply. See lib/business-name for the ladder.
   const businessName = await loadBusinessName(supabase, accountId);
 
-  const providerId = await sendInboxReplySms({ phone: normalized, businessName, body });
+  const providerId = await sendInboxReplySms({ phone: normalized, businessName, body, accountId });
   // The contact texted first, so consent is implied — keep the ledger current.
   await recordSmsConsent(accountId, normalized, 'inbox_reply');
   await logOutboundMessage(supabase, accountId, normalized, body, providerId);
@@ -194,7 +194,7 @@ export async function startConversationAction(formData: FormData) {
   // top to decide whether it is spam.
   const businessName = await loadBusinessName(supabase, accountId);
 
-  const providerId = await sendInboxReplySms({ phone: normalized, businessName, body });
+  const providerId = await sendInboxReplySms({ phone: normalized, businessName, body, accountId });
   await recordSmsConsent(accountId, normalized, 'inbox_compose');
   await logOutboundMessage(supabase, accountId, normalized, body, providerId);
 
