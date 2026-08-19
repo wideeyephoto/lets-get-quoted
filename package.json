@@ -18,6 +18,7 @@
     "test:pg17:catalog-bump": "node scripts/verify-entitlement-catalog-bump.mjs",
     "test:pg17:flex-limits": "node scripts/verify-new-workspace-flex-limits.mjs",
     "test:pg17:grace-collect": "node scripts/verify-grace-may-still-collect.mjs",
+    "test:pg17:ledger-contract": "node scripts/verify-usage-meter-ledger-contract.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
     "test:stock": "node --test src/lib/stock/stock.test.mjs"
   },
