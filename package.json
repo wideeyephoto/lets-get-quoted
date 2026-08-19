@@ -16,6 +16,7 @@
     "test:pg17:capacity-lifecycle": "node scripts/verify-purchased-capacity-lifecycle.mjs",
     "test:pg17:proconfig": "node scripts/verify-late-success-proconfig.mjs",
     "test:pg17:catalog-bump": "node scripts/verify-entitlement-catalog-bump.mjs",
+    "test:pg17:flex-limits": "node scripts/verify-new-workspace-flex-limits.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
     "test:stock": "node --test src/lib/stock/stock.test.mjs"
   },

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { listServices } from '@/lib/services';
 import { parseQuoteItems } from '@/lib/jobs';
 import { getSiteContent } from '@/lib/site-content';
+import { callModel } from '@/lib/ai-model-call';
 import {
   formatPriceBook, formatQuoteHistory, reconcileDraft, MAX_DRAFT_LINES, MAX_HISTORY_JOBS,
   type HistoricalQuote, type PriceBookEntry, type QuoteDraft, type RawDraft,
@@ -15,6 +16,8 @@ import {
 // back flagged. See lib/quote-draft for that boundary.
 
 export type DraftContext = {
+  /** Whose AI-writing balance this draft is charged to. */
+  accountId: string;
   scope: string;
   trade: string | null;
   estimatedHours: number | null;
@@ -67,6 +70,7 @@ export async function loadDraftContext(
   }));
 
   return {
+    accountId,
     scope: ((job.scope as string | null) ?? '').trim(),
     trade: getSiteContent(site?.content as Record<string, unknown> | null).trade.trim() || null,
     estimatedHours: job.estimated_hours == null ? null : Number(job.estimated_hours),
@@ -144,19 +148,15 @@ export async function draftQuote(context: DraftContext): Promise<QuoteDraft | nu
   ].filter(Boolean).join('\n\n');
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        // Low but not zero: quoting benefits from recognizing that a job needs a
-        // line nobody wrote down, which greedy decoding tends to skip.
-        temperature: 0.2,
-        instructions: buildDraftInstructions(context),
-        input,
-        text: { format: { type: 'json_object' } },
-      }),
-    });
+    const response = await callModel({
+      model: 'gpt-4o',
+      // Low but not zero: quoting benefits from recognizing that a job needs a
+      // line nobody wrote down, which greedy decoding tends to skip.
+      temperature: 0.2,
+      instructions: buildDraftInstructions(context),
+      input,
+      text: { format: { type: 'json_object' } },
+    }, { accountId: context.accountId, kind: 'quote_draft' });
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
 
     const raw = JSON.parse(extractOutputText(await response.json())) as RawDraft;
