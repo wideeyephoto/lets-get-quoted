@@ -62,6 +62,30 @@ describe('what an overrun costs', () => {
     expect(5000 * OVERAGE_RATE_MILLICENTS.marketing_email_sends).toBe(1_700_000);
     expect(formatOverage(1_700_000)).toBe('$17.00');
   });
+
+  it('prints an AI voice minute at the rate the price book publishes', () => {
+    // $0.35 an AI-connected minute. The conversion is the thing under test: at
+    // 1,000 millicents to the cent this is 35,000, and reading it as 35_000
+    // CENTS would print $350.00 -- a thousandfold error in the direction that
+    // bills a contractor.
+    expect(formatOverage(35_000)).toBe('$0.35');
+    expect(formatOverage(100 * 35_000)).toBe('$35.00'); // the 100-minute top-up
+  });
+
+  it('does not carry its own conversion math', () => {
+    // formatUsdExact groups thousands; a local `.toFixed(2)` does not. This
+    // asserts the shared helper is genuinely doing the work, so the two can
+    // never drift into showing one accrual two ways.
+    expect(formatOverage(1_234_560_000)).toBe('$12,345.60');
+  });
+
+  it('rounds a fraction of a cent to nothing, and says so honestly', () => {
+    // One marketing email costs less than a cent. $0.00 is the true answer for
+    // a single send; the charge is the accrued total, which is what this is
+    // called on.
+    expect(formatOverage(340)).toBe('$0.00');
+    expect(formatOverage(0)).toBe('$0.00');
+  });
 });
 
 describe('nothing is charged without approval', () => {

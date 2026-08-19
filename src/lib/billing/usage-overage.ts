@@ -2,6 +2,8 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { formatUsdExact } from '@/lib/money-format';
+
 /**
  * Charging a workspace for what it used past its allowance — but only if it
  * asked to be, and only up to a number it chose.
@@ -196,8 +198,22 @@ export async function releaseUsageOverage(
   }
 }
 
-/** Millicents as the money a person would read. */
+/**
+ * Millicents as the money a person would read.
+ *
+ * The dollars-to-string half is `formatUsdExact` rather than a second
+ * `.toFixed(2)` here. That function exists because this codebase once carried
+ * two implementations and showed a homeowner one number in an itemised list and
+ * a differently rounded one in the summary; an accrual printed one way on a
+ * settings page and another on an invoice would be the same bug about money a
+ * contractor is actually charged. This function owns exactly one thing the
+ * shared helper cannot know: that its input is thousandths of a cent.
+ *
+ * Rounding to the nearest cent is deliberate and lossy. A single marketing email
+ * at 340 millicents reads as $0.00, which is honest — a third of a cent is not a
+ * price anyone is charged. What gets charged is the accrued total, and that is
+ * what this is called on.
+ */
 export function formatOverage(millicents: number): string {
-  const cents = Math.round(millicents / 1000);
-  return `$${(cents / 100).toFixed(2)}`;
+  return formatUsdExact(Math.round(millicents / 1000) / 100);
 }
