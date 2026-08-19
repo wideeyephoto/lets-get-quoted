@@ -13,6 +13,8 @@
 // characters" and "this doesn't say why you're writing this month" deserve very
 // different amounts of trust.
 
+import { smsSegmentCount } from '@/lib/sms-segments';
+
 export type CampaignFindingSource = 'check' | 'history' | 'ai';
 export type CampaignFindingSeverity = 'high' | 'medium' | 'low';
 
@@ -44,8 +46,14 @@ export const SUBJECT_TRUNCATES_AT = 60;
 const THIN_EMAIL_BODY = 140;
 /** Sending again inside this many days is worth a second thought. */
 export const CROWDING_DAYS = 7;
-/** 160 GSM-7 characters per segment; matches the composer's own estimate. */
-const SMS_SEGMENT = 160;
+/**
+ * Characters the sender appends: the business-name prefix and the opt-out line.
+ *
+ * Approximate by design — the prefix is a workspace's own name — but its length
+ * is stable and it is plain GSM-7, so it can never change which alphabet the
+ * body already forced.
+ */
+const APPENDED_CHARACTERS = 40;
 
 /**
  * Placeholders that look like ours but aren't.
@@ -75,9 +83,17 @@ export function shoutiness(text: string): { caps: number; bangs: number } {
   return { caps, bangs: (text.match(/!/g) ?? []).length };
 }
 
+/**
+ * What this campaign will cost in text credits, per recipient.
+ *
+ * Delegates to the real segment counter rather than dividing by 160. The old
+ * arithmetic assumed GSM-7 always, so a body containing one emoji or one curly
+ * quote — the two most common ways a contractor's message leaves the GSM
+ * alphabet — was warned about at 160 characters per segment and billed at 70.
+ * The composer and the invoice now come from the same function.
+ */
 export function smsSegments(body: string): number {
-  // +40 for the business-name prefix and the opt-out line the sender appends.
-  return Math.max(1, Math.ceil((body.length + 40) / SMS_SEGMENT));
+  return smsSegmentCount(body + 'x'.repeat(APPENDED_CHARACTERS));
 }
 
 /**

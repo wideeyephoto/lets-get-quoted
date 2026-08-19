@@ -201,11 +201,28 @@ and the settings display all work — the drain does not exist.
 `change-order-ai.ts`, `marketing-draft.ts`, `smart-import-ai.ts`, and `client-import-ai.ts` have
 **zero** imports from `lib/billing`.
 
-### 1.1 Segment counter utility — S — blocks 1.2
+### 1.1 Segment counter utility — S — blocks 1.2 — **done**
 
-No segment counting exists anywhere. The book defines a text credit as one carrier SMS segment,
-so this needs a real GSM-7 vs UCS-2 classifier with the 160/153 and 70/67 boundaries, plus the
-GSM-7 extended characters that cost two septets. Pure function, heavily testable, no dependencies.
+*Correction to the original draft: segment counting did exist. `smsSegments` in `campaign-guard.ts`
+was `ceil((body.length + 40) / 160)` — an estimator for the composer's "this will bill as N
+segments" warning, with no callers elsewhere. It assumed GSM-7 unconditionally, so a body one
+emoji away from UCS-2 was warned about at 160 characters per segment and billed at 70. Not "no
+counter" — a wrong one, in front of the customer.*
+
+`src/lib/sms-segments.ts` is the real thing: GSM-7 vs UCS-2 classification from the GSM 03.38
+default alphabet, the 160/153 and 70/67 boundaries, the nine extension-table characters that cost
+two septets, and iteration by code point so an astral emoji is charged the two UTF-16 units it
+occupies rather than parsed as two lone surrogates.
+
+The part worth keeping in mind for 1.2: **a two-unit character cannot straddle a segment
+boundary.** `'x'.repeat(152) + '€' + 'x'.repeat(152)` is 306 septets — exactly two segments by
+division — and costs three, because the euro sign will not fit in what remains of the first part
+and moves whole. Dividing units by capacity under-bills every message shaped like that, and those
+are the messages sitting closest to a boundary where a customer is most likely to be counting.
+
+`campaign-guard.ts` now delegates to it, so the number a contractor is warned about and the number
+they are charged come from one function. All 30 existing campaign-guard assertions still pass
+unchanged; two were added for the emoji case and for not over-warning on an accented customer name.
 
 ### 1.2 Text credit meter — L
 
