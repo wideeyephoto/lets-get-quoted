@@ -414,6 +414,29 @@ and `voice_advanced_routing` into every entitlement snapshot;
 Either wire the flags to real branches or drop the block. A write-only entitlement field is worse
 than no field — it looks like enforcement to anyone auditing the snapshot.
 
+**Confirmed exhaustively, 2026-08-19.** Each of the four names appears in exactly one place — the
+line in `entitlement-catalog.ts` that constructs it:
+
+| Flag | Occurrences in `src/` |
+|---|---|
+| `shared_lgq_texting_number` | 1 — `entitlement-catalog.ts:80` |
+| `voice_included` | 1 — `entitlement-catalog.ts:81` |
+| `voice_advanced_routing` | 1 — `entitlement-catalog.ts:82` |
+| `quickbooks` | many, but none of them this flag |
+
+`feature_flags` itself appears twice outside that file: written at
+`stripe-billing-subscription-events.ts:705`, typed at `subscription-event-projector.ts:152`. The
+property access `featureFlags.` occurs **nowhere**. Nothing branches on any of it.
+
+**But the decision is genuinely blocked, and not on evidence.** Wiring requires the features to
+exist — `voice_advanced_routing` has nothing to gate until Phase 4, and would be that phase's first
+real reader. Dropping the block means a migration to remove a column Phase 4 then re-adds. So this
+turns on whether AI Voice is being built, which is a business question rather than an engineering
+one. Until it is answered the safe half is available and cheap: leave the field, and add a comment
+at `entitlement-catalog.ts:78` saying plainly that nothing reads it, so the next person auditing
+the snapshot is not misled by it. The dangerous reading of this field is "these are enforced",
+and that costs one comment to prevent.
+
 (QuickBooks' one-connection limit happens to be structurally enforced already:
 `quickbooks_connections` upserts on `account_id`. It needs no gate.)
 
