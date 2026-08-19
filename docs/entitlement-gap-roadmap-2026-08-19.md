@@ -55,39 +55,51 @@ numbers, and voice concurrency.
 
 ## Phase 0 — Repair and truth-telling
 
-Small, independent, and worth doing before anything else. One of them blocks base-plan checkout
-outright; one is latent until a flag is set; one is a public claim we cannot currently honor.
+Small, independent, and worth doing before anything else. One is happening right now and is
+silent; one is latent until a flag is set; one is a public claim we cannot currently honor.
 
-### 0.0 Unpin the database from `2026-08-15-preview` — M — **blocks base-plan checkout entirely**
+### 0.0 New workspaces get eight limits under a ten-limit catalog — S — **live, silent**
 
-`PRICING_CATALOG_VERSION` is `'2026-08-18-preview'`, and `expectedMetadata()` in
-`stripe-plan-prices.ts:205-211` fails price loading with `price_contract_mismatch` unless the
-bound Stripe Price carries that version. The database disagrees, in six hardcoded places:
+*An earlier draft of this item claimed the database was still pinned to
+`2026-08-15-preview` across six sites, and that the projector's Scale limits were stale. Both were
+wrong: they were read out of migration source files rather than out of the live schema, and both
+had already been fixed — the version by `20260818120000`, Scale by `20260818200000`. What follows
+is what is actually left, which is narrower and, unlike the imagined problem, currently happening.*
 
-| Location | Kind |
-|---|---|
-| `20260816041255:123` | **CHECK constraint** on `billing_subscription_checkout_operations` |
-| `20260816041255:405` | function guard |
-| `20260816054500:23` | **CHECK constraint** on recurring-consent evidence |
-| `20260816054500:156` | function guard |
-| `20260816060000:609` | subscription projector guard |
-| `20260815213142:1280-1330` | `initialize_workspace_pricing` provisions new workspaces |
+`20260818120000` moved the enforced catalog version by rewriting every function body that pinned
+the old string:
 
-These cannot both be satisfied. Checkout will only accept a 2026-08-18 Price; the claim insert
-will only accept a 2026-08-15 catalog version, at a constraint. Enabling
-`LGQ_BASE_PLAN_SUBSCRIPTION_CHECKOUT_ENABLED` today produces a constraint violation, not a sale.
+```sql
+new_def := replace(pg_get_functiondef(fn.oid), '2026-08-15-preview', '2026-08-18-preview');
+```
 
-Two consequences that are easy to miss:
+Correct for a version bump, and it widened three CHECK constraints to accept both versions so
+existing evidence stays interpretable. But `initialize_workspace_pricing` does not only *name* a
+catalog version — it also carries a copy of the Flex limits, and `REPLACE` moved the label without
+moving the map. The 2026-08-15 catalog wrote **eight** limits; the current one writes **ten**.
 
-**`initialize_workspace_pricing` puts every NEW workspace on the old catalog.** Migration
-`20260819040000` moved the six existing rows to `2026-08-18-preview`; account seven arrives on
-`2026-08-15-preview` and needs moving again. That is a treadmill until this is fixed.
+So every account created since that migration is provisioned with:
 
-**The projector's embedded Scale limits are stale.** `20260816060000:668-673` writes
-`office_users 5, crew_users 10, storage_gb 100, forwarding_minutes 100`. The current catalog says
-`15, 50, 250, 200`. Solo and Growth match; only Scale diverges. A paying Scale customer would be
-provisioned at roughly a third of what they bought — and unlike the version pin, this one fails
-silently rather than at a constraint.
+```
+catalog_version = '2026-08-18-preview'
+feature_limits  = { 8 keys, no forwarding_minutes, no voice_included_minutes }
+```
+
+which is exactly the shape `20260819040000` refuses — *"claim catalog 2026-08-18-preview without
+its limits"*. Nothing fails at signup. The workspace simply carries two fewer limits than its plan
+sells, and the next run of `20260819040000` raises `55000` on a row nobody edited.
+
+Fixed by `20260819060000_new_workspace_gets_current_flex_limits.sql`: source-patches the map,
+refuses to run before `20260818120000` (eight limits is *correct* under the old catalog, so moving
+the map without the label would manufacture the mirror-image defect), and repairs already-created
+rows by **adding** the two missing keys rather than overwriting the map, so a deliberately raised
+limit survives. Verified 18/18 on PostgreSQL 17 by `scripts/verify-new-workspace-flex-limits.mjs`.
+
+**The lesson worth keeping.** A blanket `REPLACE` over function bodies is safe for a value that
+appears once per function and means one thing. It is not safe where the same function carries a
+*label* and the *data the label describes*. Anything holding both needs checking by hand after a
+sweep like that — there were two such functions here, and the sweep got one of them right only
+because `20260818200000` had already corrected it for an unrelated reason.
 
 The fix is a source-patching migration in the shape already used elsewhere in this tree: bump the
 pinned string in all six sites, widen the two CHECK constraints, and correct the Scale map.
@@ -342,7 +354,7 @@ clearly as coming. It is currently the only priced line item on the page with no
 
 ```
 Phase 0  ─────────────────────────────────────────►  independent, do now
-  0.0 catalog-version pin (BLOCKS base-plan checkout outright)
+  0.0 new-workspace Flex limits (live and silent; fixed by 20260819060000)
   0.1 expiry sweeper (latent; must precede the AI Intake gate)
   0.2 overage copy
   0.3 appendix rows
@@ -364,10 +376,16 @@ Phase 4  ───────────────────────�
   AI Voice, end to end
 ```
 
-**Before selling subscriptions:** 0.0 first and without exception -- until the database is unpinned
-from `2026-08-15-preview`, base-plan checkout does not fail gracefully, it violates a constraint.
-Then the rest of Phase 0, Phase 1, and 3.1. Without 3.1 a non-paying workspace keeps everything;
-without Phase 1, four of the five one-time top-up SKUs sell nothing.
+**Before selling subscriptions:** Phase 0, Phase 1, and 3.1. Without 3.1 a non-paying workspace
+keeps everything; without Phase 1, four of the five one-time top-up SKUs sell nothing.
+
+The database side of subscription checkout is no longer what blocks it — `20260818120000` and
+`20260818200000` settled the catalog version and the Scale allowances, and `20260819060000` closes
+the gap those left. What remains is **3.1**, plus configuration outside this document: the six
+`STRIPE_PRICE_*` bindings are Sensitive and unreadable, so nobody can currently confirm they point
+at the `2026-08-18-preview` Prices rather than the six stale twins still active in Stripe; and
+`/api/stripe/billing/webhook` returns 404 in production because `LGQ_STRIPE_BILLING_WEBHOOK_ENABLED`
+is absent, while a live Stripe endpoint is enabled and pointing at it.
 
 **Can ship after launch:** Phase 2, 3.2, 3.3, and Phase 4 — provided the public pricing page is
 truthful about them in the meantime, which is what 0.2 and the Phase 4 interim note are for.
