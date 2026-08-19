@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
   const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 6);
   const photoPaths: string[] = [];
   try {
-    for (const photo of photos) photoPaths.push(await uploadLeadPhoto(site.account_id, photo));
+    for (const photo of photos) photoPaths.push(await uploadLeadPhoto(site.account_id, photo, 'public_visitor'));
     const lead = await createLead(admin, site.account_id, {
       name,
       phone,

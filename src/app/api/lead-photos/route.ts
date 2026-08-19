@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   if (!lead) return NextResponse.json({ error: 'Lead not found.' }, { status: 404 });
 
   try {
-    const path = await uploadLeadPhoto(auth.accountId, file);
+    const path = await uploadLeadPhoto(auth.accountId, file, 'workspace');
     await addLeadPhotos(admin, auth.accountId, leadId, [path]);
     const [url] = await createLeadPhotoUrls(auth.accountId, [path]);
     return NextResponse.json({ path, url }, { status: 201 });

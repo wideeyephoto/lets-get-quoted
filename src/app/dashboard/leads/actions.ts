@@ -76,7 +76,7 @@ export async function createLeadAction(formData: FormData) {
   const photoFiles = formData.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0);
   const photoPaths: string[] = [];
   for (const file of photoFiles) {
-    photoPaths.push(await uploadLeadPhoto(accountId, file));
+    photoPaths.push(await uploadLeadPhoto(accountId, file, 'workspace'));
   }
 
   const lead = await createLead(supabase, accountId, {
