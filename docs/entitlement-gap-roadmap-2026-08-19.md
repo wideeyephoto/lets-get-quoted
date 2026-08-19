@@ -624,7 +624,7 @@ and that costs one comment to prevent.
 
 ## Phase 3 — The gates the business model depends on
 
-### 3.1 Enforce `entitlement_state` — L — **blocks launch gate #5, and one surface already over-degrades**
+### 3.1 Enforce `entitlement_state` — L — **the over-degrading surface is fixed; the matrix remains**
 
 `active | grace | restricted | archived` is projected by the subscription event projector,
 admin-editable via `admin-plan-authority.ts`, and displayed in settings and the admin console.
@@ -654,6 +654,27 @@ than `restricted` sounds like.
 It is **latent**, not live: reaching `grace` requires the subscription projection worker, whose
 flag is absent from Production. It arms itself the day base plans go on sale, which is precisely
 when nobody will be looking for it.
+
+**Fixed by `20260819070000_grace_may_still_collect.sql`.** Four functions guard this rail --
+`require_direct_checkout_entitlement_snapshot`, both preparers, and
+`claim_one_off_direct_checkout_operation` -- and all four now accept `(active, grace)`, with
+the paid-plan branch accepting `billing_status = past_due` alongside the in-period `active`
+case. The period test is deliberately not asked of a past_due workspace: whether Stripe has
+advanced `current_period_end` by the time an invoice fails is a provider detail, and hanging a
+contractor's ability to invoice on it would reintroduce the defect through a narrower door.
+
+What did **not** move is the reason those guards exist: `catalog_version` must still be current
+and `platform_fee_bps` must still equal the rate the plan sells at. A workspace in grace is on
+the same plan at the same rate, which is exactly why its fee snapshot is safe to freeze.
+`restricted` and `archived` stay blocked -- those mean the subscription ended, not that a card
+failed.
+
+Verified 28/28 on PostgreSQL 17 (`scripts/verify-grace-may-still-collect.mjs`). The harness lifts
+the four bodies verbatim out of the migrations that define them, reproduces the catalog rewrite
+`20260818120000` already performed in production, and only then applies the patch -- so the
+anchors are tested against the text a live database actually holds. It also proves the
+replacements compile, which is the failure that would otherwise surface as a broken payment rail
+at apply time.
 
 Flex is unaffected -- `billing_status = 'free'` and the projector only writes this for
 subscription events -- so this cannot be seen today no matter how the product is used.
