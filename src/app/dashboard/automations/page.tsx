@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import { aiVoiceEnabled } from '@/lib/voice/admission';
 import { pickBusinessName } from '@/lib/business-name';
 import { listAccountEvents } from '@/lib/account-events';
 import SaveButton from '@/components/save-button';
@@ -11,6 +12,7 @@ import ChoiceRemindersSection from '../settings/ChoiceRemindersSection';
 import ClientPortalSection from '../settings/ClientPortalSection';
 import IntakeContentSection from '../settings/IntakeContentSection';
 import MissedCallSection from '../settings/MissedCallSection';
+import AiReceptionistSection from '../settings/AiReceptionistSection';
 import ReviewRequestSection from '../settings/ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import OpenAnchoredCard from './OpenAnchoredCard';
@@ -146,6 +148,33 @@ function AutomationCard({
 
 export default async function AutomationsPage() {
   const { supabase, accountId } = await requireOwnerContext();
+  const aiVoice = aiVoiceEnabled();
+
+  // READ SEPARATELY AND TOLERANTLY, for the reason the Settings page spells out
+  // beside its own extra read: a `.single()` naming a column or table that does
+  // not exist yet fails the whole query and takes the page down with it. Both of
+  // these land ahead of their migrations, so an unapplied migration must degrade
+  // to "not configured" rather than to a blank Automations tab.
+  const voiceRead = aiVoice
+    ? await supabase
+      .from('voice_settings')
+      .select('status, answer_mode, greeting, transfer_number, emergency_transfer_number, business_hours, recording_enabled')
+      .eq('account_id', accountId)
+      .maybeSingle()
+    : null;
+  const voiceSettings = voiceRead?.error ? null : (voiceRead?.data ?? null) as Record<string, unknown> | null;
+
+  const voiceLimitRead = aiVoice
+    ? await supabase
+      .from('workspace_entitlements')
+      .select('feature_limits')
+      .eq('account_id', accountId)
+      .maybeSingle()
+    : null;
+  const voiceConcurrentCalls = Number(
+    ((voiceLimitRead?.error ? null : voiceLimitRead?.data?.feature_limits) as Record<string, unknown> | null)
+      ?.voice_concurrent_calls ?? 0,
+  ) || 0;
 
   const [{ data: account }, { data: site }] = await Promise.all([
     supabase.from('accounts').select('business_name, timezone, connect_onboarded, call_textback_enabled, call_forward_number, call_tracking_number, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode, workday_start, workday_end, job_buffer_minutes, schedule_day_hours').eq('id', accountId).single(),
@@ -525,6 +554,37 @@ export default async function AutomationsPage() {
             Adjust Quick Stop settings →
           </Link>
         </AutomationCard>
+
+        {aiVoice ? (
+          <AutomationCard
+            group="booking-intake"
+            id="ai-receptionist"
+            title="AI receptionist"
+            subtitle="Answers the calls you can’t"
+            /* No `toggle`. The card would give this a second on/off beside the
+               section's own three-state control, and two controls for one
+               setting means one of them is always about to be wrong — the
+               lesson the missed-call card below already carries. */
+            status={{
+              label: voiceSettings?.status === 'active' ? 'Answering'
+                : voiceSettings?.status === 'paused' ? 'Paused' : 'Off',
+              tone: voiceSettings?.status === 'active' ? 'on'
+                : voiceSettings?.status === 'paused' ? 'neutral' : 'off',
+            }}
+          >
+            <AiReceptionistSection
+              status={(voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off'}
+              answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'after_hours'}
+              greeting={(voiceSettings?.greeting as string | null) ?? ''}
+              transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
+              emergencyTransferNumber={(voiceSettings?.emergency_transfer_number as string | null) ?? ''}
+              businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
+              recordingEnabled={Boolean(voiceSettings?.recording_enabled)}
+              timezone={accountTimeZone}
+              concurrentCalls={voiceConcurrentCalls}
+            />
+          </AutomationCard>
+        ) : null}
 
         <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>
           <MissedCallSection
