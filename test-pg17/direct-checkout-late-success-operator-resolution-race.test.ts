@@ -619,10 +619,33 @@ describe('direct Checkout late-success operator resolution on disposable PG17', 
     expect(expirationOutcome.ok).toBe(true);
     if (!expirationOutcome.ok) throw expirationOutcome.error;
     const projected = row(expirationOutcome.result);
+    // Two columns share the name `processing_status`, and this assertion
+    // originally read the wrong one. The RPC's OUT column carries the WORKFLOW
+    // DISPOSITION, whose vocabulary is exactly {processed,
+    // manual_reconciliation} -- parseProjectResult in
+    // src/lib/billing/connected-checkout-expiration-projector.ts throws on
+    // anything else, so a returned 'failed' could never have reached
+    // production. The durable inbox column on billing_events is what carries
+    // 'failed'. One statement in 20260816094500 (~1054-1070) writes both,
+    // deliberately. Assert each where it actually lives.
     expect(projected).toMatchObject({
-      processing_status: 'failed',
+      processing_status: 'manual_reconciliation',
       error_code: 'expiration_success_event_conflict',
       projection_applied: false,
+    });
+    const durableExpiration = row(await pg().control.query(
+      `select e.processing_status, e.last_error, e.projection_applied,
+              e.next_attempt_at
+         from public.billing_events e where e.id = $1`,
+      [race.eventId],
+    ));
+    // next_attempt_at null is the load-bearing half: this is terminal and
+    // waits for a human, not for a retry.
+    expect(durableExpiration).toMatchObject({
+      processing_status: 'failed',
+      last_error: 'expiration_success_event_conflict',
+      projection_applied: null,
+      next_attempt_at: null,
     });
   });
 
