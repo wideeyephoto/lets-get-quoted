@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 2a167715404fee38
+   source-sha256: 06300643c979869e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3217,6 +3217,16 @@ h3 {
 .automation-link-arrow { color: var(--mute-g260); }
 .automation-link:hover .automation-link-arrow { color: var(--accent-ink); }
 .schedule-automation-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+/* Platform fee tier card (Settings -> Payments). */
+.fee-tier-card { border: 1px solid var(--edge-t09); border-radius: 0.85rem; background: rgba(var(--tint), 0.025); padding: 1.1rem 1.15rem; }
+.fee-tier-head { display: flex; align-items: center; gap: 0.9rem; }
+.fee-tier-rate { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--gold-ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.fee-tier-meta { display: flex; flex-direction: column; gap: 0.12rem; }
+.fee-tier-meta strong { font-size: 0.95rem; }
+.fee-tier-meta span { font-size: 0.82rem; color: var(--mute-g270); }
+.fee-tier-bar { height: 8px; border-radius: 999px; background: rgba(var(--tint), 0.08); margin: 0.9rem 0 0.6rem; overflow: hidden; }
+.fee-tier-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent, #ff7a21), var(--accent-2, #ffd166)); }
 
 /* Blocked-off (time-off) day on the schedule calendar. */
 .calendar-cell.blocked { position: relative; background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.06) 0 7px, transparent 7px 15px); }

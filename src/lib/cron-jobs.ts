@@ -172,6 +172,17 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'housekeeping',
     consequence: 'Addresses without coordinates stay unmapped, degrading routing and drive times over time.',
   },
+  {
+    job: 'storage-usage-sweep',
+    label: 'Storage usage sweep',
+    schedule: '17 * * * *',
+    // Housekeeping rather than money while the storage SKU is withheld and
+    // enforcement is dark. It becomes money the day either goes live: a stalled
+    // sweep freezes every workspace's measurement, so uploads are then admitted
+    // or refused against a number that stopped moving.
+    importance: 'housekeeping',
+    consequence: 'Workspace storage measurements freeze, so Plan & usage shows a stale figure and the upload cap is enforced against it.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

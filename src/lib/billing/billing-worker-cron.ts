@@ -27,6 +27,10 @@ import {
   runStripeBillingSubscriptionProjectionBatch,
   type StripeSubscriptionProjectionWorkerBatchResult,
 } from '@/lib/billing/subscription-projection-worker';
+import {
+  runWorkspaceStorageUsageSweep,
+  type StorageUsageSweepResult,
+} from '@/lib/billing/storage-usage-sweep-worker';
 
 /**
  * DARK scheduler boundary for the durable billing workers.
@@ -50,6 +54,8 @@ export const DIRECT_PAYMENT_SETTLEMENT_WORKER_FLAG =
   'LGQ_DIRECT_PAYMENT_SETTLEMENT_WORKER_ENABLED';
 export const LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG =
   'LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED';
+export const WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG =
+  'LGQ_WORKSPACE_STORAGE_USAGE_SWEEP_ENABLED';
 
 // Request input never controls these bounds. Increasing either value requires
 // a reviewed deploy, so a query string cannot turn one scheduler call into an
@@ -97,6 +103,12 @@ export function legacyQuickStopLateRefundWorkerEnabled(
   env: ServerEnvironment = process.env,
 ): boolean {
   return env[LEGACY_QUICK_STOP_LATE_REFUND_WORKER_FLAG] === '1';
+}
+
+export function workspaceStorageUsageSweepWorkerEnabled(
+  env: ServerEnvironment = process.env,
+): boolean {
+  return env[WORKSPACE_STORAGE_USAGE_SWEEP_WORKER_FLAG] === '1';
 }
 
 export type StripeSubscriptionProjectionCronSummary = Readonly<{
@@ -677,4 +689,41 @@ LegacyQuickStopLateRefundCronSummary
       1,
     );
   }
+}
+
+export type WorkspaceStorageUsageSweepCronSummary = Readonly<{
+  status: StorageUsageSweepResult['status'];
+  workspaces_measured: number;
+  workspaces_zeroed: number;
+  bytes_total: number;
+}>;
+
+/**
+ * No batch size and no failure list, unlike every other summary here. The sweep
+ * is one transaction over every workspace, so there is nothing partial to report
+ * -- it either recomputed all of them or none of them.
+ */
+export function summarizeWorkspaceStorageUsageSweep(
+  result: StorageUsageSweepResult,
+): WorkspaceStorageUsageSweepCronSummary {
+  if (result.status === 'failed') {
+    return Object.freeze({
+      status: 'failed' as const,
+      workspaces_measured: 0,
+      workspaces_zeroed: 0,
+      bytes_total: 0,
+    });
+  }
+  return Object.freeze({
+    status: result.status,
+    workspaces_measured: result.workspacesMeasured,
+    workspaces_zeroed: result.workspacesZeroed,
+    bytes_total: result.bytesTotal,
+  });
+}
+
+export async function runWorkspaceStorageUsageSweepCron(): Promise<
+WorkspaceStorageUsageSweepCronSummary
+> {
+  return summarizeWorkspaceStorageUsageSweep(await runWorkspaceStorageUsageSweep());
 }

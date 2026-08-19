@@ -4355,6 +4355,15 @@ h3 {
 .plan-usage-balance > span { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
 .plan-usage-balance > strong { color: var(--text); font-size: 1.12rem; font-variant-numeric: tabular-nums; }
 .plan-usage-balance > small { color: rgba(var(--ink-rgb), 0.62); line-height: 1.35; }
+.plan-usage-storage-figure { display: flex; align-items: baseline; gap: 0.4rem; margin-top: 1rem; }
+.plan-usage-storage-figure > strong { color: var(--text); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.plan-usage-storage-figure > span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.9rem; }
+.plan-usage-storage-meter { height: 0.6rem; margin-top: 0.5rem; border-radius: 999px; background: rgba(var(--ink-rgb), 0.09); overflow: hidden; }
+/* Themed tokens, not raw hex: each of these carries a separate light-theme
+   value, and a fill hard-coded for dark would vanish on the light one. */
+.plan-usage-storage-meter-fill { height: 100%; border-radius: 999px; background: var(--ink-green-13); transition: width 0.2s ease; }
+.plan-usage-storage-meter-fill.nearly { background: var(--warn); }
+.plan-usage-storage-meter-fill.over { background: var(--ink-red-3); }
 .plan-usage-limit-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0.8rem 0 0; }
 .plan-usage-limit-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.72rem 0.2rem; border-bottom: 1px solid var(--rule-t08); }
 .plan-usage-limit-list > div:nth-child(odd) { margin-right: 1rem; }

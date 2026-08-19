@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const LEAD_PHOTOS_BUCKET = 'lead-photos';
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
@@ -21,6 +22,7 @@ async function ensureLeadPhotosBucket() {
 export async function uploadLeadPhoto(accountId: string, file: File): Promise<string> {
   if (!ALLOWED_TYPES.has(file.type)) throw new Error('Photos must be JPG, PNG, WebP, or AVIF.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be 6 MB or smaller.');
+  await assertStorageCapacity(createAdminClient(), accountId, file.size);
   await ensureLeadPhotosBucket();
 
   const extension = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];

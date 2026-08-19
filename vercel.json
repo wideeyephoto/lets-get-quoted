@@ -79,6 +79,10 @@
     {
       "path": "/api/cron/legacy-quick-stop-late-refunds",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/storage-usage-sweep",
+      "schedule": "17 * * * *"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
@@ -27,6 +27,7 @@ import { displayPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
+import { loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import {
   loadMerchantOnboardingSurfaceForOwner,
@@ -54,7 +55,7 @@ export default async function SettingsPage({
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -86,6 +87,15 @@ export default async function SettingsPage({
       // alter the live Recipient payout card above it.
       merchantOnboardingEnabled
         ? loadMerchantOnboardingSurfaceForOwner({ accountId })
+        : Promise.resolve(null),
+      // The ONE read on this page that does not go through the owner's session
+      // client. The effective limit is the plan allowance plus purchased
+      // capacity, and workspace_purchased_capacity is deliberately service-role
+      // only -- owners see the effect, not the ledger. accountId is already
+      // authenticated by requireOwnerContext above and is passed explicitly, so
+      // the widened client never widens the scope.
+      pricingDashboardEnabled
+        ? loadWorkspaceStorageState(createAdminClient(), accountId)
         : Promise.resolve(null),
     ]);
 
@@ -325,12 +335,14 @@ export default async function SettingsPage({
               'platform-fee',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
               'usage-balances',
+              ...(storageState ? ['workspace-storage'] : []),
               ...(showTopUpPurchase ? ['buy-credits'] : []),
               'included-limits',
             ],
             content: (
               <PlanUsageSection
                 data={planUsage}
+                storage={storageState}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
                 topUpCheckoutStatus={topUpCheckoutStatus}

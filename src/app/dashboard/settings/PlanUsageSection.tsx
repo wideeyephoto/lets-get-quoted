@@ -4,6 +4,7 @@ import type {
   WorkspacePlanRead,
   WorkspacePlanUsage,
 } from '@/lib/billing/plan-usage';
+import { formatStorageBytes, type WorkspaceStorageState } from '@/lib/billing/storage-usage';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
@@ -62,17 +63,64 @@ function balanceNote(balance: Extract<WorkspacePlanUsage['balances'], { kind: 'r
   return 'No expiration is scheduled.';
 }
 
+/**
+ * The storage card's whole job is to not lie in the two directions it easily
+ * could. A workspace the sweep has not reached has no measurement, and drawing
+ * an empty bar would read as "you have used nothing" -- so it says what it
+ * knows. A workspace with no entitlement row has no known limit, and inventing
+ * one would be worse than saying so.
+ */
+type StorageView =
+  | { kind: 'hidden' }
+  | { kind: 'unmeasured'; limitBytes: number | null }
+  | { kind: 'no_limit'; bytesUsed: number }
+  | {
+    kind: 'measured';
+    bytesUsed: number;
+    limitBytes: number;
+    objectCount: number | null;
+    percent: number;
+    over: boolean;
+    nearly: boolean;
+  };
+
+function storageView(storage: WorkspaceStorageState | null): StorageView {
+  if (!storage) return { kind: 'hidden' };
+  if (storage.bytesUsed === null) return { kind: 'unmeasured', limitBytes: storage.limitBytes };
+  if (storage.limitBytes === null) return { kind: 'no_limit', bytesUsed: storage.bytesUsed };
+
+  // A zero limit would divide by zero and, more importantly, is a real state --
+  // an entitlement that includes no storage at all. Anything stored under it is
+  // 100% of nothing, which is over.
+  const percent = storage.limitBytes === 0
+    ? (storage.bytesUsed > 0 ? 100 : 0)
+    : Math.min(100, Math.round((storage.bytesUsed / storage.limitBytes) * 100));
+
+  return {
+    kind: 'measured',
+    bytesUsed: storage.bytesUsed,
+    limitBytes: storage.limitBytes,
+    objectCount: storage.objectCount,
+    percent,
+    over: storage.bytesUsed > storage.limitBytes,
+    nearly: storage.bytesUsed <= storage.limitBytes && percent >= 80,
+  };
+}
+
 export default function PlanUsageSection({
   data,
+  storage = null,
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
   topUpCheckoutStatus = null,
 }: {
   data: WorkspacePlanUsage;
+  storage?: WorkspaceStorageState | null;
   showSubscriptionCheckout?: boolean;
   showTopUpPurchase?: boolean;
   topUpCheckoutStatus?: 'success' | 'canceled' | null;
 }) {
+  const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
@@ -175,6 +223,64 @@ export default function PlanUsageSection({
           </div>
         )}
       </section>
+
+      {storageState.kind !== 'hidden' ? (
+        <section className="panel workspace-section-card" id="workspace-storage">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Files &amp; photos</p>
+            <h2>Storage</h2>
+          </div>
+
+          {storageState.kind === 'measured' ? (
+            <>
+              <div className="plan-usage-storage-figure">
+                <strong>{formatStorageBytes(storageState.bytesUsed)}</strong>
+                <span>of {formatStorageBytes(storageState.limitBytes)} used</span>
+              </div>
+              <div
+                className="plan-usage-storage-meter"
+                role="img"
+                aria-label={`${storageState.percent}% of the storage allowance used`}
+              >
+                <div
+                  className={`plan-usage-storage-meter-fill${storageState.over ? ' over' : storageState.nearly ? ' nearly' : ''}`}
+                  style={{ width: `${Math.max(storageState.percent, 2)}%` }}
+                />
+              </div>
+              <p className="workspace-details-copy plan-usage-intro">
+                {storageState.objectCount === null
+                  ? 'Job photos, lead photos, crew photos, website images and video, and insurance certificates.'
+                  : `${storageState.objectCount.toLocaleString('en-US')} ${storageState.objectCount === 1 ? 'file' : 'files'} across job photos, lead photos, crew photos, website images and video, and insurance certificates.`}
+              </p>
+              {storageState.over ? (
+                <p className="plan-usage-note warning" role="status">
+                  This workspace is over its storage allowance. Nothing has been deleted and nothing will be.
+                  Remove files you no longer need, or add storage, to make room for new uploads.
+                </p>
+              ) : storageState.nearly ? (
+                <p className="plan-usage-note" role="status">
+                  Storage is nearly full. Once it is full, new uploads are refused until room is made — existing
+                  files are never removed.
+                </p>
+              ) : null}
+            </>
+          ) : storageState.kind === 'unmeasured' ? (
+            <div className="plan-usage-unavailable" role="status">
+              <strong>Storage has not been measured yet.</strong>
+              <span>
+                {storageState.limitBytes === null
+                  ? 'This workspace is not showing a storage allowance either. Nothing has been shown as zero.'
+                  : `This workspace includes ${formatStorageBytes(storageState.limitBytes)}. The amount in use is measured on a schedule and has not run for this workspace yet.`}
+              </span>
+            </div>
+          ) : (
+            <div className="plan-usage-unavailable" role="status">
+              <strong>{formatStorageBytes(storageState.bytesUsed)} stored.</strong>
+              <span>No storage allowance was returned for this workspace, so none has been guessed.</span>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {data.plan.kind === 'ready' && showTopUpPurchase ? (
         <TopUpPurchaseCheckout

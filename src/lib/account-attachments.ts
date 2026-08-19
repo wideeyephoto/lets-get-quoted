@@ -60,6 +60,13 @@ export async function uploadAccountAttachment(
   file: File,
 ): Promise<AccountAttachment> {
   if (file.size > MAX_BYTES) throw new Error('That file is over 20 MB.');
+  // DELIBERATELY NOT GUARDED BY THE STORAGE ALLOWANCE, unlike the six
+  // contractor-facing upload paths. This one is LGQ staff attaching a contract
+  // or an ID scan from the admin console, and refusing that because the
+  // customer is over their limit would block our own support work with a message
+  // addressed to somebody who is not in the room. The bytes still count -- the
+  // sweep measures the bucket, not the code path that filled it -- so the
+  // workspace sees them in its usage and pays for them like any other file.
   await ensureBucket();
 
   const extension = file.name.includes('.') ? file.name.split('.').pop()!.slice(0, 10) : 'bin';
