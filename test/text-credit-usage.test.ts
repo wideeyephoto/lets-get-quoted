@@ -10,6 +10,9 @@ import {
   textCreditMode,
 } from '@/lib/billing/text-credit-usage';
 
+const tryOverage = vi.fn();
+vi.mock('@/lib/billing/usage-overage', () => ({ tryUsageOverage: (...a: unknown[]) => tryOverage(...a) }));
+
 const rpc = vi.fn();
 const admin = { rpc } as never;
 
@@ -25,6 +28,8 @@ const insufficient = { code: 'P0001', message: 'insufficient usage credits for r
 
 beforeEach(() => {
   rpc.mockReset();
+  tryOverage.mockReset();
+  tryOverage.mockResolvedValue({ outcome: 'not_authorized' });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -187,5 +192,56 @@ describe('finalizing', () => {
   it('returns false when commit throws', async () => {
     rpc.mockRejectedValue(new Error('gone'));
     expect(await commitTextCreditUsage(admin, lease)).toBe(false);
+  });
+});
+
+describe('overage, when the allowance is gone', () => {
+  it('is not even asked while only measuring', async () => {
+    // Overage turns a REFUSAL into an admission. Measuring never refuses, so
+    // there is nothing for it to turn around.
+    rpc.mockResolvedValue({ data: null, error: insufficient });
+    await beginTextCreditUsage(admin, input(), { mode: 'measure' });
+    expect(tryOverage).not.toHaveBeenCalled();
+  });
+
+  it('is asked before refusing, for the segments that fell short', async () => {
+    rpc.mockResolvedValue({ data: null, error: insufficient });
+    await beginTextCreditUsage(admin, input({ body: 'x'.repeat(400) }), { mode: 'enforce' });
+    expect(tryOverage).toHaveBeenCalledWith(admin, expect.objectContaining({
+      resourceCode: 'text_segments', units: 3,
+    }));
+  });
+
+  it('sends when the workspace authorized one and is under its cap', async () => {
+    rpc.mockResolvedValue({ data: null, error: insufficient });
+    tryOverage.mockResolvedValue({
+      outcome: 'accrued', chargedMillicents: 14_400, accruedMillicents: 14_400, capMillicents: 5_000_000,
+    });
+    const d = await beginTextCreditUsage(admin, input({ body: 'x'.repeat(400) }), { mode: 'enforce' });
+    expect(d).toMatchObject({ outcome: 'allowed_overage', segments: 3 });
+    if (d.outcome !== 'allowed_overage') return;
+    // Enough to give the charge back if the carrier then refuses the message.
+    expect(d.overage).toEqual({ resourceCode: 'text_segments', units: 3, millicents: 14_400 });
+  });
+
+  it('refuses when the cap is reached', async () => {
+    rpc.mockResolvedValue({ data: null, error: insufficient });
+    tryOverage.mockResolvedValue({ outcome: 'cap_reached', accruedMillicents: 5_000_000, capMillicents: 5_000_000 });
+    expect(await beginTextCreditUsage(admin, input(), { mode: 'enforce' }))
+      .toMatchObject({ outcome: 'refused' });
+  });
+
+  it('refuses when nothing was authorized, which is the default', async () => {
+    rpc.mockResolvedValue({ data: null, error: insufficient });
+    expect(await beginTextCreditUsage(admin, input(), { mode: 'enforce' }))
+      .toMatchObject({ outcome: 'refused' });
+  });
+
+  it('refuses when overage could not be determined, and never admits', async () => {
+    // Uncertainty falls on the side of not charging.
+    rpc.mockResolvedValue({ data: null, error: insufficient });
+    tryOverage.mockResolvedValue({ outcome: 'unavailable' });
+    expect(await beginTextCreditUsage(admin, input(), { mode: 'enforce' }))
+      .toMatchObject({ outcome: 'refused' });
   });
 });

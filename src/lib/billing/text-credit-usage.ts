@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { smsSegmentCount } from '@/lib/sms-segments';
+import { tryUsageOverage } from '@/lib/billing/usage-overage';
 
 /**
  * DARK metering for text credits: reserve before a send, commit on a real
@@ -76,8 +77,16 @@ export type TextCreditAdmission =
   | 'ledger_unavailable'
   | 'exhausted_not_enforced';
 
+/** An overage that was authorized and accrued, and can be given back. */
+export type TextCreditOverage = Readonly<{
+  resourceCode: string;
+  units: number;
+  millicents: number;
+}>;
+
 export type TextCreditDecision =
   | Readonly<{ outcome: 'allowed'; segments: number; lease: TextCreditLease }>
+  | Readonly<{ outcome: 'allowed_overage'; segments: number; overage: TextCreditOverage }>
   | Readonly<{ outcome: 'allowed_unmetered'; segments: number; reason: TextCreditAdmission }>
   | Readonly<{ outcome: 'refused'; segments: number }>;
 
@@ -150,11 +159,33 @@ export async function beginTextCreditUsage(
       // The only definite answer. Even here, refusal needs the gate as well as
       // the meter -- during the measure-only period an exhausted workspace still
       // sends, and the shortfall shows up as this reason instead.
-      return mode === 'enforce'
-        ? Object.freeze({ outcome: 'refused' as const, segments })
-        : Object.freeze({
+      if (mode !== 'enforce') {
+        return Object.freeze({
           outcome: 'allowed_unmetered' as const, segments, reason: 'exhausted_not_enforced' as const,
         });
+      }
+
+      // Out of allowance, and about to be refused. Overage is the only thing
+      // that can turn that around, and only if the workspace asked for it and
+      // set a cap -- see usage-overage.ts. It can never turn an allow into a
+      // refusal, so asking here is safe.
+      const overage = await tryUsageOverage(admin, {
+        accountId: input.accountId,
+        resourceCode: TEXT_CREDIT_RESOURCE_CODE,
+        units: segments,
+      });
+      if (overage.outcome === 'accrued') {
+        return Object.freeze({
+          outcome: 'allowed_overage' as const,
+          segments,
+          overage: Object.freeze({
+            resourceCode: TEXT_CREDIT_RESOURCE_CODE,
+            units: segments,
+            millicents: overage.chargedMillicents,
+          }),
+        });
+      }
+      return Object.freeze({ outcome: 'refused' as const, segments });
     }
     console.error('text credit reservation failed:', reserveError);
     return Object.freeze({

@@ -3,6 +3,8 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { tryUsageOverage } from '@/lib/billing/usage-overage';
+
 /**
  * DARK metering for AI writing drafts: one credit per generation.
  *
@@ -51,8 +53,12 @@ export type AiWritingLease = Readonly<{
 
 export type AiWritingAdmission = 'not_metered' | 'ledger_unavailable' | 'exhausted_not_enforced';
 
+/** An overage that was authorized and accrued, and can be given back. */
+export type UsageOverageHold = Readonly<{ resourceCode: string; units: number; millicents: number }>;
+
 export type AiWritingDecision =
   | Readonly<{ outcome: 'allowed'; lease: AiWritingLease }>
+  | Readonly<{ outcome: 'allowed_overage'; overage: UsageOverageHold }>
   | Readonly<{ outcome: 'allowed_unmetered'; reason: AiWritingAdmission }>
   | Readonly<{ outcome: 'refused' }>;
 
@@ -102,11 +108,31 @@ export async function beginAiWritingUsage(
 
   if (reserveError) {
     if (insufficientCredits(reserveError)) {
-      return mode === 'enforce'
-        ? Object.freeze({ outcome: 'refused' as const })
-        : Object.freeze({
+      if (mode !== 'enforce') {
+        return Object.freeze({
           outcome: 'allowed_unmetered' as const, reason: 'exhausted_not_enforced' as const,
         });
+      }
+
+      // Out of allowance and about to be refused. Overage can only turn that
+      // around, never the other way, and only when the workspace asked for it
+      // and set a cap -- see usage-overage.ts.
+      const overage = await tryUsageOverage(admin, {
+        accountId: input.accountId,
+        resourceCode: AI_WRITING_RESOURCE_CODE,
+        units: 1,
+      });
+      if (overage.outcome === 'accrued') {
+        return Object.freeze({
+          outcome: 'allowed_overage' as const,
+          overage: Object.freeze({
+            resourceCode: AI_WRITING_RESOURCE_CODE,
+            units: 1,
+            millicents: overage.chargedMillicents,
+          }),
+        });
+      }
+      return Object.freeze({ outcome: 'refused' as const });
     }
     console.error('ai writing reservation failed:', reserveError);
     return Object.freeze({

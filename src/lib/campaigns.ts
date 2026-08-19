@@ -8,6 +8,7 @@ import {
   releaseMarketingEmailUsage,
   type MarketingEmailLease,
 } from '@/lib/billing/marketing-email-usage';
+import { releaseUsageOverage } from '@/lib/billing/usage-overage';
 import { listClientsWithStats } from '@/lib/clients';
 import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
@@ -205,6 +206,7 @@ export async function sendCampaign(
           // commit_usage_reservation has no unit count -- see
           // lib/billing/marketing-email-usage.ts.
           let lease: MarketingEmailLease | null = null;
+          let heldOverage: { resourceCode: string; units: number; millicents: number } | null = null;
           let mayEmail = true;
           if (ledger) {
             const decision = await beginMarketingEmailUsage(
@@ -220,6 +222,11 @@ export async function sendCampaign(
               failed++;
             } else if (decision.outcome === 'allowed') {
               lease = decision.lease;
+            } else if (decision.outcome === 'allowed_overage') {
+              // Charged against the workspace's own overage cap rather than its
+              // allowance. Nothing is held in the credit ledger, so the only
+              // thing to undo is the accrual, if the send then fails.
+              heldOverage = decision.overage;
             }
           }
           if (mayEmail) {
@@ -238,6 +245,9 @@ export async function sendCampaign(
               failed++;
               console.error('Campaign email failed:', error instanceof Error ? error.message : error);
               if (ledger && lease) await releaseMarketingEmailUsage(ledger, lease, 'send_failed');
+              if (ledger && heldOverage) {
+                await releaseUsageOverage(ledger, { accountId, ...heldOverage });
+              }
             }
           }
         }

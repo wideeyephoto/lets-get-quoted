@@ -14,6 +14,7 @@ import {
   releaseAiWritingUsage,
   type AiWritingLease,
 } from '@/lib/billing/ai-writing-usage';
+import { releaseUsageOverage } from '@/lib/billing/usage-overage';
 
 /**
  * The one egress point for model calls, and therefore the one place an AI
@@ -78,6 +79,7 @@ export async function callModel(
   const mode = aiWritingMode();
   let ledger: SupabaseClient | null = null;
   let lease: AiWritingLease | null = null;
+  let heldOverage: { resourceCode: string; units: number; millicents: number } | null = null;
 
   if (mode !== 'off' && billsAiWritingDrafts(context) && context.accountId) {
     const { createAdminClient } = await import('@/lib/auth');
@@ -88,6 +90,10 @@ export async function callModel(
     }, { mode });
     if (decision.outcome === 'refused') throw new AiDraftsExhaustedError();
     if (decision.outcome === 'allowed') lease = decision.lease;
+    // Charged against an authorized overage cap instead of the allowance. No
+    // draft is held, so the only thing to undo is the accrual if the model
+    // produces nothing.
+    if (decision.outcome === 'allowed_overage') heldOverage = decision.overage;
   }
 
   try {
@@ -104,9 +110,15 @@ export async function callModel(
       if (response.ok) await commitAiWritingUsage(ledger, lease);
       else await releaseAiWritingUsage(ledger, lease, `provider_status_${response.status}`);
     }
+    if (ledger && heldOverage && !response.ok && context.accountId) {
+      await releaseUsageOverage(ledger, { accountId: context.accountId, ...heldOverage });
+    }
     return response;
   } catch (error) {
     if (ledger && lease) await releaseAiWritingUsage(ledger, lease, 'request_failed');
+    if (ledger && heldOverage && context.accountId) {
+      await releaseUsageOverage(ledger, { accountId: context.accountId, ...heldOverage });
+    }
     throw error;
   }
 }

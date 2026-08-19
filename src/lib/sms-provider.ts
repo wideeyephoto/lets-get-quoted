@@ -9,6 +9,8 @@ import {
   type TextCreditLease,
 } from '@/lib/billing/text-credit-usage';
 import { billsTextCredits, type SmsSendContext } from '@/lib/sms-billing-policy';
+import { releaseUsageOverage } from '@/lib/billing/usage-overage';
+import type { TextCreditOverage } from '@/lib/billing/text-credit-usage';
 
 /**
  * EVERY provider-shaped fact in the application lives in this file.
@@ -372,6 +374,7 @@ export async function sendProviderMessage(
   const mode = textCreditMode();
   let ledger: SupabaseClient | null = null;
   let lease: TextCreditLease | null = null;
+  let overage: TextCreditOverage | null = null;
   if (mode !== 'off' && billsTextCredits(context) && context.accountId) {
     const { createAdminClient } = await import('@/lib/auth');
     ledger = createAdminClient();
@@ -386,6 +389,10 @@ export async function sendProviderMessage(
       throw new Error('This workspace is out of text credits. Buy a top-up to keep texting.');
     }
     if (decision.outcome === 'allowed') lease = decision.lease;
+    // Out of allowance but within an authorized overage cap. Nothing is held in
+    // the credit ledger -- the charge is already accrued -- so the only thing
+    // left is to give it back if the carrier refuses the message.
+    if (decision.outcome === 'allowed_overage') overage = decision.overage;
   }
 
   const request = buildSendRequest(config, to, body);
@@ -402,6 +409,14 @@ export async function sendProviderMessage(
     return result.providerId;
   } catch (error) {
     if (ledger && lease) await releaseTextCreditUsage(ledger, lease, 'send_failed');
+    if (ledger && overage && context.accountId) {
+      await releaseUsageOverage(ledger, {
+        accountId: context.accountId,
+        resourceCode: overage.resourceCode,
+        units: overage.units,
+        millicents: overage.millicents,
+      });
+    }
     throw error;
   }
 }
