@@ -14,7 +14,13 @@ export type AdminPlanCode = (typeof ADMIN_PLAN_CODES)[number];
 export const ADMIN_BILLING_INTERVALS = ['none', 'monthly', 'annual'] as const;
 export type AdminBillingInterval = (typeof ADMIN_BILLING_INTERVALS)[number];
 
-export const ADMIN_BILLING_STATUSES = ['free', 'trialing', 'active', 'past_due', 'paused', 'canceled'] as const;
+// Same list as plan-usage.ts, and stale in the same way for the same reason.
+// Worse here: the operator looking into why a subscriber is stuck saw
+// "unavailable" on the admin page too, so the one screen that could have
+// diagnosed it was blinded by the same missing string.
+export const ADMIN_BILLING_STATUSES = [
+  'free', 'incomplete', 'trialing', 'active', 'past_due', 'unpaid', 'paused', 'canceled',
+] as const;
 export type AdminBillingStatus = (typeof ADMIN_BILLING_STATUSES)[number];
 
 export const ADMIN_ENTITLEMENT_STATES = ['active', 'grace', 'restricted', 'archived'] as const;

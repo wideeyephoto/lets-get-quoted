@@ -35,12 +35,48 @@ function planPrice(plan: Extract<WorkspacePlanRead, { kind: 'ready' }>): string 
   return `${formatUsdFromCents(plan.basePriceCents)}/month`;
 }
 
-function billingStatusLabel(status: Extract<WorkspacePlanRead, { kind: 'ready' }>['billingStatus']): string {
+type ReadyPlan = Extract<WorkspacePlanRead, { kind: 'ready' }>;
+type BillingStatus = ReadyPlan['billingStatus'];
+
+export function billingStatusLabel(status: BillingStatus): string {
   switch (status) {
     case 'past_due': return 'Past due';
     case 'trialing': return 'Trial';
     case 'free': return 'Free';
+    // "Incomplete" on its own reads as a form somebody forgot to finish. What
+    // is incomplete is the payment, and saying so is the difference between a
+    // customer who knows to act and one who contacts support.
+    case 'incomplete': return 'Payment incomplete';
+    case 'unpaid': return 'Unpaid';
     default: return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+
+/**
+ * What to say when Stripe is not collecting.
+ *
+ * The generic entitlement-state note underneath says "This workspace is
+ * currently restricted. Contact support if that does not look right." For a
+ * subscriber whose bank is waiting on a 3-D Secure confirmation that is both
+ * true and useless: it sends somebody to support for something only they can
+ * do. These take precedence and say which thing is wrong.
+ *
+ * No self-serve billing portal exists yet, so none is promised here.
+ */
+export function collectionNote(status: BillingStatus): string | null {
+  switch (status) {
+    case 'incomplete':
+      return 'Your subscription is waiting on its first payment, so its monthly allowances have not started. '
+        + 'If your bank asked you to confirm the payment, completing that confirmation finishes it. '
+        + 'Contact support if you did not get that request.';
+    case 'past_due':
+      return 'The most recent subscription payment has not gone through yet. Your workspace stays open while '
+        + 'Stripe retries it. Contact support if the card on file needs to change.';
+    case 'unpaid':
+      return 'The most recent subscription payment was not collected and Stripe has stopped retrying it. '
+        + 'Contact support to settle it and restore this plan.';
+    default:
+      return null;
   }
 }
 
@@ -239,7 +275,11 @@ export default function PlanUsageSection({
                       ? 'One-time starter balances'
                       : data.plan.nextAllowanceResetAt
                         ? `Resets ${formatDate(data.plan.nextAllowanceResetAt)}`
-                        : 'Reset date unavailable'}
+                        // The projector nulls this deliberately whenever billing
+                        // is not being collected. "Unavailable" claimed a lookup
+                        // had failed; nothing had failed, there is simply no
+                        // reset scheduled, and the status above says why.
+                        : 'No reset scheduled'}
                   </dd>
                 </div>
               </dl>
@@ -254,7 +294,11 @@ export default function PlanUsageSection({
                 and fee are shown here; current public catalog prices are not substituted.
               </p>
             ) : null}
-            {data.plan.entitlementState !== 'active' ? (
+            {collectionNote(data.plan.billingStatus) ? (
+              <p className="plan-usage-note warning" role="status">
+                {collectionNote(data.plan.billingStatus)}
+              </p>
+            ) : data.plan.entitlementState !== 'active' ? (
               <p className="plan-usage-note warning" role="status">
                 This workspace is currently {data.plan.entitlementState}. Contact support if that does not look right.
               </p>
