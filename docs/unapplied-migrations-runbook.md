@@ -5,40 +5,34 @@ trust this file's list on a later date — trust the audit.** A previous version
 of this document said four migrations were outstanding when nine were, and the
 apply run that discovered it stopped four files past the actual gap.
 
-## Outstanding as of 2026-08-20
+## Nothing is outstanding as of 2026-08-20 evening
 
-All three are money correctness, none is urgent, and each must land before a
-specific thing is sold.
+`npm run audit:applied -- --unapplied` reports **0 with gaps** across 48
+migrations since `20260818000000`: 33 applied, 3 applied-but-source-patched, 12
+undetermined. **"Undetermined" is not "applied"** — those twelve create no object
+and replace no function, so the audit cannot judge them and each needs its own
+probe. Do not read the 0 as a clean bill of health for all 48.
 
-> **STALE, in part. Verified against production 2026-08-20.**
-> `20260820120000` **IS APPLIED** — `voice_call_admissions.overage_key` exists and
-> so does `settle_usage_overage()`. A column is created once, so that is
-> dispositive. This file said otherwise and a code review took it at its word and
-> filed a blocker that was not real.
-> `20260820100000` and `20260820110000` are `create or replace` / text patches, so
-> their applied state cannot be settled by asking whether an object exists; it was
-> NOT re-verified here and this table should not be trusted for them either.
-> **Ask the database, not this file.** `npm run audit:applied -- --unapplied`, or
-> read `pg_get_functiondef` and look for the changed text. A migration runbook
-> goes stale the moment somebody applies one, which is exactly what happened.
+The three this file used to list as outstanding were all verified applied against
+production by reading the installed content, not by trusting a list:
 
-| Migration | What it fixes | Must precede |
-|---|---|---|
-| `20260820100000_scale_gets_the_allowance_it_is_sold.sql` | both grant tables spell Scale's monthly allowance as Growth's — half, on all four resources | selling **Scale** |
-| `20260820110000_voice_allowance_survives_a_moved_period.sql` | a moved billing boundary grants a second month of voice minutes free | any **AI Voice** launch |
-| `20260820120000_settle_a_voice_overage_for_what_was_used.sql` | an overage-admitted call is charged the full 60-minute cap and nothing trues it down, so a 20-second wrong number costs $21 | any **AI Voice** launch |
+| Migration | How it was settled |
+|---|---|
+| `20260820100000_scale_gets_the_allowance_it_is_sold.sql` | `pg_get_functiondef(apply_paid_plan_monthly_allowance_reset)` carries all four corrected pairs (`growth 1500 / scale 3000`, `2500/5000`, `500/1000`, `250/500`) and neither drift pattern. Checked before enabling checkout, since it gates selling **Scale**. |
+| `20260820110000_voice_allowance_survives_a_moved_period.sql` | audit reports no gap; AI Voice is not sold, so nothing depends on it yet |
+| `20260820120000_settle_a_voice_overage_for_what_was_used.sql` | `voice_call_admissions.overage_key` and `settle_usage_overage()` both exist. A column is created once, so that is dispositive. |
 
-Filename order. `120000` needs `20260819290000` (already applied) for the accrual
-event table; the other two are independent.
+An earlier version of this file said all three were outstanding. A code review
+took it at its word and filed a blocker that was not real, and the same list read
+as a Stage 6 blocker a day after it stopped being true. **Ask the database, not
+this file.**
 
 ```
-npm run test:pg17:scale-allowance    # 12/12
-npm run test:pg17:voice-allowance    # 34/34
-npm run test:pg17:overage-idempotency # 71/71, covers the settle path
-npm run audit:applied -- --unapplied # before and after
+npm run audit:applied -- --unapplied   # the current answer, always
+npm run test:pg17:scale-allowance      # 12/12
+npm run test:pg17:voice-allowance      # 34/34
+npm run test:pg17:overage-idempotency  # 71/71, covers the settle path
 ```
-
-The nine outstanding on the morning of 2026-08-20 are all applied.
 
 ## Why the audit exists, and what the other one does not do
 
