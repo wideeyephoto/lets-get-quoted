@@ -7,7 +7,7 @@ apply run that discovered it stopped four files past the actual gap.
 
 ## Outstanding as of 2026-08-20
 
-Both are money correctness, neither is urgent, and both must land before a
+All three are money correctness, none is urgent, and each must land before a
 specific thing is sold.
 
 | Migration | What it fixes | Must precede |
