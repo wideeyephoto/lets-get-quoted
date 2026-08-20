@@ -58,6 +58,7 @@ const FIX_ROLE = '20260819090100_office_seat_uses_office_role.sql';
 const INVITES = '20260819210000_office_invitations.sql';
 const CAPS = '20260819220000_office_capabilities.sql';
 const REMOVE = '20260819230000_remove_office_user.sql';
+const CREW_FIX = '20260819240000_office_invitation_crew_conflict.sql';
 
 /** Enough schema for the real migrations to install and run unmodified. */
 const SCHEMA = `
@@ -600,6 +601,46 @@ try {
   ck('anon cannot call it',
     (await q(`select has_function_privilege('anon',
        'public.remove_office_user(uuid,uuid)', 'EXECUTE') as ok`)).rows[0].ok === false);
+
+
+  // =====================================================================
+  // A CREW MEMBER INVITED TO THE OFFICE.
+  // =====================================================================
+  const FIELD = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  await q("insert into auth.users (id, email) values ($1, 'installer@acme.test')", [FIELD]);
+  await q("insert into public.memberships (account_id, user_id, role) values ($1, $2, 'crew')",
+    [acctD.id, FIELD]);
+
+  // Before the fix, this SUCCEEDED -- and the failure surfaced only when the
+  // invitee clicked, because memberships is unique on (account_id, user_id).
+  const beforeFix = await sendInvite(OWNER_D, acctD.id, 'installer@acme.test', hash('c7'));
+  ck('the bug is real: inviting a crew member used to be accepted', beforeFix === null, beforeFix);
+
+  await q(m(CREW_FIX));
+  ck('the crew-conflict fix applies, post-conditions and all', true);
+
+  // Clear the invitation the bug allowed, so the refusal below is about the
+  // crew membership rather than about a pending row.
+  await q("delete from public.office_invitations where email = 'installer@acme.test'");
+
+  const crewInvite = await sendInvite(OWNER_D, acctD.id, 'installer@acme.test', hash('c8'));
+  ck('inviting a crew member is now REFUSED at invite time, not at acceptance',
+    /office_invitation_is_crew/.test(crewInvite ?? ''), crewInvite);
+
+  ck('an owner or office member still gets the plain already-a-member answer',
+    /office_invitation_already_a_member/.test(
+      await sendInvite(OWNER_D, acctD.id, 'ownerd@acme.test', hash('c9')) ?? ''));
+
+  // Somebody genuinely new is still invitable: the widened check must not have
+  // turned every invitation into a refusal.
+  const NEWCOMER = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  await q("insert into auth.users (id, email) values ($1, 'newcomer@acme.test')", [NEWCOMER]);
+  ck('somebody with no membership can still be invited',
+    (await sendInvite(OWNER_D, acctD.id, 'newcomer@acme.test', hash('ca'))) === null);
+
+  // And if one somehow exists, accepting still cannot half-promote them.
+  ck('the crew membership is untouched by the attempt',
+    (await q('select role from public.memberships where user_id = $1', [FIELD])).rows[0].role === 'crew');
 
   await db.end();
 } catch (error) {

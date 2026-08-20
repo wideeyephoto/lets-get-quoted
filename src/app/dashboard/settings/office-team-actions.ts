@@ -44,6 +44,16 @@ function readable(error: { code?: string; message?: string; details?: unknown })
       'Every office seat on your plan is in use. Remove someone\'s access, or add a seat, then invite again.',
     );
   }
+  if (raw.includes('office_invitation_is_crew')) {
+    // Its own message, because the answer is different: they are not on the
+    // team already, they are on the CREW -- and moving them would take the
+    // field app away, which is a decision nobody has made.
+    return new Error(
+      'That email belongs to someone on your crew. Moving them to the office would '
+      + 'take away their field app access, so it has to be done deliberately — '
+      + 'get in touch and we will sort it out with you.',
+    );
+  }
   if (raw.includes('office_invitation_already_a_member')) {
     return new Error('That person is already on your team.');
   }

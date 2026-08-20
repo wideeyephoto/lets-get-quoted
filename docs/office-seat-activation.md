@@ -88,3 +88,29 @@ owner row of their own signs in and `ensureAccountMembership` provisions them
 a fresh empty workspace. Reaching the employer's workspace then requires
 choosing between workspaces, which the product has never needed before. That is
 the real remaining scope of item 6, and it is larger than a team screen.
+
+## Blocker 4, answered: promotion is a data-model question
+
+Crew-to-office promotion is not built, and the reason is worth recording so it
+is not re-litigated as an oversight.
+
+`memberships` is unique on `(account_id, user_id)` — one row per person per
+workspace. So "crew AND office" is not expressible. Promotion would mean
+rewriting that row to `office`, and `is_crew()` is `role = 'crew'` exactly, so
+the moment the role changes the person stops being able to open a job, clock in
+or see their assignments — while their crew roster row and every assignment stay
+exactly where they were. An installer who also does the invoicing would be
+promoted into being unable to work.
+
+That is a question about whether one person may hold two roles in one workspace,
+and it is not one an invitation function should answer with a silent UPDATE.
+
+Until it is answered, `create_office_invitation` refuses a crew member **at the
+moment of inviting**, with its own code (`office_invitation_is_crew`) and its own
+message. Before 20260819240000 it did not: the invitation was created happily
+and failed only when the invitee clicked it, because the unique constraint made
+acceptance impossible. The invitation was always going to fail and the only
+person who found out was the person it was sent to.
+
+If the answer turns out to be "yes, two roles", the change is to `memberships`
+and to `is_crew`/`is_office`, not to the invitation path.
