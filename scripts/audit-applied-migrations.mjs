@@ -99,6 +99,14 @@ const PATCH_RE = /pg_get_functiondef\(\s*'public\.(\w+)\(/g;
  */
 const PATCH_BY_NAME_RE = /\bproname\s*=\s*'(\w+)'/g;
 /**
+ * A quoted full signature anywhere in a patcher file --
+ * `'public.name(uuid,jsonb)'` -- which is how a migration that patches SEVERAL
+ * functions names them, holding the list in an array and casting each to
+ * regprocedure in a loop. 20260820100000 does exactly that, and defeated every
+ * other pattern here.
+ */
+const SIGNATURE_RE = /'public\.(\w+)\(/g;
+/**
  * A source-patching migration opens with its own idempotency guard --
  * `if strpos(v_def, 'some new text') > 0 then return` -- because it must be safe
  * to re-run. That marker is the migration's own statement of what proves it
@@ -154,6 +162,7 @@ for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sor
   // that is already applied.
   const targets = [...sql.matchAll(PATCH_RE)].map((m) => m[1])
     .concat([...sql.matchAll(PATCH_BY_NAME_RE)].map((m) => m[1]))
+    .concat([...sql.matchAll(SIGNATURE_RE)].map((m) => m[1]))
     .concat([...sql.matchAll(/'([a-z][a-z0-9_]{6,})'/g)].map((m) => m[1]));
   for (const name of targets) {
     if (!patchedBy.has(name)) patchedBy.set(name, []);
@@ -176,6 +185,7 @@ for (const file of files) {
   const patches = sql.includes('pg_get_functiondef')
     ? [...sql.matchAll(PATCH_RE)].map((m) => m[1])
       .concat([...sql.matchAll(PATCH_BY_NAME_RE)].map((m) => m[1]))
+      .concat([...sql.matchAll(SIGNATURE_RE)].map((m) => m[1]))
     : [];
   const marker = sql.match(MARKER_RE);
   const patchProbe = patches.length > 0 && marker
