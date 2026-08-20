@@ -58,10 +58,42 @@ subscription can exist.
 | 2 | Add `STRIPE_BILLING_WEBHOOK_SECRET` | Must be the new endpoint's secret. Never `STRIPE_WEBHOOK_SECRET`. |
 | 3 | `LGQ_STRIPE_BILLING_WEBHOOK_ENABLED=1` | Events now land in `billing_events`. Nothing consumes them yet — harmless. |
 | 4 | `LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED=1` | Drains the inbox. Nothing is in it yet. |
+| 4a | `LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED=1` | **Required before selling annual.** A monthly plan re-grants credits from its next invoice; an annual plan has no next invoice for 365 days, so months 2–12 come from this worker alone. Without it an annual subscriber gets one month of credits per year and nothing fails. |
+| 4b | `LGQ_PRICING_DASHBOARD_ENABLED=1` | **Required before step 5 does anything.** Not independent — see below. |
 | 5 | `LGQ_BASE_PLAN_SUBSCRIPTION_CHECKOUT_ENABLED=1` | **Last.** This is the only one that lets a customer be charged. |
 
 Steps 3–5 are each independently reversible by setting the var back to `0`.
 Step 5 is the only one with a blast radius.
+
+### Step 4b is not optional, and its absence is silent
+
+`settings/page.tsx:87` only loads `planUsage` when `LGQ_PRICING_DASHBOARD_ENABLED`
+is on; otherwise it is `null`. `showSubscriptionCheckout` (line 217) requires
+`planUsage?.plan.kind === 'ready'`, and the whole Plan tab is only added when
+`pricingDashboardEnabled && planUsage` (line 359).
+
+So with step 5 on and step 4b off, there is **no buy button anywhere and no error
+to explain it**. An operator would reasonably read that as a failed deploy. The
+same flag gates the top-up purchase surface at line 227.
+
+### Before any of this: the six live Prices are stamped with the wrong catalog
+
+`stripe-billing-subscription-checkout.ts:227` compares each Price's
+`lgq_catalog_version` metadata against `PRICING_CATALOG_VERSION`
+character-for-character and throws when they differ. The live Prices were created
+carrying `2026-08-15-preview`; raising Scale's allowances on 2026-08-18 moved the
+code to `2026-08-18-preview`.
+
+Until the Prices are recreated at the current version, **every plan checkout
+fails closed** with "Plan checkout is not configured for this environment.
+Nothing was charged." — deliberately uninformative, so it reads as a deploy
+problem rather than a data one. No flag in this table changes that.
+
+### And apply `20260820100000` before selling Scale
+
+Both grant tables spelled Scale's monthly allowance as Growth's — half, on every
+resource. The migration is written and verified; see
+`docs/unapplied-migrations-runbook.md`.
 
 ## Exercise it in test mode first
 
@@ -77,8 +109,9 @@ repaired earlier today, so this works.
 
 ### What a good rehearsal proves
 
-1. `/dashboard/settings#plan` offers a paid plan (needs `LGQ_PRICING_DASHBOARD_ENABLED`
-   for the usage panel, which is independent).
+1. `/dashboard/settings#plan` offers a paid plan. This needs
+   `LGQ_PRICING_DASHBOARD_ENABLED` as well as the checkout flag -- it is a
+   prerequisite, not an independent surface. See step 4b.
 2. Accepting consent writes one row to `billing_subscription_consent_acceptances`.
 3. Checkout redirects to a URL on `https://checkout.stripe.com` — anything else is
    rejected by `requireStripeHostedCheckoutUrl`.
