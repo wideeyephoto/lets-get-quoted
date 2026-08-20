@@ -237,3 +237,86 @@ describe('the activation guide matches the database it describes', () => {
     }
   });
 });
+
+describe('step one of the wiring: the split that grants nothing', () => {
+  const split = () => readFileSync(
+    join(process.cwd(), 'migrations', '20260820230000_split_core_work_policies.sql'), 'utf8');
+
+  it('drops the combined for-all policy on each of the three tables', () => {
+    // Leaving it behind would make the split cosmetic: one predicate would keep
+    // granting everything, and the next migration's narrowing would do nothing
+    // while appearing to have been applied.
+    const sql = split();
+    for (const policy of ['lead_all', 'clients_all', 'job_owner']) {
+      expect(sql, policy).toContain(`drop policy if exists ${policy} on public.`);
+    }
+  });
+
+  it('creates a select-only read policy, not another for-all', () => {
+    // A read policy created `for all` would grant exactly the writes this
+    // migration exists to separate out -- and would look right in a diff.
+    const sql = split();
+    for (const policy of ['lead_owner_read', 'clients_owner_read', 'job_owner_read']) {
+      const from = sql.indexOf(`create policy ${policy}`);
+      expect(from, policy).toBeGreaterThan(-1);
+      const statement = sql.slice(from, sql.indexOf(';', from));
+      expect(statement, policy).toContain('for select');
+      expect(statement, policy).not.toContain('for all');
+    }
+  });
+
+  it('writes `with check` out explicitly on every write policy', () => {
+    // A `for all` policy given only `using` inherits `with check` from it. That
+    // inheritance is invisible in the catalog and silently wrong the moment the
+    // two predicates differ, which is exactly what the next migration does to
+    // one side. The migration asserts polwithcheck is non-null for this reason.
+    const sql = split();
+    for (const policy of ['lead_owner_write', 'clients_owner_write', 'job_owner_write']) {
+      const from = sql.indexOf(`create policy ${policy}`);
+      expect(from, policy).toBeGreaterThan(-1);
+      const clause = sql.slice(from, sql.indexOf(';', from));
+      expect(clause, policy).toContain('using (public.is_owner(account_id))');
+      expect(clause, policy).toContain('with check (public.is_owner(account_id))');
+    }
+    expect(sql).toContain('it would be inherited and invisible');
+  });
+
+  it('still tests is_owner everywhere, so behaviour is unchanged', () => {
+    // The whole claim of this migration is "nothing moved". An office_can in a
+    // CREATE POLICY would make that false and merge two steps whose failures
+    // could then not be told apart.
+    //
+    // Checked per statement rather than across the file: the post-condition
+    // legitimately mentions office_can, to assert that nothing else does, and a
+    // whole-file search cannot tell the guard apart from the thing it guards.
+    // Comment lines are stripped first: the header quotes the old combined
+    // policy as the thing being replaced, and counting that as a seventh
+    // statement would make the count assertion below meaningless.
+    const sql = split().split('\n').filter((line) => !line.trim().startsWith('--')).join('\n');
+    const statements = sql.split('create policy').slice(1)
+      .map((chunk) => chunk.slice(0, chunk.indexOf(';')));
+    // Two per table, three tables. A seventh would mean a policy nobody
+    // described; a fifth would mean a table was left combined.
+    expect(statements).toHaveLength(6);
+    for (const statement of statements) {
+      expect(statement).toContain('is_owner(account_id)');
+      expect(statement).not.toContain('office_can');
+    }
+    expect(sql).toContain('it must only split');
+  });
+
+  it('keeps the crew reading their own jobs', () => {
+    // job_crew_read is a different audience on the same table. Dropping it while
+    // refactoring the owner's policy is an easy accident and a silent one: the
+    // crew app would simply show an empty list.
+    expect(split()).toContain('job_crew_read');
+    expect(split()).toContain('the crew can no longer read their jobs');
+  });
+
+  it('refuses to leave row-level security disabled', () => {
+    // Dropping the last policy on an RLS-enabled table denies everyone, and
+    // disabling RLS to "fix" that opens the table to every tenant. The migration
+    // must not be able to exit in either state.
+    expect(split()).toContain('row-level security is disabled on one of the split tables');
+  });
+});
