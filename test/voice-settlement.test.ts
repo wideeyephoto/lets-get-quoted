@@ -9,6 +9,12 @@ vi.mock('@/lib/billing/voice-minute-usage', async (importOriginal) => ({
   settleVoiceCall: (...a: unknown[]) => settleVoiceCall(...a),
 }));
 
+const settleUsageOverage = vi.fn();
+vi.mock('@/lib/billing/usage-overage', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  settleUsageOverage: (...a: unknown[]) => settleUsageOverage(...a),
+}));
+
 const createLead = vi.fn();
 vi.mock('@/lib/leads', () => ({ createLead: (...a: unknown[]) => createLead(...a) }));
 
@@ -54,6 +60,8 @@ const receipt = (over: Partial<VoiceReceipt> = {}): VoiceReceipt => ({
 beforeEach(() => {
   settleVoiceCall.mockReset();
   settleVoiceCall.mockResolvedValue(1);
+  settleUsageOverage.mockReset();
+  settleUsageOverage.mockResolvedValue({ settled: true, refundedMillicents: 2_065_000 });
   createLead.mockReset();
   createLead.mockResolvedValue({ id: 'lead-1' });
   history.mockReset();
@@ -178,6 +186,67 @@ describe('the row the contractor will read', () => {
 
   it('marks an unmetered call as answered-not-billed, not as free', async () => {
     admissionRow = { account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0 };
+    await settleVoiceReceipt(admin, receipt());
+    expect(history.mock.calls[0][0]).toMatchObject({ settlement: 'unmetered', billed_minutes: null });
+  });
+
+  it('records an overage call AS an overage, not as allowance', async () => {
+    // 'overage' was a legal value in the column, handled by the reader and
+    // rendered as "at your overage rate" -- and nothing ever wrote it. Every
+    // settled call, including one charged well above the allowance, was
+    // recorded as 'allowance'.
+    admissionRow = {
+      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+      overage_key: 'ai-voice:v1:call_x:overage',
+    };
+    await settleVoiceReceipt(admin, receipt());
+    expect(history.mock.calls[0][0]).toMatchObject({
+      settlement: 'overage', billed_minutes: 1,
+    });
+  });
+
+  it('does not call an overage call unmetered, which said it was not billed', async () => {
+    // An overage call holds no reservation either, so testing reservation_id
+    // alone told a contractor who had just paid the overage rate that the call
+    // was "Answered -- not billed", and left its minutes out of the billed
+    // total on the same card.
+    admissionRow = {
+      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+      overage_key: 'ai-voice:v1:call_x:overage',
+    };
+    await settleVoiceReceipt(admin, receipt());
+    expect(history.mock.calls[0][0].settlement).not.toBe('unmetered');
+  });
+
+  it('trues the overage down to the minutes actually used', async () => {
+    admissionRow = {
+      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+      overage_key: 'ai-voice:v1:call_x:overage',
+    };
+    await settleVoiceReceipt(admin, receipt());
+    // 33 seconds of AI time bills one minute, against a 60-minute hold.
+    expect(settleUsageOverage).toHaveBeenCalledWith(admin, {
+      accountId: ACCOUNT,
+      idempotencyKey: 'ai-voice:v1:call_x:overage',
+      units: 1,
+    });
+    expect(settleVoiceCall).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed overage settlement rather than claiming success', async () => {
+    settleUsageOverage.mockResolvedValue({ settled: false, refundedMillicents: 0 });
+    admissionRow = {
+      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+      overage_key: 'ai-voice:v1:call_x:overage',
+    };
+    const result = await settleVoiceReceipt(admin, receipt());
+    expect(result.reconcile).toBe('settlement_failed');
+  });
+
+  it('still treats a call with neither a reservation nor an overage as unmetered', async () => {
+    admissionRow = {
+      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0, overage_key: null,
+    };
     await settleVoiceReceipt(admin, receipt());
     expect(history.mock.calls[0][0]).toMatchObject({ settlement: 'unmetered', billed_minutes: null });
   });

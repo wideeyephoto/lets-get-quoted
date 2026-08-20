@@ -146,7 +146,16 @@ export async function settleVoiceReceipt(
   await recordCallHistory(admin, receipt, {
     accountId: row.account_id,
     minutes: settled,
-    unmetered: row.reservation_id === null,
+    // UNMETERED MEANS NOBODY WAS CHARGED. An overage call also holds no
+    // reservation, so testing reservation_id alone called it unmetered and told
+    // a contractor who had just paid the overage rate that the call was "not
+    // billed" -- and left its minutes out of the billed total.
+    // `!= null`, not `!== null`: a row selected before this column existed --
+    // or by any caller that does not ask for it -- yields undefined, and
+    // `undefined !== null` is true, which would mark every reservation-backed
+    // call an overage. The existing tests caught exactly that.
+    unmetered: row.reservation_id === null && row.overage_key == null,
+    overage: row.overage_key != null,
     unbillable: minutes === null,
     leadId,
   });
@@ -173,6 +182,8 @@ async function recordCallHistory(
     accountId: string;
     minutes: number | null;
     unmetered: boolean;
+    /** Charged against the workspace's overage cap rather than its allowance. */
+    overage: boolean;
     unbillable: boolean;
     leadId: string | null;
   }>,
@@ -184,9 +195,14 @@ async function recordCallHistory(
 
   // `unmetered` is a real outcome, not a failure: the meter fails open when the
   // ledger cannot answer, and such a call must look different from a free one.
+  // 'overage' was a legal value in the column, handled by the reader and
+  // rendered by the dashboard as "at your overage rate" -- and nothing ever
+  // wrote it. Every settled call was recorded as 'allowance', including the
+  // ones charged well above it.
   const settlement = facts.unbillable ? 'unbillable'
     : facts.unmetered ? 'unmetered'
-      : facts.minutes === null ? 'unsettled' : 'allowance';
+      : facts.minutes === null ? 'unsettled'
+        : facts.overage ? 'overage' : 'allowance';
 
   try {
     const { error } = await admin.from('voice_calls').upsert({
