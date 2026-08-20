@@ -28,7 +28,7 @@ export const HOME_FAQS: HomeFaq[] = [
   },
   {
     q: 'Am I locked in? Do I keep my clients and my domain?',
-    a: 'You’re never locked in — there’s no contract and you can leave whenever you like. Your clients and job history stay yours, and any custom domain you connect is yours to keep.',
+    a: 'You’re never locked in — there’s no contract, and on a paid plan you cancel it yourself in Settings under Plan & usage. No email, no phone call, no retention script. The plan stays open until the end of the period you’ve already paid for and then stops renewing, and the workspace drops back to free Flex rather than closing. Your clients and job history stay yours, and any custom domain you connect is yours to keep.',
   },
   {
     q: 'Do I need my own website already?',

@@ -94,7 +94,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Who owns my customers and my job history?',
-    a: 'You do. There is no contract and no lock-in period. Your clients, quotes, jobs, messages and payment history are your records, your custom domain stays registered to you, and leaving does not cost you the address your customers already know.',
+    a: 'You do. There is no contract and no lock-in period, and a paid plan is cancelled from your own Settings page rather than by asking us. Your clients, quotes, jobs, messages and payment history are your records, your custom domain stays registered to you, and leaving does not cost you the address your customers already know.',
   },
   {
     q: 'How do payments work — do you hold my money?',
