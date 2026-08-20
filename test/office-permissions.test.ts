@@ -124,3 +124,41 @@ describe('the shape of the decision a contractor is being asked to make', () => 
     expect(OFFICE_CAPABILITIES_REQUIRING_DELIBERATION).toContain('payments.refund');
   });
 });
+
+describe('the activation guide matches the database it describes', () => {
+  const guide = () => readFileSync(
+    join(process.cwd(), 'docs', 'office-capability-activation.md'), 'utf8');
+
+  it('counts the for-all policies that actually exist', () => {
+    // The guide's whole argument rests on this number: 44 policies each cover
+    // select, insert, update and delete together, so a capability named "read"
+    // cannot be wired to one without granting writes. A stale count would make
+    // the argument look like an estimate.
+    const schema = readFileSync(join(process.cwd(), 'schema.sql'), 'utf8');
+    const forAll = [...schema.matchAll(
+      /create policy \S+\s+on \S+\s+for all\s+using \(\s*is_owner/gi)].length;
+    expect(guide()).toContain(`**${forAll} such policies**`);
+  });
+
+  it('warns that a split without `with check` is silently wrong later', () => {
+    // `using` defaults into `with check`, so omitting it changes nothing today
+    // and permits unintended writes the moment the two predicates differ.
+    expect(guide()).toContain('with check');
+    expect(guide()).toMatch(/defaulted from it/);
+  });
+
+  it('orders the bands the way the catalog does', () => {
+    const text = guide();
+    const positions = ['work', 'money_visible', 'money_moving', 'people', 'account']
+      .map((band) => text.indexOf(`**\`${band}\`**`));
+    expect(positions.every((p) => p > 0)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
+  it('names every capability band that exists', () => {
+    const text = guide();
+    for (const band of ['work', 'money_visible', 'money_moving', 'people', 'account']) {
+      expect(text, band).toContain(band);
+    }
+  });
+});
