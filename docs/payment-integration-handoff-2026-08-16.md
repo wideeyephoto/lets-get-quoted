@@ -291,7 +291,7 @@ After deployment `dpl_A5zPa493exKM4BN9CcagfPvHV6Ex`, the homepage returned 200 a
 
 ### Pricing catalog
 
-- Catalog version: `2026-08-15-preview`.
+- Catalog version: `2026-08-15-preview` **as of 2026-08-16**. It has moved since; read `PRICING_CATALOG_VERSION` and verify with `npm run preflight:prices`.
 
 | Plan | Monthly | Annual | Platform fee | Included allowance summary |
 |---|---:|---:|---:|---|

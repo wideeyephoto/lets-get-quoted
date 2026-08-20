@@ -177,7 +177,7 @@ character for character:
 | `lgq_price_purpose` | `base_plan` |
 | `lgq_plan_code` | `solo` \| `growth` \| `scale` |
 | `lgq_billing_interval` | `monthly` \| `annual` |
-| `lgq_catalog_version` | `2026-08-15-preview` |
+| `lgq_catalog_version` | whatever `PRICING_CATALOG_VERSION` says today — it was `2026-08-15-preview` when this was written and moved to `2026-08-18-preview` the next day |
 
 **The footgun:** `lgq_billing_interval` is `monthly`/`annual`. That is *not* the same
 vocabulary as `recurring.interval`, which is `month`/`year`. A Price can be perfectly
