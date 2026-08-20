@@ -107,6 +107,18 @@ const PATCH_BY_NAME_RE = /\bproname\s*=\s*'(\w+)'/g;
  */
 const MARKER_RE = /strpos\(\s*v_(?:def|before)\s*,\s*'((?:[^']|'')+)'\s*\)\s*(?:>\s*0|=\s*0)/;
 
+/**
+ * `alter type public.member_role add value if not exists 'office'`. A label
+ * either exists in pg_enum or it does not, and nothing else adds it. Anchored on
+ * `public.` so the same phrase inside a prose comment cannot match.
+ */
+const ENUM_RE = /alter type public\.(\w+)\s+add value\s+(?:if not exists\s+)?'([^']+)'/g;
+/** `add constraint <name>` -- definitive only when the file does not also drop it. */
+const ADD_CONSTRAINT_RE = /add constraint (\w+)/g;
+const DROP_CONSTRAINT_RE = /drop constraint (?:if exists )?(\w+)/g;
+/** The browser-role TRUNCATE revoke, which leaves no object of its own behind. */
+const TRUNCATE_REVOKE_RE = /revoke\s+truncate\s+on\s+all tables in schema public\s+from\s+([\w, ]+)/;
+
 const files = readdirSync(MIGRATIONS)
   .filter((f) => f.endsWith('.sql') && f.split('_')[0] >= SINCE)
   .sort();
@@ -126,9 +138,23 @@ const patchedBy = new Map();
 // makes an in-range body comparison meaningless.
 for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
   const sql = readFileSync(join(MIGRATIONS, file), 'utf8').replace(/\r\n/g, '\n');
-  if (!sql.includes('pg_get_functiondef')) continue;
+  // pg_get_functiondef alone is not a patch -- an assertion-only migration reads
+  // a definition to check it and changes nothing. What makes it a patch is the
+  // text substitution. Without this, 20260819200000 (which only asserts the
+  // canonical reset is untouched) would mark its subject unknowable.
+  if (!sql.includes('pg_get_functiondef') || !/\breplace\(\s*v_/.test(sql)) continue;
+  // Patchers name their target three ways: a regprocedure literal, a
+  // `proname =` filter, or -- as 20260819070000 does -- by passing the name to a
+  // local helper as an argument. Rather than chase each shape, take every
+  // quoted identifier in the file as a possible target.
+  //
+  // Over-matching is the SAFE direction here. A wrong guess only suppresses a
+  // body comparison, turning a definite answer into "not comparable". Missing a
+  // target invents a gap, and a false gap sends somebody to re-run a migration
+  // that is already applied.
   const targets = [...sql.matchAll(PATCH_RE)].map((m) => m[1])
-    .concat([...sql.matchAll(PATCH_BY_NAME_RE)].map((m) => m[1]));
+    .concat([...sql.matchAll(PATCH_BY_NAME_RE)].map((m) => m[1]))
+    .concat([...sql.matchAll(/'([a-z][a-z0-9_]{6,})'/g)].map((m) => m[1]));
   for (const name of targets) {
     if (!patchedBy.has(name)) patchedBy.set(name, []);
     if (!patchedBy.get(name).includes(file)) patchedBy.get(name).push(file);
@@ -156,10 +182,46 @@ for (const file of files) {
     ? { target: patches[0], text: marker[1].replace(/''/g, "'") }
     : null;
 
-  created.set(file, { tables, newFunctions, patchProbe });
+  const enums = [...sql.matchAll(ENUM_RE)].map((m) => ({ type: m[1], value: m[2] }));
+
+  // A dropped-and-recreated constraint keeps its name whichever version is
+  // installed, so its existence proves nothing. Only newly added names count.
+  const dropped = new Set([...sql.matchAll(DROP_CONSTRAINT_RE)].map((m) => m[1]));
+  const constraints = [...new Set([...sql.matchAll(ADD_CONSTRAINT_RE)].map((m) => m[1]))]
+    .filter((name) => !dropped.has(name));
+
+  const truncateRevoke = TRUNCATE_REVOKE_RE.exec(sql);
+  const revokedFrom = truncateRevoke
+    ? truncateRevoke[1].split(',').map((r) => r.trim()).filter((r) => r === 'anon' || r === 'authenticated')
+    : [];
+
+  created.set(file, { tables, newFunctions, patchProbe, enums, constraints, revokedFrom });
 }
 
-const normalise = (s) => s.replace(/\r\n/g, '\n').trim();
+/**
+ * Compare CODE, not prose.
+ *
+ * Line endings first: production has held both CRLF and LF bodies (see
+ * 20260817120000), and comparing them raw calls every function stale.
+ *
+ * Then `--` comments and blank lines. A migration's function body in the repo
+ * drifts from the installed one every time somebody improves a comment without
+ * re-applying, and 20260816035518 was reported as a gap for exactly that --
+ * four added comment lines, not one changed statement. A false gap is the
+ * expensive kind of wrong here: it sends somebody to re-run a migration that is
+ * already live.
+ *
+ * Stripping `--` can also cut inside a string literal containing two dashes.
+ * That is applied identically to both sides, so it cannot make two different
+ * bodies look the same -- only two identical ones stay identical.
+ */
+const normalise = (s) => s
+  .replace(/\r\n/g, '\n')
+  .split('\n')
+  .map((line) => line.replace(/--.*$/, '').trimEnd())
+  .filter((line) => line.trim() !== '')
+  .join('\n')
+  .trim();
 
 const client = new pg.Client({
   connectionString: readEnv(),
@@ -181,7 +243,7 @@ const functionBodies = async (name) =>
 const results = [];
 
 for (const file of files) {
-  const { tables, newFunctions, patchProbe } = created.get(file);
+  const { tables, newFunctions, patchProbe, enums, constraints, revokedFrom } = created.get(file);
   const owned = [...lastDefiner.entries()].filter(([, f]) => f === file).map(([n]) => n);
 
   const proofs = [];
@@ -197,6 +259,41 @@ for (const file of files) {
 
   for (const table of tables) {
     proofs.push({ what: `table ${table}`, ok: await tableExists(table) });
+  }
+
+  for (const { type, value } of enums) {
+    const r = await client.query(
+      `select exists (
+         select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid
+          join pg_namespace n on n.oid = t.typnamespace
+         where n.nspname = 'public' and t.typname = $1 and e.enumlabel = $2) as ok`,
+      [type, value],
+    );
+    proofs.push({ what: `enum ${type} has '${value}'`, ok: r.rows[0].ok });
+  }
+
+  for (const name of constraints) {
+    const r = await client.query(
+      'select exists (select 1 from pg_constraint where conname = $1) as ok', [name],
+    );
+    proofs.push({ what: `constraint ${name}`, ok: r.rows[0].ok });
+  }
+
+  for (const role of revokedFrom) {
+    // Nothing in public may still grant TRUNCATE to a browser role. Supabase
+    // default privileges hand it out on every new table, so this is a standing
+    // property, not a one-off: a table added later re-opens the hole.
+    const r = await client.query(
+      `select count(*)::int as n
+         from information_schema.role_table_grants
+        where table_schema = 'public' and grantee = $1 and privilege_type = 'TRUNCATE'`,
+      [role],
+    );
+    proofs.push({
+      what: `no TRUNCATE for ${role}`,
+      ok: r.rows[0].n === 0,
+      detail: r.rows[0].n === 0 ? '' : `${r.rows[0].n} tables still grant it`,
+    });
   }
   for (const fn of newFunctions) {
     proofs.push({ what: `function ${fn}`, ok: (await functionBodies(fn)).length > 0 });
