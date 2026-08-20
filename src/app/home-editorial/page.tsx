@@ -298,7 +298,7 @@ export default function HomeEditorialPage() {
                 Create my account <span aria-hidden="true">→</span>
               </a>
             </div>
-            <p className={styles.fine}>Flex starts at $0/month · No card to start · Cancel anytime</p>
+            <p className={styles.fine}>Flex starts at $0/month · No card to start · Cancel anytime from Settings</p>
           </div>
         </section>
 

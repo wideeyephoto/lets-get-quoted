@@ -263,7 +263,7 @@ const homeFaqs = [
   },
   {
     q: 'Am I locked in? Do I keep my clients and my domain?',
-    a: 'You’re never locked in — there’s no contract and you can leave whenever you like. Your clients and job history stay yours, and any custom domain you connect is yours to keep.',
+    a: 'You’re never locked in — there’s no contract, and on a paid plan you cancel it yourself in Settings under Plan & usage. The plan stays open until the end of the period you’ve already paid for, then the workspace drops back to free Flex rather than closing. Your clients and job history stay yours, and any custom domain you connect is yours to keep.',
   },
   {
     q: 'Do I need my own website already?',
@@ -502,7 +502,7 @@ export default function HomePage() {
           <div className="reassure-card">
             <span className="reassure-ic"><ExportIcon /></span>
             <h3>Never locked in</h3>
-            <p>No contract, cancel anytime. Export your clients, jobs and invoices to a spreadsheet whenever you like &mdash; your data leaves with you, and any domain you connect stays yours.</p>
+            <p>No contract, and a paid plan is cancelled from your own Settings page. Export your clients, jobs and invoices to a spreadsheet whenever you like &mdash; your data leaves with you, and any domain you connect stays yours.</p>
           </div>
           <div className="reassure-card">
             <span className="reassure-ic"><MessageIcon /></span>

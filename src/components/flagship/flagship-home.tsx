@@ -982,7 +982,7 @@ export default function FlagshipHome() {
         <h2>One truck or ten crews.<br />Your next stage starts here.</h2>
         <p>Launch the site, connect the work and give your growing business one place to run.</p>
         <a className="button primary light" href={SIGNUP_URL}>{SIGNUP_LABEL} <span>→</span></a>
-        <small>Flex starts at $0/month · Free onboarding · Cancel anytime</small>
+        <small>Flex starts at $0/month · Free onboarding · Cancel anytime from Settings</small>
       </section>
 
       <SiteFooter />
