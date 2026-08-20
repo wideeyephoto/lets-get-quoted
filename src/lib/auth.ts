@@ -481,3 +481,62 @@ export async function requireMfaPermission(permission: Permission): Promise<Admi
 export async function requireMfaPermissions(...permissions: Permission[]): Promise<AdminContext> {
   return requireMfa(await requirePermissions(...permissions));
 }
+
+// --- Office users -------------------------------------------------------------
+
+/**
+ * The capabilities a session actually holds, as the database would answer.
+ *
+ * OWNERS HOLD EVERYTHING, unconditionally, including capabilities nobody has
+ * defined. That is not a convenience here -- it is `office_can()`'s own first
+ * clause, restated so that a page reading this and a policy reading the
+ * database cannot disagree about an owner. If they ever did, opening a surface
+ * for an employee would close it for the person who owns the business.
+ *
+ * OFFICE USERS HOLD THE ENABLED SET. Capabilities are global today: which ones
+ * an office user may EVER hold is a product decision (20260820220000), and
+ * which of those a particular contractor grants is a later, narrower one that
+ * does not exist yet. When it does, this is the function that changes, and
+ * nothing that calls it has to.
+ *
+ * Read with the service role because `office_capabilities` is readable by any
+ * authenticated session anyway -- the list of what an office user COULD hold is
+ * not a secret, and a team screen has to render it.
+ */
+export async function loadHeldCapabilities(
+  role: 'owner' | 'crew' | 'office' | null,
+): Promise<ReadonlySet<string>> {
+  if (role === 'owner') return ALL_CAPABILITIES_SENTINEL;
+  if (role !== 'office') return new Set<string>();
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('office_capabilities')
+    .select('capability')
+    .eq('enabled', true);
+
+  // Fails CLOSED. A read error means we cannot say what this person holds, and
+  // the safe answer to that is "nothing" -- unlike the terms gate above, which
+  // fails open because locking every owner out is worse than a missing
+  // agreement. Here the two failures are not symmetric: showing an employee a
+  // screen they should not see cannot be undone by a later deploy.
+  if (error || !data) return new Set<string>();
+  return new Set(data.map((row) => row.capability as string));
+}
+
+/**
+ * An owner's capability set: everything, including keys that do not exist.
+ *
+ * A plain Set could not express that, and enumerating the catalog here would
+ * put a second copy of it in the codebase -- which is the drift the migration's
+ * own test exists to prevent.
+ */
+const ALL_CAPABILITIES_SENTINEL: ReadonlySet<string> = Object.freeze({
+  has: () => true,
+  get size() { return Number.POSITIVE_INFINITY; },
+  keys: function* () {},
+  values: function* () {},
+  entries: function* () {},
+  forEach: () => {},
+  [Symbol.iterator]: function* () {},
+}) as unknown as ReadonlySet<string>;
