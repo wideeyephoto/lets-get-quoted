@@ -164,17 +164,34 @@ begin
   -- This migration exists to give a payment a way BACK to that state, not to
   -- relax the requirement -- and relaxing it would let a payment be refunded
   -- while its books and Stripe disagree about how much has already gone back.
-  select pg_catalog.pg_get_functiondef(p.oid) into v_def
+  --
+  -- IT IS IN compute_direct_charge_refund_plan, not in
+  -- plan_direct_charge_refund_operation. The planner only calls the computer;
+  -- the gate lives in the callee. This block asserted against the caller on
+  -- 2026-08-20, found no `reconciliation_status` there because there is none,
+  -- and refused a migration that was entirely correct.
+  --
+  -- Verified against production the same day: the exact expression below lives
+  -- in compute_direct_charge_refund_plan and begin_direct_charge_refund_
+  -- submission, and in neither the planner nor record_direct_charge_refund_
+  -- result.
+  select p.prosrc into v_def
   from pg_catalog.pg_proc p
   join pg_catalog.pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and p.proname = 'plan_direct_charge_refund_operation'
+  where n.nspname = 'public'
+    and p.prokind = 'f'
+    and p.proname = 'compute_direct_charge_refund_plan'
   limit 1;
 
   if v_def is null then
-    raise exception 'the refund planner is missing; this migration assumes it exists';
+    raise exception 'compute_direct_charge_refund_plan is missing; this migration assumes it exists';
   end if;
-  if pg_catalog.strpos(v_def, 'reconciliation_status') = 0 then
-    raise exception 'the refund gate no longer checks reconciliation_status';
+  -- The EXPRESSION, not the column name. A body that merely writes
+  -- reconciliation_status -- and every refund path writes it -- would satisfy a
+  -- check for the bare word while gating on nothing at all. That is how the
+  -- harness for this migration passed against a comment in a stub.
+  if pg_catalog.strpos(v_def, 'reconciliation_status <> ''reconciled''') = 0 then
+    raise exception 'the refund gate no longer requires a reconciled payment';
   end if;
 
   -- And `mismatch` must remain a legal value, since this is the first thing

@@ -100,11 +100,25 @@ try {
         or reconciliation_status in ('pending', 'reconciled', 'mismatch', 'waived')
       )
     );
-    -- Enough of the refund planner for the post-condition to find it.
-    create function public.plan_direct_charge_refund_operation()
+    -- THE REFUND GATE, in the function that actually holds it.
+    --
+    -- This stub used to be named plan_direct_charge_refund_operation and to
+    -- satisfy the post-condition with the words "reconciliation_status" sitting
+    -- in a COMMENT. Both halves were wrong, and together they were worse than
+    -- either: the migration asserted against a function that does not gate, and
+    -- this harness handed it a comment to find. The assertion passed here and
+    -- failed on the first real database it met.
+    --
+    -- So the stub now carries the real expression, in the real function, as an
+    -- executable condition rather than prose.
+    create function public.compute_direct_charge_refund_plan()
     returns text language plpgsql as $plan$
+    declare
+      v_payment public.payments%rowtype;
     begin
-      -- reconciliation_status must be 'reconciled'
+      if v_payment.reconciliation_status <> 'reconciled' then
+        raise exception 'direct refund requires a paid, undisputed, reconciled payment';
+      end if;
       return 'stub';
     end;
     $plan$;
