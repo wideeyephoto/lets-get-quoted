@@ -31,6 +31,7 @@ import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
+import { parsePlanIntent } from '@/lib/plan-intent';
 import {
   loadMerchantOnboardingSurfaceForOwner,
   stripeMerchantOnboardingV2Enabled,
@@ -50,7 +51,16 @@ function formatDate(value: string): string {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { year?: string; quickbooks?: string; merchant_onboarding?: string; top_up_checkout?: string };
+  searchParams: {
+    year?: string;
+    quickbooks?: string;
+    merchant_onboarding?: string;
+    top_up_checkout?: string;
+    // Carried from /pricing through signup. Pre-selects the paid-plan checkout
+    // below rather than making someone re-answer a question they already did.
+    plan?: string;
+    billing?: string;
+  };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const pricingDashboardEnabled = planUsageDashboardEnabled();
@@ -370,6 +380,7 @@ export default async function SettingsPage({
             ],
             content: (
               <PlanUsageSection
+                planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
                 data={planUsage}
                 storage={storageState}
                 overage={overage}

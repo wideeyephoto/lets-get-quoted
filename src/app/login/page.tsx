@@ -3,6 +3,12 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { safeNextPath } from '@/lib/app-origin';
+import {
+  PLAN_INTENT_BILLING_PARAM,
+  PLAN_INTENT_PLAN_PARAM,
+  parsePlanIntent,
+  welcomePathWithPlanIntent,
+} from '@/lib/plan-intent';
 import { sendMagicLinkAction } from './actions';
 import { normalizeUsPhone } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
@@ -75,7 +81,19 @@ function LoginInner() {
   // This exists because an office invitation sends an anonymous visitor here and
   // needs them back at the link afterwards. Before it, all three paths pinned
   // /dashboard and the destination was silently dropped.
-  const nextPath = safeNextPath(searchParams.get('next'));
+  //
+  // A visitor arriving from /pricing carries plan= and billing= rather than
+  // next=. They are folded into this same rail instead of getting one of their
+  // own, so there stays exactly one parameter deciding where a signed-in session
+  // lands. An explicit next= always wins: it means somebody was already being
+  // sent somewhere specific, which is not ours to override.
+  const planIntent = parsePlanIntent(
+    searchParams.get(PLAN_INTENT_PLAN_PARAM),
+    searchParams.get(PLAN_INTENT_BILLING_PARAM),
+  );
+  const nextPath = safeNextPath(
+    searchParams.get('next') ?? (planIntent ? welcomePathWithPlanIntent(planIntent) : null),
+  );
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [identifier, setIdentifier] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');

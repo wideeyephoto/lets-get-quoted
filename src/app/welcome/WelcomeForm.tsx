@@ -11,10 +11,17 @@ export default function WelcomeForm({
   initialBusinessName,
   initialPostalCode,
   trades,
+  planCode = null,
+  billingInterval = null,
 }: {
   initialBusinessName: string;
   initialPostalCode: string;
   trades: TradeOption[];
+  // The plan chosen on /pricing, already parsed by the server. Passed straight
+  // back to the action, which re-validates it rather than trusting the round
+  // trip, and which decides where to land because the flags are server-only.
+  planCode?: string | null;
+  billingInterval?: string | null;
 }) {
   const router = useRouter();
   const [businessName, setBusinessName] = useState(initialBusinessName);
@@ -33,7 +40,14 @@ export default function WelcomeForm({
       // be held hostage by a model call; building the site takes several seconds
       // and can fail. Splitting them means a slow OpenAI day costs a spinner
       // instead of making signup look broken.
-      const result = await completeFirstRunAction({ businessName, trade, postalCode, accepted });
+      const result = await completeFirstRunAction({
+        businessName,
+        trade,
+        postalCode,
+        accepted,
+        plan: planCode,
+        billing: billingInterval,
+      });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -47,7 +61,15 @@ export default function WelcomeForm({
       const seeded = await seedSiteFromFirstRunAction();
 
       // replace, not push — first run is not somewhere Back should return to.
-      router.replace(seeded.ok && seeded.built ? '/dashboard/sites?built=1' : '/dashboard/sites');
+      //
+      // A plan chosen on /pricing wins over the builder: they asked to buy
+      // something, and the site is a button press away from anywhere. The action
+      // returns null here unless the checkout is switched on, so this falls back
+      // to the builder for as long as paid plans stay dark.
+      router.replace(
+        result.planCheckoutPath
+          ?? (seeded.ok && seeded.built ? '/dashboard/sites?built=1' : '/dashboard/sites'),
+      );
       router.refresh();
     });
   }

@@ -36,7 +36,12 @@ export type AccountEventKind =
   | 'ai_voice_recording_changed'
   | 'office_invitation_sent'
   | 'office_invitation_revoked'
-  | 'office_access_removed';
+  | 'office_access_removed'
+  // The plan a visitor chose on /pricing before they had an account. Recorded at
+  // first run because it is the only moment it is still in hand: paid checkout
+  // is dark, so there is nothing to charge yet, and without a row here the
+  // answer to "which plan did people come here for" is thrown away.
+  | 'plan_intent_recorded';
 
 export async function recordAccountEvent(input: {
   accountId: string;

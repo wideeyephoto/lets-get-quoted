@@ -150,7 +150,11 @@ describe('sign-in returns them to the link', () => {
     // All three sign-in paths pinned /dashboard, so an invited person signed in
     // and landed on a dashboard they cannot use, with the invitation unopened.
     const login = read('src', 'app', 'login', 'page.tsx');
-    expect(login).toContain('safeNextPath(searchParams.get(\'next\'))');
+    expect(login).toMatch(/safeNextPath\(\s*searchParams\.get\('next'\)/);
+    // A plan chosen on /pricing now rides the same rail, so `next` is no longer
+    // the only thing that can land here. An invitation has to outrank it: this
+    // pins the precedence, not just the presence.
+    expect(login).toMatch(/searchParams\.get\('next'\)\s*\?\?/);
     expect(login).not.toContain("sendMagicLinkAction(value, '/dashboard')");
     expect(login).not.toContain("window.location.assign('/dashboard')");
     expect(login).not.toContain('auth/callback?next=/dashboard');

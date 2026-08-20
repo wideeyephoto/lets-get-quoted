@@ -11,6 +11,7 @@ import {
   remainingCapMillicents,
   type OverageSummary,
 } from '@/lib/billing/overage-summary';
+import type { PlanIntent } from '@/lib/plan-intent';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
@@ -228,6 +229,7 @@ export default function PlanUsageSection({
   showTopUpPurchase = false,
   topUpCheckoutStatus = null,
   overage,
+  planIntent = null,
 }: {
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
@@ -235,6 +237,8 @@ export default function PlanUsageSection({
   showTopUpPurchase?: boolean;
   topUpCheckoutStatus?: 'success' | 'canceled' | null;
   overage: OverageSummary | null;
+  // The plan chosen on /pricing before this workspace existed, already parsed.
+  planIntent?: PlanIntent | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
@@ -313,7 +317,10 @@ export default function PlanUsageSection({
       </section>
 
       {canStartFirstSubscription && showSubscriptionCheckout ? (
-        <BasePlanSubscriptionCheckout />
+        <BasePlanSubscriptionCheckout
+          initialPlanCode={planIntent?.planCode ?? null}
+          initialBillingInterval={planIntent?.billingInterval ?? null}
+        />
       ) : null}
 
       <section className="panel workspace-section-card" id="usage-balances">

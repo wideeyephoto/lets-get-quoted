@@ -56,9 +56,18 @@ function newBrowserOperationId(): string | null {
   return `base-plan-subscription:${globalThis.crypto.randomUUID().toLowerCase()}`;
 }
 
-export default function BasePlanSubscriptionCheckout() {
-  const [planCode, setPlanCode] = useState<PaidPlanCode>('solo');
-  const [billingInterval, setBillingInterval] = useState<BillingCycle>('monthly');
+export default function BasePlanSubscriptionCheckout({
+  initialPlanCode = null,
+  initialBillingInterval = null,
+}: {
+  // Where the visitor said, on /pricing, which plan they wanted. Only ever a
+  // pre-selection: the controls stay live, and consent is still reset on every
+  // change below, so arriving here pre-filled buys nothing on its own.
+  initialPlanCode?: PaidPlanCode | null;
+  initialBillingInterval?: BillingCycle | null;
+} = {}) {
+  const [planCode, setPlanCode] = useState<PaidPlanCode>(initialPlanCode ?? 'solo');
+  const [billingInterval, setBillingInterval] = useState<BillingCycle>(initialBillingInterval ?? 'monthly');
   const [operationId, setOperationId] = useState<string | null>(null);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [clientRedirectError, setClientRedirectError] = useState(false);
