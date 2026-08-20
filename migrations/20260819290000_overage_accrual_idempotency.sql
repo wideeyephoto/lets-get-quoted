@@ -32,6 +32,28 @@
 
 begin;
 
+-- PRECONDITION, because the failure without it is unreadable.
+--
+-- authorize_usage_overage declares `v_settings public.workspace_overage_settings
+-- %rowtype`, and %rowtype is resolved when the function is COMPILED, not when it
+-- is called. So on a database without 20260819080000 this file fails with
+-- "relation public.workspace_overage_settings does not exist ... near line 3" --
+-- pointing at a declare block, four migrations away from the actual gap. That
+-- happened on 2026-08-20 and cost an apply run.
+--
+-- `scripts/audit-applied-migrations.mjs` answers "what is actually live?"
+-- properly. This is the check that speaks at the moment of failure.
+do $pre$
+begin
+  if to_regclass('public.workspace_overage_settings') is null
+     or to_regclass('public.workspace_overage_accruals') is null then
+    raise exception
+      'apply 20260819080000_usage_overage_authorization.sql first: this migration rewrites the overage functions and cannot compile without their tables'
+      using errcode = '55000';
+  end if;
+end
+$pre$;
+
 -- One row per authorized overage charge. This is the evidence the accrual
 -- totals are built from, and the only thing that can answer "have I already
 -- charged for this?".
