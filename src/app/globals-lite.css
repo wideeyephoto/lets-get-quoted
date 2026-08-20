@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 5f8ec64e95d96fd8
+   source-sha256: bb8814bce5f8d21b
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16648,4 +16648,29 @@ select optgroup {
   /* Full width, because a save button that is 40% of a phone's width sitting
      under a form that is 100% of it reads as an afterthought. */
   .msg-setup-submit { width: 100%; }
+}
+
+/* ── Office access holding page ──────────────────────────────────────────────
+   Scoped under .office-access, same rule as every card in this sheet. */
+.office-access { display: grid; place-items: center; min-height: 70vh; padding: 2rem 1.2rem; }
+.office-access .office-access-card {
+  max-width: 34rem;
+  padding: 2rem 1.8rem;
+  border-radius: 20px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.03);
+}
+.office-access .office-access-eyebrow {
+  margin: 0 0 0.5rem; font-size: 0.78rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--mute-t50);
+}
+.office-access h1 { margin: 0 0 0.9rem; font-size: 1.5rem; line-height: 1.3; color: var(--text); }
+.office-access p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; color: var(--mute-t60); }
+.office-access .office-access-note { font-size: 0.86rem; color: var(--mute-t50); }
+.office-access .office-access-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 1.4rem;
+}
+.office-access .office-access-signout {
+  padding: 0.5rem 0.9rem; border-radius: 10px; border: 1px solid var(--edge-t14);
+  background: transparent; color: var(--mute-t60); font: inherit; font-size: 0.88rem; cursor: pointer;
 }

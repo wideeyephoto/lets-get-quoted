@@ -46,15 +46,14 @@ export function createAdminClient() {
 export type CurrentMembership = {
   accountId: string | null;
   /**
-   * `office` exists in `member_role` as of 20260819090000 and no code writes it
-   * yet — the seat RPC that does is granted to no API role. It is in this type
-   * anyway so the compiler forces every reader to say what it does with one,
-   * rather than letting `'owner' | 'crew'` quietly imply the case cannot arise.
+   * `office` is written by `accept_office_invitation` (20260819210000) and is
+   * a real state a signed-in person can be in.
    *
-   * Today every reader treats it as "not an owner", which is the fail-closed
-   * answer: `requireOwnerContext` sends them to /login. See
-   * docs/office-seat-activation.md for what has to exist before that changes,
-   * including the part `ensureAccountMembership` gets wrong below.
+   * It resolves ahead of `crew` below, and `requireOwnerContext` sends it to
+   * /office-access rather than /login — which would loop, since they are
+   * already signed in. What an office user may actually DO is still nothing:
+   * `is_owner` deliberately still means owner, and every policy built on it is
+   * unmoved. See docs/office-seat-activation.md.
    */
   role: 'owner' | 'crew' | 'office' | null;
 };
@@ -80,7 +79,13 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
     return { accountId: null, role: null };
   }
 
-  const chosen = data.find((m) => m.role === 'owner') ?? data[0];
+  // Owner first, then OFFICE, then the oldest of whatever is left. The middle
+  // one is new and load-bearing: an office user who is also on somebody's crew
+  // would otherwise resolve to the crew row purely because it is older, and land
+  // in the field app instead of at the business that hired them.
+  const chosen = data.find((m) => m.role === 'owner')
+    ?? data.find((m) => m.role === 'office')
+    ?? data[0];
   return {
     accountId: chosen.account_id ?? null,
     role: chosen.role ?? null,
@@ -90,14 +95,6 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
 export async function ensureAccountMembership(userId: string) {
   const admin = createAdminClient();
 
-  // NOT YET HANDLED, and deliberately left visible rather than papered over: a
-  // user whose only membership is `office` has no owner row, so the block below
-  // provisions them a brand-new empty workspace on sign-in and drops them into
-  // it. Their employer's workspace is unreachable from here. Nothing creates an
-  // office membership today, so this is latent — but it is the real remaining
-  // scope of the team screen, because reaching the employer means CHOOSING
-  // between workspaces, which this product has never had to do.
-  //
   // Return an existing OWNER membership if the user already owns an account.
   // Deliberately do NOT short-circuit on a crew-only membership: being on someone
   // else's crew must not lock you out of owning your own account. This runs only
@@ -115,6 +112,28 @@ export async function ensureAccountMembership(userId: string) {
 
   if (ownerMembership) {
     return ownerMembership;
+  }
+
+  // AN OFFICE USER IS NOT A NEW SIGNUP. Somebody who accepted an invitation has
+  // a membership already; provisioning them a workspace here would hand them an
+  // empty business of their own and quietly orphan the one that hired them --
+  // and because the new row would be an OWNER row, every later sign-in would
+  // resolve to it and the employer's workspace would never be reachable again.
+  //
+  // This check goes AFTER the owner lookup on purpose: somebody who runs their
+  // own business and also keeps the books for another keeps landing in their
+  // own, exactly as before.
+  const { data: officeMembership } = await admin
+    .from('memberships')
+    .select('account_id, role')
+    .eq('user_id', userId)
+    .eq('role', 'office')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (officeMembership) {
+    return officeMembership;
   }
 
   const { data: newAccount, error: createAccountError } = await admin
@@ -184,6 +203,14 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   }
 
   const membership = await getCurrentMembership(user.id);
+
+  // An office user has a real membership and no owner surface to be given yet.
+  // Sending them to /login would loop -- they are already signed in, so logging
+  // in returns them straight here -- and it would read as a broken account
+  // rather than as access that has not been switched on.
+  if (membership.accountId && membership.role === 'office') {
+    redirect('/office-access');
+  }
 
   if (!membership.accountId || membership.role !== 'owner') {
     redirect('/login');
