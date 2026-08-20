@@ -134,11 +134,12 @@ describe('the charge path cannot fall back to volume', () => {
     // cost an estimate, not the pay button. This had no test at all, and making
     // the resolver strict is exactly what turned it into a 500 risk.
     const payments = read('src', 'lib', 'payments.ts');
-    const chargeSite = payments.slice(payments.indexOf('const { feeRate } = await getWorkspaceFeeRate('));
-    expect(chargeSite.slice(0, 200)).not.toContain('.catch(');
+    const chargeAt = payments.indexOf('// The rate follows the plan, not trailing volume');
+    expect(chargeAt, 'the charge site moved; this guard is looking at nothing').toBeGreaterThan(-1);
+    expect(payments.slice(chargeAt, chargeAt + 600)).not.toContain('.catch(');
 
     const payPage = read('src', 'app', 'pay', '[id]', 'page.tsx');
-    const quoteAt = payPage.indexOf('getQuotedFee(');
+    const quoteAt = payPage.indexOf('quoteFeeForPayment(payment)');
     expect(quoteAt, 'the pay page no longer quotes a fee').toBeGreaterThan(-1);
     expect(payPage.slice(quoteAt, quoteAt + 300)).toContain('.catch(');
   });

@@ -1,8 +1,9 @@
 import { createAdminClient } from '@/lib/auth';
+import { resolveFeeBasisCents } from '@/lib/billing/fee-basis';
 import { getWorkspaceFeeRate } from '@/lib/billing/workspace-fee-rate';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
-import { getStripeClient, computePlatformFee, computePlatformFeeCents, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
+import { getStripeClient, computePlatformFee, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { sendPaymentSmsEvent } from '@/lib/sms';
@@ -268,6 +269,23 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
 // the persisted values are the source of truth (the locked-in rate for that
 // specific Stripe session), so callers should prefer those when present and
 // only fall back to this quote.
+/**
+ * The fee a specific payment would be charged, basis and all.
+ *
+ * getQuotedFee below takes only an amount, so it cannot know whether that amount
+ * carries sales tax -- and quoting the gross-based number while the charge takes
+ * the subtotal-based one would put a different figure on the pay page than on
+ * the card. This is what the pay page uses; getQuotedFee stays for the callers
+ * that genuinely have no invoice behind them.
+ */
+export async function quoteFeeForPayment(
+  payment: { id?: string | null; account_id: string; amount: number | string; invoice_id?: string | null },
+): Promise<{ feeRate: number; platformFee: number }> {
+  const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
+  const basis = await resolveFeeBasisCents(createAdminClient(), payment);
+  return { feeRate, platformFee: fromCents(Math.round(basis.basisCents * feeRate)) };
+}
+
 export async function getQuotedFee(accountId: string, amount: number): Promise<{ feeRate: number; platformFee: number }> {
   const { feeRate } = await getWorkspaceFeeRate(accountId);
   const platformFee = computePlatformFee(amount, feeRate);
@@ -508,7 +526,11 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   // The rate follows the plan, not trailing volume -- which is what /pricing
   // sells and what the quote on the pay page has already shown this payer.
   const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
-  const platformFee = computePlatformFee(payment.amount, feeRate);
+  // ...and it applies to the discount-adjusted service subtotal, not the gross.
+  // Sales tax is not ours to take a percentage of, and the pricing page says so.
+  const feeBasis = await resolveFeeBasisCents(admin, payment);
+  const platformFeeCents = Math.round(feeBasis.basisCents * feeRate);
+  const platformFee = fromCents(platformFeeCents);
 
   // A payment-plan DEPOSIT must also SAVE the card for the later off-session
   // installment charges. Attach a platform customer and set setup_future_usage
@@ -548,7 +570,7 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     ],
     payment_intent_data: {
       // Bill the exact fee cents (not a dollar round-trip) — same value, no drift.
-      application_fee_amount: computePlatformFeeCents(payment.amount, feeRate),
+      application_fee_amount: platformFeeCents,
       transfer_data: { destination: payment.account.stripe_connect_id },
       // PaymentIntent metadata snapshots onto the Charge. Dashboard-issued
       // refunds therefore retain the payment id needed by charge.refunded.
@@ -611,6 +633,9 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
       stripe_checkout_session: session.id,
       platform_fee: platformFee,
       fee_rate: feeRate,
+      // What the fee was actually taken on. Immutable once assigned, and
+      // payments_platform_fee_check enforces platform_fee <= this.
+      fee_basis_amount: fromCents(feeBasis.basisCents),
     })
     .eq('id', paymentId);
   if (currentRail.chargeModelColumnPresent) persistSession = persistSession.eq('charge_model', 'destination');

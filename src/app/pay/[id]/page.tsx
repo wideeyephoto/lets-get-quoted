@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/auth';
 import { formatMoneyExact } from '@/lib/jobs';
 import {
   getPublicPayment,
-  getQuotedFee,
+  quoteFeeForPayment,
   isLegacyDestinationPayment,
   ACH_MIN_AMOUNT,
   type PaymentStatus,
@@ -134,7 +134,7 @@ export default async function PublicPaymentPage({
   // quote the CURRENT rate live so the fee is visible before checkout ever
   // starts, closing the "fee only shown after checkout" trust gap.
   //
-  // The quote is allowed to fail; the page is not. getQuotedFee resolves the
+  // The quote is allowed to fail; the page is not. quoteFeeForPayment resolves the
   // workspace's plan and now REFUSES rather than guessing when the rate is
   // unknowable -- an unpriceable plan code, or a stored platform_fee_bps that
   // disagrees with the catalog. That is the right answer when money is about to
@@ -144,7 +144,7 @@ export default async function PublicPaymentPage({
   // charged at a rate we could not determine.
   const feeIsLocked = payment.fee_rate != null;
   const quotedFee = canPay && !feeIsLocked
-    ? await getQuotedFee(payment.account_id, payment.amount).catch((error) => {
+    ? await quoteFeeForPayment(payment).catch((error: unknown) => {
       console.error('pay page fee quote failed:', error instanceof Error ? error.message : error);
       return null;
     })
