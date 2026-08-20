@@ -5,7 +5,8 @@
 > repo started 2026-07-15). Where something is inferred rather than confirmed
 > in code, it is marked _(inferred)_. The authoritative sources are the code
 > itself, `schema.sql`, `TEST_PLAN.md`, and the dated `logs/` entries — this
-> file summarizes them; it does not replace them.
+> file summarizes them; it does not replace them. Anything added after that
+> date is marked inline with its own date.
 
 ---
 
@@ -224,6 +225,29 @@ untracked**):
 `test-payment-webhook-flow.mjs` (signed-webhook end-to-end), `test-rls.mjs`,
 `test-leads.mjs`, `test-sms.mjs`. Deployed on **Vercel** (`.vercel/` present).
 
+**Backups & recovery** _(added 2026-08-20)_. Three automatic copies, none of
+which live in this repo:
+
+| Copy | Where | Cadence | Coverage |
+|---|---|---|---|
+| USB | `D:\dev-backup` — exFAT stick that stays in the laptop | hourly | complete |
+| Drive | `G:\My Drive\LGQ-Backup` (hello@letsgetquoted.com) | 08:30 / 20:30 | complete |
+| GitHub | private `*-backup` repos under `wideeyephoto` | 08:30 / 20:30 | **partial — see §7** |
+
+Driven by `backup.ps1` (USB) and `cloud-backup.ps1` (offsite) on the stick, via
+Windows scheduled tasks *LGQ USB Backup* and *LGQ Cloud Backup*. Restore steps
+live in `D:\dev-backup\RESTORE.md`.
+
+The Drive copy is a `git bundle` per repo — one file carrying every branch, tag
+and stash — plus the untracked-but-irreplaceable files (`.env.local`, `.vercel/`,
+stash patches, uncommitted diffs) as `secrets.tar.gz.gpg`, AES256, passphrase in
+the owner's password manager. A bundle is rebuilt only when a ref fingerprint
+moves, so an idle repo is not re-uploaded.
+
+Scope is this repo plus the payment sandbox at
+`C:\dev\operator-resolution-worktree`; everything else under `C:\dev` is a
+worktree or a redundant clone of those two, confirmed by comparing every ref.
+
 ---
 
 ## 6. Known issues, tech debt & deferred work
@@ -280,6 +304,13 @@ There is no unit/integration test framework — verification is manual + the
 - **Bracketed dynamic-route paths** (e.g. `.../[invoiceId]/page.tsx`) have
   historically produced false negatives in some file-search globs — verify a
   file's real absence before assuming it doesn't exist.
+- **The GitHub backup mirror is incomplete, and looks fine.** GitHub refuses
+  any push carrying a commit authored with the account's private email
+  (`GH007`), which silently drops 13 refs — including `work/ux-overhaul`,
+  `backup/ux-snapshot` and `codex/pricing-backend-20260815`, none of which
+  exist on any other remote. Never read a successful push as proof a branch is
+  backed up. The Drive bundles are authoritative until *Block command line
+  pushes that expose my email* is unticked in GitHub email settings.
 - **Daily edit logs** live in `logs/YYYY-MM-DD.md` (a new file per working
   day). The 07-18 → 07-20 leads work predates this history file and has **no
   log entry** — git history is its only record.
