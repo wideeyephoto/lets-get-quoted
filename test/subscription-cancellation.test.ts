@@ -130,6 +130,28 @@ describe('scheduling a cancellation', () => {
     // The intent row still stands: it is the record that somebody asked.
     expect(events).toHaveLength(1);
   });
+
+  it('does not tell somebody to retry an error that will never come good', async () => {
+    // resource_missing never becomes true by waiting. Production carries a
+    // rehearsal subscription projected from a TEST-mode checkout session, and a
+    // live key cannot see one, so this is the error that workspace's cancel
+    // button actually returns -- a dead button that looks healthy.
+    const missing = Object.assign(new Error('No such subscription'), {
+      code: 'resource_missing', type: 'invalid_request_error',
+    });
+    stripe.update.mockRejectedValueOnce(missing);
+    const result = await cancelBasePlanSubscriptionAtPeriodEnd({ admin: adminWith(ACTIVE), accountId: 'acct_1' });
+    expect(result.ok === false && result.error).not.toMatch(/try again/i);
+    expect(result.ok === false && result.error).toMatch(/retrying will not help/i);
+  });
+
+  it('still says try again for a failure that genuinely might', async () => {
+    // The other half, or the fix is just "always say permanent", which is the
+    // same defect pointing the other way.
+    stripe.update.mockRejectedValueOnce(Object.assign(new Error('upstream'), { type: 'api_connection_error' }));
+    const result = await cancelBasePlanSubscriptionAtPeriodEnd({ admin: adminWith(ACTIVE), accountId: 'acct_1' });
+    expect(result.ok === false && result.error).toMatch(/try again in a moment/i);
+  });
 });
 
 describe('restoring a plan before it lapses', () => {
