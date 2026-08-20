@@ -58,7 +58,7 @@ export default function PricingCalculator({ billing, volume, officeUsers, needsD
         <button type="button" aria-pressed={billing === 'annual'} onClick={() => onBillingChange('annual')}>Annual</button>
       </div></div>
       <label><span className={styles.controlLabel}>Office users needed</span><input type="number" min={1} max={25} value={officeUsers} onChange={(event) => onOfficeUsersChange(Number(event.target.value))} /></label>
-      <div><span className={styles.controlLabel}>Dedicated business number</span><button className={styles.requirementToggle} type="button" aria-pressed={needsDedicatedNumber} onClick={() => onDedicatedNumberChange(!needsDedicatedNumber)}>{needsDedicatedNumber ? 'Required' : 'Not required'}</button></div>
+      <div><span className={styles.controlLabel}>Dedicated business number (at launch)</span><button className={styles.requirementToggle} type="button" aria-pressed={needsDedicatedNumber} onClick={() => onDedicatedNumberChange(!needsDedicatedNumber)}>{needsDedicatedNumber ? 'Required' : 'Not required'}</button></div>
       <p>Flex supports one office user and a shared texting number. Extra office users on Solo+ are $15/month.</p>
     </div>
 

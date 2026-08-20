@@ -17,7 +17,7 @@ export default function Image() {
   return ogCard({
     eyebrow: 'Pricing',
     title: 'Powerful contractor software at a surprisingly reasonable price.',
-    subtitle: 'Start at $0/month with Flex. Add your own number with Solo. Reach a 0.1% LGQ platform fee with Scale.',
+    subtitle: 'Start at $0/month with Flex. Reach a 0.1% LGQ platform fee with Scale.',
     tag: 'Four plans · one clear path',
   });
 }

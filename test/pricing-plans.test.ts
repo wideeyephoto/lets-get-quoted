@@ -139,7 +139,7 @@ describe('the contractor pricing catalog', () => {
     expect(scale.officeUsers).toBeGreaterThan(growth.officeUsers);
     expect(scale.crewUsers).toBeGreaterThan(growth.crewUsers);
     expect(scale.textCredits).toBe('3,000/month');
-    expect(scale.messagingSummary).toBe('3,000 text credits/month · dedicated number');
+    expect(scale.messagingSummary).toBe('3,000 text credits/month · shared LGQ number');
 
     for (const [label, expected] of [
       ['Office / admin users', '15'],

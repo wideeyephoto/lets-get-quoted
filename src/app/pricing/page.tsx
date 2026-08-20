@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Contractor Software Pricing · Let’s Get Quoted',
     description:
-      'Start at $0/month, add your own business number, and reach a 0.1% LGQ platform fee as your contracting business grows.',
+      'Start at $0/month and reach a 0.1% LGQ platform fee as your contracting business grows.',
     url: 'https://letsgetquoted.com/pricing',
     type: 'website',
   },

@@ -29,7 +29,7 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
     'Custom domain + QuickBooks Online',
   ],
   solo: [
-    'Your own voice/text business number',
+    'Your own business number coming soon',
     '500 text + 250 AI Intake credits/month',
     'Custom domain + QuickBooks Online',
   ],
@@ -68,7 +68,7 @@ const SCENARIOS: readonly {
     planId: 'solo',
     revenue: 250_000,
     title: 'Owner-operator electrician',
-    description: 'Gets a dedicated number and a much lower platform fee.',
+    description: 'Gets a much lower platform fee, and their own number when it launches.',
   },
   {
     planId: 'growth',
@@ -87,7 +87,7 @@ const SCENARIOS: readonly {
 const COMPARISON_HIGHLIGHTS = [
   { value: '1.25% → 0.1%', label: 'Choose a plan with the fee that fits' },
   { value: '1 → 5', label: 'Office seats expand on Growth' },
-  { value: 'Solo+', label: 'Dedicated business number' },
+  { value: 'Coming soon', label: 'Dedicated business number, planned for Solo and up' },
   { value: 'Coming soon', label: 'AI Voice Receptionist is not available yet' },
 ] as const;
 
@@ -98,7 +98,7 @@ const COMPETITORS = [
     monthly: '$129 + 0.25%',
     annual: '$99 + 0.25%',
     users: '5 office + 10 crew',
-    phone: 'Dedicated number; AI Voice Receptionist coming soon',
+    phone: 'Dedicated number and AI Voice Receptionist both coming soon',
     href: '#plans',
   },
   {
@@ -214,8 +214,8 @@ function MessagingInfoBubble() {
   return (
     <InfoBubble label="2-Way Messaging">
       <p>
-        Keeps customer texts and your replies together in one inbox. Flex uses a shared LGQ texting number; paid
-        plans include a dedicated business number. Outgoing messages use plan text credits.
+        Keeps customer texts and your replies together in one inbox. Every plan texts from a shared LGQ number
+        today; your own business number is planned for Solo and up. Outgoing messages use plan text credits.
       </p>
       <Link href="/demo/messages">Open the messaging demo →</Link>
     </InfoBubble>
