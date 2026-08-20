@@ -59,6 +59,7 @@ const INVITES = '20260819210000_office_invitations.sql';
 const CAPS = '20260819220000_office_capabilities.sql';
 const REMOVE = '20260819230000_remove_office_user.sql';
 const CREW_FIX = '20260819240000_office_invitation_crew_conflict.sql';
+const SEAT_CAPACITY = '20260819250000_office_seat_limit_includes_purchased_capacity.sql';
 
 /** Enough schema for the real migrations to install and run unmodified. */
 const SCHEMA = `
@@ -641,6 +642,77 @@ try {
   // And if one somehow exists, accepting still cannot half-promote them.
   ck('the crew membership is untouched by the attempt',
     (await q('select role from public.memberships where user_id = $1', [FIELD])).rows[0].role === 'crew');
+
+
+  // =====================================================================
+  // A PURCHASED OFFICE SEAT MUST ACTUALLY BE A SEAT.
+  // =====================================================================
+  // The capacity ledger and the helper the crew gate already uses. Lifted in
+  // shape rather than imported, because the real table reaches billing_events.
+  await q(`
+    create table public.workspace_purchased_capacity (
+      id uuid primary key default gen_random_uuid(),
+      account_id uuid not null references public.accounts(id),
+      resource_code text not null,
+      units bigint not null check (units > 0),
+      status text not null default 'active' check (status in ('active','past_due','canceled'))
+    );
+    create or replace function public.workspace_purchased_capacity_units(
+      p_account_id uuid, p_resource_code text
+    ) returns bigint language sql stable security definer set search_path = '' as $cap$
+      select coalesce(pg_catalog.sum(c.units), 0)::bigint
+        from public.workspace_purchased_capacity c
+       where c.account_id = p_account_id
+         and c.resource_code = p_resource_code
+         and c.status in ('active', 'past_due');
+    $cap$;
+  `);
+
+  // Fill the workspace to exactly its plan limit.
+  const seatCount = async () => Number((await q(
+    `select count(*)::int as n from public.memberships
+      where account_id = $1 and role in ('owner','office')`, [acctD.id])).rows[0].n);
+  await setLimit(await seatCount());
+
+  const beforeCapacity = await sendInvite(OWNER_D, acctD.id, 'extra@acme.test', hash('d1'));
+  ck('a full workspace refuses, as it should',
+    /office_seat_limit_reached/.test(beforeCapacity ?? ''), beforeCapacity);
+
+  // Buy a seat. Before the fix this changed NOTHING -- money taken, no seat.
+  await q(`insert into public.workspace_purchased_capacity
+             (account_id, resource_code, units) values ($1, 'office_users', 1)`, [acctD.id]);
+  const stillRefused = await sendInvite(OWNER_D, acctD.id, 'extra@acme.test', hash('d2'));
+  ck('the bug is real: a purchased seat raised nothing',
+    /office_seat_limit_reached/.test(stillRefused ?? ''), stillRefused);
+
+  await q(m(SEAT_CAPACITY));
+  ck('the seat-capacity migration applies, post-conditions and all', true);
+
+  await q("insert into auth.users (id, email) values ($1, 'extra@acme.test')",
+    ['dddddddd-dddd-4ddd-8ddd-dddddddddddd']);
+  const afterCapacity = await sendInvite(OWNER_D, acctD.id, 'extra@acme.test', hash('d3'));
+  ck('a purchased seat now raises the limit', afterCapacity === null, afterCapacity);
+
+  // past_due still counts -- a card that failed this morning must not lock
+  // somebody out while Stripe is still retrying.
+  await q("update public.workspace_purchased_capacity set status = 'past_due'");
+  await q("delete from public.office_invitations where email = 'extra@acme.test'");
+  ck('a past-due seat still counts, matching the crew gate',
+    (await sendInvite(OWNER_D, acctD.id, 'extra@acme.test', hash('d4'))) === null);
+
+  // Canceled does not.
+  await q("update public.workspace_purchased_capacity set status = 'canceled'");
+  await q("delete from public.office_invitations where email = 'extra@acme.test'");
+  ck('a canceled seat stops counting',
+    /office_seat_limit_reached/.test(
+      await sendInvite(OWNER_D, acctD.id, 'extra@acme.test', hash('d5')) ?? ''));
+
+  // Re-running must not double-count.
+  await q("update public.workspace_purchased_capacity set status = 'active'");
+  await q(m(SEAT_CAPACITY));
+  const usage = (await q('select * from public.office_seat_usage($1)', [acctD.id])).rows[0];
+  ck('re-applying does not add the capacity twice',
+    Number(usage.office_limit) === (await seatCount()) + 1, usage);
 
   await db.end();
 } catch (error) {

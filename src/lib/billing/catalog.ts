@@ -375,21 +375,26 @@ const AI_VOICE_WITHHELD =
 
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:
-    'the capacity rail is applied and deployed - payment writes the ledger and the '
-    + 'lifecycle sweep cancels it when the subscription lapses - but no live recurring '
-    + 'Price exists for it, so it cannot be bought at all, and the cap is not '
-    + 'enforced, so buying headroom would change nothing a workspace can feel',
+    'the whole rail works - payment writes the capacity ledger, the lifecycle '
+    + 'sweep follows the subscription, and the storage limit has added purchased '
+    + 'units since 20260819000000. What is left is two switches nobody has '
+    + 'thrown: no live recurring Price exists, and LGQ_STORAGE_CAP_ENFORCED is '
+    + 'off, so headroom bought today changes nothing a workspace can feel',
   office_user:
-    'office seats are dark, though two of the three reasons are now closed: an office '
-    + 'user is its own membership role holding no authority at all rather than a second '
-    + 'owner, and the last owner of a workspace can no longer be removed. What is left '
-    + 'is the whole lifecycle - no invitation, acceptance, expiry, resend or removal - '
-    + 'and no way for an added person to REACH the workspace they were added to, since '
-    + 'signing in provisions them an empty workspace of their own instead',
+    'the seat rail is complete - invitation, acceptance, removal, last-owner '
+    + 'protection, reaching the workspace - and since 20260819250000 a purchased '
+    + 'seat actually raises the limit, which it did not before: the grant and '
+    + 'lapse paths both worked while the limit ignored them, so selling this '
+    + 'would have charged $15 a month and granted nothing. Two reasons remain. '
+    + 'No live recurring Price exists, and an office user still holds no '
+    + 'permissions at all - every capability ships off, so somebody paid for '
+    + 'would be connected and unable to open anything',
   crew_user:
-    'a purchased seat now has a ledger and both seat gates count it, but nothing '
-    + 'fills that ledger on payment and nothing empties it when the subscription '
-    + 'lapses - selling it would charge $5 a month and grant no seat',
+    'both halves this used to name are built: 20260819010000 fills the capacity '
+    + 'ledger when the Session is paid, and the capacity lifecycle sweep empties '
+    + 'it when the subscription lapses. The crew seat limit has added purchased '
+    + 'units since 20260818220000. A live recurring Stripe Price is the only '
+    + 'thing left',
   ai_voice_flex: AI_VOICE_WITHHELD,
   ai_voice_solo: AI_VOICE_WITHHELD,
   ai_voice_growth: AI_VOICE_WITHHELD,
