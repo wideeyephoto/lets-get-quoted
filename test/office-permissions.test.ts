@@ -12,6 +12,26 @@ import {
 const migration = () => readFileSync(
   join(process.cwd(), 'migrations', '20260819220000_office_capabilities.sql'), 'utf8');
 
+/** The migration that makes the decision the one above deliberately refused to. */
+const grantMigration = () => readFileSync(
+  join(process.cwd(), 'migrations', '20260820220000_office_capabilities_v1_grant.sql'), 'utf8');
+
+/**
+ * The thirteen the v1 grant turns on, read out of the migration's own
+ * post-condition rather than its UPDATE.
+ *
+ * The post-condition is the stricter of the two: the UPDATE's `in (...)` list
+ * would still pass if it named a capability that does not exist, whereas
+ * `v_expected` is compared against the whole enabled set with `is distinct
+ * from`, so it cannot be a subset or a superset of what actually ends up on.
+ */
+function grantedKeys(): string[] {
+  const sql = grantMigration();
+  const start = sql.indexOf('v_expected text[] := array[');
+  const end = sql.indexOf('];', start);
+  return [...sql.slice(start, end).matchAll(/'([a-z_.]+)'/g)].map((m) => m[1]).sort();
+}
+
 /** The capability keys the migration actually seeds. */
 function seededKeys(): string[] {
   const sql = migration();
@@ -72,6 +92,61 @@ describe('what the switches ship as', () => {
     // The whole migration adds a mechanism. If a policy referenced it, this
     // would be changing behaviour instead.
     expect(migration()).toContain('this migration must ship inert');
+  });
+});
+
+describe('the v1 grant: which thirteen, and why the other twelve wait', () => {
+  it('turns on exactly the office-manager job and nothing adjacent to it', () => {
+    // Pinned as a literal rather than derived from the bands, because the set is
+    // deliberately not a band boundary: crew.read is banded with the payroll
+    // switches, and enabling `people` wholesale would have taken pay rates too.
+    expect(grantedKeys()).toEqual([
+      'clients.read', 'clients.write', 'crew.read', 'invoices.read',
+      'jobs.read', 'jobs.write', 'leads.read', 'leads.write',
+      'messages.read', 'messages.send', 'payments.read', 'quotes.read',
+      'schedule.write',
+    ]);
+  });
+
+  it('grants nothing that moves money, exposes pay, or controls the account', () => {
+    // The independent restatement. The list above could be edited; this asks the
+    // separate question -- is anything requiring deliberation now on -- and the
+    // migration asks it of the database too, in a loop over the same six.
+    for (const key of OFFICE_CAPABILITIES_REQUIRING_DELIBERATION) {
+      expect(grantedKeys(), key).not.toContain(key);
+    }
+    // And the three that are not on that list but still change money or the
+    // business's public face.
+    for (const key of ['quotes.write', 'invoices.write', 'settings.write']) {
+      expect(grantedKeys(), key).not.toContain(key);
+    }
+  });
+
+  it('only names capabilities that exist', () => {
+    // A typo would update zero rows, change nothing, and pass any check that
+    // counts what is enabled rather than checking what was asked for.
+    for (const key of grantedKeys()) {
+      expect(OFFICE_CAPABILITY_KEYS, key).toContain(key);
+    }
+  });
+
+  it('stays inert, so the decision lands before the tenant boundary is touched', () => {
+    // Enabling a switch no policy reads changes nothing for anybody. That is
+    // what makes it safe to agree the list first and rewrite ~54 for-all
+    // policies second, rather than inventing the list while rewriting them.
+    expect(grantMigration()).toContain('this migration is a decision, not a behaviour change');
+  });
+
+  it('says why each withheld capability is withheld', () => {
+    // A capability that is off for no recorded reason gets switched on by the
+    // next person who needs it, and the reason it was off is discovered
+    // afterwards. Every one of the twelve is named in the header with its cost.
+    const sql = grantMigration();
+    const off = OFFICE_CAPABILITY_KEYS.filter((key) => !grantedKeys().includes(key));
+    expect(off).toHaveLength(12);
+    for (const key of off) {
+      expect(sql, key).toContain(key);
+    }
   });
 });
 
