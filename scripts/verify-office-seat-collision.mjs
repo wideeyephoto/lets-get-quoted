@@ -56,6 +56,7 @@ const ONE_OWNER = '2026-08-03-one-owner-account.sql';
 const FIX_ENUM = '20260819090000_office_role_value.sql';
 const FIX_ROLE = '20260819090100_office_seat_uses_office_role.sql';
 const INVITES = '20260819210000_office_invitations.sql';
+const CAPS = '20260819220000_office_capabilities.sql';
 
 /** Enough schema for the real migrations to install and run unmodified. */
 const SCHEMA = `
@@ -485,6 +486,74 @@ try {
                      cross join lateral aclexplode(coalesce(p.proacl,'{}'::aclitem[])) x
                      where p.proname = 'create_office_user_membership_with_seat_entitlement'
                        and x.privilege_type = 'EXECUTE' and x.grantee <> p.proowner`)).rows[0].n) === 0);
+
+
+  // =====================================================================
+  // CAPABILITIES. The switch, shipped off and wired to nothing.
+  // =====================================================================
+  await q(m(CAPS));
+  ck('the capabilities migration applies, post-conditions and all', true);
+
+  const capCount = Number((await q(
+    'select count(*)::int as n from public.office_capabilities')).rows[0].n);
+  ck('the catalog is seeded', capCount === 25, capCount);
+
+  ck('every switch ships off, which is the point of the whole migration',
+    Number((await q(
+      'select count(*)::int as n from public.office_capabilities where enabled')).rows[0].n) === 0);
+
+  // The office user from the invitation section is a real subject to test with.
+  await actAs(HIRE);
+  ck('an office user can do nothing while every switch is off',
+    (await q('select public.office_can($1, $2) as ok', [acctD.id, 'jobs.read'])).rows[0].ok === false);
+
+  await actAs(OWNER_D);
+  ck('an owner passes anyway, so swapping a policy cannot close a surface for them',
+    (await q('select public.office_can($1, $2) as ok', [acctD.id, 'jobs.read'])).rows[0].ok === true);
+  ck('...including a capability nobody has ever defined',
+    (await q('select public.office_can($1, $2) as ok', [acctD.id, 'not.acapability'])).rows[0].ok === true);
+
+  // Flip one, and only that one moves.
+  await q("update public.office_capabilities set enabled = true where capability = 'jobs.read'");
+  await actAs(HIRE);
+  ck('flipping one switch grants exactly that capability',
+    (await q('select public.office_can($1, $2) as ok', [acctD.id, 'jobs.read'])).rows[0].ok === true);
+  ck('...and nothing else',
+    (await q('select public.office_can($1, $2) as ok', [acctD.id, 'jobs.write'])).rows[0].ok === false);
+
+  // Scope: a switch is global, but the MEMBERSHIP is not.
+  ck('an office user of one workspace gains nothing in another',
+    (await q('select public.office_can($1, $2) as ok', [acctA.id, 'jobs.read'])).rows[0].ok === false);
+
+  await actAs(STRANGER);
+  ck('somebody with no membership gains nothing from an enabled capability',
+    (await q('select public.office_can($1, $2) as ok', [acctD.id, 'jobs.read'])).rows[0].ok === false);
+
+  // Re-running must not undo a deliberate change in either direction.
+  await q(m(CAPS));
+  ck('re-applying the migration leaves a deliberately-enabled switch alone',
+    (await q(`select enabled from public.office_capabilities where capability = 'jobs.read'`))
+      .rows[0].enabled === true);
+  await q("update public.office_capabilities set enabled = false where capability = 'jobs.read'");
+
+  // Reach.
+  for (const role of ['anon', 'authenticated']) {
+    const w = (await q(
+      `select has_table_privilege($1, 'public.office_capabilities', 'UPDATE') as upd,
+              has_table_privilege($1, 'public.office_capabilities', 'INSERT') as ins,
+              has_table_privilege($1, 'public.office_capabilities', 'TRUNCATE') as trunc`,
+      [role])).rows[0];
+    ck(`${role} cannot change what an office user may do`, !w.upd && !w.ins && !w.trunc, w);
+  }
+  ck('but a signed-in session can READ the list, so a team screen can render it',
+    (await q(`select has_table_privilege('authenticated', 'public.office_capabilities', 'SELECT') as ok`))
+      .rows[0].ok === true);
+
+  ck('no policy in the database uses office_can yet',
+    Number((await q(`select count(*)::int as n from pg_policy p
+                     where pg_get_expr(p.polqual, p.polrelid) like '%office_can%'
+                        or pg_get_expr(p.polwithcheck, p.polrelid) like '%office_can%'`))
+      .rows[0].n) === 0);
 
   await db.end();
 } catch (error) {
