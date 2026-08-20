@@ -65,6 +65,7 @@ const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n
 
 const SPLIT = '20260820230000_split_core_work_policies.sql';
 const SWAP = '20260820240000_office_can_read_core_work.sql';
+const WRITE = '20260820250000_office_can_write_core_work.sql';
 
 /**
  * Enough schema for both migrations to install and run unmodified.
@@ -117,7 +118,8 @@ language sql stable security definer set search_path = public as $can$
                      where c.capability = p_capability and c.enabled));
 $can$;
 insert into public.office_capabilities (capability, enabled) values
-  ('leads.read', true), ('clients.read', true), ('jobs.read', true);
+  ('leads.read', true), ('clients.read', true), ('jobs.read', true),
+  ('leads.write', true), ('clients.write', true), ('jobs.write', true);
 
 create table public.leads (
   id uuid primary key default gen_random_uuid(),
@@ -262,6 +264,80 @@ try {
   check('the owner reads leads with the capability OFF -- office_can admits an owner unconditionally',
     ownerUnaffected.rows[0].n === 2, `saw ${ownerUnaffected.rows[0].n} of 2`);
   await q(`update public.office_capabilities set enabled = true where capability = 'leads.read'`);
+
+  // =========================================================================
+  // 20260820250000: the write grant
+  // =========================================================================
+  await q(m(WRITE));
+
+  const wIns = await asFails(OFFICE_A,
+    'insert into public.leads (account_id, name) values ($1,$2)', [ACCT_A, 'added by the office']);
+  check('with leads.write on, an office user CAN insert', !wIns.blocked, wIns.message ?? 'ok');
+
+  const wUpd = await as(OFFICE_A, `update public.leads set name='edited' where account_id=$1`, [ACCT_A]);
+  check('...and update their employer\'s rows', wUpd.rowCount === 2, `updated ${wUpd.rowCount} of 2`);
+
+  const wDel = await as(OFFICE_A, 'delete from public.leads where account_id=$1', [ACCT_A]);
+  check('...and delete them', wDel.rowCount === 2, `deleted ${wDel.rowCount} of 2`);
+
+  // The tenant boundary is a separate question from the capability, and the
+  // write grant is the place it would most expensively fail.
+  const crossIns = await asFails(OFFICE_A,
+    'insert into public.leads (account_id, name) values ($1,$2)', [ACCT_B, 'planted']);
+  check('an office user cannot insert INTO ANOTHER ACCOUNT',
+    crossIns.blocked, crossIns.blocked ? 'refused' : 'the row was planted in account B');
+
+  const crossDel = await as(OFFICE_A, 'delete from public.leads where account_id=$1', [ACCT_B]);
+  check('an office user cannot delete another account\'s rows',
+    crossDel.rowCount === 0, `deleted ${crossDel.rowCount} of B's`);
+
+  // `with check` written out is what stops this. With it inherited from `using`,
+  // the row is findable before the change and the move is permitted.
+  const moved = await asFails(OFFICE_A,
+    `update public.leads set account_id=$1 where account_id=$2`, [ACCT_B, ACCT_A]);
+  check('an office user cannot MOVE a row to another account -- the explicit with check',
+    moved.blocked || moved.rowCount === 0,
+    moved.blocked ? 'refused' : `moved ${moved.rowCount} rows into account B`);
+
+  // ---- the assertion the three-policy shape exists for -----------------------
+  // write ON, read OFF. A `for all` write policy would govern select too, so the
+  // office user would still see the rows -- silently making leads.write imply
+  // leads.read and defeating the point of separate capabilities.
+  await q(`update public.office_capabilities set enabled=false where capability='leads.read'`);
+  const blindWriter = await as(OFFICE_A, 'select count(*)::int n from public.leads');
+  check('with write ON and read OFF, the office user is BLIND',
+    blindWriter.rows[0].n === 0, `saw ${blindWriter.rows[0].n}; leads.write is leaking select`);
+
+  // AND CANNOT UPDATE EITHER, which is not what I assumed when writing this.
+  //
+  // The assumption was that update is governed only by the update policy, so a
+  // write-without-read holder could change rows they cannot see. PostgreSQL says
+  // otherwise: an UPDATE or DELETE whose WHERE clause references table columns
+  // needs to READ those rows to find them, so SELECT policies apply on top of
+  // the update policy. With leads.read off, the WHERE matches nothing.
+  //
+  // Pinned because the tempting "fix" -- giving write-holders a select policy of
+  // their own -- would make x.write silently imply x.read and undo the reason
+  // these are three policies instead of one.
+  const blindUpdate = await as(OFFICE_A, `update public.leads set name='x' where account_id=$1`, [ACCT_A]);
+  check('...and cannot update either: a WHERE clause has to read the rows first',
+    blindUpdate.rowCount === 0, `updated ${blindUpdate.rowCount}, so select policies are not applying to UPDATE`);
+  await q(`update public.office_capabilities set enabled=true where capability='leads.read'`);
+
+  // And the reverse: read ON, write OFF is the state the previous migration left.
+  await q(`update public.office_capabilities set enabled=false where capability='leads.write'`);
+  const readerOnly = await as(OFFICE_A, 'select count(*)::int n from public.leads');
+  check('with read ON and write OFF, the office user still reads',
+    readerOnly.rows[0].n === 2, `saw ${readerOnly.rows[0].n} of 2`);
+  const refusedWrite = await as(OFFICE_A, 'delete from public.leads where account_id=$1', [ACCT_A]);
+  check('...and deletes nothing', refusedWrite.rowCount === 0, `deleted ${refusedWrite.rowCount}`);
+  await q(`update public.office_capabilities set enabled=true where capability='leads.write'`);
+
+  // The owner is untouched by every one of those combinations.
+  const ownerFinal = await as(OWNER_A, 'select count(*)::int n from public.leads');
+  check('the owner still sees their two leads after all of it',
+    ownerFinal.rows[0].n === 2, `saw ${ownerFinal.rows[0].n} of 2`);
+
   await db.end();
 } catch (error) {
   console.error('\nHarness error:', error.message);
