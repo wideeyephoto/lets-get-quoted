@@ -242,6 +242,10 @@ function checkoutRaceAdmin(
       is: vi.fn(() => q),
       not: vi.fn(() => q),
       gte: vi.fn(() => q),
+      // Real PostgREST returns a thenable builder from .range(), and
+      // getTrailingVolume pages with it now -- a read without one is silently
+      // capped at 1,000 rows.
+      range: vi.fn(() => q),
       maybeSingle: vi.fn(async () => response),
       then: (resolve: (value: DbResponse) => unknown, reject: (reason: unknown) => unknown) =>
         Promise.resolve(response).then(resolve, reject),

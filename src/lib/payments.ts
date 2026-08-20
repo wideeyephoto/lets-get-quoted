@@ -191,6 +191,45 @@ async function requireLegacyDestinationPaymentRail(
 // Sum of paid amounts in the trailing 365 days — the basis for the fee bracket.
 // Uses the admin client since this is a trusted server-side calculation, not a
 // user-scoped read.
+/** PostgREST's default ceiling. A read that ignores it is silently truncated. */
+export const TRAILING_VOLUME_PAGE_SIZE = 1_000;
+/** 500k payments in a year. Far past any real contractor; a runaway guard only. */
+const TRAILING_VOLUME_MAX_PAGES = 500;
+
+/**
+ * Sum a filtered payments query across pages.
+ *
+ * WHY THIS IS NOT ONE SELECT. Supabase caps a response at 1,000 rows by default
+ * and says nothing when it truncates -- you get 1,000 rows and no error. This
+ * function feeds the platform-fee bracket, and the bracket runs the wrong way:
+ * LESS counted volume means a HIGHER fee. So a contractor busy enough to pass
+ * 1,000 payments in a year would have had the excess silently dropped and been
+ * charged a higher rate on every transaction, permanently, with the overcharge
+ * growing as they grew.
+ */
+async function sumPaged(
+  build: () => { range: (from: number, to: number) => PromiseLike<{
+    data: Array<Record<string, unknown>> | null;
+    error: unknown;
+  }> },
+  keep: (row: Record<string, unknown>) => boolean,
+): Promise<{ total: number; error: unknown }> {
+  let total = 0;
+  for (let page = 0; page < TRAILING_VOLUME_MAX_PAGES; page += 1) {
+    const from = page * TRAILING_VOLUME_PAGE_SIZE;
+    const { data, error } = await build().range(from, from + TRAILING_VOLUME_PAGE_SIZE - 1);
+    if (error) return { total: 0, error };
+    const rows = data ?? [];
+    for (const row of rows) if (keep(row)) total += Number(row.amount);
+    // A short page is the end. A full one might not be, so ask again.
+    if (rows.length < TRAILING_VOLUME_PAGE_SIZE) return { total, error: null };
+  }
+  // Never silently. Reaching here means the number below is too low, and too
+  // low is the direction that overcharges.
+  console.error('trailing volume hit the page ceiling; the fee bracket may be wrong');
+  return { total, error: null };
+}
+
 export async function getTrailingVolume(accountId: string): Promise<number> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
@@ -201,31 +240,24 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
   // mark large "cash" payments to inflate volume and drop their real platform fee.
   // Defensive: if `imported` isn't migrated yet, fall back but still require a
   // stripe_payment_intent.
-  const { data, error } = await admin
+  const query = (columns: string) => () => admin
     .from('payments')
-    .select('amount, imported, stripe_payment_intent')
+    .select(columns)
     .is('test_marker', null)
     .eq('account_id', accountId)
     .eq('status', 'paid')
     .not('stripe_payment_intent', 'is', null)
-    .gte('paid_at', since);
+    .gte('paid_at', since) as never;
 
-  if (error) {
-    const fallback = await admin
-      .from('payments')
-      .select('amount, stripe_payment_intent')
-      .is('test_marker', null)
-      .eq('account_id', accountId)
-      .eq('status', 'paid')
-      .not('stripe_payment_intent', 'is', null)
-      .gte('paid_at', since);
-    if (fallback.error) throw fallback.error;
-    return (fallback.data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
-  }
+  const primary = await sumPaged(
+    query('amount, imported, stripe_payment_intent'),
+    (row) => !(row as { imported?: boolean }).imported,
+  );
+  if (!primary.error) return primary.total;
 
-  return (data ?? [])
-    .filter((row) => !(row as { imported?: boolean }).imported)
-    .reduce((sum, row) => sum + Number(row.amount), 0);
+  const fallback = await sumPaged(query('amount, stripe_payment_intent'), () => true);
+  if (fallback.error) throw fallback.error;
+  return fallback.total;
 }
 
 // Quote the fee rate/amount that would apply if this payment were completed
