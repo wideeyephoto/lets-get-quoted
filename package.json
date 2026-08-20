@@ -35,7 +35,11 @@
     "test:pg17:overage": "node scripts/verify-usage-overage-authorization.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
     "test:stock": "node --test src/lib/stock/stock.test.mjs",
-    "test:pg17:dedicated-number": "node scripts/verify-dedicated-number-allowance-migration.mjs"
+    "test:pg17:dedicated-number": "node scripts/verify-dedicated-number-allowance-migration.mjs",
+    "test:pg17:office-read-grant": "node scripts/verify-office-read-grant.mjs",
+    "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
+    "inspect:cron-health": "node scripts/inspect-cron-health.mjs",
+    "inspect:live-top-ups": "node scripts/inspect-live-top-up-prices.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",
