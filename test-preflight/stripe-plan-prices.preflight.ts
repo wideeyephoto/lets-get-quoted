@@ -82,10 +82,10 @@ describe('the six bound Stripe Prices', () => {
       const md = price.metadata ?? {};
       const want = {
         lgq_price_purpose: 'base_plan',
-        lgq_plan_code: binding.definition.planCode,
+        lgq_plan_code: binding.planCode,
         // The footgun the operator docs call out: this vocabulary is
         // monthly/annual, NOT the month/year that recurring.interval uses.
-        lgq_billing_interval: binding.definition.billingInterval,
+        lgq_billing_interval: binding.billingInterval,
         lgq_catalog_version: PRICING_CATALOG_VERSION,
       } as Record<string, string>;
 
@@ -93,12 +93,12 @@ describe('the six bound Stripe Prices', () => {
       for (const [k, v] of Object.entries(want)) {
         if (md[k] !== v) problems.push(`${k}: ${JSON.stringify(md[k] ?? null)} != ${JSON.stringify(v)}`);
       }
-      const amount = expectedAmount(binding.definition.planCode, binding.definition.billingInterval);
+      const amount = expectedAmount(binding.planCode, binding.billingInterval);
       if (price.unit_amount !== amount) problems.push(`unit_amount: ${price.unit_amount} != ${amount}`);
       if (price.currency !== 'usd') problems.push(`currency: ${price.currency} != usd`);
       if (price.livemode !== (MODE === '1')) problems.push(`livemode: ${price.livemode} != ${MODE === '1'}`);
       if (price.active !== true) problems.push('active: false');
-      const wantInterval = binding.definition.billingInterval === 'annual' ? 'year' : 'month';
+      const wantInterval = binding.billingInterval === 'annual' ? 'year' : 'month';
       if (price.recurring?.interval !== wantInterval) {
         problems.push(`recurring.interval: ${price.recurring?.interval} != ${wantInterval}`);
       }
@@ -127,7 +127,7 @@ describe('the six bound Stripe Prices', () => {
     // grown a field the table does not print -- read validatePrice.
     const verified = await loadVerifiedStripePlanPrices();
     expect(Object.keys(verified).sort())
-      .toEqual(STRIPE_PLAN_PRICE_BINDINGS.map((b) => b.definition.key).sort());
+      .toEqual(STRIPE_PLAN_PRICE_BINDINGS.map((b) => b.key).sort());
     for (const snapshot of Object.values(verified)) {
       expect(snapshot.catalogVersion).toBe(PRICING_CATALOG_VERSION);
     }
