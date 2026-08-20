@@ -45,6 +45,7 @@ const LEDGER = m('20260815213142_pricing_entitlements.sql');
 const INBOX = m('20260819120000_voice_event_inbox.sql');
 const SETTINGS = m('20260819140000_voice_settings.sql');
 const CALLS = m('20260819150000_voice_calls.sql');
+const TRUNCATE_FIX = m('20260819160000_voice_settings_truncate.sql');
 
 function liftTable(name) {
   const start = LEDGER.indexOf(`create table if not exists public.${name} (`);
@@ -102,6 +103,12 @@ try {
     end $roles$;
     create schema if not exists extensions;
     create schema if not exists auth;
+    -- Reproduce Supabase's default privileges. Without this the harness creates
+    -- tables with no grants at all, every "browser roles cannot write" check
+    -- passes because the grant never existed, and the harness proves nothing
+    -- about the environment it is standing in for. This line is what made the
+    -- TRUNCATE checks below mean something.
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
     create extension if not exists pgcrypto with schema extensions;
     create table auth.users (id uuid primary key);
     create table public.accounts (id uuid primary key);
@@ -295,6 +302,36 @@ try {
   ck('an impossible settlement state is refused',
     /voice_calls_settlement_check/.test(await fails(
       `update public.voice_calls set settlement = 'free' where provider_call_id = $1`, [other]) ?? ''));
+
+  // -------------------------------------------------------------------
+  // 8d. TRUNCATE, which row level security does not cover.
+  // -------------------------------------------------------------------
+  await q(TRUNCATE_FIX);
+  ck('the truncate revoke applies', true);
+
+  // The whole class of mistake, checked across every voice table at once rather
+  // than one at a time: a policy governs DML and says nothing about TRUNCATE, so
+  // an RLS-enabled table with Supabase's default grants can be emptied by any
+  // authenticated session -- every workspace, not just their own.
+  const truncatable = (await q(`
+    select c.relname, pg_get_userbyid(x.grantee) as who
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl, '{}'::aclitem[])) x
+    where n.nspname = 'public'
+      and c.relname in ('voice_events','voice_call_admissions','voice_settings','voice_calls')
+      and x.privilege_type = 'TRUNCATE'
+      and pg_get_userbyid(x.grantee) in ('anon','authenticated','public')
+    order by c.relname`)).rows;
+  ck('no browser role can TRUNCATE any voice table',
+    truncatable.length === 0, JSON.stringify(truncatable));
+
+  // Revoking everything must not have taken the owner's own access with it.
+  ck('an owner can still reach their settings through the policy',
+    Number((await q(`select count(*)::int as n
+                     from information_schema.role_table_grants
+                     where table_name = 'voice_settings' and grantee = 'authenticated'
+                       and privilege_type in ('SELECT','INSERT','UPDATE','DELETE')`)).rows[0].n) === 4);
 
   // -------------------------------------------------------------------
   // 8. The billable interval, computed from the measured receipt.

@@ -84,7 +84,18 @@ create policy voice_calls_owner_read
   to authenticated
   using ((select public.is_owner(account_id)));
 
-revoke insert, update, delete on table public.voice_calls from anon, authenticated;
+-- REVOKE ALL, then grant back exactly the read. Naming the privileges to remove
+-- was wrong and the post-condition below caught it: Supabase's default
+-- privileges grant ALL on every new table in `public` to anon and authenticated,
+-- and that ALL includes TRUNCATE.
+--
+-- TRUNCATE IS NOT SUBJECT TO RLS. A policy restricts select/insert/update/delete
+-- and does nothing at all about a truncate, so an RLS-enabled table with default
+-- grants can be emptied by any authenticated session -- every workspace at once,
+-- not just the caller's own. Removing a named list leaves behind whatever the
+-- list forgot; removing everything and granting back what is needed cannot.
+revoke all on table public.voice_calls from public, anon, authenticated;
+grant select on table public.voice_calls to authenticated;
 
 drop trigger if exists touch_voice_calls_updated_at_trigger on public.voice_calls;
 create trigger touch_voice_calls_updated_at_trigger
@@ -105,7 +116,8 @@ begin
 
   -- The property that matters: a browser role may READ its own history and may
   -- not write any of it. A grant here would let a session rewrite what a call
-  -- cost, which is the one thing this table must never allow.
+  -- cost, or empty the table outright -- TRUNCATE is in this list precisely
+  -- because RLS does not cover it, and this check is what found that.
   select pg_catalog.string_agg(distinct g.who || ':' || g.priv, ', ') into v_writable
   from (
     select pg_catalog.pg_get_userbyid(x.grantee) as who, x.privilege_type as priv
