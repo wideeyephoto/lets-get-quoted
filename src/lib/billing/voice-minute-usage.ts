@@ -226,7 +226,10 @@ export async function admitVoiceCall(
         idempotencyKey: `${idempotencyKey}:overage`,
       });
       if (overage.outcome === 'accrued') {
-        await recordAdmission(admin, input, null, 0);
+        // reserved_minutes carries the CAP that was charged, not zero: it is
+        // what the settlement trues down from, and what a human reading the row
+        // needs to see to understand a $21 line.
+        await recordAdmission(admin, input, null, cap, overage.idempotencyKey);
         return Object.freeze({
           outcome: 'admitted_overage' as const,
           overage: Object.freeze({
@@ -276,6 +279,11 @@ async function recordAdmission(
   input: VoiceAdmissionInput,
   reservationId: string | null,
   reservedMinutes: number,
+  // An overage-admitted call holds no reservation, so without this the
+  // admission row is indistinguishable from an unmetered one -- and settlement
+  // reads a null reservation as "nothing to do". That is how a $21 hold on a
+  // twenty-second call ended up with no path back.
+  overageKey: string | null = null,
 ): Promise<void> {
   try {
     const { error } = await admin.from('voice_call_admissions').upsert({
@@ -284,6 +292,7 @@ async function recordAdmission(
       provider_call_id: input.providerCallId,
       reservation_id: reservationId,
       reserved_minutes: reservedMinutes,
+      overage_key: overageKey,
     }, { onConflict: 'provider,provider_call_id', ignoreDuplicates: true });
     if (error) console.error('voice admission record failed:', error);
   } catch (error) {

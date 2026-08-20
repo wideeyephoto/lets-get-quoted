@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { billableVoiceMinutes, settleVoiceCall } from '@/lib/billing/voice-minute-usage';
+import { settleUsageOverage } from '@/lib/billing/usage-overage';
 import { createLead } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceReceipt } from '@/lib/voice/provider';
@@ -40,6 +41,8 @@ type AdmissionRow = {
   account_id: string;
   reservation_id: string | null;
   reserved_minutes: number | null;
+  /** Set only when the call was admitted on overage rather than on allowance. */
+  overage_key: string | null;
 };
 
 function summaryLine(receipt: VoiceReceipt): string {
@@ -68,7 +71,7 @@ export async function settleVoiceReceipt(
 ): Promise<VoiceSettlement> {
   const { data: admission } = await admin
     .from('voice_call_admissions')
-    .select('account_id, reservation_id, reserved_minutes')
+    .select('account_id, reservation_id, reserved_minutes, overage_key')
     .eq('provider', receipt.provider)
     .eq('provider_call_id', receipt.providerCallId)
     .maybeSingle();
@@ -102,10 +105,22 @@ export async function settleVoiceReceipt(
       ownsReservation: true,
     }, minutes);
     if (settled === null) reconcile = 'settlement_failed';
+  } else if (row.overage_key) {
+    // ADMITTED ON OVERAGE. The full 60-minute safety cap was charged the moment
+    // the call was answered, because nobody can know its length in advance. Now
+    // the receipt says what it actually was, so the charge comes down to it.
+    // Without this a twenty-second wrong number costs $21 for ever.
+    const outcome = await settleUsageOverage(admin, {
+      accountId: row.account_id,
+      idempotencyKey: row.overage_key,
+      units: Math.min(minutes, row.reserved_minutes ?? minutes),
+    });
+    if (outcome.settled) settled = minutes;
+    else reconcile = 'settlement_failed';
   }
-  // No reservation id means the call was admitted unmetered, on purpose. There
-  // is nothing to settle and nothing wrong; the receipt is still the evidence
-  // that makes it reconcilable later.
+  // Neither a reservation nor an overage key means the call was admitted
+  // unmetered, on purpose. There is nothing to settle and nothing wrong; the
+  // receipt is still the evidence that makes it reconcilable later.
 
   // The lead is why the contractor bought this. It is attempted whatever
   // happened above, and its failure is contained here.

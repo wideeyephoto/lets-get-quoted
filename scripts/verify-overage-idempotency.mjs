@@ -46,6 +46,7 @@ const SETTLEMENT = m('20260819260000_overage_settlement.sql');
 const IDEMPOTENCY = m('20260819290000_overage_accrual_idempotency.sql');
 const SETTLED_GUARD = m('20260819300000_release_respects_settled_period.sql');
 const OVERLAP = m('20260819310000_cap_counts_overlapping_periods.sql');
+const SETTLE = m('20260820120000_settle_a_voice_overage_for_what_was_used.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });
@@ -105,6 +106,15 @@ try {
       primary key (account_id, period_start, resource_code),
       constraint workspace_overage_accruals_period_check check (period_end > period_start)
     );
+    create table public.voice_call_admissions (
+      id uuid primary key default gen_random_uuid(),
+      account_id uuid not null references public.accounts(id) on delete cascade,
+      provider text not null,
+      provider_call_id text not null,
+      reservation_id uuid,
+      reserved_minutes integer not null default 0,
+      admitted_at timestamptz not null default now()
+    );
     insert into public.accounts (id) values ('${ACCOUNT}');
     -- $50 cap. Every figure below is measured against it.
     insert into public.workspace_overage_settings (account_id, enabled, cap_cents)
@@ -117,7 +127,8 @@ try {
   await q(IDEMPOTENCY);
   await q(SETTLED_GUARD);
   await q(OVERLAP);
-  ck('all four migrations apply, post-conditions and all', true);
+  await q(SETTLE);
+  ck('all five migrations apply, post-conditions and all', true);
 
   const authorize = (key, units = 10, resource = 'voice_minutes', start = P_START) => q(
     `select * from public.authorize_usage_overage(
@@ -346,9 +357,97 @@ try {
     afterRefusal === settledTotal, { afterRefusal, settledTotal });
 
   // -------------------------------------------------------------------
-  // 9. Reach.
+  // 9. Settling an overage for what was actually used.
+  // -------------------------------------------------------------------
+  // A phone call is charged the full 60-minute safety cap the moment it is
+  // admitted on overage, because nobody can know its length in advance. Without
+  // a way down, a twenty-second wrong number costs $21 for ever, and a $50 cap
+  // buys exactly two calls.
+  const CALLER = '66666666-6666-4666-8666-666666666666';
+  await q(`insert into public.accounts (id) values ('${CALLER}')`);
+  await q(`insert into public.workspace_overage_settings (account_id, enabled, cap_cents)
+           values ('${CALLER}', true, 5000)`);
+
+  const holdCall = await authorizeFor(CALLER, 'ai-voice:v1:call_short0001', 60, ...CAL);
+  ck('a call is admitted on the full 60-minute cap',
+    holdCall.decision === 'accrued' && Number(holdCall.charged_millicents) === 60 * RATE, holdCall);
+  ck('...which is $21.00', Number(holdCall.charged_millicents) === 2_100_000);
+
+  const accrualOf = async (account) => Number((await q(
+    `select coalesce(sum(millicents), 0)::bigint as m from public.workspace_overage_accruals
+      where account_id = $1`, [account])).rows[0].m);
+  ck('...and the ledger says so', await accrualOf(CALLER) === 2_100_000);
+
+  // The call ran one minute.
+  const refundCall = Number((await q(
+    `select public.settle_usage_overage($1::uuid, $2::text, 1::bigint) as r`,
+    [CALLER, 'ai-voice:v1:call_short0001'])).rows[0].r);
+  ck('SETTLING A ONE-MINUTE CALL GIVES BACK FIFTY-NINE MINUTES',
+    refundCall === 59 * RATE, refundCall);
+  ck('...leaving exactly one minute charged', await accrualOf(CALLER) === RATE);
+
+  ck('settling the same call again gives back nothing',
+    Number((await q(`select public.settle_usage_overage($1::uuid, $2::text, 1::bigint) as r`,
+      [CALLER, 'ai-voice:v1:call_short0001'])).rows[0].r) === 0);
+  ck('...and the ledger did not move', await accrualOf(CALLER) === RATE);
+
+  // A call that ran the whole cap owes the whole hold. Zero refunded is a real
+  // answer, not a failure.
+  const fullCall = await authorizeFor(CALLER, 'ai-voice:v1:call_long00002', 60, ...CAL);
+  ck('a second call is admitted on the cap', fullCall.decision === 'accrued');
+  ck('settling it for the full sixty gives back nothing',
+    Number((await q(`select public.settle_usage_overage($1::uuid, $2::text, 60::bigint) as r`,
+      [CALLER, 'ai-voice:v1:call_long00002'])).rows[0].r) === 0);
+  ck('...and keeps the whole charge', await accrualOf(CALLER) === RATE + 2_100_000);
+
+  // Settling for MORE than was held would bill units the cap never approved.
+  // On a FRESH hold: an already-settled key returns 0 for a different and
+  // correct reason, which would make this pass without testing anything.
+  await authorizeFor(CALLER, 'ai-voice:v1:call_third00003', 10, ...CAL);
+  const aboveHold = await fails(
+    `select public.settle_usage_overage($1::uuid, $2::text, 90::bigint)`,
+    [CALLER, 'ai-voice:v1:call_third00003']);
+  ck('settling above the hold is refused', /exceeds the units held/.test(aboveHold ?? ''), aboveHold);
+  await q('rollback');
+  ck('...and the refusal changed nothing',
+    Number((await q(`select millicents from public.workspace_overage_accrual_events
+      where account_id = $1 and idempotency_key = $2`,
+      [CALLER, 'ai-voice:v1:call_third00003'])).rows[0].millicents) === 10 * RATE);
+
+  // A settled event can still be released -- a call trued down and then found
+  // unbillable ends at zero, never below it.
+  const releasedCall = Number((await q(
+    `select public.release_usage_overage($1::uuid, $2::text) as r`,
+    [CALLER, 'ai-voice:v1:call_short0001'])).rows[0].r);
+  ck('releasing a settled call gives back only the remainder', releasedCall === RATE, releasedCall);
+  // What is left: the full-length call, plus the untouched ten-minute hold.
+  ck('...landing the ledger at the two calls still owed',
+    await accrualOf(CALLER) === 2_100_000 + 10 * RATE);
+
+  ck('settling a released call gives back nothing',
+    Number((await q(`select public.settle_usage_overage($1::uuid, $2::text, 1::bigint) as r`,
+      [CALLER, 'ai-voice:v1:call_short0001'])).rows[0].r) === 0);
+
+  ck('settling a key that never accrued gives back nothing',
+    Number((await q(`select public.settle_usage_overage($1::uuid, $2::text, 1::bigint) as r`,
+      [CALLER, 'never:v1:accrued00000'])).rows[0].r) === 0);
+
+  for (const bad of [-1, null]) {
+    const message = await fails(
+      `select public.settle_usage_overage($1::uuid, $2::text, $3::bigint)`,
+      [CALLER, 'ai-voice:v1:call_long00002', bad]);
+    ck(`settling for ${JSON.stringify(bad)} units is refused`,
+      /arguments are invalid/.test(message ?? ''), message);
+  }
+
+  // -------------------------------------------------------------------
+  // 10. Reach.
   // -------------------------------------------------------------------
   for (const role of ['anon', 'authenticated']) {
+    ck(`${role} cannot settle an overage`,
+      (await q(`select has_function_privilege($1,
+        'public.settle_usage_overage(uuid,text,bigint)', 'EXECUTE') as ok`, [role]))
+        .rows[0].ok === false);
     ck(`${role} cannot authorize an overage`,
       (await q(`select has_function_privilege($1,
         'public.authorize_usage_overage(uuid,text,bigint,bigint,timestamptz,timestamptz,text)',

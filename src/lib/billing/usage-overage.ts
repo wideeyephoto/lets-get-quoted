@@ -301,6 +301,58 @@ export async function releaseUsageOverage(
 }
 
 /**
+ * Settle an overage for fewer units than were held.
+ *
+ * The mirror of `commitUsageReservationPartial` for the path that has no
+ * reservation. A phone call is charged the full 60-minute safety cap the moment
+ * it is admitted on overage, because nobody can know its length in advance --
+ * so without this a twenty-second wrong number costs the whole cap, $21, and
+ * nothing gives it back.
+ *
+ * Returns the millicents given back. ZERO IS A REAL ANSWER: a call that ran the
+ * full cap owes the entire hold. Distinguish "gave nothing back" from "found
+ * nothing to settle" by the `settled` flag, not by the number.
+ *
+ * Never throws: like the release, it runs where a failure must not take the
+ * caller down with it.
+ */
+export async function settleUsageOverage(
+  admin: SupabaseClient,
+  input: Readonly<{ accountId: string; idempotencyKey: string; units: number }>,
+): Promise<{ settled: boolean; refundedMillicents: number }> {
+  const nothing = { settled: false, refundedMillicents: 0 };
+  if (!input.idempotencyKey || !Number.isSafeInteger(input.units) || input.units < 0) {
+    return nothing;
+  }
+  try {
+    const { data, error } = await admin.rpc('settle_usage_overage', {
+      p_account_id: input.accountId,
+      p_idempotency_key: input.idempotencyKey,
+      p_units: input.units,
+    });
+    if (error) {
+      // A period that has already been settled refuses rather than rewriting a
+      // charge that is decided. Said plainly, because nothing here can fix it.
+      if (/already been settled/.test(String(error.message ?? ''))) {
+        console.error(
+          'voice overage OWED BACK but period already settled -- needs a manual credit:',
+          input.accountId, input.idempotencyKey,
+        );
+        return nothing;
+      }
+      console.error('usage overage settlement failed:', error);
+      return nothing;
+    }
+    const refunded = Number(data ?? 0);
+    if (!Number.isFinite(refunded)) return nothing;
+    return { settled: true, refundedMillicents: refunded };
+  } catch (error) {
+    console.error('usage overage settlement threw:', error);
+    return nothing;
+  }
+}
+
+/**
  * Millicents as the money a person would read.
  *
  * The dollars-to-string half is `formatUsdExact` rather than a second

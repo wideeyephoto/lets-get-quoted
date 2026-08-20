@@ -14,12 +14,15 @@ specific thing is sold.
 |---|---|---|
 | `20260820100000_scale_gets_the_allowance_it_is_sold.sql` | both grant tables spell Scale's monthly allowance as Growth's — half, on all four resources | selling **Scale** |
 | `20260820110000_voice_allowance_survives_a_moved_period.sql` | a moved billing boundary grants a second month of voice minutes free | any **AI Voice** launch |
+| `20260820120000_settle_a_voice_overage_for_what_was_used.sql` | an overage-admitted call is charged the full 60-minute cap and nothing trues it down, so a 20-second wrong number costs $21 | any **AI Voice** launch |
 
-Filename order. Neither depends on the other.
+Filename order. `120000` needs `20260819290000` (already applied) for the accrual
+event table; the other two are independent.
 
 ```
 npm run test:pg17:scale-allowance    # 12/12
 npm run test:pg17:voice-allowance    # 34/34
+npm run test:pg17:overage-idempotency # 71/71, covers the settle path
 npm run audit:applied -- --unapplied # before and after
 ```
 
