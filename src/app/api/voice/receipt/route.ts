@@ -32,6 +32,11 @@ export const dynamic = 'force-dynamic';
  * they already caused, bounded by a hold LGQ took at admission. It does not buy
  * them the ability to invent one.
  *
+ * STATUS CODES ARE A DIAGNOSTIC SURFACE TOO. 503 means this deployment has no
+ * credential configured; 401 means the one presented did not match. They were
+ * the same code once, and an operator could not tell a missing environment
+ * variable from a wrong password.
+ *
  * ALWAYS 200 ON A DELIVERED RECEIPT IT ACCEPTED. The provider retries on 5xx and
  * there is exactly one receipt per call; a transient 500 here loses the only
  * record of what a call cost.
@@ -81,13 +86,28 @@ function authorized(request: Request): boolean {
 }
 
 export async function POST(request: Request) {
-  if (!authorized(request)) {
-    // Deliberately terse and bodyless. Nothing here tells a prober whether the
-    // endpoint exists, whether a credential is configured, or which half of one
-    // was wrong.
+  // NOT CONFIGURED IS NOT THE SAME AS NOT AUTHORIZED, and collapsing them cost
+  // an operator an afternoon. Both returned a bodyless 401, so "the variable
+  // never reached the build" and "the password is wrong" were the same answer,
+  // and the only way to tell them apart was to guess.
+  //
+  // 503 is the honest status and leaks nothing worth having: an attacker learns
+  // the deployment has no secret set, which they already could not exploit,
+  // while the person deploying learns the one thing they actually need.
+  if (!expectedCredential()) {
     await logWebhookFailure({
       source: 'ai_voice',
-      errorMessage: 'Voice receipt rejected: missing or invalid credentials',
+      errorMessage: `Voice receipt endpoint has no ${CREDENTIAL_ENV} configured`,
+    });
+    return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+  }
+
+  if (!authorized(request)) {
+    // Terse and bodyless from here on. Which HALF of a credential was wrong, and
+    // whether the username exists, stay unsaid.
+    await logWebhookFailure({
+      source: 'ai_voice',
+      errorMessage: 'Voice receipt rejected: invalid credentials',
     });
     return new NextResponse(null, { status: 401 });
   }

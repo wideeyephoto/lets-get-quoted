@@ -94,8 +94,25 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<host>/api/voice/receip
   -H 'content-type: application/json' -d '{}'
 ```
 
-Expect `401`. If it returns `500`, the credential is unset — the route fails
-closed, which is correct, but the variable did not reach the build.
+Expect **`401`** — the endpoint is configured and refused an unauthenticated
+request. Then, with the credentials just set:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}
+' -X POST   'https://user:password@<host>/api/voice/receipt'   -H 'content-type: application/json' -d '{}'
+```
+
+Expect **`400`** — authentication passed and the empty body was rejected.
+
+| Code | Means |
+| --- | --- |
+| `503` | **no credential in this build.** Set the variable and redeploy; setting it without a new build changes nothing. |
+| `401` (authenticated) | the credential does not match what the build holds |
+| `400` | working |
+| `404` | this host is not serving the app — check the alias points at the deployment |
+
+503 and 401 were the same code once, so "the variable never reached the build"
+and "the password is wrong" were indistinguishable. They are not any more.
 
 ---
 

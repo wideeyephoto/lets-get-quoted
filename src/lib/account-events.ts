@@ -33,7 +33,9 @@ export type AccountEventKind =
   | 'automation_toggled'
   | 'automation_settings_changed'
   | 'ai_voice_settings_updated'
-  | 'ai_voice_recording_changed';
+  | 'ai_voice_recording_changed'
+  | 'office_invitation_sent'
+  | 'office_invitation_revoked';
 
 export async function recordAccountEvent(input: {
   accountId: string;
