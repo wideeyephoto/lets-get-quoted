@@ -13,7 +13,7 @@ import {
 } from '@/app/pricing/pricing-catalog';
 
 function read(...parts: string[]): string {
-  return readFileSync(join(process.cwd(), ...parts), 'utf8');
+  return readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 }
 
 const experience = () => read('src', 'app', 'pricing', 'PricingExperience.tsx');
@@ -101,6 +101,47 @@ describe('AI Voice is presented as coming soon, not as a purchase', () => {
         expect(feature).not.toMatch(/\bincluded with\b/i);
       }
     }
+  });
+
+  it('does not claim it in the page component either, where no guard reached', () => {
+    // The check above reads COMPARISON_ROWS and PLANS[].features out of the
+    // catalog module. It never opened PricingExperience.tsx -- which is how a
+    // plan-card bullet reading "AI Voice Receptionist included" and a stat tile
+    // reading "Included / AI Voice Receptionist arrives with Scale" came to sit
+    // inches above a comparison table that already said "Coming soon".
+    //
+    // A blocklist of the exact wrong strings would only forbid the mistakes
+    // already made. This requires the opposite: every claim naming the feature
+    // has to carry a not-yet marker, so a newly invented present-tense claim
+    // fails too.
+    const NOT_YET = /coming soon|not available|at launch|planned|will |in build/i;
+    const source = experience();
+
+    const literals = [...source.matchAll(/'([^'\n]*AI Voice Receptionist[^'\n]*)'/g)]
+      .map((m) => m[1])
+      // A bare occurrence of the name is a label, not a claim -- the section nav
+      // entry has to be allowed to say what the section is called.
+      .filter((s) => s.replace(/AI Voice Receptionist/gi, '').replace(/[^a-z0-9]/gi, '') !== '');
+    // Guards the guard: renaming the feature, or switching these to double
+    // quotes, would otherwise empty the list and pass silently.
+    expect(literals.length).toBeGreaterThan(2);
+    const unmarked = literals.filter((s) => !NOT_YET.test(s));
+    expect(unmarked, `present-tense AI Voice claims: ${unmarked.join(' | ')}`).toEqual([]);
+    const priced = literals.filter((s) => /\$\d/.test(s));
+    expect(priced, `priced AI Voice claims: ${priced.join(' | ')}`).toEqual([]);
+
+    // The tooltip body is JSX text, not a string literal, so the sweep above
+    // cannot see it. It is the surface that duplicated the very sentence the
+    // voice section 380 lines below had already been corrected to future tense.
+    const tooltip = source.match(/function AIVoiceReceptionistInfoBubble\(\)[\s\S]*?\n}/)?.[0];
+    expect(tooltip, 'AIVoiceReceptionistInfoBubble not found').toBeTruthy();
+    expect(tooltip!).toMatch(NOT_YET);
+    expect(tooltip!).not.toMatch(/\bis included on\b/i);
+    expect(tooltip!).not.toMatch(/\$\d/);
+  });
+
+  it('does not sell it in the page metadata, which is what a search result shows', () => {
+    expect(read('src', 'app', 'pricing', 'page.tsx')).not.toMatch(/add AI Voice Receptionist/i);
   });
 
   it('says what it will cost without saying it is for sale', () => {

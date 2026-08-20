@@ -291,8 +291,8 @@ export const PRICING_FAQS = [
     a: 'Extra lines are available on Solo, Growth, Scale, and Enterprise after carrier review. They share the workspace’s text, voice, and concurrency allowances and do not create another workspace or another set of plan credits. The price is shown for approval before activation.',
   },
   {
-    q: 'What happens when the AI Voice Receptionist reaches its limit during a call?',
-    a: 'The active call may finish its current interaction and transfer or fall back, with up to 15 grace minutes and a 60-minute total-call safety cap. New calls then follow your forwarding or voicemail rule unless you explicitly enabled paid extra minutes.',
+    q: 'What will happen when the AI Voice Receptionist reaches its limit during a call?',
+    a: 'AI Voice Receptionist is not available yet, so nothing today consumes voice minutes. At launch the plan is that an active call may finish its current interaction and transfer or fall back, with up to 15 grace minutes and a 60-minute total-call safety cap. New calls would then follow your forwarding or voicemail rule unless you explicitly enabled paid extra minutes.',
   },
   {
     q: 'When do plan changes take effect?',

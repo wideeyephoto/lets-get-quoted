@@ -91,6 +91,6 @@ export default function PricingCalculator({ billing, volume, officeUsers, needsD
     </div>
 
     <div className={styles.crossoverGrid}><div><p className={styles.miniEyebrow}>Where the math changes</p><h3>Three natural handoff points.</h3><p>These are price breakpoints, not forced upgrades. Team, phone, and workflow capacity still matter.</p></div><ol>{crossovers.map((item, index) => <li key={`${item.from.id}-${item.to.id}`}><span className={styles.crossoverNumber}>0{index + 1}</span><div><span>{LABELS[item.from.id]} → {LABELS[item.to.id]}</span><strong>{money(item.volume)}/year</strong></div></li>)}</ol></div>
-    <p className={styles.calculatorFinePrint}>Estimate includes the selected subscription, LGQ platform fee, extra office users, and each plan’s base AI Voice Receptionist package when selected. Growth includes 200 AI-connected minutes; Flex, Solo, and Scale include 100. The comparison assumes usage stays within each package and excludes Stripe processing, taxes, and optional top-ups.</p>
+    <p className={styles.calculatorFinePrint}>Estimate includes the selected subscription, LGQ platform fee, and extra office users. AI Voice Receptionist is not available yet and adds nothing to these figures. The comparison assumes usage stays within each plan’s allowances and excludes Stripe processing, taxes, and optional top-ups.</p>
   </div>;
 }

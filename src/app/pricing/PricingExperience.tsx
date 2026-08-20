@@ -36,12 +36,12 @@ const CARD_FEATURES: Record<PlanId, readonly string[]> = {
   growth: [
     '5 office users + 10 crew users',
     '1,500 text + 500 AI Intake credits/month',
-    'AI Voice Receptionist available',
+    'AI Voice Receptionist coming soon',
   ],
   scale: [
     '0.1% LGQ platform fee',
-    'AI Voice Receptionist included',
-    '3 simultaneous AI calls + advanced routing',
+    'AI Voice Receptionist coming soon',
+    'At launch: 3 simultaneous AI calls + advanced routing',
   ],
 };
 
@@ -88,7 +88,7 @@ const COMPARISON_HIGHLIGHTS = [
   { value: '1.25% → 0.1%', label: 'Choose a plan with the fee that fits' },
   { value: '1 → 5', label: 'Office seats expand on Growth' },
   { value: 'Solo+', label: 'Dedicated business number' },
-  { value: 'Included', label: 'AI Voice Receptionist arrives with Scale' },
+  { value: 'Coming soon', label: 'AI Voice Receptionist is not available yet' },
 ] as const;
 
 const COMPETITORS = [
@@ -98,7 +98,7 @@ const COMPETITORS = [
     monthly: '$129 + 0.25%',
     annual: '$99 + 0.25%',
     users: '5 office + 10 crew',
-    phone: 'Dedicated number; AI Voice Receptionist +$55',
+    phone: 'Dedicated number; AI Voice Receptionist coming soon',
     href: '#plans',
   },
   {
@@ -202,10 +202,10 @@ function AIVoiceReceptionistInfoBubble() {
   return (
     <InfoBubble label="AI Voice Receptionist">
       <p>
-        Answers calls on your business number, gathers job details, and routes the caller using your rules. It is an
-        optional add-on for Flex, Solo, and Growth and is included on Scale.
+        AI Voice Receptionist will answer calls on your business number, gather the job details, and route the caller
+        using your rules. It is in build and cannot be bought yet, and no plan includes it today.
       </p>
-      <a href="#receptionist">See AI Voice Receptionist plans and minutes →</a>
+      <a href="#receptionist">See the planned AI Voice Receptionist allowances →</a>
     </InfoBubble>
   );
 }
@@ -594,7 +594,7 @@ export default function PricingExperience() {
               {showMobileVoicePlans ? 'Hide plan minutes' : 'Compare plan minutes'}
             </button>
           </div>
-          <ol className={styles.callFlow} aria-label="How AI Voice Receptionist handles a call">
+          <ol className={styles.callFlow} aria-label="How AI Voice Receptionist will handle a call">
             <li><span>01</span><div><strong>Answer</strong><small>A professional greeting, every time.</small></div></li>
             <li><span>02</span><div><strong>Qualify</strong><small>Capture the job, urgency, and location.</small></div></li>
             <li><span>03</span><div><strong>Route</strong><small>Transfer or follow your fallback rule.</small></div></li>
