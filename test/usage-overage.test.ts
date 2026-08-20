@@ -259,6 +259,30 @@ describe('giving a charge back, which used to only look like it worked', () => {
     })).resolves.toBe(false);
   });
 
+  it('says out loud when the money is owed back but the period has settled', async () => {
+    // The database refuses rather than rewriting the inputs to a charge already
+    // decided. Nothing in the codebase can issue that credit, so the one thing
+    // this can do is make sure a person can find it.
+    const logged: unknown[][] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...a) => { logged.push(a); });
+    const admin = {
+      rpc: () => Promise.resolve({
+        data: null,
+        error: { message: 'overage period has already been settled; release refused' },
+      }),
+      from: () => { throw new Error('should not read'); },
+    } as never;
+
+    expect(await releaseUsageOverage(admin, {
+      accountId: ACCOUNT_ID, idempotencyKey: KEY,
+    })).toBe(false);
+
+    expect(logged).toHaveLength(1);
+    expect(String(logged[0][0])).toMatch(/OWED BACK/);
+    expect(logged[0]).toContain(KEY);
+    spy.mockRestore();
+  });
+
   it('refuses without a key rather than guessing at a charge', async () => {
     const admin = {
       rpc: () => { throw new Error('must not be called'); },

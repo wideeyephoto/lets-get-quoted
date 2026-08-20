@@ -42,7 +42,9 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
+const SETTLEMENT = m('20260819260000_overage_settlement.sql');
 const IDEMPOTENCY = m('20260819290000_overage_accrual_idempotency.sql');
+const SETTLED_GUARD = m('20260819300000_release_respects_settled_period.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });
@@ -73,6 +75,7 @@ try {
 
   // Just enough of 20260819080000 for the new migration to stand on.
   await q(`
+    create extension if not exists pgcrypto;
     do $roles$ begin
       if not exists (select 1 from pg_roles where rolname='anon') then create role anon; end if;
       if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if;
@@ -107,8 +110,12 @@ try {
       values ('${ACCOUNT}', true, 5000);
   `);
 
+  // In migration order: the settlement snapshot, then the anchor, then the
+  // guard that keeps a settled period's accruals still.
+  await q(SETTLEMENT);
   await q(IDEMPOTENCY);
-  ck('the migration applies, post-conditions and all', true);
+  await q(SETTLED_GUARD);
+  ck('all three migrations apply, post-conditions and all', true);
 
   const authorize = (key, units = 10, resource = 'voice_minutes', start = P_START) => q(
     `select * from public.authorize_usage_overage(
@@ -250,7 +257,45 @@ try {
     Number(floored.units) === 0 && Number(floored.millicents) === 0, floored);
 
   // -------------------------------------------------------------------
-  // 7. Reach.
+  // 7. A settled period does not move.
+  // -------------------------------------------------------------------
+  // close_overage_period freezes a snapshot and an invoice is built from THAT,
+  // not from the live accrual rows. A call admitted at 23:58 that fails at
+  // 00:02 would otherwise release into a period that closed in between, leaving
+  // the accrual table saying something different from the settlement that came
+  // from it.
+  const LATE = 'ai-voice:v1:call_late5555';
+  const lateCharge = await authorize(LATE, 3);
+  ck('a fresh charge accrues before the period closes', lateCharge.decision === 'accrued');
+
+  await q(`select public.close_overage_period('${ACCOUNT}'::uuid,
+    '${P_START}'::timestamptz, '${P_END}'::timestamptz)`);
+  const settledTotal = Number((await q(
+    `select total_millicents from public.workspace_overage_settlements
+      where account_id = '${ACCOUNT}' and period_start = '${P_START}'`)).rows[0].total_millicents);
+  ck('the period closes with a snapshot to protect', settledTotal > 0, settledTotal);
+
+  const refused = await fails(
+    `select public.release_usage_overage('${ACCOUNT}'::uuid, '${LATE}'::text)`);
+  ck('A RELEASE AFTER THE PERIOD SETTLED IS REFUSED, NOT SILENTLY APPLIED',
+    /already been settled/.test(refused ?? ''), refused);
+  ck('...and the refusal is distinguishable from a duplicate release',
+    !/^0$/.test(String(refused)), refused);
+
+  const stillOpen = (await q(
+    `select released_at from public.workspace_overage_accrual_events
+      where account_id = '${ACCOUNT}' and idempotency_key = '${LATE}'`)).rows[0];
+  ck('...the event stays open, as evidence the charge should not have stood',
+    stillOpen.released_at === null, stillOpen);
+
+  const afterRefusal = Number((await q(
+    `select coalesce(sum(millicents), 0)::bigint as m from public.workspace_overage_accruals
+      where account_id = '${ACCOUNT}' and period_start = '${P_START}'`)).rows[0].m);
+  ck('...and the accruals still agree with the settlement they produced',
+    afterRefusal === settledTotal, { afterRefusal, settledTotal });
+
+  // -------------------------------------------------------------------
+  // 8. Reach.
   // -------------------------------------------------------------------
   for (const role of ['anon', 'authenticated']) {
     ck(`${role} cannot authorize an overage`,

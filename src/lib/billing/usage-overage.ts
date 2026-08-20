@@ -264,6 +264,16 @@ export async function releaseUsageOverage(
       p_idempotency_key: input.idempotencyKey,
     });
     if (error) {
+      // A settled period refuses rather than rewriting the inputs to a charge
+      // that has already been decided. The customer is owed this money back and
+      // no code path can give it to them, so it is said as plainly as possible.
+      if (/already been settled/.test(String(error.message ?? ''))) {
+        console.error(
+          'usage overage OWED BACK but period already settled -- needs a manual credit:',
+          input.accountId, input.idempotencyKey,
+        );
+        return false;
+      }
       console.error('usage overage release failed:', error);
       return false;
     }
