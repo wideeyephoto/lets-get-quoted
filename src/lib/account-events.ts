@@ -35,7 +35,8 @@ export type AccountEventKind =
   | 'ai_voice_settings_updated'
   | 'ai_voice_recording_changed'
   | 'office_invitation_sent'
-  | 'office_invitation_revoked';
+  | 'office_invitation_revoked'
+  | 'office_access_removed';
 
 export async function recordAccountEvent(input: {
   accountId: string;

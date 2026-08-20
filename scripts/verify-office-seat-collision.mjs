@@ -57,6 +57,7 @@ const FIX_ENUM = '20260819090000_office_role_value.sql';
 const FIX_ROLE = '20260819090100_office_seat_uses_office_role.sql';
 const INVITES = '20260819210000_office_invitations.sql';
 const CAPS = '20260819220000_office_capabilities.sql';
+const REMOVE = '20260819230000_remove_office_user.sql';
 
 /** Enough schema for the real migrations to install and run unmodified. */
 const SCHEMA = `
@@ -554,6 +555,51 @@ try {
                      where pg_get_expr(p.polqual, p.polrelid) like '%office_can%'
                         or pg_get_expr(p.polwithcheck, p.polrelid) like '%office_can%'`))
       .rows[0].n) === 0);
+
+
+  // =====================================================================
+  // REMOVAL. Taking access away, and refusing to take the wrong thing.
+  // =====================================================================
+  await q(m(REMOVE));
+  ck('the removal migration applies, post-conditions and all', true);
+
+  const remove = async (actor, account, target) => {
+    await actAs(actor);
+    return fails('select public.remove_office_user($1, $2) as ok', [account, target]);
+  };
+
+  ck('an outsider cannot remove anybody',
+    /office_seat_forbidden/.test(await remove(STRANGER, acctD.id, HIRE) ?? ''));
+
+  await actAs(OWNER_D);
+  ck('an owner can remove an office user',
+    (await q('select public.remove_office_user($1, $2) as ok', [acctD.id, HIRE])).rows[0].ok === true);
+  ck('...and the membership is gone',
+    Number((await q('select count(*)::int as n from public.memberships where user_id = $1', [HIRE]))
+      .rows[0].n) === 0);
+
+  await actAs(OWNER_D);
+  ck('removing somebody already gone reports false rather than raising',
+    (await q('select public.remove_office_user($1, $2) as ok', [acctD.id, HIRE])).rows[0].ok === false);
+
+  // The seat is freed immediately, because seat counting reads memberships.
+  const freed = Number((await q(
+    `select count(*)::int as n from public.memberships
+      where account_id = $1 and role in ('owner','office')`, [acctD.id])).rows[0].n);
+  ck('the seat is free the moment the row goes', freed >= 1, freed);
+
+  // An OWNER is refused here, whatever the caller intended.
+  ck('an owner cannot be removed through the office-removal path',
+    /office_removal_wrong_role/.test(await remove(OWNER_D, acctD.id, OWNER_D) ?? ''));
+  ck('...and is still there',
+    Number((await q(
+      `select count(*)::int as n from public.memberships
+        where account_id = $1 and user_id = $2 and role = 'owner'`, [acctD.id, OWNER_D]))
+      .rows[0].n) === 1);
+
+  ck('anon cannot call it',
+    (await q(`select has_function_privilege('anon',
+       'public.remove_office_user(uuid,uuid)', 'EXECUTE') as ok`)).rows[0].ok === false);
 
   await db.end();
 } catch (error) {

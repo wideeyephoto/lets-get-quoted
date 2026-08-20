@@ -50,8 +50,13 @@ function readable(error: { code?: string; message?: string; details?: unknown })
   if (raw.includes('office_invitation_resend_limit')) {
     return new Error('This invitation has been sent too many times. Cancel it and start a new one.');
   }
+  if (raw.includes('office_removal_wrong_role')) {
+    return new Error(
+      'That person owns this business, so their access cannot be removed here.',
+    );
+  }
   if (raw.includes('office_seat_forbidden')) {
-    return new Error('Only the owner of this business can invite office users.');
+    return new Error('Only the owner of this business can manage office users.');
   }
   if (raw.includes('office_seat_entitlement_unavailable')) {
     return new Error('Your plan\'s office-user limit could not be read, so nothing was sent. Try again shortly.');
@@ -123,4 +128,38 @@ export async function revokeOfficeInvitationAction(
   // already cancelled, or belongs to nobody. Revoking an ACCEPTED one does
   // nothing on purpose — removing a person is a different act.
   return { revoked: data === true };
+}
+
+/**
+ * Take office access away.
+ *
+ * The seat is free the moment the row goes, because seat counting reads
+ * memberships directly — there is no second ledger to keep in step.
+ *
+ * `false` is a real answer: the person was already removed, or was never on
+ * this workspace. A second click on a row somebody else just removed is not
+ * worth showing anybody an error for.
+ */
+export async function removeOfficeUserAction(
+  input: { userId: string },
+): Promise<{ removed: boolean }> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data, error } = await supabase.rpc('remove_office_user', {
+    p_account_id: accountId,
+    p_user_id: String(input?.userId ?? ''),
+  });
+  if (error) throw readable(error);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  await recordAccountEvent({
+    accountId,
+    kind: 'office_access_removed',
+    summary: data === true ? 'Office access removed' : 'Office access was already gone',
+    actorEmail: user?.email ?? null,
+    meta: { user_id: String(input?.userId ?? ''), removed: data === true },
+  });
+
+  revalidatePath('/dashboard/settings');
+  return { removed: data === true };
 }

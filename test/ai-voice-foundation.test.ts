@@ -187,3 +187,36 @@ describe('the voice SKUs exist, and cannot be bought', () => {
     expect(OVERAGE_RATE_MILLICENTS.voice_minutes).toBeGreaterThan(costMillicents);
   });
 });
+
+describe('the receipt route can be diagnosed without leaking anything', () => {
+  const route = () => readFileSync(
+    join(process.cwd(), 'src', 'app', 'api', 'voice', 'receipt', 'route.ts'), 'utf8');
+
+  it('tells an unset credential apart from a wrong one', () => {
+    // These were the same bodyless 401 once, and an operator with a Vercel
+    // Sensitive variable -- write-only, unreadable by anyone -- had no way to
+    // tell "never reached the build" from "does not match".
+    const source = route();
+    expect(source).toContain("status: 503");
+    expect(source).toContain("error: 'not_configured'");
+  });
+
+  it('never puts either credential in the response', () => {
+    const source = route();
+    const unauthorized = source.slice(source.indexOf('if (!authorized(request))'));
+    // The 401 body is null. Everything diagnostic goes to webhook_failures,
+    // which only the service role can read.
+    expect(unauthorized).toContain('new NextResponse(null, { status: 401 })');
+    expect(unauthorized).not.toMatch(/NextResponse\.json\([^)]*expected/);
+  });
+
+  it('logs a fingerprint, never the secret', () => {
+    const source = route();
+    expect(source).toContain("digest('hex').slice(0, 8)");
+    // The username half is named because it is not a secret and is usually
+    // where the mismatch is; the password half only ever appears as 32 bits of
+    // digest, which cannot be reversed.
+    expect(source).toContain('username matches, password differs');
+    expect(source).not.toMatch(/errorMessage:[^;]*presented\}/);
+  });
+});

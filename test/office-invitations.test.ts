@@ -161,3 +161,46 @@ describe('sign-in returns them to the link', () => {
     expect(login).toContain("from '@/lib/app-origin'");
   });
 });
+
+describe('removal', () => {
+  const read2 = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+
+  it('goes through the session client too', () => {
+    const actions = read2('src', 'app', 'dashboard', 'settings', 'office-team-actions.ts');
+    expect(actions).toContain('remove_office_user');
+    expect(actions).not.toContain('createAdminClient');
+  });
+
+  it('offers no Remove button on an owner row', () => {
+    // The database refuses an owner through this path, so a button there would
+    // always error. A control that invites the click and then explains is worse
+    // than no control.
+    const section = read2('src', 'app', 'dashboard', 'settings', 'OfficeTeamSection.tsx');
+    expect(section).toContain("member.role === 'office' ? (");
+  });
+
+  it('confirms before taking access away', () => {
+    const section = read2('src', 'app', 'dashboard', 'settings', 'OfficeTeamSection.tsx');
+    expect(section).toContain('window.confirm');
+    // Names the person, so a misplaced click is caught by reading rather than
+    // by remembering which row was hovered.
+    expect(section).toContain('Remove office access for ${who}');
+  });
+
+  it('refuses to remove an owner, in the database and not only in the UI', () => {
+    const sql = read2('migrations', '20260819230000_remove_office_user.sql');
+    expect(sql).toContain('office_removal_wrong_role');
+    expect(sql).toContain("v_role <> 'office'");
+    // And it must not have shipped without the trigger that stops a workspace
+    // being left with nobody who owns it.
+    expect(sql).toContain('guard_last_owner_trigger');
+  });
+
+  it('does not invent a suspended state', () => {
+    // A state that behaves identically to another is not a state; re-inviting
+    // already covers "they might come back".
+    const sql = read2('migrations', '20260819230000_remove_office_user.sql');
+    expect(sql).toContain('WHY NOT SUSPENSION');
+    expect(sql).not.toMatch(/suspended_at|status\s+text/);
+  });
+});

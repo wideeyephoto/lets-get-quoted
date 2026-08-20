@@ -3,7 +3,11 @@
 import { useState, useTransition } from 'react';
 
 import type { OfficeTeam } from '@/lib/office-team';
-import { inviteOfficeUserAction, revokeOfficeInvitationAction } from './office-team-actions';
+import {
+  inviteOfficeUserAction,
+  removeOfficeUserAction,
+  revokeOfficeInvitationAction,
+} from './office-team-actions';
 
 /**
  * The team list: who has office access, who has been asked, and how many seats.
@@ -51,6 +55,22 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
     });
   }
 
+  function remove(userId: string, who: string) {
+    // A browser confirm rather than a modal: this removes somebody's access to a
+    // business, and the one thing that must not happen is a misplaced click
+    // doing it silently. A custom dialog would be prettier and is not the
+    // difference between a mistake and a mistake nobody noticed.
+    if (!window.confirm(`Remove office access for ${who}? They'll be signed out of this business.`)) return;
+    setProblem(null);
+    startWork(async () => {
+      try {
+        await removeOfficeUserAction({ userId });
+      } catch (error) {
+        setProblem(error instanceof Error ? error.message : 'That access could not be removed.');
+      }
+    });
+  }
+
   function revoke(invitationId: string) {
     setProblem(null);
     startWork(async () => {
@@ -87,6 +107,17 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
           <li key={member.membershipId}>
             <span>{member.email ?? 'Account with no email on file'}</span>
             <span className="office-team-role">{member.role === 'owner' ? 'Owner' : 'Office'}</span>
+            {/* Owners get no button. The database refuses to remove one through
+                this path anyway, and a control that always errors is worse than
+                no control -- it invites the click and then explains. */}
+            {member.role === 'office' ? (
+              <button
+                type="button"
+                onClick={() => remove(member.userId, member.email ?? 'this person')}
+              >
+                Remove
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>

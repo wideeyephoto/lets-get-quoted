@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 
 import { createAdminClient } from '@/lib/auth';
@@ -68,6 +68,50 @@ function expectedCredential(): string | null {
   return raw.length > 0 && raw.includes(':') ? raw : null;
 }
 
+/**
+ * A comparable fingerprint that reveals neither side.
+ *
+ * 32 bits of SHA-256. Enough to tell "these are the same string" from "these are
+ * not" when both are written into a log an operator can read; nowhere near
+ * enough to recover the input. This exists because a bare 401 leaves somebody
+ * who set a Vercel Sensitive variable -- which is write-only, and cannot be read
+ * back by anyone -- with no way to find out whether the value they think they
+ * set is the value the build holds.
+ */
+function fingerprint(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 8);
+}
+
+/** The username half. Not a secret, and usually where the mismatch is. */
+function userPart(credential: string): string {
+  const at = credential.indexOf(':');
+  return at > 0 ? credential.slice(0, at) : '(none)';
+}
+
+/**
+ * Why a credential was refused, in terms an operator can act on, with neither
+ * side of it written down.
+ */
+function mismatchDetail(request: Request, expected: string): string {
+  const header = request.headers.get('authorization') ?? '';
+  const [scheme, encoded] = header.split(' ');
+  if (!scheme || scheme.toLowerCase() !== 'basic' || !encoded) {
+    return 'no Basic credentials were presented';
+  }
+  let presented = '';
+  try {
+    presented = Buffer.from(encoded, 'base64').toString('utf8');
+  } catch {
+    return 'the Authorization header was not valid base64';
+  }
+  if (!presented.includes(':')) return 'the decoded credential had no colon in it';
+
+  const sameUser = userPart(presented) === userPart(expected);
+  return sameUser
+    ? `username matches, password differs (configured ${fingerprint(expected)}, presented ${fingerprint(presented)})`
+    : `username differs: configured "${userPart(expected)}", presented "${userPart(presented)}"`;
+}
+
 function authorized(request: Request): boolean {
   const expected = expectedCredential();
   if (!expected) return false;
@@ -94,7 +138,8 @@ export async function POST(request: Request) {
   // 503 is the honest status and leaks nothing worth having: an attacker learns
   // the deployment has no secret set, which they already could not exploit,
   // while the person deploying learns the one thing they actually need.
-  if (!expectedCredential()) {
+  const expected = expectedCredential();
+  if (!expected) {
     await logWebhookFailure({
       source: 'ai_voice',
       errorMessage: `Voice receipt endpoint has no ${CREDENTIAL_ENV} configured`,
@@ -105,9 +150,12 @@ export async function POST(request: Request) {
   if (!authorized(request)) {
     // Terse and bodyless from here on. Which HALF of a credential was wrong, and
     // whether the username exists, stay unsaid.
+    // The RESPONSE stays bodyless and says nothing. The detail goes to
+    // webhook_failures, which only the service role can read -- so the person
+    // deploying can find out what differs while a prober still learns nothing.
     await logWebhookFailure({
       source: 'ai_voice',
-      errorMessage: 'Voice receipt rejected: invalid credentials',
+      errorMessage: `Voice receipt rejected: ${mismatchDetail(request, expected)}`,
     });
     return new NextResponse(null, { status: 401 });
   }
