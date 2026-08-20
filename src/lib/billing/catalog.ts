@@ -181,7 +181,11 @@ export type TopUpId =
   | 'ai_writing_250'
   | 'storage_100gb'
   | 'office_user'
-  | 'crew_user';
+  | 'crew_user'
+  | 'voice_minutes_100'
+  | 'ai_voice_flex'
+  | 'ai_voice_solo'
+  | 'ai_voice_growth';
 
 export type TopUpDefinition = {
   id: TopUpId;
@@ -196,7 +200,8 @@ export type TopUpDefinition = {
     | 'ai_writing_drafts'
     | 'storage_gb'
     | 'office_users'
-    | 'crew_users';
+    | 'crew_users'
+    | 'voice_minutes';
   units: number;
   eligiblePlans: readonly BillingPlanId[];
   eligibilityLabel: string;
@@ -291,6 +296,65 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
     eligiblePlans: ['solo', 'growth', 'scale'],
     eligibilityLabel: 'Solo+',
   },
+  /**
+   * The AI Voice add-on, as THREE SKUs rather than one.
+   *
+   * The published price differs by plan -- $69 Flex, $59 Solo, $55 Growth -- and
+   * every mechanism downstream assumes one price per SKU: `priceCents` is a
+   * single number, the Stripe seeder mints one Price per entry, and
+   * `billing_top_up_purchase_operations` binds each top-up id to exactly one
+   * `unit_amount_cents` in a CHECK constraint. A single `ai_voice` entry made
+   * that constraint unsatisfiable for two of the three plans, and the migration
+   * test said so before any of this could reach a database.
+   *
+   * Scale is absent on purpose: it includes voice in its base plan, so there is
+   * nothing to sell it.
+   */
+  ai_voice_flex: {
+    id: 'ai_voice_flex',
+    label: 'AI Voice Receptionist (Flex)',
+    priceCents: 6_900,
+    recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'voice_minutes',
+    units: 100,
+    eligiblePlans: ['flex'],
+    eligibilityLabel: 'Flex',
+  },
+  ai_voice_solo: {
+    id: 'ai_voice_solo',
+    label: 'AI Voice Receptionist (Solo)',
+    priceCents: 5_900,
+    recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'voice_minutes',
+    units: 100,
+    eligiblePlans: ['solo'],
+    eligibilityLabel: 'Solo',
+  },
+  ai_voice_growth: {
+    id: 'ai_voice_growth',
+    label: 'AI Voice Receptionist (Growth)',
+    priceCents: 5_500,
+    recurring: true,
+    fulfillment: 'recurring_capacity',
+    resourceCode: 'voice_minutes',
+    // Growth's published allowance is 200 minutes, not 100.
+    units: 200,
+    eligiblePlans: ['growth'],
+    eligibilityLabel: 'Growth',
+  },
+  voice_minutes_100: {
+    id: 'voice_minutes_100',
+    label: '100 AI-connected minutes',
+    priceCents: 3_500,
+    recurring: false,
+    fulfillment: 'usage_credit',
+    resourceCode: 'voice_minutes',
+    units: 100,
+    eligiblePlans: BILLING_PLAN_IDS,
+    eligibilityLabel: 'All plans',
+  },
 } as const;
 
 /**
@@ -302,6 +366,13 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  * disagree about which SKUs are live -- and a reader is told why rather than
  * finding a SKU quietly missing from a list.
  */
+/** One reason, three SKUs. Repeating it would let two of them drift. */
+const AI_VOICE_WITHHELD =
+  'the whole call rail is built and dark - admission, agent, receipt, settlement, '
+  + 'lead, configuration and history - but no live Price exists, no number is '
+  + 'pointed at the route, and nothing grants voice_minutes, so a subscriber '
+  + 'would be charged monthly for an allowance that never arrives';
+
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:
     'the capacity rail is applied and deployed - payment writes the ledger and the '
@@ -319,6 +390,13 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     'a purchased seat now has a ledger and both seat gates count it, but nothing '
     + 'fills that ledger on payment and nothing empties it when the subscription '
     + 'lapses - selling it would charge $5 a month and grant no seat',
+  ai_voice_flex: AI_VOICE_WITHHELD,
+  ai_voice_solo: AI_VOICE_WITHHELD,
+  ai_voice_growth: AI_VOICE_WITHHELD,
+  voice_minutes_100:
+    'the ledger accepts voice_minutes and the top-up path would grant them '
+    + 'correctly, but with the meter dark nothing ever spends them - selling 100 '
+    + 'minutes today takes $35 for a balance that cannot be drawn down',
 });
 
 /** SKUs that may be sold today. */

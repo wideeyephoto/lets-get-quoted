@@ -67,6 +67,12 @@ describe('the contractor pricing catalog', () => {
       ['100 GB storage', '$15/month'],
       ['Office user', '$15/month'],
       ['Crew user', '$5/month'],
+      // One SKU per plan, because the published price differs by plan and one
+      // `priceCents` cannot hold three. Scale is absent: it includes voice.
+      ['AI Voice Receptionist (Flex)', '$69/month'],
+      ['AI Voice Receptionist (Solo)', '$59/month'],
+      ['AI Voice Receptionist (Growth)', '$55/month'],
+      ['100 AI-connected minutes', '$35'],
     ]);
   });
 

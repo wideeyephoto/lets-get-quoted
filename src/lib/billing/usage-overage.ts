@@ -53,6 +53,11 @@ export const OVERAGE_RATE_MILLICENTS: Readonly<Record<string, number>> = Object.
   marketing_email_sends: 340, // marketing_email_5000: $17.00 / 5000
   ai_writing_drafts: 7_600, // ai_writing_250: $19.00 / 250
   ai_intake_threads: 15_000, // ai_intake_100: $15.00 / 100
+  // voice_minutes_100: $35.00 / 100. The only rate here that EQUALS its pack
+  // rather than undercutting it -- the others take the smaller pack's price so a
+  // top-up is always cheaper than overrunning, and equal satisfies that same
+  // invariant. Against $0.1666 of provider cost, both sides are 52% margin.
+  voice_minutes: 35_000,
 });
 
 export type UsageOverageDecision =

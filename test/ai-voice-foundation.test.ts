@@ -129,3 +129,61 @@ describe('the receipt boundary settles only calls LGQ admitted', () => {
     expect(sql).toMatch(/grant execute on function public\.ingest_voice_event[\s\S]{0,120}to service_role/);
   });
 });
+
+describe('the voice SKUs exist, and cannot be bought', () => {
+  it('names both, so the price book is not carried in a conversation', async () => {
+    const { TOP_UPS } = await import('@/lib/billing/catalog');
+    // Three SKUs, not one: the published price differs by plan and every
+    // mechanism downstream binds one price to one SKU -- the Stripe seeder mints
+    // a Price per entry, and the purchase ledger CHECKs one unit_amount_cents
+    // per top_up_id. A single entry made that constraint unsatisfiable for two
+    // plans out of three.
+    expect(TOP_UPS.ai_voice_flex).toMatchObject({ priceCents: 6_900, units: 100 });
+    expect(TOP_UPS.ai_voice_solo).toMatchObject({ priceCents: 5_900, units: 100 });
+    expect(TOP_UPS.ai_voice_growth).toMatchObject({ priceCents: 5_500, units: 200 });
+    for (const id of ['ai_voice_flex', 'ai_voice_solo', 'ai_voice_growth'] as const) {
+      expect(TOP_UPS[id]).toMatchObject({
+        recurring: true, fulfillment: 'recurring_capacity', resourceCode: 'voice_minutes',
+      });
+      // Each is eligible on exactly its own plan; Scale includes voice already.
+      expect(TOP_UPS[id].eligiblePlans).toHaveLength(1);
+      expect(TOP_UPS[id].eligiblePlans).not.toContain('scale');
+    }
+    expect(TOP_UPS.voice_minutes_100).toMatchObject({
+      priceCents: 3_500, recurring: false, fulfillment: 'usage_credit', resourceCode: 'voice_minutes',
+    });
+  });
+
+  it('withholds both, with the reason next to the price', async () => {
+    const { SELLABLE_TOP_UP_IDS, TOP_UPS_WITHHELD } = await import('@/lib/billing/catalog');
+    for (const id of ['ai_voice_flex', 'ai_voice_solo', 'ai_voice_growth', 'voice_minutes_100']) {
+      expect(SELLABLE_TOP_UP_IDS, id).not.toContain(id);
+    }
+    // Withholding the SALE, not the price -- the same shape storage and the two
+    // seat SKUs already use, so a reader is told why rather than finding a SKU
+    // quietly missing from a list.
+    expect(TOP_UPS_WITHHELD.ai_voice_flex).toMatch(/nothing grants voice_minutes/);
+    // One reason shared by three SKUs, so two of them cannot drift.
+    expect(TOP_UPS_WITHHELD.ai_voice_solo).toBe(TOP_UPS_WITHHELD.ai_voice_flex);
+    expect(TOP_UPS_WITHHELD.ai_voice_growth).toBe(TOP_UPS_WITHHELD.ai_voice_flex);
+    expect(TOP_UPS_WITHHELD.voice_minutes_100).toMatch(/nothing ever spends them/);
+  });
+
+  it('prices overage at the top-up rate, never above it', async () => {
+    const { TOP_UPS } = await import('@/lib/billing/catalog');
+    const { OVERAGE_RATE_MILLICENTS } = await import('@/lib/billing/usage-overage');
+    const pack = TOP_UPS.voice_minutes_100;
+    const packRate = (pack.priceCents * 1000) / pack.units;
+    // The invariant every rate here obeys: planning ahead must never cost more
+    // than not planning ahead. Voice is the one where they are equal.
+    expect(OVERAGE_RATE_MILLICENTS.voice_minutes).toBe(35_000);
+    expect(OVERAGE_RATE_MILLICENTS.voice_minutes).toBeLessThanOrEqual(packRate);
+  });
+
+  it('keeps a margin against the measured provider cost', async () => {
+    const { OVERAGE_RATE_MILLICENTS } = await import('@/lib/billing/usage-overage');
+    // $0.1666/min: AI runtime $0.1600 + inbound PSTN $0.0066, measured.
+    const costMillicents = 16_660;
+    expect(OVERAGE_RATE_MILLICENTS.voice_minutes).toBeGreaterThan(costMillicents);
+  });
+});

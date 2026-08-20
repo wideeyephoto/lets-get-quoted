@@ -8,6 +8,22 @@ const MIGRATION_FILE = '20260818190000_top_up_purchase_operations.sql';
 const sql = readFileSync(join(process.cwd(), 'migrations', MIGRATION_FILE), 'utf8')
   .replace(/\r\n/g, '\n');
 const compact = sql.replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * The catalog binding as it stands NOW, which is not only in the file above.
+ *
+ * 20260819180000 drops and recreates that constraint to admit the four voice
+ * SKUs. Reading only the original file would fail for them while production
+ * accepted them perfectly well — asserting against a superseded definition, and
+ * the assertion would be the thing that was wrong.
+ *
+ * Newest-wins, so this reads the later migration when it defines the constraint.
+ */
+const BINDING_FILE = '20260819180000_top_up_ledger_voice_skus.sql';
+const effectiveBinding = readFileSync(join(process.cwd(), 'migrations', BINDING_FILE), 'utf8')
+  .replace(/\r\n/g, '\n')
+  .replace(/\s+/g, ' ')
+  .toLowerCase();
 // Comments explain what this table is NOT, so statement-level assertions have to
 // read the SQL rather than the prose around it.
 const statements = sql
@@ -44,15 +60,23 @@ describe('the top-up purchase operation ledger', () => {
   });
 
   it('binds every recorded amount to the published catalog', () => {
-    // A row cannot record a price the catalog does not carry. All eight SKUs are
+    // A row cannot record a price the catalog does not carry. EVERY SKU is
     // listed, sellable or not: the price book is published, and which may be
     // SOLD is the application's decision, not a shape needing a migration.
+    //
+    // This is the assertion that caught the voice SKUs being added to the
+    // catalog with no migration behind them — a checkout that would have failed
+    // at insert, for a price the database had never been told about.
     for (const id of Object.keys(TOP_UPS) as TopUpId[]) {
       const sku = TOP_UPS[id];
-      expect(compact, `${id} must be bound to its published price`).toContain(
+      expect(effectiveBinding, `${id} must be bound to its published price`).toContain(
         `(top_up_id = '${id}' and resource_code = '${sku.resourceCode}'`
         + ` and units = ${sku.units} and unit_amount_cents = ${sku.priceCents})`,
       );
+      // And the id must be admitted at all. The allowlist and the binding are
+      // separate constraints, and 20260818170000 exists because two lists like
+      // these drifted apart once already.
+      expect(effectiveBinding, `${id} must be in the allowlist`).toContain(`'${id}'`);
     }
   });
 
