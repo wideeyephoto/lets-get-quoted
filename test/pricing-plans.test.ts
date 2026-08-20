@@ -13,6 +13,7 @@ import {
   planCrossover,
   type PlanId,
 } from '@/app/pricing/pricing-catalog';
+import { TOP_UPS } from '@/lib/billing/catalog';
 
 function plan(id: PlanId) {
   const match = PLANS.find((candidate) => candidate.id === id);
@@ -58,21 +59,43 @@ describe('the contractor pricing catalog', () => {
       fullScaleDuoMonthly: 1_099,
     });
 
+    // THE APPROVED PRICE BOOK, pinned at the source. Withholding a sale is not
+    // forgetting a price: these are decided and correct, and losing them would
+    // make each launch a re-decision rather than a flag flip.
+    expect(Object.values(TOP_UPS).map((t) => [t.label, t.priceCents, t.recurring])).toEqual([
+      ['Flex: 250 text-credit top-up', 1_200, false],
+      ['1,000 text credits', 4_200, false],
+      ['5,000 marketing emails', 1_700, false],
+      ['100 AI Intake credits', 1_500, false],
+      ['250 AI writing drafts', 1_900, false],
+      ['100 GB storage', 1_500, true],
+      ['Office user', 1_500, true],
+      ['Crew user', 500, true],
+      // One SKU per plan, because the published price differs by plan and one
+      // `priceCents` cannot hold three. Scale is absent: it includes voice.
+      ['AI Voice Receptionist (Flex)', 6_900, true],
+      ['AI Voice Receptionist (Solo)', 5_900, true],
+      ['AI Voice Receptionist (Growth)', 5_500, true],
+      ['100 AI-connected minutes', 3_500, false],
+    ]);
+
+    // WHAT THE PUBLIC PAGE QUOTES is a smaller list than the price book, and
+    // deliberately so -- the five checkout will actually sell, priced, then the
+    // seven it refuses, unpriced and last. See pricing-add-ons-are-buyable for
+    // why that separation exists rather than what it currently is.
     expect(ADD_ONS.map(({ label, price }) => [label, price])).toEqual([
       ['Flex: 250 text-credit top-up', '$12'],
       ['1,000 text credits', '$42'],
       ['5,000 marketing emails', '$17'],
       ['100 AI Intake credits', '$15'],
       ['250 AI writing drafts', '$19'],
-      ['100 GB storage', '$15/month'],
-      ['Office user', '$15/month'],
-      ['Crew user', '$5/month'],
-      // One SKU per plan, because the published price differs by plan and one
-      // `priceCents` cannot hold three. Scale is absent: it includes voice.
-      ['AI Voice Receptionist (Flex)', '$69/month'],
-      ['AI Voice Receptionist (Solo)', '$59/month'],
-      ['AI Voice Receptionist (Growth)', '$55/month'],
-      ['100 AI-connected minutes', '$35'],
+      ['100 GB storage', 'Coming soon'],
+      ['Office user', 'Coming soon'],
+      ['Crew user', 'Coming soon'],
+      ['AI Voice Receptionist (Flex)', 'Coming soon'],
+      ['AI Voice Receptionist (Solo)', 'Coming soon'],
+      ['AI Voice Receptionist (Growth)', 'Coming soon'],
+      ['100 AI-connected minutes', 'Coming soon'],
     ]);
   });
 

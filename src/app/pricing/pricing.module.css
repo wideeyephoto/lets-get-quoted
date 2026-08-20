@@ -1025,6 +1025,12 @@
 .addOnList strong { color: var(--text); font-size: 0.7rem; }
 .addOnList small { margin-top: 0.15rem; color: var(--muted-2); font-size: 0.6rem; }
 .addOnList > div > b { color: var(--gold-ink); font-size: 0.74rem; }
+/* Beats the rule above on specificity, which is the only reason it applies. */
+.addOnList > div > b[data-soon='true'] {
+  color: var(--muted-2);
+  font-weight: 500;
+  font-style: italic;
+}
 
 .promiseSection {
   display: grid;

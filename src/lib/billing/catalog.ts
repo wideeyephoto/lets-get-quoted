@@ -369,9 +369,12 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
 /** One reason, three SKUs. Repeating it would let two of them drift. */
 const AI_VOICE_WITHHELD =
   'the whole call rail is built and dark - admission, agent, receipt, settlement, '
-  + 'lead, configuration and history - but no live Price exists, no number is '
-  + 'pointed at the route, and nothing grants voice_minutes, so a subscriber '
-  + 'would be charged monthly for an allowance that never arrives';
+  + 'lead, configuration, history, and since 20260819190000 the monthly allowance '
+  + 'grant itself. What is left is not a missing mechanism but four switches '
+  + 'nobody has thrown: no live Price exists, no number is pointed at the route, '
+  + 'the allowance worker is off, and with the meter dark nothing would spend '
+  + 'what it granted - so a subscriber would be charged monthly for minutes that '
+  + 'arrive nowhere and buy nothing';
 
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:

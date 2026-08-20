@@ -3,6 +3,7 @@ import {
   ENTERPRISE_PRICING,
   PRICING_CATALOG_VERSION,
   TOP_UPS,
+  TOP_UPS_WITHHELD,
   formatUsdFromCents,
   platformFeePercent,
   type BillingCycle as CatalogBillingCycle,
@@ -216,11 +217,33 @@ export const COMPARISON_ROWS = [
   ['Free onboarding + quick tour', 'Included', 'Included', 'Included', 'Included'],
 ] as const;
 
-export const ADD_ONS = Object.values(TOP_UPS).map((topUp) => ({
-  label: topUp.label,
-  price: `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`,
-  eligibility: topUp.eligibilityLabel,
-}));
+/**
+ * A PRICE IS A PROMISE, so only the SKUs that can actually be bought carry one.
+ *
+ * Seven of the twelve top-ups are withheld -- both purchase paths refuse them by
+ * SKU, and the dashboard's own picker is built from SELLABLE_TOP_UP_IDS -- so
+ * this page was quoting "$15/month" for an office user that no signed-in
+ * contractor has ever been able to buy, and $69/month for an AI receptionist the
+ * comparison table three inches above already calls "Coming soon".
+ *
+ * They stay listed, because a roadmap is worth showing and the user asked for
+ * exactly this treatment on AI Voice. They are not priced, and the buyable ones
+ * come first: a list that opens with four things you cannot have reads as a
+ * product that is not ready.
+ */
+export const ADD_ONS = Object.values(TOP_UPS)
+  .map((topUp) => {
+    const available = !(topUp.id in TOP_UPS_WITHHELD);
+    return {
+      label: topUp.label,
+      price: available
+        ? `${formatUsdFromCents(topUp.priceCents)}${topUp.recurring ? '/month' : ''}`
+        : 'Coming soon',
+      eligibility: topUp.eligibilityLabel,
+      available,
+    };
+  })
+  .sort((a, b) => Number(b.available) - Number(a.available));
 
 export const PRICING_FAQS = [
   {

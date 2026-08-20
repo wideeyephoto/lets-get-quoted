@@ -673,7 +673,11 @@ export default function PricingExperience() {
             </summary>
             <div className={styles.addOnList}>
               {ADD_ONS.map((item) => (
-                <div key={item.label}><span><strong>{item.label}</strong><small>{item.eligibility}</small></span><b>{item.price}</b></div>
+                <div key={item.label}>
+                  <span><strong>{item.label}</strong><small>{item.eligibility}</small></span>
+                  {/* Gold ink reads as a price. A thing you cannot buy must not. */}
+                  <b data-soon={item.available ? undefined : 'true'}>{item.price}</b>
+                </div>
               ))}
             </div>
           </details>
