@@ -76,6 +76,16 @@ export const CRON_JOBS: CronJobSpec[] = [
     // Separate from the reset above on purpose: that one grants the four
     // canonical resources and hard-codes success as exactly four. Voice riding
     // along would put every paid workspace's other credits at risk.
+    // Every fifteen minutes rather than hourly: until this runs, a payment
+    // that has been refunded once cannot be refunded again, and a contractor
+    // trying to return the rest of a deposit is simply refused.
+    job: 'refund-reconciliation',
+    label: 'Refund reconciliation',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'A payment refunded once can never be refunded again, and money owed back cannot be sent.',
+  },
+  {
     job: 'voice-allowance',
     label: 'AI Voice minute allowances',
     schedule: '*/15 * * * *',

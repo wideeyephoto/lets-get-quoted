@@ -585,6 +585,46 @@ export async function createDirectApplicationFeeRefund(input: DirectApplicationF
   );
 }
 
+/**
+ * The charge as Stripe currently holds it.
+ *
+ * Read on the CONNECTED account, like every other direct read here: the charge
+ * belongs to the merchant, not to the platform, and reading it without the
+ * account header would look for it on the platform and find nothing.
+ *
+ * `amount_refunded` is cumulative across every refund, which is exactly what the
+ * reconciler compares against `payments.refunded_amount`.
+ */
+export async function retrieveDirectCharge(input: {
+  merchantAccountId: string;
+  chargeId: string;
+  params?: Stripe.ChargeRetrieveParams;
+}) {
+  const merchantAccountId = validateMerchantAccountId(input.merchantAccountId);
+  const chargeId = validateStripeResourceId(input.chargeId, 'charge');
+  return getStripeClient().charges.retrieve(
+    chargeId,
+    input.params ?? {},
+    buildDirectReadRequestOptions(merchantAccountId),
+  );
+}
+
+/**
+ * The Application Fee as Stripe currently holds it.
+ *
+ * NOT read on the connected account, and that is the one difference worth
+ * knowing here. An Application Fee is the PLATFORM's object -- it is the money
+ * that came to LGQ -- so it is retrieved without the account header, which is
+ * the same asymmetry `createDirectApplicationFeeRefund` already relies on.
+ */
+export async function retrieveApplicationFee(input: {
+  applicationFeeId: string;
+  params?: Stripe.ApplicationFeeRetrieveParams;
+}) {
+  const applicationFeeId = validateStripeResourceId(input.applicationFeeId, 'applicationFee');
+  return getStripeClient().applicationFees.retrieve(applicationFeeId, input.params ?? {});
+}
+
 export async function retrieveDirectRefund(input: {
   merchantAccountId: string;
   refundId: string;
