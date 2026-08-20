@@ -86,20 +86,22 @@ describe('the pricing page does not sell a number it cannot provision', () => {
     }
   });
 
-  it('keeps the entitlement allowance, which is a separate decision', () => {
-    // Deliberately unchanged. The allowance is what a plan WILL include, it is
-    // written into persisted subscription featureLimits by entitlement-catalog,
-    // and PRICING_CATALOG_VERSION is compared character-for-character against
-    // stored rows during subscription reconciliation -- so zeroing it is a
-    // billing change, not a copy change, and does not belong in the same pass.
+  it('grants nobody an allowance for one', () => {
+    // The copy above and this allowance have to agree. The allowance is not
+    // decoration: entitlement-catalog writes it into persisted subscription
+    // featureLimits, and Settings shows it to the customer as a number they
+    // have. A page saying "coming soon" beside a plan card saying "1" is the
+    // same defect in two voices.
     //
-    // The visible consequence, while it stands: a paying Solo customer would see
-    // "Dedicated business numbers: 1" in settings. That surface is dark today
-    // (LGQ_PRICING_DASHBOARD_ENABLED=0) and there are no paying customers, so
-    // this is latent rather than live. It has to be settled before the first one.
-    expect(BILLING_PLANS.flex.allowances.dedicatedBusinessNumbers).toBe(0);
-    for (const id of ['solo', 'growth', 'scale'] as const) {
-      expect(BILLING_PLANS[id].allowances.dedicatedBusinessNumbers).toBe(1);
+    // Zeroing it in TypeScript alone would have been fatal, not cosmetic:
+    // project_stripe_billing_subscription_event_v1_unchecked recomputes
+    // feature_limits from its own hardcoded copy and raises 22000 when the two
+    // disagree, so every paid activation would have dead-lettered -- charged and
+    // never entitled. Migration 20260820150000 moves the SQL copy in step, and
+    // test/subscription-entitlement-limits-catalog.test.ts is what holds them
+    // together.
+    for (const id of ['flex', 'solo', 'growth', 'scale'] as const) {
+      expect(BILLING_PLANS[id].allowances.dedicatedBusinessNumbers).toBe(0);
     }
   });
 });

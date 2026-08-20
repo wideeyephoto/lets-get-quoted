@@ -34,7 +34,8 @@
     "test:pg17:partial-commit": "node scripts/verify-partial-commit.mjs",
     "test:pg17:overage": "node scripts/verify-usage-overage-authorization.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
-    "test:stock": "node --test src/lib/stock/stock.test.mjs"
+    "test:stock": "node --test src/lib/stock/stock.test.mjs",
+    "test:pg17:dedicated-number": "node scripts/verify-dedicated-number-allowance-migration.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",

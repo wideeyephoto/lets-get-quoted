@@ -20,7 +20,7 @@ import { workspaceEntitlementCatalogSnapshot } from '@/lib/billing/entitlement-c
  * because the subscription flags are off.
  *
  * This test reconstructs what the DATABASE will hold -- the original function
- * body with 20260818200000's patch applied -- and compares every paid plan to
+ * body with every patch migration applied in order -- and compares every paid plan to
  * `workspaceEntitlementCatalogSnapshot`, field by field. Asserting against the
  * base migration alone would have kept passing while production was wrong;
  * asserting against the patch alone would not notice Solo or Growth drifting
@@ -29,35 +29,63 @@ import { workspaceEntitlementCatalogSnapshot } from '@/lib/billing/entitlement-c
 
 const MIGRATIONS = join(process.cwd(), 'migrations');
 const BASE_FILE = '20260816060000_stripe_billing_subscription_event_projection.sql';
-const PATCH_FILE = '20260818200000_scale_entitlement_limits_catalog_drift.sql';
+/**
+ * Every migration that patches the projector's feature-limit table, oldest
+ * first. Applying them in this order is what the database itself did, so the
+ * reconstruction below is faithful only while this list is complete: a new patch
+ * migration left out of it leaves this test asserting a body production no
+ * longer has, and passing.
+ */
+const PATCH_FILES = [
+  '20260818200000_scale_entitlement_limits_catalog_drift.sql',
+  '20260820150000_zero_dedicated_business_number_allowance.sql',
+] as const;
 
 function read(file: string): string {
   return readFileSync(join(MIGRATIONS, file), 'utf8').replace(/\r\n/g, '\n');
 }
 
 const base = read(BASE_FILE);
+
+/** The Scale-drift migration, which the block at the foot of this file inspects directly. */
+const PATCH_FILE = PATCH_FILES[0];
 const patch = read(PATCH_FILE);
 
-/** The text between a pair of dollar-quote tags in the patch migration. */
-function dollarQuoted(tag: string): string {
+/** Every dollar-quoted body carrying the given tag, in file order. */
+function dollarQuotedAll(source: string, tag: string, file: string): string[] {
   const open = `$${tag}$`;
-  const start = patch.indexOf(open);
-  expect(start, `${open} must exist in ${PATCH_FILE}`).toBeGreaterThanOrEqual(0);
-  const end = patch.indexOf(open, start + open.length);
-  expect(end, `${open} must be closed`).toBeGreaterThan(start);
-  return patch.slice(start + open.length, end);
+  const found: string[] = [];
+  let cursor = 0;
+  for (;;) {
+    const start = source.indexOf(open, cursor);
+    if (start < 0) break;
+    const end = source.indexOf(open, start + open.length);
+    expect(end, `${open} must be closed in ${file}`).toBeGreaterThan(start);
+    found.push(source.slice(start + open.length, end));
+    cursor = end + open.length;
+  }
+  return found;
 }
 
-/** The base function body with the migration's replacement applied. */
+/** The base function body with every patch migration applied, in order. */
 function patchedSource(): string {
-  const needle = dollarQuoted('needle');
-  const replacement = dollarQuoted('replacement');
-  const occurrences = base.split(needle).length - 1;
-  // The migration asserts exactly-once at apply time and refuses otherwise. If
-  // this ever stops being true the migration will not apply, so fail here first
-  // with a message that says why rather than at deploy time.
-  expect(occurrences, 'the patch anchor must occur exactly once in the base migration').toBe(1);
-  return base.replace(needle, replacement);
+  let source = base;
+  for (const file of PATCH_FILES) {
+    const patch = read(file);
+    const needles = dollarQuotedAll(patch, 'needle', file);
+    const replacements = dollarQuotedAll(patch, 'replacement', file);
+    expect(needles.length, `${file} must pair every needle with a replacement`).toBe(replacements.length);
+    expect(needles.length, `${file} must carry at least one patch`).toBeGreaterThan(0);
+    needles.forEach((needle, index) => {
+      const occurrences = source.split(needle).length - 1;
+      // Each migration asserts exactly-once at apply time and refuses otherwise.
+      // If that stops being true the migration will not apply, so fail here with
+      // a message that says why rather than at deploy time.
+      expect(occurrences, `anchor ${index} of ${file} must occur exactly once`).toBe(1);
+      source = source.replace(needle, replacements[index]);
+    });
+  }
+  return source;
 }
 
 /** The `v_expected_feature_limits := case ... end;` block only. */
@@ -121,9 +149,17 @@ describe('the SQL projector and the TypeScript catalog agree on every paid plan'
     expect(afterPatch.voice_included_minutes).toBe(100);
   });
 
-  it('leaves Solo and Growth byte-identical', () => {
+  it('leaves Solo and Growth untouched apart from the dedicated-number allowance', () => {
+    // 20260818200000 moved only Scale. 20260820150000 then took the dedicated
+    // business number away from all three, because nothing can provision one --
+    // so Solo and Growth are no longer byte-identical, and that one field is the
+    // entire permitted difference.
     for (const planCode of ['solo', 'growth'] as const) {
-      expect(sqlLimitsFor(patchedSource(), planCode)).toEqual(sqlLimitsFor(base, planCode));
+      const after = sqlLimitsFor(patchedSource(), planCode);
+      expect(after.dedicated_business_numbers).toBe(0);
+      expect(sqlLimitsFor(base, planCode).dedicated_business_numbers).toBe(1);
+      expect({ ...after, dedicated_business_numbers: 1 })
+        .toEqual(sqlLimitsFor(base, planCode));
     }
   });
 });

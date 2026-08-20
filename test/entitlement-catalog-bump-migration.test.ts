@@ -27,6 +27,29 @@ function embeddedLimits(planCode: string): Record<string, number> {
   return JSON.parse(match[1]) as Record<string, number>;
 }
 
+/**
+ * What the catalog has been allowed to change since this migration was written,
+ * and nothing else.
+ *
+ * 20260819040000 is applied. Its maps are a record of what the catalog said on
+ * 2026-08-19, and editing an applied migration to chase the catalog would break
+ * its own guard -- it matches rows on `feature_limits = v_plan.limits` minus two
+ * keys, so a rewritten map would match no row and the file would become a silent
+ * no-op on any fresh or replayed database.
+ *
+ * So the comparison is pinned to the historical value, with each accepted delta
+ * named here. Every other field stays byte-compared, which is the point of the
+ * test: a transcription slip still fails.
+ */
+const HISTORICAL_DELTA: Readonly<Record<string, Record<string, number>>> = {
+  // 20260820150000 took the dedicated business number away from the paid plans,
+  // because nothing in the product can provision a phone number. Flex never had
+  // one, so it carries no delta.
+  solo: { dedicated_business_numbers: 1 },
+  growth: { dedicated_business_numbers: 1 },
+  scale: { dedicated_business_numbers: 1 },
+};
+
 describe('the embedded feature limits are the catalog', () => {
   for (const planCode of BILLING_PLAN_IDS) {
     it(`${planCode} matches workspaceEntitlementCatalogSnapshot exactly`, () => {
@@ -34,9 +57,24 @@ describe('the embedded feature limits are the catalog', () => {
         planCode,
         planCode === 'flex' ? 'none' : 'monthly',
       ).featureLimits;
-      expect(embeddedLimits(planCode)).toEqual({ ...expected });
+      expect(embeddedLimits(planCode)).toEqual({ ...expected, ...(HISTORICAL_DELTA[planCode] ?? {}) });
     });
   }
+
+  it('names a delta only for fields that genuinely moved', () => {
+    // Guards the guard. A delta entry that matches what the catalog now says
+    // would silence a real drift forever, so every entry has to still differ.
+    for (const [planCode, delta] of Object.entries(HISTORICAL_DELTA)) {
+      const current = workspaceEntitlementCatalogSnapshot(
+        planCode as (typeof BILLING_PLAN_IDS)[number],
+        'monthly',
+      ).featureLimits as unknown as Record<string, number>;
+      for (const [field, historical] of Object.entries(delta)) {
+        expect(current[field], `${planCode}.${field} no longer differs; drop it from HISTORICAL_DELTA`)
+          .not.toBe(historical);
+      }
+    }
+  });
 
   it('carries a map for every plan the catalog defines', () => {
     // A plan added to the catalog and not here would be silently left pinned.
