@@ -41,6 +41,7 @@ try {
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
 const LEDGER = m('20260815213142_pricing_entitlements.sql');
 const ALLOWANCE = m('20260819190000_voice_minute_allowance.sql');
+const MOVED_PERIOD = m('20260820110000_voice_allowance_survives_a_moved_period.sql');
 
 function liftTable(name) {
   const start = LEDGER.indexOf(`create table if not exists public.${name} (`);
@@ -120,6 +121,7 @@ try {
   `);
   await q('insert into public.accounts (id) values ($1), ($2)', [ACCOUNT, OTHER]);
   await q(ALLOWANCE);
+  await q(MOVED_PERIOD);
   ck('the allowance migration applies, post-conditions and all', true);
 
   ck('the capacity table now admits the three voice add-on SKUs',
@@ -262,7 +264,71 @@ try {
   }
 
   // -------------------------------------------------------------------
-  // 9. Reach.
+  // 9. A moved billing boundary is not a new month.
+  // -------------------------------------------------------------------
+  // period_start is rewritten from Stripe's current_period_start on every
+  // subscription event, so a plan change on the 15th moves a workspace from
+  // 2026-08-01 to 2026-08-15 mid-month. Keying the grant on that timestamp
+  // meant the next sweep saw a different key and handed out a second full
+  // allowance for time already paid for.
+  const MOVER = '44444444-4444-4444-8444-444444444444';
+  await q(`insert into public.accounts (id) values ('${MOVER}')`);
+  await q(`insert into public.workspace_entitlements
+             (account_id, plan_code, billing_interval, billing_status,
+              entitlement_state, catalog_version, platform_fee_bps, feature_limits)
+           values ('${MOVER}', 'growth', 'monthly', 'active', 'active',
+                   '2026-08-18-preview', 25,
+                   pg_catalog.jsonb_build_object('voice_included_minutes', 100))`);
+
+  const grantPeriod = (account, start, end) => q(
+    'select public.grant_voice_minute_allowance($1, $2::timestamptz, $3::timestamptz) as n',
+    [account, start, end]).then((r) => Number(r.rows[0].n));
+  const balanceOf = async (account) => Number((await q(
+    `select coalesce(sum(granted_units), 0)::bigint as n from public.usage_credit_lots
+      where account_id = $1 and resource_code = 'voice_minutes'`, [account])).rows[0].n);
+
+  const first = await grantPeriod(MOVER, '2026-08-01T00:00:00Z', '2026-09-01T00:00:00Z');
+  ck('a fresh period grants the included minutes', first === 100, first);
+  ck('...and the ledger holds exactly those', await balanceOf(MOVER) === 100);
+
+  const moved = await grantPeriod(MOVER, '2026-08-15T00:00:00Z', '2026-09-15T00:00:00Z');
+  ck('A MOVED BOUNDARY GRANTS NOTHING -- the whole point', moved === 0, moved);
+  ck('...and the ledger did not move', await balanceOf(MOVER) === 100);
+
+  // Contained, containing, and identical are all the same coverage.
+  ck('a period inside the granted one grants nothing',
+    await grantPeriod(MOVER, '2026-08-10T00:00:00Z', '2026-08-20T00:00:00Z') === 0);
+  ck('a period containing the granted one grants nothing',
+    await grantPeriod(MOVER, '2026-07-01T00:00:00Z', '2026-10-01T00:00:00Z') === 0);
+  ck('an identical period grants nothing',
+    await grantPeriod(MOVER, '2026-08-01T00:00:00Z', '2026-09-01T00:00:00Z') === 0);
+  ck('...the ledger still holds one month', await balanceOf(MOVER) === 100);
+
+  // A genuine roll must still work, and must not be blocked by the two-hour
+  // tail the lot carries past period end.
+  const september = await grantPeriod(MOVER, '2026-09-01T00:00:00Z', '2026-10-01T00:00:00Z');
+  ck('A GENUINE ROLL STILL GRANTS, tail notwithstanding', september === 100, september);
+  ck('...so the ledger now holds two months', await balanceOf(MOVER) === 200);
+
+  ck('an adjacent period touching at the boundary is not an overlap',
+    await grantPeriod(MOVER, '2026-10-01T00:00:00Z', '2026-11-01T00:00:00Z') === 100);
+
+  // The guard is per workspace. One workspace's coverage cannot suppress
+  // another's -- so a NEVER-granted workspace still gets the same period the
+  // one above was refused for.
+  const NEIGHBOUR = '55555555-5555-4555-8555-555555555555';
+  await q(`insert into public.accounts (id) values ('${NEIGHBOUR}')`);
+  await q(`insert into public.workspace_entitlements
+             (account_id, plan_code, billing_interval, billing_status,
+              entitlement_state, catalog_version, platform_fee_bps, feature_limits)
+           values ('${NEIGHBOUR}', 'growth', 'monthly', 'active', 'active',
+                   '2026-08-18-preview', 25,
+                   pg_catalog.jsonb_build_object('voice_included_minutes', 100))`);
+  ck('another workspace is unaffected by it',
+    await grantPeriod(NEIGHBOUR, '2026-08-15T00:00:00Z', '2026-09-15T00:00:00Z') === 100);
+
+  // -------------------------------------------------------------------
+  // 10. Reach.
   // -------------------------------------------------------------------
   for (const role of ['anon', 'authenticated']) {
     ck(`${role} cannot call the granter`,
