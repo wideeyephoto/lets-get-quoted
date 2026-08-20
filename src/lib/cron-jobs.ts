@@ -73,6 +73,18 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Paid contractors stop receiving their anchored monthly usage allowances after renewal.',
   },
   {
+    // The only worker here with no LGQ_*_ENABLED gate, on purpose. A scheduled
+    // plan change was written by a customer action that already told them a
+    // date; a flag that quietly stopped this would turn every one of those into
+    // a promise nothing keeps. The others can be dark because nothing has been
+    // promised while they are off.
+    job: 'plan-change-apply',
+    label: 'Scheduled plan changes',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Downgrades and billing-cycle switches never take effect, so contractors keep paying the old price after the date they were given.',
+  },
+  {
     // Separate from the reset above on purpose: that one grants the four
     // canonical resources and hard-codes success as exactly four. Voice riding
     // along would put every paid workspace's other credits at risk.

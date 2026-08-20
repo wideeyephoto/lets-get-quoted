@@ -45,7 +45,11 @@ export type AccountEventKind =
   // Written BEFORE the Stripe call, so the request survives a crash mid-flight.
   // The OUTCOME is the projector's to record, not this one's.
   | 'subscription_cancellation_requested'
-  | 'subscription_cancellation_revoked';
+  | 'subscription_cancellation_revoked'
+  | 'plan_change_requested'
+  | 'plan_change_scheduled'
+  | 'plan_change_cancelled'
+  | 'plan_change_applied';
 
 export async function recordAccountEvent(input: {
   accountId: string;

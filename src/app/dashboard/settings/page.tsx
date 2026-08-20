@@ -31,6 +31,7 @@ import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
+import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
 import { parsePlanIntent } from '@/lib/plan-intent';
 import { BILLING_PLANS, resolveBillingPlanId } from '@/lib/billing/catalog';
 import {
@@ -140,6 +141,24 @@ export default async function SettingsPage({
         : null))
       .catch(() => null)
     : null;
+
+  // Not flag-gated, unlike the cancel panel above. A paying customer with no way
+  // to change plan had no self-serve route to give us more money at all, and
+  // both seat top-ups are withheld -- so this ships on. Same failure posture as
+  // its neighbours: an unreadable subscription degrades to no panel rather than
+  // taking the whole Settings page down.
+  const planChange = await loadChangeableSubscription(createAdminClient(), accountId)
+    .then((subscription) => (subscription && subscription.planCode !== 'flex'
+      ? {
+        currentPlanCode: subscription.planCode,
+        currentBillingInterval: subscription.billingInterval,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+        pendingPlanCode: subscription.pendingPlanCode,
+        pendingEffectiveAt: subscription.pendingEffectiveAt,
+        options: planChangeOptions(subscription),
+      }
+      : null))
+    .catch(() => null);
 
   // Through the SESSION client: every overage table is owner-read and
   // service-role-write, because an owner who could write their own settings row
@@ -394,6 +413,7 @@ export default async function SettingsPage({
               'current-plan',
               'platform-fee',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
+              ...(planChange ? ['change-plan'] : []),
               ...(cancellable ? ['cancel-plan'] : []),
               'usage-balances',
               ...(storageState ? ['workspace-storage'] : []),
@@ -403,6 +423,7 @@ export default async function SettingsPage({
             content: (
               <PlanUsageSection
                 cancellable={cancellable}
+                planChange={planChange}
                 planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
                 data={planUsage}
                 storage={storageState}

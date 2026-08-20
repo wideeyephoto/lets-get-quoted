@@ -14,6 +14,8 @@ import {
 import type { PlanIntent } from '@/lib/plan-intent';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import CancelSubscriptionPanel from './CancelSubscriptionPanel';
+import ChangePlanPanel from './ChangePlanPanel';
+import type { BillingCycle, BillingPlanId } from '@/lib/billing/catalog';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
 function formatDate(value: string): string {
@@ -229,6 +231,7 @@ export default function PlanUsageSection({
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
   cancellable = null,
+  planChange = null,
   topUpCheckoutStatus = null,
   overage,
   planIntent = null,
@@ -244,6 +247,20 @@ export default function PlanUsageSection({
   // Present only when this workspace has a subscription there is still something
   // to cancel, and only when the cancellation flag is on.
   cancellable?: { planName: string; currentPeriodEnd: string | null; alreadyScheduled: boolean } | null;
+  planChange?: {
+    currentPlanCode: BillingPlanId;
+    currentBillingInterval: 'none' | BillingCycle;
+    currentPeriodEnd: string | null;
+    pendingPlanCode: string | null;
+    pendingEffectiveAt: string | null;
+    options: readonly {
+      planCode: BillingPlanId;
+      billingInterval: 'none' | BillingCycle;
+      label: string;
+      effect: 'immediate' | 'at_renewal';
+      priceLabel: string;
+    }[];
+  } | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
@@ -325,6 +342,17 @@ export default function PlanUsageSection({
         <BasePlanSubscriptionCheckout
           initialPlanCode={planIntent?.planCode ?? null}
           initialBillingInterval={planIntent?.billingInterval ?? null}
+        />
+      ) : null}
+
+      {planChange ? (
+        <ChangePlanPanel
+          currentPlanCode={planChange.currentPlanCode}
+          currentBillingInterval={planChange.currentBillingInterval}
+          currentPeriodEnd={planChange.currentPeriodEnd}
+          pendingPlanCode={planChange.pendingPlanCode}
+          pendingEffectiveAt={planChange.pendingEffectiveAt}
+          options={planChange.options}
         />
       ) : null}
 
