@@ -245,7 +245,7 @@ No environment variable or deployment configuration was changed during this chec
 
 - `STRIPE_SECRET_KEY`: Sensitive, Production.
 - `STRIPE_WEBHOOK_SECRET`: Sensitive, Production.
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`: Production.
+- ~~`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`~~: removed 2026-08-20. Nothing ever read it — checkout is a server-created redirect and `@stripe/stripe-js` is not a dependency. It may still be set in Vercel; it is inert.
 - `CRON_SECRET`: Sensitive, Production and Preview.
 
 ### Absent

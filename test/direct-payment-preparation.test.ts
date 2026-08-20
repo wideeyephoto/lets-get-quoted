@@ -164,6 +164,9 @@ describe('service-only direct payment preparation adapter', () => {
     const adapter = join(process.cwd(), 'src', 'lib', 'billing', 'direct-payment-preparation.ts');
     const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter((file) => file !== adapter);
     activeFiles.push(join(process.cwd(), '.env.example'), join(process.cwd(), 'vercel.json'));
+    // A silent zero passes every assertion below it. The walk is the thing most
+    // likely to break, and its failure looks exactly like success.
+    expect(activeFiles.length).toBeGreaterThan(1_000);
 
     for (const file of activeFiles) {
       const source = readFileSync(file, 'utf8');

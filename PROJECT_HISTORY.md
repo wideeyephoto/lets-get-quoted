@@ -214,7 +214,7 @@ untracked**):
 | Integration | Keys | State |
 |---|---|---|
 | **Supabase** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL` | Core — auth, DB, storage, RLS. Required. |
-| **Stripe** | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Connect + Checkout + Billing. Webhook at `/api/stripe/webhook`; local via `stripe listen`. |
+| **Stripe** | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Connect + Checkout + Billing. Server-side only: there is no publishable key, because checkout is a server-created redirect and `@stripe/stripe-js` is not a dependency. Webhook at `/api/stripe/webhook`; local via `stripe listen`. |
 | **App URL** | `NEXT_PUBLIC_APP_URL` | Origin for pay links & Twilio callbacks. |
 | **Twilio** | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` *or* `TWILIO_FROM_NUMBER` | Payment SMS. Login OTP is configured separately in the Supabase Phone provider. Needs A2P 10DLC campaign before production. |
 | **Resend** | `RESEND_API_KEY` _(referenced in TEST_PLAN/debug tips; confirm presence in `.env.local`)_ | Invoice emails from `hello@letsgetquoted.com`. |

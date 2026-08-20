@@ -408,9 +408,11 @@ describe('dark connected Checkout expiration projector', () => {
       'billing',
       'connected-checkout-expiration-projector.ts',
     );
-    const importers = sourceFiles(join(process.cwd(), 'src'))
-      .filter((path) => path !== own)
-      .filter((path) => readFileSync(path, 'utf8').includes(target));
+    const scanned = sourceFiles(join(process.cwd(), 'src')).filter((path) => path !== own);
+    // Materialised before filtering: [] equals [] on an empty walk, so the
+    // assertion below cannot tell "nothing imports it" from "nothing was read".
+    expect(scanned.length).toBeGreaterThan(1_000);
+    const importers = scanned.filter((path) => readFileSync(path, 'utf8').includes(target));
     expect(importers).toEqual([]);
   });
 });

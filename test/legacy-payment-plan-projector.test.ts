@@ -206,6 +206,9 @@ describe('dark service-only legacy payment-plan projector adapter', () => {
 
     const allowed = new Set([adapter, coordinator]);
     const activeFiles = sourceFiles(join(process.cwd(), 'src')).filter((file) => !allowed.has(file));
+    // A silent zero passes every assertion below it. The walk is the thing
+    // most likely to break, and its failure looks exactly like success.
+    expect(activeFiles.length).toBeGreaterThan(1_000);
 
     for (const file of activeFiles) {
       const source = readFileSync(file, 'utf8');

@@ -16,9 +16,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * projector's row from here.
  */
 
+// Parameters are declared, not inferred: without them vi.fn types `mock.calls`
+// as a zero-length tuple, so reading calls[0][1] to check WHAT was sent to Stripe
+// is a type error -- and one the runtime suite and `next build` both accept,
+// because neither typechecks test/.
 const stripe = {
-  update: vi.fn(async () => ({ cancel_at: 1_800_000_000 })),
-  cancel: vi.fn(async () => ({ status: 'canceled' })),
+  update: vi.fn(async (_id: string, _params: Record<string, unknown>, _options?: Record<string, unknown>) => (
+    { cancel_at: 1_800_000_000 }
+  )),
+  cancel: vi.fn(async (_id: string, _options?: Record<string, unknown>) => ({ status: 'canceled' })),
 };
 const events: Array<Record<string, unknown>> = [];
 
