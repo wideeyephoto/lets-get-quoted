@@ -166,13 +166,23 @@ begin
   -- Voice getting its own path is the entire point; if this migration has
   -- touched the four-resource reset, it has put every paid workspace's text,
   -- email, intake and writing credits at risk to add a fifth.
+  --
+  -- CORRECTED. This first shipped naming `reset_paid_plan_monthly_allowance` --
+  -- the words in the wrong order -- guarded by `is not null`, so a name that
+  -- matched nothing made the check abstain and the migration committed green
+  -- having verified nothing. An absent subject is a FAILURE here, because
+  -- "absent" is exactly what a typo looks like. See 20260819200000.
   select pg_catalog.pg_get_functiondef(p.oid) into v_canonical
   from pg_catalog.pg_proc p
   join pg_catalog.pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and p.proname = 'reset_paid_plan_monthly_allowance'
+  where n.nspname = 'public' and p.proname = 'apply_paid_plan_monthly_allowance_reset'
   limit 1;
 
-  if v_canonical is not null and pg_catalog.strpos(v_canonical, 'voice_minutes') > 0 then
+  if v_canonical is null then
+    raise exception 'the canonical monthly reset was not found; this check cannot pass without it';
+  end if;
+
+  if pg_catalog.strpos(v_canonical, 'voice_minutes') > 0 then
     raise exception 'the canonical monthly reset now mentions voice_minutes; it must not';
   end if;
 end $$;

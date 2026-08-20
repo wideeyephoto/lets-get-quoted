@@ -101,6 +101,23 @@ try {
     await q(liftTable(t));
   }
   for (const f of ['grant_usage_credits', 'reserve_usage_credits']) await q(liftFunction(f));
+
+  // A stand-in for the canonical four-resource reset, so the migration's
+  // post-condition has a subject to check. The real one is 400 lines across a
+  // dozen tables and is tested by its own migration; what is under test HERE is
+  // the assertion, which reads the function's source for four resource codes and
+  // for the absence of voice_minutes. A stub carrying exactly those is a
+  // faithful subject for that, and the absence of any subject is now a failure
+  // rather than a pass -- which is the correction this run exists to prove.
+  await q(`
+    create function public.apply_paid_plan_monthly_allowance_reset()
+    returns void language plpgsql as $canon$
+    begin
+      -- text_segments, marketing_email_sends, ai_intake_threads, ai_writing_drafts
+      return;
+    end;
+    $canon$;
+  `);
   await q('insert into public.accounts (id) values ($1), ($2)', [ACCOUNT, OTHER]);
   await q(ALLOWANCE);
   ck('the allowance migration applies, post-conditions and all', true);
@@ -252,6 +269,28 @@ try {
       (await q('select has_function_privilege($1, $2, $3) as ok',
         [role, 'public.grant_voice_minute_allowance(uuid,timestamptz,timestamptz)', 'EXECUTE'])).rows[0].ok === false);
   }
+
+  // -------------------------------------------------------------------
+  // 10. The assertion that was vacuous. Both ways it must now fail.
+  // -------------------------------------------------------------------
+  await q('drop function public.apply_paid_plan_monthly_allowance_reset()');
+  ck('a MISSING canonical reset now fails the migration, where it used to pass',
+    /was not found/.test(await fails(ALLOWANCE) ?? ''));
+  await fails('rollback');
+
+  await q(`
+    create function public.apply_paid_plan_monthly_allowance_reset()
+    returns void language plpgsql as $canon$
+    begin
+      -- text_segments, marketing_email_sends, ai_intake_threads, ai_writing_drafts
+      -- voice_minutes  <- the thing that must never appear here
+      return;
+    end;
+    $canon$;
+  `);
+  ck('a canonical reset that HAS taken voice on board fails it too',
+    /mentions voice_minutes/.test(await fails(ALLOWANCE) ?? ''));
+  await fails('rollback');
 
   await c.end();
 } catch (error) {

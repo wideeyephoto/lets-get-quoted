@@ -73,6 +73,16 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Paid contractors stop receiving their anchored monthly usage allowances after renewal.',
   },
   {
+    // Separate from the reset above on purpose: that one grants the four
+    // canonical resources and hard-codes success as exactly four. Voice riding
+    // along would put every paid workspace's other credits at risk.
+    job: 'voice-allowance',
+    label: 'AI Voice minute allowances',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
+  },
+  {
     job: 'dunning',
     label: 'Dunning retries',
     schedule: '0 15 * * *',
