@@ -55,6 +55,7 @@ const GATE = '20260816053000_office_seat_entitlement_gate.sql';
 const ONE_OWNER = '2026-08-03-one-owner-account.sql';
 const FIX_ENUM = '20260819090000_office_role_value.sql';
 const FIX_ROLE = '20260819090100_office_seat_uses_office_role.sql';
+const INVITES = '20260819210000_office_invitations.sql';
 
 /** Enough schema for the real migrations to install and run unmodified. */
 const SCHEMA = `
@@ -66,6 +67,7 @@ begin
 end
 $roles$;
 create schema if not exists auth;
+create table auth.users (id uuid primary key, email text);
 -- The real column type. It matters: 'office' has to be ADDED to an enum, which
 -- is the constraint that forces the fix into two migrations.
 create type public.member_role as enum ('owner', 'crew');
@@ -351,6 +353,138 @@ try {
   // Closing the business is not abandoning it. The cascade must pass through.
   const closeShop = await fails('delete from public.accounts where id = $1', [acctC.id]);
   ck('deleting the WORKSPACE still cascades, owners and all', closeShop === null, closeShop);
+
+
+  // =====================================================================
+  // INVITATIONS. The activation path the foundation said had to exist.
+  // =====================================================================
+  await q(m(INVITES));
+  ck('the invitations migration applies, post-conditions and all', true);
+
+  // A FRESH workspace. acctC was deleted by the last-owner section above -- it
+  // ends by cascading the whole account away to prove closing a business still
+  // works -- so every invitation below would have been made against nothing.
+  const OWNER_D = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const { rows: [acctD] } = await q('insert into public.accounts default values returning id');
+  await q('insert into public.memberships (account_id, user_id, role) values ($1, $2, $3)',
+    [acctD.id, OWNER_D, 'owner']);
+  await q(`insert into public.workspace_entitlements (account_id, feature_limits)
+           values ($1, '{"office_users": 8}'::jsonb)`, [acctD.id]);
+
+  const HIRE = '88888888-8888-4888-8888-888888888888';
+  const STRANGER = '99999999-9999-4999-8999-999999999999';
+  await q(`insert into auth.users (id, email) values
+             ($1, 'ownerd@acme.test'), ($2, 'bookkeeper@acme.test'), ($3, 'nobody@else.test')`,
+    [OWNER_D, HIRE, STRANGER]);
+
+  /** A 64-hex stand-in for sha256(token). The real token is never stored. */
+  const hash = (seed) => (seed + 'abcdef0123456789'.repeat(8)).slice(0, 64);
+
+  const sendInvite = async (actor, account, email, token, days = 7) => {
+    await actAs(actor);
+    return fails(
+      `select public.create_office_invitation($1, $2, $3, now() + ($4 || ' days')::interval)`,
+      [account, email, token, String(days)]);
+  };
+  const accept = async (user, token) => {
+    await actAs(user);
+    return fails('select public.accept_office_invitation($1)', [token]);
+  };
+  const setLimit = (n) => q(
+    `update public.workspace_entitlements set feature_limits = $2::jsonb where account_id = $1`,
+    [acctD.id, JSON.stringify({ office_users: n })]);
+
+  await setLimit(8);
+
+  ck('an outsider cannot invite anybody',
+    /office_seat_forbidden/.test(
+      await sendInvite(STRANGER, acctD.id, 'bookkeeper@acme.test', hash('a1')) ?? ''));
+
+  const inviteErr = await sendInvite(OWNER_D, acctD.id, 'BookKeeper@Acme.test', hash('b2'));
+  ck('an owner can invite', inviteErr === null, inviteErr);
+
+  ck('the address is stored lowercased, so one person cannot be invited twice',
+    (await q('select email from public.office_invitations where account_id = $1', [acctD.id]))
+      .rows[0].email === 'bookkeeper@acme.test');
+
+  ck('the token is stored only as a hash',
+    (await q('select token_sha256 from public.office_invitations limit 1')).rows[0].token_sha256
+      === hash('b2'));
+
+  const before = (await q('select token_sha256, send_count from public.office_invitations')).rows[0];
+  await sendInvite(OWNER_D, acctD.id, 'bookkeeper@acme.test', hash('c3'));
+  const after = (await q('select token_sha256, send_count from public.office_invitations')).rows[0];
+  ck('a resend reuses the row, bumps the count and replaces the token',
+    after.send_count === 2 && after.token_sha256 !== before.token_sha256, after);
+  ck('the superseded link no longer works',
+    /not_found/.test(await accept(HIRE, hash('b2')) ?? ''));
+
+  ck('a forwarded link does not admit whoever opened it',
+    /wrong_recipient/.test(await accept(STRANGER, hash('c3')) ?? ''));
+
+  ck('the addressee can accept', (await accept(HIRE, hash('c3'))) === null);
+  ck('...and becomes an office user, not an owner',
+    (await q('select role from public.memberships where user_id = $1', [HIRE])).rows[0].role === 'office');
+  ck('...and the invitation is spent',
+    (await q('select accepted_user_id from public.office_invitations where token_sha256 = $1',
+      [hash('c3')])).rows[0].accepted_user_id === HIRE);
+  ck('a spent invitation cannot be used again',
+    /not_found/.test(await accept(HIRE, hash('c3')) ?? ''));
+
+  // The seat check that decides.
+  const counted = async () => Number((await q(
+    `select count(*)::int as n from public.memberships
+      where account_id = $1 and role in ('owner','office')`, [acctD.id])).rows[0].n);
+  await setLimit(await counted());
+  ck('inviting into a full workspace is refused up front',
+    /office_seat_limit_reached/.test(
+      await sendInvite(OWNER_D, acctD.id, 'later@acme.test', hash('d4')) ?? ''));
+
+  // Invited while there was room, accepted after somebody took the last seat --
+  // the case the courtesy check at invite time cannot cover.
+  await setLimit((await counted()) + 1);
+  await q("insert into auth.users (id, email) values ($1, 'late@acme.test')", [U.another]);
+  await sendInvite(OWNER_D, acctD.id, 'late@acme.test', hash('e5'));
+  await setLimit(await counted());
+  ck('accepting after the last seat went is refused, not squeezed in',
+    /office_seat_limit_reached/.test(await accept(U.another, hash('e5')) ?? ''));
+
+  // Revocation, and what it deliberately does not do.
+  await setLimit(20);
+  await sendInvite(OWNER_D, acctD.id, 'gone@acme.test', hash('f6'));
+  const pending = (await q(
+    "select id from public.office_invitations where email = 'gone@acme.test'")).rows[0];
+  await actAs(OWNER_D);
+  ck('an owner can revoke a pending invitation',
+    (await q('select public.revoke_office_invitation($1) as ok', [pending.id])).rows[0].ok === true);
+  ck('...and the link stops working',
+    /not_found/.test(await accept(STRANGER, hash('f6')) ?? ''));
+  await actAs(OWNER_D);
+  ck('revoking twice reports nothing further to do',
+    (await q('select public.revoke_office_invitation($1) as ok', [pending.id])).rows[0].ok === false);
+
+  const acceptedRow = (await q(
+    'select id from public.office_invitations where accepted_at is not null limit 1')).rows[0];
+  await actAs(OWNER_D);
+  ck('revoking an ACCEPTED invitation does nothing; removing a person is a different act',
+    (await q('select public.revoke_office_invitation($1) as ok', [acceptedRow.id])).rows[0].ok === false);
+  ck('...and the membership it created still stands',
+    Number((await q('select count(*)::int as n from public.memberships where user_id = $1', [HIRE]))
+      .rows[0].n) === 1);
+
+  for (const role of ['anon', 'authenticated']) {
+    const w = (await q(
+      `select has_table_privilege($1, 'public.office_invitations', 'INSERT') as ins,
+              has_table_privilege($1, 'public.office_invitations', 'UPDATE') as upd,
+              has_table_privilege($1, 'public.office_invitations', 'TRUNCATE') as trunc`,
+      [role])).rows[0];
+    ck(`${role} cannot write invitations`, !w.ins && !w.upd && !w.trunc, w);
+  }
+  ck('the original seat RPC is still reachable by nobody',
+    Number((await q(`select count(*)::int as n from pg_proc p
+                     cross join lateral aclexplode(coalesce(p.proacl,'{}'::aclitem[])) x
+                     where p.proname = 'create_office_user_membership_with_seat_entitlement'
+                       and x.privilege_type = 'EXECUTE' and x.grantee <> p.proowner`)).rows[0].n) === 0);
 
   await db.end();
 } catch (error) {
