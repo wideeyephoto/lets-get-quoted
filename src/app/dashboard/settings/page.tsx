@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { loadOfficeTeam } from '@/lib/office-team';
+import { loadOverageSummary } from '@/lib/billing/overage-summary';
 import { pickBusinessName } from '@/lib/business-name';
 import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
@@ -108,6 +109,13 @@ export default async function SettingsPage({
   // than throwing. A Settings page that 500s because one card cannot load is a
   // worse failure than a card that says nobody is here.
   const officeTeam = await loadOfficeTeam(createAdminClient(), accountId);
+
+  // Through the SESSION client: every overage table is owner-read and
+  // service-role-write, because an owner who could write their own settings row
+  // could raise their own cap without leaving evidence. Reading it with the
+  // admin client would work and would quietly remove the check that matters.
+  // Its own read, and error-tolerant, like the two above it.
+  const overage = pricingDashboardEnabled ? await loadOverageSummary(supabase, accountId) : null;
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = pickBusinessName(site, account);
@@ -364,6 +372,7 @@ export default async function SettingsPage({
               <PlanUsageSection
                 data={planUsage}
                 storage={storageState}
+                overage={overage}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
                 topUpCheckoutStatus={topUpCheckoutStatus}

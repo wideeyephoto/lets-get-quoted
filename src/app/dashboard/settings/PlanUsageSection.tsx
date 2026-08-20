@@ -5,6 +5,12 @@ import type {
   WorkspacePlanUsage,
 } from '@/lib/billing/plan-usage';
 import { formatStorageBytes, type WorkspaceStorageState } from '@/lib/billing/storage-usage';
+import {
+  describeOverageResource,
+  formatOverageTotal,
+  remainingCapMillicents,
+  type OverageSummary,
+} from '@/lib/billing/overage-summary';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
@@ -107,18 +113,92 @@ function storageView(storage: WorkspaceStorageState | null): StorageView {
   };
 }
 
+
+/**
+ * What has been run up past the allowance, and what is left before it stops.
+ *
+ * THE ACCRUAL TABLE HAS BEEN WRITTEN SINCE 20260819080000 AND READ BY NOTHING.
+ * A contractor could authorize overage, incur it, and have no way to see the
+ * number until it reached a card. Of the two halves of an overage -- charging it
+ * and showing it -- this is the one that has to exist first, because a figure
+ * nobody can see is a figure nobody can dispute in time.
+ *
+ * Says "not switched on" rather than "$0.00" when overage is disabled. Those are
+ * different facts: one is a workspace that has agreed to pay for overruns and
+ * has not had any, the other has not agreed at all.
+ */
+function OverageCard({ overage }: { overage: OverageSummary }) {
+  const remaining = remainingCapMillicents(overage);
+
+  if (!overage.enabled) {
+    return (
+      <section className="panel workspace-section-card" id="overage">
+        <h3>Extra usage</h3>
+        <p className="usage-muted">
+          Not switched on. When an allowance runs out, sends and drafts are refused rather
+          than billed &mdash; nothing is ever charged past your plan without you turning this
+          on and setting a limit.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel workspace-section-card" id="overage">
+      <h3>Extra usage this period</h3>
+      <p className="usage-overage-total">
+        <strong>{formatOverageTotal(overage.totalMillicents)}</strong>
+        {overage.capCents === null ? null : (
+          <span>
+            of a {formatOverageTotal(overage.capCents * 1000)} limit
+          </span>
+        )}
+      </p>
+
+      {overage.atCap ? (
+        <p className="usage-overage-atcap">
+          You&rsquo;ve reached your limit, so nothing further is being billed &mdash; sends and
+          drafts past your allowance are being refused until the period resets.
+        </p>
+      ) : remaining !== null ? (
+        <p className="usage-muted">{formatOverageTotal(remaining)} left before that stops.</p>
+      ) : null}
+
+      {overage.lines.length === 0 ? (
+        <p className="usage-muted">Nothing extra used yet this period.</p>
+      ) : (
+        <ul className="usage-overage-lines">
+          {overage.lines.map((line) => (
+            <li key={line.resourceCode}>
+              <span>{describeOverageResource(line.resourceCode)}</span>
+              <span>{line.units.toLocaleString('en-US')}</span>
+              <span>{formatOverageTotal(line.millicents)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="usage-fineprint">
+        Charged after the period ends. Every figure here is what has already been used, not
+        an estimate.
+      </p>
+    </section>
+  );
+}
+
 export default function PlanUsageSection({
   data,
   storage = null,
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
   topUpCheckoutStatus = null,
+  overage,
 }: {
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
   showSubscriptionCheckout?: boolean;
   showTopUpPurchase?: boolean;
   topUpCheckoutStatus?: 'success' | 'canceled' | null;
+  overage: OverageSummary | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
@@ -281,6 +361,10 @@ export default function PlanUsageSection({
           )}
         </section>
       ) : null}
+
+      {/* After storage, before buying more: a contractor reading "you have run
+          up $2.84 extra" should meet the top-up offer next, not before. */}
+      {overage ? <OverageCard overage={overage} /> : null}
 
       {data.plan.kind === 'ready' && showTopUpPurchase ? (
         <TopUpPurchaseCheckout
