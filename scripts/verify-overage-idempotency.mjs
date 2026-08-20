@@ -45,6 +45,7 @@ const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n
 const SETTLEMENT = m('20260819260000_overage_settlement.sql');
 const IDEMPOTENCY = m('20260819290000_overage_accrual_idempotency.sql');
 const SETTLED_GUARD = m('20260819300000_release_respects_settled_period.sql');
+const OVERLAP = m('20260819310000_cap_counts_overlapping_periods.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });
@@ -115,7 +116,8 @@ try {
   await q(SETTLEMENT);
   await q(IDEMPOTENCY);
   await q(SETTLED_GUARD);
-  ck('all three migrations apply, post-conditions and all', true);
+  await q(OVERLAP);
+  ck('all four migrations apply, post-conditions and all', true);
 
   const authorize = (key, units = 10, resource = 'voice_minutes', start = P_START) => q(
     `select * from public.authorize_usage_overage(
@@ -257,7 +259,56 @@ try {
     Number(floored.units) === 0 && Number(floored.millicents) === 0, floored);
 
   // -------------------------------------------------------------------
-  // 7. A settled period does not move.
+  // 7. A cap that moved its boundary is still the same cap.
+  // -------------------------------------------------------------------
+  // The subscription projector writes period_start from Stripe on every
+  // subscription event, and the TypeScript falls back to the calendar month
+  // when there is no entitlement period. So a Flex workspace that subscribes on
+  // the 15th moves from 08-01..09-01 to 08-15..09-15 mid-month. Summing by
+  // exact period_start found nothing in the new bucket and handed back the
+  // whole cap: one cap, set once, spent twice, in the same month.
+  const MOVER = '44444444-4444-4444-8444-444444444444';
+  await q(`insert into public.accounts (id) values ('${MOVER}')`);
+  await q(`insert into public.workspace_overage_settings (account_id, enabled, cap_cents)
+           values ('${MOVER}', true, 5000)`);
+
+  const authorizeFor = (account, key, units, start, end) => q(
+    `select * from public.authorize_usage_overage(
+       $1::uuid, 'voice_minutes'::text, $2::bigint, ${RATE}::bigint,
+       $3::timestamptz, $4::timestamptz, $5::text)`,
+    [account, units, start, end, key],
+  ).then((r) => r.rows[0]);
+
+  const CAL = ['2026-08-01T00:00:00Z', '2026-09-01T00:00:00Z'];
+  const SUB = ['2026-08-15T00:00:00Z', '2026-09-15T00:00:00Z'];
+  const NEXT = ['2026-09-15T00:00:00Z', '2026-10-15T00:00:00Z'];
+
+  // Nearly all of the $50 cap, under the calendar month. 141 x 35,000 =
+  // 4,935,000, leaving 65,000 of the 5,000,000 -- room for exactly one more.
+  const spent = await authorizeFor(MOVER, 'text-credit:v1:aug_first0001', 141, ...CAL);
+  ck('a workspace spends nearly all of its cap in the calendar month',
+    spent.decision === 'accrued' && Number(spent.accrued_millicents) === 4_935_000, spent);
+
+  const afterMove = await authorizeFor(MOVER, 'ai-voice:v1:sub_second002', 10, ...SUB);
+  ck('THE CAP DOES NOT RE-ARM WHEN THE PERIOD BOUNDARY MOVES MID-MONTH',
+    afterMove.decision === 'cap_reached', afterMove);
+  ck('...and it can still see what was already spent',
+    Number(afterMove.accrued_millicents) === 4_935_000, afterMove);
+
+  // A charge that fits in what is genuinely left still goes through.
+  const fits = await authorizeFor(MOVER, 'ai-voice:v1:sub_small00003', 1, ...SUB);
+  ck('...while a charge that fits the remaining cap is still allowed',
+    fits.decision === 'accrued' && Number(fits.accrued_millicents) === 4_970_000, fits);
+
+  // And a genuine roll DOES reset it, with no dependence on anything settling.
+  const nextMonth = await authorizeFor(MOVER, 'ai-voice:v1:sep_fresh00004', 100, ...NEXT);
+  ck('A GENUINE MONTHLY ROLL STILL RESETS THE CAP',
+    nextMonth.decision === 'accrued', nextMonth);
+  ck('...starting from what that period alone has spent',
+    Number(nextMonth.accrued_millicents) === 3_500_000, nextMonth);
+
+  // -------------------------------------------------------------------
+  // 8. A settled period does not move.
   // -------------------------------------------------------------------
   // close_overage_period freezes a snapshot and an invoice is built from THAT,
   // not from the live accrual rows. A call admitted at 23:58 that fails at
@@ -295,7 +346,7 @@ try {
     afterRefusal === settledTotal, { afterRefusal, settledTotal });
 
   // -------------------------------------------------------------------
-  // 8. Reach.
+  // 9. Reach.
   // -------------------------------------------------------------------
   for (const role of ['anon', 'authenticated']) {
     ck(`${role} cannot authorize an overage`,
