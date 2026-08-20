@@ -140,6 +140,33 @@ export type CancellationResult =
   | { ok: false; error: string };
 
 /**
+ * Stripe failures split into two kinds, and telling somebody the wrong one is
+ * its own defect.
+ *
+ * "Try again in a moment" is right for a timeout or a 500 and actively
+ * misleading for `resource_missing`, which never becomes true by waiting -- the
+ * same shape as the dead-lettered price mismatch that is never retryable. A
+ * permanent failure dressed as a transient one is a button somebody presses
+ * forever while nothing happens and nobody is alerted.
+ *
+ * This is reachable today, not hypothetically. The production database carries a
+ * rehearsal subscription projected from a TEST-mode checkout session, and a live
+ * key cannot see a test-mode subscription, so that one workspace's cancel button
+ * fails with exactly this error.
+ */
+function describeStripeFailure(error: unknown, verb: 'cancel' | 'restore'): { message: string; permanent: boolean } {
+  const code = (error as { code?: unknown } | null)?.code;
+  const type = (error as { type?: unknown } | null)?.type;
+  if (code === 'resource_missing' || type === 'invalid_request_error') {
+    return {
+      permanent: true,
+      message: 'We could not find that subscription at Stripe, so nothing was changed. Please contact support — retrying will not help.',
+    };
+  }
+  return { permanent: false, message: `Stripe could not ${verb} that subscription just now. Try again in a moment.` };
+}
+
+/**
  * Schedule cancellation at the end of the paid period.
  *
  * Not an immediate cancel: they have paid through the period, and the FAQ says
@@ -201,8 +228,12 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
         : subscription.currentPeriodEnd,
     };
   } catch (error) {
-    console.error('cancelBasePlanSubscriptionAtPeriodEnd failed:', error instanceof Error ? error.message : error);
-    return { ok: false, error: 'Stripe could not cancel that subscription just now. Try again in a moment.' };
+    const failure = describeStripeFailure(error, 'cancel');
+    console.error(
+      `cancelBasePlanSubscriptionAtPeriodEnd failed (${failure.permanent ? 'PERMANENT' : 'transient'}) for ${subscription.providerSubscriptionId}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return { ok: false, error: failure.message };
   }
 }
 
@@ -276,8 +307,12 @@ export async function resumeBasePlanSubscription(input: {
     // or dig into items. Neither is needed for a date we already hold.
     return { ok: true, alreadyActive: false, currentPeriodEnd: subscription.currentPeriodEnd };
   } catch (error) {
-    console.error('resumeBasePlanSubscription failed:', error instanceof Error ? error.message : error);
-    return { ok: false, error: 'Stripe could not restore that subscription just now. Try again in a moment.' };
+    const failure = describeStripeFailure(error, 'restore');
+    console.error(
+      `resumeBasePlanSubscription failed (${failure.permanent ? 'PERMANENT' : 'transient'}) for ${subscription.providerSubscriptionId}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return { ok: false, error: failure.message };
   }
 }
 
