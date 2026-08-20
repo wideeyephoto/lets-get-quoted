@@ -410,12 +410,10 @@ export async function sendProviderMessage(
   } catch (error) {
     if (ledger && lease) await releaseTextCreditUsage(ledger, lease, 'send_failed');
     if (ledger && overage && context.accountId) {
-      await releaseUsageOverage(ledger, {
-        accountId: context.accountId,
-        resourceCode: overage.resourceCode,
-        units: overage.units,
-        millicents: overage.millicents,
-      });
+      // Spread rather than restated. Listing the fields is how this one lost
+      // `periodStart` when the type gained it -- the release then looked the
+      // period up itself, found the wrong one, and gave nothing back.
+      await releaseUsageOverage(ledger, { accountId: context.accountId, ...overage });
     }
     throw error;
   }

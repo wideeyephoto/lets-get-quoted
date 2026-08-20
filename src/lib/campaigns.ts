@@ -8,7 +8,7 @@ import {
   releaseMarketingEmailUsage,
   type MarketingEmailLease,
 } from '@/lib/billing/marketing-email-usage';
-import { releaseUsageOverage } from '@/lib/billing/usage-overage';
+import { releaseUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-overage';
 import { listClientsWithStats } from '@/lib/clients';
 import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
@@ -206,7 +206,7 @@ export async function sendCampaign(
           // commit_usage_reservation has no unit count -- see
           // lib/billing/marketing-email-usage.ts.
           let lease: MarketingEmailLease | null = null;
-          let heldOverage: { resourceCode: string; units: number; millicents: number } | null = null;
+          let heldOverage: UsageOverageHold | null = null;
           let mayEmail = true;
           if (ledger) {
             const decision = await beginMarketingEmailUsage(

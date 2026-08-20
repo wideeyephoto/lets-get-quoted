@@ -88,7 +88,13 @@ export type VoiceAdmission =
   | 'ledger_unavailable'
   | 'exhausted_not_enforced';
 
-export type UsageOverageHold = Readonly<{ resourceCode: string; units: number; millicents: number }>;
+export type UsageOverageHold = Readonly<{
+  resourceCode: string;
+  units: number;
+  millicents: number;
+  /** Carried so the release targets the period the charge was written under. */
+  periodStart: string;
+}>;
 
 export type VoiceMinuteDecision =
   | Readonly<{ outcome: 'admitted'; lease: VoiceMinuteLease }>
@@ -220,6 +226,7 @@ export async function admitVoiceCall(
             resourceCode: VOICE_MINUTE_RESOURCE_CODE,
             units: cap,
             millicents: overage.chargedMillicents,
+            periodStart: overage.periodStart,
           }),
         });
       }

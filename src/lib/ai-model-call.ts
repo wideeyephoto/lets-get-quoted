@@ -14,7 +14,7 @@ import {
   releaseAiWritingUsage,
   type AiWritingLease,
 } from '@/lib/billing/ai-writing-usage';
-import { releaseUsageOverage } from '@/lib/billing/usage-overage';
+import { releaseUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-overage';
 
 /**
  * The one egress point for model calls, and therefore the one place an AI
@@ -79,7 +79,7 @@ export async function callModel(
   const mode = aiWritingMode();
   let ledger: SupabaseClient | null = null;
   let lease: AiWritingLease | null = null;
-  let heldOverage: { resourceCode: string; units: number; millicents: number } | null = null;
+  let heldOverage: UsageOverageHold | null = null;
 
   if (mode !== 'off' && billsAiWritingDrafts(context) && context.accountId) {
     const { createAdminClient } = await import('@/lib/auth');

@@ -82,6 +82,8 @@ export type TextCreditOverage = Readonly<{
   resourceCode: string;
   units: number;
   millicents: number;
+  /** Carried so the release targets the period the charge was written under. */
+  periodStart: string;
 }>;
 
 export type TextCreditDecision =
@@ -182,6 +184,7 @@ export async function beginTextCreditUsage(
             resourceCode: TEXT_CREDIT_RESOURCE_CODE,
             units: segments,
             millicents: overage.chargedMillicents,
+            periodStart: overage.periodStart,
           }),
         });
       }

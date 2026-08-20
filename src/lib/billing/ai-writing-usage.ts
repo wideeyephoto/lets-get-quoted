@@ -54,7 +54,13 @@ export type AiWritingLease = Readonly<{
 export type AiWritingAdmission = 'not_metered' | 'ledger_unavailable' | 'exhausted_not_enforced';
 
 /** An overage that was authorized and accrued, and can be given back. */
-export type UsageOverageHold = Readonly<{ resourceCode: string; units: number; millicents: number }>;
+export type UsageOverageHold = Readonly<{
+  resourceCode: string;
+  units: number;
+  millicents: number;
+  /** Carried so the release targets the period the charge was written under. */
+  periodStart: string;
+}>;
 
 export type AiWritingDecision =
   | Readonly<{ outcome: 'allowed'; lease: AiWritingLease }>
@@ -129,6 +135,7 @@ export async function beginAiWritingUsage(
             resourceCode: AI_WRITING_RESOURCE_CODE,
             units: 1,
             millicents: overage.chargedMillicents,
+            periodStart: overage.periodStart,
           }),
         });
       }

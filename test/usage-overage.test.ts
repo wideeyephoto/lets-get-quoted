@@ -5,6 +5,7 @@ import {
   OVERAGE_RATE_MILLICENTS,
   USAGE_OVERAGE_FLAG,
   formatOverage,
+  releaseUsageOverage,
   tryUsageOverage,
   usageOverageEnabled,
 } from '@/lib/billing/usage-overage';
@@ -149,6 +150,15 @@ describe('what it reports back', () => {
     expect(d).toMatchObject({ outcome: 'accrued', chargedMillicents: 48_000, capMillicents: 5_000_000 });
   });
 
+  it('carries back the period it accrued under, so the release can find it', async () => {
+    // Without this the release derived its own period, and any drift between
+    // the two -- midnight on a Flex workspace, an entitlement period arriving
+    // mid-month -- meant it released nothing and said it worked.
+    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10 }, { enabled: true });
+    expect(d).toMatchObject({ periodStart: '2026-08-01T00:00:00Z' });
+  });
+
   it('reports the cap being reached as its own answer, not as an error', async () => {
     // A contractor who hit their own ceiling deserves a different sentence from
     // one whose database call failed.
@@ -165,5 +175,88 @@ describe('what it reports back', () => {
     const args = rpc.mock.calls[0][1];
     expect(args.p_period_start).toMatch(/^\d{4}-\d{2}-01T00:00:00\.000Z$/);
     expect(new Date(args.p_period_end).getTime()).toBeGreaterThan(new Date(args.p_period_start).getTime());
+  });
+});
+
+describe('giving a charge back, which used to only look like it worked', () => {
+  // Two bugs lived here together. releaseUsageOverage re-derived the period
+  // instead of carrying back the one the accrual was written under, and it
+  // returned `!error` while the RPC returns the millicents actually released --
+  // so a release that matched no row reported success and the charge stayed on
+  // the books for work that had failed.
+
+  it('releases against the period it was told, never one it derives', async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const admin = {
+      rpc: (name: string, args: Record<string, unknown>) => {
+        calls.push({ name, ...args });
+        return Promise.resolve({ data: 4_800, error: null });
+      },
+      from: () => {
+        throw new Error('releaseUsageOverage must not read the entitlement period');
+      },
+    } as never;
+
+    const ok = await releaseUsageOverage(admin, {
+      accountId: '11111111-1111-4111-8111-111111111111',
+      resourceCode: 'text_segments',
+      units: 1,
+      millicents: 4_800,
+      periodStart: '2026-08-01T00:00:00Z',
+    });
+
+    expect(ok).toBe(true);
+    expect(calls[0]).toMatchObject({
+      name: 'release_usage_overage',
+      p_period_start: '2026-08-01T00:00:00Z',
+    });
+  });
+
+  it('reports failure when nothing was actually released', async () => {
+    // The RPC returns 0 when it finds no accrual row -- a wrong period, a period
+    // already closed, a resource that never accrued. `!error` called that
+    // success, which is how a failed send kept its charge.
+    const admin = {
+      rpc: () => Promise.resolve({ data: 0, error: null }),
+      from: () => { throw new Error('should not read'); },
+    } as never;
+
+    expect(await releaseUsageOverage(admin, {
+      accountId: '11111111-1111-4111-8111-111111111111',
+      resourceCode: 'text_segments',
+      units: 1,
+      millicents: 4_800,
+      periodStart: '2026-08-01T00:00:00Z',
+    })).toBe(false);
+  });
+
+  it('treats releasing nothing as fine when nothing was owed', async () => {
+    const admin = {
+      rpc: () => Promise.resolve({ data: 0, error: null }),
+      from: () => { throw new Error('should not read'); },
+    } as never;
+
+    expect(await releaseUsageOverage(admin, {
+      accountId: '11111111-1111-4111-8111-111111111111',
+      resourceCode: 'text_segments',
+      units: 0,
+      millicents: 0,
+      periodStart: '2026-08-01T00:00:00Z',
+    })).toBe(true);
+  });
+
+  it('refuses without a period rather than guessing one', async () => {
+    const admin = {
+      rpc: () => { throw new Error('must not be called'); },
+      from: () => { throw new Error('must not be called'); },
+    } as never;
+
+    expect(await releaseUsageOverage(admin, {
+      accountId: '11111111-1111-4111-8111-111111111111',
+      resourceCode: 'text_segments',
+      units: 1,
+      millicents: 4_800,
+      periodStart: '',
+    })).toBe(false);
   });
 });

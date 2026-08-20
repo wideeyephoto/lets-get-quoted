@@ -61,10 +61,38 @@ export const OVERAGE_RATE_MILLICENTS: Readonly<Record<string, number>> = Object.
 });
 
 export type UsageOverageDecision =
-  | Readonly<{ outcome: 'accrued'; chargedMillicents: number; accruedMillicents: number; capMillicents: number }>
+  | Readonly<{
+    outcome: 'accrued';
+    chargedMillicents: number;
+    accruedMillicents: number;
+    capMillicents: number;
+    /**
+     * The period the accrual was written under, carried so the release can
+     * target the same row. Re-deriving it was a real bug: `resolvePeriod` reads
+     * nullable entitlement columns and falls back to the calendar month, so a
+     * release moments after midnight -- or after an entitlement period lands on
+     * a Flex workspace -- looked up a period that had no accrual, released
+     * nothing, and reported success.
+     */
+    periodStart: string;
+  }>
   | Readonly<{ outcome: 'not_authorized' }>
   | Readonly<{ outcome: 'cap_reached'; accruedMillicents: number; capMillicents: number }>
   | Readonly<{ outcome: 'unavailable' }>;
+
+/**
+ * A charge that was accrued and can be given back.
+ *
+ * Exported from here, where the release lives, because four meters and three
+ * call sites all held their own copy of this shape and none of them carried the
+ * period -- which is exactly how the release ended up looking one up.
+ */
+export type UsageOverageHold = Readonly<{
+  resourceCode: string;
+  units: number;
+  millicents: number;
+  periodStart: string;
+}>;
 
 export type UsageOverageInput = Readonly<{
   accountId: string;
@@ -154,6 +182,7 @@ export async function tryUsageOverage(
         chargedMillicents: charged,
         accruedMillicents: accrued,
         capMillicents: cap,
+        periodStart: period.start,
       });
     }
     if (decision === 'cap_reached') {
@@ -183,20 +212,42 @@ export async function tryUsageOverage(
  */
 export async function releaseUsageOverage(
   admin: SupabaseClient,
-  input: Readonly<{ accountId: string; resourceCode: string; units: number; millicents: number }>,
+  input: Readonly<{
+    accountId: string;
+    resourceCode: string;
+    units: number;
+    millicents: number;
+    /** The period the charge was accrued under. Never re-derived here. */
+    periodStart: string;
+  }>,
 ): Promise<boolean> {
-  const period = await resolvePeriod(admin, input.accountId);
-  if (!period) return false;
+  if (!input.periodStart) return false;
   try {
-    const { error } = await admin.rpc('release_usage_overage', {
+    const { data, error } = await admin.rpc('release_usage_overage', {
       p_account_id: input.accountId,
       p_resource_code: input.resourceCode,
-      p_period_start: period.start,
+      p_period_start: input.periodStart,
       p_units: input.units,
       p_millicents: input.millicents,
     });
-    if (error) console.error('usage overage release failed:', error);
-    return !error;
+    if (error) {
+      console.error('usage overage release failed:', error);
+      return false;
+    }
+
+    // The RPC returns the millicents it actually gave back. `!error` was the
+    // old answer and it was wrong: a release that matched no row returns 0
+    // perfectly happily, so a failed send kept its charge and reported success.
+    const released = Number(data ?? 0);
+    if (!Number.isFinite(released)) return false;
+    if (input.millicents > 0 && released <= 0) {
+      console.error(
+        'usage overage release found nothing to release:',
+        input.resourceCode, input.periodStart,
+      );
+      return false;
+    }
+    return true;
   } catch (error) {
     console.error('usage overage release threw:', error);
     return false;

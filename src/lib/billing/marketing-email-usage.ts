@@ -61,7 +61,13 @@ export type MarketingEmailAdmission =
   | 'exhausted_not_enforced';
 
 /** An overage that was authorized and accrued, and can be given back. */
-export type UsageOverageHold = Readonly<{ resourceCode: string; units: number; millicents: number }>;
+export type UsageOverageHold = Readonly<{
+  resourceCode: string;
+  units: number;
+  millicents: number;
+  /** Carried so the release targets the period the charge was written under. */
+  periodStart: string;
+}>;
 
 export type MarketingEmailDecision =
   | Readonly<{ outcome: 'allowed'; lease: MarketingEmailLease }>
@@ -139,6 +145,7 @@ export async function beginMarketingEmailUsage(
             resourceCode: MARKETING_EMAIL_RESOURCE_CODE,
             units: 1,
             millicents: overage.chargedMillicents,
+            periodStart: overage.periodStart,
           }),
         });
       }
