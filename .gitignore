@@ -41,3 +41,7 @@ scripts/.seed-*.json
 # exports that get processed into public/ rather than shipped from here. Kept
 # out of the tree so a clone is not half a gigabyte of things nothing imports.
 FILES/
+
+# Scratch probes. Agents write these into the repo so `pg` resolves; they are
+# never part of the tree.
+scripts/tmp-*.mjs
