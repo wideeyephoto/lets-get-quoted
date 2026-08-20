@@ -92,15 +92,21 @@ export async function loadOverageSummary(
     // subscription period; `tryUsageOverage` falls back to the calendar month
     // there, and reproducing that fallback in a second place is how the two
     // start disagreeing about which rows belong to now.
-    if (!periodStart) {
+    if (!periodStart || !periodEnd) {
       return Object.freeze({ ...EMPTY, enabled, capCents });
     }
 
+    // EVERY BUCKET THAT OVERLAPS THIS PERIOD, matching authorize_usage_overage
+    // exactly since 20260819310000. period_start is not stable -- the
+    // subscription projector rewrites it from Stripe mid-month -- so an equality
+    // here would show a contractor their full cap untouched while the meters
+    // were already refusing them at it. The two must answer the same question.
     const { data, error } = await supabase
       .from('workspace_overage_accruals')
       .select('resource_code, units, millicents')
       .eq('account_id', accountId)
-      .eq('period_start', periodStart)
+      .gt('period_end', periodStart)
+      .lt('period_start', periodEnd)
       .order('millicents', { ascending: false });
 
     if (error) {
@@ -108,16 +114,30 @@ export async function loadOverageSummary(
       return Object.freeze({ ...EMPTY, enabled, capCents, periodStart, periodEnd });
     }
 
-    const lines = (data ?? []).map((row) => {
+    // Overlapping buckets can hold the same resource twice -- one row per
+    // period -- and showing "Text credits" twice in a list of what was spent
+    // would read as a duplicate rather than as two halves of one month.
+    const byResource = new Map<string, { units: number; millicents: number }>();
+    for (const row of data ?? []) {
       const r = row as Record<string, unknown>;
       const resourceCode = String(r.resource_code);
-      return Object.freeze({
-        resourceCode,
-        units: Number(r.units ?? 0),
-        millicents: Number(r.millicents ?? 0),
-        rateMillicents: OVERAGE_RATE_MILLICENTS[resourceCode] ?? null,
+      const running = byResource.get(resourceCode) ?? { units: 0, millicents: 0 };
+      byResource.set(resourceCode, {
+        units: running.units + Number(r.units ?? 0),
+        millicents: running.millicents + Number(r.millicents ?? 0),
       });
-    });
+    }
+
+    const lines = [...byResource.entries()]
+      .map(([resourceCode, totals]) => Object.freeze({
+        resourceCode,
+        units: totals.units,
+        millicents: totals.millicents,
+        rateMillicents: OVERAGE_RATE_MILLICENTS[resourceCode] ?? null,
+      }))
+      // The order() above no longer decides this, because merging changed the
+      // totals it sorted on.
+      .sort((a, b) => b.millicents - a.millicents || a.resourceCode.localeCompare(b.resourceCode));
 
     const totalMillicents = lines.reduce((total, line) => total + line.millicents, 0);
 

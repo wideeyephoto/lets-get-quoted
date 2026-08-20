@@ -15,7 +15,7 @@ const supabase = {
   from(table: string) {
     const reply = replies[table] ?? { data: null, error: null };
     const chain: Record<string, unknown> = {};
-    for (const method of ['select', 'eq', 'order']) chain[method] = () => chain;
+    for (const method of ['select', 'eq', 'gt', 'lt', 'order']) chain[method] = () => chain;
     chain.maybeSingle = () => Promise.resolve(reply);
     (chain as { then: unknown }).then = (r: (v: unknown) => unknown) => r(reply);
     return chain;
@@ -53,6 +53,38 @@ describe('what a contractor has run up', () => {
     // the person being charged, not only by us.
     expect(summary.lines[0].rateMillicents).toBe(4_800);
     expect(summary.lines[1].rateMillicents).toBe(35_000);
+  });
+
+  it('merges the same resource across two overlapping periods', async () => {
+    // period_start is not stable -- the subscription projector rewrites it from
+    // Stripe mid-month -- so one month can hold two buckets and both count
+    // against one cap (see 20260819310000). Showing "Text credits" twice would
+    // read as a duplicate rather than as two halves of the same month.
+    replies.workspace_overage_accruals = {
+      data: [
+        { resource_code: 'text_segments', units: 30, millicents: 144_000 },
+        { resource_code: 'text_segments', units: 5, millicents: 24_000 },
+        { resource_code: 'voice_minutes', units: 4, millicents: 140_000 },
+      ],
+      error: null,
+    };
+    const summary = await loadOverageSummary(supabase, ACCOUNT);
+    expect(summary.lines).toHaveLength(2);
+    expect(summary.totalMillicents).toBe(308_000);
+    // Largest first, still, even though merging changed which one that is.
+    expect(summary.lines[0]).toMatchObject({
+      resourceCode: 'text_segments', units: 35, millicents: 168_000,
+    });
+    expect(summary.lines[1]).toMatchObject({ resourceCode: 'voice_minutes', millicents: 140_000 });
+  });
+
+  it('shows nothing rather than a wrong period when the period is half-known', async () => {
+    // A period with a start and no end cannot be overlapped against. Reporting
+    // zero spent would be worse than reporting nothing, so it reports nothing.
+    setup({ workspace_entitlements: { data: { period_start: PERIOD.period_start, period_end: null }, error: null } });
+    const summary = await loadOverageSummary(supabase, ACCOUNT);
+    expect(summary).toMatchObject({ enabled: true, capCents: 5_000, totalMillicents: 0 });
+    expect(summary.periodStart).toBeNull();
   });
 
   it('reads a resource it has never heard of without inventing a price', async () => {
