@@ -55,12 +55,34 @@ export type CancellableSubscription = Readonly<{
   status: string;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
+  /** The projector's last write. See the idempotency note below. */
+  updatedAt: string | null;
 }>;
 
+/**
+ * WHY THIS TAKES A STATE TOKEN, which is not obvious and matters for money.
+ *
+ * cancel_at_period_end is a TOGGLE, and a key derived only from (workspace,
+ * subscription, mode) is stable for that toggle's whole life. Stripe replays a
+ * cached response for 24 hours, so with a resume path in existence the sequence
+ * cancel -> resume -> cancel sends the third request under the FIRST cancel's
+ * key. Stripe returns the first response verbatim without touching the
+ * subscription: the customer sees "Cancellation scheduled", nothing is
+ * scheduled, and they are charged again at renewal.
+ *
+ * The token is billing_subscriptions.updated_at, which the projector advances on
+ * every customer.subscription.updated -- i.e. on every flip. So a genuine
+ * re-flip gets a fresh key, while a double click within one render sees the same
+ * updated_at and still collapses to one API call, which is what the key is for.
+ *
+ * Optional because the account-deletion path cancels outright rather than
+ * toggling, and can never be re-flipped: the row is gone immediately after.
+ */
 export function buildSubscriptionCancellationIdempotencyKey(input: {
   workspaceId: string;
   providerSubscriptionId: string;
-  mode: 'at_period_end' | 'immediate';
+  mode: 'at_period_end' | 'immediate' | 'resume';
+  stateToken?: string | null;
 }): string {
   const workspaceId = String(input.workspaceId ?? '').trim();
   const subscriptionId = String(input.providerSubscriptionId ?? '').trim();
@@ -68,7 +90,13 @@ export function buildSubscriptionCancellationIdempotencyKey(input: {
     throw new Error('A workspace and a provider subscription id are required to cancel.');
   }
   const digest = createHash('sha256')
-    .update(['base_plan_subscription', workspaceId, subscriptionId, input.mode].join('\0'))
+    .update([
+      'base_plan_subscription',
+      workspaceId,
+      subscriptionId,
+      input.mode,
+      input.stateToken ?? '',
+    ].join('\0'))
     .digest('hex');
   return `lgq:billing:v1:subscription.cancel:${digest}`;
 }
@@ -87,7 +115,7 @@ export async function loadCancellableSubscription(
 ): Promise<CancellableSubscription | null> {
   const { data, error } = await admin
     .from('billing_subscriptions')
-    .select('provider_subscription_id, plan_code, status, cancel_at_period_end, current_period_end')
+    .select('provider_subscription_id, plan_code, status, cancel_at_period_end, current_period_end, updated_at')
     .eq('account_id', accountId)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -103,6 +131,7 @@ export async function loadCancellableSubscription(
     status: String(data.status),
     cancelAtPeriodEnd: data.cancel_at_period_end === true,
     currentPeriodEnd: data.current_period_end ? String(data.current_period_end) : null,
+    updatedAt: data.updated_at ? String(data.updated_at) : null,
   });
 }
 
@@ -157,6 +186,7 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
           workspaceId: input.accountId,
           providerSubscriptionId: subscription.providerSubscriptionId,
           mode: 'at_period_end',
+          stateToken: subscription.updatedAt,
         }),
       },
     );
@@ -173,6 +203,81 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
   } catch (error) {
     console.error('cancelBasePlanSubscriptionAtPeriodEnd failed:', error instanceof Error ? error.message : error);
     return { ok: false, error: 'Stripe could not cancel that subscription just now. Try again in a moment.' };
+  }
+}
+
+export type ResumeResult =
+  | { ok: true; alreadyActive: boolean; currentPeriodEnd: string | null }
+  | { ok: false; error: string };
+
+/**
+ * Undo a scheduled cancellation, while the plan is still open.
+ *
+ * The panel told a customer who had just cancelled to "contact support and we
+ * can put it back before it ends" -- another promise with no mechanism behind
+ * it, of exactly the kind the cancel button itself was built to retire. It is
+ * also the cheapest possible retention: the person has already decided to stay.
+ *
+ * The mirror image of the cancel path and deliberately so -- same read, same
+ * flag, same event-before-call ordering, same refusal to write
+ * billing_subscriptions (the projector owns that row). The only asymmetry is
+ * the window: loadCancellableSubscription filters on CANCELLABLE_STATUSES, so
+ * once the period has actually ended and Stripe has moved the subscription to
+ * `canceled`, this returns "nothing to resume" rather than asking Stripe to
+ * revive a dead subscription, which it would refuse anyway. Past that point
+ * subscribing again is a new purchase, not an undo.
+ */
+export async function resumeBasePlanSubscription(input: {
+  admin: SupabaseClient;
+  accountId: string;
+  actorEmail?: string | null;
+}): Promise<ResumeResult> {
+  const subscription = await loadCancellableSubscription(input.admin, input.accountId);
+  if (!subscription) {
+    return { ok: false, error: 'There is no subscription on this workspace to restore.' };
+  }
+  if (!subscription.cancelAtPeriodEnd) {
+    // Nothing scheduled, so the plan already renews. Same posture as the cancel
+    // path takes on an already-scheduled cancellation: what they asked for is
+    // true, so say so rather than sending a write or raising an error.
+    return { ok: true, alreadyActive: true, currentPeriodEnd: subscription.currentPeriodEnd };
+  }
+
+  await recordAccountEvent({
+    accountId: input.accountId,
+    kind: 'subscription_cancellation_revoked',
+    summary: `Restored the ${subscription.planCode} plan before its scheduled cancellation took effect`,
+    actorEmail: input.actorEmail ?? null,
+    meta: {
+      plan_code: subscription.planCode,
+      provider_subscription_id: subscription.providerSubscriptionId,
+      mode: 'resume',
+    },
+  });
+
+  try {
+    const stripe = getStripeClient();
+    await stripe.subscriptions.update(
+      subscription.providerSubscriptionId,
+      { cancel_at_period_end: false },
+      {
+        idempotencyKey: buildSubscriptionCancellationIdempotencyKey({
+          workspaceId: input.accountId,
+          providerSubscriptionId: subscription.providerSubscriptionId,
+          mode: 'resume',
+          stateToken: subscription.updatedAt,
+        }),
+      },
+    );
+    // The projected period end, not one read back off the response. Undoing a
+    // cancellation does not move the renewal date, and Stripe v22 does not carry
+    // current_period_end on the Subscription any more -- it lives on the item,
+    // which is why the two other readers in this codebase either cast around it
+    // or dig into items. Neither is needed for a date we already hold.
+    return { ok: true, alreadyActive: false, currentPeriodEnd: subscription.currentPeriodEnd };
+  } catch (error) {
+    console.error('resumeBasePlanSubscription failed:', error instanceof Error ? error.message : error);
+    return { ok: false, error: 'Stripe could not restore that subscription just now. Try again in a moment.' };
   }
 }
 

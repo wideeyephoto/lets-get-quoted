@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from 'react';
 
-import { cancelBasePlanSubscriptionAction, type CancelSubscriptionActionState } from './subscription-cancellation-actions';
+import {
+  cancelBasePlanSubscriptionAction,
+  resumeBasePlanSubscriptionAction,
+  type CancelSubscriptionActionState,
+  type ResumeSubscriptionActionState,
+} from './subscription-cancellation-actions';
 
 /**
  * The cancel affordance the Terms, the checkout consent box, the homepage and
@@ -12,6 +17,12 @@ import { cancelBasePlanSubscriptionAction, type CancelSubscriptionActionState } 
  * relationship and a stray click should not. It is not a destructive-sounding
  * confirm dialog either: cancelling is a thing a customer is entitled to do, and
  * making it feel dangerous is a dark pattern.
+ *
+ * Restoring is ONE step, deliberately. The asymmetry is the point: the click
+ * that costs someone their plan deserves a confirmation, and the click that
+ * gives it back does not. This panel used to tell them to "contact support" --
+ * a promise with no mechanism behind it, which is the same defect the cancel
+ * button itself was built to retire.
  */
 export default function CancelSubscriptionPanel({
   planName,
@@ -24,7 +35,14 @@ export default function CancelSubscriptionPanel({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [state, setState] = useState<CancelSubscriptionActionState>(null);
+  const [resumeState, setResumeState] = useState<ResumeSubscriptionActionState>(null);
   const [pending, startTransition] = useTransition();
+
+  // null defers to the server-rendered prop. revalidatePath will bring that prop
+  // into line on the next render, but the override makes the switch immediate
+  // rather than leaving the old panel on screen until the page catches up.
+  const [scheduledOverride, setScheduledOverride] = useState<boolean | null>(null);
+  const scheduled = scheduledOverride ?? alreadyScheduled;
 
   const endsOn = (value: string | null): string | null => {
     if (!value) return null;
@@ -34,8 +52,25 @@ export default function CancelSubscriptionPanel({
       : parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  const scheduled = alreadyScheduled || (state?.ok === true);
   const endDate = endsOn(state?.ok === true ? state.currentPeriodEnd : currentPeriodEnd);
+  const error = state?.ok === false ? state.error : resumeState?.ok === false ? resumeState.error : null;
+
+  const runCancel = () => startTransition(async () => {
+    const result = await cancelBasePlanSubscriptionAction();
+    setState(result);
+    setResumeState(null);
+    if (result?.ok) setScheduledOverride(true);
+  });
+
+  const runResume = () => startTransition(async () => {
+    const result = await resumeBasePlanSubscriptionAction();
+    setResumeState(result);
+    setState(null);
+    if (result?.ok) {
+      setScheduledOverride(false);
+      setConfirming(false);
+    }
+  });
 
   if (scheduled) {
     return (
@@ -49,8 +84,15 @@ export default function CancelSubscriptionPanel({
             : `Your ${planName} plan will not renew, and nothing more is charged.`}
         </p>
         <p className="muted-note">
-          Changed your mind? Contact support and we can put it back before it ends.
+          Changed your mind? You can restore it yourself any time before it ends — the plan carries on as if you had
+          never cancelled, at the same price, and you are not charged anything extra for the gap.
         </p>
+
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+
+        <button className="btn" type="button" disabled={pending} aria-busy={pending} onClick={runResume}>
+          {pending ? 'Restoring…' : `Keep ${planName} after all`}
+        </button>
       </section>
     );
   }
@@ -67,20 +109,15 @@ export default function CancelSubscriptionPanel({
       </p>
       <p className="muted-note">
         Your jobs, invoices and customers stay exactly where they are. The workspace moves to the free Flex plan when
-        the period ends, and its platform fee rate goes back to 1.25%.
+        the period ends, and its platform fee rate goes back to 1.25%. You can undo this any time before it takes
+        effect.
       </p>
 
-      {state?.ok === false ? <p className="form-error" role="alert">{state.error}</p> : null}
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
 
       {confirming ? (
         <div className="button-row">
-          <button
-            className="btn"
-            type="button"
-            disabled={pending}
-            aria-busy={pending}
-            onClick={() => startTransition(async () => setState(await cancelBasePlanSubscriptionAction()))}
-          >
+          <button className="btn" type="button" disabled={pending} aria-busy={pending} onClick={runCancel}>
             {pending ? 'Cancelling…' : `Yes, cancel ${planName}`}
           </button>
           <button className="btn subtle" type="button" disabled={pending} onClick={() => setConfirming(false)}>
