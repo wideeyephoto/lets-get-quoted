@@ -13,6 +13,7 @@ import {
 } from '@/lib/billing/overage-summary';
 import type { PlanIntent } from '@/lib/plan-intent';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
+import CancelSubscriptionPanel from './CancelSubscriptionPanel';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
 function formatDate(value: string): string {
@@ -227,6 +228,7 @@ export default function PlanUsageSection({
   storage = null,
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
+  cancellable = null,
   topUpCheckoutStatus = null,
   overage,
   planIntent = null,
@@ -239,6 +241,9 @@ export default function PlanUsageSection({
   overage: OverageSummary | null;
   // The plan chosen on /pricing before this workspace existed, already parsed.
   planIntent?: PlanIntent | null;
+  // Present only when this workspace has a subscription there is still something
+  // to cancel, and only when the cancellation flag is on.
+  cancellable?: { planName: string; currentPeriodEnd: string | null; alreadyScheduled: boolean } | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
@@ -320,6 +325,14 @@ export default function PlanUsageSection({
         <BasePlanSubscriptionCheckout
           initialPlanCode={planIntent?.planCode ?? null}
           initialBillingInterval={planIntent?.billingInterval ?? null}
+        />
+      ) : null}
+
+      {cancellable ? (
+        <CancelSubscriptionPanel
+          planName={cancellable.planName}
+          currentPeriodEnd={cancellable.currentPeriodEnd}
+          alreadyScheduled={cancellable.alreadyScheduled}
         />
       ) : null}
 

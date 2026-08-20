@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { cancelSubscriptionForAccountDeletion } from '@/lib/billing/subscription-cancellation';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,
@@ -912,9 +913,18 @@ export async function deleteAccountAction() {
   const { supabase, accountId, userId } = await requireOwnerContext();
   const admin = createAdminClient();
 
-  // NOTE: SaaS billing subscriptions aren't created yet (stripe_customer_id /
-  // subscription_status are dormant). When paid plans land, cancel the Stripe
-  // subscription here before deleting so a deleted account stops being billed.
+  // Paid plans HAVE landed, and billing_subscriptions.account_id is ON DELETE
+  // CASCADE -- so deleting the accounts row destroys the only local record of the
+  // subscription while Stripe carries on charging, and leaves the projector
+  // unable to bind the resulting events to any workspace. Cancel first.
+  //
+  // Immediate, not at period end: after the delete there is nothing left for a
+  // later cancellation to be projected onto. Best-effort by contract -- a Stripe
+  // failure must not trap somebody in an account they asked to delete, and a
+  // leaked subscription is recoverable by an operator where a blocked deletion
+  // is not. It logs the subscription id loudly when it cannot.
+  await cancelSubscriptionForAccountDeletion({ admin, accountId });
+
   const { error: accountError } = await admin.from('accounts').delete().eq('id', accountId);
   if (accountError) throw new Error(accountError.message);
 

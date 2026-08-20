@@ -32,6 +32,11 @@ import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing
 import { loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import { parsePlanIntent } from '@/lib/plan-intent';
+import { BILLING_PLANS, resolveBillingPlanId } from '@/lib/billing/catalog';
+import {
+  basePlanSubscriptionCancellationEnabled,
+  loadCancellableSubscription,
+} from '@/lib/billing/subscription-cancellation';
 import {
   loadMerchantOnboardingSurfaceForOwner,
   stripeMerchantOnboardingV2Enabled,
@@ -119,6 +124,22 @@ export default async function SettingsPage({
   // than throwing. A Settings page that 500s because one card cannot load is a
   // worse failure than a card that says nobody is here.
   const officeTeam = await loadOfficeTeam(createAdminClient(), accountId);
+
+  // Only offered when there is genuinely something to cancel. Same failure
+  // posture as the cards above: a subscription read that falls over must not
+  // take the whole Settings page with it, and the absence of the panel is the
+  // safe direction -- nobody is shown a cancel button that cannot work.
+  const cancellable = basePlanSubscriptionCancellationEnabled()
+    ? await loadCancellableSubscription(createAdminClient(), accountId)
+      .then((subscription) => (subscription
+        ? {
+          planName: BILLING_PLANS[resolveBillingPlanId(subscription.planCode)].name,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          alreadyScheduled: subscription.cancelAtPeriodEnd,
+        }
+        : null))
+      .catch(() => null)
+    : null;
 
   // Through the SESSION client: every overage table is owner-read and
   // service-role-write, because an owner who could write their own settings row
@@ -373,6 +394,7 @@ export default async function SettingsPage({
               'current-plan',
               'platform-fee',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
+              ...(cancellable ? ['cancel-plan'] : []),
               'usage-balances',
               ...(storageState ? ['workspace-storage'] : []),
               ...(showTopUpPurchase ? ['buy-credits'] : []),
@@ -380,6 +402,7 @@ export default async function SettingsPage({
             ],
             content: (
               <PlanUsageSection
+                cancellable={cancellable}
                 planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
                 data={planUsage}
                 storage={storageState}

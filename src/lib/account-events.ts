@@ -41,7 +41,10 @@ export type AccountEventKind =
   // first run because it is the only moment it is still in hand: paid checkout
   // is dark, so there is nothing to charge yet, and without a row here the
   // answer to "which plan did people come here for" is thrown away.
-  | 'plan_intent_recorded';
+  | 'plan_intent_recorded'
+  // Written BEFORE the Stripe call, so the request survives a crash mid-flight.
+  // The OUTCOME is the projector's to record, not this one's.
+  | 'subscription_cancellation_requested';
 
 export async function recordAccountEvent(input: {
   accountId: string;
