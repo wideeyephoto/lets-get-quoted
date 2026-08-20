@@ -228,22 +228,32 @@ describe('the crew seat gate patch', () => {
   });
 });
 
-describe('the SKU stays withheld', () => {
-  it('keeps crew_user unsellable while its ledger has no filler and no emptier', () => {
-    // The ledger and both gates now exist, but nothing writes a row on payment
-    // and nothing cancels one when the subscription lapses. Selling at this
-    // point charges $5 a month and grants no seat.
-    expect(TOP_UPS_WITHHELD.crew_user).toBeTruthy();
-    expect(SELLABLE_TOP_UP_IDS).not.toContain('crew_user');
-    expect(SELLABLE_TOP_UP_IDS).toHaveLength(5);
+describe('the SKU is sellable, and every reason it was not is closed', () => {
+  /**
+   * This block used to assert the opposite, and the flip is the point.
+   *
+   * It withheld crew_user because the ledger "has no filler and no emptier" --
+   * true when it was written, and false since 20260819010000 (fills on payment)
+   * and the capacity lifecycle sweep (empties on lapse). A withheld reason is a
+   * claim about the code, and a claim about the code goes stale silently. So
+   * rather than delete the block, it now pins the three things that had to
+   * become true, each of which was read out of production before this edit.
+   */
+  it('lets crew_user be bought', () => {
+    expect(TOP_UPS_WITHHELD).not.toHaveProperty('crew_user');
+    expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
+    // Guards the guard: an assertion that the list merely CONTAINS something
+    // would still pass if withholding broke open and everything became sellable.
+    expect(SELLABLE_TOP_UP_IDS).toHaveLength(6);
   });
 
-  it('states the reason that is actually true, not the superseded one', () => {
-    // The old reason blamed the rollout gate. That was never the blocker: the
-    // gate enforces correctly, it just had nothing to count.
-    const reason = TOP_UPS_WITHHELD.crew_user ?? '';
-    expect(reason).not.toContain('exact-1 rollout gate');
-    expect(reason).toMatch(/ledger/i);
-    expect(reason.length).toBeGreaterThan(20);
+  it('still withholds the other two capacity SKUs, each for its own reason', () => {
+    // crew_user leaving must not take its neighbours with it. office_user is
+    // held by permissions, storage_100gb by an enforcement flag -- different
+    // blockers, so they do not lift together.
+    expect(TOP_UPS_WITHHELD.office_user).toMatch(/no permissions at all/);
+    expect(TOP_UPS_WITHHELD.storage_100gb).toMatch(/LGQ_STORAGE_CAP_ENFORCED/);
+    expect(SELLABLE_TOP_UP_IDS).not.toContain('office_user');
+    expect(SELLABLE_TOP_UP_IDS).not.toContain('storage_100gb');
   });
 });

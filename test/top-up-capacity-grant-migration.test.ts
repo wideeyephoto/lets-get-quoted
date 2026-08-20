@@ -118,16 +118,29 @@ describe('what the grant writes', () => {
 });
 
 describe('what this migration deliberately does not do', () => {
-  it('leaves every recurring-capacity SKU withheld', () => {
-    // Granting is half the rail. Nothing here cancels a row when the
-    // subscription lapses, so a sold SKU would keep granting after payment
-    // stopped. The withheld set is asserted by fulfillment kind rather than by
-    // id, so a new capacity SKU cannot quietly become sellable.
+  it('grants without cancelling, so a capacity SKU needs the lifecycle sweep too', () => {
+    // Granting is half the rail: this migration writes a row on payment and
+    // nothing in THIS file cancels one when the subscription lapses. That is
+    // still true, and it is why a capacity SKU cannot go on sale on the strength
+    // of this migration alone -- the emptier lives in the capacity lifecycle
+    // sweep, and the counter must decline to count what it marked canceled.
+    expect(sql).not.toMatch(/status\s*=\s*'canceled'/i);
+
+    // Asserted by fulfillment kind rather than by id, so a NEW capacity SKU
+    // cannot quietly become sellable by being added to the catalog. crew_user is
+    // the one exception, and it is named here rather than pattern-matched: it
+    // went on sale on 2026-08-20 once the sweep and the `active`/`past_due`
+    // counter were both verified in production. Any other capacity SKU appearing
+    // in the sellable list is a mistake this test should catch.
     const capacitySkus = Object.values(TOP_UPS)
       .filter((sku) => sku.fulfillment === 'recurring_capacity')
       .map((sku) => sku.id);
     expect(capacitySkus.length).toBeGreaterThan(0);
     for (const id of capacitySkus) {
+      if (id === 'crew_user') {
+        expect(SELLABLE_TOP_UP_IDS).toContain(id);
+        continue;
+      }
       expect(TOP_UPS_WITHHELD).toHaveProperty(id);
       expect(SELLABLE_TOP_UP_IDS).not.toContain(id);
     }
