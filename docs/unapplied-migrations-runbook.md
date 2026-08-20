@@ -40,10 +40,28 @@ Filename order satisfies every dependency. There is no reordering to do.
 `close_overage_period` reads `workspace_overage_accruals`, which does not exist
 yet, so it would fail if called. Nothing calls it. Applying 080000 resolves that.
 
-## Which of these are live money bugs
+## Which of these are money bugs, and which are actually firing
 
-Payments went live 2026-08-17, so these two are real exposure now, not
-hypothetical:
+**Corrected 2026-08-20.** An earlier version of this section called the two
+below "live money bugs" and said payments have been live since 2026-08-17.
+Both mechanisms are real, but neither can fire today, and calling them live
+overstated the urgency.
+
+Both are scoped to `charge_model = 'direct'`
+(`20260819280000` line 62 and line 100; `20260819270000` patches
+`compute_direct_charge_refund_plan`). Production holds **four payments, all
+`destination`, and zero `direct`** — the direct-charge Connect rail is fully
+built and has no entry point in the app, so nothing can create one.
+
+They are preconditions for turning that rail on, not active bleeding. Apply them
+in the same run regardless; just do not treat them as an emergency. Re-check
+with:
+
+```sql
+select charge_model, count(*) from public.payments group by 1;
+```
+
+What each would do once direct charges exist:
 
 - **`20260819270000`** — a `full_combined` refund after a partial hands the wrong
   Application Fee to Stripe. Stripe prorates its refund against the *charge*
@@ -54,11 +72,15 @@ hypothetical:
   written `reconciled` after the original checkout projection. So **the first
   refund on a payment permanently blocks every later one.**
 
-These two should go first if the run has to be split.
+Both must land before the direct-charge rail is activated.
 
-**Not** currently at risk: `20260819250000`. A purchased office seat grants no
-capacity in production, but `office_user` is in `TOP_UPS_WITHHELD`, so nobody
-can buy one. It must be applied before that SKU is ever unwithheld.
+`20260819250000` is the same shape: `office_seat_usage` ignores purchased
+capacity, so a $15/month office seat grants nothing — but `office_user` is in
+`TOP_UPS_WITHHELD` and cannot be bought. Apply before that SKU is unwithheld.
+
+**The one with a real deadline is `20260819230000`.** `remove_office_user` does
+not exist, and the Team tab's Remove button calls it. That button ships with the
+next deploy of this branch, so this migration must land before or with it.
 
 ## Order dependencies worth knowing
 
