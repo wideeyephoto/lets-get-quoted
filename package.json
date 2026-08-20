@@ -22,6 +22,7 @@
     "audit:applied": "node scripts/audit-applied-migrations.mjs",
     "test:pg17:overage-idempotency": "node scripts/verify-overage-idempotency.mjs",
     "test:pg17:overage-settlement": "node scripts/verify-overage-settlement.mjs",
+    "test:pg17:scale-allowance": "node scripts/verify-scale-allowance-patch.mjs",
     "test:pg17:office-collision": "node scripts/verify-office-seat-collision.mjs",
     "test:pg17:voice-allowance": "node scripts/verify-voice-minute-allowance.mjs",
     "test:pg17:refund-reconciliation": "node scripts/verify-refund-reconciliation.mjs",
