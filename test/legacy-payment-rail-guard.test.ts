@@ -278,6 +278,13 @@ function checkoutRaceAdmin(
       }
       if (table === 'sites') return { select: vi.fn(() => query({ data: { company_name: 'Guard Contractor' }, error: null })) };
       if (table === 'extra_stop_requests') return { select: vi.fn(() => query({ data: null, error: null })) };
+      // The fee rate follows the plan now, not trailing volume. Flex is 125 bps,
+      // which is the same 1.25% the old bracket table charged at tier 1 -- so the
+      // expected application_fee_amount in these tests is unchanged, and THIS row
+      // is what now produces it. A green 125 is not evidence the rail is untouched.
+      if (table === 'workspace_entitlements') {
+        return { select: vi.fn(() => query({ data: { plan_code: 'flex', platform_fee_bps: 125 }, error: null })) };
+      }
       throw new Error(`unexpected table ${table}`);
     }),
   };

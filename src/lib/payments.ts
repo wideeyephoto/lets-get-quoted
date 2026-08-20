@@ -1,7 +1,8 @@
 import { createAdminClient } from '@/lib/auth';
+import { getWorkspaceFeeRate } from '@/lib/billing/workspace-fee-rate';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
-import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
+import { getStripeClient, computePlatformFee, computePlatformFeeCents, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { sendPaymentSmsEvent } from '@/lib/sms';
@@ -268,8 +269,7 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
 // specific Stripe session), so callers should prefer those when present and
 // only fall back to this quote.
 export async function getQuotedFee(accountId: string, amount: number): Promise<{ feeRate: number; platformFee: number }> {
-  const trailingVolume = await getTrailingVolume(accountId);
-  const feeRate = computeFeeRate(trailingVolume);
+  const { feeRate } = await getWorkspaceFeeRate(accountId);
   const platformFee = computePlatformFee(amount, feeRate);
   return { feeRate, platformFee };
 }
@@ -505,8 +505,9 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     }
   }
 
-  const trailingVolume = await getTrailingVolume(payment.account_id);
-  const feeRate = computeFeeRate(trailingVolume);
+  // The rate follows the plan, not trailing volume -- which is what /pricing
+  // sells and what the quote on the pay page has already shown this payer.
+  const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
   const platformFee = computePlatformFee(payment.amount, feeRate);
 
   // A payment-plan DEPOSIT must also SAVE the card for the later off-session
