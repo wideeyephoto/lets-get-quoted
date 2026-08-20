@@ -392,12 +392,6 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     + 'No live recurring Price exists, and an office user still holds no '
     + 'permissions at all - every capability ships off, so somebody paid for '
     + 'would be connected and unable to open anything',
-  crew_user:
-    'both halves this used to name are built: 20260819010000 fills the capacity '
-    + 'ledger when the Session is paid, and the capacity lifecycle sweep empties '
-    + 'it when the subscription lapses. The crew seat limit has added purchased '
-    + 'units since 20260818220000. A live recurring Stripe Price is the only '
-    + 'thing left',
   ai_voice_flex: AI_VOICE_WITHHELD,
   ai_voice_solo: AI_VOICE_WITHHELD,
   ai_voice_growth: AI_VOICE_WITHHELD,
