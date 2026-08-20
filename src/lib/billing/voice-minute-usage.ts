@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { tryUsageOverage } from '@/lib/billing/usage-overage';
+import { tryUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-overage';
 
 /**
  * DARK metering for AI Voice Receptionist minutes.
@@ -88,13 +88,17 @@ export type VoiceAdmission =
   | 'ledger_unavailable'
   | 'exhausted_not_enforced';
 
-export type UsageOverageHold = Readonly<{
-  resourceCode: string;
-  units: number;
-  millicents: number;
-  /** Carried so the release targets the period the charge was written under. */
-  periodStart: string;
-}>;
+/**
+ * An overage that was authorized and accrued, and can be given back.
+ *
+ * THE CANONICAL SHAPE, not a copy of it. Each of the four meters carried its
+ * own identical declaration, and a field added to one reached the others only
+ * when somebody remembered. That is not hypothetical: `periodStart` was added
+ * to fix a release that looked the period up itself and gave nothing back, and
+ * the copies had to be chased one at a time. `idempotencyKey` is the second
+ * such field, and this is the last time it has to be chased.
+ */
+export type { UsageOverageHold };
 
 export type VoiceMinuteDecision =
   | Readonly<{ outcome: 'admitted'; lease: VoiceMinuteLease }>
@@ -217,6 +221,9 @@ export async function admitVoiceCall(
         accountId: input.accountId,
         resourceCode: VOICE_MINUTE_RESOURCE_CODE,
         units: cap,
+        // The reservation key, suffixed. A retry of the same send therefore
+        // replays the same charge instead of adding a second one.
+        idempotencyKey: `${idempotencyKey}:overage`,
       });
       if (overage.outcome === 'accrued') {
         await recordAdmission(admin, input, null, 0);
@@ -227,6 +234,7 @@ export async function admitVoiceCall(
             units: cap,
             millicents: overage.chargedMillicents,
             periodStart: overage.periodStart,
+            idempotencyKey: overage.idempotencyKey,
           }),
         });
       }

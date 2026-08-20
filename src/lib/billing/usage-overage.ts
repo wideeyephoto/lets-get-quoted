@@ -60,6 +60,12 @@ export const OVERAGE_RATE_MILLICENTS: Readonly<Record<string, number>> = Object.
   voice_minutes: 35_000,
 });
 
+/**
+ * The same shape workspace_overage_accrual_events enforces. Kept beside the
+ * rates rather than inside the call so the meters can be checked against it.
+ */
+export const OVERAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_.@|-]{7,199}$/;
+
 export type UsageOverageDecision =
   | Readonly<{
     outcome: 'accrued';
@@ -75,6 +81,8 @@ export type UsageOverageDecision =
      * nothing, and reported success.
      */
     periodStart: string;
+    /** The key it was accrued under, so the release can name the same charge. */
+    idempotencyKey: string;
   }>
   | Readonly<{ outcome: 'not_authorized' }>
   | Readonly<{ outcome: 'cap_reached'; accruedMillicents: number; capMillicents: number }>
@@ -92,6 +100,11 @@ export type UsageOverageHold = Readonly<{
   units: number;
   millicents: number;
   periodStart: string;
+  /**
+   * What was charged, named. The release quotes this back rather than
+   * re-describing the charge in its own words -- see releaseUsageOverage.
+   */
+  idempotencyKey: string;
 }>;
 
 export type UsageOverageInput = Readonly<{
@@ -99,6 +112,14 @@ export type UsageOverageInput = Readonly<{
   resourceCode: string;
   /** Units the caller could not cover from the allowance. */
   units: number;
+  /**
+   * WHICH overrun this is. Required, and stable across retries of the same
+   * work: every meter already computes one for its reservation, and the overage
+   * path is the only place that used to throw it away. Without it the same send
+   * charged twice whenever this call was repeated -- and it is repeated
+   * whenever the RPC commits and the answer does not come back.
+   */
+  idempotencyKey: string;
 }>;
 
 /**
@@ -152,6 +173,12 @@ export async function tryUsageOverage(
 
   const rate = OVERAGE_RATE_MILLICENTS[input.resourceCode];
   if (!rate || input.units <= 0) return Object.freeze({ outcome: 'unavailable' as const });
+  // The database refuses a malformed key outright. Catching it here keeps a
+  // caller mistake from reading as a provider failure in the logs.
+  if (!OVERAGE_KEY_PATTERN.test(input.idempotencyKey)) {
+    console.error('usage overage called without a usable idempotency key:', input.resourceCode);
+    return Object.freeze({ outcome: 'unavailable' as const });
+  }
 
   const period = await resolvePeriod(admin, input.accountId);
   if (!period) return Object.freeze({ outcome: 'unavailable' as const });
@@ -164,6 +191,7 @@ export async function tryUsageOverage(
       p_rate_millicents: rate,
       p_period_start: period.start,
       p_period_end: period.end,
+      p_idempotency_key: input.idempotencyKey,
     });
     if (error) {
       console.error('usage overage authorization failed:', error);
@@ -183,6 +211,7 @@ export async function tryUsageOverage(
         accruedMillicents: accrued,
         capMillicents: cap,
         periodStart: period.start,
+        idempotencyKey: input.idempotencyKey,
       });
     }
     if (decision === 'cap_reached') {
@@ -207,28 +236,32 @@ export async function tryUsageOverage(
  * way back -- exactly as releaseTextCreditUsage is the way back from a
  * reservation.
  *
- * Never throws: it runs in a caller's error path, and the database floors the
- * decrement at zero so a duplicate release is a no-op rather than a credit.
+ * IT NAMES THE CHARGE RATHER THAN DESCRIBING IT. The old signature passed
+ * resource, period, units and millicents, and the database subtracted whatever
+ * it was told and floored at zero. Flooring stops one release going negative;
+ * it does not stop the same release being applied twice once other charges have
+ * refilled the row, and it cannot tell a release of the wrong amount from a
+ * release of the right one. The amount now comes from the recorded event, and
+ * an event releases exactly once.
+ *
+ * Never throws: it runs in a caller's error path.
  */
 export async function releaseUsageOverage(
   admin: SupabaseClient,
   input: Readonly<{
     accountId: string;
-    resourceCode: string;
-    units: number;
-    millicents: number;
-    /** The period the charge was accrued under. Never re-derived here. */
-    periodStart: string;
+    /** The key the charge was accrued under. Never re-derived here. */
+    idempotencyKey: string;
+    /** Carried for the log line only; the database uses its own record. */
+    resourceCode?: string;
+    millicents?: number;
   }>,
 ): Promise<boolean> {
-  if (!input.periodStart) return false;
+  if (!input.idempotencyKey) return false;
   try {
     const { data, error } = await admin.rpc('release_usage_overage', {
       p_account_id: input.accountId,
-      p_resource_code: input.resourceCode,
-      p_period_start: input.periodStart,
-      p_units: input.units,
-      p_millicents: input.millicents,
+      p_idempotency_key: input.idempotencyKey,
     });
     if (error) {
       console.error('usage overage release failed:', error);
@@ -240,10 +273,13 @@ export async function releaseUsageOverage(
     // perfectly happily, so a failed send kept its charge and reported success.
     const released = Number(data ?? 0);
     if (!Number.isFinite(released)) return false;
-    if (input.millicents > 0 && released <= 0) {
+    if (released <= 0) {
+      // Zero means the key matched no open event: either it was never accrued,
+      // or it was already released. Both leave a failed send holding its
+      // charge, so neither may report success.
       console.error(
         'usage overage release found nothing to release:',
-        input.resourceCode, input.periodStart,
+        input.resourceCode ?? 'unknown', input.idempotencyKey,
       );
       return false;
     }

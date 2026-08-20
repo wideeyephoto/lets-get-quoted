@@ -5,6 +5,7 @@ import {
   OVERAGE_RATE_MILLICENTS,
   USAGE_OVERAGE_FLAG,
   formatOverage,
+  OVERAGE_KEY_PATTERN,
   releaseUsageOverage,
   tryUsageOverage,
   usageOverageEnabled,
@@ -98,13 +99,13 @@ describe('nothing is charged without approval', () => {
   });
 
   it('touches no ledger while dark', async () => {
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 5 }, { enabled: false });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 5, idempotencyKey: 'test:v1:text_segments-5' }, { enabled: false });
     expect(d).toEqual({ outcome: 'not_authorized' });
     expect(rpc).not.toHaveBeenCalled();
   });
 
   it('refuses a resource it has no rate for, rather than guessing one', async () => {
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'storage_gb', units: 1 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'storage_gb', units: 1, idempotencyKey: 'test:v1:storage_gb-1' }, { enabled: true });
     expect(d).toEqual({ outcome: 'unavailable' });
     expect(rpc).not.toHaveBeenCalled();
   });
@@ -113,20 +114,20 @@ describe('nothing is charged without approval', () => {
     from.mockReturnValue({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: 'down' } }) }) }),
     });
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
     expect(d).toEqual({ outcome: 'unavailable' });
     expect(rpc).not.toHaveBeenCalled();
   });
 
   it('treats a database error as no authorization, never as approval', async () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
     expect(d).toEqual({ outcome: 'unavailable' });
   });
 
   it('treats a throw the same way', async () => {
     rpc.mockRejectedValue(new Error('connection reset'));
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
     expect(d).toEqual({ outcome: 'unavailable' });
   });
 });
@@ -134,7 +135,7 @@ describe('nothing is charged without approval', () => {
 describe('what it reports back', () => {
   it('passes the rate and period the database needs to decide', async () => {
     rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
-    await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10 }, { enabled: true });
+    await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(rpc).toHaveBeenCalledWith('authorize_usage_overage', expect.objectContaining({
       p_account_id: ACCOUNT,
       p_resource_code: 'text_segments',
@@ -146,7 +147,7 @@ describe('what it reports back', () => {
 
   it('reports an accrual with what is left of the cap', async () => {
     rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ outcome: 'accrued', chargedMillicents: 48_000, capMillicents: 5_000_000 });
   });
 
@@ -155,7 +156,7 @@ describe('what it reports back', () => {
     // the two -- midnight on a Flex workspace, an entitlement period arriving
     // mid-month -- meant it released nothing and said it worked.
     rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ periodStart: '2026-08-01T00:00:00Z' });
   });
 
@@ -163,7 +164,7 @@ describe('what it reports back', () => {
     // A contractor who hit their own ceiling deserves a different sentence from
     // one whose database call failed.
     rpc.mockResolvedValue({ data: [{ decision: 'cap_reached', accrued_millicents: 5_000_000, cap_millicents: 5_000_000, charged_millicents: 0 }], error: null });
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10 }, { enabled: true });
+    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ outcome: 'cap_reached', capMillicents: 5_000_000 });
   });
 
@@ -171,7 +172,7 @@ describe('what it reports back', () => {
     // Flex has no subscription period to overrun against.
     withPeriod(null, null);
     rpc.mockResolvedValue({ data: [{ decision: 'not_authorized' }], error: null });
-    await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1 }, { enabled: true });
+    await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
     const args = rpc.mock.calls[0][1];
     expect(args.p_period_start).toMatch(/^\d{4}-\d{2}-01T00:00:00\.000Z$/);
     expect(new Date(args.p_period_end).getTime()).toBeGreaterThan(new Date(args.p_period_start).getTime());
@@ -179,13 +180,20 @@ describe('what it reports back', () => {
 });
 
 describe('giving a charge back, which used to only look like it worked', () => {
-  // Two bugs lived here together. releaseUsageOverage re-derived the period
-  // instead of carrying back the one the accrual was written under, and it
-  // returned `!error` while the RPC returns the millicents actually released --
-  // so a release that matched no row reported success and the charge stayed on
-  // the books for work that had failed.
+  // Three bugs lived here in turn. It re-derived the period instead of carrying
+  // back the one the accrual was written under; it returned `!error` while the
+  // RPC returns the millicents actually released, so a release that matched no
+  // row reported success and the charge stayed on the books for work that had
+  // failed; and it described the charge in its own words -- resource, period,
+  // units, amount -- which the database subtracted on trust.
+  //
+  // It now NAMES the charge. The amount comes from the recorded event, and an
+  // event releases exactly once.
 
-  it('releases against the period it was told, never one it derives', async () => {
+  const ACCOUNT_ID = '11111111-1111-4111-8111-111111111111';
+  const KEY = 'text-credit:v1:msg_abc123:overage';
+
+  it('names the charge and lets the database supply the amount', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const admin = {
       rpc: (name: string, args: Record<string, unknown>) => {
@@ -197,66 +205,154 @@ describe('giving a charge back, which used to only look like it worked', () => {
       },
     } as never;
 
-    const ok = await releaseUsageOverage(admin, {
-      accountId: '11111111-1111-4111-8111-111111111111',
-      resourceCode: 'text_segments',
-      units: 1,
-      millicents: 4_800,
-      periodStart: '2026-08-01T00:00:00Z',
-    });
+    expect(await releaseUsageOverage(admin, {
+      accountId: ACCOUNT_ID, idempotencyKey: KEY, resourceCode: 'text_segments',
+    })).toBe(true);
 
-    expect(ok).toBe(true);
-    expect(calls[0]).toMatchObject({
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({
       name: 'release_usage_overage',
-      p_period_start: '2026-08-01T00:00:00Z',
+      p_account_id: ACCOUNT_ID,
+      p_idempotency_key: KEY,
     });
+    // Nothing about units, amount, period or resource is sent. Sending them
+    // would be sending the caller's opinion of a charge the database recorded.
+    for (const field of ['p_units', 'p_millicents', 'p_period_start', 'p_resource_code']) {
+      expect(calls[0], field).not.toHaveProperty(field);
+    }
   });
 
   it('reports failure when nothing was actually released', async () => {
-    // The RPC returns 0 when it finds no accrual row -- a wrong period, a period
-    // already closed, a resource that never accrued. `!error` called that
-    // success, which is how a failed send kept its charge.
+    // 0 means the key matched no OPEN event: never accrued, or already released.
+    // Both leave a failed send holding its charge, so neither is success. There
+    // is no longer a benign zero -- every recorded event has a positive amount,
+    // because the column will not store anything else.
     const admin = {
       rpc: () => Promise.resolve({ data: 0, error: null }),
       from: () => { throw new Error('should not read'); },
     } as never;
 
     expect(await releaseUsageOverage(admin, {
-      accountId: '11111111-1111-4111-8111-111111111111',
-      resourceCode: 'text_segments',
-      units: 1,
-      millicents: 4_800,
-      periodStart: '2026-08-01T00:00:00Z',
+      accountId: ACCOUNT_ID, idempotencyKey: KEY,
     })).toBe(false);
   });
 
-  it('treats releasing nothing as fine when nothing was owed', async () => {
+  it('reports failure when the release errors', async () => {
     const admin = {
-      rpc: () => Promise.resolve({ data: 0, error: null }),
+      rpc: () => Promise.resolve({ data: null, error: { message: 'down' } }),
       from: () => { throw new Error('should not read'); },
     } as never;
 
     expect(await releaseUsageOverage(admin, {
-      accountId: '11111111-1111-4111-8111-111111111111',
-      resourceCode: 'text_segments',
-      units: 0,
-      millicents: 0,
-      periodStart: '2026-08-01T00:00:00Z',
-    })).toBe(true);
+      accountId: ACCOUNT_ID, idempotencyKey: KEY,
+    })).toBe(false);
   });
 
-  it('refuses without a period rather than guessing one', async () => {
+  it('never throws, because it runs in a caller\'s error path', async () => {
+    const admin = {
+      rpc: () => { throw new Error('connection reset'); },
+      from: () => { throw new Error('should not read'); },
+    } as never;
+
+    await expect(releaseUsageOverage(admin, {
+      accountId: ACCOUNT_ID, idempotencyKey: KEY,
+    })).resolves.toBe(false);
+  });
+
+  it('refuses without a key rather than guessing at a charge', async () => {
     const admin = {
       rpc: () => { throw new Error('must not be called'); },
       from: () => { throw new Error('must not be called'); },
     } as never;
 
     expect(await releaseUsageOverage(admin, {
-      accountId: '11111111-1111-4111-8111-111111111111',
-      resourceCode: 'text_segments',
-      units: 1,
-      millicents: 4_800,
-      periodStart: '',
+      accountId: ACCOUNT_ID, idempotencyKey: '',
     })).toBe(false);
+  });
+});
+
+describe('the key that stops the same overrun being charged twice', () => {
+  // The retry is not hypothetical. The RPC commits, the connection drops before
+  // the row comes back, this function answers `unavailable`, the caller refuses
+  // to send -- and the workspace has paid for work nobody did. Then it retries.
+
+  it('sends the key to the database', async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const admin = {
+      rpc: (name: string, args: Record<string, unknown>) => {
+        calls.push({ name, ...args });
+        return Promise.resolve({
+          data: [{ decision: 'accrued', accrued_millicents: 4_800, cap_millicents: 50_000, charged_millicents: 4_800 }],
+          error: null,
+        });
+      },
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({
+        data: { period_start: '2026-08-01T00:00:00Z', period_end: '2026-09-01T00:00:00Z' }, error: null,
+      }) }) }) }),
+    } as never;
+
+    const decision = await tryUsageOverage(admin, {
+      accountId: ACCOUNT, resourceCode: 'text_segments', units: 1,
+      idempotencyKey: 'text-credit:v1:msg_zzz999:overage',
+    }, { enabled: true });
+
+    expect(decision.outcome).toBe('accrued');
+    expect(calls.at(-1)).toMatchObject({
+      name: 'authorize_usage_overage',
+      p_idempotency_key: 'text-credit:v1:msg_zzz999:overage',
+    });
+  });
+
+  it('hands the key back so the release can name the same charge', async () => {
+    const admin = {
+      rpc: () => Promise.resolve({
+        data: [{ decision: 'accrued', accrued_millicents: 4_800, cap_millicents: 50_000, charged_millicents: 4_800 }],
+        error: null,
+      }),
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({
+        data: { period_start: '2026-08-01T00:00:00Z', period_end: '2026-09-01T00:00:00Z' }, error: null,
+      }) }) }) }),
+    } as never;
+
+    const decision = await tryUsageOverage(admin, {
+      accountId: ACCOUNT, resourceCode: 'text_segments', units: 1,
+      idempotencyKey: 'text-credit:v1:msg_yyy888:overage',
+    }, { enabled: true });
+
+    expect(decision).toMatchObject({
+      outcome: 'accrued', idempotencyKey: 'text-credit:v1:msg_yyy888:overage',
+    });
+  });
+
+  it('charges nothing at all when the key is unusable', async () => {
+    // The database refuses a malformed key outright; refusing here too keeps a
+    // caller mistake from reading as a provider failure, and -- more to the
+    // point -- means no charge is attempted without one.
+    for (const key of ['', 'short', '-leading-punctuation']) {
+      const admin = {
+        rpc: () => { throw new Error('must not authorize without a usable key'); },
+        from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({
+          data: { period_start: '2026-08-01T00:00:00Z', period_end: '2026-09-01T00:00:00Z' }, error: null,
+        }) }) }) }),
+      } as never;
+
+      const decision = await tryUsageOverage(admin, {
+        accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: key,
+      }, { enabled: true });
+      expect(decision.outcome, JSON.stringify(key)).toBe('unavailable');
+    }
+  });
+
+  it('accepts the shape every meter actually produces', () => {
+    // Each meter suffixes its reservation key. If the pattern here and the CHECK
+    // constraint disagreed, the meters would fail at the database instead.
+    for (const key of [
+      'text-credit:v1:msg_abc123:overage',
+      'marketing-email:v1:send_abc123:overage',
+      'ai-writing:v1:gen_abc123:overage',
+      'ai-voice:v1:call_abc123:overage',
+    ]) {
+      expect(OVERAGE_KEY_PATTERN.test(key), key).toBe(true);
+    }
   });
 });
