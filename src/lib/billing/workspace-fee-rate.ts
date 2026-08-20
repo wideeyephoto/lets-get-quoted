@@ -60,7 +60,7 @@ export async function getWorkspaceFeeRate(accountId: string): Promise<WorkspaceF
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('workspace_entitlements')
-    .select('plan_code, platform_fee_bps')
+    .select('plan_code, platform_fee_bps, entitlement_state')
     .eq('account_id', accountId)
     .maybeSingle();
 
@@ -71,6 +71,15 @@ export async function getWorkspaceFeeRate(accountId: string): Promise<WorkspaceF
   }
 
   if (!data) return rateFor(DEFAULT_PLAN, 'default');
+
+  // The projector writes plan_code and platform_fee_bps on EVERY subscription
+  // event, cancellation included -- only entitlement_state moves. So a cancelled
+  // or unpaid Scale workspace keeps plan_code 'scale' forever, and reading the
+  // plan alone would go on charging it 0.10% indefinitely for a subscription it
+  // no longer has. 'grace' still gets the plan rate: they are past due, not gone,
+  // and grace already blocks collection by other means.
+  const entitled = data.entitlement_state === 'active' || data.entitlement_state === 'grace';
+  if (!entitled) return rateFor(DEFAULT_PLAN, 'default');
 
   const planCode = parseBillingPlanId(data.plan_code);
   if (!planCode) {

@@ -19,9 +19,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const state = {
-  row: null as { plan_code: string; platform_fee_bps: number | null } | null,
+  row: null as { plan_code: string; platform_fee_bps: number | null; entitlement_state?: string } | null,
   error: null as { message: string } | null,
 };
+
+/** Entitled unless a test says otherwise, which is the ordinary case. */
+const currentRow = () => (state.row === null
+  ? null
+  : { entitlement_state: 'active', ...state.row });
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => ({
@@ -30,7 +35,7 @@ vi.mock('@/lib/auth', () => ({
       return {
         select: () => ({
           eq: () => ({
-            maybeSingle: async () => ({ data: state.row, error: state.error }),
+            maybeSingle: async () => ({ data: currentRow(), error: state.error }),
           }),
         }),
       };
@@ -83,6 +88,24 @@ describe('the rate a workspace is actually charged', () => {
     expect(result.planCode).toBe('flex');
     expect(result.feeRateBps).toBe(125);
     expect(result.source).toBe('default');
+  });
+
+  it('drops a workspace that is no longer entitled back to Flex', async () => {
+    // The projector writes plan_code and platform_fee_bps on EVERY subscription
+    // event, cancellation included -- only entitlement_state moves. Reading the
+    // plan alone would keep charging a cancelled Scale workspace 0.10% forever
+    // for a subscription it no longer has.
+    for (const entitlementState of ['restricted', 'archived']) {
+      state.row = { plan_code: 'scale', platform_fee_bps: 10, entitlement_state: entitlementState };
+      const result = await getWorkspaceFeeRate('acct_1');
+      expect(result.planCode, `${entitlementState} kept its discount`).toBe('flex');
+      expect(result.feeRateBps).toBe(125);
+    }
+  });
+
+  it('keeps the plan rate through grace, because they are past due, not gone', async () => {
+    state.row = { plan_code: 'scale', platform_fee_bps: 10, entitlement_state: 'grace' };
+    expect((await getWorkspaceFeeRate('acct_1')).feeRateBps).toBe(10);
   });
 
   it('resolves the legacy plan aliases', async () => {

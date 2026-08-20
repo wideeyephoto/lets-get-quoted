@@ -126,6 +126,19 @@ describe('the wiring, end to end', () => {
     expect(actions).toContain('plan_intent_recorded');
   });
 
+  it('does not promise a plan the checkout cannot sell', () => {
+    // The REDIRECT was gated from the start; the SENTENCE was not. So a visitor
+    // who clicked "Choose Scale" was told "we'll set you up on Scale" and then
+    // landed in the site builder on Flex with nothing to buy. Both flags are off
+    // in production today, so this was the live behaviour.
+    const welcome = read('src', 'app', 'welcome', 'page.tsx');
+    expect(welcome).toContain('const canSellPlans = planUsageDashboardEnabled() && basePlanSubscriptionCheckoutEnabled();');
+    expect(welcome).toContain('{acknowledgePlan ? (');
+    // ...and the raw intent still reaches the form, because recording it does not
+    // depend on being able to sell anything.
+    expect(welcome).toContain('planCode={planIntent?.planCode ?? null}');
+  });
+
   it('is recorded even while paid checkout is dark', () => {
     // The flags are 0. Recording is what makes this worth shipping now; routing
     // to the checkout is gated on the surface existing, so the two must not be

@@ -170,6 +170,25 @@ describe('how it is wired', () => {
     expect(payPage).not.toContain('getQuotedFee(');
   });
 
+  it('never recomputes a basis the row already carries', () => {
+    // payments.fee_basis_amount is immutable once assigned -- the trigger raises
+    // 22000 for EVERY role, ungated by charge_model. createCheckoutSessionForPayment
+    // re-runs whenever the previous Session is not still 'open', which an expired
+    // one is not, and resolveFeeBasisCents is not stable across attempts: it reads
+    // sibling payments and the invoice's current line items. On a three-way split
+    // of a $1,080 invoice that is 333.33 on the first attempt and 333.34 on the
+    // retry -- the second write would be REFUSED and the payment could never be
+    // paid again. Locking to the persisted value is what makes the write
+    // idempotent.
+    const payments = read('src', 'lib', 'payments.ts');
+    expect(payments).toContain('const persistedBasis = payment.fee_basis_amount');
+    const guardAt = payments.indexOf('const persistedBasis');
+    const resolveAt = payments.indexOf('await resolveFeeBasisCents(admin, payment)');
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(resolveAt).toBeGreaterThan(-1);
+    expect(guardAt, 'the persisted basis must be consulted before recomputing').toBeLessThan(resolveAt);
+  });
+
   it('leaves the refund proportionality alone, which is already correct', () => {
     // fee = basis x rate, so a reversal of fee x (R/G) is basis x rate x R/G --
     // exactly what a subtotal basis wants. Changing this would break it.

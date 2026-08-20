@@ -35,6 +35,7 @@ export type Payment = {
   status: PaymentStatus;
   platform_fee: number | null;
   fee_rate: number | null;
+  fee_basis_amount: number | string | null;
   stripe_checkout_session: string | null;
   stripe_payment_intent: string | null;
   homeowner_phone: string | null;
@@ -528,7 +529,21 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   const { feeRate } = await getWorkspaceFeeRate(payment.account_id);
   // ...and it applies to the discount-adjusted service subtotal, not the gross.
   // Sales tax is not ours to take a percentage of, and the pricing page says so.
-  const feeBasis = await resolveFeeBasisCents(admin, payment);
+  //
+  // A basis already on the row WINS, and this is load-bearing rather than an
+  // optimisation. payments.fee_basis_amount is immutable once assigned -- the
+  // trigger raises 22000 for every role, ungated by charge_model -- and this
+  // function re-runs whenever the previous Checkout Session is no longer 'open',
+  // which an expired one is not. resolveFeeBasisCents depends on sibling
+  // payments and on the invoice's current line items, so a retry can legitimately
+  // compute a different number: on a three-way split, 333.33 then 333.34. That
+  // second write would be REFUSED and the payment could never be paid again.
+  // Locking it to the first value also matches what the row already means for
+  // fee_rate -- the rate that specific checkout was quoted at.
+  const persistedBasis = payment.fee_basis_amount == null ? null : Number(payment.fee_basis_amount);
+  const feeBasis = Number.isFinite(persistedBasis) && persistedBasis !== null
+    ? { basisCents: toCents(persistedBasis), grossCents: toCents(payment.amount), source: 'persisted' as const }
+    : await resolveFeeBasisCents(admin, payment);
   const platformFeeCents = Math.round(feeBasis.basisCents * feeRate);
   const platformFee = fromCents(platformFeeCents);
 
