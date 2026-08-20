@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
+import { loadVoiceCallHistory } from '@/lib/voice/call-history';
 import { pickBusinessName } from '@/lib/business-name';
 import { listAccountEvents } from '@/lib/account-events';
 import SaveButton from '@/components/save-button';
@@ -13,6 +14,7 @@ import ClientPortalSection from '../settings/ClientPortalSection';
 import IntakeContentSection from '../settings/IntakeContentSection';
 import MissedCallSection from '../settings/MissedCallSection';
 import AiReceptionistSection from '../settings/AiReceptionistSection';
+import VoiceCallHistorySection from '../settings/VoiceCallHistorySection';
 import ReviewRequestSection from '../settings/ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import OpenAnchoredCard from './OpenAnchoredCard';
@@ -171,6 +173,14 @@ export default async function AutomationsPage() {
       .eq('account_id', accountId)
       .maybeSingle()
     : null;
+  // Its own read, for the reason the two above are: voice_calls lands ahead of
+  // its migration on any environment that has not applied it, and
+  // loadVoiceCallHistory already degrades an unreadable history to an empty one
+  // rather than throwing.
+  const voiceHistory = aiVoice
+    ? await loadVoiceCallHistory(supabase, accountId, { limit: 20 })
+    : null;
+
   const voiceConcurrentCalls = Number(
     ((voiceLimitRead?.error ? null : voiceLimitRead?.data?.feature_limits) as Record<string, unknown> | null)
       ?.voice_concurrent_calls ?? 0,
@@ -583,6 +593,9 @@ export default async function AutomationsPage() {
               timezone={accountTimeZone}
               concurrentCalls={voiceConcurrentCalls}
             />
+            {voiceHistory ? (
+              <VoiceCallHistorySection history={voiceHistory} timezone={accountTimeZone} />
+            ) : null}
           </AutomationCard>
         ) : null}
 

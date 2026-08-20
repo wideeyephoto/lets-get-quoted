@@ -34778,3 +34778,29 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   .voice-card .voice-hours-row label { grid-column: 1 / -1; }
   .voice-card .voice-hours-row span { display: none; }
 }
+
+/* Call history, inside the receptionist card. Scoped under .voice-history for
+   the same reason everything else on this card is. */
+.voice-history-empty { margin: 1rem 0 0; font-size: 0.85rem; line-height: 1.55; color: var(--mute-t50); }
+.voice-history { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--edge-t14); }
+.voice-history .voice-history-totals { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-bottom: 1rem; }
+.voice-history .voice-history-totals div { display: grid; gap: 0.1rem; }
+.voice-history .voice-history-totals strong { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+.voice-history .voice-history-totals span { font-size: 0.78rem; color: var(--mute-t50); }
+.voice-history .voice-history-unmetered strong { color: var(--ink-orange-1); }
+.voice-history .voice-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.voice-history .voice-history-list li {
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+}
+.voice-history .voice-history-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
+.voice-history .voice-history-head strong { font-size: 0.92rem; color: var(--text); }
+.voice-history .voice-history-when { font-size: 0.8rem; color: var(--mute-t50); }
+.voice-history .voice-history-summary { margin: 0.4rem 0 0.55rem; font-size: 0.85rem; line-height: 1.5; color: var(--mute-t60); }
+.voice-history .voice-history-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.79rem; color: var(--mute-t50); }
+.voice-history .voice-history-meta a { color: inherit; text-decoration: underline; }
+.voice-history .voice-history-meta [data-settlement='overage'] { color: var(--ink-orange-1); }
+.voice-history .voice-history-meta [data-settlement='unmetered'],
+.voice-history .voice-history-meta [data-settlement='unbillable'] { color: var(--ink-orange-1); font-weight: 600; }
