@@ -21,6 +21,7 @@
     "test:pg17:ledger-contract": "node scripts/verify-usage-meter-ledger-contract.mjs",
     "test:pg17:office-collision": "node scripts/verify-office-seat-collision.mjs",
     "test:pg17:voice-allowance": "node scripts/verify-voice-minute-allowance.mjs",
+    "test:pg17:refund-reconciliation": "node scripts/verify-refund-reconciliation.mjs",
     "test:pg17:refund-mode": "node scripts/verify-refund-mode.mjs",
     "test:pg17:truncate": "node scripts/verify-truncate-revoke.mjs",
     "test:pg17:voice-inbox": "node scripts/verify-voice-event-inbox.mjs",
