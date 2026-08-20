@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { loadOfficeTeam } from '@/lib/office-team';
 import { pickBusinessName } from '@/lib/business-name';
 import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
@@ -36,6 +37,7 @@ import {
 import { topUpPurchaseEnabled } from '@/lib/billing/top-up-purchase-entrypoint';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import PlanUsageSection from './PlanUsageSection';
+import OfficeTeamSection from './OfficeTeamSection';
 import MerchantOnboardingSection from './MerchantOnboardingSection';
 
 export const metadata = { title: 'Account' };
@@ -98,6 +100,14 @@ export default async function SettingsPage({
         ? loadWorkspaceStorageState(createAdminClient(), accountId)
         : Promise.resolve(null),
     ]);
+
+  // Its own read, and tolerant of the migrations not being applied. Everything
+  // it touches -- office_invitations, and memberships filtered to office --
+  // lands ahead of its migration on any environment that has not run it, and
+  // loadOfficeTeam already degrades an unreadable team to an empty one rather
+  // than throwing. A Settings page that 500s because one card cannot load is a
+  // worse failure than a card that says nobody is here.
+  const officeTeam = await loadOfficeTeam(createAdminClient(), accountId);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = pickBusinessName(site, account);
@@ -325,6 +335,17 @@ export default async function SettingsPage({
                   <DeleteAccountButton action={deleteAccountAction} businessName={businessName} />
                 </section>
               </>
+            ),
+          },
+          {
+            id: 'team',
+            label: 'Team',
+            anchors: ['office-team'],
+            content: (
+              <section id="office-team" className="settings-card">
+                <h2>Office team</h2>
+                <OfficeTeamSection team={officeTeam} />
+              </section>
             ),
           },
           ...(pricingDashboardEnabled && planUsage ? [{
