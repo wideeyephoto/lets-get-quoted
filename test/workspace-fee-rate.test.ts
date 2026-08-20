@@ -127,6 +127,22 @@ describe('the charge path cannot fall back to volume', () => {
     expect(payments).not.toContain('computeFeeRate');
   });
 
+  it('refuses at the charge site and degrades at the display site', () => {
+    // The asymmetry is the whole point. getWorkspaceFeeRate throws rather than
+    // guessing an unknowable rate, which is correct when money is about to move
+    // and wrong on a homeowner's payment page -- there, a refused quote must
+    // cost an estimate, not the pay button. This had no test at all, and making
+    // the resolver strict is exactly what turned it into a 500 risk.
+    const payments = read('src', 'lib', 'payments.ts');
+    const chargeSite = payments.slice(payments.indexOf('const { feeRate } = await getWorkspaceFeeRate('));
+    expect(chargeSite.slice(0, 200)).not.toContain('.catch(');
+
+    const payPage = read('src', 'app', 'pay', '[id]', 'page.tsx');
+    const quoteAt = payPage.indexOf('getQuotedFee(');
+    expect(quoteAt, 'the pay page no longer quotes a fee').toBeGreaterThan(-1);
+    expect(payPage.slice(quoteAt, quoteAt + 300)).toContain('.catch(');
+  });
+
   it('keeps the volume table for the admin diagnostic it is labelled as', () => {
     // Deleting it would take the trailing-volume paging guard with it, and that
     // guard documents a real production bug class: a silent 1,000-row truncation

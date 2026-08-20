@@ -133,8 +133,22 @@ export default async function PublicPaymentPage({
   // (the actual rate used for that Stripe session) — use those. Otherwise,
   // quote the CURRENT rate live so the fee is visible before checkout ever
   // starts, closing the "fee only shown after checkout" trust gap.
+  //
+  // The quote is allowed to fail; the page is not. getQuotedFee resolves the
+  // workspace's plan and now REFUSES rather than guessing when the rate is
+  // unknowable -- an unpriceable plan code, or a stored platform_fee_bps that
+  // disagrees with the catalog. That is the right answer when money is about to
+  // move, and the wrong one here: this is a homeowner's payment page, and
+  // hiding an estimate is a far smaller failure than a 500 where the pay button
+  // should be. createCheckoutSessionForPayment still refuses, so nothing is ever
+  // charged at a rate we could not determine.
   const feeIsLocked = payment.fee_rate != null;
-  const quotedFee = canPay && !feeIsLocked ? await getQuotedFee(payment.account_id, payment.amount) : null;
+  const quotedFee = canPay && !feeIsLocked
+    ? await getQuotedFee(payment.account_id, payment.amount).catch((error) => {
+      console.error('pay page fee quote failed:', error instanceof Error ? error.message : error);
+      return null;
+    })
+    : null;
   const displayFeeRate = payment.fee_rate ?? quotedFee?.feeRate ?? null;
   const displayFeeAmount = payment.platform_fee ?? quotedFee?.platformFee ?? null;
   const businessName = payment.display_business_name;
