@@ -224,3 +224,45 @@ describe('the words match what actually happened', () => {
     expect(templates).toContain('was not completed');
   });
 });
+
+describe('no surface invites a second payment for money already moving', () => {
+  /**
+   * The whole `processing` story, checked in one place at the end.
+   *
+   * Four customer-facing surfaces can show or offer a payment. Each had to learn
+   * the same distinction, because `status = 'processing'` is written when a
+   * Checkout Session is CREATED and therefore covers both a bank transfer in
+   * flight and a checkout somebody abandoned.
+   */
+  const SURFACES = [
+    ['pay page', 'src/app/pay/[id]/page.tsx'],
+    ['invoice state machine', 'src/lib/invoice-pay.ts'],
+    ['client job page', 'src/app/client/jobs/[token]/page.tsx'],
+  ] as const;
+
+  for (const [name, file] of SURFACES) {
+    it(`${name} consults async_payment_pending_at, not status alone`, () => {
+      const source = readFileSync(join(process.cwd(), file), 'utf8');
+      expect(source).toContain('async_payment_pending_at');
+      expect(source).toContain("'processing'");
+    });
+  }
+
+  it('the client job page still LISTS an in-flight payment', () => {
+    // It is outstanding, and hiding it would look like it had vanished. What it
+    // must not do is drive the "Pay $3,500" call to action.
+    const source = readFileSync(join(process.cwd(), 'src/app/client/jobs/[token]/page.tsx'), 'utf8');
+    expect(source).toContain('const openPayments');
+    expect(source).toContain('const payableNow');
+    expect(source).toContain('openPayment: payableNow[0]');
+  });
+
+  it('an abandoned checkout still says Pay everywhere', () => {
+    // The other half, and the easier one to lose: withholding the button from
+    // every `processing` payment is what made an invoice unpayable for a day.
+    const invoicePay = readFileSync(join(process.cwd(), 'src/lib/invoice-pay.ts'), 'utf8');
+    expect(invoicePay).toContain("payment.status === 'processing' && Boolean(payment.async_payment_pending_at)");
+    const clientPage = readFileSync(join(process.cwd(), 'src/app/client/jobs/[token]/page.tsx'), 'utf8');
+    expect(clientPage).toContain("!(payment.status === 'processing' && payment.async_payment_pending_at)");
+  });
+});

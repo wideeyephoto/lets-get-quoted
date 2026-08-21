@@ -168,6 +168,24 @@ export default async function ClientJobDashboardPage({
   const openPayments = dashboard.payments.filter(
     (payment) => (payment.status === 'requested' || payment.status === 'processing') && !payment.payment_plan_id,
   );
+  /**
+   * The ones there is still any point pressing Pay on.
+   *
+   * A payment whose bank transfer is genuinely in flight stays in the list
+   * above -- it is outstanding, and hiding it would look like it had vanished --
+   * but it must not drive the page's call to action. Telling somebody "Pay
+   * $3,500" about money already on its way is the invitation to pay twice that
+   * /pay/[id] now refuses at the other end; this stops the prompt existing in
+   * the first place.
+   *
+   * `status = 'processing'` alone does not mean in flight -- it is written when
+   * a Checkout Session is created, so it also covers an abandoned checkout,
+   * which very much should still say Pay. async_payment_pending_at is the
+   * difference.
+   */
+  const payableNow = openPayments.filter(
+    (payment) => !(payment.status === 'processing' && payment.async_payment_pending_at),
+  );
   const settledPayments = dashboard.payments.filter((payment) => payment.status === 'paid' && !payment.payment_plan_id);
   const depositPayment = openPayments.find((payment) => payment.kind === 'deposit');
   const plan = dashboard.paymentPlan;
@@ -291,7 +309,7 @@ export default async function ClientJobDashboardPage({
     scheduledLabel,
     scheduledPast,
     jobStatus: dashboard.job.status ?? null,
-    openPayment: openPayments[0] ? { id: openPayments[0].id, amount: Number(openPayments[0].amount) } : null,
+    openPayment: payableNow[0] ? { id: payableNow[0].id, amount: Number(payableNow[0].amount) } : null,
   });
   const { copy: nextStep, href: nextHref, label: nextLabel } = next;
 
