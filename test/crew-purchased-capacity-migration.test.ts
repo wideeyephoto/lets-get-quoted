@@ -248,10 +248,23 @@ describe('the SKU is sellable, and every reason it was not is closed', () => {
   });
 
   it('still withholds the other two capacity SKUs, each for its own reason', () => {
-    // crew_user leaving must not take its neighbours with it. office_user is
-    // held by permissions, storage_100gb by an enforcement flag -- different
-    // blockers, so they do not lift together.
-    expect(TOP_UPS_WITHHELD.office_user).toMatch(/no permissions at all/);
+    // crew_user leaving must not take its neighbours with it. They are held by
+    // different blockers, so they do not lift together.
+    //
+    // THIS ASSERTION USED TO PIN A CLAIM THAT HAD GONE FALSE -- the exact
+    // failure the comment above warns about, happening to the neighbour it was
+    // warning for. It required the reason to say office users hold "no
+    // permissions at all": true when written, false once thirteen capabilities
+    // were enabled, and false twice over once the leads board opened on
+    // 2026-08-21. A test can hold a stale reason in place as surely as it can
+    // catch one.
+    //
+    // What actually holds office_user now is the Price, read out of LIVE Stripe
+    // rather than assumed: inspect:live-top-ups reports NO LIVE PRICE for it.
+    // The second assertion is the tripwire -- if that sentence comes back, so
+    // has the stale claim.
+    expect(TOP_UPS_WITHHELD.office_user).toMatch(/No live recurring Price exists/);
+    expect(TOP_UPS_WITHHELD.office_user).not.toMatch(/no permissions at all/);
     expect(TOP_UPS_WITHHELD.storage_100gb).toMatch(/LGQ_STORAGE_CAP_ENFORCED/);
     expect(SELLABLE_TOP_UP_IDS).not.toContain('office_user');
     expect(SELLABLE_TOP_UP_IDS).not.toContain('storage_100gb');

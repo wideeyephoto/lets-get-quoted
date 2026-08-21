@@ -386,12 +386,16 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
   office_user:
     'the seat rail is complete - invitation, acceptance, removal, last-owner '
     + 'protection, reaching the workspace - and since 20260819250000 a purchased '
-    + 'seat actually raises the limit, which it did not before: the grant and '
-    + 'lapse paths both worked while the limit ignored them, so selling this '
-    + 'would have charged $15 a month and granted nothing. Two reasons remain. '
-    + 'No live recurring Price exists, and an office user still holds no '
-    + 'permissions at all - every capability ships off, so somebody paid for '
-    + 'would be connected and unable to open anything',
+    + 'seat actually raises the limit, which it did not before. THE PERMISSIONS '
+    + 'HALF IS NO LONGER THE BLOCKER: thirteen capabilities are enabled, and '
+    + 'since 20260821 an office user lands on the leads board and can read, '
+    + 'triage and edit a lead. What remains is one switch and one gap. No live '
+    + 'recurring Price exists. And leads is the only one of the three tables the '
+    + 'database supports that any page reaches: clients and jobs were both '
+    + 'audited and refused, clients because its detail page states "$0.00 paid" '
+    + 'as a fact when payments is owner-only, jobs because its detail page '
+    + 'builds an admin client while rendering and reads two dozen owner-only '
+    + 'tables. So the seat buys a lead queue today, not a back office',
   ai_voice_flex: AI_VOICE_WITHHELD,
   ai_voice_solo: AI_VOICE_WITHHELD,
   ai_voice_growth: AI_VOICE_WITHHELD,
