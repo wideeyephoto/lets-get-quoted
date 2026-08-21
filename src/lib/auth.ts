@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { clientIpFrom } from '@/lib/rate-limit';
 import { deniedMessage, parseStaffRole, staffCan, type Permission, type StaffRole } from '@/lib/staff';
 import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
+import { OFFICE_NO_ACCESS_PATH, officeLandingPath } from '@/lib/office-access';
 
 // Service-role client bypasses RLS for trusted server-side writes.
 // Never expose this client or its key to the browser.
@@ -182,6 +183,72 @@ export async function ensureAccountMembership(userId: string) {
   return { account_id: newAccount.id, role: 'owner' };
 }
 
+/** The columns every dashboard guard gates on. */
+const ACCOUNT_GATE_COLUMNS = 'suspended_at, terms_accepted_at, terms_version, timezone';
+
+type AccountGateRow = {
+  suspended_at?: string | null;
+  terms_accepted_at?: string | null;
+  terms_version?: string | null;
+  timezone?: string | null;
+} | null | undefined;
+
+/**
+ * The gates a dashboard session passes once its role is known.
+ *
+ * ONE COPY, TWO GUARDS. requireOwnerContext and requireOfficeContext both apply
+ * these, and a rule about suspension written out twice is a rule that will
+ * eventually only be true once.
+ *
+ * The READ is deliberately NOT shared, and the reason is a policy: `accounts`
+ * has `acc_read` as `is_owner(id)`, so an office user reading its own workspace
+ * row through the SESSION client gets NOTHING back. Passing that null in here
+ * would read as "not suspended" and let an office user keep working inside a
+ * business staff had suspended. The office guard therefore reads with the
+ * service role and hands the row in; the owner guard keeps its RLS read, which
+ * for an owner returns the same row either way.
+ */
+function applyAccountGates(
+  acct: AccountGateRow,
+  options: { role: 'owner' | 'office'; skipFirstRunGate?: boolean },
+): void {
+  // Staff-suspended accounts are blocked from the whole workspace until lifted,
+  // whoever is asking. Defensive: a missing column (pre-migration) or read error
+  // is treated as "not suspended" so this never breaks the dashboard before it
+  // is deployed.
+  if (acct && acct.suspended_at) {
+    redirect('/account-suspended');
+  }
+
+  // Terms of Service gate. Lives here rather than in the dashboard layout
+  // because a server action is a public endpoint: a check that only runs while
+  // rendering a page is not a check. /welcome passes skipFirstRunGate so it can
+  // render and so its own action can save without redirecting to itself.
+  //
+  // Fails OPEN, deliberately, and only on the specific shape that means "this
+  // deploy is ahead of its migration": `acct` null (read failed, or the selected
+  // column does not exist yet) means carry on. A successful read with the column
+  // present and empty is the only thing that gates. The inverse default would
+  // turn one mis-ordered deploy into every owner locked out of their dashboard,
+  // and this exists to have an agreement on file — not as a security boundary.
+  const hasTermsColumns = acct !== null && acct !== undefined && 'terms_accepted_at' in acct;
+  if (!hasTermsColumns) return;
+
+  if (options.role === 'office') {
+    // An office user cannot agree to terms on behalf of the business, so
+    // /welcome is not a page to send them to -- they would be asked to accept an
+    // agreement that is not theirs, and could not proceed if they declined. The
+    // business has not finished setting itself up; the holding page says exactly
+    // that, and the owner is the one who can change it.
+    if (needsFirstRun(acct as FirstRunAccount)) redirect(OFFICE_NO_ACCESS_PATH);
+    return;
+  }
+
+  if (!options.skipFirstRunGate && needsFirstRun(acct as FirstRunAccount)) {
+    redirect('/welcome');
+  }
+}
+
 // Shared guard for server components/actions that require a logged-in owner.
 // Returns a session-scoped (RLS-respecting) Supabase client plus the resolved
 // user + account context. Redirects to /login if any check fails.
@@ -221,28 +288,10 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   // "not suspended" so this never breaks the dashboard before it's deployed.
   const { data: acct } = await supabase
     .from('accounts')
-    .select('suspended_at, terms_accepted_at, terms_version, timezone')
+    .select(ACCOUNT_GATE_COLUMNS)
     .eq('id', membership.accountId)
     .maybeSingle();
-  if (acct && (acct as { suspended_at?: string | null }).suspended_at) {
-    redirect('/account-suspended');
-  }
-
-  // Terms of Service gate. Lives here rather than in the dashboard layout
-  // because a server action is a public endpoint: a check that only runs while
-  // rendering a page is not a check. /welcome passes skipFirstRunGate so it can
-  // render and so its own action can save without redirecting to itself.
-  //
-  // Fails OPEN, deliberately, and only on the specific shape that means "this
-  // deploy is ahead of its migration": `acct` null (read failed, or the selected
-  // column does not exist yet) means carry on. A successful read with the column
-  // present and empty is the only thing that gates. The inverse default would
-  // turn one mis-ordered deploy into every owner locked out of their dashboard,
-  // and this exists to have an agreement on file — not as a security boundary.
-  const hasTermsColumns = acct !== null && acct !== undefined && 'terms_accepted_at' in acct;
-  if (!options.skipFirstRunGate && hasTermsColumns && needsFirstRun(acct as FirstRunAccount)) {
-    redirect('/welcome');
-  }
+  applyAccountGates(acct, { role: 'owner', skipFirstRunGate: options.skipFirstRunGate });
 
   // userEmail is who to write into an audit trail. Anything that records a
   // decision — approving hours, marking a crew member paid — has to name a
@@ -522,6 +571,126 @@ export async function loadHeldCapabilities(
   // screen they should not see cannot be undone by a later deploy.
   if (error || !data) return new Set<string>();
   return new Set(data.map((row) => row.capability as string));
+}
+
+/**
+ * Everything the two office-capable guards agree on, resolved once.
+ *
+ * Not exported: entering the dashboard is either the SHELL's question or a
+ * PAGE's, and both are below.
+ */
+async function resolveOfficeCapableMember() {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  try {
+    await ensureAccountMembership(user.id);
+  } catch (error) {
+    console.error('ensureAccountMembership error:', error);
+    throw error;
+  }
+
+  const membership = await getCurrentMembership(user.id);
+  if (!membership.accountId || (membership.role !== 'owner' && membership.role !== 'office')) {
+    redirect('/login');
+  }
+
+  const role = membership.role as 'owner' | 'office';
+  const held = await loadHeldCapabilities(role);
+
+  // Read with the SERVICE ROLE, not the session client. `accounts` has
+  // `acc_read` as `is_owner(id)`, so an office user's own read returns nothing
+  // and every gate below would silently pass -- letting somebody keep working
+  // inside a business staff had suspended. The owner guard's RLS read returns
+  // the same row for an owner, so the two agree wherever they overlap.
+  const { data: acct } = await createAdminClient()
+    .from('accounts')
+    .select(ACCOUNT_GATE_COLUMNS)
+    .eq('id', membership.accountId)
+    .maybeSingle();
+
+  applyAccountGates(acct as AccountGateRow, { role });
+
+  return {
+    supabase,
+    userId: user.id,
+    userEmail: user.email ?? null,
+    accountId: membership.accountId,
+    accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
+    role,
+    capabilities: held,
+  };
+}
+
+/**
+ * The dashboard SHELL's own context. Chrome only -- never a page's guard.
+ *
+ * The layout wraps every dashboard route, so it cannot ask requireOwnerContext
+ * without bouncing office users off pages they are allowed to open. It also
+ * cannot decide anything on its own behalf: a layout does not receive the
+ * pathname, and a capability does not belong there anyway.
+ *
+ * So it admits any member of the workspace and the PAGE decides. That is not a
+ * hole, because nothing renders from the shell alone: every page under
+ * /dashboard still runs its own guard, and all but the deliberately converted
+ * ones still run requireOwnerContext -- which sends an office user straight back
+ * out. Reachability is opt-in per page; this only stops the shell pre-empting
+ * the decision.
+ */
+export async function requireDashboardShellContext() {
+  const { supabase, accountId, role, capabilities } = await resolveOfficeCapableMember();
+  return { supabase, accountId, role, capabilities };
+}
+
+/**
+ * A page or action an office user may reach, given the capabilities it names.
+ *
+ * THIS IS NOT A WIDER requireOwnerContext, and the difference is the whole
+ * design. requireOwnerContext still means "owner, nobody else" at all ~490 of
+ * its call sites, and it still sends an office user to /office-access. Nothing
+ * becomes reachable by being left alone: a page or action opens to an office
+ * user only by being changed, deliberately, to call THIS and to name the
+ * capability it needs. Everything nobody has thought about stays owner-only by
+ * omission, which is the direction this has to fail.
+ *
+ * NAME THE CAPABILITY THE WORK ACTUALLY NEEDS. Reading is not writing, and a
+ * page that lists leads and an action that deletes one are not the same
+ * question. Passing several means ALL of them are required.
+ *
+ * THIS IS ALSO NOT THE SECURITY BOUNDARY. Row-level security is:
+ * `office_can(account_id, capability)` decides which rows exist for the session
+ * client returned here, and would refuse an office user reading a table they
+ * hold no capability for even if this let them past. Two independent checks that
+ * have to agree, not one check trusted twice -- and RLS is the one that cannot
+ * be forgotten at a call site.
+ */
+export async function requireOfficeContext(...capabilities: readonly string[]) {
+  if (capabilities.length === 0) {
+    // A guard asked for nothing would admit every office user to whatever it is
+    // guarding. That is a mistake at the call site, not a permissive default.
+    throw new Error('requireOfficeContext requires at least one capability');
+  }
+
+  const context = await resolveOfficeCapableMember();
+
+  if (!capabilities.every((capability) => context.capabilities.has(capability))) {
+    // Their own first permitted page rather than an error. They are an employee
+    // who followed a link, not somebody probing paths, and the honest answer to
+    // "you cannot open this" is to show them what they can. officeLandingPath
+    // falls back to the holding page when they hold nothing, so this cannot
+    // bounce between two pages neither of which admits them.
+    //
+    // An owner can never reach this branch -- their capability set answers true
+    // to everything -- but the fallback names /dashboard rather than relying on
+    // that, because a redirect computed from an office allowlist is the wrong
+    // answer for the person who owns the business.
+    redirect(context.role === 'owner' ? '/dashboard' : officeLandingPath(context.capabilities));
+  }
+
+  return context;
 }
 
 /**

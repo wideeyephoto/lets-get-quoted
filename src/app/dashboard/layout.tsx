@@ -14,7 +14,7 @@
 import '../globals.css';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireDashboardShellContext } from '@/lib/auth';
 import StripeAlertBanner from './StripeAlertBanner';
 import { connectStripeFromBannerAction } from './stripe-actions';
 
@@ -32,7 +32,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     return <>{children}</>;
   }
 
-  const { supabase, accountId } = await requireOwnerContext();
+  // The SHELL's guard, not a page's. It admits any member of the workspace so
+  // that an office user is not bounced off a page they are allowed to open --
+  // every page still runs its own, and all but the deliberately converted ones
+  // still run requireOwnerContext. See requireDashboardShellContext.
+  const { supabase, accountId, role } = await requireDashboardShellContext();
 
   const { data: account } = await supabase
     .from('accounts')
@@ -40,7 +44,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     .eq('id', accountId)
     .maybeSingle();
 
-  const onboarded = account?.connect_onboarded ?? false;
+  // Owners only. An office user cannot connect the business's Stripe account,
+  // so the banner would be an instruction they cannot follow about money that
+  // is not theirs -- and its action is owner-gated anyway, so pressing it
+  // would simply fail.
+  const onboarded = role !== 'owner' || (account?.connect_onboarded ?? false);
 
   return (
     <>
