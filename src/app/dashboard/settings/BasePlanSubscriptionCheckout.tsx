@@ -23,11 +23,17 @@ type PaidPlanCode = 'solo' | 'growth' | 'scale';
 const INITIAL_STATE: BasePlanSubscriptionCheckoutActionState | null = null;
 const PAID_PLANS = ['solo', 'growth', 'scale'] as const;
 
-function SubscribeButton() {
+function SubscribeButton({ frozen }: { frozen: boolean }) {
   const { pending } = useFormStatus();
+  // `frozen` covers the window this button was previously live in: after the
+  // action returns a checkout URL, the browser is already navigating to Stripe,
+  // and `pending` has gone back to false. A second click in that window claims a
+  // second subscription intent nobody will ever pay. The top-up card next door
+  // has guarded this since it was written; this one never did.
+  const busy = pending || frozen;
   return (
-    <button className="btn primary" type="submit" disabled={pending} aria-busy={pending}>
-      {pending ? 'Opening secure checkout…' : 'Continue to secure checkout'}
+    <button className="btn primary" type="submit" disabled={busy} aria-busy={busy}>
+      {busy ? 'Opening secure checkout…' : 'Continue to secure checkout'}
     </button>
   );
 }
@@ -170,7 +176,7 @@ export default function BasePlanSubscriptionCheckout({
         </div>
 
         <div className="base-plan-checkout-actions">
-          {operationId ? <SubscribeButton /> : (
+          {operationId ? <SubscribeButton frozen={Boolean(state?.ok) && !clientRedirectError} /> : (
             <button className="btn primary" type="button" disabled>Preparing secure checkout…</button>
           )}
           <span>Stripe securely collects your payment details. Nothing is charged on this page.</span>
@@ -179,7 +185,11 @@ export default function BasePlanSubscriptionCheckout({
         {state && !state.ok ? (
           <p className="plan-usage-note warning" role="alert">{state.message}</p>
         ) : null}
-        {state?.ok ? (
+        {/* Not shown once the URL has failed verification. Both used to render,
+            so the moment something went wrong with a subscription the screen
+            said "Opening Stripe's secure checkout…" directly above "the checkout
+            link could not be verified — contact support". */}
+        {state?.ok && !clientRedirectError ? (
           <p className="plan-usage-note" role="status">Opening Stripe&apos;s secure checkout…</p>
         ) : null}
         {clientRedirectError ? (
