@@ -28,6 +28,8 @@ import leadStyles from './leads.module.css';
 type Props = {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
+  /** See LeadsWorkspace: controls only an owner can actually run. */
+  ownerControls: boolean;
 };
 
 const DECLINE_REASONS: { key: string; label: string }[] = [
@@ -39,7 +41,7 @@ const DECLINE_REASONS: { key: string; label: string }[] = [
 
 const ALL_STAGES: LeadStatus[] = ['new', 'contacted', 'quoted', 'won', 'lost'];
 
-export default function LeadBoardView({ leads, run }: Props) {
+export default function LeadBoardView({ leads, run, ownerControls }: Props) {
   const [closedOpen, setClosedOpen] = useState(false);
   // Phones show one column at a time — a five-column board stacked vertically
   // was a 3,512px page you scrolled through four stages to reach the fifth.
@@ -61,6 +63,13 @@ export default function LeadBoardView({ leads, run }: Props) {
 
   function move(lead: LeadViewItem, to: LeadStatus) {
     if (lead.status === to) return;
+    // Dragging into Won is the same action as the Won button, and the same
+    // service-role write to job_feed sits behind it. The button is hidden for an
+    // office user; without this the drag would reach the action anyway, be
+    // refused, and bounce them off the board. updateLeadStatusAction still
+    // refuses on its own -- this is so the gesture does not silently look
+    // available.
+    if (!ownerControls && to === 'won') return;
     setAnnouncement(`${lead.name} moved to ${queueStageLabel(to)}.`);
     run(() => updateLeadStatusAction(lead.id, to));
   }
@@ -137,6 +146,7 @@ export default function LeadBoardView({ leads, run }: Props) {
               <div className={styles.cards}>
                 {columnLeads.map((lead) => (
                   <BoardCard
+                    ownerControls={ownerControls}
                     key={lead.id}
                     lead={lead}
                     run={run}
@@ -184,6 +194,7 @@ export default function LeadBoardView({ leads, run }: Props) {
                   <div className={styles.cards}>
                     {columnLeads.map((lead) => (
                       <BoardCard
+                        ownerControls={ownerControls}
                         key={lead.id}
                         lead={lead}
                         run={run}
@@ -212,9 +223,11 @@ function BoardCard({
   dragging,
   onDragStart,
   onDragEnd,
+  ownerControls,
 }: {
   lead: LeadViewItem;
   run: Props['run'];
+  ownerControls: boolean;
   onMove: (lead: LeadViewItem, to: LeadStatus) => void;
   dragging: boolean;
   onDragStart: () => void;
@@ -242,10 +255,21 @@ function BoardCard({
       {/* Name, job, priority/waiting, next action — and nothing else. The card
           was carrying source, estimated hours, a received date and a contact
           hint in 148px. */}
-      <Link className={styles.cardName} href={`/dashboard/leads/${lead.id}`}>
-        {lead.name}
-        {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-      </Link>
+      {/* The detail page is still owner-guarded, so for an office user this is a
+          link that bounces them off the board they are allowed to be on. The name
+          still has to render -- a card with no title is not a card -- so it
+          becomes plain text. */}
+      {ownerControls ? (
+        <Link className={styles.cardName} href={`/dashboard/leads/${lead.id}`}>
+          {lead.name}
+          {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+        </Link>
+      ) : (
+        <span className={styles.cardName}>
+          {lead.name}
+          {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+        </span>
+      )}
       <p className={styles.cardProject}>{lead.detail}</p>
 
       <p className={styles.cardMeta}>
@@ -272,12 +296,18 @@ function BoardCard({
             {canContact ? 'Send quote' : 'Add contact details'}
           </Link>
         ) : null}
-        {allowed.includes('won') ? (
+        {/* Mark won hands the SERVICE ROLE to applyQuoteAcceptance, which writes
+            job_feed -- a table RLS does not cover. Folded into the existing
+            condition rather than wrapped, so the element stays one element. */}
+        {ownerControls && allowed.includes('won') ? (
           <button type="button" className={styles.cardBtn} onClick={() => run(() => updateLeadStatusAction(lead.id, 'won'))}>
             Mark won
           </button>
         ) : null}
-        {allowed.includes('decline') ? (
+        {/* Mark lost opens the decline panel, whose reasons call
+            declineLeadAction -- which texts the homeowner and writes sms_consent
+            with the service role. Owner only, so the panel is unreachable. */}
+        {ownerControls && allowed.includes('decline') ? (
           <button
             type="button"
             className={styles.cardBtn}
@@ -324,7 +354,10 @@ function BoardCard({
           value={lead.status}
           onChange={(event) => onMove(lead, event.target.value as LeadStatus)}
         >
-          {ALL_STAGES.map((stage) => (
+          {/* The same rule as the drag and the button: Won is not on offer to an
+              office user. Filtered rather than disabled so the list matches what
+              the board actually shows. */}
+          {ALL_STAGES.filter((stage) => ownerControls || stage !== 'won').map((stage) => (
             <option key={stage} value={stage}>{queueStageLabel(stage)}</option>
           ))}
         </select>

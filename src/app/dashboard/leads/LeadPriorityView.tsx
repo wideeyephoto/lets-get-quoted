@@ -30,9 +30,11 @@ type Props = {
   leads: LeadViewItem[];
   snoozed: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
+  /** See LeadsWorkspace: controls only an owner can actually run. */
+  ownerControls: boolean;
 };
 
-export default function LeadPriorityView({ leads, snoozed, run }: Props) {
+export default function LeadPriorityView({ leads, snoozed, run, ownerControls }: Props) {
   const { actNow, followUp, snoozed: snoozedRanked } = useMemo(
     () => rankLeads(leads, { snoozed }),
     [leads, snoozed],
@@ -45,6 +47,7 @@ export default function LeadPriorityView({ leads, snoozed, run }: Props) {
   return (
     <div className={styles.priority}>
       <Group
+        ownerControls={ownerControls}
         id="act-now"
         title="Act now"
         blurb="Nobody has replied, or you said you would and haven’t."
@@ -54,6 +57,7 @@ export default function LeadPriorityView({ leads, snoozed, run }: Props) {
         empty="Nothing is overdue. Every open lead has had a reply and a quote is not sitting untouched."
       />
       <Group
+        ownerControls={ownerControls}
         id="follow-up"
         title="Follow up"
         blurb="In flight — recently touched, nothing overdue."
@@ -63,6 +67,7 @@ export default function LeadPriorityView({ leads, snoozed, run }: Props) {
       />
       {snoozedRanked.length > 0 ? (
         <Group
+          ownerControls={ownerControls}
           id="snoozed"
           title="Snoozed"
           blurb="Out of the queue until the date you set."
@@ -85,8 +90,10 @@ function Group({
   empty,
   tone,
   snoozedGroup = false,
+  ownerControls,
 }: {
   id: string;
+  ownerControls: boolean;
   title: string;
   blurb: string;
   entries: RankedLead<LeadViewItem>[];
@@ -110,7 +117,7 @@ function Group({
       ) : (
         <ul className={styles.cards}>
           {entries.map((entry) => (
-            <PriorityCard key={entry.lead.id} entry={entry} run={run} snoozedGroup={snoozedGroup} />
+            <PriorityCard key={entry.lead.id} entry={entry} run={run} snoozedGroup={snoozedGroup} ownerControls={ownerControls} />
           ))}
         </ul>
       )}
@@ -122,10 +129,12 @@ function PriorityCard({
   entry,
   run,
   snoozedGroup,
+  ownerControls,
 }: {
   entry: RankedLead<LeadViewItem>;
   run: Props['run'];
   snoozedGroup: boolean;
+  ownerControls: boolean;
 }) {
   const lead = entry.lead;
   const action = primaryAction(lead);
@@ -146,10 +155,20 @@ function PriorityCard({
     <li id={`lead-row-${lead.id}`} className={styles.card} data-tier={entry.tier}>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
-          <Link href={`/dashboard/leads/${lead.id}`} className={styles.cardName}>
-            {lead.name}
-            {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-          </Link>
+          {/* The detail page is still owner-guarded, so for an office user this
+              link bounces them off the board. The name still has to render, so
+              it becomes plain text rather than disappearing. */}
+          {ownerControls ? (
+            <Link href={`/dashboard/leads/${lead.id}`} className={styles.cardName}>
+              {lead.name}
+              {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+            </Link>
+          ) : (
+            <span className={styles.cardName}>
+              {lead.name}
+              {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+            </span>
+          )}
           {lead.estimateLabel ? <span className={styles.cardValue}>{lead.estimateLabel}</span> : null}
         </div>
 
@@ -191,11 +210,18 @@ function PriorityCard({
         <RowMenu
           label={`More actions for ${lead.name}`}
           items={[
-            { key: 'open', kind: 'link', label: 'Open the full lead', href: `/dashboard/leads/${lead.id}` },
+            // Owner-only destinations, dropped rather than shown disabled: the
+            // detail page is still owner-guarded, and Mark won reaches job_feed
+            // with the service role.
+            ...(ownerControls
+              ? [{ key: 'open', kind: 'link' as const, label: 'Open the full lead', href: `/dashboard/leads/${lead.id}` }]
+              : []),
             ...(lead.status !== 'contacted'
               ? [{ key: 'contacted', kind: 'button' as const, label: 'Mark contacted', onSelect: () => act(() => updateLeadStatusAction(lead.id, 'contacted')) }]
               : []),
-            { key: 'won', kind: 'button', label: 'Mark won', onSelect: () => act(() => updateLeadStatusAction(lead.id, 'won')) },
+            ...(ownerControls
+              ? [{ key: 'won', kind: 'button' as const, label: 'Mark won', onSelect: () => act(() => updateLeadStatusAction(lead.id, 'won')) }]
+              : []),
             ...(snoozedGroup
               ? []
               : [{ key: 'snooze', kind: 'button' as const, label: 'Snooze 3 days', onSelect: () => act(() => snoozeLeadAction(lead.id, 3)) }]),

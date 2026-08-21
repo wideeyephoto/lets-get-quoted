@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
 import { BUSINESS_NAME_FALLBACK, loadBusinessName } from '@/lib/business-name';
 import { applyQuoteAcceptance, createClientJobAccessToken, createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
@@ -114,7 +114,22 @@ export async function createLeadAction(formData: FormData) {
  * back to 'contacted' by mistake must not un-approve work already underway.
  */
 export async function updateLeadStatusAction(leadId: string, status: LeadStatus) {
-  const { supabase, accountId } = await requireOwnerContext();
+  /**
+   * THE GUARD FOLLOWS THE STATUS, because the blast radius does.
+   *
+   * Every status but `won` is one UPDATE on `leads` through the session
+   * client, which office_can() governs on its own account -- ordinary work
+   * for whoever is answering the phone. `won` is different in kind: the
+   * branch below hands the SERVICE ROLE to applyQuoteAcceptance, which writes
+   * job_feed and moves the job. RLS covers three tables and job_feed is not
+   * one of them, so nothing but this line would stop it.
+   *
+   * An office user passing 'won' therefore meets requireOwnerContext and is
+   * turned away, which is the failure direction to have.
+   */
+  const { supabase, accountId } = status === 'won'
+    ? await requireOwnerContext()
+    : await requireOfficeContext('leads.read', 'leads.write');
   const lead = await getLead(supabase, accountId, leadId);
   await updateLeadStatus(supabase, accountId, leadId, status);
 
@@ -664,8 +679,21 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
 }
 
 // Merge a patch into the lead's triage record (creating one if absent).
+//
+// OPEN TO OFFICE USERS, and this one guard opens EXACTLY THREE actions,
+// because it is the entire body of snoozeLeadAction, unsnoozeLeadAction and
+// archiveLeadAction and has no other caller. Deliberate, not incidental: all
+// three were reviewed separately and all three are the same change -- one
+// reversible triage field, on one leads row, through the session client,
+// scoped by account_id, with nothing outbound. A FOURTH caller added here
+// would inherit the grant without anyone looking at it, so give that one its
+// own guard rather than reusing this.
+//
+// The contrast worth keeping: declineLeadAction ALSO sets archived, and texts
+// the homeowner to say so. It stays owner-only. Archiving is the one triage
+// action with nothing leaving the building.
 async function patchLeadTriage(leadId: string, patch: Partial<LeadTriage>) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('leads.read', 'leads.write');
   const lead = await getLead(supabase, accountId, leadId);
   if (!lead) throw new Error('Lead not found.');
   const triage = { ...getLeadTriage(lead), ...patch };
@@ -694,7 +722,11 @@ export async function setLeadLayoutAction(layout: 'guided' | 'primary') {
 // Remember which Leads board view (board / inbox / table / split) the owner
 // last used, so the page opens in it next time. Cookie, not a DB column.
 export async function setLeadsViewAction(view: LeadsView) {
-  await requireOwnerContext();
+  // A per-browser display preference. It touches no table at all -- one
+  // cookie, allowlisted to three layout names -- so leads.read is the whole
+  // requirement: it names the page this belongs to rather than claiming a
+  // permission it never uses.
+  await requireOfficeContext('leads.read');
   cookies().set(LEADS_VIEW_COOKIE, normalizeLeadsView(view), {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,

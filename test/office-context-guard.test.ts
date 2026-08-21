@@ -288,22 +288,16 @@ describe('the wiring, as source', () => {
     expect(read('src/app/dashboard/layout.tsx')).toContain("role !== 'owner'");
   });
 
-  it('NOTHING under /dashboard has been opened yet, and that is deliberate', () => {
-    // This is a tripwire, and it is meant to fail the day somebody converts the
-    // first page -- at which point they should update it to name that page,
-    // having decided the capability deliberately rather than by copying a
-    // neighbouring line.
-    //
-    // The mechanism ships inert on purpose: the leads BOARD was audited action
-    // by action and 11 of its 18 actions turned out to be owner-only for
-    // reasons that have nothing to do with capabilities -- service-role writes
-    // to storage and sms_*, and outbound texts sent in the business's name.
-    // Converting the page is a product decision about what is left, not a
-    // mechanical edit.
-    const opened = read('src/lib/auth.ts');
-    expect(opened).toContain('export async function requireOfficeContext');
-
-    const roots = ['src/app/dashboard', 'src/app/office-access'];
+  /**
+   * EXACTLY THESE, AND THIS LIST IS THE POINT.
+   *
+   * The guard is a separate door, so a surface opens only by being changed to
+   * ask for it. That makes the set of files naming requireOfficeContext the
+   * complete inventory of what an office user can reach -- and this asserts it
+   * by equality, not by containment, so opening a FIFTH surface fails here and
+   * has to be added deliberately rather than noticed later.
+   */
+  it('names every surface that has been opened, and no others', () => {
     const callers: string[] = [];
     const walk = (dir: string) => {
       const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs');
@@ -313,7 +307,65 @@ describe('the wiring, as source', () => {
         else if (/\.tsx?$/.test(entry) && read(rel).includes('requireOfficeContext(')) callers.push(rel);
       }
     };
-    for (const root of roots) walk(root);
-    expect(callers).toEqual([]);
+    walk('src/app');
+    expect(callers.sort()).toEqual([
+      'src/app/dashboard/leads/actions.ts',
+      'src/app/dashboard/leads/page.tsx',
+    ]);
+  });
+
+  /**
+   * WHICH leads actions are open, stated one by one.
+   *
+   * 11 of the 18 in this file are owner-only, and almost none of them for want
+   * of a capability: they write storage or sms_* with the SERVICE ROLE, which
+   * RLS does not cover, or they text the homeowner in the business's name. The
+   * guard on each is the only thing standing there, so the split is asserted
+   * rather than left to be re-derived.
+   */
+  it('opens the triage actions and nothing that leaves the building', () => {
+    const actions = stripComments(read('src/app/dashboard/leads/actions.ts'));
+
+    // patchLeadTriage is the whole body of snooze, unsnooze and archive.
+    expect(actions).toContain("const { supabase, accountId } = await requireOfficeContext('leads.read', 'leads.write');");
+    expect(actions).toContain("await requireOfficeContext('leads.read');");
+
+    // The status split: `won` reaches job_feed with the service role, so it
+    // alone keeps the owner guard.
+    expect(actions).toContain("const { supabase, accountId } = status === 'won'");
+    expect(actions).toContain('    ? await requireOwnerContext()');
+
+    // Everything that sends, deletes or uploads stays owner-only. Asserted on
+    // the guard each one actually runs, not on the absence of a symbol.
+    for (const owner of [
+      'createLeadAction', 'deleteLeadAction', 'declineLeadAction',
+      'scheduleLeadQuoteVisitAction', 'sendLeadQuoteVisitOptionsAction',
+      'sendQuoteAction', 'convertLeadAction', 'blockLeadContactAction',
+      'setLeadLostAfterDaysAction', 'undoConvertLeadAction',
+    ]) {
+      const at = actions.indexOf(`export async function ${owner}`);
+      expect(at, `${owner} is missing`).toBeGreaterThan(-1);
+      const body = actions.slice(at, at + 900);
+      expect(body, `${owner} must stay owner-only`).not.toContain('requireOfficeContext');
+    }
+  });
+
+  it('withholds every board control an office user cannot run', () => {
+    // A control certain to fail is worse than one that is absent: the office
+    // user cannot tell a permission problem from a broken product.
+    const page = stripComments(read('src/app/dashboard/leads/page.tsx'));
+    expect(page).toContain("ownerControls={role === 'owner'}");
+    // Add, delete and the auto-close setting each reach past RLS or write
+    // `accounts`, so all three are gated on the role rather than a capability.
+    expect((page.match(/\{role === 'owner' \? \(/g) ?? []).length).toBeGreaterThanOrEqual(3);
+
+    // Every view renders through the workspace, so each must receive the flag --
+    // the board's Mark won, its drag into Won, and the detail links all hang off
+    // it. A view added without it would not compile: the prop is required.
+    const workspace = stripComments(read('src/app/dashboard/leads/LeadsWorkspace.tsx'));
+    for (const view of ['LeadBoardView', 'LeadPriorityView', 'LeadTableView', 'SplitView', 'LeadFocusView']) {
+      expect(workspace, `${view} was not given ownerControls`)
+        .toMatch(new RegExp(`<${view}[^>]*ownerControls=`));
+    }
   });
 });

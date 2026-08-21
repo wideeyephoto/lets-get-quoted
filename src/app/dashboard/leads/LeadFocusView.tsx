@@ -43,10 +43,13 @@ export default function LeadFocusView({
   details,
   basePath = '/dashboard',
   initialLeadId,
+  ownerControls,
 }: {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
   onSelect?: (leadId: string | null) => void;
+  /** See LeadsWorkspace: controls only an owner can actually run. */
+  ownerControls: boolean;
   /** A pin on the map asking for a lead; the nonce lets the same one repeat. */
   openRequest?: { id: string; nonce: number } | null;
   /** See FocusView — the logged-out demo passes '/demo' so its links stay inside it. */
@@ -249,12 +252,20 @@ export default function LeadFocusView({
                         💬 Text
                       </a>
                     )}
-                    <Link className="btn secondary" href={`${base}/leads/${selected.id}#lead-estimate`}>
-                      Send quote
-                    </Link>
-                    <Link className="btn ghost" href={`${base}/leads/${selected.id}`}>
-                      Open full lead →
-                    </Link>
+                    {/* Both go to the lead detail page, which is still guarded by
+                        requireOwnerContext -- and Send quote lands on an estimate
+                        composer whose send needs quotes.write, which no office user
+                        holds. Two buttons that could only bounce them. */}
+                    {ownerControls ? (
+                      <>
+                        <Link className="btn secondary" href={`${base}/leads/${selected.id}#lead-estimate`}>
+                          Send quote
+                        </Link>
+                        <Link className="btn ghost" href={`${base}/leads/${selected.id}`}>
+                          Open full lead →
+                        </Link>
+                      </>
+                    ) : null}
                   </div>
 
                   {/* Stage changes and set-aside, one step quieter than the
@@ -265,7 +276,9 @@ export default function LeadFocusView({
                         Mark contacted
                       </button>
                     )}
-                    {selected.status !== 'won' && (
+                    {/* Mark won hands the service role to applyQuoteAcceptance,
+                        which writes job_feed -- a table RLS does not cover. */}
+                    {ownerControls && selected.status !== 'won' && (
                       <button type="button" className={styles.quietBtn} onClick={() => run(() => updateLeadStatusAction(selected.id, 'won'))}>
                         Mark won
                       </button>
