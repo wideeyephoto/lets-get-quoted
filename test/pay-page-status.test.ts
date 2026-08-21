@@ -302,3 +302,54 @@ describe('a partial refund is not invisible', () => {
     expect(PAGE).toContain('few business days');
   });
 });
+
+describe('a priority visit fee is not called a deposit', () => {
+  const QUICK_STOP_PAYMENTS = readFileSync(
+    join(process.cwd(), 'src/lib/quick-stop-payments.ts'), 'utf8');
+  const PAYMENTS_LIB2 = readFileSync(join(process.cwd(), 'src/lib/payments.ts'), 'utf8');
+
+  it('is stored as a deposit, which is why the label was wrong', () => {
+    // quick-stop-payments writes kind: 'deposit' because it is the closest
+    // existing kind. The page then rendered "Deposit" over a $75 priority fee,
+    // which tells a homeowner it comes off the job total.
+    expect(QUICK_STOP_PAYMENTS).toContain("kind: 'deposit'");
+  });
+
+  it('labels it from the offer, not from the kind', () => {
+    expect(PAGE).toContain("quickStop ? 'Priority visit'");
+    // All three places the label appears must use it, or the brand bar says
+    // "Deposit" while the heading says "Priority visit".
+    expect(PAGE).toContain('context={kindLabel}');
+    expect(PAGE).toContain('<h1 className="workspace-title">{kindLabel}</h1>');
+  });
+
+  it('says the fee is not credited against the job', () => {
+    // The booking flow says this twice before they get here: "That fee reserves
+    // the visit -- the service itself is quoted and billed separately." The page
+    // where they actually pay said the opposite word.
+    expect(PAGE).toContain('not taken off');
+    expect(PAGE).toContain('billed separately');
+  });
+
+  it('shows the deadline the server already enforces', () => {
+    // createCheckoutSessionForPayment refuses after payment_deadline_at with
+    // "This Quick Stop offer has expired." Somebody could open a texted link,
+    // take twenty minutes over it, and press a live-looking button into that.
+    expect(PAYMENTS_LIB2).toContain('payment_deadline_at');
+    expect(PAYMENTS_LIB2).toContain('This Quick Stop offer has expired.');
+    expect(PAGE).toContain('Please pay by');
+    expect(PAGE).toContain('payment_deadline_at');
+  });
+
+  it('only says any of it while the payment can still be made', () => {
+    // A deadline on an already-paid Quick Stop is noise, and "pay by 3:45" under
+    // "This payment has already been completed" reads as a second demand.
+    expect(PAGE).toContain('quickStop && canPay');
+  });
+
+  it('degrades quietly when the offer cannot be read', () => {
+    // Most payments are not Quick Stops, and an unreadable row must leave the
+    // page exactly as it was rather than blanking the label.
+    expect(PAGE).toContain('if (error || !data) return null');
+  });
+});
