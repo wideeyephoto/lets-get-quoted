@@ -260,7 +260,7 @@ export default async function PublicPaymentPage({
                   {displayFeeAmount != null ? formatMoney(displayFeeAmount) : formatFeeRate(displayFeeRate)}
                 </strong>
               </p>
-              <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
+              <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: 'var(--muted)', marginTop: '0.25rem' }}>
                 This fee is included in the amount above and paid to Let&apos;s Get Quoted for payment processing.
               </p>
             </div>
@@ -304,7 +304,7 @@ export default async function PublicPaymentPage({
                   </button>
                 </form>
                 {offerAch ? (
-                  <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.5rem' }}>
+                  <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: 'var(--muted)', marginTop: '0.5rem' }}>
                     Pay by <strong>card</strong> or <strong>bank transfer (ACH)</strong> at checkout. Card is instant; a bank
                     transfer takes a few business days to clear, and you’ll be confirmed once it settles.
                   </p>
