@@ -222,7 +222,11 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
           .order('created_at', { ascending: false }),
         admin
           .from('payments')
-          .select('id, label, amount, status, invoice_id, refunded_amount, paid_at, kind')
+          // async_payment_pending_at feeds invoicePayState below: without it a
+          // bank transfer in flight is indistinguishable from an abandoned
+          // checkout, and the portal would list an invoice as needing payment
+          // that /invoice/[id] -- which does load it -- says is already clearing.
+          .select('id, label, amount, status, invoice_id, refunded_amount, paid_at, kind, async_payment_pending_at')
           .eq('account_id', accountId)
           .in('job_id', jobIds)
           .order('paid_at', { ascending: false, nullsFirst: false }),
