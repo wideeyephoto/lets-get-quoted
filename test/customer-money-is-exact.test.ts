@@ -127,6 +127,50 @@ describe('the two formatters really do differ where it matters', () => {
   });
 });
 
+/**
+ * EMAIL IS TWO KINDS OF NUMBER IN ONE FILE.
+ *
+ * src/lib/email.ts sends both the messages that name ONE transaction -- the quote
+ * a homeowner approves, the payment request they are sent, the invoice total --
+ * and the daily digest, whose figures are day totals beside their counts.
+ *
+ * The first kind must be exact, and not only because two of them are the amount
+ * charged: an owner alert reading $4,238 for a quote the customer received as
+ * $4,237.50 is two people holding two numbers for one debt, which is the same
+ * failure as two screens doing it.
+ *
+ * The second kind may round, and should: '3 - $1,240' is a summary nobody
+ * reconciles, which is the case formatUsdRounded documents as its own. So this
+ * asserts the SPLIT rather than banning the rounding formatter outright.
+ */
+describe('a transactional email names the figure exactly; a digest may round', () => {
+  const EMAIL = readFileSync(join(process.cwd(), 'src/lib/email.ts'), 'utf8');
+
+  it('uses the exact formatter for every single-transaction figure', () => {
+    for (const line of [
+      'const paragraphs = [formatMoneyExact(input.quotedAmount)];',
+      'preheader: `${formatMoneyExact(input.quotedAmount)} · quote ${input.jobRef}`',
+      '`Job ${input.jobRef} · ${formatMoneyExact(input.quotedAmount)}`',
+      '`${input.label} · ${formatMoneyExact(input.amount)}`',
+      '`${input.invoiceRef} · ${formatMoneyExact(input.total)}`',
+    ]) {
+      expect(EMAIL, line).toContain(line);
+    }
+  });
+
+  it('leaves the rounding formatter to the digest and the forecast', () => {
+    // Every surviving rounded call must be a day total or a projection. If a new
+    // transactional message picks up formatMoney, it lands outside this set and
+    // this fails -- which is the point, since the file legitimately imports both.
+    const rounded = [...EMAIL.matchAll(/formatMoney\((.*?)\)/g)].map((m) => m[1]);
+    expect(rounded.length).toBeGreaterThan(0);
+    for (const argument of rounded) {
+      expect(argument, `formatMoney(${argument}) is not a summary figure`)
+        .toMatch(/^d\.(moneyInTotal|failedTotal|openRequestsTotal|cash\.amount)$/);
+    }
+  });
+});
+
 describe('a summary may still round', () => {
   it('leaves the booking page alone', () => {
     // "from $150" on a service card is a genuine summary -- an opening price,

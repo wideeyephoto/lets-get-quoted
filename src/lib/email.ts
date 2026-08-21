@@ -4,7 +4,22 @@ import { generateInvoiceHtml } from '@/emails/InvoiceEmail';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
 import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices';
 import type { Lead } from './leads';
-import { formatMoney } from './jobs';
+/**
+ * BOTH, on purpose, and the difference is whether one person is asked to act on
+ * the figure.
+ *
+ * formatMoneyExact for anything naming a single transaction -- the quote a
+ * homeowner approves, the payment request they are sent, the invoice total. Two
+ * of those are the amount actually charged, and the rest are the same number the
+ * customer is looking at on their own screen: an owner alert reading $4,238 for a
+ * quote the customer received as $4,237.50 is two people holding two numbers for
+ * one debt.
+ *
+ * formatMoney (rounding) survives for the DAILY DIGEST alone, where the figures
+ * are day totals beside their counts -- "3 · $1,240" -- and nobody reconciles
+ * them against anything. That is the case formatUsdRounded documents as its own.
+ */
+import { formatMoney, formatMoneyExact } from './jobs';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
 import { APP_ORIGIN } from './app-origin';
 import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/brand';
@@ -227,7 +242,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
   }
 
   const brand = await brandFor(input);
-  const paragraphs = [formatMoney(input.quotedAmount)];
+  const paragraphs = [formatMoneyExact(input.quotedAmount)];
   if (input.includesScheduleOptions) paragraphs.push('You can also pick a start date right on your quote page.');
   paragraphs.push('Review the full details and approve your quote online — no login needed.');
 
@@ -237,7 +252,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
     html: renderBrandedEmail({
       brand,
-      preheader: `${formatMoney(input.quotedAmount)} · quote ${input.jobRef}`,
+      preheader: `${formatMoneyExact(input.quotedAmount)} · quote ${input.jobRef}`,
       eyebrow: 'Your quote',
       heading: `${input.clientName}, here is your quote`,
       paragraphs,
@@ -342,11 +357,11 @@ export async function sendQuoteSentConfirmationEmail(input: {
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
-      ? `Quote sent to ${input.clientName} — ${formatMoney(input.quotedAmount)}`
+      ? `Quote sent to ${input.clientName} — ${formatMoneyExact(input.quotedAmount)}`
       : `Quote for ${input.clientName} couldn't be sent`,
     heading: delivered ? `Your quote is with ${input.clientName}` : `No way to reach ${input.clientName}`,
     bodyLines: [
-      `Job ${input.jobRef} · ${formatMoney(input.quotedAmount)}`,
+      `Job ${input.jobRef} · ${formatMoneyExact(input.quotedAmount)}`,
       describeDelivery(input.channel, input.sentTo),
       delivered
         ? 'You’ll be notified when they open it or approve it.'
@@ -375,11 +390,11 @@ export async function sendPaymentRequestedConfirmationEmail(input: {
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
     subject: delivered
-      ? `Payment request sent to ${input.clientName} — ${formatMoney(input.amount)}`
+      ? `Payment request sent to ${input.clientName} — ${formatMoneyExact(input.amount)}`
       : `Payment request for ${input.clientName} is waiting to be sent`,
     heading: delivered ? `${input.clientName} has your payment request` : `${input.clientName} hasn’t been asked yet`,
     bodyLines: [
-      `${input.label} · ${formatMoney(input.amount)}`,
+      `${input.label} · ${formatMoneyExact(input.amount)}`,
       delivered
         ? describeDelivery(input.channel, input.sentTo)
         : 'The request is on the job, but nothing was sent to them — you didn’t choose to text it.',
@@ -465,7 +480,7 @@ export async function sendInvoiceSentConfirmationEmail(input: {
       : `Invoice ${input.invoiceRef} couldn't be sent`,
     heading: delivered ? `${input.clientName} has invoice ${input.invoiceRef}` : `No way to reach ${input.clientName}`,
     bodyLines: [
-      `${input.invoiceRef} · ${formatMoney(input.total)}`,
+      `${input.invoiceRef} · ${formatMoneyExact(input.total)}`,
       describeDelivery(input.channel, input.sentTo),
       delivered
         ? 'They can review, sign and pay from the link in their email.'
