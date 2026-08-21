@@ -82,15 +82,36 @@ describe('every site that gates on Connect chargeability asks the predicate', ()
     ['recurring', 'src/lib/recurring.ts'],
     ['payment plans', 'src/lib/payment-plans.ts'],
     ['dunning', 'src/lib/dunning.ts'],
-    // The display side, and the one that drifted most recently.
+    // The two display surfaces. Neither creates a charge itself, and both once
+    // asked `connect_onboarded` alone -- two thirds of the rule -- so each
+    // offered a Pay button for an account staff had restricted.
     ['public pay page', 'src/app/pay/[id]/page.tsx'],
+    ['public invoice page', 'src/app/invoice/[id]/page.tsx'],
   ] as const;
 
   for (const [name, file] of SITES) {
     it(`${name} calls canCreateConnectCharge`, () => {
-      expect(read(file)).toContain('canCreateConnectCharge');
+      // The open paren matters. Matching the bare name passes on a file that
+      // imports the predicate and then decides something else -- which is
+      // exactly the state both display surfaces were in while being converted,
+      // and is what this test exists to notice.
+      expect(read(file)).toContain('canCreateConnectCharge(');
     });
   }
+
+  it('the invoice page is fed every column the predicate reads', () => {
+    // A display surface can fail the other way round: ask the right predicate
+    // over a row that was selected without the columns it needs. The predicate
+    // treats absent fields as not chargeable, so under-fetching denies rather
+    // than allows -- but a page that always denies is its own defect.
+    //
+    // getPublicInvoice interpolates CONNECT_CHARGE_COLUMNS rather than listing
+    // them, which is what makes this impossible to get wrong again; it fetched
+    // `business_name, connect_onboarded` when it was written by hand.
+    const lib = read('src/lib/invoices.ts');
+    expect(lib).toContain('CONNECT_CHARGE_COLUMNS');
+    expect(lib).toContain('account:accounts(business_name, ${CONNECT_CHARGE_COLUMNS})');
+  });
 
   it('the pay page does not paraphrase it back into a weaker check', () => {
     // The tell is reading the column directly to make a decision. Comment lines

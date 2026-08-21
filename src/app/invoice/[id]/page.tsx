@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/auth';
 import { formatMoneyExact } from '@/lib/jobs';
 import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { invoicePayState, type InvoicePayment } from '@/lib/invoice-pay';
+import { CHECKOUT_BLOCK_NOTE } from '@/lib/payment-banner';
+import { canCreateConnectCharge } from '@/lib/stripe';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { payInvoiceAction, signInvoiceAction } from './actions';
@@ -84,13 +86,23 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
             ) : null}
           </div>
 
-          {pay.state === 'payable' && !invoice.account?.connect_onboarded ? (
-            /* The contractor cannot receive money yet, so there is nothing this
-               button could do but throw. /pay/[id] has always said this instead
-               of offering one; this page did not even load the flag, so it
-               showed a live "Pay $4,237.50" that failed on click. */
+          {pay.state === 'payable' && !canCreateConnectCharge(invoice.account) ? (
+            /* The contractor cannot receive money, so there is nothing useful
+               this button can do. It asked `!connect_onboarded` -- two thirds of
+               the rule -- so an account staff had restricted still got a live
+               "Pay $4,237.50". Pressing it does not throw here, which is why it
+               went unnoticed: payInvoiceAction inserts a `requested` payment and
+               redirects to /pay/[id], which then says the contractor is not set
+               up. So the cost was a stray payment row and an answer given one
+               page too late.
+
+               The predicate is the one createCheckoutSessionForPayment enforces,
+               and the sentence is the one /pay/[id] renders, both imported
+               rather than restated. Two money surfaces describing one situation
+               in two ways is how somebody decides the product is unreliable
+               rather than the contractor. */
             <div className="payment-banner muted">
-              <p>This contractor hasn&apos;t finished setting up payments yet. Please check back soon.</p>
+              <p>{CHECKOUT_BLOCK_NOTE.contractor_unavailable}</p>
             </div>
           ) : pay.state === 'payable' ? (
             <form action={boundPayInvoice} className="actions workspace-actions">

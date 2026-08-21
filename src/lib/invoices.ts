@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
+import { CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'signed' | 'paid' | 'void';
 
@@ -466,7 +467,14 @@ export async function deleteInvoice(
 
 export type PublicInvoiceRecord = Invoice & {
   job: { client_name: string; ref: string } | null;
-  account: { business_name: string; connect_onboarded?: boolean | null } | null;
+  // Structural match for ConnectChargeable, so the public page can hand this
+  // straight to canCreateConnectCharge instead of re-stating the rule.
+  account: {
+    business_name: string;
+    stripe_connect_id?: string | null;
+    connect_onboarded?: boolean | null;
+    payouts_restricted_at?: string | null;
+  } | null;
 };
 
 // Public read — the client signing an invoice has no user session, so this
@@ -479,11 +487,17 @@ export async function getPublicInvoice(
 
   const { data: invoice, error } = await admin
     .from('invoices')
-    // connect_onboarded travels with the invoice because the public page needs
-    // it: a contractor who has not finished Stripe onboarding cannot receive a
-    // payment, and /pay/[id] has always said so rather than offering a button
-    // that throws. This page did not load the flag at all.
-    .select('*, job:jobs(client_name, ref), account:accounts(business_name, connect_onboarded)')
+    // The chargeability columns travel with the invoice because the public page
+    // needs them: a contractor who cannot receive money must not be offered a
+    // Pay button, and this page did not load any of it at all.
+    //
+    // Interpolated from CONNECT_CHARGE_COLUMNS rather than spelled out, because
+    // spelling it out is how this went wrong. The page fetched connect_onboarded
+    // alone and asked only that -- two thirds of canCreateConnectCharge -- so an
+    // account staff had restricted still read as payable. A select written by
+    // hand can silently under-fetch the very columns the predicate needs, and
+    // the predicate then fails open on the fields it cannot see.
+    .select(`*, job:jobs(client_name, ref), account:accounts(business_name, ${CONNECT_CHARGE_COLUMNS})`)
     .eq('id', invoiceId)
     .maybeSingle();
 
