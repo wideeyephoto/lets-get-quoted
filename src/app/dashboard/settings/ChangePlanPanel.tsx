@@ -72,6 +72,34 @@ export default function ChangePlanPanel({
   const scheduledFor = asDate(pendingEffectiveAt);
   const error = state?.ok === false ? state.error : null;
 
+  /**
+   * What just happened, said once it has.
+   *
+   * An immediate upgrade invoices the proration on the spot -- the Stripe call
+   * uses `proration_behavior: 'always_invoice'` -- so money moves during this
+   * click. Until now nothing acknowledged it: the action revalidated, the
+   * current-plan line quietly changed from Solo to Growth, and a contractor who
+   * had just been charged was left to infer that from a noun.
+   *
+   * Rendered in BOTH branches below, because a scheduled change revalidates into
+   * the pending branch and would otherwise drop its own confirmation on the way
+   * through.
+   */
+  const success = state?.ok === true ? state : null;
+  const successNote = success === null ? null : (
+    <p className="plan-usage-note" role="status">
+      {/* Three outcomes, not two. `activated` is the one that moves money;
+          `scheduled` promises a date and charges nothing; `no_change` means the
+          request resolved to the plan they are already on, and saying "done"
+          for that would imply something happened. */}
+      {success.kind === 'activated'
+        ? `You're on ${BILLING_PLANS[success.planCode].name} now. The difference for the rest of this billing period has been charged to your card on file.`
+        : success.kind === 'scheduled'
+          ? `Done — nothing changes today${asDate(success.effectiveAt) ? ` and nothing is charged. Your plan moves on ${asDate(success.effectiveAt)}.` : ' and nothing is charged. Your plan moves at your next renewal.'}`
+          : `You are already on ${BILLING_PLANS[success.planCode].name}, so nothing changed.`}
+    </p>
+  );
+
   const run = (option: PlanOption) => startTransition(async () => {
     const result = await changeBasePlanAction(option.planCode, option.billingInterval);
     setState(result);
@@ -95,6 +123,7 @@ export default function ChangePlanPanel({
         <p className="muted-note">
           Changed your mind? Cancelling this keeps you on {currentName} and nothing is charged differently.
         </p>
+        {successNote}
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button className="btn subtle" type="button" disabled={pending} aria-busy={pending} onClick={clear}>
           {pending ? 'Cancelling…' : `Stay on ${currentName}`}
@@ -114,6 +143,7 @@ export default function ChangePlanPanel({
           : `You are on ${currentName}.`}
       </p>
 
+      {successNote}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
 
       <ul className="plan-change-options">
