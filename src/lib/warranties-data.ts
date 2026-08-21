@@ -148,12 +148,19 @@ export async function recordService(
   const interval = data?.service_interval_months === null || data?.service_interval_months === undefined ? null : Number(data.service_interval_months);
   const nextDue = nextServiceAfter(servicedOn, interval);
 
-  const { error } = await supabase
+  // Zero rows is not an error, so ok was true whether or not the schedule
+  // moved. A service recorded against nothing leaves next_service_due where it
+  // was, which is exactly the quiet drift this file exists to prevent.
+  // Named `updated`, not `data`: the interval SELECT above already holds `data`,
+  // and shadowing it here would compile as a redeclaration error at best and
+  // silently read the wrong row at worst.
+  const { data: updated, error } = await supabase
     .from('warranties')
     .update({ last_service_on: servicedOn, next_service_due: nextDue, service_reminded_at: null, updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
-    .eq('id', warrantyId);
-  return { ok: !error, nextDue };
+    .eq('id', warrantyId)
+    .select('id').maybeSingle();
+  return { ok: !error && Boolean(updated), nextDue };
 }
 
 // -- Claims -------------------------------------------------------------------
@@ -254,6 +261,15 @@ export async function updateClaim(
   if (input.resolutionNote !== undefined) patch.resolution_note = input.resolutionNote;
   if (input.resolutionJobId !== undefined) patch.resolution_job_id = input.resolutionJobId;
 
-  const { error } = await supabase.from('warranty_claims').update(patch).eq('account_id', accountId).eq('id', claimId);
-  return error ? { ok: false, message: error.message } : { ok: true };
+  // .select() so a zero-row match is distinguishable from a successful one.
+  // An UPDATE that matches nothing is not an error in PostgREST, and this
+  // result is rendered by the claim panel as 'resolved' or 'declined' -- so
+  // without this the screen reports an outcome the database never took, while
+  // the reminder and the homeowner's view both still say the claim is open.
+  const { data, error } = await supabase.from('warranty_claims').update(patch)
+    .eq('account_id', accountId).eq('id', claimId)
+    .select('id').maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: 'That claim could not be found — it may have been changed or removed. Reload the job.' };
+  return { ok: true };
 }

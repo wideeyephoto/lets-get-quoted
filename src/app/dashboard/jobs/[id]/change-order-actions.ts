@@ -182,11 +182,46 @@ export async function requestChangeOrderPaymentAction(
     smsConsent: Boolean(job.client_phone),
   });
 
-  await supabase
+  /**
+   * THE LINK IS THE ONLY THING STOPPING A SECOND BILL, so its failure cannot be
+   * silent.
+   *
+   * The duplicate guard above is `if (order.paymentId) return` -- it reads the
+   * exact column this write sets. And the payment row is created BEFORE this,
+   * because the id does not exist until it is. So anything that stops this
+   * update landing -- a transient error, a timeout between the two statements, a
+   * row changed underneath -- leaves a real payment request on the job with
+   * nothing pointing at it, and the next click reads paymentId as null and
+   * raises a SECOND request for the same work. The homeowner ends up with two
+   * live links for one change order.
+   *
+   * It used to be a bare `await` with no error captured, no row count and no
+   * .select(), followed immediately by `return { ok: true }` -- so every one of
+   * those outcomes reported success. `.select('id').maybeSingle()` is what makes
+   * a zero-row match distinguishable from a successful one; an UPDATE that
+   * matches nothing is not an error in PostgREST.
+   *
+   * On failure this deliberately does NOT try to undo the payment. Cancelling a
+   * request the homeowner may already have opened is a worse guess than telling
+   * the operator plainly what exists and letting them decide.
+   */
+  const { data: linked, error: linkError } = await supabase
     .from('change_orders')
     .update({ payment_id: payment.id, updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
-    .eq('id', changeOrderId);
+    .eq('id', changeOrderId)
+    .select('id')
+    .maybeSingle();
+
+  if (linkError || !linked) {
+    revalidatePath(`/dashboard/jobs/${jobId}`);
+    return {
+      ok: false,
+      message: 'The payment request was created but could not be attached to this '
+        + 'change order. It is on the job now — check it before requesting another, '
+        + 'or this customer will be asked to pay twice.',
+    };
+  }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
   return { ok: true };
