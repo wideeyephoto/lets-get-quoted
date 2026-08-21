@@ -392,6 +392,19 @@ export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Obje
     + 'No live recurring Price exists, and an office user still holds no '
     + 'permissions at all - every capability ships off, so somebody paid for '
     + 'would be connected and unable to open anything',
+  crew_user:
+    'the rail is closed and verified against production, not inferred: '
+    + '20260819010000 fills the capacity ledger when the Session is paid, the '
+    + 'capacity lifecycle sweep empties it when the subscription lapses, '
+    + 'workspace_purchased_capacity_units counts only active and past_due so a '
+    + 'cancelled seat stops granting, and both crew seat RPCs add that sum to '
+    + 'the plan limit. A live recurring Stripe Price is the only thing left, and '
+    + 'creating one needs BOTH Products Write and Prices Write on a restricted '
+    + 'key - they are separate permissions, which cost two operator round trips '
+    + 'to learn. An orphaned Product prod_V6u64EyBrCsSuE already exists from the '
+    + 'second attempt and can carry the Price rather than a third being made. '
+    + 'tax_behavior must be exclusive and is IMMUTABLE after creation; see '
+    + 'docs/codex-crew-price-what-actually-matters.md before trying again',
   ai_voice_flex: AI_VOICE_WITHHELD,
   ai_voice_solo: AI_VOICE_WITHHELD,
   ai_voice_growth: AI_VOICE_WITHHELD,
