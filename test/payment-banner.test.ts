@@ -259,10 +259,19 @@ describe('the tone follows the state, not the URL', () => {
 
 describe('the page reads all three outputs and re-derives none of them', () => {
   const page = readFileSync(join(process.cwd(), 'src/app/pay/[id]/page.tsx'), 'utf8').replace(/\r\n/g, '\n');
-  /** Comment lines are stripped: an assertion about the code must not be able to
-   *  match the prose explaining the code. That has happened here before. */
-  const code = page.split('\n')
-    .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+  /**
+   * Comments are stripped: an assertion about the code must not be able to match
+   * the prose explaining the code. That has happened here before.
+   *
+   * Block comments go WHOLE, not line by line. A per-line filter keyed on a
+   * leading `*` leaves every continuation line of a JSX `/* ... *\/` in place,
+   * and those lines are exactly where a comment discusses the symbol it is
+   * explaining the absence of.
+   */
+  const code = page
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*\/\//.test(line))
     .join('\n');
 
   it('takes the banner, the tone and the word from the resolver', () => {
@@ -295,7 +304,13 @@ describe('the page reads all three outputs and re-derives none of them', () => {
   it('still owns the notices that are not statements about the state', () => {
     // Additive page content that legitimately stacks: these are NOT banner
     // values and must not be folded into one.
+    //
+    // The not-onboarded notice is named by its PREDICATE rather than by the
+    // column it used to read. This assertion originally looked for
+    // `connect_onboarded`, which was the weaker two-thirds check the page made
+    // before it was corrected to canCreateConnectCharge -- so the assertion was
+    // pinning the defect in place. See test/connect-charge-guard.test.ts.
     expect(code).toContain('{quickStop && canPay ? (');
-    expect(code).toContain('connect_onboarded');
+    expect(code).toContain('canCreateConnectCharge(payment.account)');
   });
 });

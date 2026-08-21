@@ -246,8 +246,13 @@ describe('the page uses it', () => {
     // already made. Comment lines are stripped first: the prose above these
     // symbols legitimately names them, and an assertion that the code is gone
     // must not be satisfied by the comment explaining why it went.
-    const code = PAGE.split('\n')
-      .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+    // Block comments removed whole, not line by line: a per-line filter leaves
+    // the continuation lines of a JSX block comment behind, which is precisely
+    // where the prose names the symbols this asserts are gone.
+    const code = PAGE
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !/^\s*\/\//.test(line))
       .join('\n');
     for (const gone of [
       'const statusMessage', 'const checkoutNotFinished',

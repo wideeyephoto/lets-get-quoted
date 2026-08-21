@@ -7,6 +7,7 @@ import {
   ACH_MIN_AMOUNT,
   type PaymentStatus,
 } from '@/lib/payments';
+import { canCreateConnectCharge } from '@/lib/stripe';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import {
@@ -445,7 +446,29 @@ export default async function PublicPaymentPage({
           ) : null}
 
           {canPay ? (
-            !payment.account?.connect_onboarded ? (
+            /* THE SAME PREDICATE THE SUBMIT ENFORCES, not a weaker paraphrase.
+               This asked only whether the contractor had finished onboarding.
+               createCheckoutSessionForPayment asks canCreateConnectCharge, which
+               also refuses a missing connect id and an account staff have
+               restricted -- and restrictPayoutsAction sets payouts_restricted_at
+               while leaving connect_onboarded true. So a restricted contractor
+               rendered a live Pay button whose submit threw, having already been
+               handed the columns needed to know better: getPublicPayment selects
+               all three, and this read one of them.
+
+               The same bug in the same shape has been here before, on the
+               charge-creating side: dunning checked connect_onboarded and the
+               connect id but not the restriction, so a retry cron went on
+               charging saved cards for accounts staff had explicitly stopped.
+               That is why the condition is one predicate rather than a rule
+               written out at each site. This was the fifth site, and the only
+               one deciding what a homeowner SEES rather than what runs.
+
+               The wording is unchanged and covers both cases on purpose: the
+               refusal it mirrors says so in as many words -- a homeowner who
+               cannot pay does not need to be told the contractor is under
+               review. */
+            !canCreateConnectCharge(payment.account) ? (
               <div className="payment-banner muted">
                 <p>This contractor hasn&apos;t finished setting up payments yet. Please check back soon.</p>
               </div>
