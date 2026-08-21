@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { createAdminClient, getCurrentMembership } from '@/lib/auth';
+import { createAdminClient, getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
+import { OFFICE_NO_ACCESS_PATH, officeLandingPath } from '@/lib/office-access';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { BUSINESS_NAME_FALLBACK, pickBusinessName } from '@/lib/business-name';
 
@@ -37,6 +38,23 @@ export default async function OfficeAccessPage() {
   // business on this page either.
   if (membership.role === 'owner') redirect('/dashboard');
   if (membership.role !== 'office' || !membership.accountId) redirect('/login');
+
+  /**
+   * IF THEY CAN OPEN SOMETHING, TAKE THEM TO IT.
+   *
+   * This page is where requireOwnerContext sends every office user, so it is
+   * also where somebody lands after signing in and being bounced off /dashboard.
+   * Once a surface is actually converted -- leads, as of 2026-08-21 -- telling
+   * them "there's nothing here for you to open" is simply false, and the
+   * feature would be unreachable by ordinary navigation.
+   *
+   * officeLandingPath only ever names a route on the allowlist, and that list is
+   * tested to contain only pages whose guard has been converted. Without that
+   * pairing this line is a redirect loop: send somebody to a page that still
+   * asks requireOwnerContext and it returns them straight here.
+   */
+  const landing = officeLandingPath(await loadHeldCapabilities('office'));
+  if (landing !== OFFICE_NO_ACCESS_PATH) redirect(landing);
 
   // Service-role: the whole point is that this person's session can read
   // nothing about the workspace. The account id came from their own membership,

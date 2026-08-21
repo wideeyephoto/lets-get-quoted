@@ -44,18 +44,41 @@ describe('what an office user may open', () => {
     // with no way for the person to know why.
     expect(OFFICE_ROUTES.map((r) => r.href)).toEqual([
       '/dashboard/leads',
-      '/dashboard/clients',
-      '/dashboard/jobs',
     ]);
   });
 
-  it('gives jobs both capabilities it actually needs', () => {
-    // Jobs name a client on nearly every row. A jobs screen without clients.read
-    // is a list of work for nobody, which reads as broken rather than as
-    // restricted.
+  it('lists only pages whose GUARD has actually been converted', () => {
+    // THE OTHER HALF, and the one that turns a redirect loop into a test
+    // failure. officeLandingPath SENDS people to these routes, so a page here
+    // that still calls requireOwnerContext bounces them to /office-access, which
+    // sends them straight back.
+    //
+    // Today that is avoided only by accident -- leads is first and every office
+    // user holds leads.read, because capabilities are global and all thirteen are
+    // enabled. This makes it structural instead.
+    const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const { join } = require('node:path') as typeof import('node:path');
+    for (const route of OFFICE_ROUTES) {
+      const page = join(process.cwd(), 'src/app', route.href.replace('/dashboard', 'dashboard'), 'page.tsx');
+      const source = readFileSync(page, 'utf8');
+      expect(source, `${route.href} is on the list but its page never asks requireOfficeContext`)
+        .toContain('requireOfficeContext(');
+    }
+  });
+
+  it('asks for every capability a route actually needs', () => {
+    // Leads reads only leads. When jobs is added it will need BOTH jobs.read and
+    // clients.read -- jobs name a client on nearly every row, so a jobs screen
+    // without clients.read is a list of work for nobody, which reads as broken
+    // rather than as restricted. Asserted for whatever is on the list, so the
+    // rule survives the list changing.
+    const leads = OFFICE_ROUTES.find((r) => r.href === '/dashboard/leads');
+    expect(leads?.requires).toEqual(['leads.read']);
     const jobs = OFFICE_ROUTES.find((r) => r.href === '/dashboard/jobs');
-    expect(jobs?.requires).toContain('jobs.read');
-    expect(jobs?.requires).toContain('clients.read');
+    if (jobs) {
+      expect(jobs.requires).toContain('jobs.read');
+      expect(jobs.requires).toContain('clients.read');
+    }
   });
 });
 
@@ -93,15 +116,28 @@ describe('deciding whether this person may open this path', () => {
 
   it('opens a route when every required capability is held', () => {
     expect(officeCanOpen('/dashboard/leads', all)).toBe(true);
-    expect(officeCanOpen('/dashboard/jobs/9', all)).toBe(true);
+    expect(officeCanOpen('/dashboard/leads/9', all)).toBe(true);
   });
 
-  it('refuses when one of two required capabilities is missing', () => {
-    // Jobs needs both. Holding jobs.read alone must not be enough, or the
-    // second requirement is decorative.
-    expect(officeCanOpen('/dashboard/jobs', ['jobs.read'])).toBe(false);
-    expect(officeCanOpen('/dashboard/jobs', ['clients.read'])).toBe(false);
-    expect(officeCanOpen('/dashboard/jobs', ['jobs.read', 'clients.read'])).toBe(true);
+  it('refuses a route that is not on the list, however much is held', () => {
+    // Clients and jobs were on this list before their pages were converted, and
+    // holding their capabilities still opens nothing -- the allowlist decides,
+    // not the capability set. That is the whole point of it being a list.
+    expect(officeCanOpen('/dashboard/clients', all)).toBe(false);
+    expect(officeCanOpen('/dashboard/jobs', all)).toBe(false);
+  });
+
+  it('needs EVERY capability a route names, not just one', () => {
+    // Asserted against the routes actually on the list, so this keeps biting as
+    // multi-capability routes are added. Every route must refuse a holder of all
+    // but one of its requirements.
+    for (const route of OFFICE_ROUTES) {
+      for (const missing of route.requires) {
+        const held = route.requires.filter((c) => c !== missing);
+        expect(officeCanOpen(route.href, held), `${route.href} without ${missing}`).toBe(false);
+      }
+      expect(officeCanOpen(route.href, route.requires), route.href).toBe(true);
+    }
   });
 
   it('refuses a path that is not on the list even to somebody holding everything', () => {
@@ -121,7 +157,14 @@ describe('deciding whether this person may open this path', () => {
 describe('where an office user lands', () => {
   it('goes to their first permitted page', () => {
     expect(officeLandingPath(['leads.read', 'clients.read'])).toBe('/dashboard/leads');
-    expect(officeLandingPath(['clients.read'])).toBe('/dashboard/clients');
+  });
+
+  it('never sends somebody to a page that would bounce them back', () => {
+    // The redirect loop this list exists to prevent: holding clients.read opens
+    // nothing, because that page still asks requireOwnerContext. Landing there
+    // would return them to /office-access, which would send them there again.
+    expect(officeLandingPath(['clients.read'])).toBe('/office-access');
+    expect(officeLandingPath(['jobs.read', 'clients.read'])).toBe('/office-access');
   });
 
   it('goes to the holding page when they hold nothing that opens anything', () => {

@@ -39,16 +39,26 @@ export type OfficeRoute = Readonly<{
 }>;
 
 /**
- * The v1 surface, deliberately three entries.
+ * The v1 surface, deliberately ONE entry.
  *
- * These are the pages backed end to end by capabilities that are enabled AND
- * whose tables have had their policies split and swapped (migrations
- * 20260820230000 through 20260820250000). Quotes, invoices and payments are
- * enabled as read capabilities in the catalog, but the tables behind them still
- * carry `is_owner` policies -- so an office user opening those pages would see
- * nothing and have no way to know why. They are absent until their policies are
- * wired, which is the same rule as everything else here: this list follows the
- * database, never leads it.
+ * THIS LIST FOLLOWS BOTH THE DATABASE AND THE APP, and never leads either.
+ *
+ * The database half was always the rule: quotes, invoices and payments are
+ * enabled as read capabilities in the catalog, but their tables still carry
+ * `is_owner` policies, so those pages would render empty with no way for the
+ * person to know why.
+ *
+ * The app half is newer and is what shrank this list from three. A route here
+ * is where officeLandingPath SENDS somebody, so its page must actually admit
+ * them -- and clients and jobs still call requireOwnerContext, which bounces an
+ * office user to /office-access, which sends them back here. That is a redirect
+ * loop, and today it is avoided only by accident: leads happens to be first and
+ * every office user happens to hold leads.read, because capabilities are global
+ * and all thirteen are enabled. One flag change would make it real.
+ *
+ * So an entry is added when its page is CONVERTED, not when its table is. The
+ * test enforces both halves, which is the only reason this comment can be
+ * trusted.
  */
 export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
   Object.freeze({
@@ -56,18 +66,13 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     label: 'Leads',
     requires: Object.freeze(['leads.read']),
   }),
-  Object.freeze({
-    href: '/dashboard/clients',
-    label: 'Clients',
-    requires: Object.freeze(['clients.read']),
-  }),
-  Object.freeze({
-    // Jobs name a client on nearly every row, so a jobs screen without
-    // clients.read is a list of work for nobody.
-    href: '/dashboard/jobs',
-    label: 'Jobs',
-    requires: Object.freeze(['jobs.read', 'clients.read']),
-  }),
+  // Clients and jobs belong here the day their pages ask requireOfficeContext.
+  // Clients was audited on 2026-08-21 and REFUSED -- its detail page states
+  // "$0.00 paid" as a fact because payments is owner-only, and mergeClientsAction
+  // deletes rows whose re-pointing RLS silently refused. Jobs is unaudited.
+  // When jobs lands it needs BOTH jobs.read and clients.read: jobs name a client
+  // on nearly every row, so a jobs screen without clients.read is a list of work
+  // for nobody.
 ]);
 
 /** Where an office user goes when they hold nothing. */
