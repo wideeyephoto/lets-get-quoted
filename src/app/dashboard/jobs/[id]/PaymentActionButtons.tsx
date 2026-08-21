@@ -159,6 +159,18 @@ export default function PaymentActionButtons({
      * still refuses, `popup` is null and we say so rather than pretending.
      */
     const popup = window.open('', '_blank');
+    /**
+     * `noopener` is the usual way to sever this and cannot be used here: it makes
+     * window.open return null, and the whole point is to hold the reference and
+     * navigate it after the await.
+     *
+     * So the link is cut by hand instead. Without it the Stripe checkout tab
+     * keeps a `window.opener` handle on the dashboard and could navigate it --
+     * reverse tabnabbing. Stripe is not the threat; the habit is, and
+     * src/lib/templates/SocialLinks.tsx already carries the same note about the
+     * same vector.
+     */
+    if (popup) popup.opener = null;
 
     try {
       const url = await onRetry(paymentId);
