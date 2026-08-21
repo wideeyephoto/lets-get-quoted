@@ -17,7 +17,7 @@ const inserted: unknown[] = [];
 
 function table(name: string) {
   const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'order', 'limit', 'is']) chain[method] = () => chain;
+  for (const method of ['select', 'eq', 'order', 'limit', 'is', 'gt']) chain[method] = () => chain;
   chain.maybeSingle = () => Promise.resolve({ data: rows[name] ?? null, error: null });
   chain.single = () => Promise.resolve({ data: rows[`${name}:single`] ?? null, error: null });
   chain.insert = (row: unknown) => {
@@ -34,7 +34,20 @@ function table(name: string) {
 }
 
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({ from: (name: string) => table(name) }),
+  createClient: () => ({
+    from: (name: string) => table(name),
+    // ensureAccountMembership now looks up the signing-in user's address to see
+    // whether an office invitation is waiting for it. A literal rather than the
+    // USER constant below: vi.mock is hoisted above these declarations.
+    auth: {
+      admin: {
+        getUserById: () => Promise.resolve({
+          data: { user: { id: '33333333-3333-4333-8333-333333333333', email: 'new@example.com' } },
+          error: null,
+        }),
+      },
+    },
+  }),
 }));
 vi.mock('next/headers', () => ({ headers: () => new Headers() }));
 vi.mock('@/lib/supabase-server', () => ({ createSupabaseServerClient: () => ({}) }));

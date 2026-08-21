@@ -43,13 +43,19 @@ export async function GET(request: Request) {
       if (user) {
         try {
           const membership = await ensureAccountMembership(user.id);
-          await recordLoginEvent({
-            accountId: membership.account_id,
-            userId: user.id,
-            method: 'oauth',
-            ip: clientIpFrom(request.headers),
-            userAgent: request.headers.get('user-agent'),
-          });
+          // Null when this user holds a pending office invitation: they have no
+          // membership yet, and the next hop -- /office-invite/<token>, carried
+          // here in `next` -- is what creates one. No account to attribute the
+          // sign-in to until then.
+          if (membership) {
+            await recordLoginEvent({
+              accountId: membership.account_id,
+              userId: user.id,
+              method: 'oauth',
+              ip: clientIpFrom(request.headers),
+              userAgent: request.headers.get('user-agent'),
+            });
+          }
         } catch (err) {
           console.error('ensureAccountMembership error in callback:', err);
           throw err;

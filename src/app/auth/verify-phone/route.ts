@@ -49,13 +49,17 @@ export async function POST(request: Request) {
 
   try {
     const membership = await ensureAccountMembership(data.user.id);
-    await recordLoginEvent({
-      accountId: membership.account_id,
-      userId: data.user.id,
-      method: 'phone',
-      ip: clientIpFrom(request.headers),
-      userAgent: request.headers.get('user-agent'),
-    });
+    // Null when this user holds a pending office invitation -- see
+    // ensureAccountMembership.
+    if (membership) {
+      await recordLoginEvent({
+        accountId: membership.account_id,
+        userId: data.user.id,
+        method: 'phone',
+        ip: clientIpFrom(request.headers),
+        userAgent: request.headers.get('user-agent'),
+      });
+    }
   } catch (err) {
     console.error('ensureAccountMembership error in phone verify:', err);
     return NextResponse.json({ error: 'Signed in, but account setup failed. Please try again.' }, { status: 500 });

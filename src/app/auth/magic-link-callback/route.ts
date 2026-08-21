@@ -48,13 +48,17 @@ export async function GET(request: Request) {
     }
 
     const membership = await ensureAccountMembership(data.user.id);
-    await recordLoginEvent({
-      accountId: membership.account_id,
-      userId: data.user.id,
-      method: 'magic_link',
-      ip: clientIpFrom(request.headers),
-      userAgent: request.headers.get('user-agent'),
-    });
+    // Null when this user holds a pending office invitation -- see
+    // ensureAccountMembership. safeNext carries them on to the invitation.
+    if (membership) {
+      await recordLoginEvent({
+        accountId: membership.account_id,
+        userId: data.user.id,
+        method: 'magic_link',
+        ip: clientIpFrom(request.headers),
+        userAgent: request.headers.get('user-agent'),
+      });
+    }
     return NextResponse.redirect(new URL(safeNext, requestUrl.origin));
   } catch (error) {
     console.error('Magic link callback error:', error);

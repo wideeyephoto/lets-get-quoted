@@ -137,6 +137,58 @@ export async function ensureAccountMembership(userId: string) {
     return officeMembership;
   }
 
+  // A PENDING INVITATION IS NOT A NEW SIGNUP EITHER, and this is the case the
+  // office-membership check above cannot catch. An invited employee's FIRST
+  // sign-in is the one the invitation link itself sends them through --
+  // /office-invite/<token> bounces an anonymous visitor to /login and back --
+  // so the accept has not run yet and there is no office membership to find.
+  // Provisioning here hands them an owner row seconds before they accept, and
+  // owner outranks office in getCurrentMembership, so the workspace that hired
+  // them is unreachable from then on. That is precisely the outcome the comment
+  // above is written to prevent; the check just arrives one step too late for
+  // the only path that creates an office user.
+  //
+  // Crew avoids this by never calling this function at all (auth/crew-callback
+  // says so in its own header). Office arrives through the ordinary owner login
+  // rail, so the check has to live here instead.
+  const { data: authUser, error: authUserError } = await admin.auth.admin.getUserById(userId);
+
+  // Refuse rather than fall through. Falling through means provisioning, and
+  // provisioning the wrong person is the silent, permanent failure -- an owner
+  // row that outranks their office one for good. Throwing here fails the
+  // sign-in loudly and they can simply try again.
+  if (authUserError) {
+    throw new Error(`Could not read the signing-in user: ${authUserError.message}`);
+  }
+
+  const email = authUser?.user?.email?.trim().toLowerCase();
+
+  if (email) {
+    // Stored lowercased and trimmed by inviteOfficeUserAction, matched the same
+    // way here. Expiry is derived rather than stored (see office-invitations.ts),
+    // so "pending" has to be spelled out: not accepted, not revoked, not expired.
+    const { data: pendingInvite, error: inviteLookupError } = await admin
+      .from('office_invitations')
+      .select('id')
+      .eq('email', email)
+      .is('accepted_at', null)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    // Same reasoning as above: a failed lookup must not be read as "no
+    // invitation", because that answer provisions.
+    if (inviteLookupError) {
+      throw new Error(`Could not check for a pending invitation: ${inviteLookupError.message}`);
+    }
+
+    // Deliberately returns null instead of provisioning. They hold no
+    // membership yet and the caller is mid-sign-in, one redirect away from the
+    // invitation that creates the right one.
+    if (pendingInvite) return null;
+  }
+
   const { data: newAccount, error: createAccountError } = await admin
     .from('accounts')
     .insert({ business_name: 'My Business' })
