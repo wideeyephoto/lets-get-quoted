@@ -9,6 +9,13 @@ import {
 } from '@/lib/payments';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
+import {
+  CANCELLED_NOTE,
+  CANCELLED_NOTE_ONLY_TONE,
+  PAYMENT_BANNER_STATUS_WORD,
+  PAYMENT_BANNER_TONE,
+  paymentBannerMessage,
+} from '@/lib/payment-banner';
 import { resolvePaymentView } from '@/lib/payment-view';
 import { startCheckoutAction } from './actions';
 
@@ -226,47 +233,6 @@ export default async function PublicPaymentPage({
   const moneyIsInFlight = payment.status === 'processing'
     && Boolean(payment.async_payment_pending_at);
 
-  const statusMessage: Record<PaymentStatus, string> = {
-    requested: '',
-    // Only ever shown for a genuinely in-flight transfer now. The abandoned
-    // case renders the checkout-not-finished notice below instead, because
-    // telling somebody their money is on its way when it is not is the more
-    // expensive of the two mistakes available here.
-    processing: moneyIsInFlight
-      ? 'Your bank transfer is on its way. Bank transfers (ACH) take a few business days to clear, and you’ll be confirmed once it settles. There’s nothing more to do — please don’t pay again.'
-      : '',
-    /**
-     * A PARTIAL refund leaves the status at `paid` -- deliberately, and the
-     * webhook says so: only a full refund becomes `refunded`, because the refund
-     * text message states the whole amount and would be wrong otherwise.
-     *
-     * The consequence reached this page unnoticed. Somebody who paid $4,200 and
-     * was refunded $1,200 came back to "This payment has already been completed.
-     * Thank you!" over a $4,200 figure, with the $1,200 mentioned nowhere. Their
-     * bank statement disagrees with the only page they have, and the page is the
-     * one that looks wrong.
-     */
-    paid: refundedSoFar > 0
-      ? `This payment has already been completed, and ${formatMoney(refundedSoFar)} of it has since been refunded to you. Refunds usually reach your account within a few business days.`
-      : 'This payment has already been completed. Thank you!',
-    // "Failed" reads as "your bank said no", and on this rail that is usually
-    // not what happened. A card declined inside Stripe Checkout does not
-    // complete the session at all -- Stripe keeps the customer there to retry --
-    // so the common route to `failed` is checkout.session.expired, i.e. somebody
-    // closed the tab and Stripe timed the session out hours later. The third
-    // route is an ACH debit bouncing. "Wasn't completed" is true of all three
-    // and alarming in none of them, and it is the wording the payment_failed
-    // text message already uses.
-    failed: legacyDestinationPayment
-      ? 'This payment wasn’t completed, so nothing has been charged. You can try again below.'
-      : 'This payment wasn’t completed. Please contact your contractor for a current secure payment link.',
-    refunded: 'This payment has been refunded.',
-    disputed: 'This payment is under dispute with your bank and cannot be paid here.',
-    // The contractor withdrew it. Said plainly rather than left as a working
-    // card form for money nobody is asking for any more.
-    canceled: 'This payment request was cancelled by your contractor, so there is nothing to pay here. Get in touch if that looks wrong.',
-  };
-
   // ACH is offered on large one-off payments (not on a plan deposit, which stays
   // card-only for the installment engine). Mirrors createCheckoutSessionForPayment.
   const isPlanDeposit = Boolean(payment.payment_plan_id) && payment.kind === 'deposit';
@@ -300,7 +266,8 @@ export default async function PublicPaymentPage({
   const returnedFromCheckout = searchParams.status === 'success';
 
   /**
-   * Whether to offer the button, decided in src/lib/payment-view.ts.
+   * What this page says and whether it offers a button, decided in
+   * src/lib/payment-view.ts.
    *
    * Six booleans meet here, and reading them in sequence down a page is what let
    * "nothing has been charged" reach somebody who had just paid. The decision
@@ -309,11 +276,18 @@ export default async function PublicPaymentPage({
    * put a Pay button beside a banner saying the money already moved, and nothing
    * may say "not completed" to somebody standing on the success redirect.
    *
-   * DELIBERATELY NOT DRIVING THE BANNERS TOO. The resolver names which single
-   * message is correct and the blocks below still choose their own; converting
-   * that rendering as well is the right next step and is a bigger edit than
-   * belongs in the same change as the button. `canPay` is the output where being
-   * wrong costs money, so it is the one that moved first.
+   * ALL THREE OUTPUTS ARE NOW READ. `canPay` moved first, because it is the one
+   * where being wrong costs money. `banner` and `showCancelledNote` followed,
+   * and until they did the page went on choosing its own words from the same
+   * booleans -- which is not a tidiness problem: the status card never consulted
+   * returnedFromCheckout and so contradicted the banner beside it on every card
+   * payment. Nothing below re-derives any of this; see payment-banner.ts.
+   *
+   * WHAT THE RESOLVER DOES NOT DECIDE, deliberately, because none of it is a
+   * mutually-exclusive statement about the payment's state: the Quick Stop
+   * notice, the ACH offer note, and the not-onboarded notice that withholds the
+   * button even when canPay is true. They are additive page content and they
+   * stack on purpose.
    */
   const paymentView = resolvePaymentView({
     status: payment.status,
@@ -326,34 +300,26 @@ export default async function PublicPaymentPage({
   const canPay = paymentView.canPay;
 
   /**
-   * Started checkout, never finished, nothing in flight.
+   * The banner, its tone, and the word on the status card -- all from the one
+   * decision, none of them re-read from the row.
    *
-   * The common case, and the one that previously read as "your payment is
-   * processing". Said plainly instead, with the Pay button still there.
+   * This replaced four derivations that each looked at the booleans again: a
+   * copy map keyed on the stored status, an abandoned-checkout flag, a
+   * rail-unavailable flag, and the card's own label. The card is why it
+   * mattered rather than merely being untidy. It branched on moneyIsInFlight
+   * and never on returnedFromCheckout, so a card payer standing on the success
+   * redirect -- `processing`, no in-flight flag, the single most common
+   * post-payment view there is -- read "Not completed" six lines under a banner
+   * reading "Thanks, that went through". One row, one moment, two answers, and
+   * by its own comment the card is "the thing people quote back on the phone".
    */
-  // Gated on the same rail as the Pay button. Without this, a non-legacy payment
-  // in 'processing' would show "you can pay below" directly above the notice
-  // saying checkout cannot be started from this link.
-  const checkoutNotFinished = payment.status === 'processing'
-    && !moneyIsInFlight
-    && !returnedFromCheckout
-    && legacyDestinationPayment;
-
-  /**
-   * The status card's word, resolved the same way the banner is.
-   *
-   * A stored `processing` covers a bank transfer clearing and a checkout nobody
-   * finished, so one label for both makes the card contradict the sentence
-   * beside it. An unrecognised status still falls through to the stored value:
-   * on a payment page, a blank where the state should be is worse than an
-   * unfamiliar word.
-   */
-  const statusLabel = payment.status === 'processing'
-    ? (moneyIsInFlight ? 'Clearing' : 'Not completed')
-    : (STATUS_LABEL[payment.status] ?? payment.status);
-  const directCheckoutUnavailable =
-    !legacyDestinationPayment &&
-    (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing');
+  const bannerMessage = paymentBannerMessage(paymentView.banner, refundedSoFar, formatMoney);
+  const bannerTone = PAYMENT_BANNER_TONE[paymentView.banner];
+  // Two banners span several stored statuses and hand the word back, which is
+  // where the unrecognised-status fallback lives: on a payment page a blank
+  // where the state should be is worse than an unfamiliar word.
+  const statusLabel = PAYMENT_BANNER_STATUS_WORD[paymentView.banner]
+    ?? (STATUS_LABEL[payment.status] ?? payment.status);
 
   // Once checkout has started, fee_rate/platform_fee are locked in on the row
   // (the actual rate used for that Stripe session) — use those. Otherwise,
@@ -378,15 +344,6 @@ export default async function PublicPaymentPage({
   const displayFeeRate = payment.fee_rate ?? quotedFee?.feeRate ?? null;
   const displayFeeAmount = payment.platform_fee ?? quotedFee?.platformFee ?? null;
   const businessName = payment.display_business_name;
-
-  const statusTone =
-    payment.status === 'paid'
-      ? 'payment-banner success'
-      : payment.status === 'failed' || cancelledJustNow
-        ? 'payment-banner warning'
-        : payment.status === 'refunded'
-          ? 'payment-banner muted'
-          : 'payment-banner';
 
   // Whose page this is. A card form under a brand the homeowner does not
   // recognize is the moment they stop and ring somebody — and until now the mark
@@ -443,31 +400,26 @@ export default async function PublicPaymentPage({
             </div>
           ) : null}
 
-          {statusMessage[payment.status] || cancelledJustNow ? (
-            <div className={statusTone}>
-              {statusMessage[payment.status] ? <p>{statusMessage[payment.status]}</p> : null}
-              {cancelledJustNow ? <p>Checkout was cancelled. You have not been charged.</p> : null}
-            </div>
-          ) : null}
+          {bannerMessage || paymentView.showCancelledNote ? (
+            /* ONE banner, because resolvePaymentView names exactly one state.
+               This was four sibling blocks with independent conditions that
+               could co-fire: the success redirect stacked on a refund, and an
+               abandoned-checkout warning sat beside a cancelled-checkout
+               warning telling the reader the same thing twice. Whatever the
+               resolver returns is what renders, and nothing else can.
 
-          {returnedFromCheckout && payment.status !== 'paid' ? (
-            /* The webhook gap. Stripe redirects the browser the moment checkout
-               completes, routinely before checkout.session.completed lands, so
-               the row is still `processing` and this page would otherwise be
-               silent about what just happened -- or, before this guard, would
-               have said "nothing has been charged" to somebody whose card had
-               just been charged.
-
-               Careful not to overclaim: an ACH checkout also completes here with
-               the money days away, and the webhook is the only authority for
-               "paid". So this says what is certainly true -- it went through,
-               and there is nothing left for them to do. */
-            <div className="payment-banner success">
-              <p>
-                <strong>Thanks — that went through.</strong> We&apos;re just confirming it with your bank,
-                which usually takes a few seconds. There&apos;s nothing else for you to do, and you
-                don&apos;t need to pay again.
-              </p>
+               The words are in src/lib/payment-banner.ts rather than here,
+               because a JSX block is not reachable from this suite -- there is
+               no jsdom -- and copy that can only be checked by slicing this
+               file is copy that can quietly stop being checked. */
+            <div className={bannerTone ?? CANCELLED_NOTE_ONLY_TONE}>
+              {bannerMessage ? (
+                <p>
+                  {bannerMessage.lead ? <><strong>{bannerMessage.lead}</strong>{' '}</> : null}
+                  {bannerMessage.body}
+                </p>
+              ) : null}
+              {paymentView.showCancelledNote ? <p>{CANCELLED_NOTE}</p> : null}
             </div>
           ) : null}
 
@@ -489,24 +441,6 @@ export default async function PublicPaymentPage({
                   else and this link stops working.
                 </p>
               ) : null}
-            </div>
-          ) : null}
-
-          {checkoutNotFinished ? (
-            <div className="payment-banner warning">
-              <p>
-                You started a payment but it wasn&apos;t completed, so nothing has been charged
-                and this is still outstanding. You can pay below.
-              </p>
-            </div>
-          ) : null}
-
-          {directCheckoutUnavailable ? (
-            <div className="payment-banner muted">
-              <p>
-                Online checkout cannot be started or retried from this link. Please contact your contractor for the
-                current secure payment link. No payment can be submitted from this page.
-              </p>
             </div>
           ) : null}
 
@@ -536,15 +470,15 @@ export default async function PublicPaymentPage({
         <div className="workspace-metric-grid compact">
           <article className="workspace-metric-card accent">
             <span className="workspace-metric-label">Payment status</span>
-            {/* A status we have never heard of falls back to the stored value
-                rather than to nothing: on a payment page, a blank where the
-                state should be is worse than an unfamiliar word. */}
-            {/* Not STATUS_LABEL alone. `processing` is one stored value covering
-                two situations, and this card sits directly beside the banner
-                that now distinguishes them -- so it read "Processing" next to
-                "You started a payment but it wasn't completed". The card is the
-                thing people quote back on the phone; it should not disagree
-                with the sentence above it. */}
+            {/* The same decision as the banner, so the two cannot disagree.
+                Not the stored status: `processing` is one value covering an
+                abandoned checkout, a transfer clearing, and the seconds after a
+                card payment while the webhook is still in the air. Reading it
+                straight put "Processing" beside "it wasn't completed", and the
+                fix for that -- a single moneyIsInFlight branch -- still left
+                "Not completed" beside "Thanks, that went through" for everyone
+                who had just paid by card. The card is the thing people quote
+                back on the phone. */}
             <strong className="workspace-metric-value">{statusLabel}</strong>
             <p className="workspace-metric-note">Live status rendered fresh from the database.</p>
           </article>

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { jobMoney } from '@/lib/job-lifecycle';
 import { PAYMENT_STATUS_LABEL } from '@/lib/job-detail-labels';
+import { paymentBannerMessage } from '@/lib/payment-banner';
+import { resolvePaymentView } from '@/lib/payment-view';
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
 const PAYMENTS = read('src', 'lib', 'payments.ts');
@@ -85,9 +87,21 @@ describe('a cancelled payment request is a record, not an absence', () => {
   });
 
   it('tells the homeowner rather than leaving a working card form', () => {
-    expect(PAY_PAGE).toContain('This payment request was cancelled by your contractor');
-    // canPay names its statuses, so 'canceled' is excluded without touching it.
-    expect(PAY_PAGE).toContain("payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing'");
+    // The copy moved into payment-banner.ts, keyed on the banner rather than on
+    // the stored status, and the status list it used to be checked against moved
+    // into resolvePaymentView's OPEN_STATUSES. Both halves are asserted as
+    // behaviour instead: a cancelled request says so, and offers no button.
+    const view = resolvePaymentView({
+      status: 'canceled',
+      moneyInFlight: false,
+      returnedFromCheckout: false,
+      cancelledCheckout: false,
+      payableRail: true,
+      refunded: 0,
+    });
+    expect(view).toMatchObject({ banner: 'cancelled', canPay: false });
+    expect(paymentBannerMessage('cancelled', 0, String)?.body)
+      .toContain('This payment request was cancelled by your contractor');
   });
 
   it('has a label wherever a status is printed', () => {

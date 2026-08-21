@@ -94,6 +94,26 @@ export function resolvePaymentView(input: PaymentViewInput): PaymentView {
   // Open, but not on a rail this page can charge.
   if (!payableRail) return { banner: 'unavailable_here', canPay: false, showCancelledNote };
 
+  /**
+   * `failed` outranks the success redirect, because the webhook has spoken
+   * SINCE the redirect happened.
+   *
+   * Everywhere else on this page the rule is that arriving on `?status=success`
+   * beats the stored row, and the reason is a race: Stripe redirects the browser
+   * before checkout.session.completed lands, so the row is merely stale. That
+   * reasoning does not reach `failed`. Nothing writes `failed` except a webhook
+   * -- an expired session, or an ACH debit bouncing -- so the row is not behind
+   * the redirect, it is ahead of it.
+   *
+   * The reachable case is an ACH payer: they complete checkout, land here on the
+   * success URL, and the transfer bounces days later. Coming back to that same
+   * URL from history or the back button must not greet them with "Thanks --
+   * that went through" over money that never arrived. `failed` says the same
+   * thing an unfinished checkout does -- nothing was charged, you can try again
+   * -- which is true of all three routes into it and alarming in none of them.
+   */
+  if (status === 'failed') return { banner: 'not_finished', canPay: true, showCancelledNote };
+
   // THE ORDER OF THESE THREE IS THE WHOLE POINT.
   //
   // A completed checkout outranks everything, because the visitor is standing on
@@ -104,11 +124,6 @@ export function resolvePaymentView(input: PaymentViewInput): PaymentView {
   if (returnedFromCheckout) return { banner: 'settling', canPay: false, showCancelledNote };
   if (moneyInFlight) return { banner: 'clearing', canPay: false, showCancelledNote };
   if (status === 'processing') return { banner: 'not_finished', canPay: true, showCancelledNote };
-
-  // `failed` says the same thing as an unfinished checkout and for much the same
-  // reason: on this rail the usual route to it is an expired session, not a
-  // decline. See the page's own note on the wording.
-  if (status === 'failed') return { banner: 'not_finished', canPay: true, showCancelledNote };
 
   return { banner: 'none', canPay: true, showCancelledNote };
 }

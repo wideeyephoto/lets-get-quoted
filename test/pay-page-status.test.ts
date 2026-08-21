@@ -2,6 +2,36 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { PAYMENT_BANNER_STATUS_WORD, paymentBannerMessage } from '@/lib/payment-banner';
+import { resolvePaymentView, type PaymentBanner, type PaymentViewInput } from '@/lib/payment-view';
+
+/**
+ * The page's words moved into src/lib/payment-banner.ts, keyed on the banner
+ * resolvePaymentView returns, so the assertions below IMPORT them instead of
+ * hunting for literals in the page source. That is the point of the move: this
+ * file is full of slices, and twice one of them went on passing against a
+ * neighbouring block after the code it was named for had moved.
+ *
+ * The tests keep their names and their reasons. Only the place they look changed.
+ */
+const bannerText = (banner: PaymentBanner, refunded = 0): string => {
+  const m = paymentBannerMessage(banner, refunded, (n) => `$${n.toLocaleString('en-US', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })}`);
+  return m ? `${m.lead ?? ''} ${m.body}`.trim() : '';
+};
+
+/** The banner a real combination of row and URL resolves to. */
+const bannerFor = (over: Partial<PaymentViewInput>): PaymentBanner => resolvePaymentView({
+  status: 'requested',
+  moneyInFlight: false,
+  returnedFromCheckout: false,
+  cancelledCheckout: false,
+  payableRail: true,
+  refunded: 0,
+  ...over,
+}).banner;
+
 /**
  * Line endings normalised at the READ site, not worked around per assertion.
  *
@@ -111,15 +141,19 @@ describe('telling a clearing bank transfer apart from an abandoned checkout', ()
   it('tells an abandoned checkout that nothing was charged', () => {
     // The common case, and the one that used to read as "your payment is
     // processing" — leaving somebody believing they had paid when they had not.
-    expect(PAGE).toContain("wasn&apos;t completed");
-    expect(PAGE).toContain('nothing has been charged');
+    expect(bannerFor({ status: 'processing' })).toBe('not_finished');
+    expect(bannerText('not_finished')).toContain('wasn’t completed');
+    expect(bannerText('not_finished')).toContain('nothing has been charged');
   });
 
   it('does not offer to pay below on a rail that cannot be paid from', () => {
-    // checkoutNotFinished and directCheckoutUnavailable would otherwise both
-    // render, one saying "you can pay below" and the other "you cannot".
-    const block = PAGE.slice(PAGE.indexOf('const checkoutNotFinished'));
-    expect(block.slice(0, 260)).toContain('legacyDestinationPayment');
+    // Both used to render, one saying "you can pay below" and the other "you
+    // cannot". They were separate booleans that happened not to overlap because
+    // one of them remembered to name the rail; now they are two values of one
+    // decision, so overlapping is not a thing that can be got wrong.
+    expect(bannerFor({ status: 'processing', payableRail: false })).toBe('unavailable_here');
+    expect(bannerText('unavailable_here')).not.toContain('You can pay below');
+    expect(bannerText('not_finished')).toContain('You can pay below');
   });
 });
 
@@ -229,7 +263,11 @@ describe('the words match what actually happened', () => {
     // route to `failed` is checkout.session.expired, hours after somebody closed
     // the tab. The third route is an ACH debit bouncing.
     expect(PAGE).not.toContain('The last payment attempt failed');
-    expect(PAGE).toContain('wasn’t completed');
+    expect(bannerText('not_finished')).toContain('wasn’t completed');
+    expect(bannerText('not_finished')).not.toMatch(/\bfailed\b/i);
+    // A `failed` row and an abandoned checkout say the same thing, which is the
+    // reason the wording is careful in the first place.
+    expect(bannerFor({ status: 'failed' })).toBe('not_finished');
   });
 
   it('says the same thing the text message says', () => {
@@ -299,12 +337,14 @@ describe('a partial refund is not invisible', () => {
     // already been completed. Thank you!" over a $4,200 figure, with the $1,200
     // nowhere. Their bank statement disagrees with the only page they have, and
     // the page is the one that looks wrong.
-    expect(PAGE).toContain('refundedSoFar > 0');
-    expect(PAGE).toContain('has since been refunded to you');
+    expect(bannerFor({ status: 'paid', refunded: 1200 })).toBe('partly_refunded');
+    expect(bannerText('partly_refunded', 1200)).toContain('has since been refunded to you');
+    expect(bannerText('partly_refunded', 1200)).toContain('$1,200.00');
   });
 
   it('keeps the plain message when nothing was refunded', () => {
-    expect(PAGE).toContain("'This payment has already been completed. Thank you!'");
+    expect(bannerFor({ status: 'paid', refunded: 0 })).toBe('paid');
+    expect(bannerText('paid')).toBe('This payment has already been completed. Thank you!');
   });
 
   it('does not print null at somebody', () => {
@@ -315,7 +355,13 @@ describe('a partial refund is not invisible', () => {
 
   it('sets expectations about when the money lands', () => {
     // The question somebody reading this actually has next.
-    expect(PAGE).toContain('few business days');
+    //
+    // Asserted against the refund message itself, not against the page. When the
+    // copy moved this went on passing -- against the ACH offer note further down
+    // ("a bank transfer takes a few business days to clear"), which is a
+    // different sentence about a different direction of travel, in a describe
+    // block named for refunds. It had stopped testing and did not fail.
+    expect(bannerText('partly_refunded', 1200)).toContain('few business days');
   });
 });
 
@@ -429,17 +475,31 @@ describe('the page does not pay for lookups it cannot use', () => {
 
 describe('the status card agrees with the sentence beside it', () => {
   it('does not say Processing for a checkout nobody finished', () => {
-    // One stored value, two situations. The card read "Processing" directly
+    // One stored value, THREE situations. The card read "Processing" directly
     // beside a banner saying "You started a payment but it wasn't completed" --
     // and the card is the thing people quote back on the phone.
-    expect(PAGE).toContain("payment.status === 'processing'\n    ? (moneyIsInFlight ? 'Clearing' : 'Not completed')");
+    expect(PAYMENT_BANNER_STATUS_WORD[bannerFor({ status: 'processing' })]).toBe('Not completed');
+    expect(PAYMENT_BANNER_STATUS_WORD[bannerFor({ status: 'processing', moneyInFlight: true })]).toBe('Clearing');
   });
 
   it('resolves it the same way the banner does', () => {
-    // Both read moneyIsInFlight, so they cannot drift apart into saying
-    // different things about one payment.
-    const card = PAGE.slice(PAGE.indexOf('const statusLabel'), PAGE.indexOf('const directCheckoutUnavailable'));
-    expect(card).toContain('moneyIsInFlight');
+    // They cannot drift apart into saying different things about one payment,
+    // because there is now one decision rather than two that happened to read
+    // the same boolean.
+    //
+    // THE THIRD SITUATION IS WHY THIS MATTERS. The card knew about a transfer in
+    // flight and about an abandoned checkout, and nothing else -- so a card payer
+    // standing on the success redirect got "Not completed" beside "Thanks, that
+    // went through".
+    //
+    // The old assertion sliced between `const statusLabel` and
+    // `const directCheckoutUnavailable`. The second anchor no longer exists,
+    // which makes indexOf return -1 and the slice run to the end of the file, so
+    // it went on passing against essentially the whole page. It could not have
+    // caught the defect it was named for even before that.
+    expect(bannerFor({ status: 'processing', returnedFromCheckout: true })).toBe('settling');
+    expect(PAYMENT_BANNER_STATUS_WORD.settling).toBe('Confirming');
+    expect(PAYMENT_BANNER_STATUS_WORD.settling).not.toBe('Not completed');
   });
 
   it('keeps the unknown-status fallback', () => {
@@ -464,8 +524,13 @@ describe('the success redirect, which races the webhook', () => {
     // no async flag -- which the abandoned-checkout wording I added renders as
     // "This payment wasn't completed, so nothing has been charged". Seconds
     // after their card was charged.
-    const notFinished = PAGE.slice(PAGE.indexOf('const checkoutNotFinished'), PAGE.indexOf('const statusLabel'));
-    expect(notFinished).toContain('!returnedFromCheckout');
+    //
+    // Stated as the outcome now rather than as the presence of a `!` in a
+    // source slice: whatever the row says, arriving on the success URL must not
+    // produce the nothing-was-charged wording.
+    expect(bannerFor({ status: 'processing', returnedFromCheckout: true })).toBe('settling');
+    expect(bannerText('settling')).not.toContain('nothing has been charged');
+    expect(bannerText('settling')).not.toContain('wasn’t completed');
   });
 
   it('does not offer to pay again during the gap', () => {
@@ -479,8 +544,8 @@ describe('the success redirect, which races the webhook', () => {
   });
 
   it('says what happened rather than going quiet', () => {
-    expect(PAGE).toContain('Thanks — that went through');
-    expect(PAGE).toContain("don&apos;t need to pay again");
+    expect(bannerText('settling')).toContain('Thanks — that went through');
+    expect(bannerText('settling')).toContain('don’t need to pay again');
   });
 
   it('does not claim the payment is settled', () => {
@@ -488,21 +553,30 @@ describe('the success redirect, which races the webhook', () => {
     // completes at this same URL with the money still days away. The banner
     // therefore says it went through and is being confirmed -- not that it is
     // paid.
-    // Scoped to the rendered <p>, not the surrounding block: the guard
-    // condition legitimately contains the word "paid" (`payment.status !==
-    // 'paid'`), and the first version of this assertion caught that instead of
-    // the copy.
-    const banner = PAGE.slice(PAGE.indexOf('returnedFromCheckout && payment.status'), PAGE.indexOf('quickStop && canPay'));
-    const copy = banner.slice(banner.indexOf('<strong>'), banner.indexOf('</p>'));
-    expect(copy).not.toMatch(/\bpaid\b/i);
-    expect(copy).not.toMatch(/payment received|has been received/i);
-    expect(banner).toContain('confirming it with your bank');
+    //
+    // This used to slice the JSX and then slice again to reach the rendered <p>,
+    // because the guard condition around it legitimately contained the word
+    // "paid" (`payment.status !== 'paid'`) and the first version of the
+    // assertion caught that instead of the copy. The copy is a value now, so
+    // there is no surrounding condition to accidentally read.
+    expect(bannerText('settling')).not.toMatch(/\bpaid\b/i);
+    expect(bannerText('settling')).not.toMatch(/payment received|has been received/i);
+    expect(bannerText('settling')).toContain('confirming it with your bank');
   });
 
   it('stands down once the webhook has landed', () => {
     // With status 'paid' the ordinary settled message is the right one, and two
     // success banners stacked would read as two payments.
-    expect(PAGE).toContain("returnedFromCheckout && payment.status !== 'paid'");
+    //
+    // The old guard was `returnedFromCheckout && payment.status !== 'paid'`,
+    // which excluded exactly one status -- so a refunded, disputed or cancelled
+    // payment opened on a stale success URL stacked "Thanks, that went through"
+    // on top of the terminal message. Standing down is a consequence of the
+    // resolver's ordering now: every terminal state outranks the redirect.
+    for (const status of ['paid', 'refunded', 'disputed', 'canceled']) {
+      expect(bannerFor({ status, returnedFromCheckout: true }), status).not.toBe('settling');
+    }
+    expect(bannerFor({ status: 'paid', returnedFromCheckout: true })).toBe('paid');
   });
 });
 

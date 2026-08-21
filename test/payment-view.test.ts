@@ -175,7 +175,14 @@ describe('every combination resolves, and only sensibly', () => {
 
   it('never says nothing was charged to somebody who just completed checkout', () => {
     // The exact regression, stated as a property.
-    for (const status of STATUSES) {
+    //
+    // `failed` is excluded, and the exclusion is the point rather than a hole in
+    // the property. This says the STORED ROW MUST NOT OUTRANK THE REDIRECT,
+    // because the row is behind it: Stripe redirects before the webhook lands.
+    // `failed` is the one status where that is backwards -- nothing writes it
+    // except a webhook, so it is not stale, it is newer than the redirect. See
+    // the test below, which is the other half of this one.
+    for (const status of STATUSES.filter((s) => s !== 'failed')) {
       for (const moneyInFlight of BOOLS) {
         const result = resolvePaymentView({
           ...base, status, moneyInFlight, returnedFromCheckout: true,
@@ -183,6 +190,19 @@ describe('every combination resolves, and only sensibly', () => {
         expect(result.banner, `${status} after a completed checkout`).not.toBe('not_finished');
       }
     }
+  });
+
+  it('does not thank somebody for a payment that has since failed', () => {
+    // The reachable case is an ACH payer, and it takes days to arrive at: they
+    // complete checkout, land on the success URL, and the debit bounces later.
+    // The success URL is still in their history. Returning to it must not say
+    // "Thanks -- that went through" over money that never came.
+    //
+    // Before the banners were wired this state rendered BOTH messages -- the
+    // truthful one from the copy map and the thank-you from its own block --
+    // so converting to a single banner would have kept the wrong one.
+    expect(resolvePaymentView({ ...base, status: 'failed', returnedFromCheckout: true }))
+      .toMatchObject({ banner: 'not_finished', canPay: true });
   });
 });
 
@@ -210,9 +230,30 @@ describe('the page uses it', () => {
     expect(PAGE).not.toContain("(payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing') &&");
   });
 
-  it('says out loud that the banners have not moved yet', () => {
-    // Half-wiring without saying so is how the next person assumes the resolver
-    // is the whole authority and edits only it.
-    expect(PAGE).toContain('DELIBERATELY NOT DRIVING THE BANNERS TOO');
+  it('reads all three outputs, not just the button', () => {
+    // This used to assert the OPPOSITE -- that the page said out loud it was
+    // only half-wired -- because saying so is what stops the next person
+    // assuming the resolver is the whole authority and editing only it. The
+    // banners have moved now, so the tripwire moved with them: what must not
+    // come back is a page that decides any of this for itself.
+    expect(PAGE).toContain('paymentView.banner');
+    expect(PAGE).toContain('paymentView.showCancelledNote');
+    expect(PAGE).toContain('const canPay = paymentView.canPay;');
+  });
+
+  it('leaves nothing behind that could disagree with it', () => {
+    // Each of these was a separate derivation of a decision the resolver had
+    // already made. Comment lines are stripped first: the prose above these
+    // symbols legitimately names them, and an assertion that the code is gone
+    // must not be satisfied by the comment explaining why it went.
+    const code = PAGE.split('\n')
+      .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+      .join('\n');
+    for (const gone of [
+      'const statusMessage', 'const checkoutNotFinished',
+      'const directCheckoutUnavailable', 'const statusTone',
+    ]) {
+      expect(code, gone).not.toContain(gone);
+    }
   });
 });

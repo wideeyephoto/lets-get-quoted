@@ -4,6 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Pure, unmocked, and free of side effects at import: the rail rule the page
+// renders lives in these two rather than inline in the page any more.
+import { paymentBannerMessage } from '@/lib/payment-banner';
+import { resolvePaymentView } from '@/lib/payment-view';
+
 const mocks = vi.hoisted(() => ({
   admin: null as unknown,
   event: null as unknown,
@@ -1051,10 +1056,29 @@ describe('contractor and homeowner surfaces do not advertise the legacy rail for
   const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
 
   it('gates public Checkout and shows a plain unavailable message', () => {
+    // The page hands the rail to resolvePaymentView as `payableRail` and renders
+    // the banner it names; `directCheckoutUnavailable` was a second, inline
+    // re-derivation of the same rule and is gone. What must stay true is that a
+    // direct row gets the unavailable message and no button, whatever its open
+    // status happens to be.
     const page = read('src', 'app', 'pay', '[id]', 'page.tsx');
-    expect(page).toContain('legacyDestinationPayment');
-    expect(page).toContain('directCheckoutUnavailable');
-    expect(page).toContain('Online checkout cannot be started or retried from this link.');
+    expect(page).toContain('payableRail: legacyDestinationPayment');
+
+    for (const status of ['requested', 'processing', 'failed']) {
+      const view = resolvePaymentView({
+        status,
+        moneyInFlight: false,
+        returnedFromCheckout: false,
+        cancelledCheckout: false,
+        payableRail: false,
+        refunded: 0,
+      });
+      expect(view.banner, status).toBe('unavailable_here');
+      expect(view.canPay, status).toBe(false);
+    }
+
+    expect(paymentBannerMessage('unavailable_here', 0, String)?.body)
+      .toContain('Online checkout cannot be started or retried from this link.');
   });
 
   it('gates row actions, timeline cancel, copy-link, and retry-SMS controls', () => {
