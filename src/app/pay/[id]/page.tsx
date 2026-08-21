@@ -120,6 +120,11 @@ export default async function PublicPaymentPage({
 
   const legacyDestinationPayment = isLegacyDestinationPayment(payment);
 
+  // Money that has gone back, whether or not it took the whole payment with it.
+  // Guarded rather than read straight: `refunded_amount` is null on rows that
+  // predate the column, and `$null` on a payment page is its own support call.
+  const refundedSoFar = Number(payment.refunded_amount) || 0;
+
   /**
    * Whether money is actually moving, which `status` alone cannot tell you.
    *
@@ -148,7 +153,20 @@ export default async function PublicPaymentPage({
     processing: moneyIsInFlight
       ? 'Your bank transfer is on its way. Bank transfers (ACH) take a few business days to clear, and you’ll be confirmed once it settles. There’s nothing more to do — please don’t pay again.'
       : '',
-    paid: 'This payment has already been completed. Thank you!',
+    /**
+     * A PARTIAL refund leaves the status at `paid` -- deliberately, and the
+     * webhook says so: only a full refund becomes `refunded`, because the refund
+     * text message states the whole amount and would be wrong otherwise.
+     *
+     * The consequence reached this page unnoticed. Somebody who paid $4,200 and
+     * was refunded $1,200 came back to "This payment has already been completed.
+     * Thank you!" over a $4,200 figure, with the $1,200 mentioned nowhere. Their
+     * bank statement disagrees with the only page they have, and the page is the
+     * one that looks wrong.
+     */
+    paid: refundedSoFar > 0
+      ? `This payment has already been completed, and ${formatMoney(refundedSoFar)} of it has since been refunded to you. Refunds usually reach your account within a few business days.`
+      : 'This payment has already been completed. Thank you!',
     // "Failed" reads as "your bank said no", and on this rail that is usually
     // not what happened. A card declined inside Stripe Checkout does not
     // complete the session at all -- Stripe keeps the customer there to retry --
