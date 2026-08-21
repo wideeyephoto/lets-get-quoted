@@ -154,7 +154,7 @@ export const PLANS: readonly PricingPlan[] = [
       '1,000 AI Intake + 500 AI writing drafts/month',
       '250 GB file and photo storage',
       'QuickBooks Online connection included',
-      'Extra usage is opt-in through one-time top-ups',
+      'Extra usage is opt-in through top-ups you choose',
     ],
   },
 ] as const;
@@ -280,7 +280,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Can LGQ charge an overage automatically?',
-    a: 'No. There is no automatic overage and no setting that turns one on, so nothing can bill past your plan without you buying it. Extra capacity is a one-time top-up you choose, at a price you see before you pay.',
+    a: 'No. There is no automatic overage and no setting that turns one on, so nothing can bill past your plan without you buying it. Extra capacity is a top-up you choose — some one-time, some monthly — at a price you see before you pay.',
   },
   {
     q: 'When will I get my own business number?',
