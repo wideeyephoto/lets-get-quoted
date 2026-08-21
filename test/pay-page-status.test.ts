@@ -316,7 +316,11 @@ describe('a priority visit fee is not called a deposit', () => {
   });
 
   it('labels it from the offer, not from the kind', () => {
-    expect(PAGE).toContain("quickStop ? 'Priority visit'");
+    // Written across lines now that a third label joined it, so the assertion
+    // checks the branch rather than a formatting accident.
+    const label = PAGE.slice(PAGE.indexOf('const kindLabel'), PAGE.indexOf('const payByClock'));
+    expect(label).toContain('quickStop');
+    expect(label).toContain("'Priority visit'");
     // All three places the label appears must use it, or the brand bar says
     // "Deposit" while the heading says "Priority visit".
     expect(PAGE).toContain('context={kindLabel}');
@@ -351,5 +355,34 @@ describe('a priority visit fee is not called a deposit', () => {
     // Most payments are not Quick Stops, and an unreadable row must leave the
     // page exactly as it was rather than blanking the label.
     expect(PAGE).toContain('if (error || !data) return null');
+  });
+});
+
+describe('an installment says which one it is', () => {
+  it('reads installment_seq, which was on the row all along', () => {
+    // Somebody paying month three of four saw "Installment" and a figure -- the
+    // same three words as month one. A plan texts every month; being unable to
+    // tell #2 from #4 is the difference between "fine" and ringing to ask.
+    expect(PAGE).toContain('loadInstallmentPosition');
+    expect(PAGE).toContain('payment.installment_seq');
+    expect(PAGE).toContain('Installment ${installment.seq} of ${installment.total}');
+  });
+
+  it('refuses to guess when either half is unknown', () => {
+    // "3 of 0" and "5 of 4" are both worse than the plain word this replaces.
+    expect(PAGE).toContain('!Number.isInteger(total) || total < 1 || seq > total');
+    expect(PAGE).toContain('if (!planId || !seq || seq < 1) return null');
+  });
+
+  it('falls back to the kind map, not to nothing', () => {
+    // A plan payment whose count cannot be read must still say "Installment".
+    expect(PAGE).toContain("(KIND_LABEL[payment.kind] || 'Payment')");
+  });
+
+  it('does not collide with the Quick Stop label', () => {
+    // A Quick Stop is also stored as kind 'deposit' and could in principle
+    // carry a plan id. Priority visit wins, because that is what it is.
+    const label = PAGE.slice(PAGE.indexOf('const kindLabel'), PAGE.indexOf('const payByClock'));
+    expect(label.indexOf('Priority visit')).toBeLessThan(label.indexOf('Installment ${'));
   });
 });
