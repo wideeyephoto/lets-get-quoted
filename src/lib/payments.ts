@@ -465,6 +465,43 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     throw new Error(LEGACY_DESTINATION_PAYMENT_RAIL_ERROR);
   }
 
+  /**
+   * THE WEBHOOK RACE, closed at the one place a second charge could be created.
+   *
+   * `processing` is allowed through below because it usually means an abandoned
+   * checkout, and resuming one is the whole point. But it ALSO covers the few
+   * seconds between Stripe redirecting a successful payer and
+   * checkout.session.completed landing -- and in that window every surface
+   * reasonably treats the payment as unpaid and offers to start it again.
+   *
+   * Every route to a second charge passes through this function, so asking
+   * Stripe here settles it for all of them at once: the pay page, the invoice
+   * page, the customer portal and the contractor's own Retry button.
+   *
+   * Only in the ambiguous case -- `processing` with a session recorded -- so the
+   * ordinary first payment adds no round trip. And it FAILS OPEN: if Stripe
+   * cannot be reached, the checkout proceeds exactly as it did before this
+   * existed. Refusing on a network blip would block a payment somebody is
+   * standing there trying to make, which is the worse of the two.
+   */
+  if (payment.status === 'processing' && payment.stripe_checkout_session) {
+    try {
+      const priorSession = await getStripeClient().checkout.sessions.retrieve(
+        payment.stripe_checkout_session,
+      );
+      if (priorSession.payment_status === 'paid') {
+        throw new Error('This payment has already been completed.');
+      }
+    } catch (error) {
+      // Rethrow our own refusal; swallow anything Stripe threw.
+      if (error instanceof Error && error.message === 'This payment has already been completed.') throw error;
+      console.error(
+        `Could not confirm prior checkout session for ${paymentId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
   // "processing" means a checkout session was started but not necessarily
   // completed (e.g. the homeowner abandoned it) — allow retrying with a fresh
   // session. Only "paid"/"refunded" are truly terminal.

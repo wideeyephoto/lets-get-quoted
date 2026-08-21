@@ -493,3 +493,54 @@ describe('the success redirect, which races the webhook', () => {
     expect(PAGE).toContain("returnedFromCheckout && payment.status !== 'paid'");
   });
 });
+
+describe('a second checkout cannot be created for money already taken', () => {
+  it('asks Stripe before resuming a processing payment', () => {
+    // `processing` usually means an abandoned checkout, and resuming one is the
+    // point. But it also covers the seconds between Stripe redirecting a
+    // successful payer and the webhook landing -- and in that window every
+    // surface treats the payment as unpaid and offers to start it again.
+    const guard = PAYMENTS.slice(
+      PAYMENTS.indexOf('THE WEBHOOK RACE'),
+      PAYMENTS.indexOf('"processing" means a checkout session was started'),
+    );
+    expect(guard).toContain("payment.status === 'processing' && payment.stripe_checkout_session");
+    expect(guard).toContain('checkout.sessions.retrieve');
+    expect(guard).toContain("priorSession.payment_status === 'paid'");
+  });
+
+  it('sits in the one function every route to a charge passes through', () => {
+    // The pay page, the invoice page, the portal and the contractor's Retry all
+    // reach a charge through createCheckoutSessionForPayment, so one guard here
+    // settles it for all of them rather than four that can drift.
+    const fn = PAYMENTS.slice(PAYMENTS.indexOf('export async function createCheckoutSessionForPayment'));
+    expect(fn.slice(0, 4000)).toContain('THE WEBHOOK RACE');
+  });
+
+  it('only pays for the lookup in the ambiguous case', () => {
+    // An ordinary first payment is `requested` with no session recorded and must
+    // add no round trip to the thing somebody is waiting on.
+    expect(PAYMENTS).toContain("payment.status === 'processing' && payment.stripe_checkout_session");
+  });
+
+  it('fails OPEN when Stripe cannot be reached', () => {
+    // Refusing on a network blip would block a payment somebody is standing
+    // there trying to make. The pre-existing behaviour is the safe fallback.
+    const guard = PAYMENTS.slice(
+      PAYMENTS.indexOf('THE WEBHOOK RACE'),
+      PAYMENTS.indexOf('"processing" means a checkout session was started'),
+    );
+    expect(guard).toContain('console.error');
+    expect(guard).toContain('Could not confirm prior checkout session');
+  });
+
+  it('still rethrows its own refusal', () => {
+    // The catch must not swallow the very error the guard exists to raise.
+    const guard = PAYMENTS.slice(
+      PAYMENTS.indexOf('THE WEBHOOK RACE'),
+      PAYMENTS.indexOf('"processing" means a checkout session was started'),
+    );
+    expect(guard).toContain("error.message === 'This payment has already been completed.'");
+    expect(guard).toContain('throw error');
+  });
+});
