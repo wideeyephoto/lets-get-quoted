@@ -297,6 +297,19 @@ export default async function PublicPaymentPage({
   const checkoutNotFinished = payment.status === 'processing'
     && !moneyIsInFlight
     && legacyDestinationPayment;
+
+  /**
+   * The status card's word, resolved the same way the banner is.
+   *
+   * A stored `processing` covers a bank transfer clearing and a checkout nobody
+   * finished, so one label for both makes the card contradict the sentence
+   * beside it. An unrecognised status still falls through to the stored value:
+   * on a payment page, a blank where the state should be is worse than an
+   * unfamiliar word.
+   */
+  const statusLabel = payment.status === 'processing'
+    ? (moneyIsInFlight ? 'Clearing' : 'Not completed')
+    : (STATUS_LABEL[payment.status] ?? payment.status);
   const directCheckoutUnavailable =
     !legacyDestinationPayment &&
     (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing');
@@ -464,7 +477,13 @@ export default async function PublicPaymentPage({
             {/* A status we have never heard of falls back to the stored value
                 rather than to nothing: on a payment page, a blank where the
                 state should be is worse than an unfamiliar word. */}
-            <strong className="workspace-metric-value">{STATUS_LABEL[payment.status] ?? payment.status}</strong>
+            {/* Not STATUS_LABEL alone. `processing` is one stored value covering
+                two situations, and this card sits directly beside the banner
+                that now distinguishes them -- so it read "Processing" next to
+                "You started a payment but it wasn't completed". The card is the
+                thing people quote back on the phone; it should not disagree
+                with the sentence above it. */}
+            <strong className="workspace-metric-value">{statusLabel}</strong>
             <p className="workspace-metric-note">Live status rendered fresh from the database.</p>
           </article>
           <article className="workspace-metric-card">
