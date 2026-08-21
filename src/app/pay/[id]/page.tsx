@@ -45,7 +45,15 @@ const KIND_LABEL: Record<string, string> = {
 async function loadQuickStopOffer(
   admin: ReturnType<typeof createAdminClient>,
   paymentId: string,
+  kind: string,
 ): Promise<{ deadlineAt: string | null; windowAt: string | null } | null> {
+  // Every Quick Stop is written as `kind: 'deposit'`, so anything else cannot be
+  // one and does not need the round trip. This page is the most-loaded
+  // customer-facing route in the product and the overwhelming majority of its
+  // payments are final bills and stage payments -- a query per view that can
+  // only ever return nothing for them is a query worth not making.
+  if (kind !== 'deposit') return null;
+
   const { data, error } = await admin
     .from('extra_stop_requests')
     .select('payment_deadline_at, proposed_window_at')
@@ -332,7 +340,7 @@ export default async function PublicPaymentPage({
   const admin = createAdminClient();
   const [brand, quickStop, installment] = await Promise.all([
     loadContractorBrand(admin, payment.account_id),
-    loadQuickStopOffer(admin, payment.id),
+    loadQuickStopOffer(admin, payment.id, payment.kind),
     loadInstallmentPosition(admin, payment.payment_plan_id, payment.installment_seq),
   ]);
 

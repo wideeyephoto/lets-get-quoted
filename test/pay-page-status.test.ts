@@ -386,3 +386,27 @@ describe('an installment says which one it is', () => {
     expect(label.indexOf('Priority visit')).toBeLessThan(label.indexOf('Installment ${'));
   });
 });
+
+describe('the page does not pay for lookups it cannot use', () => {
+  it('skips the Quick Stop read for a kind that cannot be one', () => {
+    // Every Quick Stop is written as kind 'deposit'. A final bill or a stage
+    // payment can never match, so the round trip can only return nothing --
+    // on the most-loaded customer-facing route in the product.
+    expect(PAGE).toContain("if (kind !== 'deposit') return null");
+    expect(PAGE).toContain('loadQuickStopOffer(admin, payment.id, payment.kind)');
+  });
+
+  it('skips the installment read with no plan to read', () => {
+    expect(PAGE).toContain('if (!planId || !seq || seq < 1) return null');
+  });
+
+  it('runs what it does need concurrently', () => {
+    // Three reads that do not depend on each other. Sequential awaits here would
+    // be three round trips deep on a page somebody is waiting to pay from.
+    expect(PAGE).toContain('await Promise.all([');
+    const block = PAGE.slice(PAGE.indexOf('await Promise.all(['), PAGE.indexOf('])', PAGE.indexOf('await Promise.all([')));
+    expect(block).toContain('loadContractorBrand');
+    expect(block).toContain('loadQuickStopOffer');
+    expect(block).toContain('loadInstallmentPosition');
+  });
+});
