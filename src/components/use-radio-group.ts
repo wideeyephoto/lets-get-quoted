@@ -5,9 +5,16 @@ import { useCallback, useRef } from 'react';
 /**
  * Keyboard behavior for a `role="radiogroup"` built out of buttons.
  *
- * WHY THIS EXISTS. Eight places in this app render `role="radiogroup"` around
- * `role="radio"` buttons, and on 2026-08-20 not one of them handled a key
- * press. The markup promises something the component does not do: a screen
+ * WHY THIS EXISTS. Eight places in this app carry `role="radiogroup"`. Four use
+ * native `<input type="radio">` and get arrow keys, roving tabindex and grouping
+ * from the browser for free. The other four are built out of buttons, and on
+ * 2026-08-20 not one of those handled a key press.
+ *
+ * All four of the button ones are money screens -- how to pay, how to sign the
+ * quote that commits you, which of two amounts a client agreed to, and paying to
+ * be fitted into a route sooner. That is not a coincidence: they are the screens
+ * that got bespoke card layouts, and the bespoke layout is what lost the
+ * keyboard. The markup promises something the component does not do: a screen
  * reader announces "radio, not checked, 1 of 2", the user presses the arrow key
  * that announcement implies, and nothing happens. Two of the eight are how
  * somebody chooses to pay a contractor — pay in full or pay over time — so the
