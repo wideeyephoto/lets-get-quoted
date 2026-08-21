@@ -273,6 +273,28 @@ export default async function PublicPaymentPage({
 
   const alreadyPaid = payment.status === 'paid';
   const cancelledJustNow = searchParams.status === 'cancelled';
+
+  /**
+   * They just came back from Stripe having completed checkout.
+   *
+   * `success_url` is `/pay/[id]?status=success`, and Stripe redirects the
+   * browser the instant the payment succeeds -- routinely BEFORE the
+   * checkout.session.completed webhook lands. So the row is still `processing`,
+   * which is what it was set to when the Session was created.
+   *
+   * That race made the abandoned-checkout wording I added a genuine hazard: with
+   * no async flag and no success param, a card payer landing here was told "This
+   * payment wasn't completed, so nothing has been charged" -- seconds after
+   * their card was charged. The old copy was wrong in a milder direction; this
+   * would have been wrong in the worst one, and it is my own change that made it
+   * possible.
+   *
+   * Stripe only sends anybody to this URL after a completed checkout, so the
+   * parameter is trustworthy as "something happened". It is deliberately NOT
+   * treated as proof of payment -- the webhook remains the only authority for
+   * that, and an ACH checkout completes here with the money still days away.
+   */
+  const returnedFromCheckout = searchParams.status === 'success';
   const canPay =
     (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing') &&
     !alreadyPaid &&
@@ -283,6 +305,10 @@ export default async function PublicPaymentPage({
     // ACH genuinely failed comes back as 'failed' and is offered the button
     // again.
     !moneyIsInFlight &&
+    // And not while they are standing on the success redirect. Stripe sent them
+    // here because checkout completed; offering Pay again during the webhook
+    // gap invites paying twice for the same thing.
+    !returnedFromCheckout &&
     legacyDestinationPayment;
 
   /**
@@ -296,6 +322,7 @@ export default async function PublicPaymentPage({
   // saying checkout cannot be started from this link.
   const checkoutNotFinished = payment.status === 'processing'
     && !moneyIsInFlight
+    && !returnedFromCheckout
     && legacyDestinationPayment;
 
   /**
@@ -406,6 +433,27 @@ export default async function PublicPaymentPage({
             <div className={statusTone}>
               {statusMessage[payment.status] ? <p>{statusMessage[payment.status]}</p> : null}
               {cancelledJustNow ? <p>Checkout was cancelled. You have not been charged.</p> : null}
+            </div>
+          ) : null}
+
+          {returnedFromCheckout && payment.status !== 'paid' ? (
+            /* The webhook gap. Stripe redirects the browser the moment checkout
+               completes, routinely before checkout.session.completed lands, so
+               the row is still `processing` and this page would otherwise be
+               silent about what just happened -- or, before this guard, would
+               have said "nothing has been charged" to somebody whose card had
+               just been charged.
+
+               Careful not to overclaim: an ACH checkout also completes here with
+               the money days away, and the webhook is the only authority for
+               "paid". So this says what is certainly true -- it went through,
+               and there is nothing left for them to do. */
+            <div className="payment-banner success">
+              <p>
+                <strong>Thanks — that went through.</strong> We&apos;re just confirming it with your bank,
+                which usually takes a few seconds. There&apos;s nothing else for you to do, and you
+                don&apos;t need to pay again.
+              </p>
             </div>
           ) : null}
 

@@ -441,3 +441,55 @@ describe('the status card agrees with the sentence beside it', () => {
     expect(PAGE).toContain('STATUS_LABEL[payment.status] ?? payment.status');
   });
 });
+
+describe('the success redirect, which races the webhook', () => {
+  const PAYMENTS_LIB3 = read('src/lib/payments.ts');
+
+  it('is a URL Stripe actually sends people to', () => {
+    // The premise. If success_url ever stopped carrying this, every assertion
+    // below would be guarding a branch nothing reaches.
+    expect(PAYMENTS_LIB3).toContain('success_url: `${origin}/pay/${payment.id}?status=success`');
+  });
+
+  it('does not tell somebody who just paid that nothing was charged', () => {
+    // MY OWN REGRESSION. Stripe redirects the instant checkout completes,
+    // routinely before the webhook lands, so the row is still `processing` with
+    // no async flag -- which the abandoned-checkout wording I added renders as
+    // "This payment wasn't completed, so nothing has been charged". Seconds
+    // after their card was charged.
+    const notFinished = PAGE.slice(PAGE.indexOf('const checkoutNotFinished'), PAGE.indexOf('const statusLabel'));
+    expect(notFinished).toContain('!returnedFromCheckout');
+  });
+
+  it('does not offer to pay again during the gap', () => {
+    const canPay = PAGE.slice(PAGE.indexOf('const canPay ='), PAGE.indexOf('legacyDestinationPayment;', PAGE.indexOf('const canPay =')));
+    expect(canPay).toContain('!returnedFromCheckout');
+  });
+
+  it('says what happened rather than going quiet', () => {
+    expect(PAGE).toContain('Thanks — that went through');
+    expect(PAGE).toContain("don&apos;t need to pay again");
+  });
+
+  it('does not claim the payment is settled', () => {
+    // The webhook is the only authority for `paid`, and an ACH checkout
+    // completes at this same URL with the money still days away. The banner
+    // therefore says it went through and is being confirmed -- not that it is
+    // paid.
+    // Scoped to the rendered <p>, not the surrounding block: the guard
+    // condition legitimately contains the word "paid" (`payment.status !==
+    // 'paid'`), and the first version of this assertion caught that instead of
+    // the copy.
+    const banner = PAGE.slice(PAGE.indexOf('returnedFromCheckout && payment.status'), PAGE.indexOf('quickStop && canPay'));
+    const copy = banner.slice(banner.indexOf('<strong>'), banner.indexOf('</p>'));
+    expect(copy).not.toMatch(/\bpaid\b/i);
+    expect(copy).not.toMatch(/payment received|has been received/i);
+    expect(banner).toContain('confirming it with your bank');
+  });
+
+  it('stands down once the webhook has landed', () => {
+    // With status 'paid' the ordinary settled message is the right one, and two
+    // success banners stacked would read as two payments.
+    expect(PAGE).toContain("returnedFromCheckout && payment.status !== 'paid'");
+  });
+});
