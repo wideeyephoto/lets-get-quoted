@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+// CRLF-normalised. Several files in this repo are CRLF, while every multi-line
+// assertion below is written with plain line feeds — so a raw read fails them
+// all for a reason that has nothing to do with the contract being asserted.
+// The fix belongs at the read, never in the assertions, which are correct as
+// written.
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
 const CALENDAR = read('src', 'app', 'dashboard', 'schedule', 'schedule-calendar.tsx');
 const PAGE = read('src', 'app', 'dashboard', 'schedule', 'page.tsx');
