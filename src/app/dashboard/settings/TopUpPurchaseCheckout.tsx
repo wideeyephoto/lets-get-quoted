@@ -6,6 +6,8 @@ import { useFormState, useFormStatus } from 'react-dom';
 import {
   SELLABLE_TOP_UP_IDS,
   TOP_UPS,
+  describeTopUpCadence,
+  describeTopUpUnits,
   formatUsdFromCents,
   type BillingPlanId,
   type TopUpDefinition,
@@ -73,9 +75,9 @@ function offeredTopUps(planCode: PlanCode): TopUpDefinition[] {
     .filter((sku) => (sku.eligiblePlans as readonly string[]).includes(planCode));
 }
 
-function unitsLabel(sku: TopUpDefinition): string {
-  return `${sku.units.toLocaleString('en-US')} ${sku.resourceCode.replace(/_/g, ' ')}`;
-}
+// unitsLabel used to live here and derived its noun from the resource code,
+// which produced "1 crew users". Both halves of the line now come from the
+// catalog, which is the only thing that knows whether a SKU recurs.
 
 export default function TopUpPurchaseCheckout({
   planCode,
@@ -116,21 +118,30 @@ export default function TopUpPurchaseCheckout({
 
   if (offered.length === 0) return null;
 
+  // The card used to offer five one-time credit packs and said so throughout --
+  // "credits", "never expire", "added to the balances above". A recurring seat
+  // is none of those things, so the copy follows what is actually on offer
+  // rather than what was on offer the day it was written.
+  const hasRecurring = offered.some((sku) => sku.recurring);
+  const hasCredits = offered.some((sku) => !sku.recurring);
+
   return (
     <section className="panel workspace-section-card" id="buy-credits">
       <div className="section-heading workspace-section-heading compact-heading">
         <p className="eyebrow">Need more</p>
-        <h2>Buy add-on credits</h2>
+        <h2>{hasRecurring ? 'Buy add-ons' : 'Buy add-on credits'}</h2>
       </div>
       <p className="workspace-details-copy plan-usage-intro">
-        Purchased credits never expire and are added to the balances above. Prices come from LGQ&apos;s
-        current catalog; this form never sends an amount or Stripe Price ID from your browser.
+        {hasCredits ? 'Purchased credits never expire and are added to the balances above. ' : ''}
+        {hasRecurring ? 'Anything billed monthly renews until you cancel it, and raises your limit for as long as it is active. ' : ''}
+        Prices come from LGQ&apos;s current catalog; this form never sends an amount or Stripe Price ID
+        from your browser.
       </p>
 
       {returnStatus === 'success' ? (
         <p className="plan-usage-note" role="status">
-          Thanks — your payment was received. Credits are added to the balances above once Stripe
-          confirms the charge; refresh this page to see them. Nothing is lost if that takes a while.
+          Thanks — your payment was received. What you bought is applied once Stripe confirms the
+          charge; refresh this page to see it. Nothing is lost if that takes a while.
         </p>
       ) : null}
       {returnStatus === 'canceled' ? (
@@ -144,13 +155,19 @@ export default function TopUpPurchaseCheckout({
           <article className="plan-usage-balance" key={sku.id}>
             <span>{sku.label}</span>
             <strong>{formatUsdFromCents(sku.priceCents)}</strong>
-            <small>{unitsLabel(sku)} · one-time · never expires</small>
+            <small>{describeTopUpUnits(sku)} · {describeTopUpCadence(sku)}</small>
             <form action={formAction}>
               <input type="hidden" name="topUpId" value={sku.id} />
               <input type="hidden" name="operationId" value={operationIds[sku.id] ?? ''} />
               {operationIds[sku.id] ? (
                 <BuyButton
-                  label={`Buy for ${formatUsdFromCents(sku.priceCents)}`}
+                  // The period belongs on the button too. This is the last
+                  // thing read before checkout opens, and "Buy for $5.00" on a
+                  // subscription is the sentence somebody remembers when the
+                  // second month arrives.
+                  label={sku.recurring
+                    ? `Subscribe for ${formatUsdFromCents(sku.priceCents)}/month`
+                    : `Buy for ${formatUsdFromCents(sku.priceCents)}`}
                   frozen={Boolean(state?.ok) && !clientRedirectError}
                 />
               ) : (

@@ -458,3 +458,51 @@ export function formatUsdFromCents(cents: number): string {
   const dollars = cents / 100;
   return dollars % 1 === 0 ? `$${dollars.toLocaleString('en-US')}` : `$${dollars.toFixed(2)}`;
 }
+
+/**
+ * What one top-up actually gives you, and for how long.
+ *
+ * WHY THIS EXISTS. The dashboard's buy card wrote this line by hand as
+ * `${units} ${resourceCode.replace(/_/g, ' ')} · one-time · never expires`,
+ * which was true for every SKU on sale on the day it was written -- all five
+ * were one-time credit packs. `crew_user` went on sale on 2026-08-20 and is
+ * `recurring: true`, so that same line began telling a contractor that a $5 A
+ * MONTH subscription was a one-time purchase that never expires. Two false
+ * statements about a recurring charge, on the button that starts it.
+ *
+ * A hardcoded cadence is only ever correct by coincidence. This reads the SKU.
+ */
+
+/** Singular and plural, because "1 crew users" is what deriving it produced. */
+const RESOURCE_NOUNS: Readonly<Record<TopUpDefinition['resourceCode'], readonly [string, string]>> =
+  Object.freeze({
+    text_segments: ['text credit', 'text credits'],
+    marketing_email_sends: ['marketing email', 'marketing emails'],
+    ai_intake_threads: ['AI Intake credit', 'AI Intake credits'],
+    ai_writing_drafts: ['AI writing draft', 'AI writing drafts'],
+    storage_gb: ['GB of storage', 'GB of storage'],
+    // "Seat" rather than "user": you are buying the allowance, not the person,
+    // and the settings screen that spends it is headed Team.
+    office_users: ['office seat', 'office seats'],
+    crew_users: ['crew seat', 'crew seats'],
+    voice_minutes: ['voice minute', 'voice minutes'],
+  });
+
+export function describeTopUpUnits(sku: TopUpDefinition): string {
+  const [singular, plural] = RESOURCE_NOUNS[sku.resourceCode];
+  return `${sku.units.toLocaleString('en-US')} ${sku.units === 1 ? singular : plural}`;
+}
+
+/**
+ * The cadence, said the way somebody deciding whether to click would say it.
+ *
+ * Recurring SKUs name the price again on purpose. The card already shows the
+ * amount once, and an amount without a period beside it reads as a total --
+ * which is exactly the misreading that makes a monthly charge feel like a
+ * surprise the second month.
+ */
+export function describeTopUpCadence(sku: TopUpDefinition): string {
+  return sku.recurring
+    ? `${formatUsdFromCents(sku.priceCents)}/month · renews until you cancel`
+    : 'one-time · never expires';
+}
