@@ -57,7 +57,7 @@ describe('the invited person is actually told', () => {
 
   it('reports the outcome instead of assuming it', () => {
     expect(ACTIONS).toContain('emailed: boolean;');
-    expect(ACTIONS).toContain('return { link, email, resent: false, emailed };');
+    expect(ACTIONS).toContain('return { ok: true, link, email, resent: false, emailed };');
   });
 
   it('the screen says which of the two happened', () => {
@@ -89,5 +89,48 @@ describe('the invited person is actually told', () => {
       expect(line, `a log line names the invite link: ${line.trim()}`)
         .not.toMatch(/\blink\b|inviteUrl/);
     }
+  });
+});
+
+/**
+ * A refusal the contractor can act on has to REACH them.
+ *
+ * readable() maps the database's codes onto real sentences — "That person is
+ * already on your team", "That email belongs to someone on your crew", "Every
+ * office seat on your plan is in use". The actions THREW those, and Next.js
+ * redacts anything thrown out of a Server Action in production, replacing it
+ * with "An error occurred in the Server Components render... a digest property
+ * is included".
+ *
+ * So every one of those sentences worked in dev and was invisible in the only
+ * place a contractor ever sees it. Reported as a crash rather than as an answer.
+ */
+describe('an office refusal survives the server boundary', () => {
+  const ACTIONS = stripComments(read('src/app/dashboard/settings/office-team-actions.ts'));
+  const UI = stripComments(read('src/app/dashboard/settings/OfficeTeamSection.tsx'));
+
+  it('readable() produces a message, not an Error to throw', () => {
+    expect(ACTIONS).toContain('}): string {');
+    expect(ACTIONS).not.toContain('return new Error(');
+  });
+
+  it('no office action throws its refusal', () => {
+    // The whole defect in one assertion.
+    expect(ACTIONS).not.toContain('throw readable(error)');
+    expect(ACTIONS).not.toContain("throw new Error('Enter the email address");
+  });
+
+  it('every refusal comes back as a value with the message', () => {
+    const returned = ACTIONS.match(/return \{ ok: false, message: /g) ?? [];
+    // Invite validation, invite RPC, revoke, remove.
+    expect(returned.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('the screen renders the returned message instead of a caught one', () => {
+    expect(UI).toContain('if (!result.ok) {');
+    expect(UI).toContain('setProblem(result.message);');
+    // The catch is now for the genuinely unexpected, so it must not pretend to
+    // carry a server message across a boundary that strips it.
+    expect(UI).not.toContain('error instanceof Error ? error.message');
   });
 });

@@ -45,12 +45,21 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
     startWork(async () => {
       try {
         const result = await inviteOfficeUserAction({ email: value });
+        // A refusal arrives as a VALUE. Thrown messages do not survive the
+        // server boundary in production -- Next.js redacts them into a digest --
+        // so 'That person is already on your team' only ever reached a dev
+        // console. The catch below is for a genuinely unexpected failure.
+        if (!result.ok) {
+          setState('error');
+          setProblem(result.message);
+          return;
+        }
         setIssued({ email: result.email, link: result.link, emailed: result.emailed });
         setEmail('');
         setState('idle');
-      } catch (error) {
+      } catch {
         setState('error');
-        setProblem(error instanceof Error ? error.message : 'The invitation could not be sent.');
+        setProblem('The invitation could not be sent. Try again in a moment.');
       }
     });
   }
@@ -64,9 +73,10 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
     setProblem(null);
     startWork(async () => {
       try {
-        await removeOfficeUserAction({ userId });
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'That access could not be removed.');
+        const result = await removeOfficeUserAction({ userId });
+        if (!result.ok) setProblem(result.message);
+      } catch {
+        setProblem('That access could not be removed. Try again in a moment.');
       }
     });
   }
@@ -75,9 +85,10 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
     setProblem(null);
     startWork(async () => {
       try {
-        await revokeOfficeInvitationAction({ invitationId });
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'That invitation could not be cancelled.');
+        const result = await revokeOfficeInvitationAction({ invitationId });
+        if (!result.ok) setProblem(result.message);
+      } catch {
+        setProblem('That invitation could not be cancelled. Try again in a moment.');
       }
     });
   }

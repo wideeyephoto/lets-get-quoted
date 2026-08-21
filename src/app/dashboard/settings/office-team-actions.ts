@@ -30,7 +30,21 @@ import {
  * problem to chase. Email is the obvious follow-up; a half-built send is not.
  */
 
-export type InviteResult = Readonly<{
+/**
+ * Success or a reason, never a thrown Error.
+ *
+ * Next.js redacts anything thrown out of a Server Action in production and
+ * replaces it with a digest, so a thrown message reaches the contractor as
+ * "An error occurred in the Server Components render". Every sentence in
+ * readable() was written for somebody who would never see it. A RETURN VALUE
+ * crosses that boundary intact.
+ */
+export type InviteResult =
+  | InviteIssued
+  | Readonly<{ ok: false; message: string }>;
+
+export type InviteIssued = Readonly<{
+  ok: true;
   /** Shown once. The database holds only its hash and cannot reproduce it. */
   link: string;
   email: string;
@@ -46,48 +60,60 @@ export type InviteResult = Readonly<{
   emailed: boolean;
 }>;
 
-/** Maps the database's codes onto something a contractor can act on. */
-function readable(error: { code?: string; message?: string; details?: unknown }): Error {
+/**
+ * Maps the database's codes onto something a contractor can act on.
+ *
+ * RETURNS THE MESSAGE, and callers put it in the RETURN VALUE. It used to
+ * build an Error that the actions threw, which meant none of these sentences
+ * ever reached anybody in production: Next.js redacts an error thrown out of a
+ * Server Action and replaces it with "An error occurred in the Server
+ * Components render... a digest property is included". Every message below
+ * worked in dev and was invisible in the deployed product, which is the only
+ * place a contractor sees it.
+ *
+ * A returned value crosses that boundary intact.
+ */
+function readable(error: { code?: string; message?: string; details?: unknown }): string {
   const raw = String(error?.message ?? '');
 
   if (raw.includes('office_seat_limit_reached')) {
-    return new Error(
-      'Every office seat on your plan is in use. Remove someone\'s access, or add a seat, then invite again.',
+    return (
+      'Every office seat on your plan is in use. Remove someone\'s access, or add a seat, then invite again.'
     );
   }
   if (raw.includes('office_invitation_is_crew')) {
     // Its own message, because the answer is different: they are not on the
     // team already, they are on the CREW -- and moving them would take the
     // field app away, which is a decision nobody has made.
-    return new Error(
+    return (
       'That email belongs to someone on your crew. Moving them to the office would '
       + 'take away their field app access, so it has to be done deliberately — '
-      + 'get in touch and we will sort it out with you.',
+      + 'get in touch and we will sort it out with you.'
     );
   }
   if (raw.includes('office_invitation_already_a_member')) {
-    return new Error('That person is already on your team.');
+    return 'That person is already on your team.';
   }
   if (raw.includes('office_invitation_resend_limit')) {
-    return new Error('This invitation has been sent too many times. Cancel it and start a new one.');
+    return 'This invitation has been sent too many times. Cancel it and start a new one.';
   }
   if (raw.includes('office_removal_wrong_role')) {
-    return new Error(
-      'That person owns this business, so their access cannot be removed here.',
+    return (
+      'That person owns this business, so their access cannot be removed here.'
     );
   }
   if (raw.includes('office_seat_forbidden')) {
-    return new Error('Only the owner of this business can manage office users.');
+    return 'Only the owner of this business can manage office users.';
   }
   if (raw.includes('office_seat_entitlement_unavailable')) {
-    return new Error('Your plan\'s office-user limit could not be read, so nothing was sent. Try again shortly.');
+    return ('Your plan\'s office-user limit could not be read, so nothing was sent. Try again shortly.');
   }
   if (raw.includes('office_invitation_expiry_invalid') || raw.includes('office_invitation_token_invalid')) {
     // Neither is reachable from this action — it mints both values itself — so
     // if one surfaces the bug is here, not in what the owner typed.
-    return new Error('The invitation could not be created. This is a problem on our side.');
+    return 'The invitation could not be created. This is a problem on our side.';
   }
-  return new Error(raw.trim() || 'The invitation could not be sent. Try again.');
+  return (raw.trim() || 'The invitation could not be sent. Try again.');
 }
 
 export async function inviteOfficeUserAction(input: { email: string }): Promise<InviteResult> {
@@ -95,7 +121,7 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
 
   const email = String(input?.email ?? '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 320) {
-    throw new Error('Enter the email address this person will sign in with.');
+    return { ok: false, message: 'Enter the email address this person will sign in with.' };
   }
 
   // Minted here, hashed here, and the plaintext leaves in the return value and
@@ -108,7 +134,7 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
     p_token_sha256: hashInvitationToken(token),
     p_expires_at: invitationExpiry().toISOString(),
   });
-  if (error) throw readable(error);
+  if (error) return { ok: false, message: readable(error) };
 
   const { data: { user } } = await supabase.auth.getUser();
   await recordAccountEvent({
@@ -152,18 +178,18 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
   }
 
   revalidatePath('/dashboard/automations');
-  return { link, email, resent: false, emailed };
+  return { ok: true, link, email, resent: false, emailed };
 }
 
 export async function revokeOfficeInvitationAction(
   input: { invitationId: string },
-): Promise<{ revoked: boolean }> {
+): Promise<{ ok: true; revoked: boolean } | { ok: false; message: string }> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const { data, error } = await supabase.rpc('revoke_office_invitation', {
     p_invitation_id: String(input?.invitationId ?? ''),
   });
-  if (error) throw readable(error);
+  if (error) return { ok: false, message: readable(error) };
 
   const { data: { user } } = await supabase.auth.getUser();
   await recordAccountEvent({
@@ -178,7 +204,7 @@ export async function revokeOfficeInvitationAction(
   // False is a real answer, not a failure: the invitation was already accepted,
   // already cancelled, or belongs to nobody. Revoking an ACCEPTED one does
   // nothing on purpose — removing a person is a different act.
-  return { revoked: data === true };
+  return { ok: true, revoked: data === true };
 }
 
 /**
@@ -193,14 +219,14 @@ export async function revokeOfficeInvitationAction(
  */
 export async function removeOfficeUserAction(
   input: { userId: string },
-): Promise<{ removed: boolean }> {
+): Promise<{ ok: true; removed: boolean } | { ok: false; message: string }> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const { data, error } = await supabase.rpc('remove_office_user', {
     p_account_id: accountId,
     p_user_id: String(input?.userId ?? ''),
   });
-  if (error) throw readable(error);
+  if (error) return { ok: false, message: readable(error) };
 
   const { data: { user } } = await supabase.auth.getUser();
   await recordAccountEvent({
@@ -212,5 +238,5 @@ export async function removeOfficeUserAction(
   });
 
   revalidatePath('/dashboard/settings');
-  return { removed: data === true };
+  return { ok: true, removed: data === true };
 }
