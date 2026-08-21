@@ -15,9 +15,55 @@ import { normalizeUsPhone } from '@/lib/phone';
 
 export type ReferralStage = 'introduced' | 'booked' | 'thanked';
 
-/** The minimum a caller must supply. A subset of Lead, so a real row fits. */
+/**
+ * Which table a referred request came from.
+ *
+ * Two rails reach a contractor from a referral link and they are stored in
+ * different places: an ordinary booking becomes a lead, and a Quick Stop
+ * becomes an extra_stop_requests row that never becomes a lead at all. Both are
+ * revenue, so both belong in this queue — but settling has to stamp the right
+ * table, so each row remembers where it came from.
+ */
+export type ReferralSource = 'lead' | 'quick_stop';
+
+/**
+ * A Quick Stop's own status vocabulary, mapped onto the referral lifecycle.
+ *
+ * Money changes hands when the customer pays the offer, which is what moves a
+ * request to 'confirmed' — so that, and everything downstream of it, is won.
+ * A refund undoes it. The in-between states are still live negotiations and
+ * owe nobody anything yet.
+ */
+export function quickStopReferralStatus(status: string): 'won' | 'lost' | 'open' {
+  if (['confirmed', 'en_route', 'arrived', 'completed'].includes(status)) return 'won';
+  if (
+    [
+      'contractor_declined',
+      'offer_expired',
+      'customer_declined',
+      'customer_canceled',
+      'contractor_canceled',
+      'no_show_confirmed',
+      'refunded',
+    ].includes(status)
+  ) {
+    return 'lost';
+  }
+  return 'open';
+}
+
+/**
+ * The minimum a caller must supply. A subset of Lead, so a real row fits.
+ *
+ * `status` is the CALLER's job to normalise: it must already be one of the lead
+ * vocabulary's 'won' / 'lost' / anything-else, so a Quick Stop is passed through
+ * quickStopReferralStatus above before it gets here. That keeps this module
+ * knowing one lifecycle rather than two.
+ */
 export type ReferralQueueLead = {
   id: string;
+  /** Defaults to 'lead' — the rail that existed first. */
+  source?: ReferralSource;
   name: string | null;
   phone: string | null;
   email: string | null;
@@ -36,6 +82,8 @@ export type ReferralRow = {
    * the other still reads "owed" is how somebody gets paid twice.
    */
   leadIds: string[];
+  /** extra_stop_requests ids in the same group. Settling stamps both tables. */
+  stopIds: string[];
   referrerClientId: string;
   referrerName: string;
   referredName: string;
@@ -161,7 +209,8 @@ export function buildReferralQueue(
       if (!booked && closed && settled.length === 0) continue;
 
       rows.push({
-        leadIds: ordered.map((lead) => lead.id),
+        leadIds: ordered.filter((lead) => (lead.source ?? 'lead') === 'lead').map((lead) => lead.id),
+        stopIds: ordered.filter((lead) => lead.source === 'quick_stop').map((lead) => lead.id),
         referrerClientId,
         // A referrer whose client row was merged away or deleted is still a real
         // debt — the name is what is missing, not the obligation.

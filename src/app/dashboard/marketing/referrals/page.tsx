@@ -1,6 +1,6 @@
 import { requireOwnerContext } from '@/lib/auth';
 import { getLeadTriage, type LeadTriage } from '@/lib/leads';
-import { buildReferralQueue, type ReferralQueueLead, type ReferralRow } from '@/lib/referral-queue';
+import { buildReferralQueue, quickStopReferralStatus, type ReferralQueueLead, type ReferralRow } from '@/lib/referral-queue';
 import { isReferralConfigured } from '@/lib/referral';
 import SaveButton from '@/components/save-button';
 import MarketingNav from '../MarketingNav';
@@ -64,6 +64,7 @@ function ReferralTable({
                 {action && actionLabel ? (
                   <form action={action}>
                     <input type="hidden" name="leadIds" value={row.leadIds.join(',')} />
+                    <input type="hidden" name="stopIds" value={row.stopIds.join(',')} />
                     <SaveButton className="btn" pendingLabel="Saving…" savedLabel="Done ✓">
                       {actionLabel}
                     </SaveButton>
@@ -94,28 +95,70 @@ export default async function ReferralsPage() {
   // row cap is ever configured it matters more than affordability: truncation
   // drops the OLDEST rows, and this list sorts oldest-first, so the debts that
   // have been outstanding longest would be the ones to vanish.
-  const [{ data: leadRows, error: leadsError }, { data: accountRow }] = await Promise.all([
+  // BOTH RAILS. A referral link lands on a booking page that offers two paths,
+  // and only one of them makes a lead — a Quick Stop is an extra_stop_requests
+  // row that never becomes one. Its referrer rides in that row's `intake` blob
+  // the way a lead's rides in `triage`, so this is two narrow reads rather than
+  // a join, and the queue collapses them by person afterwards.
+  const [{ data: leadRows, error: leadsError }, { data: stopRows, error: stopsError }, { data: accountRow }] = await Promise.all([
     supabase
       .from('leads')
       .select('id, name, phone, email, status, client_id, created_at, referral_settled_at, triage')
       .eq('account_id', accountId)
       .not('triage->>referredBy', 'is', null)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('extra_stop_requests')
+      .select('id, client_name, client_phone, client_email, status, client_id, created_at, referral_settled_at, intake')
+      .eq('account_id', accountId)
+      .not('intake->>referredBy', 'is', null)
+      .order('created_at', { ascending: false }),
     supabase.from('accounts').select('referral_reward').eq('id', accountId).maybeSingle(),
   ]);
 
   const reward = ((accountRow?.referral_reward as string | null) ?? '').trim();
 
-  // The jsonb predicate above says the key is PRESENT; getLeadTriage is what says
-  // it is a string worth trusting. Both, because they answer different questions.
-  type ReferredRow = ReferralQueueLead & { triage: LeadTriage | null };
+  // The jsonb predicates above say the key is PRESENT; these say it is a string
+  // worth trusting. Both, because they answer different questions.
+  type ReferredLeadRow = ReferralQueueLead & { triage: LeadTriage | null };
   const referredBy = new Map<string, string>();
-  const referred: ReferralQueueLead[] = ((leadRows ?? []) as unknown as ReferredRow[]).filter((lead) => {
+  const referred: ReferralQueueLead[] = ((leadRows ?? []) as unknown as ReferredLeadRow[]).filter((lead) => {
     const who = getLeadTriage(lead).referredBy;
     if (!who) return false;
     referredBy.set(lead.id, who);
     return true;
   });
+
+  type StopRow = {
+    id: string;
+    client_name: string | null;
+    client_phone: string | null;
+    client_email: string | null;
+    status: string;
+    client_id: string | null;
+    created_at: string;
+    referral_settled_at: string | null;
+    intake: { referredBy?: unknown } | null;
+  };
+  for (const stop of (stopRows ?? []) as unknown as StopRow[]) {
+    const who = stop.intake?.referredBy;
+    if (typeof who !== 'string' || !who) continue;
+    referredBy.set(stop.id, who);
+    referred.push({
+      id: stop.id,
+      source: 'quick_stop',
+      name: stop.client_name,
+      phone: stop.client_phone,
+      email: stop.client_email,
+      // Normalised into the lead vocabulary here, so the queue knows one
+      // lifecycle rather than two. A Quick Stop is won once the customer has
+      // paid the offer, which is what moves it to confirmed.
+      status: quickStopReferralStatus(stop.status),
+      client_id: stop.client_id,
+      created_at: stop.created_at,
+      referral_settled_at: stop.referral_settled_at,
+    });
+  }
 
   // One round trip for the referrers' names, and only when there are any.
   const referrerIds = [...new Set([...referredBy.values()])];
@@ -177,7 +220,7 @@ export default async function ReferralsPage() {
         <div className="section-heading workspace-section-heading compact-heading">
           <h2>Owed a thank-you ({queue.owed.length})</h2>
         </div>
-        {leadsError ? (
+        {leadsError || stopsError ? (
           // An empty list and a failed read look identical, and one of them is a
           // page quietly telling the owner they owe nobody.
           <p className="empty-state">

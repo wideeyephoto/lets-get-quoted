@@ -3609,3 +3609,13 @@ alter table accounts add column if not exists referral_reward text;
 -- parse vanishes at the next write — losing an attribution is mild, losing this
 -- one means the owner pays the same person twice.
 alter table leads add column if not exists referral_settled_at timestamptz;
+
+-- Quick Stop joins the referral engine — mirrors
+-- migrations/2026-08-26-referral-quick-stop.sql.
+--
+-- A referral link lands on a booking page that offers two rails, and only one of
+-- them makes a lead. The referrer for a Quick Stop rides in that row's `intake`
+-- blob (intake.referredBy), the same way a lead's rides in triage.referredBy and
+-- for the same reason: the insert already names the column, so capture needs no
+-- migration. This is the money-shaped half, which cannot be derived.
+alter table extra_stop_requests add column if not exists referral_settled_at timestamptz;

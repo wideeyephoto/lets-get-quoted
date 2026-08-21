@@ -517,7 +517,22 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     await createQuickStopRequest(
       admin,
       site.account_id,
-      { name, phone, email, address, issue, startedWhen, worsening, propertyType, availability, photoPaths },
+      {
+        name,
+        phone,
+        email,
+        address,
+        issue,
+        startedWhen,
+        worsening,
+        propertyType,
+        availability,
+        photoPaths,
+        // Verified against THIS account, so a code minted by another
+        // contractor is nobody. Resolved here rather than in the writer:
+        // quick-stop-requests.ts is unit-tested and holds no request context.
+        referredBy: referrerFromCode(site.account_id, (formData.get('ref') ?? '').toString()),
+      },
       qualification,
       {
         responseDeadlineMins: settings.responseDeadlineMins,

@@ -212,14 +212,10 @@ export default async function BookingPage({
   const connect = gate as { connect_onboarded?: boolean; stripe_connect_id?: string | null } | null;
   const quickStopPayable = Boolean(connect?.connect_onboarded && connect?.stripe_connect_id);
   const quickStopEnabled = quickStopSettings.available && quickStopDays.length > 0 && quickStopPayable;
-  // NO referralCode, and that is a decision rather than an oversight. This rail
-  // never creates a lead — it writes extra_stop_requests (see
-  // @/lib/quick-stop-requests) — and the whole referral engine is derived from
-  // leads.triage.referredBy, so there is nowhere to record the referrer and no
-  // row for the queue to read. Attributing this path needs its own nullable
-  // column on extra_stop_requests and a second source in buildReferralQueue.
-  // Until then a referred visitor who takes the priority-visit path is revenue
-  // with no attribution, and the owner is not told a referral arrived.
+  // This rail never creates a lead — it writes extra_stop_requests — so the
+  // referrer rides in that row's `intake` blob the way a lead's rides in
+  // `triage`, and buildReferralQueue reads both. A referred visitor who takes
+  // the priority-visit path is attributed like any other.
   const quickStop = quickStopEnabled ? (
     <QuickStopFlow
       subdomain={params.subdomain}
@@ -227,6 +223,7 @@ export default async function BookingPage({
       businessName={businessName}
       serviceArea={site.service_area}
       days={quickStopDays}
+      referralCode={searchParams.ref ?? null}
     />
   ) : null;
 

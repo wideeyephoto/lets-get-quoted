@@ -1,7 +1,51 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireOwnerContext } from '@/lib/auth';
+
+/** Ids as the form posted them: comma-separated, and evidence of nothing. */
+function postedIds(formData: FormData, field: string): string[] {
+  return String(formData.get(field) ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Stamp both rails.
+ *
+ * One referred person can arrive down both — an ordinary booking AND a Quick
+ * Stop — and that is ONE debt. Stamping only the table the button happened to
+ * be rendered beside is how the other half reappears tomorrow as a fresh one.
+ */
+async function stampReferral(
+  supabase: SupabaseClient,
+  accountId: string,
+  formData: FormData,
+  settledAt: string | null,
+  failure: string,
+): Promise<void> {
+  const leadIds = postedIds(formData, 'leadIds');
+  const stopIds = postedIds(formData, 'stopIds');
+  if (leadIds.length === 0 && stopIds.length === 0) return;
+
+  // Scoped by account_id as well as id: the ids come from a form the browser
+  // posted, so they are not evidence of anything on their own.
+  const writes = [];
+  if (leadIds.length > 0) {
+    writes.push(supabase.from('leads').update({ referral_settled_at: settledAt }).eq('account_id', accountId).in('id', leadIds));
+  }
+  if (stopIds.length > 0) {
+    writes.push(
+      supabase.from('extra_stop_requests').update({ referral_settled_at: settledAt }).eq('account_id', accountId).in('id', stopIds),
+    );
+  }
+  const results = await Promise.all(writes);
+  if (results.some((result) => result.error)) throw new Error(failure);
+
+  revalidatePath('/dashboard/marketing/referrals');
+}
 
 /** As long as a promise needs to be, and short enough to sit in an email. */
 const REWARD_MAX = 120;
@@ -44,37 +88,17 @@ export async function setReferralRewardAction(formData: FormData) {
  */
 export async function settleReferralAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
-  const leadIds = String(formData.get('leadIds') ?? '')
-    .split(',')
-    .map((id) => id.trim())
-    .filter(Boolean);
-  if (leadIds.length === 0) return;
-
-  const { error } = await supabase
-    .from('leads')
-    .update({ referral_settled_at: new Date().toISOString() })
-    .eq('account_id', accountId)
-    .in('id', leadIds);
-  if (error) throw new Error('Could not mark that referral as thanked. The referrals migration may not have been run yet.');
-
-  revalidatePath('/dashboard/marketing/referrals');
+  await stampReferral(
+    supabase,
+    accountId,
+    formData,
+    new Date().toISOString(),
+    'Could not mark that referral as thanked. The referrals migration may not have been run yet.',
+  );
 }
 
 /** Undo — the button above is one click, and one click needs a way back. */
 export async function unsettleReferralAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
-  const leadIds = String(formData.get('leadIds') ?? '')
-    .split(',')
-    .map((id) => id.trim())
-    .filter(Boolean);
-  if (leadIds.length === 0) return;
-
-  const { error } = await supabase
-    .from('leads')
-    .update({ referral_settled_at: null })
-    .eq('account_id', accountId)
-    .in('id', leadIds);
-  if (error) throw new Error('Could not reopen that referral. The referrals migration may not have been run yet.');
-
-  revalidatePath('/dashboard/marketing/referrals');
+  await stampReferral(supabase, accountId, formData, null, 'Could not reopen that referral.');
 }

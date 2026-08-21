@@ -39,12 +39,15 @@ export default function QuickStopFlow({
   businessName,
   serviceArea,
   days,
+  referralCode,
   startOpen = false,
   onExit,
 }: {
   subdomain: string;
   siteId: string;
   businessName: string;
+  /** The raw ?ref from the URL, posted back for the server action to verify. */
+  referralCode: string | null;
   /** Only so the address example names their town rather than somebody else's. */
   serviceArea?: string | null;
   /**
@@ -160,6 +163,10 @@ export default function QuickStopFlow({
       // differently — the server verifies it and ignores anything it didn't
       // sign, so this is a shortcut, not a claim.
       fd.set('verdictToken', verdict?.verdictToken ?? '');
+      // Who sent them. Unverified here — the client holds no key; the server
+      // action checks it against this account and ignores anything it did not
+      // sign. See @/lib/referral.
+      fd.set('ref', referralCode ?? '');
       for (const file of photos) fd.append('photos', file);
 
       const result = await submitQuickStopRequestAction(fd);

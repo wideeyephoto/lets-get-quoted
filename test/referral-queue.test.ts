@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildReferralQueue, type ReferralQueueLead } from '@/lib/referral-queue';
+import { buildReferralQueue, quickStopReferralStatus, type ReferralQueueLead } from '@/lib/referral-queue';
 
 /**
  * The queue is the whole owner-facing feature, and it is derived — there is no
@@ -196,6 +196,72 @@ describe('dead referrals do not sit in the list forever', () => {
   it('keeps an already-thanked one on the record even if it later went lost', () => {
     const rows = [lead({ client_id: 'client-1', status: 'lost', referral_settled_at: '2026-08-09T00:00:00.000Z' })];
     expect(buildReferralQueue(rows, allTo(REFERRER), noNames).thanked).toHaveLength(1);
+  });
+});
+
+describe('Quick Stop is the other rail into the same queue', () => {
+  /*
+   * A referral link lands on a booking page offering two paths, and only one
+   * makes a lead. A referred customer who takes the priority-visit path is
+   * revenue like any other, so it belongs in the same list — but settling has
+   * to stamp the right table, which is what `source` is for.
+   */
+  const stop = (over: Partial<ReferralQueueLead> = {}) => lead({ source: 'quick_stop', ...over });
+
+  it('maps paid-and-onwards to won, and dead ends to lost', () => {
+    for (const s of ['confirmed', 'en_route', 'arrived', 'completed']) expect(quickStopReferralStatus(s)).toBe('won');
+    for (const s of ['contractor_declined', 'offer_expired', 'customer_declined', 'customer_canceled', 'contractor_canceled', 'no_show_confirmed', 'refunded'])
+      expect(quickStopReferralStatus(s)).toBe('lost');
+    // Still a live negotiation: nothing is owed yet, and it is not dead either.
+    for (const s of ['requested', 'awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'disputed'])
+      expect(quickStopReferralStatus(s)).toBe('open');
+  });
+
+  it('owes for a Quick Stop that was paid for, and reports it under stopIds', () => {
+    const queue = buildReferralQueue([stop({ client_id: 'client-1', status: 'won' })], allTo(REFERRER), noNames);
+    expect(queue.owed).toHaveLength(1);
+    expect(queue.owed[0].stopIds).toHaveLength(1);
+    expect(queue.owed[0].leadIds).toHaveLength(0);
+  });
+
+  it('collapses a lead and a Quick Stop from the same person into ONE debt', () => {
+    const rows = [
+      lead({ client_id: 'client-1', status: 'new' }),
+      stop({ client_id: 'client-1', status: 'won' }),
+    ];
+    const queue = buildReferralQueue(rows, allTo(REFERRER), noNames);
+    expect(queue.owed).toHaveLength(1);
+    expect(queue.waiting).toHaveLength(0);
+    // Both ids travel together, so one press settles both tables — otherwise
+    // the unstamped half comes back tomorrow as a fresh debt.
+    expect(queue.owed[0].leadIds).toHaveLength(1);
+    expect(queue.owed[0].stopIds).toHaveLength(1);
+  });
+
+  it('joins them on a shared phone when neither carries a client id yet', () => {
+    const rows = [
+      lead({ client_id: null, phone: '(555) 123-4567', status: 'new' }),
+      stop({ client_id: null, phone: '555-123-4567', status: 'won' }),
+    ];
+    const queue = buildReferralQueue(rows, allTo(REFERRER), noNames);
+    expect(queue.owed).toHaveLength(1);
+    expect(queue.owed[0].leadIds).toHaveLength(1);
+    expect(queue.owed[0].stopIds).toHaveLength(1);
+  });
+
+  it('will not credit a referrer for their own Quick Stop', () => {
+    const queue = buildReferralQueue([stop({ client_id: REFERRER, status: 'won' })], allTo(REFERRER), noNames);
+    expect(queue.owed).toHaveLength(0);
+  });
+
+  it('settles the whole group when either half carries the stamp', () => {
+    const rows = [
+      lead({ client_id: 'client-1', status: 'won' }),
+      stop({ client_id: 'client-1', status: 'won', referral_settled_at: '2026-08-09T00:00:00.000Z' }),
+    ];
+    const queue = buildReferralQueue(rows, allTo(REFERRER), noNames);
+    expect(queue.owed).toHaveLength(0);
+    expect(queue.thanked).toHaveLength(1);
   });
 });
 

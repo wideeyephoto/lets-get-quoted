@@ -148,6 +148,7 @@ export default function RequestVisitFlow({
           businessName={businessName}
           serviceArea={quickStop.serviceArea}
           days={quickStop.days}
+          referralCode={referralCode}
           // Chosen, not stumbled upon: the teaser card has already been read as
           // one of two options, so a second press to open it buys nothing.
           startOpen

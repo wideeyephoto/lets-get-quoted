@@ -81,6 +81,12 @@ export type QuickStopRequestInput = {
   propertyType: string | null;
   availability: string | null;
   photoPaths: string[];
+  /**
+   * The client who referred them, already verified against this account by the
+   * caller — see @/lib/referral. A clients.id or nothing; the raw ?ref code
+   * never reaches this module, which is unit-tested and holds no request context.
+   */
+  referredBy?: string | null;
 };
 
 // Append-only audit entry. Best-effort — never let logging break a transition.
@@ -172,6 +178,13 @@ export async function createQuickStopRequest(
         startedWhen: input.startedWhen,
         worsening: input.worsening,
         propertyType: input.propertyType,
+        // The client who referred them, already verified by the caller. Rides
+        // in the intake blob for the same reason a lead's rides in triage:
+        // this insert already names the column, so capture needed no migration
+        // and no deploy ordering. Unlike triage, nothing ever rebuilds this
+        // blob — it is written once, here, and only read afterwards — so there
+        // is no silent-eraser hazard to guard against.
+        ...(input.referredBy ? { referredBy: input.referredBy } : {}),
       },
       photo_paths: input.photoPaths,
       ai_summary: qualification.summary,
