@@ -175,6 +175,29 @@ export async function markPaymentPaidManuallyAction(jobId: string, paymentId: st
 }
 
 export async function retryPaymentAction(paymentId: string) {
+  /**
+   * PROVE THE CALLER OWNS IT. Every other action in this file opens with
+   * requireOwnerContext; this one opened with headers().
+   *
+   * Being precise about what that did and did not mean, because the difference
+   * decides how alarmed to be. retryPayment() builds its own admin client and
+   * reads the row with getPublicPayment, which is unscoped by account -- so
+   * nothing anywhere on the path checked who was asking. But what it returns is
+   * a Stripe Checkout URL for that payment, and /pay/[id] hands the same URL to
+   * anyone holding the id, deliberately, because the homeowner paying it has no
+   * account at all. So this was NOT a privilege escalation: it granted what the
+   * public page already grants.
+   *
+   * It is still wrong. This is the contractor's dashboard control, its siblings
+   * all establish an account first, and an action that touches a payment row
+   * without knowing whose it is has no way to refuse the day it is asked to do
+   * something the public page would not. Scoped through the SESSION client, so
+   * RLS is a second opinion rather than the guard being trusted alone.
+   */
+  const { supabase, accountId } = await requireOwnerContext();
+  const payment = await getPaymentDetails(supabase, accountId, paymentId);
+  if (!payment) throw new Error('Payment not found for this account.');
+
   const h = headers();
   const proto = h.get('x-forwarded-proto') ?? 'http';
   const host = h.get('host');
