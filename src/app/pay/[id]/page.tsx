@@ -58,6 +58,35 @@ async function loadQuickStopOffer(
   };
 }
 
+/**
+ * "Installment 3 of 4", instead of "Installment".
+ *
+ * `installment_seq` has been on the row all along and this page never read it,
+ * so somebody paying month three of a four-month plan saw the same three words
+ * and the same kind of figure they saw in month one. Nothing told them which
+ * payment this was, how many were left, or that it was the last.
+ *
+ * A plan sends a text every month. Being unable to tell #2 from #4 is the
+ * difference between "this is fine" and ringing somebody to ask.
+ */
+async function loadInstallmentPosition(
+  admin: ReturnType<typeof createAdminClient>,
+  planId: string | null | undefined,
+  seq: number | null | undefined,
+): Promise<{ seq: number; total: number } | null> {
+  if (!planId || !seq || seq < 1) return null;
+  const { data, error } = await admin
+    .from('payment_plans')
+    .select('installment_count')
+    .eq('id', planId)
+    .maybeSingle();
+  const total = Number(data?.installment_count);
+  // Only claim a position when BOTH halves are known and consistent. "3 of 0"
+  // and "5 of 4" are worse than the plain word this replaces.
+  if (error || !Number.isInteger(total) || total < 1 || seq > total) return null;
+  return { seq, total };
+}
+
 /** "3:45 PM", in the reader's own timezone. */
 function formatClock(value: string | null): string | null {
   if (!value) return null;
@@ -301,13 +330,20 @@ export default async function PublicPaymentPage({
   // recognize is the moment they stop and ring somebody — and until now the mark
   // above this button was ours, not the contractor's they actually hired.
   const admin = createAdminClient();
-  const [brand, quickStop] = await Promise.all([
+  const [brand, quickStop, installment] = await Promise.all([
     loadContractorBrand(admin, payment.account_id),
     loadQuickStopOffer(admin, payment.id),
+    loadInstallmentPosition(admin, payment.payment_plan_id, payment.installment_seq),
   ]);
 
-  // A priority visit fee is not a deposit, whatever the row says.
-  const kindLabel = quickStop ? 'Priority visit' : (KIND_LABEL[payment.kind] || 'Payment');
+  // A priority visit fee is not a deposit, whatever the row says. An installment
+  // says which one it is, because "Installment" alone is the same three words
+  // every month of a plan.
+  const kindLabel = quickStop
+    ? 'Priority visit'
+    : installment
+      ? `Installment ${installment.seq} of ${installment.total}`
+      : (KIND_LABEL[payment.kind] || 'Payment');
   const payByClock = formatClock(quickStop?.deadlineAt ?? null);
   const arrivalClock = formatClock(quickStop?.windowAt ?? null);
 
