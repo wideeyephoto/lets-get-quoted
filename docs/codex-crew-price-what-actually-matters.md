@@ -68,3 +68,30 @@ Products' tax codes to check my own assumption.
 
 Granting `product_write` to that key would solve the immediate problem and break
 the standing rule. A temporary restricted key, used and then revoked, does not.
+
+## Resolved 2026-08-20
+
+`price_1U6gVfGqh5LFKuTC9wFCN28D`, on `prod_V6u64EyBrCsSuE` — the orphaned
+Product from the second attempt, reused rather than replaced.
+
+Verified independently rather than from the operator's report, with
+`npm run inspect:live-top-ups`: livemode, `unit_amount 500`, `tax_behavior
+exclusive`, monthly with `interval_count 1`, no trial, exactly one
+`currency_options` entry, and all five metadata keys. `contract ok`.
+
+**What the three attempts cost, and why.** Both failures were mine, and both
+were the same mistake in different clothes: specifying a field without checking
+whether anything reads it.
+
+1. "No tax code" — invented. Stripe Tax is off and asserted off.
+2. `Products` Write alone — incomplete. `Prices` Write is a separate permission.
+
+The operator stopped both times rather than deviate, which was correct each
+time, and its second stop is what surfaced the permission split at all. A brief
+that is exact about the wrong things is not cautious; it is noise that costs
+round trips and teaches the reader that its requirements are arbitrary.
+
+The rule this leaves behind: before writing a constraint into an operator brief,
+find the code that reads the field. If nothing reads it, do not constrain it.
+`resolveTopUpPrice` is that code for a top-up Price, and the table above is the
+whole of what it checks.
