@@ -155,3 +155,52 @@ describe('the fee disclosure is legible in the theme it actually renders in', ()
     expect(light).toContain('--muted:');
   });
 });
+
+describe('a failed checkout does not look like a crash', () => {
+  const BOUNDARY = readFileSync(
+    join(process.cwd(), 'src/app/pay/[id]/error.tsx'), 'utf8');
+  const PAYMENTS_LIB = readFileSync(join(process.cwd(), 'src/lib/payments.ts'), 'utf8');
+
+  it('exists at all', () => {
+    // It did not. An uncaught throw fell through to Next's own screen --
+    // "Application error: a client-side exception has occurred", blank page --
+    // in front of somebody who just pressed a button labelled Pay.
+    expect(BOUNDARY).toContain("'use client'");
+    expect(BOUNDARY).toContain('export default function');
+  });
+
+  it('says the card was not charged, first and without hedging', () => {
+    // The likeliest visitor is somebody who ALREADY PAID, in another tab or a
+    // week ago. Nothing on /pay/[id] charges anything -- Stripe collects the
+    // card on the page after it -- so this can be promised outright.
+    expect(BOUNDARY).toContain('has not been charged');
+    const beforeActions = BOUNDARY.slice(0, BOUNDARY.indexOf('workspace-actions'));
+    expect(beforeActions, 'the reassurance must come before the buttons').toContain('has not been charged');
+  });
+
+  it('offers a reload, not only reset()', () => {
+    // reset() re-renders against the same props that just failed. A reload
+    // re-reads the payment, and the page's own status card then says Paid,
+    // Cancelled or Refunded in words -- which is the actual answer.
+    expect(BOUNDARY).toContain('window.location.reload()');
+  });
+
+  it('logs the digest and never renders it', () => {
+    expect(BOUNDARY).toContain('error.digest');
+    expect(BOUNDARY).toContain('console.error');
+    expect(BOUNDARY).not.toMatch(/\{\s*error\.digest\s*\}/);
+    expect(BOUNDARY).not.toMatch(/\{\s*error\.message\s*\}/);
+  });
+
+  it('covers throws a homeowner can actually reach', () => {
+    // Not exotic failures. Every one of these is one reasonable action away:
+    // paying in another tab, opening a texted link late, double-clicking.
+    for (const message of [
+      'This payment has already been completed.',
+      'This payment request is no longer available.',
+      'This Quick Stop offer has expired.',
+    ]) {
+      expect(PAYMENTS_LIB, message).toContain(message);
+    }
+  });
+});
