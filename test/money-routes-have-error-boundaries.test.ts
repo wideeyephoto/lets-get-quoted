@@ -62,3 +62,41 @@ describe('the two card-taking routes promise the card was not charged', () => {
     });
   }
 });
+
+describe('neither page offers a button the contractor cannot honour', () => {
+  /**
+   * A contractor who has not finished Stripe onboarding cannot receive a
+   * payment. createCheckoutSessionForPayment refuses with "This contractor has
+   * not finished setting up payments yet."
+   *
+   * /pay/[id] has always checked and said so instead. /invoice/[id] did not --
+   * it did not even LOAD connect_onboarded -- so it rendered a live
+   * "Pay $4,237.50" that threw the moment it was pressed. The error boundary
+   * added alongside this catches it now, but a button that cannot work should
+   * not be offered in the first place.
+   */
+  const PAY = readFileSync(join(process.cwd(), 'src/app/pay/[id]/page.tsx'), 'utf8');
+  const INVOICE = readFileSync(join(process.cwd(), 'src/app/invoice/[id]/page.tsx'), 'utf8');
+  const INVOICES_LIB = readFileSync(join(process.cwd(), 'src/lib/invoices.ts'), 'utf8');
+
+  it('the invoice page loads the flag at all', () => {
+    // It could not have checked before this: the account join selected only
+    // business_name.
+    expect(INVOICES_LIB).toContain('account:accounts(business_name, connect_onboarded)');
+  });
+
+  for (const [name, source] of [['pay', PAY], ['invoice', INVOICE]] as const) {
+    it(`${name} withholds the pay button when payouts are not set up`, () => {
+      expect(source).toContain('connect_onboarded');
+      expect(source).toContain("hasn&apos;t finished setting up payments yet");
+    });
+  }
+
+  it('both say the same thing, because it is the same situation', () => {
+    // Two customer-facing surfaces describing one state in two ways is how
+    // somebody decides the product is unreliable rather than the contractor.
+    const sentence = 'This contractor hasn&apos;t finished setting up payments yet. Please check back soon.';
+    expect(PAY).toContain(sentence);
+    expect(INVOICE).toContain(sentence);
+  });
+});
