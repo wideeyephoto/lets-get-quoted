@@ -48,7 +48,7 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
   // settled by money that was never against it.
   const { data: paymentRows } = await admin
     .from('payments')
-    .select('id, amount, status, invoice_id, refunded_amount')
+    .select('id, amount, status, invoice_id, refunded_amount, async_payment_pending_at')
     .eq('account_id', invoice.account_id)
     .eq('invoice_id', invoice.id);
   const pay = invoicePayState(invoice, totals.total, (paymentRows ?? []) as InvoicePayment[]);
@@ -90,9 +90,13 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
             </form>
           ) : pay.state === 'processing' ? (
             <div className="payment-banner">
+              {/* Only reached for a genuinely in-flight transfer now.
+                  invoicePayState requires async_payment_pending_at, so an
+                  abandoned checkout is `payable` and gets the button back. */}
               <p>
-                A payment for this invoice is processing. Bank transfers take a few business days to clear — you&apos;ll
-                be confirmed once it settles.
+                Your bank transfer is on its way. Bank transfers (ACH) take a few business days to clear,
+                and you&apos;ll be confirmed once it settles. There&apos;s nothing more to do — please
+                don&apos;t pay again.
               </p>
             </div>
           ) : pay.state === 'settled' ? (
