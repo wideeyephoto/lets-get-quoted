@@ -98,7 +98,12 @@ export function radioTabIndex<T extends string>(
   return tabbable === option ? 0 : -1;
 }
 
-export type RadioGroupOptionProps<T extends string> = Readonly<{
+/**
+ * Not generic. Every field here is the same whatever the option type is -- the
+ * handlers close over it rather than carrying it -- so the `<T extends string>`
+ * this used to declare was a parameter the body never mentioned.
+ */
+export type RadioGroupOptionProps = Readonly<{
   role: 'radio';
   'aria-checked': boolean;
   tabIndex: 0 | -1;
@@ -119,10 +124,10 @@ export function useRadioGroup<T extends string>({
    *  payment choice is a thumb on the scale. */
   value: T | null;
   onChange: (next: T) => void;
-}): Readonly<{ getOptionProps: (option: T) => RadioGroupOptionProps<T> }> {
+}): Readonly<{ getOptionProps: (option: T) => RadioGroupOptionProps }> {
   const nodes = useRef(new Map<T, HTMLElement | null>());
 
-  const getOptionProps = useCallback((option: T): RadioGroupOptionProps<T> => ({
+  const getOptionProps = useCallback((option: T): RadioGroupOptionProps => ({
     role: 'radio',
     'aria-checked': value === option,
     tabIndex: radioTabIndex(options, value, option),

@@ -2,7 +2,9 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { NO_PURCHASED_SEATS, type PurchasedSeats } from './seat-limits';
+// Only the type is imported. NO_PURCHASED_SEATS is re-exported below for
+// callers, which needs no local binding -- importing it as well left a dead one.
+import type { PurchasedSeats } from './seat-limits';
 
 export { NO_PURCHASED_SEATS, describeSeatLimit, type PurchasedSeats } from './seat-limits';
 

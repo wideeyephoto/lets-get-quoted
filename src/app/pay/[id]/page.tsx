@@ -272,7 +272,9 @@ export default async function PublicPaymentPage({
   const isPlanDeposit = Boolean(payment.payment_plan_id) && payment.kind === 'deposit';
   const offerAch = payment.amount >= ACH_MIN_AMOUNT && !isPlanDeposit;
 
-  const alreadyPaid = payment.status === 'paid';
+  // `alreadyPaid` used to live here and fed the inline canPay expression.
+  // resolvePaymentView handles the paid status itself, so the local went dead
+  // when the decision moved -- and lint caught it, not the test suite.
   const cancelledJustNow = searchParams.status === 'cancelled';
 
   /**
