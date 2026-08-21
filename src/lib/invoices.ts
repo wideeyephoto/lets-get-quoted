@@ -365,7 +365,12 @@ export async function addInvoiceItem(
     throw new Error(expectedJobId === undefined ? 'Invoice not found for this account.' : 'Invoice not found for this job.');
   }
 
-  if (input.amount <= 0) {
+  // Finiteness first, for the reason payments.ts now carries in full: **NaN <= 0
+  // is false**, so an unparseable amount passed this guard, supabase-js turned
+  // NaN into null, and it hit `invoice_items.amount`, which is numeric NOT NULL.
+  // `refundPayment` and the milestone blockers already tested the safe way; this
+  // and createDepositRequest were the two that did not.
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
     throw new Error('Line item amount must be greater than 0.');
   }
 
