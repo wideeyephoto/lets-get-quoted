@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { parsePaymentAmount, paymentAmountError } from '@/lib/money-input';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
@@ -43,7 +44,12 @@ async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOwner
 export async function createDepositRequestAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const amount = Number(formData.get('amount'));
+  // Number() here was the defect: NaN <= 0 is false, so every unreadable amount
+  // passed the guard in createDepositRequest and reached a NOT NULL numeric
+  // column as null. See money-input.ts.
+  const parsedAmount = parsePaymentAmount(formData.get('amount'));
+  if (!parsedAmount.ok) throw new Error(paymentAmountError(parsedAmount.reason));
+  const amount = parsedAmount.amount;
   const label = (formData.get('label') ?? '').toString().trim() || 'Deposit';
   const kind = (formData.get('kind') as PaymentKind) || 'deposit';
   const invoice = await ensureJobInvoice(supabase, accountId, jobId);

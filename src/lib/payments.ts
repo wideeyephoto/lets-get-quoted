@@ -337,7 +337,13 @@ export async function createDepositRequest(
     throw new Error('Job not found for this account.');
   }
 
-  if (input.amount <= 0) {
+  // `Number.isFinite` first, and that ordering is the point. This guard was
+  // `input.amount <= 0` alone, and **NaN <= 0 is false** -- so an unparseable
+  // amount passed it, then supabase-js serialised NaN to null onto a
+  // `numeric NOT NULL` column and Postgres raised the error instead, opaquely.
+  // Callers parse properly now (see money-input.ts); this is the boundary that
+  // must hold whether or not they remember to.
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
     throw new Error('Payment amount must be greater than 0.');
   }
 
