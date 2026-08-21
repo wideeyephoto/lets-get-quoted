@@ -44,8 +44,22 @@ export function invitationExpiry(now: Date = new Date()): Date {
   return new Date(now.getTime() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
 }
 
+/**
+ * The path an invitation link lands on.
+ *
+ * Exported because the LOGIN RAIL has to recognise it. An invitation is
+ * accepted after sign-in, so a callback needs to know that this particular
+ * sign-in is on its way to one -- see ensureAccountMembership.
+ */
+export const INVITATION_PATH_PREFIX = '/office-invite/';
+
 export function invitationLink(origin: string, token: string): string {
-  return `${origin.replace(/\/$/, '')}/office-invite/${encodeURIComponent(token)}`;
+  return `${origin.replace(/\/$/, '')}${INVITATION_PATH_PREFIX}${encodeURIComponent(token)}`;
+}
+
+/** Whether a same-origin path is an invitation being opened. */
+export function isInvitationPath(path: string | null | undefined): boolean {
+  return typeof path === 'string' && path.startsWith(INVITATION_PATH_PREFIX);
 }
 
 export type OfficeInvitationRow = Readonly<{

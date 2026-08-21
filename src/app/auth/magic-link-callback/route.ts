@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ensureAccountMembership } from '@/lib/auth';
+import { isInvitationPath } from '@/lib/office-invitations';
 import { recordLoginEvent } from '@/lib/login-events';
 import { clientIpFrom } from '@/lib/rate-limit';
 import { cookies } from 'next/headers';
@@ -47,7 +48,11 @@ export async function GET(request: Request) {
       throw new Error(error?.message || 'Unable to verify magic link');
     }
 
-    const membership = await ensureAccountMembership(data.user.id);
+    // See ensureAccountMembership: an invitation is accepted after sign-in,
+    // so this is the one hop that must not provision.
+    const membership = await ensureAccountMembership(data.user.id, {
+      arrivingAtInvitation: isInvitationPath(safeNext),
+    });
     // Null when this user holds a pending office invitation -- see
     // ensureAccountMembership. safeNext carries them on to the invitation.
     if (membership) {

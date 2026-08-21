@@ -93,7 +93,10 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
   };
 }
 
-export async function ensureAccountMembership(userId: string) {
+export async function ensureAccountMembership(
+  userId: string,
+  options: { arrivingAtInvitation?: boolean } = {},
+) {
   const admin = createAdminClient();
 
   // Return an existing OWNER membership if the user already owns an account.
@@ -137,56 +140,32 @@ export async function ensureAccountMembership(userId: string) {
     return officeMembership;
   }
 
-  // A PENDING INVITATION IS NOT A NEW SIGNUP EITHER, and this is the case the
-  // office-membership check above cannot catch. An invited employee's FIRST
-  // sign-in is the one the invitation link itself sends them through --
-  // /office-invite/<token> bounces an anonymous visitor to /login and back --
-  // so the accept has not run yet and there is no office membership to find.
-  // Provisioning here hands them an owner row seconds before they accept, and
-  // owner outranks office in getCurrentMembership, so the workspace that hired
-  // them is unreachable from then on. That is precisely the outcome the comment
-  // above is written to prevent; the check just arrives one step too late for
-  // the only path that creates an office user.
+  // AN INVITATION IS ACCEPTED AFTER SIGN-IN, which is the case the check
+  // above cannot catch. /office-invite/<token> bounces an anonymous visitor
+  // to /login and back, so on the one sign-in every office user must pass
+  // through there is no office membership to find yet. Provisioning here
+  // hands them an owner row seconds before they accept, and owner outranks
+  // office in getCurrentMembership -- so the workspace that hired them is
+  // unreachable from then on, which is exactly what the comment above is
+  // written to prevent. Crew avoids this by never calling this function at
+  // all (auth/crew-callback says so in its own header); office arrives on
+  // the ordinary owner login rail, so the CALLER has to say so. The three
+  // callbacks can: they hold `next`, and it names the invitation.
   //
-  // Crew avoids this by never calling this function at all (auth/crew-callback
-  // says so in its own header). Office arrives through the ordinary owner login
-  // rail, so the check has to live here instead.
-  const { data: authUser, error: authUserError } = await admin.auth.admin.getUserById(userId);
-
-  // Refuse rather than fall through. Falling through means provisioning, and
-  // provisioning the wrong person is the silent, permanent failure -- an owner
-  // row that outranks their office one for good. Throwing here fails the
-  // sign-in loudly and they can simply try again.
-  if (authUserError) {
-    throw new Error(`Could not read the signing-in user: ${authUserError.message}`);
-  }
-
-  const email = authUser?.user?.email?.trim().toLowerCase();
-
-  if (email) {
-    // Stored lowercased and trimmed by inviteOfficeUserAction, matched the same
-    // way here. Expiry is derived rather than stored (see office-invitations.ts),
-    // so "pending" has to be spelled out: not accepted, not revoked, not expired.
-    const { data: pendingInvite, error: inviteLookupError } = await admin
-      .from('office_invitations')
-      .select('id')
-      .eq('email', email)
-      .is('accepted_at', null)
-      .is('revoked_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .limit(1)
-      .maybeSingle();
-
-    // Same reasoning as above: a failed lookup must not be read as "no
-    // invitation", because that answer provisions.
-    if (inviteLookupError) {
-      throw new Error(`Could not check for a pending invitation: ${inviteLookupError.message}`);
-    }
-
-    // Deliberately returns null instead of provisioning. They hold no
-    // membership yet and the caller is mid-sign-in, one redirect away from the
-    // invitation that creates the right one.
-    if (pendingInvite) return null;
+  // WHY THE CALLER AND NOT A LOOKUP HERE. The first version asked the
+  // database "does this address have a pending invitation?" -- a different
+  // question, and its answer PERSISTS. It suppressed provisioning on every
+  // sign-in for as long as the row lived, stranding anyone who was invited
+  // and wanted their own account instead: no membership, and the guards
+  // below send a memberless user to /login, which is a loop because they
+  // are already signed in. Worse, anybody may invite any address, so it was
+  // a way to stop an arbitrary email from ever completing a signup.
+  //
+  // This condition lasts exactly one request and heals by itself: if the
+  // accept fails for any reason, the next visit to /dashboard provisions
+  // them normally.
+  if (options.arrivingAtInvitation) {
+    return null;
   }
 
   const { data: newAccount, error: createAccountError } = await admin
