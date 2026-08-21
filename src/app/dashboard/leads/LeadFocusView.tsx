@@ -252,20 +252,18 @@ export default function LeadFocusView({
                         💬 Text
                       </a>
                     )}
-                    {/* Both go to the lead detail page, which is still guarded by
-                        requireOwnerContext -- and Send quote lands on an estimate
-                        composer whose send needs quotes.write, which no office user
-                        holds. Two buttons that could only bounce them. */}
+                    {/* Send quote stays owner-only: it deep-links to the estimate
+                        composer, and that whole panel is withheld from an office
+                        user because sending needs quotes.write. Opening the lead
+                        itself is fine -- the page admits them now. */}
                     {ownerControls ? (
-                      <>
-                        <Link className="btn secondary" href={`${base}/leads/${selected.id}#lead-estimate`}>
-                          Send quote
-                        </Link>
-                        <Link className="btn ghost" href={`${base}/leads/${selected.id}`}>
-                          Open full lead →
-                        </Link>
-                      </>
+                      <Link className="btn secondary" href={`${base}/leads/${selected.id}#lead-estimate`}>
+                        Send quote
+                      </Link>
                     ) : null}
+                    <Link className="btn ghost" href={`${base}/leads/${selected.id}`}>
+                      Open full lead →
+                    </Link>
                   </div>
 
                   {/* Stage changes and set-aside, one step quieter than the

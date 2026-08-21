@@ -40,7 +40,11 @@ const TABLE_FILTERS_VERSION = 2;
 type SortKey = TableColumnId;
 type SortDir = 'asc' | 'desc';
 
-export default function LeadTableView({ leads, run, ownerControls }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void; ownerControls: boolean }) {
+// No ownerControls prop, and that is a statement rather than an omission: this
+// view has nothing an office user cannot run. Its bulk actions are Mark
+// contacted, Snooze and Archive -- each one update on the lead row -- and its
+// only links go to the lead detail page, which admits them.
+export default function LeadTableView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
   const router = useRouter();
   const [columns, setColumns] = useState<TableColumnId[]>(DEFAULT_COLUMNS);
   const [query, setQuery] = useState('');
@@ -357,7 +361,7 @@ export default function LeadTableView({ leads, run, ownerControls }: { leads: Le
                 </td>
                 {visibleColumns.map((column) => (
                   <td key={column.id} className={cellClass(column.id)}>
-                    {cellNode(lead, column.id, ownerControls)}
+                    {cellNode(lead, column.id)}
                   </td>
                 ))}
               </tr>
@@ -378,19 +382,10 @@ export default function LeadTableView({ leads, run, ownerControls }: { leads: Le
                 <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleRow(lead.id)} />
               </label>
               <div className={styles.cardBody}>
-                {/* Owner-only destination: the detail page still runs
-                    requireOwnerContext. The name stays visible as plain text. */}
-                {ownerControls ? (
-                  <Link href={`/dashboard/leads/${lead.id}`} className={styles.cardName}>
-                    {lead.name}
-                    {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-                  </Link>
-                ) : (
-                  <span className={styles.cardName}>
-                    {lead.name}
-                    {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-                  </span>
-                )}
+                <Link href={`/dashboard/leads/${lead.id}`} className={styles.cardName}>
+                  {lead.name}
+                  {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+                </Link>
                 <p className={styles.cardProject}>{lead.detail}</p>
                 <p className={styles.cardMeta}>
                   <span className={styles.cardStage} data-stage={lead.status}>{queueStageLabel(lead.status)}</span>
@@ -418,21 +413,13 @@ function cellClass(id: TableColumnId): string | undefined {
 }
 
 /** The rendered cell. */
-function cellNode(lead: LeadViewItem, id: TableColumnId, ownerControls: boolean) {
+function cellNode(lead: LeadViewItem, id: TableColumnId) {
   if (id === 'lead') {
-    // Owner-only destination: the detail page still runs requireOwnerContext, so
-    // for an office user the name is plain text rather than a link that bounces
-    // them off the board.
-    return ownerControls ? (
+    return (
       <Link href={`/dashboard/leads/${lead.id}`} className={styles.tName}>
         {lead.name}
         {lead.city ? <span className={styles.tCity}> ({lead.city})</span> : null}
       </Link>
-    ) : (
-      <span className={styles.tName}>
-        {lead.name}
-        {lead.city ? <span className={styles.tCity}> ({lead.city})</span> : null}
-      </span>
     );
   }
   if (id === 'stage') {

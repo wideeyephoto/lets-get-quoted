@@ -367,7 +367,7 @@ export default function LeadsWorkspace({
 
       {view === 'board' && <LeadBoardView leads={leads} run={run} ownerControls={ownerControls} />}
       {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} ownerControls={ownerControls} />}
-      {view === 'table' && <LeadTableView leads={leads} run={run} ownerControls={ownerControls} />}
+      {view === 'table' && <LeadTableView leads={leads} run={run} />}
       {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} ownerControls={ownerControls} />}
       {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} details={details} initialLeadId={initialLeadId} basePath={basePath} ownerControls={ownerControls} />}
 
@@ -513,12 +513,7 @@ function SplitView({
             ) : null}
             <button type="button" className="btn ghost" onClick={() => run(() => snoozeLeadAction(selected.id, 3))}>Snooze 3d</button>
             <button type="button" className="btn ghost" onClick={() => run(() => archiveLeadAction(selected.id, true))}>Archive</button>
-            {/* The detail page is still guarded by requireOwnerContext, so for
-                an office user this button bounces them off the board they are
-                allowed to be on. */}
-            {ownerControls ? (
             <Link className="btn primary" href={`/dashboard/leads/${selected.id}`}>Open full lead →</Link>
-            ) : null}
           </div>
         </div>
       ) : (

@@ -155,20 +155,10 @@ function PriorityCard({
     <li id={`lead-row-${lead.id}`} className={styles.card} data-tier={entry.tier}>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
-          {/* The detail page is still owner-guarded, so for an office user this
-              link bounces them off the board. The name still has to render, so
-              it becomes plain text rather than disappearing. */}
-          {ownerControls ? (
-            <Link href={`/dashboard/leads/${lead.id}`} className={styles.cardName}>
-              {lead.name}
-              {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-            </Link>
-          ) : (
-            <span className={styles.cardName}>
-              {lead.name}
-              {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-            </span>
-          )}
+          <Link href={`/dashboard/leads/${lead.id}`} className={styles.cardName}>
+            {lead.name}
+            {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+          </Link>
           {lead.estimateLabel ? <span className={styles.cardValue}>{lead.estimateLabel}</span> : null}
         </div>
 

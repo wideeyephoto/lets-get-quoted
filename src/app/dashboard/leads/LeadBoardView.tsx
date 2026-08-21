@@ -255,21 +255,10 @@ function BoardCard({
       {/* Name, job, priority/waiting, next action — and nothing else. The card
           was carrying source, estimated hours, a received date and a contact
           hint in 148px. */}
-      {/* The detail page is still owner-guarded, so for an office user this is a
-          link that bounces them off the board they are allowed to be on. The name
-          still has to render -- a card with no title is not a card -- so it
-          becomes plain text. */}
-      {ownerControls ? (
-        <Link className={styles.cardName} href={`/dashboard/leads/${lead.id}`}>
-          {lead.name}
-          {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-        </Link>
-      ) : (
-        <span className={styles.cardName}>
-          {lead.name}
-          {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
-        </span>
-      )}
+      <Link className={styles.cardName} href={`/dashboard/leads/${lead.id}`}>
+        {lead.name}
+        {lead.city ? <span className={styles.cardCity}> ({lead.city})</span> : null}
+      </Link>
       <p className={styles.cardProject}>{lead.detail}</p>
 
       <p className={styles.cardMeta}>

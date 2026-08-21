@@ -309,6 +309,7 @@ describe('the wiring, as source', () => {
     };
     walk('src/app');
     expect(callers.sort()).toEqual([
+      'src/app/dashboard/leads/[leadId]/page.tsx',
       'src/app/dashboard/leads/actions.ts',
       'src/app/dashboard/leads/page.tsx',
     ]);
@@ -350,6 +351,30 @@ describe('the wiring, as source', () => {
     }
   });
 
+  it('withholds the lead detail page’s entire action panel', () => {
+    // The panel holds exactly two things and an office user can run neither:
+    // booking the estimate texts the homeowner, and the quote composer ends in
+    // sendQuoteAction, which needs the disabled quotes.write. One gate rather
+    // than several, because the whole aside is owner-only.
+    const detail = stripComments(read('src/app/dashboard/leads/[leadId]/page.tsx'));
+    expect(detail).toContain("const ownerControls = role === 'owner';");
+    expect(detail).toContain('{ownerControls ? (');
+    expect(detail).toContain('<aside className={styles.actionPanel}>');
+
+    // The two owner-only reads are SKIPPED, not left to return null under RLS:
+    // everything they feed lives in that hidden panel.
+    expect(detail).toContain('ownerControls');
+    expect(detail).toMatch(/ownerControls[\s\S]{0,80}from\('accounts'\)/);
+
+    // Mark won and undo-convert are hidden in the deck; reopen, mark contacted
+    // and mark LOST stay, because each is one update on the lead row.
+    const deck = stripComments(read('src/app/dashboard/leads/[leadId]/LeadActionDeck.tsx'));
+    expect(deck).toContain("{ownerControls && status !== 'won' ?");
+    expect(deck).toContain('ownerControls ? <UndoQuoteButton');
+    expect(deck).toContain('action={markContacted}');
+    expect(deck).toContain('action={markLost}');
+  });
+
   it('withholds every board control an office user cannot run', () => {
     // A control certain to fail is worse than one that is absent: the office
     // user cannot tell a permission problem from a broken product.
@@ -362,8 +387,13 @@ describe('the wiring, as source', () => {
     // Every view renders through the workspace, so each must receive the flag --
     // the board's Mark won, its drag into Won, and the detail links all hang off
     // it. A view added without it would not compile: the prop is required.
+    // Every view that HAS an owner-only control must be handed the flag.
+    // LeadTableView is deliberately absent: its bulk actions are Mark contacted,
+    // Snooze and Archive, and its links go to the detail page, which admits an
+    // office user -- so it has nothing to gate and takes no prop. If an
+    // owner-only control is ever added there, add it here too.
     const workspace = stripComments(read('src/app/dashboard/leads/LeadsWorkspace.tsx'));
-    for (const view of ['LeadBoardView', 'LeadPriorityView', 'LeadTableView', 'SplitView', 'LeadFocusView']) {
+    for (const view of ['LeadBoardView', 'LeadPriorityView', 'SplitView', 'LeadFocusView']) {
       expect(workspace, `${view} was not given ownerControls`)
         .toMatch(new RegExp(`<${view}[^>]*ownerControls=`));
     }
