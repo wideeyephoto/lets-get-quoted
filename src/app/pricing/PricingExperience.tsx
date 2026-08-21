@@ -712,7 +712,7 @@ export default function PricingExperience() {
 
       <section className={styles.promiseSection}>
         <div><strong>Unlimited core work</strong><span>Leads, clients, quotes, jobs, invoices, and standard forms.</span></div>
-        <div><strong>No unapproved overages</strong><span>Extra capacity is a one-time top-up you choose to buy.</span></div>
+        <div><strong>No unapproved overages</strong><span>Extra capacity is a top-up you choose to buy, never an automatic charge.</span></div>
         <div><strong>No lost website leads</strong><span>When AI Intake ends, LGQ switches to the normal quote form.</span></div>
         <div><strong>Bring your books</strong><span>One QuickBooks Online connection is included on every plan.</span></div>
       </section>

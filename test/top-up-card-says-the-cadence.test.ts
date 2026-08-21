@@ -119,3 +119,50 @@ describe('the card renders what the catalog says', () => {
     expect(CARD).not.toContain('Credits are added to the balances above once Stripe');
   });
 });
+
+describe('the public site does not promise a cadence the price book contradicts', () => {
+  /**
+   * Three places on /pricing described every top-up as one-time: a plan feature
+   * bullet, the "can LGQ charge an overage automatically" answer, and the
+   * no-unapproved-overages promise. All three were written when every sellable
+   * SKU was a one-time credit pack, and all three became false the moment a
+   * recurring seat went on sale.
+   *
+   * "Extra capacity" is the phrase they use, and capacity is precisely the
+   * recurring kind -- seats and storage. The claim they were making, that
+   * nothing bills without you buying it, is still true and is preserved. Only
+   * the cadence was wrong.
+   */
+  const SOURCES = [
+    'src/app/pricing/pricing-catalog.ts',
+    'src/app/pricing/PricingExperience.tsx',
+    'src/lib/home-faqs.ts',
+    'src/app/faq/page.tsx',
+  ] as const;
+
+  const publicCopy = () => SOURCES
+    .map((file) => readFileSync(join(process.cwd(), file), 'utf8'))
+    .join('\n');
+
+  it('says nothing is a one-time top-up while a recurring one is on sale', () => {
+    const anyRecurringSellable = sellable().some((sku) => sku.recurring);
+    expect(anyRecurringSellable, 'no recurring SKU is sellable; this guard is asleep').toBe(true);
+    expect(publicCopy()).not.toContain('one-time top-up');
+  });
+
+  it('keeps the promise the wording was actually there to make', () => {
+    // The point of those sentences is that LGQ never bills past the plan on its
+    // own. Fixing the cadence must not quietly drop that.
+    const copy = publicCopy();
+    expect(copy).toContain('No unapproved overages');
+    expect(copy).toContain('There is no automatic overage');
+    expect(copy).toContain('at a price you see before you pay');
+  });
+
+  it('still calls the Flex starter balances one-time, because they are', () => {
+    // Not a blanket ban on the phrase. The starter credits genuinely are issued
+    // once and never reset, and saying so is the whole point of that row.
+    const copy = publicCopy();
+    expect(copy).toContain('one-time starter credits');
+  });
+});
