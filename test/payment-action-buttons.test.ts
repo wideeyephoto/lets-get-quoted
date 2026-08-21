@@ -101,3 +101,27 @@ describe('retry opens the tab inside the gesture that asked for it', () => {
     expect(handler).toContain('popup?.close()');
   });
 });
+
+describe('the tab it opens cannot reach back', () => {
+  it('severs window.opener by hand, since noopener is unavailable here', () => {
+    // `noopener` makes window.open return null, and the whole point of opening
+    // early is to hold the reference and navigate it after the await. So the
+    // link is cut manually instead -- otherwise the Stripe checkout tab keeps a
+    // handle on the dashboard and could navigate it. Reverse tabnabbing.
+    const handler = CODE.slice(CODE.indexOf('const handleRetry'), CODE.indexOf('const handleCancel'));
+    expect(handler).toContain('popup.opener = null');
+    const openAt = handler.indexOf("window.open('', '_blank')");
+    const severAt = handler.indexOf('popup.opener = null');
+    expect(severAt, 'sever before anything else happens').toBeGreaterThan(openAt);
+    expect(severAt).toBeLessThan(handler.indexOf('await onRetry'));
+  });
+
+  it('is the same rule the rest of the app already follows', () => {
+    // Not a new opinion: SocialLinks carries the identical note, and the one
+    // other real window.open in the app passes 'noopener' outright.
+    const social = readFileSync(join(process.cwd(), 'src/lib/templates/SocialLinks.tsx'), 'utf8');
+    expect(social).toContain('window.opener');
+    const builder = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf8');
+    expect(builder).toContain("'noopener'");
+  });
+});
