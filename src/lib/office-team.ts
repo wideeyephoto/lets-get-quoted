@@ -132,9 +132,34 @@ export async function loadOfficeTeam(
         lastSentAt: row.lastSentAt,
       }));
 
+    /**
+     * THE LIMIT IS PLAN PLUS ANYTHING BOUGHT, and only the database knows the sum.
+     *
+     * This read `feature_limits.office_users` alone. The RPC that actually
+     * enforces the seat does
+     * `plan + workspace_purchased_capacity_units(account, 'office_users')`, so a
+     * PURCHASED seat was invisible here: the screen would keep saying every seat
+     * was in use and keep the invite button disabled, on the one surface whose
+     * job is to let somebody spend the seat they just paid for. Exactly the bug
+     * already fixed on the Plan & usage card, one screen over -- and this is the
+     * screen that gates the action rather than describing it.
+     *
+     * office_seat_usage() is that same arithmetic, already deployed and until now
+     * called by nothing. Using it means the number shown and the number enforced
+     * cannot drift apart.
+     *
+     * Falls back to the plan allowance if the RPC cannot be reached, because a
+     * null seatLimit reads as 'no limit' and ENABLES the button. The database
+     * would still refuse, so that is safe rather than permissive -- but showing
+     * the plan number is a better answer than showing none.
+     */
     const limits = (entitlement.error ? {} : entitlement.data?.feature_limits ?? {}) as Record<string, unknown>;
     const raw = limits.office_users;
-    const seatLimit = typeof raw === 'number' && Number.isSafeInteger(raw) && raw >= 0 ? raw : null;
+    const planLimit = typeof raw === 'number' && Number.isSafeInteger(raw) && raw >= 0 ? raw : null;
+
+    const usage = await admin.rpc('office_seat_usage', { p_account_id: accountId }).maybeSingle();
+    const rpcLimit = usage.error ? null : Number((usage.data as { office_limit?: unknown } | null)?.office_limit);
+    const seatLimit = Number.isSafeInteger(rpcLimit) && (rpcLimit as number) >= 0 ? (rpcLimit as number) : planLimit;
 
     return Object.freeze({
       members,
