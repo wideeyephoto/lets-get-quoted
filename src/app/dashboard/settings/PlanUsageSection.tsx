@@ -6,6 +6,11 @@ import type {
 } from '@/lib/billing/plan-usage';
 import { formatStorageBytes, type WorkspaceStorageState } from '@/lib/billing/storage-usage';
 import {
+  NO_PURCHASED_SEATS,
+  describeSeatLimit,
+  type PurchasedSeats,
+} from '@/lib/billing/purchased-seats';
+import {
   describeOverageResource,
   formatOverageTotal,
   remainingCapMillicents,
@@ -84,10 +89,16 @@ export function collectionNote(status: BillingStatus): string | null {
   }
 }
 
-function includedLimits(limits: PlanUsageLimits): Array<{ label: string; value: string }> {
+function includedLimits(
+  limits: PlanUsageLimits,
+  purchased: PurchasedSeats,
+): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string } | null> = [
-    limits.officeUsers === null ? null : { label: 'Office users', value: limits.officeUsers.toLocaleString('en-US') },
-    limits.crewUsers === null ? null : { label: 'Crew users', value: limits.crewUsers.toLocaleString('en-US') },
+    // Plan allowance PLUS anything bought. The database has always counted the
+    // sum; this row read the plan alone, so a purchased seat worked and was
+    // invisible on the one screen that states what you are entitled to.
+    limits.officeUsers === null ? null : { label: 'Office users', value: describeSeatLimit(limits.officeUsers, purchased.officeUsers) },
+    limits.crewUsers === null ? null : { label: 'Crew users', value: describeSeatLimit(limits.crewUsers, purchased.crewUsers) },
     limits.customDomainConnections === null ? null : { label: 'Custom domains', value: limits.customDomainConnections.toLocaleString('en-US') },
     limits.dedicatedBusinessNumbers === null ? null : { label: 'Dedicated business numbers', value: limits.dedicatedBusinessNumbers.toLocaleString('en-US') },
     limits.storageGb === null ? null : { label: 'File & photo storage', value: `${limits.storageGb.toLocaleString('en-US')} GB` },
@@ -228,6 +239,7 @@ function OverageCard({ overage }: { overage: OverageSummary }) {
 export default function PlanUsageSection({
   data,
   storage = null,
+  purchasedSeats = NO_PURCHASED_SEATS,
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
   cancellable = null,
@@ -238,6 +250,7 @@ export default function PlanUsageSection({
 }: {
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
+  purchasedSeats?: PurchasedSeats;
   showSubscriptionCheckout?: boolean;
   showTopUpPurchase?: boolean;
   topUpCheckoutStatus?: 'success' | 'canceled' | null;
@@ -263,7 +276,7 @@ export default function PlanUsageSection({
   } | null;
 }) {
   const storageState = storageView(storage);
-  const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits) : [];
+  const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits, purchasedSeats) : [];
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
     && data.plan.billingInterval === 'none'

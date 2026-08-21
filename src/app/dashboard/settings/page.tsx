@@ -30,6 +30,7 @@ import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
+import { NO_PURCHASED_SEATS, loadPurchasedSeats } from '@/lib/billing/purchased-seats';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
 import { parsePlanIntent } from '@/lib/plan-intent';
@@ -74,7 +75,7 @@ export default async function SettingsPage({
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState, purchasedSeats] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -116,6 +117,13 @@ export default async function SettingsPage({
       pricingDashboardEnabled
         ? loadWorkspaceStorageState(createAdminClient(), accountId)
         : Promise.resolve(null),
+      // Same posture and the same reason as the storage read above: the ledger
+      // behind a purchased seat is service-role only, and the owner is shown its
+      // effect rather than its rows. Reads to zero on failure, which is exactly
+      // the plan-allowance-only behavior that shipped before it existed.
+      pricingDashboardEnabled
+        ? loadPurchasedSeats(createAdminClient(), accountId)
+        : Promise.resolve(NO_PURCHASED_SEATS),
     ]);
 
   // Its own read, and tolerant of the migrations not being applied. Everything
@@ -427,6 +435,7 @@ export default async function SettingsPage({
                 planIntent={parsePlanIntent(searchParams.plan ?? null, searchParams.billing ?? null)}
                 data={planUsage}
                 storage={storageState}
+                purchasedSeats={purchasedSeats}
                 overage={overage}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
