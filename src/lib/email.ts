@@ -272,6 +272,69 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
   console.log(`Client quote email sent: ${input.jobRef}`);
 }
 
+/**
+ * The office invitation, sent to the person being invited.
+ *
+ * Until this existed the action minted a link and handed it to the OWNER to
+ * pass on themselves, which meant the one thing standing between an employee
+ * and their account was a copy-paste into some other app.
+ *
+ * THROWS WHEN IT CANNOT SEND, deliberately, exactly like sendClientQuoteEmail
+ * above: this is a primary delivery channel and its outcome is reported on
+ * screen. The caller catches, and the screen says whether the email went. What
+ * it must never do is report a send that did not happen -- the invitation is
+ * real either way, and the owner needs to know whether to pass the link on by
+ * hand.
+ *
+ * The link is the whole secret. It is shown once, the database keeps only its
+ * hash, and it is not logged here -- the log line below names the recipient and
+ * nothing else, which is the same rule the action's audit entry follows.
+ */
+export async function sendOfficeInvitationEmail(input: {
+  accountId: string | null;
+  businessName: string;
+  recipientEmail: string;
+  inviteUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+
+  const result = await resend.emails.send({
+    from: contractorFrom(brand.businessName),
+    to: input.recipientEmail,
+    subject: `${brand.businessName} added you to their team`,
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Set up your access to ${brand.businessName}`,
+      eyebrow: 'Team invitation',
+      heading: `You have been added to ${brand.businessName}`,
+      paragraphs: [
+        'Use the button below to set up your sign-in. You will get your own login —'
+        + ' you never need the owner’s password, and they never see yours.',
+        // Said plainly because the alternative is somebody sitting on a dead
+        // link wondering whether they did something wrong.
+        'This invitation expires, so open it soon. If it has lapsed, ask them to send another.',
+      ],
+      cta: { label: 'Set up your access', url: input.inviteUrl },
+    }),
+    reply_to: replyAddress(brand),
+    tags: [
+      { name: 'kind', value: 'office_invitation' },
+      ...(input.accountId ? [{ name: 'account_id', value: input.accountId }] : []),
+    ],
+  });
+
+  if (result.error) {
+    console.error('Failed to send office invitation email:', result.error);
+    throw new Error(result.error.message);
+  }
+  // The recipient, never the link: it is the credential.
+  console.log(`Office invitation email sent to ${input.recipientEmail}`);
+}
+
 // Generic contractor-facing alert email (payout paused, chargeback opened,
 // chargeback lost). Best-effort by contract: callers in the webhook must not
 // let a send failure throw, or Stripe would retry the whole event and re-run

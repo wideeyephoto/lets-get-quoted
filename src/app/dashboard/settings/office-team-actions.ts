@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
 import { recordAccountEvent } from '@/lib/account-events';
 import { APP_ORIGIN } from '@/lib/app-origin';
+import { pickBusinessName } from '@/lib/business-name';
+import { sendOfficeInvitationEmail } from '@/lib/email';
 import {
   hashInvitationToken,
   invitationExpiry,
@@ -33,6 +35,15 @@ export type InviteResult = Readonly<{
   link: string;
   email: string;
   resent: boolean;
+  /**
+   * Whether the invitation email actually left.
+   *
+   * Reported rather than assumed. The invitation is real whichever way this
+   * goes, so the screen has to say which — an owner who is told it was emailed
+   * when it was not will wait for a reply that cannot come, and the link is
+   * shown once.
+   */
+  emailed: boolean;
 }>;
 
 /** Maps the database's codes onto something a contractor can act on. */
@@ -110,8 +121,38 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
     meta: { email },
   });
 
+  const link = invitationLink(APP_ORIGIN, token);
+
+  /**
+   * BEST EFFORT, AND REPORTED. The invitation row already exists and the link is
+   * already valid, so a failed send must not throw away a working invitation —
+   * but it must not be dressed up as a success either. The screen shows the link
+   * either way and says whether the email went, which is the honest version of
+   * both outcomes.
+   *
+   * The business name is read here rather than assumed: brandFor falls back to a
+   * name-only brand, and an email headed 'Your contractor' is worse than none.
+   */
+  let emailed = false;
+  try {
+    const [{ data: account }, { data: site }] = await Promise.all([
+      supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+    ]);
+    await sendOfficeInvitationEmail({
+      accountId,
+      businessName: pickBusinessName(site, account),
+      recipientEmail: email,
+      inviteUrl: link,
+    });
+    emailed = true;
+  } catch (error) {
+    // The recipient, never the link.
+    console.error(`Office invitation email failed for ${email}:`, error instanceof Error ? error.message : error);
+  }
+
   revalidatePath('/dashboard/automations');
-  return { link: invitationLink(APP_ORIGIN, token), email, resent: false };
+  return { link, email, resent: false, emailed };
 }
 
 export async function revokeOfficeInvitationAction(

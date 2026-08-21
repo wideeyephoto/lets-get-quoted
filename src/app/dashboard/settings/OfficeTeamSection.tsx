@@ -29,7 +29,7 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<SaveState>('idle');
   const [problem, setProblem] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{ email: string; link: string } | null>(null);
+  const [issued, setIssued] = useState<{ email: string; link: string; emailed: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   const [, startWork] = useTransition();
 
@@ -45,7 +45,7 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
     startWork(async () => {
       try {
         const result = await inviteOfficeUserAction({ email: value });
-        setIssued({ email: result.email, link: result.link });
+        setIssued({ email: result.email, link: result.link, emailed: result.emailed });
         setEmail('');
         setState('idle');
       } catch (error) {
@@ -165,10 +165,25 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
 
       {issued ? (
         <div className="office-team-link">
+          {/* Which of these shows is decided by whether the send actually
+              happened, not by whether one was attempted. The invitation is real
+              either way, so the difference the owner needs is whether anybody
+              has been told about it. */}
           <p>
-            <strong>Send this link to {issued.email}.</strong> It&apos;s shown once — we only keep a
-            fingerprint of it, so it can&apos;t be looked up again. If it&apos;s lost, invite them
-            again and this one stops working.
+            {issued.emailed ? (
+              <>
+                <strong>Invitation emailed to {issued.email}.</strong> Here is the same link in case
+                it lands in spam, or you would rather send it yourself. It&apos;s shown once — we
+                only keep a fingerprint of it, so it can&apos;t be looked up again.
+              </>
+            ) : (
+              <>
+                <strong>We couldn&apos;t email {issued.email}, so send them this link.</strong> The
+                invitation itself is fine — only the message failed. It&apos;s shown once — we only
+                keep a fingerprint of it, so it can&apos;t be looked up again. If it&apos;s lost,
+                invite them again and this one stops working.
+              </>
+            )}
           </p>
           <code>{issued.link}</code>
           <button
