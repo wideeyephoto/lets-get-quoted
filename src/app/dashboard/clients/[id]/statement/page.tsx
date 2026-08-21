@@ -18,6 +18,19 @@ const KIND_LABEL: Record<string, string> = {
   final: 'Final payment',
   plan_installment: 'Installment',
 };
+/**
+ * Every status the type allows, because the fallback prints the stored value.
+ *
+ * The render is `STATUS_LABEL[status] || status`, which is the right fallback --
+ * a blank where a payment's state should be is worse than an unfamiliar word --
+ * but it means an unlisted status reaches the page as the raw database enum.
+ * `canceled` was unlisted, so a withdrawn payment printed lowercase "canceled"
+ * on a statement a contractor hands to their client.
+ *
+ * /pay/[id] carries the same map and the same lesson, in its own words: the enum
+ * is what gets read aloud, copied, and pasted into an email asking what it
+ * means. Kept in step with PaymentStatus by a test rather than by memory.
+ */
 const STATUS_LABEL: Record<string, string> = {
   requested: 'Requested',
   processing: 'Processing',
@@ -25,6 +38,10 @@ const STATUS_LABEL: Record<string, string> = {
   failed: 'Failed',
   refunded: 'Refunded',
   disputed: 'Disputed',
+  // Withdrawn before it reached checkout, and kept as history rather than
+  // deleted. British spelling in the label, American in the stored value --
+  // matching /pay/[id], which made the same choice.
+  canceled: 'Cancelled',
 };
 
 export default async function ClientStatementPage({ params }: { params: { id: string } }) {
