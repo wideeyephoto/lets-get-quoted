@@ -9,6 +9,7 @@ import {
 } from '@/lib/payments';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
+import { resolvePaymentView } from '@/lib/payment-view';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -295,21 +296,32 @@ export default async function PublicPaymentPage({
    * that, and an ACH checkout completes here with the money still days away.
    */
   const returnedFromCheckout = searchParams.status === 'success';
-  const canPay =
-    (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing') &&
-    !alreadyPaid &&
-    // A transfer already clearing must not be offered a Pay button. The server
-    // still permits the retry (createCheckoutSessionForPayment accepts
-    // 'processing', deliberately, so an abandoned checkout can be resumed) --
-    // this withholds the invitation, it does not close the door. Somebody whose
-    // ACH genuinely failed comes back as 'failed' and is offered the button
-    // again.
-    !moneyIsInFlight &&
-    // And not while they are standing on the success redirect. Stripe sent them
-    // here because checkout completed; offering Pay again during the webhook
-    // gap invites paying twice for the same thing.
-    !returnedFromCheckout &&
-    legacyDestinationPayment;
+
+  /**
+   * Whether to offer the button, decided in src/lib/payment-view.ts.
+   *
+   * Six booleans meet here, and reading them in sequence down a page is what let
+   * "nothing has been charged" reach somebody who had just paid. The decision
+   * lives in a pure function so the whole space can be enumerated rather than
+   * sampled -- including the two properties that matter most: no combination may
+   * put a Pay button beside a banner saying the money already moved, and nothing
+   * may say "not completed" to somebody standing on the success redirect.
+   *
+   * DELIBERATELY NOT DRIVING THE BANNERS TOO. The resolver names which single
+   * message is correct and the blocks below still choose their own; converting
+   * that rendering as well is the right next step and is a bigger edit than
+   * belongs in the same change as the button. `canPay` is the output where being
+   * wrong costs money, so it is the one that moved first.
+   */
+  const paymentView = resolvePaymentView({
+    status: payment.status,
+    moneyInFlight: moneyIsInFlight,
+    returnedFromCheckout,
+    cancelledCheckout: cancelledJustNow,
+    payableRail: legacyDestinationPayment,
+    refunded: refundedSoFar,
+  });
+  const canPay = paymentView.canPay;
 
   /**
    * Started checkout, never finished, nothing in flight.
