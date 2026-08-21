@@ -5,6 +5,7 @@ import SignaturePad from '@/components/signature-pad';
 import SignatureMark from '@/components/signature-mark';
 import { formatUsdExact as formatUsd } from '@/lib/money-format';
 import type { SignatureMethod } from '@/lib/signature';
+import { useRadioGroup } from '@/components/use-radio-group';
 import { LiveTotal, QUOTE_FORM_ID, useQuoteDeck } from './QuoteDeck';
 
 /**
@@ -70,6 +71,16 @@ export default function QuoteAcceptance({
     preferredDate,
     payMode,
   } = useQuoteDeck();
+
+  // The sign-method tabs have carried radiogroup roles without any keyboard
+  // handling. Both options are a signature under E-SIGN, so a keyboard user
+  // being unable to move between them is a keyboard user unable to choose how
+  // they sign. See useRadioGroup.
+  const { getOptionProps: getSignProps } = useRadioGroup({
+    options: ['drawn', 'typed'] as const,
+    value: signMethod,
+    onChange: setSignMethod,
+  });
 
   const chosen = addons.filter((addon) => selected[addon.id]);
   const dateLine = preferredDate ?? scheduledLabel ?? (scheduleOffered ? 'Choose one below' : null);
@@ -164,19 +175,15 @@ export default function QuoteAcceptance({
           <div className="sign-method-tabs" role="radiogroup" aria-label="How would you like to sign?">
             <button
               type="button"
-              role="radio"
-              aria-checked={signMethod === 'drawn'}
+              {...getSignProps('drawn')}
               className={`sign-method-tab${signMethod === 'drawn' ? ' is-chosen' : ''}`}
-              onClick={() => setSignMethod('drawn')}
             >
               Draw my signature
             </button>
             <button
               type="button"
-              role="radio"
-              aria-checked={signMethod === 'typed'}
+              {...getSignProps('typed')}
               className={`sign-method-tab${signMethod === 'typed' ? ' is-chosen' : ''}`}
-              onClick={() => setSignMethod('typed')}
             >
               Type my name
             </button>
