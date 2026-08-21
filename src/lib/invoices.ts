@@ -59,12 +59,12 @@ export type InvoiceItem = {
   sort_order: number;
 };
 
-export function formatMoney(n: number): string {
-  // Kept in step with the copy in @/lib/jobs — the sign goes outside the currency
-  // symbol, so a credit reads "-$120" rather than "$-120".
-  const rounded = Math.round(n) || 0;
-  return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString();
-}
+// formatMoney used to live here: a THIRD whole-dollar formatter, kept "in step
+// with the copy in @/lib/jobs" by hand. It had exactly one caller -- the
+// contractor's invoice detail page -- and that page renders line items over a
+// Subtotal/Discount/Tax/Total block for the same invoice the customer receives to
+// the cent. So it was removed rather than fixed. money-format.ts holds the one
+// implementation, and its header says why there is only one.
 
 // The next unused INV- number for an account.
 //

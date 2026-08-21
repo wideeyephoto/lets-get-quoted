@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeInvoiceTotals, nextInvoiceRef, selectPrimaryInvoice, formatMoney, type Invoice } from '@/lib/invoices';
+import { computeInvoiceTotals, nextInvoiceRef, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
 
 // Build just enough of an Invoice for selectPrimaryInvoice (it reads status/total/created_at).
 function inv(partial: Partial<Invoice>): Invoice {
@@ -120,27 +120,5 @@ describe('nextInvoiceRef', () => {
 
   it('tolerates null, undefined and stray whitespace', () => {
     expect(nextInvoiceRef([null, undefined, '  INV-2007  '])).toBe('INV-2008');
-  });
-});
-
-describe('formatMoney', () => {
-  it('rounds to whole dollars with a $ prefix', () => {
-    expect(formatMoney(42)).toBe('$42');
-    expect(formatMoney(0)).toBe('$0');
-    expect(formatMoney(149.5)).toBe('$150');
-    expect(formatMoney(149.49)).toBe('$149');
-  });
-
-  it('groups thousands', () => {
-    expect(formatMoney(1000)).toBe('$1,000');
-    expect(formatMoney(1234567)).toBe('$1,234,567');
-  });
-
-  // A loss is "-$1,500", not "$-1,500". Insights shows a negative gross profit,
-  // job margin a negative profit, and a client statement a negative balance.
-  it('puts the sign outside the currency symbol', () => {
-    expect(formatMoney(-1500)).toBe('-$1,500');
-    expect(formatMoney(-0.4)).toBe('$0');
-    expect(formatMoney(-1)).toBe('-$1');
   });
 });

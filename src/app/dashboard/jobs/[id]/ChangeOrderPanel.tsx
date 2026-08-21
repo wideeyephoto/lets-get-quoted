@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { formatUsdExact } from '@/lib/money-format';
 import type { QuoteItem } from '@/lib/jobs';
 import type { SerializedDraft } from '@/lib/quote-draft';
 import {
@@ -18,9 +19,14 @@ import {
   voidChangeOrderAction,
 } from './change-order-actions';
 
-function money(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-}
+/**
+ * To the cent. change_orders.amount is numeric dollars priced at step="0.01",
+ * and the exact figure is added to the job total and raised as a deposit
+ * request. The customer's half of this exchange already reads exactly, so a
+ * rounded figure here is the contractor and the homeowner discussing one number
+ * and seeing two.
+ */
+const money = formatUsdExact;
 
 type Draft = SerializedDraft & { title: string; scope: string };
 
