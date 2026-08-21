@@ -171,6 +171,49 @@ describe('a transactional email names the figure exactly; a digest may round', (
   });
 });
 
+/**
+ * NOT ONLY CUSTOMERS. The rule is about whether somebody CHECKS the number
+ * against something else, and two staff-facing surfaces fail that test as
+ * squarely as any invoice.
+ *
+ * Crew pay is checked against hours worked. Labour cost is round2(hours * rate),
+ * so 12.5 hours at $13.75 is $171.88 and printed "$172" -- on a panel showing
+ * each row AND their total. Somebody checking their own pay does not have a
+ * rounding convention in mind.
+ *
+ * The insights PDF says in its own comment that it is "for glancing, not
+ * summing", and its tables disprove it: Revenue by service prints every slice
+ * and then the Total beneath them.
+ */
+describe('a figure somebody reconciles is exact, staff-facing or not', () => {
+  const RECONCILED_SURFACES = [
+    // Each row and the total, against hours worked.
+    'src/components/crew-work-history.tsx',
+    // Slice rows against the Total printed under them.
+    'src/lib/insights-export.ts',
+    // What a customer has paid and still owes.
+    'src/lib/client-detail.ts',
+  ] as const;
+
+  for (const file of RECONCILED_SURFACES) {
+    it(`${file.split('/').pop()} formats to the cent`, () => {
+      const code = stripComments(readFileSync(join(process.cwd(), file), 'utf8'));
+      expect(code, 'declares a whole-dollar Intl formatter').not.toContain('maximumFractionDigits: 0');
+      expect(code, 'rounds with Math.round before printing').not.toMatch(/\$' \+ Math\.round\(/);
+      expect(code).toMatch(EXACT);
+    });
+  }
+
+  it('leaves the recurring calendar rounding, deliberately', () => {
+    // The counter-example, so this describe is not read as a blanket rule. A
+    // month label on the recurring calendar -- "March 2026 · $1,200" -- is a
+    // projection whose per-visit parts are not shown beside it, so nobody can
+    // fail to add it up. It was audited and left alone.
+    const code = stripComments(readFileSync(join(process.cwd(), 'src/lib/recurring-view.ts'), 'utf8'));
+    expect(code).toContain('formatMoney(total)');
+  });
+});
+
 describe('a summary may still round', () => {
   it('leaves the booking page alone', () => {
     // "from $150" on a service card is a genuine summary -- an opening price,

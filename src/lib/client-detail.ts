@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getClient, getClientStatement } from '@/lib/clients';
-import { formatMoney } from '@/lib/jobs';
+import { formatMoneyExact } from '@/lib/jobs';
 import { JOB_STATUS_LABEL, cityFromAddress, formatLeadDate } from '@/lib/lead-detail-labels';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import type { JobStatus } from '@/lib/jobs';
@@ -89,7 +89,11 @@ export async function loadClientDetail(
       .not('status', 'in', '("won","lost")'),
   ]);
 
-  const money = (value: number) => formatMoney(value);
+  // To the cent. These are the amounts a customer has paid and still owes, read
+  // off the same payments the pay page and the invoice state exactly. The
+  // rounding formatMoney is right for a summary and wrong for a balance, and
+  // lib/jobs says so where it is defined.
+  const money = (value: number) => formatMoneyExact(value);
 
   return {
     id: client.id,

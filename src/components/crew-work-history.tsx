@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatUsdExact } from '@/lib/money-format';
 
 type CrewWorkHistoryItem = {
   cost_id: string;
@@ -26,9 +27,16 @@ type CrewWorkHistoryProps = {
   crewId: string;
 };
 
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
-}
+/**
+ * To the cent, because this is what a person was PAID.
+ *
+ * maximumFractionDigits: 0 rounded three figures on one panel -- each row and
+ * the total beneath them. Labour cost is round2(hours * rate), so 12.5 hours at
+ * $13.75 is $171.88 and printed "$172". Somebody checking their own hours
+ * against their pay does not have a rounding convention in mind; they have a
+ * number, and it either matches or it does not.
+ */
+const formatMoney = formatUsdExact;
 
 function formatJobSchedule(dateValue: string | null, timeValue: string | null): string {
   if (!dateValue) return 'Unscheduled';
