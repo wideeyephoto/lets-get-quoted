@@ -149,9 +149,17 @@ export default async function PublicPaymentPage({
       ? 'Your bank transfer is on its way. Bank transfers (ACH) take a few business days to clear, and you’ll be confirmed once it settles. There’s nothing more to do — please don’t pay again.'
       : '',
     paid: 'This payment has already been completed. Thank you!',
+    // "Failed" reads as "your bank said no", and on this rail that is usually
+    // not what happened. A card declined inside Stripe Checkout does not
+    // complete the session at all -- Stripe keeps the customer there to retry --
+    // so the common route to `failed` is checkout.session.expired, i.e. somebody
+    // closed the tab and Stripe timed the session out hours later. The third
+    // route is an ACH debit bouncing. "Wasn't completed" is true of all three
+    // and alarming in none of them, and it is the wording the payment_failed
+    // text message already uses.
     failed: legacyDestinationPayment
-      ? 'The last payment attempt failed. You can try again below.'
-      : 'The last payment attempt did not complete. Please contact your contractor for a current secure payment link.',
+      ? 'This payment wasn’t completed, so nothing has been charged. You can try again below.'
+      : 'This payment wasn’t completed. Please contact your contractor for a current secure payment link.',
     refunded: 'This payment has been refunded.',
     disputed: 'This payment is under dispute with your bank and cannot be paid here.',
     // The contractor withdrew it. Said plainly rather than left as a working
