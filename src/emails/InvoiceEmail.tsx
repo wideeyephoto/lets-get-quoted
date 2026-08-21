@@ -1,4 +1,5 @@
 import { escapeHtml, renderBrandedEmail, safeAccent, type EmailBrand } from './brand';
+import { formatUsdExact } from '@/lib/money-format';
 
 // The invoice email: the branded shell, with the line items and totals as its
 // body.
@@ -31,7 +32,19 @@ export function generateInvoiceHtml(params: {
   items: Array<{ description: string; amount: number }>;
   invoiceLink: string;
 }): string {
-  const money = (n: number) => '$' + Math.round(n).toLocaleString();
+  // TO THE CENT. This rounded to whole dollars, on a document whose whole job is
+  // to add up: Description/Amount rows above Subtotal -> Tax -> Total. Four
+  // $438.50 items printed as four $439s over a subtotal of $1,754, and the Total
+  // is the figure the card is actually charged -- invoice/[id]/actions.ts charges
+  // round2(total - paid), so the number here could differ from the statement by
+  // up to fifty cents.
+  //
+  // The hosted invoice page has always been exact, and says why in as many words
+  // ("an invoice has to add up on the page"). So one invoice was being stated
+  // three ways: exact on the page, rounded in this email, and rounded again in
+  // the PDF attached to it. money-format.ts is dependency-free precisely so a
+  // renderer like this one can use it.
+  const money = formatUsdExact;
   const accent = safeAccent(params.brand.accent);
   const subtotal = params.subtotal ?? params.total;
   const discountAmount = params.discountAmount ?? 0;

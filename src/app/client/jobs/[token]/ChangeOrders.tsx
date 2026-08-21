@@ -1,12 +1,24 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { formatUsdExact } from '@/lib/money-format';
 import type { ClientChangeOrder } from '@/lib/change-orders';
 import { respondToChangeOrderAction } from './change-order-actions';
 
-function money(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-}
+/**
+ * TO THE CENT, because this is a consent surface and the figure is charged.
+ *
+ * maximumFractionDigits: 0 rounded every line AND the total directly above the
+ * "Type your name to confirm" box. A $137.50 and a $412.50 line printed as $138
+ * and $413 under a header of $550 -- the parts visibly failing to make the
+ * whole, on the screen where somebody signs for it. The exact amount is then
+ * added to jobs.quoted_amount and raised as a deposit request.
+ *
+ * Every other figure on this page was already exact: the page imports
+ * formatMoneyExact, so only this block disagreed with the deposit, the
+ * installments and the job total beside it.
+ */
+const money = formatUsdExact;
 
 /**
  * Extra work the contractor found, and the homeowner's decision about it.

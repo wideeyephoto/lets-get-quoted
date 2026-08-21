@@ -25,12 +25,54 @@ import { formatMoneyExact } from '@/lib/jobs';
  * and four rows of $438 totalling $3,502".
  */
 
+/**
+ * THE LIST IS THE POINT, AND IT WAS INCOMPLETE.
+ *
+ * It named PAGES and checked their imports. But a page's exact import says
+ * nothing about the components it renders: client/jobs/[token]/page.tsx sat in
+ * this list and passed, while the ChangeOrders and Selections blocks it renders
+ * each declared their OWN money() at maximumFractionDigits: 0 -- rounding the
+ * line items and the total directly above a "Type your name to confirm" box.
+ *
+ * It also named only things served over HTTP, so the invoice EMAIL and the PDF
+ * attached to it were never looked at. Both rounded, so one invoice was stated
+ * three ways: exact on the hosted page, rounded in the email body, and rounded
+ * again in the attachment the customer files.
+ *
+ * A surface is anywhere a customer READS a number they owe -- a page, a
+ * component that page renders, an email, or a document attached to one.
+ */
 const CUSTOMER_MONEY_SURFACES = [
   'src/app/portal/view/[token]/page.tsx',
   'src/app/invoice/[id]/page.tsx',
   'src/app/pay/[id]/page.tsx',
   'src/app/client/jobs/[token]/page.tsx',
+  // Components the pages above render. Their parent's import does not cover them.
+  'src/app/client/jobs/[token]/ChangeOrders.tsx',
+  'src/app/client/jobs/[token]/Selections.tsx',
+  // What lands in the customer's inbox, and what they keep.
+  'src/emails/InvoiceEmail.tsx',
+  'src/emails/InvoicePdf.ts',
 ] as const;
+
+/**
+ * Code with the prose removed.
+ *
+ * The first version of the rounding check below failed against the COMMENT
+ * explaining why the rounding had been taken out -- which named the very
+ * property it was asserting was gone. Block comments go whole, because a
+ * per-line filter keyed on a leading star leaves every continuation line of a
+ * JSDoc block behind — and those lines are exactly where the prose discusses
+ * the thing it is explaining the absence of.
+ */
+const stripComments = (source: string) => source
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .split(/\r?\n/)
+  .filter((line) => !/^\s*\/\//.test(line))
+  .join('\n');
+
+/** Either name for the one exact implementation; formatMoneyExact re-exports it. */
+const EXACT = /formatMoneyExact|formatUsdExact/;
 
 describe('every surface a customer settles a debt on shows cents', () => {
   for (const file of CUSTOMER_MONEY_SURFACES) {
@@ -39,7 +81,7 @@ describe('every surface a customer settles a debt on shows cents', () => {
       // Either imported under its own name or aliased -- several of these alias
       // it to `formatMoney` so the call sites read the same as everywhere else,
       // which is exactly how the portal's rounding import hid in plain sight.
-      expect(source).toContain('formatMoneyExact');
+      expect(source).toMatch(EXACT);
     });
 
     it(`${file.split('/').slice(-2).join('/')} does not import the rounding one`, () => {
@@ -52,6 +94,15 @@ describe('every surface a customer settles a debt on shows cents', () => {
         .split('formatMoneyExact as formatMoney').join('formatMoneyExact');
       const importsRounding = /import \{[^}]*\bformatMoney\b[^}]*\} from '@\/lib\/(jobs|invoices)'/.test(source);
       expect(importsRounding, 'imports the whole-dollar formatMoney').toBe(false);
+    });
+
+    it(`${file.split('/').slice(-2).join('/')} does not roll its own rounding formatter`, () => {
+      // The mechanism that hid every one of the four surfaces added above: not
+      // an import of the wrong helper, but a fresh local money() a few lines
+      // from the top. Checking imports alone cannot see it.
+      const code = stripComments(readFileSync(join(process.cwd(), file), 'utf8'));
+      expect(code, 'declares a whole-dollar Intl formatter').not.toContain('maximumFractionDigits: 0');
+      expect(code, 'declares a Math.round money formatter').not.toMatch(/\$' \+ Math\.round\(/);
     });
   }
 });
