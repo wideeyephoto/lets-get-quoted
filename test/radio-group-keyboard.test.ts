@@ -5,12 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { nextRadioValue, radioTabIndex } from '@/components/use-radio-group';
 
 /**
- * Eight places render `role="radiogroup"` around `role="radio"` buttons, and on
- * 2026-08-20 not one handled a key press. The markup promised something the
- * component did not do: a screen reader announces "radio, not checked, 1 of 2",
- * the user presses the arrow key that implies, and nothing happens.
+ * Eight places carry `role="radiogroup"`. Four use native `<input type="radio">`
+ * and were always fine -- the browser supplies arrow keys and roving tabindex.
+ * The other four are built from buttons, and on 2026-08-20 not one of those
+ * handled a key press: a screen reader announced "radio, not checked, 1 of 2",
+ * the user pressed the arrow key that implies, and nothing happened.
  *
- * Two of the eight are how somebody chooses to pay a contractor.
+ * All four button ones are money screens. The screens that got bespoke card
+ * layouts are the screens that lost the keyboard.
  */
 
 const PAY_MODES = ['full', 'plan'] as const;
@@ -127,6 +129,7 @@ describe('every payment radio group uses the hook, not hand-rolled attributes', 
     'src/app/client/jobs/[token]/PayChoice.tsx',
     'src/app/client/jobs/[token]/QuoteAcceptance.tsx',
     'src/app/dashboard/jobs/[id]/AcceptPlanCard.tsx',
+    'src/app/book/[subdomain]/QuickStopFlow.tsx',
   ] as const;
 
   for (const file of FILES) {
@@ -148,6 +151,34 @@ describe('every payment radio group uses the hook, not hand-rolled attributes', 
       // The hook supplies the options' roles, never the container's. Losing this
       // would leave correctly-behaving buttons that announce as nothing.
       expect(source).toContain('role="radiogroup"');
+    });
+  }
+});
+
+describe('the groups built from native inputs are left alone', () => {
+  /**
+   * Four of the eight radiogroups use `<input type="radio">`. The browser
+   * already gives those arrow keys, roving tabindex and grouping by `name`, so
+   * applying the hook to them would replace working behavior with a hand-rolled
+   * imitation of it.
+   *
+   * Recorded because the tempting next step, having written a hook, is to use it
+   * everywhere the role appears.
+   */
+  const NATIVE = [
+    'src/app/book/[subdomain]/InstantBookFlow.tsx',
+    'src/app/book/[subdomain]/RequestVisitFlow.tsx',
+    'src/app/dashboard/jobs/[id]/SubcontractorReview.tsx',
+  ] as const;
+
+  for (const file of NATIVE) {
+    it(`${file.split('/').pop()} still uses real radio inputs`, () => {
+      const source = readFileSync(join(process.cwd(), file), 'utf8');
+      expect(source).toContain('type="radio"');
+      // If one of these is ever rebuilt as buttons, it stops being free and
+      // needs the hook -- this is the assertion that notices.
+      expect(source).not.toContain('role="radio"');
+      expect(source).not.toContain('use-radio-group');
     });
   }
 });

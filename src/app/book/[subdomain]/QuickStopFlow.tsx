@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRadioGroup } from '@/components/use-radio-group';
 import { submitQuickStopRequestAction } from './actions';
 import type { QuickStopDayOption } from '@/lib/quick-stop';
 import { quickStopOfferedPhrase } from '@/lib/quick-stop-window';
@@ -81,6 +82,14 @@ export default function QuickStopFlow({
   const [propertyType, setPropertyType] = useState('');
   const [availability, setAvailability] = useState('');
   const [requestedDate, setRequestedDate] = useState(days[0]?.dateKey ?? '');
+  // The day chips have carried radiogroup roles with no keyboard handling, like
+  // every other radiogroup in this app did. Options come from `days` so arrow
+  // keys follow the order they are rendered in. See useRadioGroup.
+  const { getOptionProps: getDayProps } = useRadioGroup({
+    options: days.map((day) => day.dateKey),
+    value: requestedDate || null,
+    onChange: setRequestedDate,
+  });
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -370,10 +379,8 @@ export default function QuickStopFlow({
                     <button
                       key={day.dateKey}
                       type="button"
-                      role="radio"
-                      aria-checked={requestedDate === day.dateKey}
+                      {...getDayProps(day.dateKey)}
                       className={`es-day-chip${requestedDate === day.dateKey ? ' is-on' : ''}`}
-                      onClick={() => setRequestedDate(day.dateKey)}
                     >
                       {day.label}
                     </button>
