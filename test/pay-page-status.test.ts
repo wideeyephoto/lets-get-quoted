@@ -266,3 +266,39 @@ describe('no surface invites a second payment for money already moving', () => {
     expect(clientPage).toContain("!(payment.status === 'processing' && payment.async_payment_pending_at)");
   });
 });
+
+describe('a partial refund is not invisible', () => {
+  const WEBHOOK = readFileSync(join(process.cwd(), 'src/app/api/stripe/webhook/route.ts'), 'utf8');
+
+  it('is a state the page can genuinely be in', () => {
+    // Only a FULL refund moves the status to `refunded`. A partial one leaves it
+    // at `paid` and records the amount -- deliberate, because the refund text
+    // message states the whole amount and would be wrong for a partial.
+    expect(WEBHOOK).toContain("status: isFull ? 'refunded' : 'paid'");
+    expect(WEBHOOK).toContain('refunded_amount: refundedTotal');
+  });
+
+  it('says how much went back', () => {
+    // Somebody who paid $4,200 and was refunded $1,200 saw "This payment has
+    // already been completed. Thank you!" over a $4,200 figure, with the $1,200
+    // nowhere. Their bank statement disagrees with the only page they have, and
+    // the page is the one that looks wrong.
+    expect(PAGE).toContain('refundedSoFar > 0');
+    expect(PAGE).toContain('has since been refunded to you');
+  });
+
+  it('keeps the plain message when nothing was refunded', () => {
+    expect(PAGE).toContain("'This payment has already been completed. Thank you!'");
+  });
+
+  it('does not print null at somebody', () => {
+    // refunded_amount is null on rows predating the column, and "$null" on a
+    // payment page is its own support call.
+    expect(PAGE).toContain('Number(payment.refunded_amount) || 0');
+  });
+
+  it('sets expectations about when the money lands', () => {
+    // The question somebody reading this actually has next.
+    expect(PAGE).toContain('few business days');
+  });
+});
