@@ -128,3 +128,30 @@ describe('the processing fee is a number a person can read', () => {
     expect(formatFeeRate(0.0007)).toBe('0.07%');
   });
 });
+
+describe('the fee disclosure is legible in the theme it actually renders in', () => {
+  it('states no color as a literal hex', () => {
+    // Two lines carried `color: '#666'` inline -- the processing-fee
+    // explanation and the bank-transfer note. This app's DEFAULT theme is dark
+    // (:root is dark, [data-theme='light'] is the override), and --bg there is
+    // #06131f, so those two lines rendered at 3.26:1 against their background.
+    // AA body text needs 4.5:1. In light mode the same grey is 5.12:1 and
+    // passes, which is exactly why it survived: it only fails in the default.
+    //
+    // An inline style also beats any class, and .payment-fee-note has no CSS
+    // rule at all -- so the hardcoded value was the only thing deciding.
+    // var(--muted) is #c8d0dc on dark (12.06:1) and #323a4b on light (10.16:1).
+    expect(PAGE).not.toMatch(/color: '#[0-9a-fA-F]{3,6}'/);
+    expect(PAGE).toContain("color: 'var(--muted)'");
+  });
+
+  it('uses a variable that is defined in both themes', () => {
+    // A var() that resolves to nothing inherits, which on this page would be
+    // body text -- legible, but not the muted treatment these notes want.
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    const dark = css.slice(css.indexOf(':root {'), css.indexOf(":root[data-theme='light']"));
+    const light = css.slice(css.indexOf(":root[data-theme='light']"));
+    expect(dark).toContain('--muted:');
+    expect(light).toContain('--muted:');
+  });
+});
