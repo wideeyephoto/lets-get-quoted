@@ -204,3 +204,23 @@ describe('a failed checkout does not look like a crash', () => {
     }
   });
 });
+
+describe('the words match what actually happened', () => {
+  it('does not tell somebody their payment failed when it merely lapsed', () => {
+    // "Failed" reads as "your bank said no". On this rail that is usually not
+    // what happened: a card declined inside Stripe Checkout does not complete
+    // the session -- Stripe keeps the customer there to retry -- so the common
+    // route to `failed` is checkout.session.expired, hours after somebody closed
+    // the tab. The third route is an ACH debit bouncing.
+    expect(PAGE).not.toContain('The last payment attempt failed');
+    expect(PAGE).toContain('wasn’t completed');
+  });
+
+  it('says the same thing the text message says', () => {
+    // The payment_failed SMS has always been careful here: "was not completed".
+    // A page and a text describing one event in two ways is how somebody decides
+    // one of them is wrong.
+    const templates = readFileSync(join(process.cwd(), 'src/lib/sms-templates.ts'), 'utf8');
+    expect(templates).toContain('was not completed');
+  });
+});
