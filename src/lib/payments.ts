@@ -38,6 +38,22 @@ export type Payment = {
   fee_basis_amount: number | string | null;
   stripe_checkout_session: string | null;
   stripe_payment_intent: string | null;
+  /**
+   * Set when Stripe confirms a completed Checkout Session whose money is still
+   * moving -- ACH and other delayed methods.
+   *
+   * ADVISORY, AND MUST BE READ AFTER `status`, NEVER INSTEAD OF IT. It is
+   * cleared best-effort on settle and on failure, and deliberately carries no
+   * CHECK constraint: seventeen sites transition a payment to a terminal status,
+   * and a constraint would turn one missed clear into a webhook that throws
+   * after Stripe has already taken the money. A stale value on a settled row is
+   * expected. See migrations 20260821000000 and 20260821001000.
+   *
+   * Exists because `status` alone cannot answer the only question the pay page
+   * needs answered: 'processing' is set when a Checkout Session is CREATED, so
+   * it means both "the bank is clearing it" and "they closed the tab".
+   */
+  async_payment_pending_at?: string | null;
   homeowner_phone: string | null;
   sms_consent: boolean;
   sms_consent_at: string | null;
