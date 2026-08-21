@@ -58,17 +58,11 @@ describe('the top-up SKU seeder', () => {
     // which is the confusion the appendix status key exists to prevent.
     expect(SCRIPT).toContain('WITHHELD -');
     expect(Object.keys(TOP_UPS_WITHHELD).sort()).toEqual([
-      // Every one is priced, published and unsellable, and this list is the
-      // single place that decides which -- so it is pinned rather than derived.
-      //
-      // crew_user left this list on 2026-08-20. It is the first capacity SKU to
-      // do so, and it went because the rail underneath it closed: 20260819010000
-      // fills the ledger on payment, the capacity lifecycle sweep empties it on
-      // lapse, and `workspace_purchased_capacity_units` counts only `active` and
-      // `past_due` -- all three verified against production before the edit, not
-      // read off a comment. What was actually left was a live Stripe Price.
+      // The four voice SKUs join the three that were already withheld. Every
+      // one is priced, published and unsellable, and this list is the single
+      // place that decides which -- so it is pinned rather than derived.
       'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo',
-      'office_user', 'storage_100gb', 'voice_minutes_100',
+      'crew_user', 'office_user', 'storage_100gb', 'voice_minutes_100',
     ]);
     // Both remain in the price book; what is withheld is the sale.
     expect(TOP_UPS.office_user).toBeTruthy();
