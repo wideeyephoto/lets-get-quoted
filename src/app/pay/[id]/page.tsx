@@ -55,6 +55,25 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 // a false statement about money. See formatMoneyExact.
 const formatMoney = formatMoneyExact;
 
+/**
+ * A fee rate as a percentage, without the binary-float debris.
+ *
+ * `rate * 100` is exact for the four rates the catalog ships today (125, 50, 25
+ * and 10 basis points), and is not exact in general: 175 bps renders as
+ * "1.7500000000000002%" and 7 bps as "0.06999999999999999%". `fee_rate` is read
+ * off the payment row, so it is whatever was stored at checkout rather than
+ * whatever the catalog currently holds — a rate this page never chose, on a
+ * screen a homeowner is deciding whether to trust with a card.
+ *
+ * Rounded to four decimal places rather than a fixed two: 10 bps is 0.1%, and
+ * toFixed(2) would print "0.10%" for it — harmless, but it turns a rate we know
+ * exactly into one that looks approximated. Number() then drops the trailing
+ * zeros, so 1.25 stays "1.25%" and 0.1 stays "0.1%".
+ */
+function formatFeeRate(rate: number): string {
+  return `${Number(((rate * 100).toFixed(4)))}%`;
+}
+
 export default async function PublicPaymentPage({
   params,
   searchParams,
@@ -100,9 +119,35 @@ export default async function PublicPaymentPage({
   }
 
   const legacyDestinationPayment = isLegacyDestinationPayment(payment);
+
+  /**
+   * Whether money is actually moving, which `status` alone cannot tell you.
+   *
+   * `processing` is written when a Checkout Session is CREATED, not when a
+   * payment starts — so it covers both "an $8,000 bank transfer is clearing" and
+   * "they opened Stripe and closed the tab". Until now this page said the first
+   * sentence to both of them, and put a Pay button underneath it: the abandoned
+   * homeowner was told their payment was on its way when nothing had happened,
+   * and the in-flight one was invited to pay twice.
+   *
+   * `async_payment_pending_at` is set only by checkout.session.completed with the
+   * payment still unpaid, which is the ACH case and cannot be reached by
+   * abandonment (an abandoned session expires instead). Read after `status`, per
+   * the column's contract: it is cleared best-effort, so a stale value on a
+   * settled row is expected and must not be believed on its own.
+   */
+  const moneyIsInFlight = payment.status === 'processing'
+    && Boolean(payment.async_payment_pending_at);
+
   const statusMessage: Record<PaymentStatus, string> = {
     requested: '',
-    processing: 'This payment is processing. Bank transfers (ACH) can take a few business days to clear — you’ll be confirmed once it settles.',
+    // Only ever shown for a genuinely in-flight transfer now. The abandoned
+    // case renders the checkout-not-finished notice below instead, because
+    // telling somebody their money is on its way when it is not is the more
+    // expensive of the two mistakes available here.
+    processing: moneyIsInFlight
+      ? 'Your bank transfer is on its way. Bank transfers (ACH) take a few business days to clear, and you’ll be confirmed once it settles. There’s nothing more to do — please don’t pay again.'
+      : '',
     paid: 'This payment has already been completed. Thank you!',
     failed: legacyDestinationPayment
       ? 'The last payment attempt failed. You can try again below.'
@@ -124,7 +169,27 @@ export default async function PublicPaymentPage({
   const canPay =
     (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing') &&
     !alreadyPaid &&
+    // A transfer already clearing must not be offered a Pay button. The server
+    // still permits the retry (createCheckoutSessionForPayment accepts
+    // 'processing', deliberately, so an abandoned checkout can be resumed) --
+    // this withholds the invitation, it does not close the door. Somebody whose
+    // ACH genuinely failed comes back as 'failed' and is offered the button
+    // again.
+    !moneyIsInFlight &&
     legacyDestinationPayment;
+
+  /**
+   * Started checkout, never finished, nothing in flight.
+   *
+   * The common case, and the one that previously read as "your payment is
+   * processing". Said plainly instead, with the Pay button still there.
+   */
+  // Gated on the same rail as the Pay button. Without this, a non-legacy payment
+  // in 'processing' would show "you can pay below" directly above the notice
+  // saying checkout cannot be started from this link.
+  const checkoutNotFinished = payment.status === 'processing'
+    && !moneyIsInFlight
+    && legacyDestinationPayment;
   const directCheckoutUnavailable =
     !legacyDestinationPayment &&
     (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing');
@@ -192,7 +257,7 @@ export default async function PublicPaymentPage({
               <p className="payment-fee-label">
                 {feeIsLocked ? 'Processing fee:' : 'Estimated processing fee:'}{' '}
                 <strong>
-                  {displayFeeAmount != null ? formatMoney(displayFeeAmount) : `${displayFeeRate * 100}%`}
+                  {displayFeeAmount != null ? formatMoney(displayFeeAmount) : formatFeeRate(displayFeeRate)}
                 </strong>
               </p>
               <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
@@ -205,6 +270,15 @@ export default async function PublicPaymentPage({
             <div className={statusTone}>
               {statusMessage[payment.status] ? <p>{statusMessage[payment.status]}</p> : null}
               {cancelledJustNow ? <p>Checkout was cancelled. You have not been charged.</p> : null}
+            </div>
+          ) : null}
+
+          {checkoutNotFinished ? (
+            <div className="payment-banner warning">
+              <p>
+                You started a payment but it wasn&apos;t completed, so nothing has been charged
+                and this is still outstanding. You can pay below.
+              </p>
             </div>
           ) : null}
 

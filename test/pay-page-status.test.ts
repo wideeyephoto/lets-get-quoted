@@ -38,3 +38,93 @@ describe('the payment page shows words, not stored values', () => {
     }
   });
 });
+
+/**
+ * "Processing" meant two different things and the page only said one of them.
+ *
+ * `payments.status` becomes 'processing' when a Checkout Session is CREATED, so
+ * it covers both a bank transfer genuinely clearing and a homeowner who opened
+ * Stripe and closed the tab. The page told both the first story — "you'll be
+ * confirmed once it settles" — and rendered a Pay button underneath it.
+ */
+describe('telling a clearing bank transfer apart from an abandoned checkout', () => {
+  const WEBHOOK = readFileSync(join(process.cwd(), 'src/app/api/stripe/webhook/route.ts'), 'utf8');
+
+  it('records the ACH case the webhook used to drop', () => {
+    // checkout.session.completed fires for a delayed method with payment_status
+    // 'unpaid'. The settle branch only runs on 'paid', so nothing was written at
+    // all and the row stayed indistinguishable from an abandoned one.
+    expect(WEBHOOK).toContain("session.payment_status === 'unpaid'");
+    expect(WEBHOOK).toContain('async_payment_pending_at: new Date().toISOString()');
+  });
+
+  it('requires a payment intent before claiming money is moving', () => {
+    // Belt and braces: the intent is the object that later succeeds or fails.
+    // Without one there is nothing actually in flight to report.
+    const branch = WEBHOOK.slice(WEBHOOK.indexOf("session.payment_status === 'unpaid'"));
+    expect(branch.slice(0, 120)).toContain('session.payment_intent');
+  });
+
+  it('clears the flag in the same UPDATE that settles or fails the payment', () => {
+    // A second write could fail on its own and leave the page telling somebody
+    // their settled payment is still clearing.
+    const settle = WEBHOOK.slice(WEBHOOK.indexOf("status: 'paid',"));
+    expect(settle.slice(0, 900)).toContain('async_payment_pending_at: null');
+    const fail = WEBHOOK.slice(WEBHOOK.indexOf("status: 'failed',"));
+    expect(fail.slice(0, 900)).toContain('async_payment_pending_at: null');
+  });
+
+  it('reads the flag only after status, never instead of it', () => {
+    // The column is advisory and cleared best-effort, so a stale value on a
+    // settled row is expected. Believing it alone would show "your transfer is
+    // clearing" over a payment that completed days ago.
+    expect(PAGE).toContain("payment.status === 'processing'");
+    const guard = PAGE.slice(PAGE.indexOf('const moneyIsInFlight'));
+    expect(guard.slice(0, 200)).toContain("payment.status === 'processing'");
+    expect(guard.slice(0, 200)).toContain('async_payment_pending_at');
+  });
+
+  it('withholds the Pay button from a transfer already clearing', () => {
+    // The expensive failure: inviting a second payment while an ACH is in
+    // flight. The SERVER still allows the retry so an abandoned checkout can be
+    // resumed — this withholds the invitation, it does not close the door.
+    const canPay = PAGE.slice(PAGE.indexOf('const canPay ='), PAGE.indexOf('legacyDestinationPayment;', PAGE.indexOf('const canPay =')));
+    expect(canPay).toContain('!moneyIsInFlight');
+  });
+
+  it('tells an abandoned checkout that nothing was charged', () => {
+    // The common case, and the one that used to read as "your payment is
+    // processing" — leaving somebody believing they had paid when they had not.
+    expect(PAGE).toContain("wasn&apos;t completed");
+    expect(PAGE).toContain('nothing has been charged');
+  });
+
+  it('does not offer to pay below on a rail that cannot be paid from', () => {
+    // checkoutNotFinished and directCheckoutUnavailable would otherwise both
+    // render, one saying "you can pay below" and the other "you cannot".
+    const block = PAGE.slice(PAGE.indexOf('const checkoutNotFinished'));
+    expect(block.slice(0, 260)).toContain('legacyDestinationPayment');
+  });
+});
+
+describe('the processing fee is a number a person can read', () => {
+  it('does not multiply the rate inline any more', () => {
+    // `${rate * 100}%` is exact for the four rates shipping today and not in
+    // general: 175 bps renders "1.7500000000000002%". fee_rate is read off the
+    // row, so it is whatever was stored at checkout, not what the catalog holds.
+    expect(PAGE).not.toContain('displayFeeRate * 100}%');
+    expect(PAGE).toContain('formatFeeRate(displayFeeRate)');
+  });
+
+  it('keeps exact rates exact rather than padding them', () => {
+    // Reimplemented here rather than imported: the helper is local to a server
+    // component, and the assertion worth making is about the output.
+    const formatFeeRate = (rate: number) => `${Number((rate * 100).toFixed(4))}%`;
+    expect(formatFeeRate(0.0125)).toBe('1.25%');
+    expect(formatFeeRate(0.005)).toBe('0.5%');
+    expect(formatFeeRate(0.001)).toBe('0.1%');
+    // The two that were broken.
+    expect(formatFeeRate(0.0175)).toBe('1.75%');
+    expect(formatFeeRate(0.0007)).toBe('0.07%');
+  });
+});
