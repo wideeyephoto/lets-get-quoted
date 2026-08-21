@@ -97,8 +97,15 @@ describe('telling a clearing bank transfer apart from an abandoned checkout', ()
     // The expensive failure: inviting a second payment while an ACH is in
     // flight. The SERVER still allows the retry so an abandoned checkout can be
     // resumed — this withholds the invitation, it does not close the door.
-    const canPay = PAGE.slice(PAGE.indexOf('const canPay ='), PAGE.indexOf('legacyDestinationPayment;', PAGE.indexOf('const canPay =')));
-    expect(canPay).toContain('!moneyIsInFlight');
+    //
+    // This used to slice the inline canPay expression and look for
+    // `!moneyIsInFlight`. That decision now lives in resolvePaymentView, and the
+    // slice kept passing — against the checkoutNotFinished block below it, which
+    // is not what the test is named after. So it asserts the wiring here and the
+    // behaviour is covered exhaustively in payment-view.test.ts.
+    expect(PAGE).toContain('resolvePaymentView({');
+    expect(PAGE).toContain('moneyInFlight: moneyIsInFlight');
+    expect(PAGE).toContain('const canPay = paymentView.canPay;');
   });
 
   it('tells an abandoned checkout that nothing was charged', () => {
@@ -462,8 +469,13 @@ describe('the success redirect, which races the webhook', () => {
   });
 
   it('does not offer to pay again during the gap', () => {
-    const canPay = PAGE.slice(PAGE.indexOf('const canPay ='), PAGE.indexOf('legacyDestinationPayment;', PAGE.indexOf('const canPay =')));
-    expect(canPay).toContain('!returnedFromCheckout');
+    // Same story as the assertion above: the decision moved into
+    // resolvePaymentView, and the old source slice went on passing against a
+    // neighbouring block. The behaviour itself is a property test over every
+    // combination in payment-view.test.ts -- "never offers to pay while telling
+    // somebody money is already moving".
+    expect(PAGE).toContain('returnedFromCheckout,');
+    expect(PAGE).toContain('const canPay = paymentView.canPay;');
   });
 
   it('says what happened rather than going quiet', () => {
