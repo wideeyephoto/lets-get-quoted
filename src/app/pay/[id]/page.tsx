@@ -24,6 +24,50 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 /**
+ * A Quick Stop priority fee, which is stored as `kind = 'deposit'` and is not
+ * one.
+ *
+ * quick-stop-payments.ts writes `kind: 'deposit'` because that is the closest
+ * existing kind, so this page labelled a $75 priority-visit fee "Deposit" --
+ * which tells a homeowner it comes off the job total. It does not, and the
+ * booking flow says so twice in as many sentences: "That fee reserves the visit
+ * -- the service itself is quoted and billed separately."
+ *
+ * The offer also EXPIRES. `payment_deadline_at` is enforced by
+ * createCheckoutSessionForPayment, which throws "This Quick Stop offer has
+ * expired" -- and the page said nothing about a deadline, so somebody could open
+ * a texted link, take twenty minutes over it, and press a live-looking button
+ * into a refusal.
+ *
+ * Read by payment_id rather than joined, because this is the only page that
+ * needs it and most payments are not Quick Stops.
+ */
+async function loadQuickStopOffer(
+  admin: ReturnType<typeof createAdminClient>,
+  paymentId: string,
+): Promise<{ deadlineAt: string | null; windowAt: string | null } | null> {
+  const { data, error } = await admin
+    .from('extra_stop_requests')
+    .select('payment_deadline_at, proposed_window_at')
+    .eq('payment_id', paymentId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    deadlineAt: (data.payment_deadline_at as string | null) ?? null,
+    windowAt: (data.proposed_window_at as string | null) ?? null,
+  };
+}
+
+/** "3:45 PM", in the reader's own timezone. */
+function formatClock(value: string | null): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? null
+    : parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/**
  * The status as a word, not as the value we store it under.
  *
  * The card printed `payment.status` straight from the row, so a homeowner
@@ -256,17 +300,26 @@ export default async function PublicPaymentPage({
   // Whose page this is. A card form under a brand the homeowner does not
   // recognize is the moment they stop and ring somebody — and until now the mark
   // above this button was ours, not the contractor's they actually hired.
-  const brand = await loadContractorBrand(createAdminClient(), payment.account_id);
+  const admin = createAdminClient();
+  const [brand, quickStop] = await Promise.all([
+    loadContractorBrand(admin, payment.account_id),
+    loadQuickStopOffer(admin, payment.id),
+  ]);
+
+  // A priority visit fee is not a deposit, whatever the row says.
+  const kindLabel = quickStop ? 'Priority visit' : (KIND_LABEL[payment.kind] || 'Payment');
+  const payByClock = formatClock(quickStop?.deadlineAt ?? null);
+  const arrivalClock = formatClock(quickStop?.windowAt ?? null);
 
   return (
     <>
-      <ContractorBrandBar brand={brand} context={KIND_LABEL[payment.kind] || 'Payment'} />
+      <ContractorBrandBar brand={brand} context={kindLabel} />
       <main className="wide-shell workspace-shell payment-shell">
       <section className="workspace-hero panel payment-hero">
         <div className="workspace-hero-copy">
           {/* The brand bar above carries the name and the payment type; repeating
               both here read as a stutter. */}
-          <h1 className="workspace-title">{KIND_LABEL[payment.kind] || 'Payment'}</h1>
+          <h1 className="workspace-title">{kindLabel}</h1>
           <p className="workspace-lead">
             {payment.job
               ? `Job ${payment.job.ref} for ${payment.job.client_name}`
@@ -296,6 +349,27 @@ export default async function PublicPaymentPage({
             <div className={statusTone}>
               {statusMessage[payment.status] ? <p>{statusMessage[payment.status]}</p> : null}
               {cancelledJustNow ? <p>Checkout was cancelled. You have not been charged.</p> : null}
+            </div>
+          ) : null}
+
+          {quickStop && canPay ? (
+            /* Two things a homeowner needs before paying a priority fee and was
+               told neither of. The fee is NOT credited against the job -- the
+               booking flow says so twice, and this page called it a Deposit --
+               and the offer expires, which createCheckoutSessionForPayment
+               enforces by refusing checkout after payment_deadline_at. */
+            <div className="payment-banner">
+              <p>
+                This reserves a priority visit{arrivalClock ? ` around ${arrivalClock}` : ''}. It pays for
+                the extra trip — the work itself is quoted and billed separately, so this is not taken off
+                the cost of the job.
+              </p>
+              {payByClock ? (
+                <p>
+                  <strong>Please pay by {payByClock}</strong> — after that the slot is released to somebody
+                  else and this link stops working.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -351,7 +425,7 @@ export default async function PublicPaymentPage({
           </article>
           <article className="workspace-metric-card">
             <span className="workspace-metric-label">Payment type</span>
-            <strong className="workspace-metric-value">{KIND_LABEL[payment.kind] || 'Payment'}</strong>
+            <strong className="workspace-metric-value">{kindLabel}</strong>
             <p className="workspace-metric-note">This request is tied to the contractor workflow.</p>
           </article>
           <article className="workspace-metric-card">
