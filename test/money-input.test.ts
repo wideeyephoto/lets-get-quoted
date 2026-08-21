@@ -139,3 +139,59 @@ describe('the action uses it', () => {
     expect(ACTION).toContain('paymentAmountError(parsedAmount.reason)');
   });
 });
+
+describe('every write guard on money is NaN-safe', () => {
+  /**
+   * Two idioms, and only one of them works.
+   *
+   *   amount <= 0        NaN passes. This is the bug.
+   *   !(amount > 0)      NaN is caught.
+   *   !Number.isFinite   NaN and Infinity are both caught.
+   *
+   * The codebase mostly knew: change-orders, milestones and the quickbooks map
+   * all use the safe form for validating money somebody typed, and refundPayment
+   * already tested isFinite. The two that did not were both INSERT guards
+   * sitting in front of a `numeric NOT NULL` column, which is the one place the
+   * failure turns into a Postgres error rather than a wrong number.
+   */
+  const WRITE_GUARDS = [
+    ['createDepositRequest', 'src/lib/payments.ts', 'Payment amount must be greater than 0.'],
+    ['addInvoiceItem', 'src/lib/invoices.ts', 'Line item amount must be greater than 0.'],
+  ] as const;
+
+  for (const [name, file, message] of WRITE_GUARDS) {
+    it(`${name} checks finiteness before comparing`, () => {
+      const source = read(file);
+      const at = source.indexOf(message);
+      expect(at, `${message} not found`).toBeGreaterThan(-1);
+      // The guard is the `if` immediately above the throw.
+      const guard = source.slice(Math.max(0, at - 400), at);
+      expect(guard, name).toContain('Number.isFinite');
+    });
+  }
+
+  it('leaves the read paths alone', () => {
+    // The forecast and insights modules compare `amount <= 0` on values read
+    // from NOT NULL numeric columns, where NaN cannot occur. Changing those
+    // would be noise, and this file is not a blanket ban on the operator.
+    const forecast = read('src/lib/cash-forecast-incoming.ts');
+    expect(forecast).toContain('amount <= 0');
+  });
+
+  it('keeps the safe idiom where it was already used', () => {
+    // !(x > 0) is NaN-safe and reads well next to a human-facing blocker string.
+    expect(read('src/lib/milestones.ts')).toContain('!(milestone.amount > 0)');
+    expect(read('src/lib/change-orders.ts')).toContain('!(order.amount > 0)');
+  });
+
+  it('is used by both actions that take a typed amount', () => {
+    for (const file of [
+      'src/app/dashboard/jobs/payments-actions.ts',
+      'src/app/dashboard/jobs/invoices-actions.ts',
+    ]) {
+      const source = read(file);
+      expect(source, file).toContain("parsePaymentAmount(formData.get('amount'))");
+      expect(source, file).not.toContain("Number(formData.get('amount'))");
+    }
+  });
+});
