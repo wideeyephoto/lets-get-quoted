@@ -165,20 +165,49 @@ describe('deciding what one top-up event means', () => {
     expect(projection.account_id).toBe(WORKSPACE_ID);
   });
 
-  it('withholds every recurring-capacity SKU, so no capacity purchase can grant', () => {
-    // A capacity SKU is not a consumable balance, and granting one as a credit
-    // lot would be the wrong wallet. Rather than rely on the projector catching
-    // that after the money moved, the catalog stops the sale.
+  it('sends a capacity SKU to the capacity ledger, never to a credit lot', () => {
+    // This used to assert that EVERY capacity SKU was withheld, on the reasoning
+    // that granting one as a credit lot would be the wrong wallet. The projector
+    // no longer has that failure mode -- `recurring_capacity` has its own branch
+    // returning `capacity_granted` -- so withholding is no longer what protects
+    // the wallet, and asserting it here hid which mechanism actually does.
+    //
+    // crew_user is now sellable, so this path is live rather than hypothetical.
     const capacity = (Object.keys(TOP_UPS) as TopUpId[])
       .filter((id) => TOP_UPS[id].fulfillment === 'recurring_capacity');
     expect(capacity).not.toHaveLength(0);
-    for (const id of capacity) {
-      expect(id in TOP_UPS_WITHHELD, `${id} is capacity and must be withheld`).toBe(true);
-    }
-    // Which makes capacity_fulfillment_deferred unreachable today. It stays as
-    // the safety net for the day a capacity SKU is sold before it can be filled,
-    // so the withheld check running first is what decides the outcome.
-    expect(TOP_UPS.storage_100gb.fulfillment).toBe('recurring_capacity');
+    expect(capacity).toContain('crew_user');
+    expect('crew_user' in TOP_UPS_WITHHELD).toBe(false);
+
+    const projection = decideTopUpProjection(
+      claim(),
+      session({
+        metadata: metadata({ lgq_top_up_id: 'crew_user', lgq_resource_code: 'crew_users', lgq_units: '1' }),
+        subscription: 'sub_1AAAAAAAAAAAAAAAAAAAAAAA',
+      } as Partial<Stripe.Checkout.Session>),
+    );
+    expect(projection.outcome).toBe('capacity_granted');
+    expect(projection.resource_code).toBe('crew_users');
+    expect(projection.units).toBe(1);
+    // The seat is owned by the subscription, not by the Session -- without this
+    // id nothing could ever take the seat back when payment stops.
+    expect(projection.stripe_subscription_id).toBe('sub_1AAAAAAAAAAAAAAAAAAAAAAA');
+  });
+
+  it('refuses to grant capacity when the Session carries no subscription', () => {
+    // The safety net behind the branch above, and the reason it must not simply
+    // grant: a seat with no subscription id is a seat nothing can ever cancel.
+    // Deferring leaves the money accounted for and the seat ungranted, which is
+    // the recoverable direction.
+    const projection = decideTopUpProjection(
+      claim(),
+      session({
+        metadata: metadata({ lgq_top_up_id: 'crew_user', lgq_resource_code: 'crew_users', lgq_units: '1' }),
+        subscription: undefined,
+      } as Partial<Stripe.Checkout.Session>),
+    );
+    expect(projection.outcome).toBe('capacity_fulfillment_deferred');
+    expect(projection.units).toBeUndefined();
   });
 
   it('keys idempotency on the Session, so two events for one purchase agree', () => {

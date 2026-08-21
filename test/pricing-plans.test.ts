@@ -80,18 +80,23 @@ describe('the contractor pricing catalog', () => {
     ]);
 
     // WHAT THE PUBLIC PAGE QUOTES is a smaller list than the price book, and
-    // deliberately so -- the five checkout will actually sell, priced, then the
-    // seven it refuses, unpriced and last. See pricing-add-ons-are-buyable for
+    // deliberately so -- the six checkout will actually sell, priced, then the
+    // six it refuses, unpriced and last. See pricing-add-ons-are-buyable for
     // why that separation exists rather than what it currently is.
+    //
+    // Crew user crossed the line on 2026-08-20 and is the first recurring SKU on
+    // this page to carry a real price. Note the '/month': the others are one-off
+    // balances, and a reader who takes $5 for a one-time charge has been misled
+    // by the same list that is supposed to inform them.
     expect(ADD_ONS.map(({ label, price }) => [label, price])).toEqual([
       ['Flex: 250 text-credit top-up', '$12'],
       ['1,000 text credits', '$42'],
       ['5,000 marketing emails', '$17'],
       ['100 AI Intake credits', '$15'],
       ['250 AI writing drafts', '$19'],
+      ['Crew user', '$5/month'],
       ['100 GB storage', 'Coming soon'],
       ['Office user', 'Coming soon'],
-      ['Crew user', 'Coming soon'],
       ['AI Voice Receptionist (Flex)', 'Coming soon'],
       ['AI Voice Receptionist (Solo)', 'Coming soon'],
       ['AI Voice Receptionist (Growth)', 'Coming soon'],
