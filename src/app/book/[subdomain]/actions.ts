@@ -29,6 +29,21 @@ import { readQuickStopVerdictToken } from '@/lib/quick-stop-verdict';
 import { recordQuickStopScreening } from '@/lib/quick-stop-screenings';
 import { createQuickStopRequest, hasActiveQuickStopRequest } from '@/lib/quick-stop-requests';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { referrerFromCode } from '@/lib/referral';
+
+/**
+ * A bounce back to the booking page that keeps the referral code.
+ *
+ * The visitor arrived on somebody else's referral link, hit a validation error
+ * or a taken slot, and fixed it. Rebuilding the URL without the code meant the
+ * successful second attempt credited nobody — the failure mode being that the
+ * referrals that DO bounce are systematically the ones that go unpaid.
+ */
+function bounceBack(subdomain: string, formData: FormData): (query: string) => string {
+  const raw = (formData.get('ref') ?? '').toString().slice(0, 128);
+  const suffix = raw ? `&ref=${encodeURIComponent(raw)}` : '';
+  return (query: string) => `/book/${subdomain}?${query}${suffix}`;
+}
 
 export type QuickStopSubmitResult =
   | { ok: true }
@@ -239,14 +254,25 @@ function readContact(formData: FormData) {
 
 export async function submitBookingAction(subdomain: string, formData: FormData) {
   const admin = createAdminClient();
+  // Every bounce-back below rebuilds the URL from scratch, so without this the
+  // page re-renders with no ?ref, the hidden field comes back empty, and the
+  // retry that finally succeeds is unattributed. Unverified on purpose — it is
+  // echoed back into a query string, never trusted; referrerFromCode is what
+  // decides whether it means anything.
+  const back = bounceBack(subdomain, formData);
   const ip = clientIpFrom(headers());
   if (!(await checkRateLimit(admin, `book:ip:${ip}`, 10, 60))) {
-    redirect(`/book/${subdomain}?error=busy`);
+    redirect(back('error=busy'));
   }
   const site = await getPublicSiteBySubdomain(admin, subdomain);
-  if (!site) redirect(`/book/${subdomain}?error=unavailable`);
+  if (!site) redirect(back('error=unavailable'));
 
   const { name, phone, email, address, description, note } = readContact(formData);
+  // Who sent them, if anyone. Verified against THIS account's signing key, so a
+  // hand-typed or foreign code is nobody rather than an error — see
+  // @/lib/referral. Resolved once here and carried down every branch below,
+  // including the value-floor fallback that turns a booking into a callback.
+  const referredBy = referrerFromCode(site.account_id, (formData.get('ref') ?? '').toString());
   const slot = (formData.get('slot') ?? '').toString();
   const [dateKey, time] = slot.split('|');
 
@@ -258,7 +284,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   // to drive — the owner has to phone the customer back to ask, which is the
   // phone tag this page exists to remove.
   if (!name || (!phone && !email) || !address || !dateKey || !time) {
-    redirect(`/book/${subdomain}?error=incomplete`);
+    redirect(back('error=incomplete'));
   }
 
   // Belt-and-braces value floor: if the gate is on and the flow posted an
@@ -274,7 +300,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     .maybeSingle();
   const floor = Number(gate?.instant_book_min_amount) || 0;
   if (gate?.instant_book_enabled && floor > 0 && estimateMax != null && estimateMax < floor) {
-    await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description, note });
+    await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description, note, referredBy });
     redirect(`/book/${subdomain}?requested=1`);
   }
 
@@ -285,7 +311,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   const availableDays = await getAvailableBookingDays(admin, site.account_id);
   const offered = findOfferedSlot(availableDays, dateKey, time);
   if (!offered) {
-    redirect(`/book/${subdomain}?error=slot_taken`);
+    redirect(back('error=slot_taken'));
   }
 
   /**
@@ -315,7 +341,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   // both pass the check above and double-book the same window.
   const held = await claimBookingHold(admin, site.account_id, dateKey, time);
   if (!held) {
-    redirect(`/book/${subdomain}?error=slot_taken`);
+    redirect(back('error=slot_taken'));
   }
 
   // Resolve the optionally-chosen price-book service id → its name (server-side,
@@ -333,6 +359,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     email,
     address,
     description,
+    referredBy,
     serviceName,
     dateKey,
     dateLabel: offered.day.dayLabel,
@@ -514,20 +541,22 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
 // leaves a warm lead for the owner to schedule by hand. Never a dead end.
 export async function submitCallbackAction(subdomain: string, formData: FormData) {
   const admin = createAdminClient();
+  const back = bounceBack(subdomain, formData);
   const ip = clientIpFrom(headers());
   if (!(await checkRateLimit(admin, `callback:ip:${ip}`, 10, 60))) {
-    redirect(`/book/${subdomain}?error=busy`);
+    redirect(back('error=busy'));
   }
   const site = await getPublicSiteBySubdomain(admin, subdomain);
-  if (!site) redirect(`/book/${subdomain}?error=unavailable`);
+  if (!site) redirect(back('error=unavailable'));
 
   const { name, phone, email, address, description, note } = readContact(formData);
+  const referredBy = referrerFromCode(site.account_id, (formData.get('ref') ?? '').toString());
   // Same rule as a booking — see submitBookingAction. A callback lead without an
   // address is one the owner cannot price, route or quote without ringing back.
   if (!name || (!phone && !email) || !address) {
-    redirect(`/book/${subdomain}?error=incomplete`);
+    redirect(back('error=incomplete'));
   }
 
-  await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description, note });
+  await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description, note, referredBy });
   redirect(`/book/${subdomain}?requested=1`);
 }

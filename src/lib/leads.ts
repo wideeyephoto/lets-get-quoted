@@ -60,6 +60,18 @@ export type LeadTriage = {
    * retype. See LeadQuoteDraft.
    */
   quoteDraft?: LeadQuoteDraft | null;
+  /**
+   * The client who sent this person, when they arrived through a referral link.
+   *
+   * A clients.id, already verified against the account's signing key at intake
+   * (see @/lib/referral) — never the raw code, which is a query parameter an
+   * anonymous visitor typed. Lives here rather than in its own column because
+   * createLead's insert already names triage, so capture needed no migration
+   * and no deploy ordering. The settled stamp does NOT live here: paying the
+   * same person twice is worse than losing an attribution, and this blob is
+   * rebuilt field by known field below.
+   */
+  referredBy?: string | null;
 };
 
 /**
@@ -187,6 +199,7 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
        archive, decline or logged call, and then vanishes with no error. The
        draft was written and read back empty for exactly that reason. */
     quoteDraft: parseQuoteDraft(triage.quoteDraft),
+    referredBy: typeof triage.referredBy === 'string' ? triage.referredBy : null,
   };
 }
 
@@ -256,6 +269,14 @@ export type Lead = {
   converted_job: string | null;
   client_id: string | null;
   triage: LeadTriage | null;
+  /**
+   * When the owner marked the referrer as thanked for sending this person.
+   *
+   * Optional on the type as well as nullable in the table: a database that has
+   * not had migrations/2026-08-25-referrals.sql yet returns rows without the
+   * key at all, and select('*') must keep working on both.
+   */
+  referral_settled_at?: string | null;
   lat: number | null;
   lng: number | null;
   geocoded_at: string | null;

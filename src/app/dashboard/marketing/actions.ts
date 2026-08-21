@@ -283,7 +283,34 @@ export async function sendCampaignAction(formData: FormData) {
   if ((channel === 'email' || channel === 'both') && !mailingAddress) {
     throw new Error('Add your business mailing address in Settings before sending marketing emails — it’s required by anti-spam law.');
   }
-  const result = await sendCampaign(supabase, accountId, { channel, audience, subject, body, businessName, mailingAddress, beatId });
+  // Only read when the message actually asks for it, so an ordinary send costs
+  // nothing extra. Null when there is no published booking page — {referral_link}
+  // then resolves to nothing rather than to somebody else's site.
+  let referralBookingUrl: string | null = null;
+  let referralTracked = false;
+  if (/\{\s*referral_link\s*\}/i.test(body) || /\{\s*referral_link\s*\}/i.test(subject)) {
+    const { data: siteRow } = await supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle();
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+    referralBookingUrl = siteRow?.published && siteRow?.subdomain ? `${origin}/book/${siteRow.subdomain}` : null;
+    // Its own query, allowed to come back empty: referral_reward arrives with
+    // migrations/2026-08-25-referrals.sql and a select naming a column that does
+    // not exist errors rather than degrading. An account with no offer saved is
+    // not running referrals, and nothing may be minted for it.
+    const { data: rewardRow } = await supabase.from('accounts').select('referral_reward').eq('id', accountId).maybeSingle();
+    referralTracked = Boolean(((rewardRow?.referral_reward as string | null) ?? '').trim());
+  }
+
+  const result = await sendCampaign(supabase, accountId, {
+    channel,
+    audience,
+    subject,
+    body,
+    businessName,
+    mailingAddress,
+    beatId,
+    referralBookingUrl,
+    referralTracked,
+  });
 
   revalidatePath('/dashboard/marketing');
   revalidatePath('/dashboard/marketing/campaigns');

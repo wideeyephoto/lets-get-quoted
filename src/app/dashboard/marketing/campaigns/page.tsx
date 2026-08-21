@@ -1,4 +1,5 @@
 import { requireOwnerContext } from '@/lib/auth';
+import { isReferralConfigured } from '@/lib/referral';
 import {
   AUDIENCE_DEFS,
   listCampaigns,
@@ -61,8 +62,22 @@ export default async function CampaignsPage({
     }),
   ) as Record<CampaignAudience, Reach>;
 
+  // Its own query, and allowed to come back empty. referral_reward arrives with
+  // migrations/2026-08-25-referrals.sql, and a select naming a column that does
+  // not exist errors rather than degrading — folding it into the account read
+  // above would take the whole campaigns page down on a database that has not
+  // had the migration yet. Same pattern, same reason, as mailing_address.
+  const { data: referralRow } = await supabase.from('accounts').select('referral_reward').eq('id', accountId).maybeSingle();
+  // AND the environment can actually sign. With no key nothing can be minted,
+  // so the tracked copy would promise "we'll know it came from you" over a bare
+  // booking URL that attributes nobody — worse than the untracked ask, because
+  // the owner believes it is working.
+  const referralReward = isReferralConfigured() ? ((referralRow?.referral_reward as string | null) ?? null) || null : null;
+
   const recommendations =
-    recipients.length > 0 ? await buildCampaignRecommendations(supabase, accountId, { recipients, reach, businessName, bookingUrl }) : null;
+    recipients.length > 0
+      ? await buildCampaignRecommendations(supabase, accountId, { recipients, reach, businessName, bookingUrl, referralReward })
+      : null;
 
 
   // A draft handed over from the overview. Built here rather than passed through

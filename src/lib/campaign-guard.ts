@@ -50,18 +50,23 @@ const SMS_SEGMENT = 160;
 /**
  * Placeholders that look like ours but aren't.
  *
- * `{name}` is the only token the send path substitutes. Anything else in braces
- * is delivered to the customer exactly as typed — "Hi {first_name}," lands in
- * two hundred inboxes as literally that, and it is the single most embarrassing
- * way to send a mail merge.
+ * `{name}` and `{referral_link}` are the only tokens the send path substitutes.
+ * Anything else in braces is delivered to the customer exactly as typed — "Hi
+ * {first_name}," lands in two hundred inboxes as literally that, and it is the
+ * single most embarrassing way to send a mail merge.
+ *
+ * Kept in step with personalize() in @/lib/campaigns by hand. There is no shared
+ * constant because that module reaches the database and the SMS sender, and this
+ * one is imported by the composer.
  */
 const PLACEHOLDER = /\{([a-z0-9_ .-]{1,30})\}/gi;
+const SUBSTITUTED = new Set(['name', 'referral_link']);
 
 export function unknownPlaceholders(text: string): string[] {
   const found = new Set<string>();
   for (const match of text.matchAll(PLACEHOLDER)) {
     const token = match[1].trim().toLowerCase();
-    if (token !== 'name') found.add(match[0]);
+    if (!SUBSTITUTED.has(token)) found.add(match[0]);
   }
   return [...found];
 }
@@ -75,9 +80,24 @@ export function shoutiness(text: string): { caps: number; bangs: number } {
   return { caps, bangs: (text.match(/!/g) ?? []).length };
 }
 
+/**
+ * What {referral_link} costs once it is substituted: an origin, /book/<subdomain>,
+ * '?ref=' and a 45-character code. The token is 15 characters and the link is
+ * about 92, so measuring the template understates a tracked referral text by
+ * most of a segment — and 2 -> 3 is exactly the crossing the owner is never
+ * warned about, on the send that costs 50% more than the composer says.
+ */
+const REFERRAL_LINK_CHARS = 92;
+const REFERRAL_TOKEN_IN_COPY = /\{\s*referral_link\s*\}/gi;
+
+/** The body as the customer receives it, for length purposes only. */
+export function sentBodyLength(body: string): number {
+  return body.replace(REFERRAL_TOKEN_IN_COPY, 'x'.repeat(REFERRAL_LINK_CHARS)).length;
+}
+
 export function smsSegments(body: string): number {
   // +40 for the business-name prefix and the opt-out line the sender appends.
-  return Math.max(1, Math.ceil((body.length + 40) / SMS_SEGMENT));
+  return Math.max(1, Math.ceil((sentBodyLength(body) + 40) / SMS_SEGMENT));
 }
 
 /**
@@ -133,7 +153,7 @@ export function checkCampaign(input: GuardInput): CampaignFinding[] {
       id: 'unknown-placeholder',
       severity: 'high',
       title: `${strays.slice(0, 3).join(', ')} won't be filled in`,
-      detail: `Only {name} gets replaced. Everything else is sent exactly as typed, so ${input.reachCount} ${input.reachCount === 1 ? 'person' : 'people'} would receive it with the braces still in it.`,
+      detail: `Only {name} and {referral_link} get replaced. Everything else is sent exactly as typed, so ${input.reachCount} ${input.reachCount === 1 ? 'person' : 'people'} would receive it with the braces still in it.`,
       source: 'check',
     });
   }
