@@ -105,3 +105,48 @@ describe('a confirmed card is named', () => {
     expect(CARD_ON_FILE).toContain('Could not read saved card details');
   });
 });
+
+describe('the person recovering from a decline gets their question answered', () => {
+  const DUNNING = readFileSync(join(process.cwd(), 'src/lib/dunning.ts'), 'utf8');
+  const WEBHOOK = readFileSync(join(process.cwd(), 'src/app/api/stripe/webhook/route.ts'), 'utf8');
+
+  it('is the page the decline notice actually leads to', () => {
+    // The dunning worker texts and emails a createCardSetupSession link when a
+    // saved card is declined, and that session's success_url is this page. So
+    // the commonest arrival here is not a first-time setup at all.
+    expect(DUNNING).toContain('createCardSetupSession(plan, APP_ORIGIN)');
+    expect(DUNNING).toContain('sendCardUpdateSms');
+  });
+
+  it('says the failed payment will be retried, when one will be', () => {
+    expect(PAGE).toContain('will be retried with this card');
+    expect(PAGE).toContain('state.retrying > 0');
+  });
+
+  it('counts rather than assumes, so first-time setup is not told about a failure', () => {
+    // Saying "we'll retry the payment that failed" to somebody who never had one
+    // invents a problem for them.
+    expect(PAGE).toContain("eq('status', 'failed')");
+    expect(PAGE).toContain("not('next_retry_at', 'is', null)");
+  });
+
+  it('gets the plural right', () => {
+    expect(PAGE).toContain('state.retrying === 1');
+    expect(PAGE).toContain('${state.retrying} payments');
+  });
+
+  it('is safe from the race the not-yet state exists for', () => {
+    // rescheduleDunningAfterCardUpdate runs in the same webhook handler as the
+    // card write, immediately after it -- so by the time a saved card is
+    // visible, the re-arm has already happened. The claim needs no guard.
+    const setupBranch = WEBHOOK.slice(WEBHOOK.indexOf('storeSavedCardFromSetup'));
+    expect(setupBranch.slice(0, 400)).toContain('rescheduleDunningAfterCardUpdate');
+  });
+
+  it('re-arms only what can still be charged', () => {
+    // The claim is "will be retried". It must not be made about a payment the
+    // lifetime attempt cap has retired.
+    expect(DUNNING).toContain('LIFETIME_MAX_CHARGE_ATTEMPTS');
+    expect(DUNNING).toContain("in('dunning_state', ['needs_card', 'exhausted'])");
+  });
+});

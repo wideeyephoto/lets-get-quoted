@@ -40,7 +40,7 @@ export const dynamic = 'force-dynamic';
 
 type CardState =
   | { kind: 'cancelled' }
-  | { kind: 'saved'; brand: string | null; last4: string | null }
+  | { kind: 'saved'; brand: string | null; last4: string | null; retrying: number }
   | { kind: 'not_yet' };
 
 async function readCardState(planId: string | undefined, cancelled: boolean): Promise<CardState> {
@@ -49,7 +49,8 @@ async function readCardState(planId: string | undefined, cancelled: boolean): Pr
   // than as success: this page must never claim a card it has not seen.
   if (!planId) return { kind: 'not_yet' };
 
-  const { data, error } = await createAdminClient()
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from('recurring_plans')
     .select('stripe_payment_method_id, card_brand, card_last4')
     .eq('id', planId)
@@ -57,7 +58,37 @@ async function readCardState(planId: string | undefined, cancelled: boolean): Pr
 
   // A read failure is not evidence of success either.
   if (error || !data?.stripe_payment_method_id) return { kind: 'not_yet' };
-  return { kind: 'saved', brand: data.card_brand ?? null, last4: data.card_last4 ?? null };
+
+  /**
+   * Whether anything is queued to be charged again with the card just saved.
+   *
+   * MOST PEOPLE HERE ARE NOT SETTING UP -- they are recovering. The dunning
+   * worker texts and emails this link when a saved card is declined, so the
+   * commonest arrival is somebody whose payment just failed, and the question
+   * they actually have is "does this fix the one that bounced?"
+   *
+   * It does: rescheduleDunningAfterCardUpdate re-arms every failed charge on the
+   * plan, and it runs in the same webhook handler as the card write, immediately
+   * after it. So by the time this page can see a saved card, the reschedule has
+   * already happened -- no race to guard.
+   *
+   * Counted rather than assumed, because saying "we'll retry the payment that
+   * failed" to somebody doing first-time setup would invent a failure they never
+   * had.
+   */
+  const { count } = await admin
+    .from('payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('recurring_plan_id', planId)
+    .eq('status', 'failed')
+    .not('next_retry_at', 'is', null);
+
+  return {
+    kind: 'saved',
+    brand: data.card_brand ?? null,
+    last4: data.card_last4 ?? null,
+    retrying: count ?? 0,
+  };
 }
 
 export default async function CardSavedPage({
@@ -91,6 +122,15 @@ export default async function CardSavedPage({
                 {' '}Each scheduled visit will be billed automatically — you&apos;ll get a receipt every time. You can
                 ask your contractor to stop automatic billing at any point.
               </p>
+              {state.retrying > 0 ? (
+                /* The question somebody who arrived from a decline notice
+                   actually has. Only shown when something really is queued. */
+                <p className="workspace-lead">
+                  {state.retrying === 1
+                    ? 'The payment that didn’t go through will be retried with this card — there’s nothing else you need to do.'
+                    : `The ${state.retrying} payments that didn’t go through will be retried with this card — there’s nothing else you need to do.`}
+                </p>
+              ) : null}
             </>
           ) : (
             <>
