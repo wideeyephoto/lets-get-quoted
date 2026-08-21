@@ -2,8 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const PAGE = readFileSync(join(process.cwd(), 'src/app/pay/[id]/page.tsx'), 'utf8');
-const PAYMENTS = readFileSync(join(process.cwd(), 'src/lib/payments.ts'), 'utf8');
+/**
+ * Line endings normalised at the READ site, not worked around per assertion.
+ *
+ * These files are CRLF on disk, so any assertion spanning two lines fails
+ * silently against a \n written in the test. The fix is here, once — pasting
+ * \r\n into an expectation makes the test unreadable and only moves the trap.
+ */
+const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8').replace(/\r\n/g, '\n');
+
+const PAGE = read('src/app/pay/[id]/page.tsx');
+const PAYMENTS = read('src/lib/payments.ts');
 
 /**
  * The public payment page is the last thing a homeowner looks at before they
@@ -408,5 +417,27 @@ describe('the page does not pay for lookups it cannot use', () => {
     expect(block).toContain('loadContractorBrand');
     expect(block).toContain('loadQuickStopOffer');
     expect(block).toContain('loadInstallmentPosition');
+  });
+});
+
+describe('the status card agrees with the sentence beside it', () => {
+  it('does not say Processing for a checkout nobody finished', () => {
+    // One stored value, two situations. The card read "Processing" directly
+    // beside a banner saying "You started a payment but it wasn't completed" --
+    // and the card is the thing people quote back on the phone.
+    expect(PAGE).toContain("payment.status === 'processing'\n    ? (moneyIsInFlight ? 'Clearing' : 'Not completed')");
+  });
+
+  it('resolves it the same way the banner does', () => {
+    // Both read moneyIsInFlight, so they cannot drift apart into saying
+    // different things about one payment.
+    const card = PAGE.slice(PAGE.indexOf('const statusLabel'), PAGE.indexOf('const directCheckoutUnavailable'));
+    expect(card).toContain('moneyIsInFlight');
+  });
+
+  it('keeps the unknown-status fallback', () => {
+    // On a payment page a blank where the state should be is worse than an
+    // unfamiliar word, which is why the original had this.
+    expect(PAGE).toContain('STATUS_LABEL[payment.status] ?? payment.status');
   });
 });
