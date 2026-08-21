@@ -105,6 +105,71 @@ export function canTransition(from: QuickStopStatus, to: QuickStopStatus): boole
   return QUICK_STOP_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
+// ---------------------------------------------------------------------------
+// Whether the offer may still be paid for
+// ---------------------------------------------------------------------------
+
+/**
+ * ONE PREDICATE, TWO SITES, for the same reason canCreateConnectCharge is one.
+ *
+ * A Quick Stop carries a hard app-side reservation window: Stripe Checkout's own
+ * minimum session expiry is 30 minutes, so a 15-minute hold cannot be enforced by
+ * the session and has to be enforced by us. createCheckoutSessionForPayment
+ * refuses a lapsed or no-longer-awaiting offer with "This Quick Stop offer has
+ * expired."
+ *
+ * The public pay page did not ask. It read `payment_deadline_at` to PRINT the
+ * deadline -- "Please pay by 3:45 PM, after that the slot is released to somebody
+ * else and this link stops working" -- and then rendered a live Pay button
+ * underneath it whether or not that moment had passed. Showing the rule was
+ * mistaken for enforcing it.
+ *
+ * That is not only a race against the sweep. quick-stop-sweep moves a lapsed
+ * offer to `offer_expired` AND sets its payment to `failed`, and a `failed`
+ * payment resolves to the abandoned-checkout banner -- "you can pay below", with
+ * a button. So the offer that timed out an hour ago still shows a button, and
+ * always would have.
+ *
+ * `now` is injected so the boundary can be tested at all; nothing in the app
+ * passes it.
+ */
+
+/** The columns quickStopOfferAllowsPayment reads, for the select that feeds it. */
+export const QUICK_STOP_PAYABLE_COLUMNS = 'status, payment_deadline_at';
+
+/** Structural, so each caller's own row type satisfies it. */
+export type QuickStopPayableOffer = {
+  status?: string | null;
+  payment_deadline_at?: string | null;
+};
+
+export function quickStopOfferAllowsPayment(
+  offer: QuickStopPayableOffer | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  // No row means this payment is not a Quick Stop at all, and none of this
+  // applies. Checkout has always read it that way -- its guard is inside
+  // `if (es)` -- and a deposit or final bill must not be refused by a rule about
+  // a feature it has nothing to do with.
+  if (!offer) return true;
+
+  // Anything other than awaiting payment: already confirmed, already expired,
+  // cancelled by either side. An absent status counts as not awaiting, which is
+  // the fail-closed direction and what the original inline check did.
+  if (offer.status !== 'awaiting_customer_payment') return false;
+
+  if (offer.payment_deadline_at == null) return true;
+
+  // NaN from an unparseable timestamp compares false, so it reads as NOT lapsed
+  // and the payment is allowed. That is deliberately the behaviour the inline
+  // check already had: this predicate stands between somebody and a payment they
+  // are trying to make, and refusing on a value we failed to parse is the more
+  // expensive way to be wrong. The column is a timestamptz, so it should not
+  // arise.
+  const deadline = new Date(offer.payment_deadline_at).getTime();
+  return !(deadline < now);
+}
+
 // Short human labels + a tone key for badges in the dashboard.
 export const QUICK_STOP_STATUS_LABEL: Record<QuickStopStatus, string> = {
   requested: 'Requested',

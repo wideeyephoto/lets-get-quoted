@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { CHECKOUT_BLOCK_NOTE } from '@/lib/payment-banner';
+
 /**
  * Every route a customer can hand money over from needs an error boundary.
  *
@@ -85,18 +87,44 @@ describe('neither page offers a button the contractor cannot honour', () => {
     expect(INVOICES_LIB).toContain('account:accounts(business_name, connect_onboarded)');
   });
 
-  for (const [name, source] of [['pay', PAY], ['invoice', INVOICE]] as const) {
-    it(`${name} withholds the pay button when payouts are not set up`, () => {
-      expect(source).toContain('connect_onboarded');
-      expect(source).toContain("hasn&apos;t finished setting up payments yet");
-    });
-  }
+  it('pay withholds the pay button when payouts are not set up', () => {
+    // It asks canCreateConnectCharge, the predicate checkout itself enforces --
+    // which also covers a missing connect id and an account staff have
+    // restricted. See test/connect-charge-guard.test.ts, which lists every site
+    // that must ask it.
+    expect(PAY).toContain('canCreateConnectCharge(payment.account)');
+    expect(PAY).toContain('CHECKOUT_BLOCK_NOTE[checkoutBlock]');
+  });
+
+  it('invoice withholds the pay button when payouts are not set up', () => {
+    // Asserted as the OUTCOME, not the mechanism, deliberately.
+    //
+    // This page CANNOT ask canCreateConnectCharge today: loadInvoice selects
+    // `account:accounts(business_name, connect_onboarded)`, so the other two
+    // columns the predicate reads are not on the row. It therefore still makes
+    // the narrower check the pay page has just stopped making, and a contractor
+    // whose payouts staff have restricted still gets a live button here.
+    //
+    // Written to allow either mechanism so that widening the select and moving
+    // this page onto the predicate does not have to break the test that exists
+    // to protect the behaviour.
+    expect(INVOICE).toMatch(/connect_onboarded|canCreateConnectCharge/);
+    expect(INVOICE).toContain("hasn&apos;t finished setting up payments yet");
+  });
 
   it('both say the same thing, because it is the same situation', () => {
     // Two customer-facing surfaces describing one state in two ways is how
     // somebody decides the product is unreliable rather than the contractor.
-    const sentence = 'This contractor hasn&apos;t finished setting up payments yet. Please check back soon.';
-    expect(PAY).toContain(sentence);
-    expect(INVOICE).toContain(sentence);
+    //
+    // The pay page's copy is a value now (payment-banner.ts) while the invoice
+    // page still spells it as JSX text, so apostrophes are normalised before
+    // comparing: `&apos;` renders U+0027 and the moved copy uses U+2019 like
+    // every other sentence in that module. Same words, one typographic
+    // difference -- which is itself a reason to move this page's copy to the
+    // same constant rather than keep two literals in step by hand.
+    const normalise = (s: string) => s.replace(/&apos;|’/g, "'");
+    const sentence = normalise(CHECKOUT_BLOCK_NOTE.contractor_unavailable);
+    expect(sentence).toContain('This contractor hasn\'t finished setting up payments yet. Please check back soon.');
+    expect(normalise(INVOICE)).toContain(sentence);
   });
 });

@@ -3,6 +3,7 @@ import { resolveFeeBasisCents } from '@/lib/billing/fee-basis';
 import { getWorkspaceFeeRate } from '@/lib/billing/workspace-fee-rate';
 import { pickBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
+import { QUICK_STOP_PAYABLE_COLUMNS, quickStopOfferAllowsPayment } from '@/lib/quick-stop';
 import { getStripeClient, computePlatformFee, toCents, fromCents, canCreateConnectCharge } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
@@ -517,14 +518,15 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     const guardAdmin = createAdminClient();
     const { data: es } = await guardAdmin
       .from('extra_stop_requests')
-      .select('status, payment_deadline_at')
+      .select(QUICK_STOP_PAYABLE_COLUMNS)
       .eq('payment_id', paymentId)
       .maybeSingle();
-    if (es) {
-      const lapsed = es.payment_deadline_at != null && new Date(es.payment_deadline_at as string).getTime() < Date.now();
-      if (es.status !== 'awaiting_customer_payment' || lapsed) {
-        throw new Error('This Quick Stop offer has expired.');
-      }
+    // The rule itself is in quick-stop.ts, unchanged in behaviour, because the
+    // public pay page has to ask the identical question before it offers a
+    // button. Written out twice it would have drifted, which is exactly what
+    // happened to the Connect chargeability check at this same boundary.
+    if (!quickStopOfferAllowsPayment(es)) {
+      throw new Error('This Quick Stop offer has expired.');
     }
   }
 

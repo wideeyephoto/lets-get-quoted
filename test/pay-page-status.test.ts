@@ -401,7 +401,12 @@ describe('a priority visit fee is not called a deposit', () => {
     // createCheckoutSessionForPayment refuses after payment_deadline_at with
     // "This Quick Stop offer has expired." Somebody could open a texted link,
     // take twenty minutes over it, and press a live-looking button into that.
-    expect(PAYMENTS_LIB2).toContain('payment_deadline_at');
+    //
+    // The rule itself now lives in quick-stop.ts as quickStopOfferAllowsPayment,
+    // asked by BOTH the server and this page -- which is the half that was
+    // missing. Showing the deadline was mistaken for applying it: the page
+    // printed "Please pay by 3:45 PM" and left a live button under it.
+    expect(PAYMENTS_LIB2).toContain('quickStopOfferAllowsPayment');
     expect(PAYMENTS_LIB2).toContain('This Quick Stop offer has expired.');
     expect(PAGE).toContain('Please pay by');
     expect(PAGE).toContain('payment_deadline_at');
@@ -410,7 +415,11 @@ describe('a priority visit fee is not called a deposit', () => {
   it('only says any of it while the payment can still be made', () => {
     // A deadline on an already-paid Quick Stop is noise, and "pay by 3:45" under
     // "This payment has already been completed" reads as a second demand.
-    expect(PAGE).toContain('quickStop && canPay');
+    //
+    // And only while the OFFER can be paid, which is not the same question. A
+    // slot released an hour ago must not still be advertising the time by which
+    // it should have been paid for.
+    expect(PAGE).toContain('quickStop && quickStop.payable && canPay');
   });
 
   it('degrades quietly when the offer cannot be read', () => {

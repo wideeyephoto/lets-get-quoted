@@ -310,7 +310,8 @@ describe('the page reads all three outputs and re-derives none of them', () => {
     // `connect_onboarded`, which was the weaker two-thirds check the page made
     // before it was corrected to canCreateConnectCharge -- so the assertion was
     // pinning the defect in place. See test/connect-charge-guard.test.ts.
-    expect(code).toContain('{quickStop && canPay ? (');
+    expect(code).toContain('{quickStop && quickStop.payable && canPay ? (');
     expect(code).toContain('canCreateConnectCharge(payment.account)');
+    expect(code).toContain('CHECKOUT_BLOCK_NOTE[checkoutBlock]');
   });
 });

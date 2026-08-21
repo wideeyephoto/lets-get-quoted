@@ -88,6 +88,46 @@ export const CANCELLED_NOTE = 'Checkout was cancelled. You have not been charged
 export const CANCELLED_NOTE_ONLY_TONE = 'payment-banner warning';
 
 /**
+ * NOT BANNER VALUES. These withhold the Pay button.
+ *
+ * `canPay` says the PAYMENT may be paid. Two further conditions decide whether a
+ * checkout can actually be created, and neither is a statement about the
+ * payment's state, so neither belongs in the resolver: whether the contractor's
+ * Connect account may be charged, and whether a Quick Stop offer is still open.
+ * Both are properties of something other than this payment.
+ *
+ * What they have in common is the failure they replace. Each was once a weaker
+ * paraphrase of a rule createCheckoutSessionForPayment enforces exactly, so the
+ * page rendered a button whose submit was certain to throw -- and a homeowner
+ * pressing it has no way to know the refusal was not their card. Both now ask
+ * the server's own predicate, and the notice explains the button's absence
+ * rather than letting it just not be there.
+ *
+ * The order matters and mirrors the server's: checkout tests the Quick Stop
+ * window before it tests Connect chargeability, so a lapsed offer on a
+ * restricted contractor reports the offer, exactly as the submit would.
+ */
+export type CheckoutBlock = 'quick_stop_expired' | 'contractor_unavailable';
+
+export const CHECKOUT_BLOCK_NOTE: Record<CheckoutBlock, string> = {
+  /**
+   * Said as what happened to the SLOT, because that is what the page already
+   * promised would happen: "after that the slot is released to somebody else and
+   * this link stops working". The homeowner is owed the other half of that
+   * sentence when it comes true, not a dead button.
+   */
+  quick_stop_expired: 'That priority visit slot has been released, so this link can no longer take a payment. '
+    + 'Please contact your contractor if you still need the visit.',
+
+  /**
+   * One message for "never connected" and "staff restricted" alike, matching the
+   * refusal it stands in front of -- which says why in as many words: a homeowner
+   * who cannot pay does not need to be told the contractor is under review.
+   */
+  contractor_unavailable: 'This contractor hasn’t finished setting up payments yet. Please check back soon.',
+};
+
+/**
  * The word on the status card, or null to use the stored status's own label.
  *
  * THIS IS THE HALF THAT WAS WRONG. The card used to read the stored status

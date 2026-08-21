@@ -13,11 +13,14 @@ import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor
 import {
   CANCELLED_NOTE,
   CANCELLED_NOTE_ONLY_TONE,
+  CHECKOUT_BLOCK_NOTE,
   PAYMENT_BANNER_STATUS_WORD,
   PAYMENT_BANNER_TONE,
   paymentBannerMessage,
+  type CheckoutBlock,
 } from '@/lib/payment-banner';
 import { resolvePaymentView } from '@/lib/payment-view';
+import { QUICK_STOP_PAYABLE_COLUMNS, quickStopOfferAllowsPayment } from '@/lib/quick-stop';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -55,7 +58,7 @@ async function loadQuickStopOffer(
   admin: ReturnType<typeof createAdminClient>,
   paymentId: string,
   kind: string,
-): Promise<{ deadlineAt: string | null; windowAt: string | null } | null> {
+): Promise<{ deadlineAt: string | null; windowAt: string | null; payable: boolean } | null> {
   // Every Quick Stop is written as `kind: 'deposit'`, so anything else cannot be
   // one and does not need the round trip. This page is the most-loaded
   // customer-facing route in the product and the overwhelming majority of its
@@ -65,13 +68,18 @@ async function loadQuickStopOffer(
 
   const { data, error } = await admin
     .from('extra_stop_requests')
-    .select('payment_deadline_at, proposed_window_at')
+    .select(`${QUICK_STOP_PAYABLE_COLUMNS}, proposed_window_at`)
     .eq('payment_id', paymentId)
     .maybeSingle();
   if (error || !data) return null;
   return {
     deadlineAt: (data.payment_deadline_at as string | null) ?? null,
     windowAt: (data.proposed_window_at as string | null) ?? null,
+    // `status` is selected for this and nothing else. Reading the deadline alone
+    // was the original mistake: it is enough to PRINT the rule and not enough to
+    // apply it, because an offer can stop being payable by being confirmed,
+    // cancelled or swept to `offer_expired` well before its deadline arrives.
+    payable: quickStopOfferAllowsPayment(data),
   };
 }
 
@@ -367,6 +375,24 @@ export default async function PublicPaymentPage({
   const payByClock = formatClock(quickStop?.deadlineAt ?? null);
   const arrivalClock = formatClock(quickStop?.windowAt ?? null);
 
+  /**
+   * Why the button is withheld from a payment that is otherwise payable.
+   *
+   * `canPay` is the resolver's answer about the PAYMENT. These two are about the
+   * contractor and the offer, and each mirrors a refusal
+   * createCheckoutSessionForPayment makes for itself -- in the same order it
+   * makes them, so what the page says is what the submit would have said.
+   *
+   * Both used to be paraphrases that came out weaker than the rule they stood
+   * for, which is how this page came to render buttons that were certain to
+   * throw. They ask the server's own predicates now.
+   */
+  const checkoutBlock: CheckoutBlock | null = quickStop && !quickStop.payable
+    ? 'quick_stop_expired'
+    : !canCreateConnectCharge(payment.account)
+      ? 'contractor_unavailable'
+      : null;
+
   return (
     <>
       <ContractorBrandBar brand={brand} context={kindLabel} />
@@ -424,7 +450,7 @@ export default async function PublicPaymentPage({
             </div>
           ) : null}
 
-          {quickStop && canPay ? (
+          {quickStop && quickStop.payable && canPay ? (
             /* Two things a homeowner needs before paying a priority fee and was
                told neither of. The fee is NOT credited against the job -- the
                booking flow says so twice, and this page called it a Deposit --
@@ -468,9 +494,9 @@ export default async function PublicPaymentPage({
                refusal it mirrors says so in as many words -- a homeowner who
                cannot pay does not need to be told the contractor is under
                review. */
-            !canCreateConnectCharge(payment.account) ? (
+            checkoutBlock ? (
               <div className="payment-banner muted">
-                <p>This contractor hasn&apos;t finished setting up payments yet. Please check back soon.</p>
+                <p>{CHECKOUT_BLOCK_NOTE[checkoutBlock]}</p>
               </div>
             ) : (
               <>
