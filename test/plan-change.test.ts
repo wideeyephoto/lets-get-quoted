@@ -326,3 +326,39 @@ describe('how it is wired', () => {
     }
   });
 });
+
+describe('the panel says what just happened to the money', () => {
+  const PANEL = readFileSync(
+    join(process.cwd(), 'src/app/dashboard/settings/ChangePlanPanel.tsx'), 'utf8');
+
+  it('confirms an activated upgrade, which is the one that charges', () => {
+    // changeBasePlan sends proration_behavior: 'always_invoice', so an upgrade
+    // invoices on the spot. Nothing acknowledged it: the action revalidated, the
+    // current-plan line quietly changed from Solo to Growth, and somebody who
+    // had just been charged was left to infer that from a noun.
+    expect(PANEL).toContain("success.kind === 'activated'");
+    expect(PANEL).toContain('has been charged to your card on file');
+  });
+
+  it('promises nothing was charged for a scheduled change', () => {
+    expect(PANEL).toContain("success.kind === 'scheduled'");
+    expect(PANEL).toContain('nothing is charged');
+  });
+
+  it('handles all three success kinds, not two', () => {
+    // The union is no_change | activated | scheduled. Writing this from memory
+    // produced 'immediate', which does not exist -- the typechecker caught it.
+    // A no_change branch that said "done" would imply something happened.
+    expect(PANEL).toContain('already on');
+    for (const kind of ['activated', 'scheduled']) {
+      expect(PANEL, kind).toContain(`success.kind === '${kind}'`);
+    }
+  });
+
+  it('renders the note in both branches', () => {
+    // A scheduled change revalidates into the pending branch, which returns
+    // early -- so a note rendered only in the main branch would be dropped on
+    // the way through by the very change that produced it.
+    expect(PANEL.match(/\{successNote\}/g) ?? []).toHaveLength(2);
+  });
+});
