@@ -84,7 +84,15 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
             ) : null}
           </div>
 
-          {pay.state === 'payable' ? (
+          {pay.state === 'payable' && !invoice.account?.connect_onboarded ? (
+            /* The contractor cannot receive money yet, so there is nothing this
+               button could do but throw. /pay/[id] has always said this instead
+               of offering one; this page did not even load the flag, so it
+               showed a live "Pay $4,237.50" that failed on click. */
+            <div className="payment-banner muted">
+              <p>This contractor hasn&apos;t finished setting up payments yet. Please check back soon.</p>
+            </div>
+          ) : pay.state === 'payable' ? (
             <form action={boundPayInvoice} className="actions workspace-actions">
               <button type="submit" className="btn primary">Pay {formatMoney(pay.due)}</button>
             </form>

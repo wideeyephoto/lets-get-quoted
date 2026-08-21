@@ -461,7 +461,7 @@ export async function deleteInvoice(
 
 export type PublicInvoiceRecord = Invoice & {
   job: { client_name: string; ref: string } | null;
-  account: { business_name: string } | null;
+  account: { business_name: string; connect_onboarded?: boolean | null } | null;
 };
 
 // Public read — the client signing an invoice has no user session, so this
@@ -474,7 +474,11 @@ export async function getPublicInvoice(
 
   const { data: invoice, error } = await admin
     .from('invoices')
-    .select('*, job:jobs(client_name, ref), account:accounts(business_name)')
+    // connect_onboarded travels with the invoice because the public page needs
+    // it: a contractor who has not finished Stripe onboarding cannot receive a
+    // payment, and /pay/[id] has always said so rather than offering a button
+    // that throws. This page did not load the flag at all.
+    .select('*, job:jobs(client_name, ref), account:accounts(business_name, connect_onboarded)')
     .eq('id', invoiceId)
     .maybeSingle();
 
