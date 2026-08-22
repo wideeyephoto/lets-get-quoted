@@ -82,7 +82,7 @@ Concrete implementation:
 - `vercel.json`: local cron declaration for `/api/cron/sms-delivery`; its presence is not proof of deployment or enablement.
 - `src/lib/sms-provider.ts`: explicit Twilio/SignalWire selection, provider-specific send construction, kill switch, test/Preview suppression, and separate signing-key handling.
 - `src/lib/sms.ts` and domain producers such as `arrival-sweep.ts`, `choice-reminder-sweep.ts`, `dunning.ts`, `followups.ts`, `reminders.ts`, `rebook.ts`, `reviews.ts`, `scheduling.ts`, dashboard offer/job actions, and `subcontractor-dispatch-data.ts`: ordinary sends enqueue with purpose and stable domain identity.
-- Current direct-egress boundary: `sendProviderMessage()` remains only in the generic SMS delivery worker and `src/lib/billing/direct-payment-settlement-worker.ts`, the specialized durable settlement worker. Supabase Auth OTP remains outside this application rail.
+- Current direct-egress boundary: `sendProviderMessage()` remains only in the generic SMS delivery worker. `src/lib/billing/direct-payment-settlement-worker.ts` hands its notification off through the durable SMS queue; it does not call the provider directly. Supabase Auth OTP remains outside this application rail.
 - `migrations/20260821194000_producer_sms_queue_projection.sql` gives remaining
   operational producers stable domain identities and projects subcontractor
   `queued`/`sent`/`delivered`/`failed` truth from the local event plus carrier
@@ -181,10 +181,12 @@ Concrete local evidence assets:
   and `verify-messaging-schema.mjs`.
 - Runtime/static suites for worker failures, producer boundaries, provider selection/auth, inbound routing, operator recovery, provisioning, and tenant-safe dispatch.
 - `docs/signalwire-messaging-cutover-runbook.md`: dark-first staging matrix, database-proof requirements, cutover order, and rollback.
-- Final local aggregate: 550 test files / 9,476 tests, typecheck, build-time lint,
-  production build, `git diff --check`, exact 41-migration schema parity, a clean install
-  into a fresh PostgreSQL 17 database, and no FK forward
-  references.
+- Final post-rebase local aggregate: 551 test files / 9,497 tests, typecheck,
+  build-time lint, production build, `git diff --check`, exact parity for the
+  explicitly enumerated 41-migration messaging/voice runtime subset in
+  `scripts/sync-messaging-schema.mjs` (not all 201 repository migrations), a
+  clean install of `schema.sql` into a fresh PostgreSQL 17 database, and no FK
+  forward references.
 - The six disposable PostgreSQL 17 harnesses passed 236/236: delivery 25/25,
   webhook safety 24/24, inbound actions 29/29, number provisioning 44/44,
   voice inbox/retention 89/89, and fresh messaging schema 25/25.
