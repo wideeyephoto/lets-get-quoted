@@ -50,7 +50,13 @@ export type AccountEventKind =
   | 'plan_change_requested'
   | 'plan_change_scheduled'
   | 'plan_change_cancelled'
-  | 'plan_change_applied';
+  | 'plan_change_applied'
+  // The owner turning extra usage on or off, or moving their spending limit.
+  // The BINDING record is the append-only row in workspace_overage_authorizations,
+  // which carries the digest of the words they agreed to; this is the same fact
+  // in the human-readable activity feed, written only when something actually
+  // changed so the two cannot disagree about how many times it did.
+  | 'overage_authorization_changed';
 
 export async function recordAccountEvent(input: {
   accountId: string;

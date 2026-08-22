@@ -27,6 +27,7 @@ import {
 import type { PlanIntent } from '@/lib/plan-intent';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import CancelSubscriptionPanel from './CancelSubscriptionPanel';
+import OverageAuthorizationPanel from './OverageAuthorizationPanel';
 import ChangePlanPanel from './ChangePlanPanel';
 import type { BillingCycle, BillingPlanId } from '@/lib/billing/catalog';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
@@ -478,7 +479,7 @@ function CapacityMeter({ row }: { row: CapacityRow }) {
  * different facts: one is a workspace that has agreed to pay for overruns and
  * has not had any, the other has not agreed at all.
  */
-function OverageCard({ overage }: { overage: OverageSummary }) {
+function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServe: boolean }) {
   const remaining = remainingCapMillicents(overage);
 
   // A read that failed is not a workspace with overage switched off, and the two
@@ -498,15 +499,24 @@ function OverageCard({ overage }: { overage: OverageSummary }) {
     );
   }
 
+  // NO CONTROL ON AN UNREADABLE CARD, deliberately -- the branch above returns
+  // before this one. A switch cannot be offered on a state nobody could read:
+  // it would render "off" from a failed query and invite somebody to turn on
+  // something that was already on, at a limit they did not choose.
+
   if (!overage.enabled) {
     return (
       <section className="panel workspace-section-card" id="overage">
         <h3>Extra usage</h3>
-        <p className="usage-muted">
-          Not switched on. When an allowance runs out, sends and drafts are refused rather
-          than billed &mdash; nothing is ever charged past your plan without you turning this
-          on and setting a limit.
-        </p>
+        {selfServe
+          ? <OverageAuthorizationPanel enabled={false} capCents={overage.capCents} />
+          : (
+            <p className="usage-muted">
+              Not switched on. When an allowance runs out, sends and drafts are refused rather
+              than billed &mdash; nothing is ever charged past your plan without you turning this
+              on and setting a limit.
+            </p>
+          )}
       </section>
     );
   }
@@ -563,6 +573,10 @@ function OverageCard({ overage }: { overage: OverageSummary }) {
         Charged after the period ends. Every figure here is what has already been used, not
         an estimate.
       </p>
+      {/* Below the figures, not above them: somebody arriving at this card wants
+          to know what they have spent before they are offered a control that
+          changes what they can spend. */}
+      {selfServe ? <OverageAuthorizationPanel enabled capCents={overage.capCents} /> : null}
     </section>
   );
 }
@@ -580,6 +594,7 @@ export default function PlanUsageSection({
   planIntent = null,
   capacity = null,
   lots = null,
+  overageSelfServe = false,
 }: {
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
@@ -602,6 +617,13 @@ export default function PlanUsageSection({
    * rather than emptying the section.
    */
   lots?: WorkspaceCreditLots | null;
+  /**
+   * Whether the owner may change the overage switch from here. Its own flag,
+   * separate from the one that reveals this whole tab: showing somebody what
+   * they are spending and letting them authorize more spending are different
+   * decisions, and the read half shipped first on purpose.
+   */
+  overageSelfServe?: boolean;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits, purchasedSeats) : [];
@@ -909,7 +931,7 @@ export default function PlanUsageSection({
 
       {/* After storage, before buying more: a contractor reading "you have run
           up $2.84 extra" should meet the top-up offer next, not before. */}
-      {overage ? <OverageCard overage={overage} /> : null}
+      {overage ? <OverageCard overage={overage} selfServe={overageSelfServe} /> : null}
 
       {data.plan.kind === 'ready' && showTopUpPurchase ? (
         <TopUpPurchaseCheckout
