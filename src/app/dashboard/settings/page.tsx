@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { loadOfficeTeam } from '@/lib/office-team';
 import { loadOverageSummary } from '@/lib/billing/overage-summary';
+import { overageSelfServeEnabled } from '@/lib/billing/overage-authorization';
 import { pickBusinessName } from '@/lib/business-name';
 import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
@@ -176,6 +177,14 @@ export default async function SettingsPage({
   // admin client would work and would quietly remove the check that matters.
   // Its own read, and error-tolerant, like the two above it.
   const overage = pricingDashboardEnabled ? await loadOverageSummary(supabase, accountId) : null;
+
+  // A SECOND flag, on top of the one that revealed this tab. Showing somebody
+  // what they are spending and letting them authorize more spending are
+  // different decisions with different blast radii, and the read half shipped
+  // first deliberately. This only decides whether the control RENDERS -- the
+  // operation checks the same flag itself, because a gate that lives only where
+  // a button is drawn turns out to gate the button.
+  const overageSelfServe = pricingDashboardEnabled && overageSelfServeEnabled();
 
   // OCCUPANCY, to sit beside the entitlement. Through the owner's session client
   // for the same reason the overage read is: crew_owner already scopes it, and
@@ -488,6 +497,7 @@ export default async function SettingsPage({
                 capacity={capacity}
                 lots={creditLots}
                 overage={overage}
+                overageSelfServe={overageSelfServe}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
                 topUpCheckoutStatus={topUpCheckoutStatus}

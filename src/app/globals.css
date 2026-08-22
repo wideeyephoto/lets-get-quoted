@@ -4472,6 +4472,48 @@ h3 {
 
 .plan-usage-note { --tone-ink: var(--info); }
 .plan-usage-note.warning { --tone-ink: var(--warn); }
+
+/* EXTRA USAGE, the one control on this page that raises what somebody can be
+   charged. The consent block and the action row reuse .base-plan-checkout-*,
+   which already solve exactly this layout; only the money field is new. */
+.plan-usage-overage-control {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1rem 0 0;
+}
+.plan-usage-overage-amount { display: grid; gap: 0.35rem; }
+.plan-usage-overage-amount > span:first-child {
+  color: var(--mute-i56);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.plan-usage-overage-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: min(100%, 13rem);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.6rem;
+  background: rgba(var(--tint), 0.025);
+}
+.plan-usage-overage-input > span[aria-hidden] { color: var(--mute-t50); font-weight: 800; }
+.plan-usage-overage-input input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.plan-usage-overage-input input:focus-visible { outline: none; }
+/* The ring goes on the wrapper, because the input has no border of its own --
+   focusing it otherwise showed nothing at all. */
+.plan-usage-overage-input:focus-within { border-color: var(--cedge-orange-24); }
 .plan-usage-unavailable { --tone-ink: var(--mute-g270); display: grid; gap: 0.22rem; }
 .plan-usage-unavailable strong { color: var(--text); }
 .plan-usage-unavailable span { color: rgba(var(--ink-rgb), 0.72); font-size: 0.86rem; }

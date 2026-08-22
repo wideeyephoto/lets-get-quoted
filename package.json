@@ -33,6 +33,7 @@
     "test:pg17:voice-inbox": "node scripts/verify-voice-event-inbox.mjs",
     "test:pg17:partial-commit": "node scripts/verify-partial-commit.mjs",
     "test:pg17:overage": "node scripts/verify-usage-overage-authorization.mjs",
+    "test:pg17:overage-self-serve": "node scripts/verify-overage-self-serve.mjs",
     "test:seo": "node --test src/lib/seo/seo-copy.test.mjs",
     "test:stock": "node --test src/lib/stock/stock.test.mjs",
     "test:pg17:dedicated-number": "node scripts/verify-dedicated-number-allowance-migration.mjs",
