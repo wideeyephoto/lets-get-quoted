@@ -6,6 +6,7 @@ import type {
   WorkspacePlanUsage,
 } from '@/lib/billing/plan-usage';
 import type { CapacityRow, WorkspaceCapacity } from '@/lib/billing/capacity-usage';
+import type { CreditLotSplit, WorkspaceCreditLots } from '@/lib/billing/credit-lots';
 import { formatStorageBytes, type WorkspaceStorageState } from '@/lib/billing/storage-usage';
 import {
   NO_PURCHASED_SEATS,
@@ -307,6 +308,65 @@ function planStatusWord(plan: WorkspacePlanRead): string {
 }
 
 
+/**
+ * One credit resource, with a meter ONLY where a meter can be honest.
+ *
+ * A Flex workspace has no refreshing allowance at all -- its starter credits do
+ * not expire and are never re-granted -- so there is no window to measure and it
+ * gets a count. A paid workspace has both, and they are stated as two numbers
+ * rather than one sum, because "444 available" hides whether 400 of those vanish
+ * at the reset.
+ */
+function CreditBalance({ resource }: { resource: CreditLotSplit }) {
+  const hasWindow = resource.periodGranted !== null && resource.periodGranted > 0;
+  const tone: Tone = !hasWindow
+    ? 'neutral'
+    : resource.percentUsed !== null && resource.percentUsed >= 90
+      ? 'warn'
+      : 'healthy';
+
+  return (
+    <article className="plan-usage-balance" data-tone={tone}>
+      <span>{resource.label}</span>
+      <strong>
+        {hasWindow
+          ? `${resource.periodRemaining!.toLocaleString('en-US')} of ${resource.periodGranted!.toLocaleString('en-US')} left`
+          : resource.nonExpiring > 0
+            ? `${resource.nonExpiring.toLocaleString('en-US')} available`
+            // Not "0". Nothing was granted and nothing expired -- there is no
+            // balance here to report, and a zero claims one was spent.
+            : 'Not issued'}
+      </strong>
+
+      {hasWindow ? (
+        <div
+          className="plan-usage-storage-meter"
+          role="img"
+          aria-label={`${resource.percentUsed ?? 0}% of this period's ${resource.label.toLowerCase()} used`}
+        >
+          <div
+            className={`plan-usage-storage-meter-fill${(resource.percentUsed ?? 0) >= 90 ? ' nearly' : ''}`}
+            style={{ width: `${Math.max(100 - (resource.percentUsed ?? 0), 2)}%` }}
+          />
+        </div>
+      ) : null}
+
+      <small>
+        {hasWindow
+          ? resource.nextExpirationAt
+            ? `Refreshes ${formatDate(resource.nextExpirationAt)}`
+            : 'Refreshes with your plan'
+          : 'Never expires'}
+      </small>
+      {/* Stated separately whenever both exist. Folding a non-expiring balance
+          into the meter is what would let a top-up read as 122% remaining. */}
+      {hasWindow && resource.nonExpiring > 0 ? (
+        <small>Plus {resource.nonExpiring.toLocaleString('en-US')} that never expire</small>
+      ) : null}
+    </article>
+  );
+}
+
 const CAPACITY_TONE: Readonly<Record<CapacityRow['verdict'], Tone>> = {
   // Not measured is NEUTRAL, never healthy and never a warning. A read that did
   // not happen is not a problem the contractor caused and not an all-clear.
@@ -449,6 +509,7 @@ export default function PlanUsageSection({
   overage,
   planIntent = null,
   capacity = null,
+  lots = null,
 }: {
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
@@ -465,6 +526,12 @@ export default function PlanUsageSection({
   planChange?: PlanChangeProps | null;
   /** Used against entitled, for the dimensions a workspace can actually consume. */
   capacity?: WorkspaceCapacity | null;
+  /**
+   * Credits split into refreshing and non-expiring. Its own read and its own
+   * `unavailable`, so a refused lot query falls back to the balance view above
+   * rather than emptying the section.
+   */
+  lots?: WorkspaceCreditLots | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits, purchasedSeats) : [];
@@ -633,12 +700,31 @@ export default function PlanUsageSection({
           <p className="eyebrow">Available now</p>
           <h2>Credit balances</h2>
         </div>
+        {/* THE SENTENCE THAT USED TO LIVE HERE HAS BEEN RETIRED ON PURPOSE.
+            It read: "Plan-period credits and purchased credits can share one
+            balance, so this is not presented as a monthly usage chart." That was
+            true of the BALANCE VIEW, which sums every lot an account has ever
+            been granted and cannot tell the two apart. It stopped being true of
+            this surface when credit-lots.ts started reading the lots themselves.
+
+            The meter now measures ONLY the open, expiring window, so a top-up can
+            no longer push it past 100% -- that is the failure the old sentence was
+            protecting against, and it is now handled by arithmetic rather than by
+            declining to draw. Credits that never expire are stated beside it as
+            their own number and are never folded into the denominator. */}
         <p className="workspace-details-copy plan-usage-intro">
-          These are credits ready to use now. Plan-period credits and purchased credits can share one balance,
-          so this is not presented as a monthly usage chart.
+          Credits that refresh with your plan are shown against this period&rsquo;s allowance. Credits that
+          never expire &mdash; anything purchased, and your starter balance &mdash; are counted separately and
+          are used only once the refreshing ones run out.
         </p>
 
-        {data.balances.kind === 'ready' ? (
+        {lots?.kind === 'ready' ? (
+          <div className="plan-usage-balance-grid">
+            {lots.resources.map((resource) => (
+              <CreditBalance key={resource.resourceCode} resource={resource} />
+            ))}
+          </div>
+        ) : data.balances.kind === 'ready' ? (
           <div className="plan-usage-balance-grid">
             {data.balances.balances.map((balance) => (
               <article className="plan-usage-balance" key={balance.resourceCode}>

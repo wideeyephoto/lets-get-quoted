@@ -57,7 +57,18 @@ describe('the contractor-facing claims are bounded by what the ledger knows', ()
       expect(LOADER).toContain(label);
     }
     expect(SECTION).toContain('available`');
-    expect(SECTION).toContain('this is not presented as a monthly usage chart');
+    // THE OLD ASSERTION PINNED THE SENTENCE "this is not presented as a monthly
+    // usage chart", and it was right to while the surface read only the balance
+    // VIEW -- which sums every lot an account was ever granted and cannot tell a
+    // monthly allowance from a purchase, so any meter drawn from it read past
+    // 100% the first time somebody topped up.
+    //
+    // credit-lots.ts removed the premise. The meter measures only the open,
+    // expiring window, and non-expiring credits are stated as their own figure
+    // and never enter the denominator. So the refusal is replaced by the
+    // arithmetic that made the refusal unnecessary, and test/credit-lots holds
+    // the ">100% is impossible" property directly.
+    expect(SECTION).toContain('are counted separately');
     expect(SECTION).not.toContain('progressbar');
     expect(SECTION).not.toContain('fee-tier-bar');
   });
