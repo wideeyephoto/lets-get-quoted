@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 0ac152b22857f8b7
+   source-sha256: ed8e693baf468b64
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16751,6 +16751,6 @@ select optgroup {
 #settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
 
 @media (max-width: 640px) {
-  .settings-shell::before { inset-inline: -1rem; height: 38rem; }
+  .settings-shell::before { inset-inline: 0; height: 38rem; }
   #settings-panel-plan > .panel.workspace-section-card::before { inset-inline: 0.95rem; }
 }
