@@ -97,16 +97,19 @@ export default function BasePlanSubscriptionCheckout({
 
   return (
     <section className="panel workspace-section-card" id="choose-paid-plan">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Ready for more</p>
-        <h2>Start your first paid plan</h2>
-      </div>
-      <p className="workspace-details-copy plan-usage-intro">
-        Choose the plan and billing schedule that fit today. The amount below comes from LGQ&apos;s
-        current catalog; this form never sends an amount or Stripe Price ID from your browser.
-      </p>
+      <details className="workspace-fold" open={Boolean(initialPlanCode || initialBillingInterval)}>
+        <summary>
+          <span className="section-heading workspace-section-heading compact-heading">
+            <span className="eyebrow">Plans</span>
+            <span className="workspace-fold-title">Review paid plans</span>
+          </span>
+          <em className="workspace-fold-note neutral">Optional</em>
+        </summary>
+        <p className="workspace-details-copy plan-usage-intro">
+          Choose a plan and billing schedule, then review the exact recurring terms before checkout.
+        </p>
 
-      <form action={formAction} className="base-plan-checkout-form">
+        <form action={formAction} className="base-plan-checkout-form">
         <input type="hidden" name="operationId" value={operationId ?? ''} />
         <input
           type="hidden"
@@ -198,7 +201,8 @@ export default function BasePlanSubscriptionCheckout({
             contact support so we can reconcile the existing checkout safely.
           </p>
         ) : null}
-      </form>
+        </form>
+      </details>
     </section>
   );
 }

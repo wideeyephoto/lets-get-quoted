@@ -611,23 +611,39 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
   if (!overage.enabled) {
     return (
       <section className="panel workspace-section-card" id="overage">
-        <h3>Extra usage</h3>
-        {selfServe
-          ? <OverageAuthorizationPanel enabled={false} capCents={overage.capCents} />
-          : (
-            <p className="usage-muted">
-              Not switched on. When an allowance runs out, sends and drafts are refused rather
-              than billed &mdash; nothing is ever charged past your plan without you turning this
-              on and setting a limit.
-            </p>
-          )}
+        <details className="workspace-fold">
+          <summary>
+            <span className="section-heading workspace-section-heading compact-heading">
+              <span className="eyebrow">Spending control</span>
+              <span className="workspace-fold-title">Extra usage</span>
+            </span>
+            <em className="workspace-fold-note neutral">Off</em>
+          </summary>
+          {selfServe
+            ? <OverageAuthorizationPanel enabled={false} capCents={overage.capCents} />
+            : (
+              <p className="usage-muted">
+                When an allowance runs out, sends and drafts are refused rather than billed.
+                Nothing is charged past your plan without your authorization.
+              </p>
+            )}
+        </details>
       </section>
     );
   }
 
   return (
     <section className="panel workspace-section-card" id="overage">
-      <h3>Extra usage this period</h3>
+      <details className="workspace-fold" open={overage.atCap}>
+        <summary>
+          <span className="section-heading workspace-section-heading compact-heading">
+            <span className="eyebrow">Spending control</span>
+            <span className="workspace-fold-title">Extra usage</span>
+          </span>
+          <em className={`workspace-fold-note${overage.atCap ? '' : ' neutral'}`}>
+            {overage.atCap ? 'Limit reached' : formatOverageTotal(overage.totalMillicents)}
+          </em>
+        </summary>
       {/* WHICH period. Both dates have been loaded since the accrual read was
           written and rendered nowhere, so the card said "this period" and left
           the reader to guess which one -- on the one figure here they might want
@@ -681,6 +697,7 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
           to know what they have spent before they are offered a control that
           changes what they can spend. */}
       {selfServe ? <OverageAuthorizationPanel enabled capCents={overage.capCents} /> : null}
+      </details>
     </section>
   );
 }
@@ -900,10 +917,13 @@ export default function PlanUsageSection({
                 </div>
               </dl>
             </div>
-            <p className="workspace-details-copy plan-usage-disclosure">
-              The LGQ fee applies to the eligible service subtotal collected through LGQ. Stripe processing
-              and payment-infrastructure costs are separate and paid directly by the contractor.
-            </p>
+            <details className="plan-usage-limit-details plan-usage-fee-details">
+              <summary>How fees work</summary>
+              <p className="workspace-details-copy plan-usage-disclosure">
+                The LGQ fee applies to the eligible service subtotal collected through LGQ. Stripe processing
+                and payment-infrastructure costs are separate and paid directly by the contractor.
+              </p>
+            </details>
             {!data.plan.usesCurrentCatalog ? (
               <p className="plan-usage-note" role="status">
                 This workspace is pinned to pricing catalog {data.plan.catalogVersion}. Its saved entitlement
@@ -1027,12 +1047,6 @@ export default function PlanUsageSection({
             protecting against, and it is now handled by arithmetic rather than by
             declining to draw. Credits that never expire are stated beside it as
             their own number and are never folded into the denominator. */}
-        <p className="workspace-details-copy plan-usage-intro">
-          Credits that refresh with your plan are shown against this period&rsquo;s allowance. Credits that
-          never expire &mdash; anything purchased, and your starter balance &mdash; are counted separately and
-          are used only once the refreshing ones run out.
-        </p>
-
         {lots?.kind === 'ready' ? (
           <div className="plan-usage-balance-grid">
             {lots.resources.map((resource) => (
@@ -1059,6 +1073,13 @@ export default function PlanUsageSection({
             <span>No missing balance has been shown as zero.</span>
           </div>
         )}
+        <details className="plan-usage-limit-details plan-usage-credit-details">
+          <summary>How these balances work</summary>
+          <p className="workspace-details-copy plan-usage-intro">
+            Plan credits refresh each period. Purchased credits and starter balances are counted separately,
+            never expire, and are used only after refreshing credits run out.
+          </p>
+        </details>
       </section>
 
       {storageState.kind !== 'hidden' ? (

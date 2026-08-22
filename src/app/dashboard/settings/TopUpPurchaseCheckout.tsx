@@ -127,16 +127,19 @@ export default function TopUpPurchaseCheckout({
 
   return (
     <section className="panel workspace-section-card" id="buy-credits">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Need more</p>
-        <h2>{hasRecurring ? 'Buy add-ons' : 'Buy add-on credits'}</h2>
-      </div>
-      <p className="workspace-details-copy plan-usage-intro">
-        {hasCredits ? 'Purchased credits never expire and are added to the balances above. ' : ''}
-        {hasRecurring ? 'Anything billed monthly renews until you cancel it, and raises your limit for as long as it is active. ' : ''}
-        Prices come from LGQ&apos;s current catalog; this form never sends an amount or Stripe Price ID
-        from your browser.
-      </p>
+      <details className="workspace-fold" open={returnStatus !== null}>
+        <summary>
+          <span className="section-heading workspace-section-heading compact-heading">
+            <span className="eyebrow">Add-ons</span>
+            <span className="workspace-fold-title">{hasRecurring ? 'Add credits or capacity' : 'Add credits'}</span>
+          </span>
+          <em className="workspace-fold-note neutral">View options</em>
+        </summary>
+        <p className="workspace-details-copy plan-usage-intro">
+          {hasCredits ? 'Purchased credits never expire. ' : ''}
+          {hasRecurring ? 'Monthly add-ons renew until canceled. ' : ''}
+          Prices and eligibility are verified again at secure checkout.
+        </p>
 
       {returnStatus === 'success' ? (
         <p className="plan-usage-note" role="status">
@@ -182,7 +185,7 @@ export default function TopUpPurchaseCheckout({
         Stripe securely collects your payment details. Nothing is charged on this page.
       </p>
 
-      <div aria-live="polite">
+        <div aria-live="polite">
         {state && !state.ok ? (
           <p className="plan-usage-note warning" role="alert">{state.message}</p>
         ) : null}
@@ -195,7 +198,8 @@ export default function TopUpPurchaseCheckout({
             contact support so we can reconcile the existing checkout safely.
           </p>
         ) : null}
-      </div>
+        </div>
+      </details>
     </section>
   );
 }

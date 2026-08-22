@@ -35294,6 +35294,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 .workspace-fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 0.4rem; }
 .workspace-fold-title { display: block; }
 .workspace-fold-note { color: var(--warn); font-size: 0.78rem; font-style: normal; font-weight: 800; }
+.workspace-fold-note.neutral { color: var(--mute-t60); }
 
 /* ---------------------------------------------------------------------------
    PLAN & USAGE DENSITY, scoped to this panel only.
