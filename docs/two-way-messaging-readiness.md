@@ -185,7 +185,7 @@ attempting it.
 
 | # | Item |
 |---|---|
-| E1 | **An AI-written city list decides who gets alerted.** Corrected in full below — the original wording overstated it |
+| E1 | **An AI-written city list decides who gets alerted.** Disclosed on the Automations page 2026-08-22; the scoring question is still open. Full mechanism below |
 | E2 | Custom domains cannot complete a TLS handshake — and the registration form suggests the contractor's site as the TCR website URL |
 | E3 | Orphaned SWML resource `6db2d8f3`, still pointing at dead staging |
 | E4 | Four `Dana Whitfield` test leads (cleanup script dry-runs by default) |
@@ -238,12 +238,25 @@ placeholder list. The other three populated lists are real and plausible —
 Illinois, Kansas City metro, Nashville area. Two have no list at all and so fail
 open.
 
-**The decision this needs** is a product call, not a bug fix: may a prune flag
-suppress a high-value alert at all? Alerting on every out-of-area lead is noise;
-silently not alerting on a large one is worse. The middle option is to leave
-scoring alone and tell the owner, on the Automations page, that their "Areas we
-serve" list is filtering their alerts — nothing on that screen says so today,
-and the list reads like website copy.
+**The middle option shipped 2026-08-22.** Scoring is unchanged. The service-area
+row on the Automations page now names the towns that are actually filtering —
+not "your list" — and, when the low-quality mute is on, states plainly that a
+lead from any other town lands on the board but **will not alert you, not even
+if it is a big job**. It offers the two exits that genuinely work: add the town,
+or untick the mute. The old hint read "flags leads outside your list", which is
+true and sounds cosmetic.
+
+It stays silent when there is no list, because `serviceAreaVerdict` returns null
+for an empty one and the gate cannot fire — a warning there would be noise.
+
+`test/service-area-gate-disclosure.test.ts` pins both halves: the copy, and the
+four route behaviours the copy asserts. If the route stops working this way the
+test fails, because a disclosure is only as true as the thing it describes.
+
+**Still open, and still a product call:** may a prune flag suppress a high-value
+alert at all? Today `isHighValue = !hasPruneFlag && …` makes it impossible by
+construction. Alerting on every out-of-area lead is noise; silently not alerting
+on a large one is worse. Disclosing it does not settle it.
 
 ---
 ## F. Not verifiable from here

@@ -569,6 +569,11 @@ export default async function AutomationsPage() {
               leadFilters={businessBasics.leadFilters}
               emailField={businessBasics.estimateRanges.emailField}
               hasCities={businessBasics.serviceAreas.cities.some((city) => city.trim())}
+              // The list itself, and the mute that turns a flag into silence.
+              // The service-area gate names both, because a filter the owner
+              // cannot see is indistinguishable from a quiet week.
+              cities={businessBasics.serviceAreas.cities.map((city) => city.trim()).filter(Boolean)}
+              muteLowQualityLeads={muteLowQualityLeads}
               smartIntakeOn={smartIntakeOn}
               preview={<IntakePreviewModal site={site as Site} compact />}
             />
