@@ -26,6 +26,8 @@
  * to throw it away.
  */
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { parseSmsWebhookBody, webhookBodySha256 } from '@/lib/sms-webhook-ingress';
@@ -185,6 +187,70 @@ function normalizeFailureCode(raw: string | null): string | null {
   const slug = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!/^[a-z][a-z0-9_]{2,99}$/.test(slug)) return null;
   return slug;
+}
+
+/**
+ * Whether a delivery's signature checks out.
+ *
+ * `absent`       — no signature header at all.
+ * `unverifiable` — signature present but no signing key configured.
+ * `valid` / `invalid` — the HMAC was computed and compared.
+ */
+export type RegistrySignatureVerdict = 'valid' | 'invalid' | 'absent' | 'unverifiable';
+
+/**
+ * THE SCHEME, ESTABLISHED FROM CAPTURED TRAFFIC -- NOT FROM DOCUMENTATION.
+ *
+ * SignalWire does not document that the 10DLC Campaign Registry surface is
+ * signed at all, which is why this route was originally built to record the
+ * signature without gating on it. On 2026-08-22 two real deliveries were
+ * captured, and exactly one construction reproduces BOTH signatures:
+ *
+ *     HMAC-SHA1( SIGNALWIRE_SIGNING_KEY, full_callback_url + raw_body )  -> HEX
+ *
+ * Two details that will bite anyone who assumes this matches the rest of the
+ * rail:
+ *
+ *  1. It is HEX. `validateWebhookSignature` in sms-provider.ts emits BASE64
+ *     (see signBase64), so reusing that verifier here rejects every delivery.
+ *  2. The signed URL INCLUDES the secret path segment. That is what makes this
+ *     verifiable without migrating to a static path -- the route knows the
+ *     expected token, so it can rebuild the exact signed string itself.
+ *
+ * Recomputable forever: raw_body and signature_header_value are both stored, so
+ * historic rows can be re-verified offline if the scheme is ever revised.
+ */
+export function registrySignatureBase(callbackUrl: string, rawBody: string): string {
+  return `${callbackUrl}${rawBody}`;
+}
+
+export function verifyRegistryCallbackSignature(input: Readonly<{
+  rawBody: string;
+  signature: string | null;
+  /** Null when no trusted production origin resolves -- see app-origin.ts. */
+  callbackUrl: string | null;
+  signingKey: string;
+}>): RegistrySignatureVerdict {
+  const supplied = (input.signature ?? '').trim();
+  if (supplied.length === 0) return 'absent';
+  // Both of these are OUR gap, never the caller's, so they must not read as a
+  // failed check. Enforcement acts only on `invalid`.
+  if (input.signingKey.trim().length === 0) return 'unverifiable';
+  if (!input.callbackUrl) return 'unverifiable';
+
+  const expected = createHmac('sha1', input.signingKey)
+    .update(registrySignatureBase(input.callbackUrl, input.rawBody), 'utf8')
+    .digest('hex');
+
+  // Compare case-insensitively on the hex, but in constant time. Length is
+  // fixed by the digest, so a mismatch here is a genuine mismatch.
+  const left = Buffer.from(expected, 'utf8');
+  const right = Buffer.from(supplied.toLowerCase(), 'utf8');
+  if (left.length !== right.length) {
+    timingSafeEqual(left, left);
+    return 'invalid';
+  }
+  return timingSafeEqual(left, right) ? 'valid' : 'invalid';
 }
 
 /**

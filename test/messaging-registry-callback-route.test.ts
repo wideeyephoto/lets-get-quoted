@@ -62,6 +62,9 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN;
+  delete process.env.LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE;
+  delete process.env.SIGNALWIRE_SIGNING_KEY;
+  delete process.env.NEXT_PUBLIC_APP_URL;
 });
 
 describe('the 10DLC registry callback route', () => {
@@ -194,6 +197,64 @@ describe('the 10DLC registry callback route', () => {
       );
     });
 
+    it('records a bad signature without rejecting it while measuring', async () => {
+      // The scheme was derived from two captured payloads, not a contract. Until
+      // real traffic proves it, a mismatch must be VISIBLE but never fatal --
+      // rejecting on an unproven scheme would discard the reason all over again.
+      process.env.NEXT_PUBLIC_APP_URL = 'https://app.letsgetquoted.com';
+      process.env.SIGNALWIRE_SIGNING_KEY = 'signing-key-for-test';
+      const response = await post(TOKEN, callback(TOKEN, FAILED_BODY, 'application/json', {
+        'x-signalwire-signature': 'ffffffffffffffffffffffffffffffffffffffff',
+      }));
+      expect(response.status).toBe(204);
+      expect(mocks.ingestRegistryCallback).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(mocks.logWebhookFailure.mock.calls)).toContain('signature invalid');
+    });
+
+    it('rejects a bad signature ONLY once enforcement is switched on', async () => {
+      // Proves the flag bites. A gate nobody has watched bite is not a gate.
+      process.env.NEXT_PUBLIC_APP_URL = 'https://app.letsgetquoted.com';
+      process.env.SIGNALWIRE_SIGNING_KEY = 'signing-key-for-test';
+      process.env.LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE = '1';
+      const response = await post(TOKEN, callback(TOKEN, FAILED_BODY, 'application/json', {
+        'x-signalwire-signature': 'ffffffffffffffffffffffffffffffffffffffff',
+      }));
+      expect(response.status).toBe(403);
+      expect(mocks.ingestRegistryCallback).not.toHaveBeenCalled();
+    });
+
+    it('still accepts a correctly signed delivery under enforcement', async () => {
+      // The other half of the gate. Computing the HMAC here is not circular:
+      // the scheme itself is pinned by independent fixtures in the
+      // interpretation suite. This asserts the ROUTE wires it up correctly --
+      // right URL, right key, right header.
+      const { createHmac } = await import('node:crypto');
+      process.env.NEXT_PUBLIC_APP_URL = 'https://app.letsgetquoted.com';
+      process.env.SIGNALWIRE_SIGNING_KEY = 'signing-key-for-test';
+      process.env.LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE = '1';
+      const signed = createHmac('sha1', 'signing-key-for-test')
+        .update(`https://app.letsgetquoted.com/api/sms/registry-status/${TOKEN}${FAILED_BODY}`, 'utf8')
+        .digest('hex');
+      const response = await post(TOKEN, callback(TOKEN, FAILED_BODY, 'application/json', {
+        'x-signalwire-signature': signed,
+      }));
+      expect(response.status).toBe(204);
+      expect(mocks.ingestRegistryCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats a missing signing key as our gap, not a failed check', async () => {
+      // `unverifiable` must never reach the enforcement branch: a config gap
+      // that 403s live provider traffic is worse than the gap itself.
+      process.env.NEXT_PUBLIC_APP_URL = 'https://app.letsgetquoted.com';
+      delete process.env.SIGNALWIRE_SIGNING_KEY;
+      process.env.LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE = '1';
+      const response = await post(TOKEN, callback(TOKEN, FAILED_BODY, 'application/json', {
+        'x-signalwire-signature': 'ffffffffffffffffffffffffffffffffffffffff',
+      }));
+      expect(response.status).toBe(204);
+      expect(JSON.stringify(mocks.logWebhookFailure.mock.calls)).toContain('signature unverifiable');
+    });
+
     it('asks for a redelivery only when nothing was stored', async () => {
       mocks.ingestRegistryCallback.mockRejectedValue(new Error('database is unreachable'));
       const response = await post(TOKEN, callback(TOKEN, FAILED_BODY));
@@ -242,6 +303,82 @@ describe('registry callback interpretation', () => {
     const first = parseRegistryCallback(FAILED_BODY, 'application/json');
     const second = parseRegistryCallback(FAILED_BODY, 'application/json');
     expect(first.receiptKey).toBe(second.receiptKey);
+  });
+
+  it('verifies the signature scheme observed on real SignalWire traffic', async () => {
+    // FIXTURES COMPUTED INDEPENDENTLY of the implementation, so this asserts the
+    // scheme rather than asserting the code agrees with itself.
+    //   HMAC-SHA1(key, url + body) -> hex
+    const { verifyRegistryCallbackSignature } = await import('@/lib/messaging-registry-callback-ingress');
+    const signingKey = 'test-signing-key-not-a-real-one';
+    const callbackUrl = 'https://app.example.com/api/sms/registry-status/aaaaaaaabbbbbbbbccccccccdddddddd';
+    const rawBody = '{"project_id":"p","event_type":"number_assignment_activated","state":"completed"}';
+    const VALID_HEX = '61503da7aaaf1393cc1c5898cf16a76d475a4307';
+
+    expect(verifyRegistryCallbackSignature({
+      rawBody, signature: VALID_HEX, callbackUrl, signingKey,
+    })).toBe('valid');
+
+    // Hex is case-insensitive on the wire.
+    expect(verifyRegistryCallbackSignature({
+      rawBody, signature: VALID_HEX.toUpperCase(), callbackUrl, signingKey,
+    })).toBe('valid');
+  });
+
+  it('rejects the base64 encoding the rest of the rail uses', async () => {
+    // THE TRAP: validateWebhookSignature in sms-provider.ts emits base64 via
+    // signBase64. This surface is HEX. Reusing that verifier would 403 every
+    // real delivery, so this pins the difference rather than leaving it to a
+    // comment somebody edits away.
+    const { verifyRegistryCallbackSignature } = await import('@/lib/messaging-registry-callback-ingress');
+    expect(verifyRegistryCallbackSignature({
+      rawBody: '{"project_id":"p","event_type":"number_assignment_activated","state":"completed"}',
+      signature: 'YVA9p6qvE5PMHFiYzxanbUdaQwc=',
+      callbackUrl: 'https://app.example.com/api/sms/registry-status/aaaaaaaabbbbbbbbccccccccdddddddd',
+      signingKey: 'test-signing-key-not-a-real-one',
+    })).toBe('invalid');
+  });
+
+  it('signs the URL as well as the body, not the body alone', async () => {
+    // Pins the construction. A refactor that signed only the body would let an
+    // attacker replay one campaign's payload against another endpoint.
+    const { verifyRegistryCallbackSignature } = await import('@/lib/messaging-registry-callback-ingress');
+    const rawBody = '{"project_id":"p","event_type":"number_assignment_activated","state":"completed"}';
+    expect(verifyRegistryCallbackSignature({
+      rawBody,
+      signature: 'c914aecf5df1f64aa0892a6f6fbebe32ebd2b955', // HMAC over body only
+      callbackUrl: 'https://app.example.com/api/sms/registry-status/aaaaaaaabbbbbbbbccccccccdddddddd',
+      signingKey: 'test-signing-key-not-a-real-one',
+    })).toBe('invalid');
+  });
+
+  it('separates "no signature" from "cannot check it"', async () => {
+    // These must not collapse: absent means the provider sent nothing, while
+    // unverifiable means WE are misconfigured. Enforcement may only ever act on
+    // `invalid`, so conflating them would either 403 valid traffic or hide a
+    // missing signing key.
+    const { verifyRegistryCallbackSignature } = await import('@/lib/messaging-registry-callback-ingress');
+    const rawBody = '{"a":1}';
+    const callbackUrl = 'https://app.example.com/api/sms/registry-status/tok';
+    expect(verifyRegistryCallbackSignature({
+      rawBody, signature: null, callbackUrl, signingKey: 'k',
+    })).toBe('absent');
+    expect(verifyRegistryCallbackSignature({
+      rawBody, signature: '   ', callbackUrl, signingKey: 'k',
+    })).toBe('absent');
+    expect(verifyRegistryCallbackSignature({
+      rawBody, signature: 'deadbeef', callbackUrl, signingKey: '',
+    })).toBe('unverifiable');
+  });
+
+  it('detects a tampered body under a good signature', async () => {
+    const { verifyRegistryCallbackSignature } = await import('@/lib/messaging-registry-callback-ingress');
+    expect(verifyRegistryCallbackSignature({
+      rawBody: '{"project_id":"p","event_type":"number_assignment_activated","state":"failed"}',
+      signature: '61503da7aaaf1393cc1c5898cf16a76d475a4307',
+      callbackUrl: 'https://app.example.com/api/sms/registry-status/aaaaaaaabbbbbbbbccccccccdddddddd',
+      signingKey: 'test-signing-key-not-a-real-one',
+    })).toBe('invalid');
   });
 
   it('gives a genuinely later transition a different receipt key', async () => {

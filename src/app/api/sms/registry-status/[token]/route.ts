@@ -2,10 +2,12 @@ import { timingSafeEqual } from 'node:crypto';
 
 import { NextResponse } from 'next/server';
 
+import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import {
   ingestRegistryCallback,
   parseRegistryCallback,
+  verifyRegistryCallbackSignature,
 } from '@/lib/messaging-registry-callback-ingress';
 import { redactMessagingRegistrationFailureMessage } from '@/lib/messaging-registration-action-failure';
 import { logWebhookFailure } from '@/lib/webhook-failures';
@@ -152,6 +154,56 @@ export async function POST(
     });
     // Ask for a redelivery: nothing was stored, so there is something to regain.
     return NextResponse.json({ error: 'Receipt unavailable.' }, { status: 503 });
+  }
+
+  // SIGNATURE: VERIFIED AND RECORDED, DELIBERATELY NOT YET ENFORCED.
+  //
+  // The scheme was solved from two captured deliveries on 2026-08-22, not from
+  // documentation -- SignalWire documents no signing for this surface at all.
+  // A scheme established from two samples is strong evidence, not a contract,
+  // and rejecting on it would reintroduce the exact failure this route exists
+  // to prevent: a 4xx that makes the provider discard the reason.
+  //
+  // So it measures first. Flip LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE to '1'
+  // only once real traffic shows `valid` consistently -- and note that historic
+  // rows stay re-verifiable offline, because raw_body and the signature header
+  // are both stored.
+  //
+  // The signed URL is rebuilt from configuration, not from request.url: it must
+  // be byte-identical to the URL registered with the provider, and a proxied
+  // request line is not a trustworthy source for that.
+  //
+  // trustedProviderCallbackOrigin() is deliberately the SAME helper
+  // productionAppOrigin() uses to BUILD the registered URL
+  // (requireExactSignalWire10dlcStatusCallback). One source of truth, so the
+  // two cannot drift apart and silently fail every verification. It returns a
+  // normalized origin with no trailing slash, or null off production.
+  const trustedOrigin = trustedProviderCallbackOrigin();
+  const signedUrl = trustedOrigin
+    ? `${trustedOrigin}/api/sms/registry-status/${expected}`
+    : null;
+  const signatureVerdict = verifyRegistryCallbackSignature({
+    rawBody,
+    signature: signatureHeaderValue,
+    callbackUrl: signedUrl,
+    signingKey: process.env.SIGNALWIRE_SIGNING_KEY ?? '',
+  });
+
+  if (signatureVerdict === 'invalid' || signatureVerdict === 'unverifiable') {
+    // Visible, and never fatal while measuring. `unverifiable` is a
+    // configuration gap (no signing key); `invalid` is either a forgery or a
+    // scheme change -- both need an operator, neither justifies data loss.
+    await logWebhookFailure({
+      source: 'sms_registry',
+      errorMessage: `Registry callback signature ${signatureVerdict}`,
+    });
+  }
+
+  if (
+    signatureVerdict === 'invalid'
+    && (process.env.LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE ?? '').trim() === '1'
+  ) {
+    return new NextResponse(null, { status: 403 });
   }
 
   const parsed = parseRegistryCallback(rawBody, contentType);
