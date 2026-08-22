@@ -74,6 +74,40 @@ export function unreadableMessagingNames(entries) {
     .map((e) => e.key);
 }
 
+/**
+ * Values that ARE a credential, under a name nothing reads.
+ *
+ * The check above catches a name the operating system cannot hold. This one
+ * catches the subtler half, and it exists because fixing the first can create
+ * the second: rename `SIGNALWIRE-DEV-2` to `SIGNALWIRE_DEV_2` and the name is
+ * now perfectly legal, perfectly visible in process.env, and STILL not the
+ * name any code reads. The chain is exactly as broken and the previous check
+ * now says PASS, which is worse than saying nothing.
+ *
+ * So match on the VALUE. SignalWire issues API tokens as PT<base62> and
+ * signing keys as PSK_<base62>; either one sitting under the wrong key is
+ * evidence on its own. Reported as a hard failure only when the canonical
+ * name is missing -- when it is present the extra copy is a label, not a
+ * fault, and calling it one would train people to ignore this check.
+ */
+export const CREDENTIAL_VALUE_SHAPES = [
+  { canonical: 'SIGNALWIRE_API_TOKEN', shape: /^PT[A-Za-z0-9]{16,}$/, what: 'a SignalWire API token' },
+  { canonical: 'SIGNALWIRE_SIGNING_KEY', shape: /^PSK_[A-Za-z0-9]{8,}$/, what: 'a SignalWire signing key' },
+];
+
+export function misfiledCredentials(entries) {
+  const byKey = new Map(entries.map((e) => [e.key, e.value]));
+  const out = [];
+  for (const { canonical, shape, what } of CREDENTIAL_VALUE_SHAPES) {
+    const canonicalSet = (byKey.get(canonical) || '').length > 0;
+    for (const entry of entries) {
+      if (entry.key === canonical || !entry.value || !shape.test(entry.value)) continue;
+      out.push({ key: entry.key, canonical, what, canonicalSet });
+    }
+  }
+  return out;
+}
+
 function loadEnv() {
   const entries = [];
   for (const name of ['.env.local', '.env']) {
@@ -195,6 +229,20 @@ async function main() {
   } else {
     pass('env names', 'every messaging credential uses a legal environment variable name');
   }
+
+  // A legal name is not the same as a name anything reads.
+  const misfiled = misfiledCredentials(entries);
+  const orphaned = misfiled.filter((m) => !m.canonicalSet);
+  const duplicated = misfiled.filter((m) => m.canonicalSet);
+  if (orphaned.length) {
+    for (const m of orphaned) {
+      fail('misfiled credential', `${m.key} holds what looks like ${m.what}, and ${m.canonical} is not set. The name is legal, so it reaches process.env -- but no code reads it, and nothing will send.`);
+    }
+  }
+  for (const m of duplicated) {
+    info('duplicate credential', `${m.key} holds ${m.what} that is already set as ${m.canonical}; harmless, but rotate both or neither`);
+  }
+  if (!misfiled.length) pass('credential placement', 'no credential sitting under a name nothing reads');
 
   // 2. Provider resolution ---------------------------------------------------
   const sw = signalwireConfigResolves(env);

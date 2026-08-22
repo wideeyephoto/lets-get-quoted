@@ -51,3 +51,11 @@ export declare function supabaseRefOf(url: string | null | undefined): string | 
 
 /** `--app-url=https://app.example.com` from argv, or null. */
 export declare function appUrlArg(argv: string[]): string | null;
+
+/** A credential value sitting under a name no code reads. */
+export declare function misfiledCredentials(entries: EnvEntry[]): Array<{
+  key: string;
+  canonical: string;
+  what: string;
+  canonicalSet: boolean;
+}>;

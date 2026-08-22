@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   CALLBACK_TOKEN_SHAPE,
   expectedWebhooks,
+  misfiledCredentials,
   parseEnvEntries,
   resolveProvider,
   signalwireConfigResolves,
@@ -99,6 +100,34 @@ describe('an env name the app cannot read', () => {
 
   it('does not flag a legal name', () => {
     expect(unreadableMessagingNames(parseEnvEntries('SIGNALWIRE_API_TOKEN=PTsecret\n'))).toEqual([]);
+  });
+});
+
+describe('a legal name is not a name anything reads', () => {
+  // The check above catches a name the OS cannot hold. Fixing THAT can create
+  // this one: rename the key and it becomes legal, visible, and still unread.
+  it('fails when the token is only under a name nothing reads', () => {
+    const found = misfiledCredentials(parseEnvEntries('SIGNALWIRE_DEV_2=PTabcdefghijklmnopqrst\n'));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ key: 'SIGNALWIRE_DEV_2', canonical: 'SIGNALWIRE_API_TOKEN', canonicalSet: false });
+  });
+
+  it('downgrades to a duplicate once the canonical name is set', () => {
+    const found = misfiledCredentials(parseEnvEntries(
+      'SIGNALWIRE_DEV_2=PTabcdefghijklmnopqrst\nSIGNALWIRE_API_TOKEN=PTabcdefghijklmnopqrst\n',
+    ));
+    expect(found).toHaveLength(1);
+    expect(found[0].canonicalSet).toBe(true);
+  });
+
+  it('recognises a signing key by its own prefix', () => {
+    const found = misfiledCredentials(parseEnvEntries('SW_KEY_BACKUP=PSK_abcdefghij\n'));
+    expect(found[0]).toMatchObject({ canonical: 'SIGNALWIRE_SIGNING_KEY', canonicalSet: false });
+  });
+
+  it('says nothing about the canonical name itself, or about unrelated values', () => {
+    expect(misfiledCredentials(parseEnvEntries('SIGNALWIRE_API_TOKEN=PTabcdefghijklmnopqrst\n'))).toEqual([]);
+    expect(misfiledCredentials(parseEnvEntries('SOME_OTHER=hello\nEMPTY=\n'))).toEqual([]);
   });
 });
 
