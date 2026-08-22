@@ -22,6 +22,7 @@
     "preflight:prices": "vitest run --config vitest.preflight.config.ts test-preflight/stripe-plan-prices.preflight.ts",
     "preflight:prices:discover": "vitest run --config vitest.preflight.config.ts test-preflight/stripe-plan-prices-discovery.preflight.ts",
     "audit:applied": "node scripts/audit-applied-migrations.mjs",
+    "verify:signalwire": "node scripts/verify-signalwire-activation.mjs",
     "test:pg17:overage-idempotency": "node scripts/verify-overage-idempotency.mjs",
     "test:pg17:overage-settlement": "node scripts/verify-overage-settlement.mjs",
     "test:pg17:scale-allowance": "node scripts/verify-scale-allowance-patch.mjs",
