@@ -39,6 +39,7 @@ const BASE_FILE = '20260816060000_stripe_billing_subscription_event_projection.s
 const PATCH_FILES = [
   '20260818200000_scale_entitlement_limits_catalog_drift.sql',
   '20260820150000_zero_dedicated_business_number_allowance.sql',
+  '20260821010000_solo_grants_a_second_office_seat.sql',
 ] as const;
 
 function read(file: string): string {
@@ -149,18 +150,36 @@ describe('the SQL projector and the TypeScript catalog agree on every paid plan'
     expect(afterPatch.voice_included_minutes).toBe(100);
   });
 
-  it('leaves Solo and Growth untouched apart from the dedicated-number allowance', () => {
+  it('moves Solo and Growth only where a migration says so', () => {
     // 20260818200000 moved only Scale. 20260820150000 then took the dedicated
-    // business number away from all three, because nothing can provision one --
-    // so Solo and Growth are no longer byte-identical, and that one field is the
-    // entire permitted difference.
+    // business number away from all three, because nothing can provision one.
+    // 20260821010000 then gave Solo a second office seat, because the owner
+    // occupies one and a one-seat plan could never invite anybody.
+    //
+    // Named field by field, and restored before the byte comparison, so a
+    // fourth patch touching anything else still fails here.
+    const PERMITTED: Readonly<Record<string, Record<string, number>>> = {
+      solo: { dedicated_business_numbers: 1, office_users: 1 },
+      growth: { dedicated_business_numbers: 1 },
+    };
+
     for (const planCode of ['solo', 'growth'] as const) {
       const after = sqlLimitsFor(patchedSource(), planCode);
+      const before = sqlLimitsFor(base, planCode);
+
       expect(after.dedicated_business_numbers).toBe(0);
-      expect(sqlLimitsFor(base, planCode).dedicated_business_numbers).toBe(1);
-      expect({ ...after, dedicated_business_numbers: 1 })
-        .toEqual(sqlLimitsFor(base, planCode));
+      expect(before.dedicated_business_numbers).toBe(1);
+      // Each named field must genuinely have moved, or the entry is silencing
+      // a drift rather than recording one.
+      for (const [field, original] of Object.entries(PERMITTED[planCode])) {
+        expect(before[field], `${planCode}.${field} in the base migration`).toBe(original);
+        expect(after[field], `${planCode}.${field} after patching`).not.toBe(original);
+      }
+
+      expect({ ...after, ...PERMITTED[planCode] }).toEqual(before);
     }
+
+    expect(sqlLimitsFor(patchedSource(), 'solo').office_users).toBe(2);
   });
 });
 

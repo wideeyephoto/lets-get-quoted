@@ -45,7 +45,11 @@ const HISTORICAL_DELTA: Readonly<Record<string, Record<string, number>>> = {
   // 20260820150000 took the dedicated business number away from the paid plans,
   // because nothing in the product can provision a phone number. Flex never had
   // one, so it carries no delta.
-  solo: { dedicated_business_numbers: 1 },
+  //
+  // 20260821010000 then gave Solo a second office seat: the owner occupies one,
+  // so a one-seat plan could never invite anybody. Flex still grants one and is
+  // meant to.
+  solo: { dedicated_business_numbers: 1, office_users: 1 },
   growth: { dedicated_business_numbers: 1 },
   scale: { dedicated_business_numbers: 1 },
 };

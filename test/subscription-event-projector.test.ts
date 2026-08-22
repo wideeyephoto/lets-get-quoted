@@ -240,7 +240,10 @@ describe('dark Stripe Billing subscription event projector', () => {
     expect(Date.parse(projection.allowance_end) - Date.parse(projection.allowance_start))
       .toBeLessThanOrEqual(32 * 24 * 60 * 60 * 1_000);
     expect(projection.payment_evidence_kind).toBe('checkout_session_paid');
-    expect(projection.feature_limits).toMatchObject({ office_users: 1, crew_users: 2 });
+    // Solo grants two office seats since 20260821010000; the owner holds one.
+    // That the projection agrees with the catalog field by field is
+    // test/subscription-entitlement-limits-catalog's job, not this one's.
+    expect(projection.feature_limits).toMatchObject({ office_users: 2, crew_users: 2 });
   });
 
   it('binds the exact consent version, text digest, and acceptance identity', async () => {

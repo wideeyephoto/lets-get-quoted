@@ -89,7 +89,13 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     platformFeeBps: 50,
     allowances: {
       cadence: 'monthly',
-      officeUsers: 1,
+      // Two, not one. The owner occupies an office seat, so a one-seat plan
+      // can never invite anybody -- Solo's buyer is an owner-operator whose
+      // partner does the books. Granted in SQL by 20260821010000; the
+      // projector recomputes feature_limits from its own table and refuses
+      // the whole projection when the two disagree, so this line alone would
+      // dead-letter every Solo activation.
+      officeUsers: 2,
       crewUsers: 2,
       customDomainConnections: 1,
       dedicatedBusinessNumbers: 0,

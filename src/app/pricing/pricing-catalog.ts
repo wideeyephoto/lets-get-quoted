@@ -85,7 +85,7 @@ export const PLANS: readonly PricingPlan[] = [
     voiceConcurrentCalls: BILLING_PLANS.solo.voice.concurrentCalls,
     features: [
       'Unlimited core records and standard quote forms',
-      '1 office user + 2 crew users',
+      '2 office users + 2 crew users',
       '1 custom-domain connection',
       'Dedicated business number coming soon',
       'QuickBooks Online connection included',
