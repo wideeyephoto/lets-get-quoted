@@ -301,7 +301,16 @@ try {
   );
   await client.query(purposeRouting);
   await client.query(purposeRouting);
-  check('inbound action and purpose-routing migrations apply twice', true);
+  // The grant the operations dashboard needs to read this queue at all. Applied
+  // here rather than assumed, so the SELECT assertion below is testing the
+  // migration and not the harness.
+  const adminRead = readFileSync(
+    'migrations/20260822220000_inbound_action_queue_admin_read.sql',
+    'utf8',
+  );
+  await client.query(adminRead);
+  await client.query(adminRead);
+  check('inbound action, purpose-routing and admin-read migrations apply twice', true);
 
   const accountId = randomUUID();
   const accountB = randomUUID();
@@ -1278,7 +1287,10 @@ try {
   const security = one(await client.query(
     `select c.relrowsecurity,c.relforcerowsecurity,
             has_table_privilege('authenticated',c.oid,'select') as auth_select,
+            has_table_privilege('service_role',c.oid,'select') as service_select,
+            has_table_privilege('service_role',c.oid,'insert') as service_insert,
             has_table_privilege('service_role',c.oid,'update') as service_update,
+            has_table_privilege('service_role',c.oid,'delete') as service_delete,
             has_function_privilege('service_role','public.apply_sms_inbound_action(uuid,uuid)','execute') as service_exec,
             has_function_privilege('authenticated','public.apply_sms_inbound_action(uuid,uuid)','execute') as auth_exec
        from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
@@ -1288,6 +1300,16 @@ try {
     security.relrowsecurity && security.relforcerowsecurity
       && !security.auth_select && !security.service_update
       && security.service_exec && !security.auth_exec);
+  // SELECT is asserted in BOTH directions, which it was not before.
+  // loadMessagingOperationsHealth reads this table directly with the
+  // service-role client alongside sms_delivery_tasks and
+  // payment_sms_producer_tasks; this table alone was never granted SELECT, so
+  // /admin/messaging reported "inbound SMS action queue could not be read" from
+  // the day the queue shipped. Nothing failed loudly — the page just went
+  // half-blind, and no check here noticed because none of them named SELECT.
+  check('operations can READ the action queue, and still cannot write it',
+    security.service_select
+      && !security.service_insert && !security.service_update && !security.service_delete);
 } catch (error) {
   check('harness ran to completion', false, error instanceof Error ? error.message : String(error));
 } finally {
