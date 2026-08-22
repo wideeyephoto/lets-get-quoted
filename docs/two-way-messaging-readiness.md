@@ -126,6 +126,10 @@ select plan_code, catalog_version, feature_limits->>'dedicated_business_numbers'
 | flex (×5) | `2026-08-18-preview` | `0` |
 | solo (×1) | `2026-08-15-preview` | **`1`** |
 
+It is worse than a wrong number. The same stale row also says `office_users: 1`,
+so it never received Solo's second office seat and that workspace can never
+invite anybody. Why it is stuck, and why it cannot heal itself, is under B3.
+
 The one Solo workspace is on a **stale catalog version** and carries an allowance
 the current catalog sets to zero. It is display-only — `plan-usage.ts:156` reads
 it and `PlanUsageSection.tsx:155` renders it as a row; nothing gates provisioning
@@ -134,9 +138,53 @@ business number that no part of the product can deliver.
 
 ### B3 is not a copy edit
 
-Turning "coming soon" into a sold feature is a catalog change with checkout live,
-which is refused in both orderings. Verify against the live function body before
-attempting it.
+Turning "coming soon" into a sold feature is a catalog change with checkout
+live, which is refused in both orderings. Verify against the live function body,
+never the migration file — after a chain of text patches, no file states the live
+value.
+
+**And a version bump strands every subscription that already exists.** A
+separate, permanent hazard from that transient deploy window, found 2026-08-22.
+
+`project_stripe_billing_subscription_event_v1_unchecked` pins one exact string:
+
+```sql
+or v_catalog_version <> '2026-08-18-preview' then
+  raise exception 'Stripe Billing projection contract is invalid' using errcode = '22023';
+```
+
+That value does **not** come from the app constant.
+`stripe-billing-subscription-events.ts:356` reads
+`catalogVersion: metadata.lgq_catalog_version` off the **Stripe subscription** —
+written once at checkout — and passes it to the projection at line 688. Stripe
+metadata never migrates. So the moment `PRICING_CATALOG_VERSION` moves, every
+subscription created before the bump fails projection on its next event:
+renewal, cancellation, payment failure, all of it. Nothing self-heals, because
+the only thing that could rewrite the entitlement row is the projector now
+refusing it.
+
+It has already happened once, which is how it was found. The one row in
+`billing_subscriptions` is `solo`, `active`, on `2026-08-15-preview`, renewing
+2026-09-18. Its entitlement row is stranded on the same version — so it never
+received Solo's second office seat (`office_users: 1`, and the owner occupies it,
+so that workspace can never invite anybody) while also advertising
+`dedicated_business_numbers: 1` on the live Plan & usage tab.
+
+**Impact today is nil** — it is `BIGFATPIPEGUYS2`, a rehearsal workspace with
+zero leads, jobs and clients. The mechanism is the finding, not the row.
+
+Preflight before any catalog change, one query:
+
+```sql
+select account_id, plan_code, status, catalog_version, current_period_end
+  from billing_subscriptions
+ where catalog_version <> '2026-08-18-preview';
+```
+
+Either migrate their Stripe metadata first, or make the projector accept a set of
+versions rather than one. Note `stripe-billing-subscription-events.ts:637` also
+requires the PRICE metadata to match the subscription's, so a metadata fix has
+two sides.
 
 ---
 
