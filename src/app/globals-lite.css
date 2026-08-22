@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 9b924e808672d374
+   source-sha256: 9eabde4b5b3c233e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3227,6 +3227,35 @@ h3 {
 .fee-tier-meta span { font-size: 0.82rem; color: var(--mute-g270); }
 .fee-tier-bar { height: 8px; border-radius: 999px; background: rgba(var(--tint), 0.08); margin: 0.9rem 0 0.6rem; overflow: hidden; }
 .fee-tier-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent, #ff7a21), var(--accent-2, #ffd166)); }
+/* TONE — one attribute, five values, and a WORD beside every one of them.
+   General, not plan-usage-specific; it lives here because this is its first
+   consumer.
+
+   WHY IT IS NOT `.tone-good` LIKE .cfeed-item. That precedent hard-codes its
+   tints as raw rgba() literals (see the .cfeed-item.tone-* rules further down),
+   which have no light-theme value at all — they were authored against the dark
+   canvas and simply carry over. Deriving the tint and the edge from the ink with
+   color-mix means both themes come out of the SAME token, so a tone that reads
+   on the canvas reads on the sheet without a second set of numbers to keep in
+   step. color-mix is already load-bearing in this file.
+
+   WHY THE INK IS NEVER BODY COPY. --warn resolves to #8a5300 on light and
+   #ffd591 on dark; the first is fine as text on white and the second is fine on
+   the canvas, but neither survives being used for both. So the ink dresses the
+   LABEL and the edge, and the sentence underneath stays var(--text). The label
+   is also the accessibility contract: colour alone is not a status, so every
+   consumer of this renders a word. */
+[data-tone] {
+  --tone-ink: var(--mute-g270);
+  --tone-tint: color-mix(in srgb, var(--tone-ink) 10%, transparent);
+  --tone-edge: color-mix(in srgb, var(--tone-ink) 34%, transparent);
+}
+/* Same specificity as [data-tone] above, so these must stay after it. */
+[data-tone='healthy'] { --tone-ink: var(--good); }
+[data-tone='info'] { --tone-ink: var(--info); }
+[data-tone='warn'] { --tone-ink: var(--warn); }
+[data-tone='danger'] { --tone-ink: var(--bad); }
+[data-tone='neutral'] { --tone-ink: var(--mute-g270); }
 
 /* Blocked-off (time-off) day on the schedule calendar. */
 .calendar-cell.blocked { position: relative; background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.06) 0 7px, transparent 7px 15px); }

@@ -29,7 +29,8 @@ import { displayPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
-import { loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
+import { formatStorageBytes, loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
+import { buildWorkspaceCapacity, loadCrewSeatsUsed } from '@/lib/billing/capacity-usage';
 import { NO_PURCHASED_SEATS, loadPurchasedSeats } from '@/lib/billing/purchased-seats';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
@@ -174,6 +175,34 @@ export default async function SettingsPage({
   // admin client would work and would quietly remove the check that matters.
   // Its own read, and error-tolerant, like the two above it.
   const overage = pricingDashboardEnabled ? await loadOverageSummary(supabase, accountId) : null;
+
+  // OCCUPANCY, to sit beside the entitlement. Through the owner's session client
+  // for the same reason the overage read is: crew_owner already scopes it, and
+  // widening the client would remove the check rather than satisfy it.
+  const crewSeatsUsed = pricingDashboardEnabled
+    ? await loadCrewSeatsUsed(supabase, accountId).catch(() => null)
+    : null;
+
+  const capacity = pricingDashboardEnabled && planUsage
+    ? buildWorkspaceCapacity(
+      planUsage.plan.kind === 'ready' ? planUsage.plan.limits : null,
+      purchasedSeats,
+      {
+        // loadOfficeTeam degrades an unreadable team to seatsUsed: 0, and a
+        // readable workspace ALWAYS has at least the owner in a seat. So zero
+        // here means the read failed, not that the office is empty -- and
+        // "0 of 2 used" would invent an emptiness that cannot exist.
+        officeSeatsUsed: officeTeam.seatsUsed > 0 ? officeTeam.seatsUsed : null,
+        crewSeatsUsed,
+        // Connected means VERIFIED. A domain saved but never verified serves
+        // nothing, so counting it would show a contractor a slot consumed by
+        // something that is not working.
+        customDomainsUsed: site ? (site.custom_domain && site.custom_domain_verified_at ? 1 : 0) : null,
+      },
+      storageState,
+      formatStorageBytes,
+    )
+    : null;
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = pickBusinessName(site, account);
@@ -418,6 +447,7 @@ export default async function SettingsPage({
             id: 'plan',
             label: 'Plan & usage',
             anchors: [
+              'plan-at-a-glance',
               'current-plan',
               'platform-fee',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
@@ -425,6 +455,14 @@ export default async function SettingsPage({
               ...(cancellable ? ['cancel-plan'] : []),
               'usage-balances',
               ...(storageState ? ['workspace-storage'] : []),
+              // OverageCard renders whenever `overage` is non-null -- in BOTH
+              // its branches, so the id is always in the DOM when the card is.
+              // It was missing here, which is not a cosmetic gap: a hash this
+              // list does not know resolves to no tab at all, so
+              // /dashboard/settings#overage left the reader on Account with the
+              // card sitting inside a hidden panel. Guarded now by
+              // test/plan-usage-anchors.test.ts.
+              ...(overage ? ['overage'] : []),
               ...(showTopUpPurchase ? ['buy-credits'] : []),
               'included-limits',
             ],
@@ -436,6 +474,7 @@ export default async function SettingsPage({
                 data={planUsage}
                 storage={storageState}
                 purchasedSeats={purchasedSeats}
+                capacity={capacity}
                 overage={overage}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
