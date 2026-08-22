@@ -1,7 +1,7 @@
 # SignalWire Messaging Cutover Runbook
 
 **Owner:** LGQ Operations<br>
-**Last updated:** 2026-08-21<br>
+**Last updated:** 2026-08-22<br>
 **Default state:** dark; do not activate from this document alone
 
 This is the controlled handoff for LGQ operational messaging. Supabase Auth phone login remains on Twilio. The kill switch is always `LGQ_DISABLE_OUTBOUND_SMS=1`.
@@ -15,6 +15,80 @@ This is the controlled handoff for LGQ operational messaging. Supabase Auth phon
 | Contractor dedicated | `contractor_dedicated` | `LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED=1` | One vetted contractor's homeowner traffic from that contractor's active assigned number |
 
 No lane inherits another lane's Campaign, number, consent, or release decision.
+
+### Who can receive from the shared number
+
+Only the **account owner**, at `accounts.alert_phone`, and only for
+`billing_category = 'owner_alert'` — in practice `owner-high-value-lead` and
+`owner-estimate-accepted`. `senderPurposeFor()` routes every other category to
+`contractor_dedicated`, so **no homeowner or customer can ever receive anything
+from the shared number**. That is what keeps the platform Campaign's
+"no contractor-to-customer traffic" declaration true.
+
+### Who can send to it, and what happens
+
+Anyone can text it; delivery into the app is gated:
+
+| Inbound case | Result |
+|---|---|
+| No/invalid provider signature | Rejected before the body is read, logged to `webhook_failures` |
+| Unparseable body | Stored via `recordInvalidWebhook` |
+| `STOP` / `START` / `HELP` | Compliance acknowledgement, consent ledger updated |
+| Ordinary reply, one matching consent scope | Routed to that account, action worker runs |
+| Ordinary reply, zero or many matches | `shared_destination_unroutable`, held for operator review |
+
+The account is **not** taken from the number that was texted — a platform lane's
+`sms_sender_numbers.account_id` is `NULL` by CHECK. It is derived from the
+sender:
+
+- **ordinary replies** need a current `sms_consent_scopes` row (`owner` for
+  shared, `crew` for dispatch) that is `opted_in`, with `opted_out_at` null;
+- **STOP/START/HELP on shared** cannot use consent (START must work *after*
+  STOP revoked it), so they use accepted delivery history instead;
+- **STOP/START on dispatch** use crew scope plus a live roster match.
+
+Every path requires **exactly one** matching account. Zero and multiple both
+fail closed — there is deliberately no recency ordering and no `LIMIT`, because
+guessing wrong on a shared number means showing one contractor another's
+message.
+
+### The automated reply (added 2026-08-22)
+
+Any inbound to `lgq_shared` / `lgq_dispatch` that is **not** a compliance
+keyword is answered with a single fixed notice:
+
+> `<Brand>: Alerts only, replies not monitored. Open your dashboard: <APP_ORIGIN>/dashboard Reply STOP to opt out.`
+
+Rationale and constraints, all of which are load-bearing:
+
+- **Why at all.** Before this, replying to the shared number produced total
+  silence — routed messages were filed, unroutable ones went nowhere. Texting a
+  business number and getting nothing is worse than an honest automated answer.
+- **Why it does not advertise the dedicated number.** The registered Campaign is
+  `LOW_VOLUME_MIXED` / `CUSTOMER_CARE` + `ACCOUNT_NOTIFICATION`, and its TCR
+  description states that **no marketing** is carried. Promoting a paid upgrade
+  in the text would contradict a carrier-audited field. The notice states a
+  capability limit and points at the dashboard; the **dashboard** does the
+  selling, because it is not a carrier-governed surface.
+- **Why it is one segment.** Every reply is billed per segment. Plain ASCII stays
+  in GSM-7 (160 chars/segment); a single non-GSM-7 character — an em dash, a
+  curly apostrophe — promotes the whole message to UCS-2 at **70** chars per
+  segment. The first draft used an em dash and cost three segments. A test
+  asserts both the charset and the segment count.
+- **It obeys the same gates as the durable worker.** A carrier `<Message>` verb
+  *is* an outbound text, so it passes through `outboundSmsLaneSuppression` —
+  kill switch, canary allow-list, lane flag. A dark deployment does not text.
+- **It is claimed atomically.** `record_sms_shared_notice_reply` returns true to
+  exactly one caller per receipt, so a provider retry cannot double-text.
+- **It never answers a contractor-dedicated number.** Auto-replying there would
+  put words in the contractor's mouth mid-conversation with their customer. Both
+  the route and the SQL function enforce this.
+- **It is audited separately from compliance replies.**
+  `record_sms_compliance_reply_result` binds its row to
+  `disposition = 'keyword_' || keyword`; a notice's disposition is `routed` or
+  `shared_destination_unroutable`. Widening that function would have weakened the
+  invariant tying an acknowledgement to the keyword that earned it. STOP/START/
+  HELP are carrier obligations; this is a courtesy. Separate tables on purpose.
 
 ## Hard prerequisites
 

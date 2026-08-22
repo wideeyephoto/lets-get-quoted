@@ -72,6 +72,7 @@ const requiredTables = [
   'messaging_registration_applications',
   'messaging_number_provisioning_operations',
   'messaging_registry_callbacks',
+  'sms_shared_notice_replies',
   'voice_calls',
   'voice_events',
   'payment_sms_producer_tasks',
@@ -94,6 +95,7 @@ const requiredFunctions = [
   'record_sms_compliance_reply_result',
   'settle_usage_overage_result',
   'ingest_messaging_registry_callback',
+  'record_sms_shared_notice_reply',
 ];
 
 const pg = new EmbeddedPostgres({

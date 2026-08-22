@@ -180,8 +180,48 @@ describe('strict tenant routing contract', () => {
     expect(inboundRoute).toContain('if (data !== true) return emptyTwiml()');
   });
 
-  it('keeps synchronous carrier egress limited to the named compliance exception', () => {
-    expect(inboundRoute.match(/<Message>/g)).toHaveLength(1);
+  it('keeps synchronous carrier egress to named, individually gated exceptions', () => {
+    // A <Message> verb in a webhook response asks the carrier to send a text
+    // synchronously, outside the durable outbox and its retry and audit
+    // machinery. Every such site must be deliberate.
+    //
+    // This guard was once `toHaveLength(1)`. A bare count is the wrong shape: it
+    // says nothing about WHERE the verb is, so deleting a gated site and adding
+    // an ungated one keeps it green. Resolve each verb to its enclosing function
+    // instead, and make each named exception prove its own gates.
+    const EXCEPTIONS = ['minimumComplianceKeywordTwiml', 'sharedNoticeTwiml'];
+
+    const enclosingFunction = (index: number): string => {
+      const declarations = [
+        ...inboundRoute.slice(0, index).matchAll(/(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/g),
+      ];
+      return declarations.at(-1)?.[1] ?? '(top level)';
+    };
+    const sites = [...inboundRoute.matchAll(/<Message>/g)].map((m) => enclosingFunction(m.index ?? 0));
+
+    // Named, and nothing else: an unlisted site fails by name, and an extra verb
+    // smuggled into a listed function fails on the count.
+    for (const site of sites) {
+      expect(EXCEPTIONS, `unnamed synchronous carrier egress in ${site}()`).toContain(site);
+    }
+    expect(sites).toHaveLength(EXCEPTIONS.length);
+    expect([...new Set(sites)].sort()).toEqual([...EXCEPTIONS].sort());
+
+    // Each exception gates its OWN egress. A Message verb is an outbound text,
+    // so it answers to the kill switch, canary allow-list and lane gates like
+    // the durable worker; and it is claimed atomically against the receipt, so
+    // a provider retry cannot ask the carrier to send the same text twice.
+    for (const name of EXCEPTIONS) {
+      const start = inboundRoute.indexOf(`function ${name}(`);
+      expect(start, `${name}() not found in the route`).toBeGreaterThan(-1);
+      const next = inboundRoute.slice(start + 1).search(/\n(?:export\s+)?(?:async\s+)?function\s/);
+      const body = inboundRoute.slice(start, next === -1 ? undefined : start + 1 + next);
+      expect(body, `${name}() does not check lane suppression`).toContain('outboundSmsLaneSuppression(');
+      expect(body, `${name}() does not claim its egress atomically`).toMatch(/rpc\('record_sms_[a-z_]+reply/);
+      expect(body, `${name}() does not hash the body it claims`)
+        .toContain("createHash('sha256').update(responseBody, 'utf8')");
+    }
+
     expect(inboundRoute).toContain('function minimumComplianceKeywordTwiml(');
     expect(inboundRoute).toContain("'stop', brand, ingress.accountId, ingress.senderPurpose");
     expect(inboundRoute).toContain("'start', brand, ingress.accountId, ingress.senderPurpose");

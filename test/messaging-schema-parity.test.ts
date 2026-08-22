@@ -49,6 +49,7 @@ const MIGRATIONS = [
   'migrations/20260821221223_voice_dedicated_number_invariant.sql',
   'migrations/20260821230000_voice_transcript_retention.sql',
   'migrations/20260822120000_messaging_registry_callback_inbox.sql',
+  'migrations/20260822210000_shared_number_notice_reply.sql',
 ] as const;
 
 function lf(value: string): string {
