@@ -185,13 +185,67 @@ attempting it.
 
 | # | Item |
 |---|---|
-| E1 | Served-city list is still the template default (Maplewood, Springfield, Oakdale…). A real nearby town is pruned to `low` and sends nothing |
+| E1 | **An AI-written city list decides who gets alerted.** Corrected in full below — the original wording overstated it |
 | E2 | Custom domains cannot complete a TLS handshake — and the registration form suggests the contractor's site as the TCR website URL |
 | E3 | Orphaned SWML resource `6db2d8f3`, still pointing at dead staging |
 | E4 | Four `Dana Whitfield` test leads (cleanup script dry-runs by default) |
 
 ---
 
+### E1, corrected
+
+The first version of that row said a real nearby town is "pruned" and "sends
+nothing". Half right, and the wrong half matters.
+
+**Leads are never hidden.** The schema is explicit that
+`mute_low_quality_leads` stops "owner alerts / the dashboard nag. They still
+land in the leads board, just quietly." It is `true` on all six workspaces, and
+nothing is lost from the board.
+
+**What actually happens is narrower and sharper** —
+`src/app/api/public/leads/route.ts`:
+
+```ts
+const isHighValue = !hasPruneFlag && estimate != null && ...
+score: hasPruneFlag ? 'low' : ...
+// and inside notifyOwner:
+if (alert.muteLow && lead.triage?.score === 'low') return;
+```
+
+A prune flag makes high-value **impossible by construction**, forces the score
+to `low`, and the mute then suppresses the alert. So a genuinely large job from
+a town the list does not name produces **no alert and no text at all** — it sits
+on the board waiting to be noticed. A second submission from the same person
+does get through: a duplicate deliberately passes `muteLow: false`, because "a
+homeowner asking twice is hotter, not spam".
+
+**Where the list comes from is the uncomfortable part.** The cities are written
+by a model at site creation. `serviceAreaGate` defaults to **on**
+(`leadFilters.serviceAreaGate !== false`), and `serviceAreaVerdict` fails open
+only when the list is EMPTY — a populated but incomplete list fails closed on
+every town it omits, and contractors serve more towns than a model lists.
+
+The known-bad case is already fixed at the source: gpt-4o-mini asked to resolve
+ZIP 48067 once answered "Maplewood, Springfield, Sunnyvale" — real US place
+names, none near Royal Oak — so Google resolves the primary city first now and
+the answer enters the prompt as a fact. The model still invents the
+*neighbouring* towns and those are never verified. Invented extras are harmless
+here, since they only make matching more permissive; it is the **omissions**
+that cost alerts.
+
+Live state: one workspace (`BIGFATPIPEGUYS`, the test one) still carries the old
+placeholder list. The other three populated lists are real and plausible —
+Illinois, Kansas City metro, Nashville area. Two have no list at all and so fail
+open.
+
+**The decision this needs** is a product call, not a bug fix: may a prune flag
+suppress a high-value alert at all? Alerting on every out-of-area lead is noise;
+silently not alerting on a large one is worse. The middle option is to leave
+scoring alone and tell the owner, on the Automations page, that their "Areas we
+serve" list is filtering their alerts — nothing on that screen says so today,
+and the list reads like website copy.
+
+---
 ## F. Not verifiable from here
 
 Production flag values are Vercel **Sensitive** variables: write-only, unreadable
