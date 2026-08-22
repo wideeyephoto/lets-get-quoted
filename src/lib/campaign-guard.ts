@@ -58,18 +58,23 @@ const APPENDED_CHARACTERS = 40;
 /**
  * Placeholders that look like ours but aren't.
  *
- * `{name}` is the only token the send path substitutes. Anything else in braces
- * is delivered to the customer exactly as typed — "Hi {first_name}," lands in
- * two hundred inboxes as literally that, and it is the single most embarrassing
- * way to send a mail merge.
+ * `{name}` and `{referral_link}` are the only tokens the send path substitutes.
+ * Anything else in braces is delivered to the customer exactly as typed — "Hi
+ * {first_name}," lands in two hundred inboxes as literally that, and it is the
+ * single most embarrassing way to send a mail merge.
+ *
+ * Kept in step with personalize() in @/lib/campaigns by hand. There is no shared
+ * constant because that module reaches the database and the SMS sender, and this
+ * one is imported by the composer.
  */
 const PLACEHOLDER = /\{([a-z0-9_ .-]{1,30})\}/gi;
+const SUBSTITUTED = new Set(['name', 'referral_link']);
 
 export function unknownPlaceholders(text: string): string[] {
   const found = new Set<string>();
   for (const match of text.matchAll(PLACEHOLDER)) {
     const token = match[1].trim().toLowerCase();
-    if (token !== 'name') found.add(match[0]);
+    if (!SUBSTITUTED.has(token)) found.add(match[0]);
   }
   return [...found];
 }
@@ -84,6 +89,31 @@ export function shoutiness(text: string): { caps: number; bangs: number } {
 }
 
 /**
+ * What {referral_link} costs once it is substituted: an origin, /book/<subdomain>,
+ * '?ref=' and a 45-character code. The token is 15 characters and the link is
+ * about 92, so measuring the template understates a tracked referral text by
+ * most of a segment — and 2 -> 3 is exactly the crossing the owner is never
+ * warned about, on the send that costs 50% more than the composer says.
+ */
+const REFERRAL_LINK_CHARS = 92;
+const REFERRAL_TOKEN_IN_COPY = /\{\s*referral_link\s*\}/gi;
+
+/**
+ * The body as the customer receives it.
+ *
+ * A STRING, not a length, and that is the whole reason this function exists
+ * separately. The token has to be expanded before the segment counter sees the
+ * message, because the counter does not just divide: one emoji anywhere in the
+ * body re-encodes the entire thing to UCS-2 and the segment size drops from 160
+ * to 70. Substituting a length would throw away the characters that decide the
+ * alphabet. The filler is plain GSM-7, so it can never change which alphabet the
+ * real body already forced.
+ */
+export function sentBody(body: string): string {
+  return body.replace(REFERRAL_TOKEN_IN_COPY, 'x'.repeat(REFERRAL_LINK_CHARS));
+}
+
+/**
  * What this campaign will cost in text credits, per recipient.
  *
  * Delegates to the real segment counter rather than dividing by 160. The old
@@ -91,9 +121,14 @@ export function shoutiness(text: string): { caps: number; bangs: number } {
  * quote — the two most common ways a contractor's message leaves the GSM
  * alphabet — was warned about at 160 characters per segment and billed at 70.
  * The composer and the invoice now come from the same function.
+ *
+ * TWO CORRECTIONS, AND IT NEEDS BOTH. The alphabet one above, and the length one
+ * in sentBody: a tracked referral text measured as its template is short by most
+ * of a segment. Either alone still misreports a bill. Do not let
+ * `Math.ceil(length / 160)` back into this file.
  */
 export function smsSegments(body: string): number {
-  return smsSegmentCount(body + 'x'.repeat(APPENDED_CHARACTERS));
+  return smsSegmentCount(sentBody(body) + 'x'.repeat(APPENDED_CHARACTERS));
 }
 
 /**

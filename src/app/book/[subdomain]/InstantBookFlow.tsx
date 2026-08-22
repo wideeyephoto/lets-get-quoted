@@ -15,6 +15,12 @@ type Props = {
   serviceArea: string;
   /** Only set when the owner made it public — see withPublicContact. */
   phone: string | null;
+  /**
+   * The raw ?ref from the URL, posted straight back so the server action can
+   * verify it. Never trusted here — the client has no key, and the value is
+   * whatever was in the address bar.
+   */
+  referralCode: string | null;
 };
 
 // The shape of the flow, so somebody on screen two knows there is a screen
@@ -47,7 +53,7 @@ const money = (n: number) => '$' + Math.round(n).toLocaleString();
 // Matches the hero intake's deadline so the two behave the same under load.
 const ESTIMATOR_TIMEOUT_MS = 8000;
 
-export default function InstantBookFlow({ subdomain, siteId, businessName, serviceArea, phone }: Props) {
+export default function InstantBookFlow({ subdomain, siteId, businessName, serviceArea, phone, referralCode }: Props) {
   const [phase, setPhase] = useState<Phase>('describe');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -276,6 +282,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           The instant estimate isn&apos;t available right now. Your project details are saved here, and {businessName} can follow up with a normal quote.
         </p>
         <input type="hidden" name="description" value={description} />
+        <input type="hidden" name="ref" value={referralCode ?? ''} />
         <div className="form-grid">
           <div className="field full">
             <label htmlFor="classic-name">Full name</label>
@@ -328,6 +335,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
         {estimateBanner}
         <p className="workspace-details-copy">{evaluation.fallback.body}</p>
         <input type="hidden" name="description" value={description} />
+        <input type="hidden" name="ref" value={referralCode ?? ''} />
         <div className="form-grid">
           <div className="field full">
             <label htmlFor="cb-name">Full name</label>
@@ -373,6 +381,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           Leave your details and {businessName} will reach out with the next opening.
         </p>
         <input type="hidden" name="description" value={description} />
+        <input type="hidden" name="ref" value={referralCode ?? ''} />
         <div className="form-grid">
           <div className="field full">
             <label htmlFor="nw-name">Full name</label>
@@ -416,6 +425,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
       </div>
       {estimateBanner}
       <input type="hidden" name="description" value={description} />
+      <input type="hidden" name="ref" value={referralCode ?? ''} />
       {estimate?.max != null ? <input type="hidden" name="estimateMax" value={estimate.max} /> : null}
 
       <div className="booking-days">

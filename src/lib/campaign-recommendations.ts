@@ -141,9 +141,12 @@ export async function buildCampaignRecommendations(
     reach: Record<CampaignAudience, Reach>;
     businessName: string;
     bookingUrl: string | null;
+    /** The owner's referral thank-you, when they have set one. Its presence is
+     *  what turns the referral template into a tracked, per-customer send. */
+    referralReward?: string | null;
   },
 ): Promise<CampaignRecommendations> {
-  const { recipients, reach, businessName, bookingUrl } = input;
+  const { recipients, reach, businessName, bookingUrl, referralReward } = input;
   const now = Date.now();
   const nowDate = new Date();
   const currentMonth = nowDate.getMonth() + 1;
@@ -386,7 +389,7 @@ export async function buildCampaignRecommendations(
   });
 
   const referralMeta = templateById('referral');
-  const referralCopy = buildReferralCopy({ businessName, bookingUrl });
+  const referralCopy = buildReferralCopy({ businessName, bookingUrl, reward: referralReward ?? null });
   const referralCard = buildCard(referralMeta, {
     recipientCount: channelCount(reach, referralMeta.defaultAudience, referralMeta.defaultChannel),
     whyText: null,

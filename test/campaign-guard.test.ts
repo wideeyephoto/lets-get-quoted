@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   checkCampaign,
   hasBlockingFinding,
@@ -28,6 +30,44 @@ function ids(input: GuardInput): string[] {
   return checkCampaign(input).map((finding) => finding.id);
 }
 
+/**
+ * THE GUARD IS A PROMISE THE SENDER HAS TO KEEP.
+ *
+ * unknownPlaceholders TRIMS the token it captures, so the composer tells the
+ * owner that "{ name }" and "{ referral_link }" will be filled in. personalize()
+ * in @/lib/campaigns matched neither, so the braces went to the customer — the
+ * exact thing this guard exists to prevent, waved through by the guard itself.
+ *
+ * Read as source because campaigns.ts reaches the database and the SMS sender,
+ * so a test cannot import it. CRLF-normalised: several files in this repo are
+ * CRLF and a raw read makes a multi-line assertion fail for the wrong reason.
+ */
+describe('the sender substitutes everything the guard forgives', () => {
+  const campaigns = () =>
+    readFileSync(join(process.cwd(), 'src', 'lib', 'campaigns.ts'), 'utf8').replace(/\r\n/g, '\n');
+
+  it('matches both tokens with optional surrounding whitespace', () => {
+    const source = campaigns();
+    expect(source).toContain('const NAME_TOKEN = /\\{\\s*name\\s*\\}/gi;');
+    expect(source).toContain('const REFERRAL_TOKEN = /\\{\\s*referral_link\\s*\\}/gi;');
+    expect(source).toContain('const REFERRAL_TOKEN_PRESENT = /\\{\\s*referral_link\\s*\\}/i;');
+  });
+
+  it('leaves no bare-brace matcher behind that would miss the spaced form', () => {
+    const source = campaigns();
+    expect(source).not.toContain('/\\{name\\}/gi');
+    expect(source).not.toContain('/\\{referral_link\\}/gi');
+  });
+
+  it('every token the guard allows is one the sender knows about', () => {
+    // If someone widens SUBSTITUTED, this fails until personalize learns it.
+    const guard = readFileSync(join(process.cwd(), 'src', 'lib', 'campaign-guard.ts'), 'utf8').replace(/\r\n/g, '\n');
+    const line = guard.slice(guard.indexOf('const SUBSTITUTED'), guard.indexOf('\n', guard.indexOf('const SUBSTITUTED')));
+    const allowed = [...line.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]);
+    expect(allowed.sort()).toEqual(['name', 'referral_link']);
+  });
+});
+
 describe('unknownPlaceholders', () => {
   it('finds tokens that will be sent literally', () => {
     // {name} is the ONLY token the send path substitutes. Anything else lands
@@ -37,6 +77,10 @@ describe('unknownPlaceholders', () => {
 
   it('leaves the one that actually works alone', () => {
     expect(unknownPlaceholders('Hi {name}, hope you are well')).toEqual([]);
+    // The second substituted token. Flagging it would tell the owner their own
+    // referral template is broken.
+    expect(unknownPlaceholders('Send them {referral_link} and we will know')).toEqual([]);
+    expect(unknownPlaceholders('Send them { referral_link } and { Name } too')).toEqual([]);
     expect(unknownPlaceholders('Hi {Name}, and { name } too')).toEqual([]);
   });
 
@@ -78,6 +122,28 @@ describe('smsSegments', () => {
     // The other half of getting the alphabet right: these ARE in GSM-7, and
     // treating them as UCS-2 would over-warn on perfectly ordinary messages.
     expect(smsSegments(`Hi Renée, ${'x'.repeat(90)}`)).toBe(1);
+  });
+
+  it('measures the referral LINK, not the token standing in for it', () => {
+    // {referral_link} is 15 characters and becomes about 92 once substituted:
+    // an origin, /book/<subdomain>, '?ref=' and the code. Measuring the template
+    // understates a tracked referral text by most of a segment, and this is the
+    // send that goes to the entire customer list.
+    const tracked = `${'x'.repeat(45)}{referral_link}`;
+    expect(tracked.length).toBe(60);
+
+    // Identical length, no token: what the composer reported before.
+    expect(smsSegments(`${'x'.repeat(45)}0123456789abcde`)).toBe(1);
+    expect(smsSegments(tracked)).toBe(2);
+  });
+
+  it('needs BOTH corrections, and this is the body that proves it', () => {
+    // One emoji forces the whole message to UCS-2, and the expanded link is
+    // the length that then matters. Measuring the template gets this wrong,
+    // and so does dividing the expanded body by 160 — only doing both in that
+    // order lands on the number the carrier bills.
+    const tracked = `${'x'.repeat(45)}{referral_link}\u{1F44D}`;
+    expect(smsSegments(tracked)).toBe(3);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   rankFindings,
   hasBlockingFinding,
   type CampaignFinding,
+  smsSegments,
 } from '@/lib/campaign-guard';
 import { previewCampaignEmailAction, readCampaignAction, sendCampaignAction, sendTestEmailAction } from './actions';
 
@@ -282,11 +283,15 @@ export default function CampaignComposer({
           required
         />
         <p className="field-note">
-          Use <code>{'{name}'}</code> to drop in each customer&apos;s first name.
+          Use <code>{'{name}'}</code> to drop in each customer&apos;s first name, and{' '}
+          <code>{'{referral_link}'}</code> for their own referral link (once you&apos;ve set a thank-you offer under Referrals).
+          {/* smsSegments, not body.length: it expands the referral token to the
+              ~92-character link it becomes, so the count is what actually gets
+              billed rather than what is on screen. */}
           {wantSms ? (
-            <span className={body.length + 40 > 160 ? ' warn' : ''}>
-              {' '}Texts: ~{Math.max(1, Math.ceil((body.length + 40) / 160))} segment
-              {Math.max(1, Math.ceil((body.length + 40) / 160)) > 1 ? 's' : ''} each (business name &amp; opt-out line are
+            <span className={smsSegments(body) > 1 ? ' warn' : ''}>
+              {' '}Texts: ~{smsSegments(body)} segment
+              {smsSegments(body) > 1 ? 's' : ''} each (business name &amp; opt-out line are
               added automatically).
             </span>
           ) : null}

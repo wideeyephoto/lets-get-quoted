@@ -44,7 +44,7 @@ export default async function BookingPage({
   searchParams,
 }: {
   params: { subdomain: string };
-  searchParams: { booked?: string; requested?: string; error?: string };
+  searchParams: { booked?: string; requested?: string; error?: string; ref?: string };
 }) {
   const admin = createAdminClient();
   const site = await getPublicSiteBySubdomain(admin, params.subdomain);
@@ -212,6 +212,10 @@ export default async function BookingPage({
   const connect = gate as { connect_onboarded?: boolean; stripe_connect_id?: string | null } | null;
   const quickStopPayable = Boolean(connect?.connect_onboarded && connect?.stripe_connect_id);
   const quickStopEnabled = quickStopSettings.available && quickStopDays.length > 0 && quickStopPayable;
+  // This rail never creates a lead — it writes extra_stop_requests — so the
+  // referrer rides in that row's `intake` blob the way a lead's rides in
+  // `triage`, and buildReferralQueue reads both. A referred visitor who takes
+  // the priority-visit path is attributed like any other.
   const quickStop = quickStopEnabled ? (
     <QuickStopFlow
       subdomain={params.subdomain}
@@ -219,6 +223,7 @@ export default async function BookingPage({
       businessName={businessName}
       serviceArea={site.service_area}
       days={quickStopDays}
+      referralCode={searchParams.ref ?? null}
     />
   ) : null;
 
@@ -242,6 +247,7 @@ export default async function BookingPage({
             businessName={businessName}
             serviceArea={site.service_area ?? ''}
             phone={site.phone}
+            referralCode={searchParams.ref ?? null}
           />
           {quickStop}
         </main>
@@ -318,6 +324,7 @@ export default async function BookingPage({
             <RequestVisitFlow
               subdomain={params.subdomain}
               businessName={businessName}
+              referralCode={searchParams.ref ?? null}
               days={days.map((day) => ({
                 dateKey: day.dateKey,
                 dayLabel: day.dayLabel,

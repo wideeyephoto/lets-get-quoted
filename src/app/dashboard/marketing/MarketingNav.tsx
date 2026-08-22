@@ -17,11 +17,17 @@ import { usePathname } from 'next/navigation';
  * links do not have.
  */
 
-const SECTIONS = [
+const SECTIONS: { path: string; label: string; demo?: boolean }[] = [
   { path: '', label: 'Overview' },
   { path: '/campaigns', label: 'Campaigns' },
   { path: '/blog', label: 'Blog' },
   { path: '/performance', label: 'Performance' },
+  // demo:false because there is no /demo/marketing/referrals route. The "only"
+  // allowlist below would also cover this, but nothing passes it today — so a
+  // tab added here would have appeared in the logged-out demo and 404'd, which
+  // is the exact failure the note on "only" is about. Marking it at the section
+  // is the version nobody has to remember at four call sites.
+  { path: '/referrals', label: 'Referrals', demo: false },
 ];
 
 export default function MarketingNav({
@@ -44,7 +50,8 @@ export default function MarketingNav({
   // /login — which is the same reason the demo used to have no marketing nav at
   // all, and therefore no way to see that Marketing has four sections.
   const root = `${basePath}/marketing`;
-  const tabs = SECTIONS.filter((section) => !only || only.includes(section.path)).map((section) => ({
+  const inDemo = basePath !== '/dashboard';
+  const tabs = SECTIONS.filter((section) => (!only || only.includes(section.path)) && !(inDemo && section.demo === false)).map((section) => ({
     href: `${root}${section.path}`,
     label: section.label,
   }));
