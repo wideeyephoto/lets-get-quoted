@@ -4438,6 +4438,15 @@ h3 {
   border-radius: 0.72rem;
   background-color: var(--tone-tint);
 }
+/* THE FILL AGREES WITH THE WORD, wherever a tone is in scope.
+   Without this the fill has three states (green / warn / red) while the status
+   word has five, so "1 of 1 used - At plan limit" drew a FULL bar in the healthy
+   green: the colour said fine, the length said full, and the word said neither.
+   Driving it from --tone-ink means a fill can never disagree with the label
+   printed underneath it, in either theme. */
+.plan-usage-capacity .plan-usage-storage-meter-fill,
+.plan-usage-balance[data-tone] .plan-usage-storage-meter-fill { background: var(--tone-ink); }
+
 .plan-usage-capacity-label { color: var(--mute-g270); font-size: 0.78rem; font-weight: 700; }
 .plan-usage-capacity-figure { color: var(--text); font-size: 1.02rem; font-variant-numeric: tabular-nums; }
 .plan-usage-capacity .plan-usage-storage-meter { margin-top: 0.1rem; }

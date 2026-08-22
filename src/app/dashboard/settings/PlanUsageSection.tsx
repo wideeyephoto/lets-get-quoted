@@ -344,9 +344,15 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
           role="img"
           aria-label={`${resource.percentUsed ?? 0}% of this period's ${resource.label.toLowerCase()} used`}
         >
+          {/* FILLS WITH WHAT HAS BEEN USED, like every other meter on this page.
+              It drew the REMAINDER at first, which put a full green bar beside
+              "500 of 500 left" and an identical full green bar beside "Office
+              users 1 of 1 used - at plan limit" two cards below. One visual,
+              two opposite meanings, on one screen. The aria-label said "used"
+              throughout and was the half that was right. */}
           <div
-            className={`plan-usage-storage-meter-fill${(resource.percentUsed ?? 0) >= 90 ? ' nearly' : ''}`}
-            style={{ width: `${Math.max(100 - (resource.percentUsed ?? 0), 2)}%` }}
+            className="plan-usage-storage-meter-fill"
+            style={{ width: `${Math.max(resource.percentUsed ?? 0, 2)}%` }}
           />
         </div>
       ) : null}
