@@ -54,6 +54,28 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+/**
+ * The LONGEST gap this schedule can leave, in minutes, or null if unreadable.
+ *
+ * Deliberately coarse and deliberately conservative. It exists only to answer
+ * "could this possibly have fired inside the window?" — anything it cannot parse
+ * returns null and is treated as due, because the failure that matters is a dead
+ * worker reported as fine, never the reverse.
+ */
+export function maxIntervalMinutes(schedule) {
+  const parts = String(schedule || '').trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [minute, hour, dom, month, dow] = parts;
+  if (month !== '*') return 366 * 1440;
+  if (dom !== '*') return 31 * 1440;
+  if (dow !== '*') return 7 * 1440;
+  if (hour === '*') return minute === '*' ? 1 : 60;
+  const step = /^\*\/(\d+)$/.exec(hour);
+  if (step) return Number(step[1]) * 60;
+  // A single hour, or a list of them: the widest gap is still under a day.
+  return 1440;
+}
+
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -72,27 +94,15 @@ try {
       group by job`,
     [windowMinutes],
   );
-/**
- * The LONGEST gap this schedule can leave, in minutes, or null if unreadable.
- *
- * Deliberately coarse and deliberately conservative. It exists only to answer
- * "could this possibly have fired inside the window?" — anything it cannot parse
- * returns null and is treated as due, because the failure that matters is a dead
- * worker reported as fine, never the reverse.
- */
-function maxIntervalMinutes(schedule) {
-  const parts = String(schedule || '').trim().split(/\s+/);
-  if (parts.length !== 5) return null;
-  const [minute, hour, dom, month, dow] = parts;
-  if (month !== '*') return 366 * 1440;
-  if (dom !== '*') return 31 * 1440;
-  if (dow !== '*') return 7 * 1440;
-  if (hour === '*') return minute === '*' ? 1 : 60;
-  const step = /^\*\/(\d+)$/.exec(hour);
-  if (step) return Number(step[1]) * 60;
-  // A single hour, or a list of them: the widest gap is still under a day.
-  return 1440;
-}
+
+  // ALL-TIME, no window. Without this the "not due yet" branch below is a blind
+  // spot: a weekly cron that has been dead since the day it was declared looks
+  // exactly like one that simply has not come round in the last 24 hours. Never
+  // having run in the whole history is not "not due".
+  const { rows: everRows } = await client.query(
+    'select job, max(started_at) as last_run from public.cron_runs group by job',
+  );
+  const ever = new Map(everRows.map((row) => [row.job, row.last_run]));
 
   const seen = new Map(rows.map((row) => [row.job, row]));
 
@@ -108,9 +118,12 @@ function maxIntervalMinutes(schedule) {
       // genuinely dead every-minute worker is a permanent false alarm, and a report
       // that always shows two problems teaches people to read neither.
       const period = maxIntervalMinutes(schedule);
-      if (period !== null && period > windowMinutes) {
+      const lastEver = ever.get(job);
+      // Only excusable if it has genuinely run at some point. A cron that has
+      // NEVER recorded a run is silent no matter how rare its schedule is.
+      if (period !== null && period > windowMinutes && lastEver) {
         idle.push({ job, schedule });
-        console.log(`idle     ${job.padEnd(34)} ${schedule} -- a ${windowMinutes}min window cannot see it`);
+        console.log(`idle     ${job.padEnd(34)} ${schedule} -- outside this ${windowMinutes}min window; last ran ${lastEver.toISOString()}`);
         continue;
       }
       silent.push({ job, schedule });

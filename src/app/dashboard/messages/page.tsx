@@ -78,8 +78,11 @@ export default async function MessagesPage({
   searchParams: { thread?: string; q?: string; filter?: string; setup?: string; sent?: string; queued?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
+  // Built ONCE and shared. Both loadConversations and this page need it, and
+  // letting each build its own meant six table reads per inbox load.
+  const identities = await buildContactIdentityMap(supabase, accountId);
   const [conversationRead, consentPhoneRead, setup, messagingReadiness] = await Promise.all([
-    loadConversations(supabase, accountId),
+    loadConversations(supabase, accountId, identities),
     loadCurrentSmsConsentPhones(supabase, accountId),
     // Both setup reads report "unavailable" rather than a default on failure,
     // so the strip can say it could not tell instead of announcing a state.
@@ -124,12 +127,9 @@ export default async function MessagesPage({
   // into the newest conversation with no way back to the list.
   const threadChosen = Boolean(searchParams.thread);
 
-  const [messageRead, identities] = await Promise.all([
-    activePhone
-      ? loadConversationMessages(supabase, accountId, activePhone)
-      : Promise.resolve({ kind: 'ready' as const, data: [] }),
-    buildContactIdentityMap(supabase, accountId),
-  ]);
+  const messageRead = activePhone
+    ? await loadConversationMessages(supabase, accountId, activePhone)
+    : { kind: 'ready' as const, data: [] };
   const messages = messageRead.data;
   const messagesAvailable = messageRead.kind === 'ready';
   // Two values, deliberately. activeName is a REAL name or null and is what

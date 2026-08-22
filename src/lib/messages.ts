@@ -450,6 +450,14 @@ function excludePlatformLanes<Q extends { or: (filter: string) => Q }>(
 export async function loadConversations(
   supabase: SupabaseClient,
   accountId: string,
+  /**
+   * Prebuilt contact identities, when the caller already has them.
+   *
+   * The inbox page needs this map for its own heading and compose list, so
+   * without this parameter one page load built it TWICE -- six table reads
+   * where three will do. Optional, so every other caller is unchanged.
+   */
+  identities?: Map<string, ContactIdentity>,
 ): Promise<MessagingReadResult<Conversation[]>> {
   // Columns listed explicitly so a pre-migration database (no read_at /
   // media_urls) still returns rows; the fallback below drops the new ones.
@@ -491,14 +499,14 @@ export async function loadConversations(
     false,
   );
 
-  const identities = await buildContactIdentityMap(supabase, accountId);
+  const contacts = identities ?? await buildContactIdentityMap(supabase, accountId);
   const seen = new Map<string, Conversation>();
   for (const row of projectedRows) {
     const phone = String(row.phone_number);
     const media = Array.isArray(row.media_urls) ? (row.media_urls as string[]) : [];
     const existing = seen.get(phone);
     if (!existing) {
-      const identity = identities.get(phone) ?? null;
+      const identity = contacts.get(phone) ?? null;
       seen.set(phone, {
         phone,
         name: identity?.name ?? null,
