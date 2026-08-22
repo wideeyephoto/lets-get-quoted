@@ -973,9 +973,22 @@ export default function PlanUsageSection({
       ) : null}
 
       <section className="panel workspace-section-card" id="usage-balances">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Available now</p>
-          <h2><SectionIcon name="credits" />Credit balances</h2>
+        <div className="workspace-section-headrow">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Available now</p>
+            <h2><SectionIcon name="credits" />Credit balances</h2>
+          </div>
+          {/* The mockup puts "Add credits" here, and it is the one header action
+              on this tab with somewhere real to go. Its two neighbours in the
+              mockup -- "View all balances" and "Costs & billing" -- have no
+              destination in this product, and a header action that scrolls
+              nowhere is the same defect as the banner's null CTA.
+
+              Rendered only when the top-up surface is, so the link can never
+              point at a section that is not on the page. */}
+          {showTopUpPurchase ? (
+            <a className="btn subtle workspace-section-action" href="#buy-credits">Add credits</a>
+          ) : null}
         </div>
         {/* THE SENTENCE THAT USED TO LIVE HERE HAS BEEN RETIRED ON PURPOSE.
             It read: "Plan-period credits and purchased credits can share one

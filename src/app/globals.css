@@ -4473,6 +4473,17 @@ h3 {
 .plan-usage-note { --tone-ink: var(--info); }
 .plan-usage-note.warning { --tone-ink: var(--warn); }
 
+/* Heading on the left, its action on the right, wrapping to two rows on a
+   narrow screen rather than squeezing the heading. */
+.workspace-section-headrow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+.workspace-section-action { flex: none; }
+
 /* A glyph beside each section heading, as the mockup has. inline-flex on the
    h2 rather than absolute positioning, so a heading that wraps to two lines
    keeps the icon on the first one instead of floating beside the second. */
