@@ -46,6 +46,15 @@ export function basePlanSubscriptionCancellationEnabled(
   return env[BASE_PLAN_SUBSCRIPTION_CANCELLATION_FLAG] === '1';
 }
 
+/**
+ * ONE STRING, because the gate now bites in two places and a paraphrase is how
+ * two refusals start meaning different things. Deliberately not "from here":
+ * this is reachable from the cancel panel AND from choosing Flex in the
+ * change-plan panel, and "here" is a different place in each.
+ */
+export const CANCELLATION_DISABLED_MESSAGE =
+  'Cancelling a plan is not switched on yet.';
+
 /** Statuses where there is still something for a customer to cancel. */
 const CANCELLABLE_STATUSES = new Set(['trialing', 'active', 'past_due', 'unpaid', 'incomplete']);
 
@@ -179,6 +188,22 @@ export async function cancelBasePlanSubscriptionAtPeriodEnd(input: {
   accountId: string;
   actorEmail?: string | null;
 }): Promise<CancellationResult> {
+  // THE GATE BELONGS HERE, NOT ONLY ON THE ACTION THAT RENDERS THE BUTTON.
+  //
+  // It used to live solely in `cancelBasePlanSubscriptionAction`, which made it
+  // a gate on ONE ROUTE rather than on the operation. `changeBasePlan` reaches
+  // this function directly when a customer picks Flex -- downgrading to Flex IS
+  // cancelling -- and that action checks no flag at all, so the switch named
+  // "cancellation enabled" did not decide whether a subscription could be
+  // cancelled. It decided which of two buttons was visible.
+  //
+  // Checked BEFORE the read, so a refusal costs no query and, more importantly,
+  // writes no `subscription_cancellation_requested` event for something that
+  // will not happen.
+  if (!basePlanSubscriptionCancellationEnabled()) {
+    return { ok: false, error: CANCELLATION_DISABLED_MESSAGE };
+  }
+
   const subscription = await loadCancellableSubscription(input.admin, input.accountId);
   if (!subscription) {
     return { ok: false, error: 'There is no active subscription on this workspace to cancel.' };
