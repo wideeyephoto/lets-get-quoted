@@ -115,6 +115,14 @@
     {
       "path": "/api/cron/voice-retention",
       "schedule": "43 5 * * *"
+    },
+    {
+      "path": "/api/cron/overage-period-close",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/overage-settlement",
+      "schedule": "37 * * * *"
     }
   ]
 }

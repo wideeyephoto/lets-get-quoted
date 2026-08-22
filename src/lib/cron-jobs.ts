@@ -31,6 +31,20 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'overage-period-close',
+    label: 'Overage period close',
+    schedule: '17 * * * *',
+    importance: 'money',
+    consequence: 'Ended billing periods are never frozen into a settlement, so authorized extra usage is incurred and can never be billed for.',
+  },
+  {
+    job: 'overage-settlement',
+    label: 'Overage settlement',
+    schedule: '37 * * * *',
+    importance: 'money',
+    consequence: 'Frozen settlements never reach Stripe, so extra usage a contractor authorized and used is never charged.',
+  },
+  {
     job: 'voice-retention',
     label: 'AI Voice history retention',
     schedule: '43 5 * * *',
