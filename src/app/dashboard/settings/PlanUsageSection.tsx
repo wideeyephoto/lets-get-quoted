@@ -350,6 +350,30 @@ const GLANCE_ICONS: Readonly<Record<string, string>> = Object.freeze({
   projected: '<path d="M4 19.5h16"/><path d="M6.5 16V11M11 16V7.5M15.5 16v-6M20 16V5"/>',
 });
 
+/**
+ * Section-heading glyphs, same 24-box convention as GLANCE_ICONS above and
+ * SettingsTabs below it. The mockup puts one beside every heading; without them
+ * the page reads as a wall of identical cards.
+ */
+const SECTION_ICONS: Readonly<Record<string, string>> = Object.freeze({
+  plan: '<path d="M12 3.5 3.5 8l8.5 4.5L20.5 8 12 3.5Z"/><path d="M3.5 12.5 12 17l8.5-4.5"/><path d="M3.5 16.5 12 21l8.5-4.5"/>',
+  fit: '<path d="M4 19.5h16"/><path d="M4 15.5 9.5 10l4 3.5L20 6"/><path d="M20 10V6h-4"/>',
+  credits: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M14.5 9.75c0-1.24-1.12-2.25-2.5-2.25s-2.5 1.01-2.5 2.25S10.62 12 12 12s2.5 1.01 2.5 2.25-1.12 2.25-2.5 2.25-2.5-1.01-2.5-2.25"/>',
+  storage: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
+  capacity: '<circle cx="9" cy="8.5" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 19a6 6 0 0 0-2-4.5"/>',
+});
+
+function SectionIcon({ name }: { name: keyof typeof SECTION_ICONS }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="workspace-section-ic"
+      dangerouslySetInnerHTML={{ __html: SECTION_ICONS[name] }}
+    />
+  );
+}
+
 function GlanceCell({ icon, label, value, children }: {
   icon: keyof typeof GLANCE_ICONS;
   label: string;
@@ -824,7 +848,7 @@ export default function PlanUsageSection({
       <section className="panel workspace-section-card" id="current-plan">
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Current plan</p>
-          <h2>Your LGQ plan</h2>
+          <h2><SectionIcon name="plan" />Your LGQ plan</h2>
           <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
         </div>
 
@@ -918,7 +942,7 @@ export default function PlanUsageSection({
         <section className="panel workspace-section-card" id="plan-fit">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Plan fit</p>
-            <h2>Which plan costs least at what you collect</h2>
+            <h2><SectionIcon name="fit" />Which plan costs least at what you collect</h2>
           </div>
           {/* No estimate and no recommendation: every figure below comes from
               catalog constants alone. The half of this that would say "at YOUR
@@ -951,7 +975,7 @@ export default function PlanUsageSection({
       <section className="panel workspace-section-card" id="usage-balances">
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Available now</p>
-          <h2>Credit balances</h2>
+          <h2><SectionIcon name="credits" />Credit balances</h2>
         </div>
         {/* THE SENTENCE THAT USED TO LIVE HERE HAS BEEN RETIRED ON PURPOSE.
             It read: "Plan-period credits and purchased credits can share one
@@ -1003,7 +1027,7 @@ export default function PlanUsageSection({
         <section className="panel workspace-section-card" id="workspace-storage">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Files &amp; photos</p>
-            <h2>Storage</h2>
+            <h2><SectionIcon name="storage" />Storage</h2>
           </div>
 
           {storageState.kind === 'measured' ? (
@@ -1089,7 +1113,7 @@ export default function PlanUsageSection({
         <section className="panel workspace-section-card" id="included-limits">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Plan capacity</p>
-            <h2>What you are using</h2>
+            <h2><SectionIcon name="capacity" />What you are using</h2>
           </div>
 
           {/* Occupancy first, entitlement second. "Office users: 2" never told a
