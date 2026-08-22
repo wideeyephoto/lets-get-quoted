@@ -127,13 +127,24 @@ describe('the owner guard sends them somewhere that exists', () => {
   it('does not send an office user to /login, which would loop', () => {
     // They are already signed in, so /login returns them straight here. The
     // loop is the failure; the wording is the point.
-    const auth = readFileSync(join(process.cwd(), 'src', 'lib', 'auth.ts'), 'utf8');
-    const officeBranch = auth.indexOf("membership.role === 'office'");
-    const loginBranch = auth.indexOf("membership.role !== 'owner'");
+    // Normalised at the READ, never in the assertions below: the working tree
+    // is CRLF and a boundary written as \n would otherwise never match.
+    const auth = readFileSync(join(process.cwd(), 'src', 'lib', 'auth.ts'), 'utf8')
+      .replace(/\r\n/g, '\n');
+
+    // Scoped to the owner guard's OWN body. The same two role checks appear in
+    // the office-capable resolver further down the file, and an indexOf over the
+    // whole source would happily read this ordering off the wrong function.
+    const start = auth.indexOf('export async function requireOwnerContext');
+    expect(start).toBeGreaterThan(0);
+    const guard = auth.slice(start, auth.indexOf('\nexport ', start + 1));
+
+    const officeBranch = guard.indexOf("role === 'office'");
+    const loginBranch = guard.indexOf("role !== 'owner'");
     expect(officeBranch).toBeGreaterThan(0);
     // Order matters: the office case has to be decided before the catch-all.
     expect(officeBranch).toBeLessThan(loginBranch);
-    expect(auth).toContain("redirect('/office-access')");
+    expect(guard).toContain("redirect('/office-access')");
   });
 
   it('lands on a page outside the guard it was rejected by', () => {
