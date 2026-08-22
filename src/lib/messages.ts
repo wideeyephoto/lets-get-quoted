@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizeUsPhone } from '@/lib/phone';
+import { cityFromAddress, streetFromAddress } from '@/lib/lead-detail-labels';
+import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 
 export type SmsDirection = 'inbound' | 'outbound';
 
@@ -37,6 +38,13 @@ export type SmsMessage = {
 export type Conversation = {
   phone: string;
   name: string | null;
+  /**
+   * What to CALL this thread in a list — never null, the number as a last
+   * resort. Separate from `name` because `name` must stay a real person's name:
+   * starterRepliesFor() greets with it, and a street there opens a reply with
+   * "Hi 1418".
+   */
+  label: string;
   lastBody: string;
   lastAt: string;
   lastDirection: SmsDirection;
@@ -302,20 +310,92 @@ export async function logOutboundMessage(
 
 // Build a phone → contact-name map from the account's jobs and leads, so threads
 // show a name instead of a bare number. Keyed by normalized phone.
-export async function buildContactNameMap(supabase: SupabaseClient, accountId: string): Promise<Map<string, string>> {
-  const [{ data: jobs }, { data: leads }] = await Promise.all([
-    supabase.from('jobs').select('client_name, client_phone').eq('account_id', accountId).not('client_phone', 'is', null),
-    supabase.from('leads').select('name, phone').eq('account_id', accountId).not('phone', 'is', null),
+/** Who a phone number belongs to, as far as this workspace knows. */
+export type ContactIdentity = {
+  /** A real person's name, or null. Safe to greet with. */
+  name: string | null;
+  /** Freeform, one column — there are no separate street/city fields. */
+  address: string | null;
+};
+
+/**
+ * What to CALL a phone number in the inbox.
+ *
+ * The number used to be the heading whatever else we knew about them, which is
+ * the least recognisable thing on the row: an owner reads "Dana Whitfield" or
+ * "1418 Maplewood Ave" instantly and a ten-digit number never. Fall through in
+ * the order an owner would ask: who, then where exactly, then which town, and
+ * the number only when we genuinely know nothing else.
+ *
+ * DO NOT feed the result to starterRepliesFor(). It greets by first name, so a
+ * street or a town there opens a reply with "Hi 1418" or "Hi Royal Oak". That is
+ * why `name` survives beside this as its own field rather than being replaced.
+ */
+export function contactLabel(
+  identity: ContactIdentity | null | undefined,
+  phone: string,
+): string {
+  const name = (identity?.name ?? '').trim();
+  if (name) return name;
+  const address = identity?.address ?? null;
+  return streetFromAddress(address) ?? cityFromAddress(address) ?? formatPhoneDashes(phone);
+}
+
+/**
+ * Every phone number this workspace can put a name or an address to.
+ *
+ * READS CLIENTS, WHICH IT DID NOT. The thread pane resolves its heading from
+ * `clients` (see messageContext) while this map read only jobs and leads, so a
+ * customer who existed solely in the address book was a bare phone number in
+ * the list and a full name in the panel beside it — the same conversation,
+ * labelled two different ways on one screen.
+ *
+ * Precedence runs leads → jobs → clients, weakest first. A lead is what someone
+ * typed into a form once; a job is more current; the client record is the book
+ * the owner curates and the one the pane already shows, so it wins and the two
+ * halves of the screen agree.
+ */
+export async function buildContactIdentityMap(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<Map<string, ContactIdentity>> {
+  const [{ data: jobs }, { data: leads }, { data: clients }] = await Promise.all([
+    supabase.from('jobs').select('client_name, client_phone, address').eq('account_id', accountId).not('client_phone', 'is', null),
+    supabase.from('leads').select('name, phone, address').eq('account_id', accountId).not('phone', 'is', null),
+    supabase.from('clients').select('name, phone, address').eq('account_id', accountId).not('phone', 'is', null),
   ]);
+
+  const map = new Map<string, ContactIdentity>();
+  // Merged field by field rather than row by row: a job with an address but no
+  // usable name should not erase the name a lead supplied, and vice versa.
+  const absorb = (phone: unknown, name: unknown, address: unknown) => {
+    const key = normalizeUsPhone(String(phone ?? ''));
+    if (!key) return;
+    const existing = map.get(key) ?? { name: null, address: null };
+    const nextName = typeof name === 'string' && name.trim() ? name.trim() : null;
+    const nextAddress = typeof address === 'string' && address.trim() ? address.trim() : null;
+    map.set(key, {
+      name: nextName ?? existing.name,
+      address: nextAddress ?? existing.address,
+    });
+  };
+
+  for (const lead of leads ?? []) absorb(lead.phone, lead.name, lead.address);
+  for (const job of jobs ?? []) absorb(job.client_phone, job.client_name, job.address);
+  for (const client of clients ?? []) absorb(client.phone, client.name, client.address);
+  return map;
+}
+
+/**
+ * Names only, for callers that must not be handed a street.
+ *
+ * @see contactLabel for what the inbox displays.
+ */
+export async function buildContactNameMap(supabase: SupabaseClient, accountId: string): Promise<Map<string, string>> {
+  const identities = await buildContactIdentityMap(supabase, accountId);
   const map = new Map<string, string>();
-  for (const lead of leads ?? []) {
-    const key = normalizeUsPhone(String(lead.phone));
-    if (key && lead.name && !map.has(key)) map.set(key, String(lead.name));
-  }
-  // Jobs win over leads (more current), so set them last.
-  for (const job of jobs ?? []) {
-    const key = normalizeUsPhone(String(job.client_phone));
-    if (key && job.client_name) map.set(key, String(job.client_name));
+  for (const [phone, identity] of identities) {
+    if (identity.name) map.set(phone, identity.name);
   }
   return map;
 }
@@ -411,16 +491,18 @@ export async function loadConversations(
     false,
   );
 
-  const nameMap = await buildContactNameMap(supabase, accountId);
+  const identities = await buildContactIdentityMap(supabase, accountId);
   const seen = new Map<string, Conversation>();
   for (const row of projectedRows) {
     const phone = String(row.phone_number);
     const media = Array.isArray(row.media_urls) ? (row.media_urls as string[]) : [];
     const existing = seen.get(phone);
     if (!existing) {
+      const identity = identities.get(phone) ?? null;
       seen.set(phone, {
         phone,
-        name: nameMap.get(phone) ?? null,
+        name: identity?.name ?? null,
+        label: contactLabel(identity, phone),
         lastBody: String(row.body ?? ''),
         lastAt: String(row.created_at),
         lastDirection: row.direction as SmsDirection,

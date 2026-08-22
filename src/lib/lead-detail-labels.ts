@@ -155,6 +155,36 @@ export function cityFromAddress(address: string | null | undefined): string | nu
 }
 
 /**
+ * "1418 Maplewood Ave, Royal Oak, MI 48067, USA" → "1418 Maplewood Ave".
+ *
+ * Works FORWARDS, the opposite of cityFromAddress, because the street is the
+ * first segment that looks like one. Segments in front of it that don't — a
+ * business name, a care-of line — are skipped rather than mistaken for it, and
+ * a state/ZIP/country tail is never eligible even in a one-line address.
+ *
+ * Returns the whole segment including the house number, not just the road name.
+ * "1418 Maplewood Ave" identifies a customer; "Maplewood Ave" identifies a road
+ * that several of them may live on.
+ */
+export function streetFromAddress(address: string | null | undefined): string | null {
+  const parts = (address ?? '')
+    .toString()
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  for (const part of parts) {
+    if (COUNTRY_WORDS.has(part.replace(/\.$/, '').toLowerCase())) continue;
+    if (isPostalCode(part) || isStateish(part)) continue;
+    if (!looksLikeStreet(part)) continue;
+    // Long enough to be a paragraph is not a street; the inbox row would be
+    // truncated to something less recognisable than the phone number it replaced.
+    return part.length <= 60 ? part : null;
+  }
+  return null;
+}
+
+/**
  * The town for a lead — from the address if there is one, otherwise from
  * whatever the estimator recorded as their location.
  *

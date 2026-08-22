@@ -9,6 +9,7 @@ import {
   leadCityLabel,
   leadScoreLabel,
   leadStageLabel,
+  streetFromAddress,
 } from '@/lib/lead-detail-labels';
 import { LEADS_VIEWS, normalizeLeadsView } from '@/lib/leads';
 
@@ -202,5 +203,70 @@ describe('leadCityLabel', () => {
   it('is null when neither field says where they are', () => {
     expect(leadCityLabel(null, null)).toBeNull();
     expect(leadCityLabel('1418 Maplewood Ave', undefined)).toBeNull();
+  });
+});
+
+describe('streetFromAddress', () => {
+  it('takes the street line out of a full address', () => {
+    expect(streetFromAddress('1418 Maplewood Ave, Royal Oak, MI 48067, USA')).toBe('1418 Maplewood Ave');
+    expect(streetFromAddress('22 Elm St, Ann Arbor, Michigan 48104-1234')).toBe('22 Elm St');
+  });
+
+  it('keeps the house number', () => {
+    // "Maplewood Ave" is a road several customers may live on. The number is
+    // what makes the row identify one of them.
+    expect(streetFromAddress('1418 Maplewood Ave, Royal Oak')).toContain('1418');
+  });
+
+  it('reads a one-line address', () => {
+    expect(streetFromAddress('1418 Maplewood Ave')).toBe('1418 Maplewood Ave');
+    expect(streetFromAddress('Maplewood Ave')).toBe('Maplewood Ave');
+    expect(streetFromAddress('PO Box 22')).toBe('PO Box 22');
+  });
+
+  it('skips what sits in front of the street', () => {
+    // A business name, a care-of line or an apartment line is not the street,
+    // and taking the first segment blindly would print it. "Apt 4B" is the one
+    // worth pinning: it carries a digit and a unit word, so it looks street-ish
+    // at a glance, but the suffix test anchors to the END of the segment and it
+    // fails there — which is what lets the real street behind it win.
+    expect(streetFromAddress('Whitfield Holdings, 1418 Maplewood Ave, Royal Oak')).toBe('1418 Maplewood Ave');
+    expect(streetFromAddress('Apt 4B, 1418 Maplewood Ave, Royal Oak, MI 48067')).toBe('1418 Maplewood Ave');
+  });
+
+  it('never returns the state, ZIP or country tail', () => {
+    // The tail is eligible by position in a short address; it must lose on shape.
+    expect(streetFromAddress('Royal Oak, MI 48067')).toBeNull();
+    expect(streetFromAddress('48067')).toBeNull();
+    expect(streetFromAddress('MI')).toBeNull();
+    expect(streetFromAddress('USA')).toBeNull();
+  });
+
+  it('is null when there is no street to find', () => {
+    expect(streetFromAddress('Royal Oak')).toBeNull();
+    expect(streetFromAddress('Royal Oak, MI, USA')).toBeNull();
+    expect(streetFromAddress(null)).toBeNull();
+    expect(streetFromAddress(undefined)).toBeNull();
+    expect(streetFromAddress('')).toBeNull();
+  });
+
+  it('declines something too long to read in a list row', () => {
+    expect(streetFromAddress(`${'1'.repeat(61)} Maplewood Ave`)).toBeNull();
+  });
+
+  it('and cityFromAddress do not both claim the same segment', () => {
+    // The label chain tries street first and city second, so any address where
+    // both matched the SAME text would silently make the city fallback dead.
+    for (const address of [
+      '1418 Maplewood Ave, Royal Oak, MI 48067, USA',
+      'Apt 4B, 1418 Maplewood Ave, Royal Oak',
+      '22 Elm St, Ann Arbor',
+    ]) {
+      const street = streetFromAddress(address);
+      const city = cityFromAddress(address);
+      expect(street, address).not.toBeNull();
+      expect(city, address).not.toBeNull();
+      expect(street, address).not.toBe(city);
+    }
   });
 });

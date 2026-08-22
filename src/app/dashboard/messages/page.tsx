@@ -8,7 +8,8 @@ import { conversationLinkLabel, inboxEmptyState, type InboxFilter } from '@/lib/
 import { linkifyMessage } from '@/lib/message-linkify';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import {
-  buildContactNameMap,
+  buildContactIdentityMap,
+  contactLabel,
   loadConversationMessages,
   loadConversations,
   loadCurrentSmsConsentPhones,
@@ -107,7 +108,10 @@ export default async function MessagesPage({
     if (filter === 'reply' && conversation.lastDirection !== 'inbound') return false;
     if (!query) return true;
     const name = (conversation.name ?? '').toLowerCase();
-    return name.includes(query) || conversation.phone.includes(query) || (conversation.lastBody ?? '').toLowerCase().includes(query);
+    // The LABEL too, not just the name: the row may be headed by a street or
+    // a town, and searching for the words on screen has to find them.
+    const label = conversation.label.toLowerCase();
+    return name.includes(query) || label.includes(query) || conversation.phone.includes(query) || (conversation.lastBody ?? '').toLowerCase().includes(query);
   });
 
   const activePhone = searchParams.thread
@@ -120,15 +124,24 @@ export default async function MessagesPage({
   // into the newest conversation with no way back to the list.
   const threadChosen = Boolean(searchParams.thread);
 
-  const [messageRead, nameMap] = await Promise.all([
+  const [messageRead, identities] = await Promise.all([
     activePhone
       ? loadConversationMessages(supabase, accountId, activePhone)
       : Promise.resolve({ kind: 'ready' as const, data: [] }),
-    buildContactNameMap(supabase, accountId),
+    buildContactIdentityMap(supabase, accountId),
   ]);
   const messages = messageRead.data;
   const messagesAvailable = messageRead.kind === 'ready';
-  const activeName = activePhone ? nameMap.get(activePhone) ?? null : null;
+  // Two values, deliberately. activeName is a REAL name or null and is what
+  // starterRepliesFor() greets with; activeLabel is what the heading shows and
+  // may be a street or a town, which must never reach a greeting.
+  const activeIdentity = activePhone ? identities.get(activePhone) ?? null : null;
+  const activeName = activeIdentity?.name ?? null;
+  const activeLabel = activePhone ? contactLabel(activeIdentity, activePhone) : null;
+  // Whether the heading says anything the number doesn't already say.
+  const namedHeading = Boolean(
+    activePhone && activeLabel && activeLabel !== formatPhoneDashes(activePhone),
+  );
   const templates = await listMessageTemplates(supabase, accountId);
   // Who they are and what this is about — the three tabs you used to have to
   // open to answer a text.
@@ -150,7 +163,7 @@ export default async function MessagesPage({
   // Only consent-backed numbers appear in compose. Having a lead/job phone is
   // not consent, and the atomic enqueue rechecks the same ledger at send time.
   const contacts = consentPhoneRead.data
-    .map((phone) => ({ phone, name: nameMap.get(phone) ?? formatPhoneDashes(phone) }))
+    .map((phone) => ({ phone, name: contactLabel(identities.get(phone) ?? null, phone) }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const totalUnread = conversations.reduce((sum, conversation) => sum + conversation.unread, 0);
   const empty = inboxEmptyState({ total: allConversations.length, filter, query: rawQuery });
@@ -275,7 +288,7 @@ export default async function MessagesPage({
           ) : (
             <div className="inbox-thread-list">
               {conversations.map((conversation) => {
-                const name = conversation.name ?? formatPhoneDashes(conversation.phone);
+                const name = conversation.label;
                 const when = formatTime(conversation.lastAt);
                 return (
                   <Link
@@ -332,14 +345,16 @@ export default async function MessagesPage({
                   <Link href="/dashboard/messages" className="inbox-back" scroll={false}>
                     <span aria-hidden="true">←</span> All conversations
                   </Link>
-                  <h2>{activeName ?? formatPhoneDashes(activePhone)}</h2>
-                  {/* The number is only a subtitle when the heading is a NAME.
-                      Unnamed, the heading already IS the number and repeating
-                      it reads as a rendering fault. */}
-                  {activeName || context.job ? (
+                  <h2>{activeLabel ?? formatPhoneDashes(activePhone)}</h2>
+                  {/* The number is a subtitle whenever the heading is something
+                      ELSE — a name, a street, a town. When the heading already IS
+                      the number, repeating it reads as a rendering fault. Keyed off
+                      the label rather than the name, or a street-headed thread
+                      would lose the number entirely. */}
+                  {namedHeading || context.job ? (
                     <p className="job-meta">
-                      {activeName ? formatPhoneDashes(activePhone) : null}
-                      {activeName && context.job ? ' · ' : null}
+                      {namedHeading ? formatPhoneDashes(activePhone) : null}
+                      {namedHeading && context.job ? ' · ' : null}
                       {context.job ? context.job.title : null}
                     </p>
                   ) : null}
