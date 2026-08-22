@@ -4473,6 +4473,122 @@ h3 {
 .plan-usage-note { --tone-ink: var(--info); }
 .plan-usage-note.warning { --tone-ink: var(--warn); }
 
+/* AT A GLANCE, as one bar rather than four cards.
+   Four bordered cards with display-sized numbers made the top of this tab
+   heavier than the plan it describes. This is the mockup's shape: one surface,
+   hairline dividers, an icon per cell, and type small enough that the sections
+   below stay the point. The status line stays -- a tone is never allowed to
+   carry meaning without a word beside it, and that rule outranks the layout. */
+.plan-glancebar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1rem 0 0;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.9rem;
+  background: rgba(var(--tint), 0.025);
+  overflow: hidden;
+}
+.plan-glancebar-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.85rem 0.95rem;
+  border-left: 1px solid var(--rule-t12);
+}
+.plan-glancebar-cell:first-child { border-left: 0; }
+.plan-glancebar-ic {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  margin-top: 0.15rem;
+  fill: none;
+  stroke: var(--mute-i56);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plan-glancebar-text { min-width: 0; }
+.plan-glancebar-label {
+  display: block;
+  color: var(--mute-i56);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.plan-glancebar-value {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(0.98rem, 1.5vw, 1.2rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.plan-glancebar .tone-status { margin: 0.3rem 0 0; font-size: 0.72rem; }
+@media (max-width: 900px) {
+  .plan-glancebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-glancebar-cell:nth-child(odd) { border-left: 0; }
+  .plan-glancebar-cell:nth-child(n + 3) { border-top: 1px solid var(--rule-t12); }
+}
+@media (max-width: 480px) {
+  .plan-glancebar { grid-template-columns: minmax(0, 1fr); }
+  .plan-glancebar-cell { border-left: 0; }
+  .plan-glancebar-cell + .plan-glancebar-cell { border-top: 1px solid var(--rule-t12); }
+}
+
+/* THE HERO. Orange-edged and tinted so it reads as the one thing on the page
+   asking for a decision, without shouting: it is advice, not a warning. */
+.plan-fit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.4rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--cedge-orange-24);
+  border-radius: 1rem;
+  background: rgba(255, 138, 61, 0.07);
+}
+.plan-fit-banner-body { min-width: min(100%, 22rem); flex: 1 1 22rem; }
+.plan-fit-banner-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.plan-fit-banner-ic {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  margin-top: 0.15rem;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plan-fit-banner-working { margin-top: 0.5rem; }
+.plan-fit-banner-working > summary {
+  color: var(--mute-t50);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.plan-fit-banner-working > p {
+  margin: 0.5rem 0 0;
+  color: var(--mute-t50);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.plan-fit-banner-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
 /* PLAN FIT: which plan is cheapest at which volume. A ladder, so the current
    plan has to be findable at a glance without colour carrying the meaning --
    the row says "your plan" in words as well. */

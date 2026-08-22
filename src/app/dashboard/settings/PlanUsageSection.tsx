@@ -28,8 +28,9 @@ import type { PlanIntent } from '@/lib/plan-intent';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import CancelSubscriptionPanel from './CancelSubscriptionPanel';
 import OverageAuthorizationPanel from './OverageAuthorizationPanel';
+import PlanFitBanner from './PlanFitBanner';
 import ChangePlanPanel from './ChangePlanPanel';
-import type { BillingCycle, BillingPlanId } from '@/lib/billing/catalog';
+import { BILLING_PLANS, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
 import { planLadder, type PlanBand } from '@/lib/billing/plan-crossover';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
@@ -329,6 +330,66 @@ function planStatusWord(plan: WorkspacePlanRead): string {
  */
 function ladderBandDollars(annualBasisCents: number): number {
   return Math.round(annualBasisCents / 12 / 100 / 100) * 100;
+}
+
+/**
+ * The arithmetic, in the words somebody would use to check it. Both plans'
+ * actual numbers, so the reader can do the division themselves rather than
+ * trusting a figure in an orange box -- which is the whole reason the mockup's
+ * invented "$25-$32/month" could not ship.
+ */
+/**
+ * Same convention as SettingsTabs' TAB_ICONS: path data only, dropped into a
+ * 24-box that inherits stroke from CSS. A second icon system for four glyphs
+ * would be two things to keep in step.
+ */
+const GLANCE_ICONS: Readonly<Record<string, string>> = Object.freeze({
+  plan: '<path d="M4 6.5h16v11H4z"/><path d="M7.5 10h4M7.5 14h7"/>',
+  event: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3.5v3M16 3.5v3"/>',
+  extra: '<path d="M12 4v16M8 8h5.5a2.5 2.5 0 0 1 0 5H10a2.5 2.5 0 0 0 0 5H16"/>',
+  projected: '<path d="M4 19.5h16"/><path d="M6.5 16V11M11 16V7.5M15.5 16v-6M20 16V5"/>',
+});
+
+function GlanceCell({ icon, label, value, children }: {
+  icon: keyof typeof GLANCE_ICONS;
+  label: string;
+  value: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="plan-glancebar-cell">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="plan-glancebar-ic"
+        dangerouslySetInnerHTML={{ __html: GLANCE_ICONS[icon] }}
+      />
+      <span className="plan-glancebar-text">
+        <span className="plan-glancebar-label">{label}</span>
+        <strong className="plan-glancebar-value">{value}</strong>
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function describeCrossover(
+  fromCode: BillingPlanId,
+  toCode: BillingPlanId,
+  cycle: BillingCycle,
+): string {
+  const from = BILLING_PLANS[fromCode];
+  const to = BILLING_PLANS[toCode];
+  const monthly = (plan: typeof from) => (plan.monthlyPriceCents === 0
+    ? 'nothing monthly'
+    : `${formatUsdFromCents(cycle === 'annual'
+      ? Math.round(plan.annualPriceCents / 12)
+      : plan.monthlyPriceCents)} a month`);
+  const rate = (plan: typeof from) => `${(plan.platformFeeBps / 100).toFixed(2)}%`;
+  return `${from.name} costs ${monthly(from)} plus ${rate(from)} of what you collect. `
+    + `${to.name} costs ${monthly(to)} plus ${rate(to)}. Those two lines meet at the figure above. `
+    + 'It is the discount-adjusted service subtotal the LGQ fee is taken on, so tax, tips, refunds '
+    + "and Stripe's own processing are not counted, and add-ons are not included.";
 }
 
 function describeBand(band: PlanBand): string {
@@ -668,6 +729,19 @@ export default function PlanUsageSection({
     && data.plan.planCode !== 'enterprise'
     ? planLadder(data.plan.planCode, ladderCycle)
     : null;
+
+  // The band directly above the current one. findIndex returning -1 would make
+  // `-1 + 1` select the FIRST band and suggest Flex to a Flex workspace, so the
+  // index is checked rather than assumed.
+  const currentBandIndex = ladder ? ladder.findIndex((band) => band.isCurrent) : -1;
+  const nextBand = ladder && currentBandIndex >= 0 && currentBandIndex + 1 < ladder.length
+    ? ladder[currentBandIndex + 1]
+    : null;
+
+  // Where "Review <plan>" goes, and null when there is nowhere to send anybody.
+  // A button promising a review that scrolls to nothing is worse than no button:
+  // both upgrade surfaces are flag-gated and may not be rendered at all.
+  const planFitCtaHref = planChange ? '#change-plan' : showSubscriptionCheckout ? '#choose-paid-plan' : null;
   const tone = planTone(data.plan);
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
@@ -693,15 +767,11 @@ export default function PlanUsageSection({
           <p className="eyebrow">At a glance</p>
           <h2>Plan &amp; usage</h2>
         </div>
-        <div className="workspace-metric-grid four-up plan-usage-glance">
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Current plan</span>
-            <strong className="workspace-metric-value">{data.plan.kind === 'ready' ? data.plan.planName : 'Unavailable'}</strong>
+        <div className="plan-glancebar">
+          <GlanceCell icon="plan" label="Current plan" value={data.plan.kind === 'ready' ? data.plan.planName : 'Unavailable'}>
             <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Next event</span>
-            <strong className="workspace-metric-value">{event ? formatDate(event.at) : 'None scheduled'}</strong>
+          </GlanceCell>
+          <GlanceCell icon="event" label="Next event" value={event ? formatDate(event.at) : 'None scheduled'}>
             <StatusLine tone="neutral">
               {event
                 ? event.label
@@ -709,16 +779,16 @@ export default function PlanUsageSection({
                   ? 'Nothing renews and nothing expires'
                   : 'Nothing is scheduled'}
             </StatusLine>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Extra usage this period</span>
-            <strong className="workspace-metric-value">
-              {overage === null || !overage.readable
-                ? 'Unavailable'
-                : overage.enabled
-                  ? formatOverageTotal(overage.totalMillicents)
-                  : 'Off'}
-            </strong>
+          </GlanceCell>
+          <GlanceCell
+            icon="extra"
+            label="Extra usage this period"
+            value={overage === null || !overage.readable
+              ? 'Unavailable'
+              : overage.enabled
+                ? formatOverageTotal(overage.totalMillicents)
+                : 'Off'}
+          >
             <StatusLine tone={overage?.readable && overage.enabled && overage.atCap ? 'warn' : 'neutral'}>
               {overage === null || !overage.readable
                 ? 'Could not be read'
@@ -728,12 +798,10 @@ export default function PlanUsageSection({
                     ? 'At your limit'
                     : 'Within your limit'}
             </StatusLine>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Projected this period</span>
-            <strong className="workspace-metric-value">{forecastValueWord(forecast)}</strong>
+          </GlanceCell>
+          <GlanceCell icon="projected" label="Projected this period" value={forecastValueWord(forecast)}>
             <StatusLine tone="neutral">{forecastStatusWord(forecast, data.plan)}</StatusLine>
-          </article>
+          </GlanceCell>
         </div>
         {forecast.millicents !== null ? (
           <p className="plan-usage-fineprint">
@@ -742,6 +810,16 @@ export default function PlanUsageSection({
           </p>
         ) : null}
       </section>
+
+      {nextBand && data.plan.kind === 'ready' && data.plan.planCode !== 'enterprise' ? (
+        <PlanFitBanner
+          planCode={data.plan.planCode}
+          nextPlanName={nextBand.planName}
+          thresholdLabel={`about $${ladderBandDollars(nextBand.fromAnnualBasisCents).toLocaleString('en-US')} a month`}
+          ctaHref={planFitCtaHref}
+          workingOut={describeCrossover(data.plan.planCode, nextBand.planCode, ladderCycle)}
+        />
+      ) : null}
 
       <section className="panel workspace-section-card" id="current-plan">
         <div className="section-heading workspace-section-heading compact-heading">

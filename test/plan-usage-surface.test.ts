@@ -125,10 +125,33 @@ describe('the Plan & usage glance strip claims only what it can prove', () => {
    */
   const RENDERED = SECTION.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  it('reuses the existing metric grid rather than a second one', () => {
-    expect(SECTION).toContain('workspace-metric-grid');
-    expect(SECTION).toContain('workspace-metric-label');
-    expect(SECTION).toContain('workspace-metric-value');
+  /**
+   * THIS GUARD USED TO SAY "reuses the existing metric grid rather than a second
+   * one", and it was right until the design changed under it. The glance strip
+   * is now the mockup's single bar with hairline dividers and an icon per cell;
+   * `.workspace-metric-grid` is separate bordered cards BY CONSTRUCTION and
+   * cannot express that. So the strip genuinely is its own component now.
+   *
+   * What the original guard was protecting -- do not fork a system that already
+   * exists -- still holds, and moves to the thing that could still be forked:
+   * the icon convention, and the rule that a tone never travels without a word.
+   */
+  it('does not fork the icon system for its own glyphs', () => {
+    // Path data dropped into a 24-box that inherits stroke from CSS, exactly as
+    // SettingsTabs does it. A second icon system for four glyphs would be two
+    // things to keep in step.
+    expect(SECTION).toContain('GLANCE_ICONS');
+    expect(SECTION).toContain('viewBox="0 0 24 24"');
+    expect(read('src', 'app', 'dashboard', 'settings', 'SettingsTabs.tsx')).toContain('viewBox="0 0 24 24"');
+  });
+
+  it('carries a word beside every tone in the bar, not just a colour', () => {
+    expect(SECTION).toContain('plan-glancebar');
+    const cells = (SECTION.match(/<GlanceCell/g) ?? []).length;
+    const statuses = (SECTION.match(/<StatusLine/g) ?? []).length;
+    expect(cells).toBe(4);
+    // Every cell renders one, and the sections below render more.
+    expect(statuses).toBeGreaterThanOrEqual(cells);
   });
 
   it('frames the money figure per period, never per month', () => {
