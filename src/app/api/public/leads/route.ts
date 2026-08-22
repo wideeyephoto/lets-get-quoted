@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { HONEYPOT_FIELD } from '@/components/honeypot-field';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -42,7 +43,12 @@ async function notifyOwner(
     if (alert.muteLow && lead.triage?.score === 'low') return;
 
     const estimate = lead.triage?.estimate ?? null;
-    const dashboardUrl = `${request.nextUrl.origin}/dashboard/leads/${lead.id}`;
+    // APP_ORIGIN, never request.nextUrl.origin. This request arrives on the
+    // TENANT's public marketing host (thisisit.letsgetquoted.com), which does
+    // not serve /dashboard — so deriving the link from the request produced a
+    // dead URL in both the owner's alert text and the lead email. booking.ts
+    // has always used APP_ORIGIN for the identical link; this was the outlier.
+    const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
 
     const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();
     if (owner?.user_id) {
