@@ -766,6 +766,22 @@ export default function PlanUsageSection({
   // A button promising a review that scrolls to nothing is worse than no button:
   // both upgrade surfaces are flag-gated and may not be rendered at all.
   const planFitCtaHref = planChange ? '#change-plan' : showSubscriptionCheckout ? '#choose-paid-plan' : null;
+
+  // WHAT SURVIVES THE SECTION BEING SHUT. `over` and `near` force it open,
+  // because those are states somebody can still act on. `at_limit` does not:
+  // Flex grants one office seat and the owner occupies it, so every Flex
+  // workspace sits there permanently and treating it as an alarm would mean the
+  // fold never closes for anybody. It still appears in the summary, so a
+  // collapsed section never costs the reader the fact.
+  const capacityRows = capacity?.rows ?? [];
+  const capacityNeedsAttention = capacityRows.some((row) => row.verdict === 'over' || row.verdict === 'near');
+  const overCount = capacityRows.filter((row) => row.verdict === 'over').length;
+  const atLimitCount = capacityRows.filter((row) => row.verdict === 'at_limit').length;
+  const capacitySummaryNote = overCount > 0
+    ? `${overCount} over limit`
+    : atLimitCount > 0
+      ? `${atLimitCount} at plan limit`
+      : null;
   const tone = planTone(data.plan);
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
@@ -940,10 +956,18 @@ export default function PlanUsageSection({
 
       {ladder ? (
         <section className="panel workspace-section-card" id="plan-fit">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Plan fit</p>
-            <h2><SectionIcon name="fit" />Which plan costs least at what you collect</h2>
-          </div>
+          {/* FOLDED. The banner above already states the one number a reader
+              needs -- where the next plan up starts costing less -- so the full
+              ladder is genuinely detail rather than something hidden. Nothing
+              here can be a warning, so unlike Plan capacity it is never forced
+              open. */}
+          <details className="workspace-fold">
+            <summary>
+              <span className="section-heading workspace-section-heading compact-heading">
+                <span className="eyebrow">Plan fit</span>
+                <span className="workspace-fold-title"><SectionIcon name="fit" />Which plan costs least at what you collect</span>
+              </span>
+            </summary>
           {/* No estimate and no recommendation: every figure below comes from
               catalog constants alone. The half of this that would say "at YOUR
               volume you would save X" needs settled payment history, and there
@@ -969,6 +993,7 @@ export default function PlanUsageSection({
               : ' paying annually lowers every figure here.'}
             {' '}Add-ons and extra seats are not included.
           </p>
+          </details>
         </section>
       ) : null}
 
@@ -1124,10 +1149,23 @@ export default function PlanUsageSection({
 
       {data.plan.kind === 'ready' && limits.length > 0 ? (
         <section className="panel workspace-section-card" id="included-limits">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Plan capacity</p>
-            <h2><SectionIcon name="capacity" />What you are using</h2>
-          </div>
+          {/* COLLAPSED, as the mockup has it -- but never when something is wrong.
+              A disclosure that hides "you are over your limit" is a disclosure
+              that hides the one line somebody needed. Open by default whenever a
+              row is over or near its limit; `at_limit` alone does NOT force it
+              open, because Flex grants one office seat and the owner occupies
+              it, so every Flex workspace is permanently at that limit and
+              forcing it open would mean it is never collapsed for anybody. The
+              summary carries the count either way, so the signal survives being
+              shut. */}
+          <details className="workspace-fold" open={capacityNeedsAttention}>
+            <summary>
+              <span className="section-heading workspace-section-heading compact-heading">
+                <span className="eyebrow">Plan capacity</span>
+                <span className="workspace-fold-title"><SectionIcon name="capacity" />What you are using</span>
+              </span>
+              {capacitySummaryNote ? <em className="workspace-fold-note">{capacitySummaryNote}</em> : null}
+            </summary>
 
           {/* Occupancy first, entitlement second. "Office users: 2" never told a
               contractor whether they could invite anybody; "1 of 2 used" does.
@@ -1152,6 +1190,7 @@ export default function PlanUsageSection({
                 </div>
               ))}
             </dl>
+          </details>
           </details>
         </section>
       ) : null}

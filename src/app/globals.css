@@ -35265,3 +35265,61 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 #overage .usage-overage-lines li > span:last-child { font-variant-numeric: tabular-nums; }
 #overage .usage-muted { margin: 0 0 0.6rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
 #overage .usage-fineprint { margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+
+/* A section that folds. The summary keeps the eyebrow, the glyph and the
+   heading, so a shut section still says what it is -- and carries a note when
+   something inside needs attention, because a disclosure that hides a warning
+   is a disclosure that hides the only line that mattered. */
+.workspace-fold > summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;
+}
+.workspace-fold > summary::-webkit-details-marker { display: none; }
+.workspace-fold > summary::after {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-left: auto;
+  border-right: 2px solid var(--mute-i56);
+  border-bottom: 2px solid var(--mute-i56);
+  transform: rotate(45deg) translate(-0.1rem, -0.1rem);
+  transition: transform .15s ease;
+}
+.workspace-fold[open] > summary::after { transform: rotate(-135deg) translate(-0.1rem, -0.1rem); }
+.workspace-fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 0.4rem; }
+.workspace-fold-title { display: block; }
+.workspace-fold-note { color: var(--warn); font-size: 0.78rem; font-style: normal; font-weight: 800; }
+
+/* ---------------------------------------------------------------------------
+   PLAN & USAGE DENSITY, scoped to this panel only.
+   The mockup fits this whole tab in about 1,050px; the same content in the
+   app-wide heading scale and card padding ran to 2,820px, which is why it read
+   as a different page even with every element present. Everything here is
+   inside #settings-panel-plan, so Payments, Business and the rest keep the
+   sizes they have -- the consistency worry and the mockup are not actually in
+   conflict once the rule is scoped.
+   --------------------------------------------------------------------------- */
+#settings-panel-plan .workspace-fold-title { font-size: clamp(1.15rem, 1.9vw, 1.5rem); font-family: var(--font-display); font-weight: 800; color: var(--text); line-height: 1.2; }
+#settings-panel-plan .workspace-section-heading h2 {
+  font-size: clamp(1.15rem, 1.9vw, 1.5rem);
+  line-height: 1.2;
+}
+#settings-panel-plan .workspace-section-heading { margin-bottom: 0.75rem; }
+#settings-panel-plan .workspace-section-heading .eyebrow { font-size: 0.58rem; }
+#settings-panel-plan .workspace-section-ic { stroke-width: 1.7; }
+#settings-panel-plan .panel.workspace-section-card { padding: 1.05rem 1.15rem; }
+#settings-panel-plan .workspace-section-card + .workspace-section-card { margin-top: 0.75rem; }
+#settings-panel-plan .plan-usage-plan-card { padding: 0.85rem 0.95rem; }
+#settings-panel-plan .plan-usage-plan-facts > div { padding: 0.55rem 0.7rem; }
+#settings-panel-plan .plan-usage-balance,
+#settings-panel-plan .plan-usage-capacity-grid > li { padding: 0.6rem 0.75rem; }
+#settings-panel-plan .plan-glancebar-cell { padding: 0.7rem 0.85rem; }
+#settings-panel-plan .plan-fit-banner { padding: 0.85rem 1rem; margin-bottom: 0.75rem; }
+@media (max-width: 640px) {
+  #settings-panel-plan .panel.workspace-section-card { padding: 0.9rem 0.95rem; }
+}
