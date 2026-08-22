@@ -470,6 +470,12 @@ export default async function SettingsPage({
               'plan-at-a-glance',
               'current-plan',
               'platform-fee',
+              // Rendered only for a workspace on the CURRENT catalog -- a pinned
+              // one is billed at prices the ladder does not know. Listed
+              // unconditionally anyway: an anchor for a section that is absent
+              // costs a reader nothing, while a section with no anchor is one
+              // they cannot link to at all.
+              'plan-fit',
               ...(showSubscriptionCheckout ? ['choose-paid-plan'] : []),
               ...(planChange ? ['change-plan'] : []),
               ...(cancellable ? ['cancel-plan'] : []),
