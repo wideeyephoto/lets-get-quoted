@@ -64,7 +64,18 @@ const ACTIVE = {
   current_period_end: '2026-09-18T08:01:09.000Z',
 };
 
+/**
+ * These cases are about what the operation DOES once it is switched on, so the
+ * switch is on for all of them. It did not need to be until the rollout flag
+ * moved inside `cancelBasePlanSubscriptionAtPeriodEnd`: it used to be checked
+ * only in the server action, which meant this whole file exercised a path a
+ * customer could reach with the flag off. Whether the flag itself bites, and
+ * which callers it covers, is test/subscription-cancellation-gate.test.ts -- kept
+ * separate deliberately, because a file that holds the gate open is exactly the
+ * file that cannot be trusted to test it.
+ */
 beforeEach(() => {
+  process.env.LGQ_BASE_PLAN_SUBSCRIPTION_CANCELLATION_ENABLED = '1';
   stripe.update.mockClear();
   stripe.cancel.mockClear();
   events.length = 0;

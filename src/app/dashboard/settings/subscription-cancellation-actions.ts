@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import {
+  CANCELLATION_DISABLED_MESSAGE,
   basePlanSubscriptionCancellationEnabled,
   cancelBasePlanSubscriptionAtPeriodEnd,
   resumeBasePlanSubscription,
@@ -29,7 +30,7 @@ export type ResumeSubscriptionActionState =
  */
 export async function cancelBasePlanSubscriptionAction(): Promise<CancelSubscriptionActionState> {
   if (!basePlanSubscriptionCancellationEnabled()) {
-    return { ok: false, error: 'Cancelling a plan from here is not switched on yet.' };
+    return { ok: false, error: CANCELLATION_DISABLED_MESSAGE };
   }
 
   const { accountId, userId, userEmail } = await requireOwnerContext();
