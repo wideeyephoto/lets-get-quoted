@@ -428,6 +428,23 @@ function CapacityMeter({ row }: { row: CapacityRow }) {
 function OverageCard({ overage }: { overage: OverageSummary }) {
   const remaining = remainingCapMillicents(overage);
 
+  // A read that failed is not a workspace with overage switched off, and the two
+  // used to render identically -- confidently, and about money.
+  if (!overage.readable) {
+    return (
+      <section className="panel workspace-section-card" id="overage">
+        <h3>Extra usage</h3>
+        <div className="plan-usage-unavailable" role="status">
+          <strong>Extra usage could not be read.</strong>
+          <span>
+            Nothing has been shown as zero and nothing has been assumed about your settings.
+            Refresh in a moment, or contact support if this continues.
+          </span>
+        </div>
+      </section>
+    );
+  }
+
   if (!overage.enabled) {
     return (
       <section className="panel workspace-section-card" id="overage">
@@ -583,14 +600,14 @@ export default function PlanUsageSection({
           <article className="workspace-metric-card">
             <span className="workspace-metric-label">Extra usage this period</span>
             <strong className="workspace-metric-value">
-              {overage === null
+              {overage === null || !overage.readable
                 ? 'Unavailable'
                 : overage.enabled
                   ? formatOverageTotal(overage.totalMillicents)
                   : 'Off'}
             </strong>
-            <StatusLine tone={overage?.enabled && overage.atCap ? 'warn' : 'neutral'}>
-              {overage === null
+            <StatusLine tone={overage?.readable && overage.enabled && overage.atCap ? 'warn' : 'neutral'}>
+              {overage === null || !overage.readable
                 ? 'Could not be read'
                 : !overage.enabled
                   ? 'Nothing is billed past your plan'

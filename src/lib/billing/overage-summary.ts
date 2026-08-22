@@ -39,6 +39,17 @@ export type OverageSummary = Readonly<{
   totalMillicents: number;
   /** Nothing more may accrue this period. The meters are refusing. */
   atCap: boolean;
+  /**
+   * FALSE ONLY WHEN THE READ ITSELF FAILED.
+   *
+   * The catch below used to return EMPTY, which is byte-for-byte a healthy
+   * workspace that has not switched overage on -- so a refused or thrown read
+   * rendered "Not switched on. Nothing is ever charged past your plan without
+   * you turning this on", which is a confident claim about somebody's billing
+   * made on the basis of nothing. A workspace with no billing period is a
+   * different case and stays readable: that is a real, knowable state.
+   */
+  readable: boolean;
 }>;
 
 const EMPTY: OverageSummary = Object.freeze({
@@ -49,7 +60,11 @@ const EMPTY: OverageSummary = Object.freeze({
   lines: [],
   totalMillicents: 0,
   atCap: false,
+  readable: true,
 });
+
+/** Nothing is known. Distinct from EMPTY, which asserts that nothing accrued. */
+const UNREADABLE: OverageSummary = Object.freeze({ ...EMPTY, readable: false });
 
 /** Human labels. Resource codes are a database vocabulary, not a customer one. */
 const RESOURCE_LABELS: Readonly<Record<string, string>> = Object.freeze({
@@ -152,10 +167,11 @@ export async function loadOverageSummary(
       // sort of unit mismatch that produces a bill a thousand times too big.
       // Converted once, here, where both are in view.
       atCap: capCents !== null && totalMillicents >= capCents * 1000,
+      readable: true,
     });
   } catch (error) {
     console.error('overage summary threw:', error);
-    return EMPTY;
+    return UNREADABLE;
   }
 }
 

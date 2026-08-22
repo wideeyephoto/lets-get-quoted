@@ -190,3 +190,38 @@ describe('how it reads on a page', () => {
     expect(formatOverageTotal(0)).toBe('$0.00');
   });
 });
+
+describe('a read that failed is not a workspace with overage switched off', () => {
+  it('marks a thrown read unreadable instead of reporting a healthy zero', async () => {
+    // EMPTY and a thrown read used to be the same frozen object. That rendered
+    // "Not switched on -- nothing is ever charged past your plan without you
+    // turning this on and setting a limit": a confident claim about somebody's
+    // billing arrangement, made on the basis of a query that did not run.
+    const exploding = {
+      from() { throw new Error('connection reset'); },
+    } as never;
+
+    const summary = await loadOverageSummary(exploding, ACCOUNT);
+    expect(summary.readable).toBe(false);
+    // And it still invents nothing on the way out.
+    expect(summary.totalMillicents).toBe(0);
+    expect(summary.lines).toEqual([]);
+    expect(summary.enabled).toBe(false);
+  });
+
+  it('keeps a workspace with no billing period readable, because that is knowable', async () => {
+    // A Flex workspace has no period_start or period_end and never will.
+    // Nothing failed, so nothing should say it did.
+    setup({ workspace_entitlements: { data: null, error: null } });
+    const summary = await loadOverageSummary(supabase, ACCOUNT);
+    expect(summary.readable).toBe(true);
+    // Deliberately not asserting `enabled` here: whether the settings row was
+    // read is a separate question from whether a period exists, and pinning
+    // both in one test would make this fail for the wrong reason later.
+    expect(summary.totalMillicents).toBe(0);
+  });
+
+  it('is readable on the ordinary healthy path', async () => {
+    expect((await loadOverageSummary(supabase, ACCOUNT)).readable).toBe(true);
+  });
+});
