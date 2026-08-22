@@ -94,6 +94,53 @@ Rationale and constraints, all of which are load-bearing:
   invariant tying an acknowledgement to the keyword that earned it. STOP/START/
   HELP are carrier obligations; this is a courtesy. Separate tables on purpose.
 
+## 10DLC registry callbacks
+
+The Campaign Registry posts brand, campaign and assignment state changes to
+`/api/signalwire/10dlc/<token>`. Two things about it are not in SignalWire's
+documentation and cost real time to establish, so they are recorded here rather
+than in a dated log.
+
+### The signature scheme
+
+```
+HMAC-SHA1(SIGNALWIRE_SIGNING_KEY, callback_url + raw_body) -> HEX
+```
+
+Solved offline on 2026-08-22 against two captured `(body, signature)` pairs.
+
+**Hex, not the base64** the rest of the rail uses via `signBase64` — reusing
+`validateWebhookSignature` here rejects every genuine delivery. The signed URL
+includes the secret path segment, which is what makes verification possible
+without moving to a static path.
+
+### The callback carries no reason field
+
+Eleven documented fields, none of them a failure reason, and the delivery is
+"advisory, best-effort". The receiver can record **that** an assignment failed
+and never **why**; support is the only path to a cause. `failed` may also be
+transient. Do not build logic that expects a reason to arrive.
+
+### Rotating the token is a carrier operation
+
+The callback URL embeds the token, so rotation forces a delete and re-create of
+the number assignment. Doing this on a `completed` assignment broke it on
+2026-08-22: the replacement failed one second after creation, against roughly
+twelve minutes to succeed, and **no callback fired for that failure**. Rotate
+only when a failed assignment costs nothing.
+
+Kill any log watcher first. A watcher captures the token at startup to build its
+redactor, so rotating while one runs prints the new token verbatim.
+
+### Pending: enforce the signature
+
+- [ ] `LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE=1`
+
+Shipped **measuring, not enforcing**, per the usual two-flag convention.
+Verification currently records a verdict and rejects nothing. Two of two real
+callbacks have read `valid`. Turn on rejection once live traffic reads `valid`
+consistently — and remember the flag is baked at build, so it does nothing
+until the next deploy.
 ## Hard prerequisites
 
 Stop if any answer is no or unknown:

@@ -58,7 +58,7 @@ select count(*) from sms_sender_numbers where purpose = 'contractor_dedicated';
 | A1 | Shared number assignment `eaea6053` | `failed`; the only sender row is `assignment_pending` / `failed`. Blocks the platform lane too. Awaiting SignalWire support |
 | A2 | **Per-contractor brand + campaign** | Manual, outside the product. See below |
 | A3 | Campaign use case must permit contractor→customer | Our platform campaign declares the opposite |
-| A4 | Callback token rotation | Deferred deliberately — rotate only while an assignment is already failed |
+| A4 | Callback token rotation | **Outstanding** — the token was leaked twice on 2026-08-22. Rotation is a carrier operation that destroys and re-creates the assignment, so it waits until a failed assignment costs nothing. Procedure and the failure it caused are in the [runbook](signalwire-messaging-cutover-runbook.md#rotating-the-token-is-a-carrier-operation) |
 
 ### A2 is the real gate
 
