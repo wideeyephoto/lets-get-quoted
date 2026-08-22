@@ -1084,10 +1084,21 @@ export default function PlanUsageSection({
 
       {storageState.kind !== 'hidden' ? (
         <section className="panel workspace-section-card" id="workspace-storage">
-          <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Files &amp; photos</p>
-            <h2><SectionIcon name="storage" />Storage</h2>
-          </div>
+          <details
+            className="workspace-fold"
+            open={storageState.kind !== 'measured' || storageState.over || storageState.nearly}
+          >
+            <summary>
+              <span className="section-heading workspace-section-heading compact-heading">
+                <span className="eyebrow">Files &amp; photos</span>
+                <span className="workspace-fold-title"><SectionIcon name="storage" />Storage</span>
+              </span>
+              <em className={`workspace-fold-note${storageState.kind === 'measured' && !storageState.over && !storageState.nearly ? ' neutral' : ''}`}>
+                {storageState.kind === 'measured'
+                  ? `${formatStorageBytes(storageState.bytesUsed)} of ${formatStorageBytes(storageState.limitBytes)}`
+                  : 'Needs attention'}
+              </em>
+            </summary>
 
           {storageState.kind === 'measured' ? (
             <>
@@ -1154,6 +1165,7 @@ export default function PlanUsageSection({
               <span>No storage allowance was returned for this workspace, so none has been guessed.</span>
             </div>
           )}
+          </details>
         </section>
       ) : null}
 
