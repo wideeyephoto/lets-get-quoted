@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: f209c6c6e2bdd20d
+   source-sha256: 65c26255a6b492ce
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16702,4 +16702,15 @@ select optgroup {
 .office-access .office-access-signout {
   padding: 0.5rem 0.9rem; border-radius: 10px; border: 1px solid var(--edge-t14);
   background: transparent; color: var(--mute-t60); font: inherit; font-size: 0.88rem; cursor: pointer;
+}
+#settings-panel-plan .workspace-section-heading h2 {
+  font-size: clamp(1.15rem, 1.9vw, 1.5rem);
+  line-height: 1.2;
+}
+#settings-panel-plan .workspace-section-heading { margin-bottom: 0.75rem; }
+#settings-panel-plan .workspace-section-heading .eyebrow { font-size: 0.58rem; }
+#settings-panel-plan .panel.workspace-section-card { padding: 1.05rem 1.15rem; }
+#settings-panel-plan .workspace-section-card + .workspace-section-card { margin-top: 0.75rem; }
+@media (max-width: 640px) {
+  #settings-panel-plan .panel.workspace-section-card { padding: 0.9rem 0.95rem; }
 }
