@@ -290,7 +290,8 @@ export async function sendCampaignAction(formData: FormData) {
   revalidatePath('/dashboard/marketing');
   revalidatePath('/dashboard/marketing/campaigns');
   const params = new URLSearchParams({
-    sent: String(result.emailSent + result.smsSent),
+    emailSent: String(result.emailSent),
+    smsQueued: String(result.smsQueued),
     recipients: String(result.recipientCount),
     skipped: String(result.skipped),
     failed: String(result.failed),

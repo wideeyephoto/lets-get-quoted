@@ -441,12 +441,13 @@ describe('reporting the outcome back', () => {
   });
 
   it('distinguishes every reason a text did not go out', () => {
-    for (const reason of ['opted_out', 'no_phone', 'not_configured'] as const) {
+    for (const reason of ['opted_out', 'no_phone'] as const) {
       const outcome = describeArrivalOutcome('started', reason);
       expect(outcome?.error).toBe(true);
       expect(outcome?.text).not.toContain('undefined');
     }
     expect(describeArrivalOutcome('started', 'sent')?.error).toBe(false);
+    expect(describeArrivalOutcome('started', 'queued')?.error).toBe(false);
   });
 
   it('treats a swallowed double tap as normal, not as an error', () => {

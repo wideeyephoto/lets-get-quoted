@@ -238,6 +238,7 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
       scheduledFor,
       scheduledTime,
       accountId,
+      idempotencyKey: `lead-quote-visit:${leadId}:${scheduledFor}:${scheduledTime}`,
     });
     confirmationTextSentAt = new Date().toISOString();
   }
@@ -283,6 +284,7 @@ export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: 
     address: lead.address,
     options,
     accountId,
+    idempotencyKey: `lead-quote-options:${leadId}:${options.map((option) => `${option.date}.${option.time ?? 'any'}`).join('/')}`,
   });
 
   if (lead.status === 'new') await updateLeadStatus(supabase, accountId, leadId, 'contacted');
@@ -565,6 +567,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
         token,
         includesScheduleOptions: quickBooking.hasInput,
         accountId,
+        idempotencyKey: `client-job-dashboard:${job.id}:lead-conversion`,
       });
       delivery = 'sms';
     } catch (err) {
@@ -830,6 +833,7 @@ export async function declineLeadAction(leadId: string, reasonKey: string, notif
         leadName: lead.name || 'there',
         reason,
         accountId,
+        idempotencyKey: `lead-decline:${leadId}:${reasonKey}`,
       });
       texted = true;
     } catch (error) {

@@ -94,8 +94,8 @@ describe('the failure posture: refuse only on a definite answer', () => {
   });
 
   it('sends unmetered when there is no workspace to bill', async () => {
-    // A signup verification code. Reported rather than ignored, so a message
-    // that SHOULD carry an account shows up as this instead of vanishing.
+    // A genuinely platform-scoped message. Reported rather than ignored, so a
+    // homeowner producer that SHOULD carry an account is visible as a bug.
     const decision = await beginTextCreditUsage(admin, input({ accountId: null }), { mode: 'enforce' });
     expect(decision).toMatchObject({ outcome: 'allowed_unmetered', reason: 'no_account' });
     expect(rpc).not.toHaveBeenCalled();
@@ -143,6 +143,27 @@ describe('the failure posture: refuse only on a definite answer', () => {
     expect(decision.lease).toMatchObject({
       reservationId: 'res-9', segments: 1, accountId: ACCOUNT, ownsReservation: true,
     });
+  });
+
+  it('supports a bounded longer lease for durable provider reconciliation', async () => {
+    rpc.mockResolvedValue({ data: 'res-9', error: null });
+    const now = new Date('2026-08-21T16:00:00.000Z');
+    await beginTextCreditUsage(admin, input(), {
+      mode: 'enforce',
+      now: () => now,
+      reservationTtlMs: 24 * 60 * 60 * 1000,
+    });
+    expect(rpc).toHaveBeenCalledWith('reserve_usage_credits', expect.objectContaining({
+      p_expires_at: '2026-08-22T16:00:00.000Z',
+    }));
+  });
+
+  it('refuses an unbounded reservation TTL', async () => {
+    await expect(beginTextCreditUsage(admin, input(), {
+      mode: 'enforce',
+      reservationTtlMs: 8 * 24 * 60 * 60 * 1000,
+    })).rejects.toThrow(/TTL is invalid/i);
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

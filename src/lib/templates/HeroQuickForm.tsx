@@ -260,7 +260,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       }
       if (!response.ok || !result?.token) throw new Error(result?.error || 'Could not send the code.');
       setVerify({ token: result.token, expiresAt: Number(result.expiresAt) });
-      setStatus({ tone: 'success', text: 'Code texted — enter it below.' });
+      setStatus({ tone: 'success', text: 'Code queued — it should arrive shortly. Enter it below.' });
     } catch (error) {
       setStatus({ tone: 'error', text: error instanceof Error ? error.message : 'Could not send the code.' });
     } finally {

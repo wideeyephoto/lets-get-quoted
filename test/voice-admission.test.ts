@@ -17,6 +17,8 @@ vi.mock('@/lib/billing/voice-minute-usage', async (importOriginal) => ({
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
 const TO = '+15551230000';
+const SENDER = '22222222-2222-4222-8222-222222222222';
+const PHONE_RESOURCE = '33333333-3333-4333-8333-333333333333';
 
 /**
  * A Supabase stub driven by a per-table script. Real enough to exercise the
@@ -24,6 +26,7 @@ const TO = '+15551230000';
  */
 type TableReply = { data?: unknown; error?: unknown };
 let replies: Record<string, TableReply>;
+let purchasedVoiceUnits = 0;
 
 const admin = {
   from(table: string) {
@@ -37,11 +40,20 @@ const admin = {
     (chain as { then: unknown }).then = (resolve: (v: TableReply) => unknown) => resolve(reply);
     return chain;
   },
+  rpc(name: string) {
+    if (name !== 'workspace_purchased_capacity_units') {
+      return Promise.resolve({ data: null, error: { message: `unexpected RPC ${name}` } });
+    }
+    return Promise.resolve({ data: purchasedVoiceUnits, error: null });
+  },
 } as never;
 
 const call = { providerCallId: CALL, toNumber: TO, fromNumber: '+15559876543' };
 const options = {
-  receiptUrl: (id: string) => `https://lgq.test/api/voice/receipt?account=${id}`,
+  receiptUrl: 'https://lgq.test/api/voice/receipt',
+  receiptAuthorization: {
+    scheme: 'basic' as const, username: 'voice-receipt', password: 'test-only-password',
+  },
   forwardActionUrl: (id: string) => `https://lgq.test/api/voice/ai/status?account=${id}`,
   enabled: true,
 };
@@ -51,6 +63,20 @@ const ACTIVE = {
   greeting: null, transfer_number: null,
 };
 
+const ACTIVE_DEDICATED = {
+  id: SENDER,
+  provider: 'signalwire',
+  e164_number: TO,
+  provider_number_id: PHONE_RESOURCE,
+  purpose: 'contractor_dedicated',
+  account_id: ACCOUNT,
+  assignment_state: 'assigned',
+  provisioning_status: 'active',
+  inbound_ready: true,
+  activated_at: '2026-08-21T12:00:00Z',
+  suspended_at: null,
+};
+
 const workspace = (
   limits: Record<string, unknown>,
   forward: string | null = '+15557654321',
@@ -58,8 +84,25 @@ const workspace = (
   timezone = 'America/New_York',
 ) => {
   replies = {
-    accounts: { data: { id: ACCOUNT, call_forward_number: forward, timezone }, error: null },
-    workspace_entitlements: { data: { feature_limits: limits }, error: null },
+    sms_sender_numbers: { data: ACTIVE_DEDICATED, error: null },
+    accounts: {
+      data: {
+        id: ACCOUNT,
+        call_tracking_number: TO,
+        ai_voice_route_revision: 0,
+        call_forward_number: forward,
+        timezone,
+      },
+      error: null,
+    },
+    workspace_entitlements: {
+      data: {
+        entitlement_state: 'active',
+        feature_limits: { voice_included_minutes: 100, ...limits },
+        feature_flags: { voice_included: true, voice_advanced_routing: false },
+      },
+      error: null,
+    },
     voice_settings: { data: settings, error: null },
     voice_call_admissions: { data: [], error: null },
     voice_events: { data: [], error: null },
@@ -69,6 +112,7 @@ const workspace = (
 beforeEach(() => {
   admitVoiceCall.mockReset();
   admitVoiceCall.mockResolvedValue({ outcome: 'admitted', lease: {} });
+  purchasedVoiceUnits = 0;
   vi.spyOn(console, 'error').mockImplementation(() => {});
   workspace({ voice_concurrent_calls: 1 });
 });
@@ -88,9 +132,15 @@ describe('what a caller gets', () => {
     expect(result.plan.kind).toBe('ai_agent');
     expect(result.declineReason).toBeNull();
     if (result.plan.kind !== 'ai_agent') return;
-    expect(result.plan.receiptUrl).toContain(ACCOUNT);
+    expect(result.plan.receiptUrl).toBe('https://lgq.test/api/voice/receipt');
+    expect(result.plan.receiptUrl).not.toContain('@');
     // The disclosure is not optional and not a setting.
     expect(result.plan.greeting).toContain('AI assistant');
+    expect(admitVoiceCall).toHaveBeenCalledWith(
+      admin,
+      { accountId: ACCOUNT, providerCallId: CALL, dialedNumber: TO },
+      { mode: 'enforce', concurrencyLimit: 1 },
+    );
   });
 
   it('falls through to the contractor\'s own line, never to an error', async () => {
@@ -102,7 +152,7 @@ describe('what a caller gets', () => {
       ['no entitlement row at all', () => {
         workspace({ voice_concurrent_calls: 1 });
         replies.workspace_entitlements = { data: null, error: null };
-      }, 'no_seat'],
+      }, 'no_entitlement'],
     ];
 
     for (const [name, arrange, reason] of cases) {
@@ -127,10 +177,36 @@ describe('what a caller gets', () => {
   });
 
   it('does not recognise a number belonging to no workspace', async () => {
-    replies = { accounts: { data: null, error: null } };
+    replies = { sms_sender_numbers: { data: null, error: null } };
     const result = await planInboundCall(admin, call, options);
     expect(result).toMatchObject({ declineReason: 'no_workspace', accountId: null });
     expect(result.plan.kind).toBe('unavailable');
+  });
+
+  it('does not resolve shared, other-account, inactive, or unprovisioned inventory', async () => {
+    const invalidRows = [
+      { ...ACTIVE_DEDICATED, purpose: 'lgq_shared', account_id: null },
+      { ...ACTIVE_DEDICATED, account_id: '44444444-4444-4444-8444-444444444444' },
+      { ...ACTIVE_DEDICATED, provisioning_status: 'suspended', suspended_at: '2026-08-21T13:00:00Z' },
+      { ...ACTIVE_DEDICATED, provider_number_id: null, provisioning_status: 'pending' },
+    ];
+
+    for (const sender of invalidRows) {
+      workspace({ voice_concurrent_calls: 1 });
+      replies.sms_sender_numbers = { data: sender, error: null };
+      const result = await planInboundCall(admin, call, options);
+      expect(result).toMatchObject({ declineReason: 'no_workspace', accountId: null });
+      expect(result.plan.kind).toBe('unavailable');
+      expect(admitVoiceCall).not.toHaveBeenCalled();
+    }
+  });
+
+  it('fails closed without leaking ownership when sender inventory cannot be read', async () => {
+    replies.sms_sender_numbers = { data: null, error: { message: 'inventory down' } };
+    const result = await planInboundCall(admin, call, options);
+    expect(result).toMatchObject({ declineReason: 'no_workspace', accountId: null });
+    expect(result.plan.kind).toBe('unavailable');
+    expect(admitVoiceCall).not.toHaveBeenCalled();
   });
 
   it('never reaches the ledger for a call it was never going to admit', async () => {
@@ -141,8 +217,35 @@ describe('what a caller gets', () => {
     expect(admitVoiceCall).not.toHaveBeenCalled();
   });
 
+  it('does not confuse launch capacity with a purchased voice entitlement', async () => {
+    workspace({ voice_concurrent_calls: 1, voice_included_minutes: 0 });
+    replies.workspace_entitlements = {
+      data: {
+        entitlement_state: 'active',
+        feature_limits: {
+          voice_concurrent_calls: 1, voice_history_days: 30, voice_included_minutes: 0,
+        },
+        feature_flags: { voice_included: false, voice_advanced_routing: false },
+      },
+      error: null,
+    };
+    const result = await planInboundCall(admin, call, options);
+    expect(result.declineReason).toBe('no_entitlement');
+    expect(result.plan.kind).toBe('forward');
+    expect(admitVoiceCall).not.toHaveBeenCalled();
+  });
+
+  it('fails to the normal line before admission when receipt auth is missing', async () => {
+    const result = await planInboundCall(admin, call, {
+      ...options, receiptAuthorization: null,
+    });
+    expect(result.declineReason).toBe('receipt_auth_unavailable');
+    expect(result.plan.kind).toBe('forward');
+    expect(admitVoiceCall).not.toHaveBeenCalled();
+  });
+
   it('forwards when the allowance is gone, which is the published behaviour', async () => {
-    admitVoiceCall.mockResolvedValue({ outcome: 'refused' });
+    admitVoiceCall.mockResolvedValue({ outcome: 'refused', reason: 'no_allowance' });
     const result = await planInboundCall(admin, call, options);
     expect(result).toMatchObject({ declineReason: 'no_allowance' });
     expect(result.plan.kind).toBe('forward');
@@ -153,6 +256,16 @@ describe('what a caller gets', () => {
     // than treating "unmetered" as "refused".
     admitVoiceCall.mockResolvedValue({ outcome: 'admitted_unmetered', reason: 'ledger_unavailable' });
     expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
+  });
+
+  it('uses an attribution failure reason when the meter cannot persist the call', async () => {
+    admitVoiceCall.mockResolvedValue({
+      outcome: 'refused',
+      reason: 'admission_unavailable',
+    });
+    const result = await planInboundCall(admin, call, options);
+    expect(result.declineReason).toBe('admission_unavailable');
+    expect(result.plan.kind).not.toBe('ai_agent');
   });
 
   it('answers on an authorized overage too', async () => {
@@ -194,6 +307,13 @@ describe('concurrency, without a call-started event to count from', () => {
     expect(result).toMatchObject({ declineReason: 'at_capacity' });
     expect(result.plan.kind).toBe('forward');
     expect(admitVoiceCall).not.toHaveBeenCalled();
+  });
+
+  it('honours the atomic claim when a simultaneous request takes the last seat', async () => {
+    admitVoiceCall.mockResolvedValue({ outcome: 'refused', reason: 'at_capacity' });
+    const result = await planInboundCall(admin, call, options);
+    expect(result).toMatchObject({ declineReason: 'at_capacity' });
+    expect(result.plan.kind).toBe('forward');
   });
 
   it('lets Scale run three at once where Flex runs one', async () => {
@@ -260,7 +380,8 @@ describe('when the receptionist is meant to pick up', () => {
     });
     const result = await planInboundCall(admin, call, options);
     if (result.plan.kind !== 'ai_agent') throw new Error('expected the agent');
-    expect(result.plan.greeting).toBe('Rivera Plumbing, how can I help?');
+    expect(result.plan.greeting).toContain('You are speaking with an AI assistant.');
+    expect(result.plan.greeting).toContain('Rivera Plumbing, how can I help?');
     // The configured hand-off wins over the general forwarding number.
     expect(result.plan.transferTo).toBe('+15550001111');
   });

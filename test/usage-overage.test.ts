@@ -7,6 +7,7 @@ import {
   formatOverage,
   OVERAGE_KEY_PATTERN,
   releaseUsageOverage,
+  settleUsageOverage,
   tryUsageOverage,
   usageOverageEnabled,
 } from '@/lib/billing/usage-overage';
@@ -295,10 +296,79 @@ describe('giving a charge back, which used to only look like it worked', () => {
   });
 });
 
+describe('overage settlement result identity', () => {
+  const key = 'ai-voice:v1:call_result01:overage';
+
+  it('distinguishes a real zero-refund full-cap settlement from no event', async () => {
+    const calls: Array<[string, Record<string, unknown>]> = [];
+    const fullCap = {
+      rpc: async (name: string, args: Record<string, unknown>) => {
+        calls.push([name, args]);
+        return { data: [{ settled: true, refunded_millicents: 0, replayed: false }], error: null };
+      },
+    } as never;
+    await expect(settleUsageOverage(fullCap, {
+      accountId: ACCOUNT, idempotencyKey: key, units: 60,
+    })).resolves.toEqual({ settled: true, refundedMillicents: 0 });
+    expect(calls[0]).toEqual(['settle_usage_overage_result', {
+      p_account_id: ACCOUNT, p_idempotency_key: key, p_units: 60,
+    }]);
+
+    const absent = {
+      rpc: async () => ({
+        data: [{ settled: false, refunded_millicents: 0, replayed: false }], error: null,
+      }),
+    } as never;
+    await expect(settleUsageOverage(absent, {
+      accountId: ACCOUNT, idempotencyKey: key, units: 60,
+    })).resolves.toEqual({ settled: false, refundedMillicents: 0 });
+  });
+
+  it('accepts an exact durable replay and rejects the old ambiguous scalar shape', async () => {
+    const replay = {
+      rpc: async () => ({
+        data: [{ settled: true, refunded_millicents: 2_065_000, replayed: true }], error: null,
+      }),
+    } as never;
+    await expect(settleUsageOverage(replay, {
+      accountId: ACCOUNT, idempotencyKey: key, units: 1,
+    })).resolves.toEqual({ settled: true, refundedMillicents: 2_065_000 });
+
+    const ambiguous = {
+      rpc: async () => ({ data: 0, error: null }),
+    } as never;
+    await expect(settleUsageOverage(ambiguous, {
+      accountId: ACCOUNT, idempotencyKey: key, units: 60,
+    })).resolves.toEqual({ settled: false, refundedMillicents: 0 });
+  });
+});
+
 describe('the key that stops the same overrun being charged twice', () => {
   // The retry is not hypothetical. The RPC commits, the connection drops before
   // the row comes back, this function answers `unavailable`, the caller refuses
   // to send -- and the workspace has paid for work nobody did. Then it retries.
+
+  it('replays the exact key after an unknown response and recovers the committed accrual', async () => {
+    rpc
+      .mockRejectedValueOnce(new Error('response lost after commit'))
+      .mockResolvedValueOnce({
+        data: [{
+          decision: 'accrued', accrued_millicents: 4_800,
+          cap_millicents: 50_000, charged_millicents: 4_800,
+        }],
+        error: null,
+      });
+    const decision = await tryUsageOverage(admin, {
+      accountId: ACCOUNT,
+      resourceCode: 'text_segments',
+      units: 1,
+      idempotencyKey: 'text-credit:v1:msg_retry1:overage',
+    }, { enabled: true });
+
+    expect(decision).toMatchObject({ outcome: 'accrued', chargedMillicents: 4_800 });
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc.mock.calls[0][1]).toEqual(rpc.mock.calls[1][1]);
+  });
 
   it('sends the key to the database', async () => {
     const calls: Array<Record<string, unknown>> = [];

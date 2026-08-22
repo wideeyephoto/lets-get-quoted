@@ -46,6 +46,7 @@ export const TEXT_CREDIT_OPERATION_TYPE = 'text_send';
 
 /** Matches ai-intake-usage.ts, and the sweeper that releases what outlives it. */
 const RESERVATION_TTL_MS = 15 * 60 * 1000;
+const MAX_RESERVATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -96,7 +97,7 @@ export type TextCreditDecision =
   | Readonly<{ outcome: 'refused'; segments: number }>;
 
 export type TextCreditInput = Readonly<{
-  /** Null for messages with no workspace to bill, such as a signup verification code. */
+  /** Null only for genuinely platform-scoped traffic; homeowner producers must carry a workspace. */
   accountId: string | null;
   /** The exact body that will be handed to the carrier, after any opt-out line. */
   body: string;
@@ -120,7 +121,11 @@ function insufficientCredits(error: { code?: string; message?: string } | null):
 export async function beginTextCreditUsage(
   admin: SupabaseClient,
   input: TextCreditInput,
-  options: Readonly<{ mode?: TextCreditMode; now?: () => Date }> = {},
+  options: Readonly<{
+    mode?: TextCreditMode;
+    now?: () => Date;
+    reservationTtlMs?: number;
+  }> = {},
 ): Promise<TextCreditDecision> {
   const segments = smsSegmentCount(input.body);
   const mode = options.mode ?? textCreditMode();
@@ -129,15 +134,21 @@ export async function beginTextCreditUsage(
     return Object.freeze({ outcome: 'allowed_unmetered' as const, segments, reason: 'not_metered' as const });
   }
   if (!input.accountId) {
-    // A verification code during signup has no workspace to bill. Reported
-    // rather than ignored: if this appears on a message that SHOULD have an
-    // account, the caller is the bug, not this decision.
+    // Preserve an explicit platform/unattributed outcome, but treat it as
+    // diagnostic: homeowner traffic (including lead verification) must carry
+    // the contractor workspace whose brand and dedicated sender it uses.
     return Object.freeze({ outcome: 'allowed_unmetered' as const, segments, reason: 'no_account' as const });
   }
 
   const identity = identityFor(input.messageKey);
   const claimNonce = randomUUID().toLowerCase();
   const now = (options.now ?? (() => new Date()))();
+  const reservationTtlMs = options.reservationTtlMs ?? RESERVATION_TTL_MS;
+  if (!Number.isSafeInteger(reservationTtlMs)
+      || reservationTtlMs < 60_000
+      || reservationTtlMs > MAX_RESERVATION_TTL_MS) {
+    throw new Error('Text-credit reservation TTL is invalid.');
+  }
 
   let reservationId: unknown = null;
   let reserveError: { code?: string; message?: string } | null = null;
@@ -148,7 +159,7 @@ export async function beginTextCreditUsage(
       p_units: segments,
       p_idempotency_key: identity.idempotencyKey,
       p_operation_type: TEXT_CREDIT_OPERATION_TYPE,
-      p_expires_at: new Date(now.getTime() + RESERVATION_TTL_MS).toISOString(),
+      p_expires_at: new Date(now.getTime() + reservationTtlMs).toISOString(),
       p_metadata: { schema: 'text-credit.v1', claim_nonce: claimNonce, segments },
     });
     reservationId = result.data;

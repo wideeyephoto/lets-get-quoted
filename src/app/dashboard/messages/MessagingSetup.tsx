@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ModalDialog from '@/components/modal-dialog';
 import { aggregateChip, ownerAlertChip, registrationChip, canSaveOwnerAlerts, type MessagingSetup as Setup } from '@/lib/owner-sms';
 import OwnerAlertsForm from './OwnerAlertsForm';
@@ -90,9 +91,9 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
             <p className="msg-setup-lead">
               Texts to <b>you</b> about your own Let&rsquo;s Get Quoted account &mdash; account, billing,
               support, and quote-request notifications, such as a high-value lead landing or a homeowner
-              accepting an estimate. <b>This does not text your customers</b> &mdash; texting them is the
-              inbox behind this dialog and needs no setup; the section beside this one is about the
-              number those texts go out from.
+              accepting an estimate. <b>This does not authorize texts to your customers.</b> Contractor-to-homeowner
+              messaging becomes available only after your business is carrier-approved and its dedicated
+              number is active.
             </p>
             <OwnerAlertsForm
               phone={setup.alerts.kind === 'ok' ? setup.alerts.phone : null}
@@ -104,23 +105,17 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
             />
           </section>
 
-          {/* Inactive, and stays inactive. Nothing in this section takes input,
-              writes anything, or shares state with the consent form above it —
-              the two are adjacent on screen and unrelated everywhere else.
-
-              IT IS THE NUMBER THAT IS PENDING, NOT THE TEXTING. This heading
-              used to read "Customer texting — coming soon" above a working
-              two-way inbox, which told owners a thing they already have is
-              unavailable. Customer texting ships today on the shared platform
-              number, including the first text in a thread; what nobody can
-              start yet is a dedicated number of their own. */}
+          {/* This section is intentionally separate from LGQ account alerts.
+              The platform campaign cannot be used as a shortcut for traffic
+              sent in a contractor's name. Carrier approval and an active,
+              dedicated sender are the boundary for contractor-to-homeowner
+              messages. */}
           <section className="msg-setup-section">
-            <h3>Your own texting number &mdash; coming soon</h3>
+            <h3>Your customer texting number</h3>
             <p className="msg-setup-lead">
-              You can text customers from this inbox today &mdash; every account sends on a shared Let&rsquo;s
-              Get Quoted number. What is not open yet is a dedicated two-way number of your own, which needs
-              your business registered with the mobile carriers first. That is a legal requirement in the US,
-              not our rule.
+              Let&rsquo;s Get Quoted&rsquo;s shared numbers are reserved for LGQ account, billing, support, and
+              platform notifications. Messages sent in your business name to homeowners stay unavailable until
+              your business is vetted, carrier-approved, and its dedicated two-way number is active.
             </p>
 
             <p className={`msg-setup-status is-${registration.tone}`}>
@@ -143,10 +138,21 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
              * here.
              */}
             {setup.registration.kind === 'ok' && setup.registration.status === 'not_started' ? (
-              <p className="msg-setup-note">
-                Nothing to do yet, and nothing you have missed. We will open registration here as soon as
-                our messaging provider confirms the process, and email you when it does.
-              </p>
+              <>
+                <p className="msg-setup-note">
+                  We are accepting a small number of vetted businesses into a private beta. Applying does not
+                  purchase a number, change your plan, or add a charge.
+                </p>
+                <p><Link className="btn secondary" href="/dashboard/messages/dedicated-number">Apply for the private beta</Link></p>
+              </>
+            ) : null}
+
+            {setup.registration.kind === 'ok' && ['action_required', 'rejected'].includes(setup.registration.status) ? (
+              <p><Link className="btn secondary" href="/dashboard/messages/dedicated-number">Review application status</Link></p>
+            ) : null}
+
+            {setup.registration.kind === 'ok' && ['submitted', 'in_review', 'approved'].includes(setup.registration.status) ? (
+              <p><Link className="btn secondary" href="/dashboard/messages/dedicated-number">View application status</Link></p>
             ) : null}
 
             {setup.registration.kind === 'ok' && setup.registration.assignedNumber ? (

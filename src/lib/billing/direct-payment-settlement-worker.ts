@@ -3,7 +3,6 @@ import 'server-only';
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
-import { sendProviderMessage } from '@/lib/sms-provider';
 import { paymentText } from '@/lib/sms-templates';
 
 /**
@@ -13,9 +12,9 @@ import { paymentText } from '@/lib/sms-templates';
  * Only the exact-1-gated billing cron boundary imports this module. With that
  * gate off, it has no execution path. The database owns leases and terminal
  * outcomes. This worker owns only two effects, in order: one idempotent
- * payment-paid feed entry and one currently-consented payment receipt text. It
- * never changes ordinary job status and never calls Quick Stop, payment-plan,
- * recurring, or refund logic.
+ * payment-paid feed entry and one durable handoff to the generic SMS queue. It
+ * never changes ordinary job status, opens a carrier socket, or calls Quick
+ * Stop, payment-plan, recurring, or refund logic.
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -26,6 +25,7 @@ const MAX_BATCH_SIZE = 25;
 export type DirectPaymentSettlementFeedStatus = 'pending' | 'recorded';
 export type DirectPaymentSettlementSmsStatus =
   | 'pending'
+  | 'queued'
   | 'sent'
   | 'skipped_no_consent'
   | 'skipped_opted_out'
@@ -53,7 +53,7 @@ export type DirectPaymentSettlementSmsEnvelope = Readonly<{
 
 export type DirectPaymentSettlementSmsStage = Readonly<{
   status:
-    | 'dispatch'
+    | 'queued'
     | 'already_sent'
     | 'skipped_no_consent'
     | 'skipped_opted_out'
@@ -75,11 +75,6 @@ export interface DirectPaymentSettlementStore {
     claim: DirectPaymentSettlementClaim,
     envelope: DirectPaymentSettlementSmsEnvelope,
   ): Promise<DirectPaymentSettlementSmsStage>;
-  completeSms(input: {
-    claim: DirectPaymentSettlementClaim;
-    smsEventId: string;
-    providerId: string;
-  }): Promise<void>;
   fail(input: {
     claim: DirectPaymentSettlementClaim;
     errorCode: string;
@@ -89,7 +84,6 @@ export interface DirectPaymentSettlementStore {
 
 export interface DirectPaymentSettlementMessenger {
   resolveEnvelope(claim: DirectPaymentSettlementClaim): Promise<DirectPaymentSettlementSmsEnvelope>;
-  send(phoneNumber: string, body: string, accountId: string): Promise<string>;
 }
 
 type RpcError = Readonly<{ code?: string; message?: string }>;
@@ -215,7 +209,7 @@ function parseSmsStage(value: unknown): DirectPaymentSettlementSmsStage {
   const row = rowRecord(value, 'sms_stage');
   const status = requiredString(row.dispatch_status, 'dispatch_status');
   if (![
-    'dispatch', 'already_sent', 'skipped_no_consent',
+    'queued', 'already_sent', 'skipped_no_consent',
     'skipped_opted_out', 'indeterminate',
   ].includes(status)) {
     throw new DirectPaymentSettlementWorkerError('sms_stage_status_invalid', false);
@@ -225,9 +219,9 @@ function parseSmsStage(value: unknown): DirectPaymentSettlementSmsStage {
     ? null
     : requiredString(row.phone_number, 'phone_number', PHONE_PATTERN);
   if (
-    (status === 'dispatch' && (!smsEventId || !phoneNumber))
+    (status === 'queued' && (!smsEventId || phoneNumber !== null))
     || ((status === 'already_sent' || status === 'indeterminate') && !smsEventId)
-    || (status !== 'dispatch' && phoneNumber !== null)
+    || (status !== 'queued' && phoneNumber !== null)
     || ((status === 'skipped_no_consent' || status === 'skipped_opted_out') && smsEventId !== null)
   ) {
     throw new DirectPaymentSettlementWorkerError('sms_stage_shape_invalid', false);
@@ -299,7 +293,7 @@ export class SupabaseDirectPaymentSettlementStore implements DirectPaymentSettle
     envelope: DirectPaymentSettlementSmsEnvelope,
   ): Promise<DirectPaymentSettlementSmsStage> {
     const { data, error } = await this.admin.rpc(
-      'stage_direct_payment_settlement_sms',
+      'enqueue_direct_payment_settlement_sms',
       {
         p_task_id: requiredUuid(claim.taskId, 'task_id'),
         p_claim_token: requiredUuid(claim.claimToken, 'claim_token'),
@@ -309,26 +303,6 @@ export class SupabaseDirectPaymentSettlementStore implements DirectPaymentSettle
     );
     if (error) throw rpcFailure(error);
     return parseSmsStage(data);
-  }
-
-  async completeSms(input: {
-    claim: DirectPaymentSettlementClaim;
-    smsEventId: string;
-    providerId: string;
-  }): Promise<void> {
-    const { data, error } = await this.admin.rpc(
-      'complete_direct_payment_settlement_sms',
-      {
-        p_task_id: requiredUuid(input.claim.taskId, 'task_id'),
-        p_claim_token: requiredUuid(input.claim.claimToken, 'claim_token'),
-        p_sms_event_id: requiredUuid(input.smsEventId, 'sms_event_id'),
-        p_provider_id: requiredString(input.providerId, 'provider_id'),
-      },
-    );
-    if (error) throw rpcFailure(error);
-    if (data !== true) {
-      throw new DirectPaymentSettlementWorkerError('sms_completion_invalid', false);
-    }
   }
 
   async fail(input: {
@@ -403,7 +377,10 @@ implements DirectPaymentSettlementMessenger {
     }
 
     if (!payment.sms_consent || !payment.homeowner_phone) {
-      return Object.freeze({ phoneNumber: null, body: null });
+      return Object.freeze({
+        phoneNumber: null,
+        body: null,
+      });
     }
     const phoneNumber = normalizeUsPhone(payment.homeowner_phone);
     const amount = Number(payment.amount);
@@ -422,18 +399,10 @@ implements DirectPaymentSettlementMessenger {
       link: `${origin}/pay/${claim.paymentId}`,
       eventType: 'payment_paid',
     });
-    return Object.freeze({ phoneNumber, body });
-  }
-
-  send(phoneNumber: string, body: string, accountId: string): Promise<string> {
-    return sendProviderMessage(
-      requiredString(phoneNumber, 'phone_number', PHONE_PATTERN),
-      requiredString(body, 'sms_body'),
-      // A paid-invoice receipt. Exempt from text credits today -- see the
-      // payment_message category in lib/sms-billing-policy.ts, which is one
-      // of the two answers still outstanding.
-      { accountId, category: 'payment_message' },
-    );
+    return Object.freeze({
+      phoneNumber,
+      body,
+    });
   }
 }
 
@@ -515,8 +484,10 @@ async function failClaim(
 
 /**
  * Processes a bounded batch strictly one task at a time. Feed completion is
- * durable before SMS staging. Once SMS is staged, every provider or completion
- * uncertainty is terminal/indeterminate; this function never retries egress.
+ * durable before the SMS is atomically handed to the generic delivery queue.
+ * This financial worker never opens a carrier socket; sender readiness,
+ * kill-switch/canary policy, consent, metering, and provider uncertainty all
+ * belong to the generic SMS delivery state machine.
  */
 export async function runDirectPaymentSettlementBatch(
   batchSize = 10,
@@ -552,6 +523,15 @@ export async function runDirectPaymentSettlementBatch(
         }));
         continue;
       }
+      if (stage.status === 'queued') {
+        outcomes.push(Object.freeze({
+          taskId: claim.taskId,
+          status: 'completed',
+          feedStatus: 'recorded',
+          smsStatus: 'queued',
+        }));
+        continue;
+      }
       if (stage.status === 'already_sent') {
         outcomes.push(Object.freeze({
           taskId: claim.taskId,
@@ -569,43 +549,6 @@ export async function runDirectPaymentSettlementBatch(
           smsStatus: 'indeterminate',
         }));
         continue;
-      }
-      if (!stage.smsEventId || !stage.phoneNumber || !envelope.body) {
-        throw new DirectPaymentSettlementWorkerError('sms_dispatch_shape_invalid', false);
-      }
-
-      let providerId: string;
-      try {
-        providerId = await messenger.send(stage.phoneNumber, envelope.body, claim.workspaceId);
-      } catch {
-        // Egress was entered. Even a provider error may arrive after acceptance;
-        // never turn this into a retryable send.
-        outcomes.push(failureOutcome(claim, await store.fail({
-          claim,
-          errorCode: 'sms_provider_result_unknown',
-          retryable: false,
-        }), 'recorded'));
-        continue;
-      }
-
-      try {
-        await store.completeSms({ claim, smsEventId: stage.smsEventId, providerId });
-        outcomes.push(Object.freeze({
-          taskId: claim.taskId,
-          status: 'completed',
-          feedStatus: 'recorded',
-          smsStatus: 'sent',
-        }));
-      } catch {
-        // The provider returned an ID, so retrying the send is forbidden. The
-        // failure RPC either observes an already-completed transaction or marks
-        // the staged event indeterminate. If this finalizer is unavailable too,
-        // the expired lease performs that same indeterminate transition.
-        outcomes.push(failureOutcome(claim, await store.fail({
-          claim,
-          errorCode: 'sms_completion_result_unknown',
-          retryable: false,
-        }), 'recorded'));
       }
     } catch (error) {
       outcomes.push(await failClaim(store, claim, error, feedStatus));

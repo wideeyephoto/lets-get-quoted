@@ -47,7 +47,7 @@ function makeInsights(): Insights {
       hasData: true,
     },
     marketingPerformance: {
-      campaigns: [{ id: 'c1', channel: 'both', audience: 'all', sentAt: '2026-07-15T10:00:00.000Z', recipients: 120, emailSent: 100, smsSent: 20, failed: 2, skipped: 1 }],
+      campaigns: [{ id: 'c1', channel: 'both', audience: 'all', sentAt: '2026-07-15T10:00:00.000Z', recipients: 120, emailSent: 100, smsQueued: 20, failed: 2, skipped: 1 }],
       totalRecipients: 120,
       hasData: true,
       tracksEngagement: false,
@@ -100,7 +100,7 @@ describe('buildInsightsCsv', () => {
   });
 
   it('renders marketing with human channel/audience labels and a UTC date', () => {
-    expect(lines).toContain('Sent on,Channel,Audience,Recipients,Emails sent,Texts sent,Failed,Skipped');
+    expect(lines).toContain('Sent on,Channel,Audience,Recipients,Emails sent,Texts queued,Failed,Skipped');
     expect(lines).toContain('2026-07-15,Email + text,Everyone,120,100,20,2,1');
   });
 

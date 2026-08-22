@@ -176,7 +176,13 @@ async function notifyClientUpdateCard(admin: AdminClient, plan: RecurringPlan, b
       const { data: consent } = await admin.from('sms_consent').select('status').eq('account_id', plan.account_id).eq('phone_number', phone).maybeSingle();
       if (consent?.status === 'opted_in') {
         try {
-          await sendCardUpdateSms({ phone, businessName, url, accountId: plan.account_id });
+          await sendCardUpdateSms({
+            phone,
+            businessName,
+            url,
+            accountId: plan.account_id,
+            idempotencyKey: `card-update:${plan.id}:${plan.updated_at}`,
+          });
           reached = true;
         } catch (err) {
           console.error('Card update SMS failed:', err instanceof Error ? err.message : err);

@@ -165,7 +165,7 @@ export function buildInsightsCsv(insights: Insights, meta: InsightsExportMeta): 
   // Marketing performance
   const mkt = insights.marketingPerformance;
   section('Marketing performance', 'Opens, clicks, replies and revenue are not tracked');
-  rows.push(['Sent on', 'Channel', 'Audience', 'Recipients', 'Emails sent', 'Texts sent', 'Failed', 'Skipped']);
+  rows.push(['Sent on', 'Channel', 'Audience', 'Recipients', 'Emails sent', 'Texts queued', 'Failed', 'Skipped']);
   for (const c of mkt.campaigns) {
     rows.push([
       exportDate(c.sentAt),
@@ -173,7 +173,7 @@ export function buildInsightsCsv(insights: Insights, meta: InsightsExportMeta): 
       audienceLabel(c.audience),
       String(c.recipients),
       String(c.emailSent),
-      String(c.smsSent),
+      String(c.smsQueued),
       String(c.failed),
       String(c.skipped),
     ]);

@@ -124,7 +124,11 @@ disposition and follow-up tasks.
 
 **Out, deliberately:** outbound AI calling. Not "later in V1" — not in V1. Also
 out: premium voices, a separate transcription API, and non-local inbound numbers.
-Recording is **off by default** and enabling it requires the disclosure.
+Call recording and a separately classified emergency-transfer route are not
+runtime features yet. The settings table keeps their future columns, but a
+database guard pins recording off and emergency routing to null until provider
+execution, disclosure, storage, retention, deletion, and escalation behavior
+exist end to end.
 
 ## 6. Standard vs. advanced routing
 
@@ -163,11 +167,11 @@ routing and failover actually work.**
 ## 8. Product surface
 
 Status and phone number; business hours; greeting and personality; services and
-service area; FAQs; escalation and transfer rules; emergency-call handling;
-booking and lead-collection behaviour; recording/transcription settings and the
-disclosure that goes with them; a test-call button; call history with summaries,
-outcomes, minutes used and estimated charges; pause service; spending and
-concurrency limits.
+service area; FAQs; primary transfer rules; booking and lead-collection
+behaviour; a test-call button; call history with summaries, outcomes, minutes
+used and estimated charges; pause service; spending and concurrency limits.
+Recording/transcription controls and a distinct emergency route stay visibly
+unavailable until their provider and compliance rails are real.
 
 ## 9. Build order
 
@@ -253,9 +257,11 @@ No signature header. No `X-SignalWire-*`, no `X-Twilio-*`, nothing. The project
 API token is neither sent nor used to sign. The dashboard exposes no signing
 secret or webhook token for an AI Agent.
 
-The only supported mechanism is **HTTP Basic credentials embedded in the callback
-URL**, which does produce a real `Authorization: Basic` header. The credentials
-stay readable in the dashboard after saving — they are not write-only.
+The callback authentication mechanism is **HTTP Basic**. The original dashboard
+test supplied it as URL userinfo and observed a real `Authorization: Basic`
+header. Current SignalWire SWML also exposes `post_prompt_auth_user` and
+`post_prompt_auth_password`; LGQ uses those dedicated fields so the reusable
+credential never appears in a URL, access log, or error report.
 
 **So LGQ's Twilio-style HMAC verifier does not apply, and transport auth alone is
 too weak to bill on.** A leaked credential would let anyone post a fabricated
@@ -263,7 +269,8 @@ call record, and fabricated call records are money.
 
 What makes it sufficient is that **LGQ only settles calls it admitted**:
 
-1. Basic credentials, dedicated to this endpoint and used nowhere else, over HTTPS.
+1. Basic credentials, supplied through the provider's dedicated post-prompt auth
+   fields, dedicated to this endpoint and used nowhere else, over HTTPS.
 2. `project_id` and `space_id` must equal the expected values.
 3. `call_id` must match a reservation LGQ opened at admission. A receipt for a
    call LGQ never admitted settles nothing and is discarded — which is what

@@ -259,15 +259,12 @@ describe('the owner-alert chip', () => {
 });
 
 describe('the customer-texting chip', () => {
-  /**
-   * "Not started" is an accusation — it says the contractor has something to
-   * do. They do not: nobody can begin until the provider confirms the process.
-   */
-  it('calls not_started "Coming soon" and claims no availability', () => {
+  it('calls not_started a private beta and separates applying from activation', () => {
     const chip = registrationChip({ kind: 'ok', status: 'not_started', assignedNumber: null, detail: null });
-    expect(chip.label).toBe('Coming soon');
+    expect(chip.label).toBe('Private beta');
     expect(chip.label).not.toBe('Not started');
-    expect(chip.detail).toContain('provider');
+    expect(chip.detail).toContain('Applications are open');
+    expect(chip.detail).toContain('before any carrier submission or number purchase');
     for (const claim of ['Ready', 'Approved', 'Active', 'Enabled']) {
       expect(chip.label, claim).not.toBe(claim);
     }
@@ -373,6 +370,7 @@ const SETTINGS_ACTIONS = stripJs(read('src', 'app', 'dashboard', 'settings', 'ac
 const SMS = stripJs(read('src', 'lib', 'sms.ts'));
 const DISCLOSURE = stripJs(read('src', 'lib', 'owner-sms-disclosure.ts'));
 const MODAL = stripJs(read('src', 'components', 'modal-dialog.tsx'));
+const MODAL_STACK = stripJs(read('src', 'components', 'modal-stack.ts'));
 const CSS = read('src', 'app', 'globals.css').replace(/\/\*[\s\S]*?\*\//g, '');
 
 describe('the strip, in the inbox', () => {
@@ -451,9 +449,10 @@ describe('the dialog', () => {
     expect(STRIP).toContain("import ModalDialog from '@/components/modal-dialog'");
     const modal = read('src', 'components', 'modal-dialog.tsx');
     // Escape, backdrop, scroll lock and inert siblings all still there.
-    expect(modal).toContain("event.key === 'Escape'");
-    expect(modal).toContain("document.body.style.overflow = 'hidden'");
-    expect(modal).toContain("toggleAttribute('inert', true)");
+    expect(modal).toContain('modalStackFor(document).register');
+    expect(MODAL_STACK).toContain("event.key !== 'Escape'");
+    expect(MODAL_STACK).toContain("documentRef.body.style.overflow = 'hidden'");
+    expect(MODAL_STACK).toContain("toggleAttribute('inert', true)");
   });
 
   /**
@@ -469,7 +468,7 @@ describe('the dialog', () => {
 
   it('keeps the two sections apart, and stacks them on a phone', () => {
     expect(STRIP).toContain('Your Let&rsquo;s Get Quoted notifications');
-    expect(STRIP).toContain('Your own texting number');
+    expect(STRIP).toContain('Your customer texting number');
     const at = CSS.indexOf('\n.msg-setup-sections {');
     const base = CSS.slice(at, CSS.indexOf('}', at));
     // One column by default; two only where there is room.
@@ -604,20 +603,19 @@ describe('the description matches the traffic that is registered', () => {
 
   /* The single most common misreading of this dialog. */
   it('says out loud that this does not text customers', () => {
-    expect(STRIP).toContain('This does not text your customers');
+    expect(STRIP).toContain('This does not authorize texts to your customers');
   });
 
   /**
-   * THE NUMBER IS WHAT IS COMING, NOT THE TEXTING. This section used to be
-   * headed "Customer texting — coming soon" and sat above an inbox that
-   * two-way texts today, first message included — so it announced that a
-   * shipped feature was missing. Only the words changed: the registration is
-   * still `not_started`, still pending, and still offers nothing to press.
+   * THE PLATFORM CAMPAIGN IS NOT A CONTRACTOR CAMPAIGN. A shared LGQ sender is
+   * reserved for LGQ account traffic; an application link may collect vetting
+   * evidence, but the setup dialog itself cannot send or purchase anything.
    */
-  it('says the owner’s own number is what is pending, not the texting', () => {
-    expect(STRIP).toContain('Your own texting number &mdash; coming soon');
-    expect(STRIP).toContain('You can text customers from this inbox today');
-    const numberSection = STRIP.slice(STRIP.indexOf('Your own texting number &mdash; coming soon'));
+  it('states the carrier boundary and keeps provider mutations off this dialog', () => {
+    expect(STRIP).toContain('Your customer texting number');
+    expect(STRIP).toContain('shared numbers are reserved for LGQ account, billing, support');
+    expect(STRIP).toContain('carrier-approved');
+    const numberSection = STRIP.slice(STRIP.indexOf('Your customer texting number'));
     expect(numberSection).not.toContain('<button');
     expect(numberSection).not.toContain('<input');
     expect(numberSection).not.toContain('<form');
@@ -635,11 +633,12 @@ describe('the screenshot must not leak the inbox behind it', () => {
     expect(MODAL).toContain("obscureBackdrop ? ' is-private' : ''");
   });
 
-  it('leaves the base class on, so the inert sweep still spares the portal', () => {
-    // Identified by class name in the same file; a modifier that REPLACED
-    // app-modal-backdrop would make the dialog inert its own portal.
+  it('leaves the base class on and registers the exact backdrop as the active portal', () => {
     expect(MODAL).toContain('app-modal-backdrop${obscureBackdrop');
-    expect(MODAL).toContain("classList.contains('app-modal-backdrop')");
+    expect(MODAL).toContain('const backdrop = backdropRef.current');
+    expect(MODAL).toContain('backdrop,');
+    expect(MODAL_STACK).toContain('child === top.backdrop');
+    expect(MODAL_STACK).toContain('restoreOwnedElement(child)');
   });
 
   /**
@@ -664,13 +663,13 @@ describe('the screenshot must not leak the inbox behind it', () => {
 });
 
 describe('the dedicated number claims nothing it cannot do', () => {
-  /* A "Start registration" button would open a form nobody can file — the
-     provider has not confirmed the process for managed accounts. */
-  it('offers no submit button while nobody can register', () => {
-    const section = STRIP.slice(STRIP.indexOf('Your own texting number &mdash; coming soon'));
-    for (const fake of ['Start registration', 'Submit registration', '<button', 'Register now']) {
-      expect(section, fake).not.toContain(fake);
-    }
+  /* The private beta may collect a vetted application, but this compact setup
+     surface still cannot purchase or assign a provider number. */
+  it('links to the application without turning setup into a purchase surface', () => {
+    const section = STRIP.slice(STRIP.indexOf('Your customer texting number'));
+    expect(section).toContain('/dashboard/messages/dedicated-number');
+    expect(section).toContain('Applying does not');
+    for (const fake of ['Purchase number', 'Buy number', 'Assign campaign']) expect(section).not.toContain(fake);
   });
 
   /* accounts.sms_number is inbound ROUTING. Conflating "we route this number to

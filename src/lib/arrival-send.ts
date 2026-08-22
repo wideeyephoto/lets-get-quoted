@@ -214,8 +214,13 @@ export async function sendArrival(
     await admin.from('job_tracking').update({ message_body: message }).eq('id', trackingId);
   }
 
-  const sms = await sendArrivalSms({ accountId: input.accountId, phone: job.client_phone, message });
-  await recordSmsOutcome(admin, trackingId, { status: sms.status, sid: sms.sid, error: sms.error });
+  const sms = await sendArrivalSms({
+    accountId: input.accountId,
+    phone: job.client_phone,
+    message,
+    idempotencyKey: `arrival:${trackingId}`,
+  });
+  await recordSmsOutcome(admin, trackingId, { status: sms.status, eventId: sms.eventId, error: sms.error });
 
   // Start the clock on the drive, when the account asked for that. Only on a
   // NEW trip — a revised ETA is the same journey, and restarting the clock
@@ -272,10 +277,10 @@ async function crewCostingRate(admin: SupabaseClient, crewId: string): Promise<n
 /** Plain English for the timeline about whether the customer actually heard. */
 function deliveryLine(status: string, phone: string | null): string {
   switch (status) {
+    case 'queued': return 'Customer text queued for delivery.';
     case 'sent': return 'Customer texted.';
     case 'opted_out': return 'Not texted — this number has opted out of messages.';
     case 'no_phone': return phone ? 'Not texted — the number on file is not a valid mobile.' : 'Not texted — no phone number on this job.';
-    case 'not_configured': return 'Not texted — texting is not set up on this account.';
     default: return 'The text did NOT go through.';
   }
 }
@@ -350,8 +355,9 @@ export async function applyArrivalStatus(
         accountId: input.accountId,
         phone: (job?.client_phone as string | null) ?? null,
         message: `${body} Reply STOP to opt out.`,
+        idempotencyKey: `arrival:${active.id}:${input.status}`,
       });
-      await recordSmsOutcome(admin, active.id, { status: sms.status, sid: sms.sid, error: sms.error });
+      await recordSmsOutcome(admin, active.id, { status: sms.status, eventId: sms.eventId, error: sms.error });
     }
   }
 

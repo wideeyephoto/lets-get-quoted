@@ -68,7 +68,7 @@ export default async function SubcontractorRequestPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { sent?: string };
+  searchParams: { queued?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const detail = await getSubcontractorRequest(supabase, accountId, params.id);
@@ -144,7 +144,7 @@ export default async function SubcontractorRequestPage({
       expiresLabel: expiryLabel(request.expiresAt, now),
     });
 
-  const sentCount = Number(searchParams.sent ?? '');
+  const queuedCount = Number(searchParams.queued ?? '');
 
   return (
     <main className="wide-shell workspace-shell">
@@ -164,9 +164,9 @@ export default async function SubcontractorRequestPage({
           </span>
         </p>
 
-        {Number.isFinite(sentCount) && sentCount > 0 ? (
+        {Number.isFinite(queuedCount) && queuedCount > 0 ? (
           <p className={styles.simNotice} role="status">
-            {sentCount} {sentCount === 1 ? 'offer is' : 'offers are'} on their way.
+            {queuedCount} {queuedCount === 1 ? 'offer text is' : 'offer texts are'} queued.
             {!isLiveMessagingEnvironment()
               ? ' Texts are simulated in this environment, so nothing reached a real phone — the links below still work.'
               : ''}
@@ -190,8 +190,12 @@ export default async function SubcontractorRequestPage({
 
         <dl className={styles.summaryGrid} style={{ marginTop: '1.1rem' }}>
           <div className={styles.summaryCard}>
-            <span className={styles.summaryValue}>{progress.sent}</span>
-            <span className={styles.summaryLabel}>Offers sent</span>
+            <span className={styles.summaryValue}>{progress.queued}</span>
+            <span className={styles.summaryLabel}>Texts queued</span>
+          </div>
+          <div className={styles.summaryCard}>
+            <span className={styles.summaryValue}>{progress.carrierAccepted}</span>
+            <span className={styles.summaryLabel}>Carrier accepted</span>
           </div>
           <div className={styles.summaryCard}>
             <span className={styles.summaryValue}>{progress.viewed}</span>

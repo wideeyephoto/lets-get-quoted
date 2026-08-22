@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { signalwireVoiceProvider as provider } from '@/lib/voice/signalwire';
+import {
+  minimizeSignalWireVoiceReceiptPayload,
+  signalwireVoiceProvider as provider,
+} from '@/lib/voice/signalwire';
 
 /**
  * The payload below is the one captured from a live SignalWire scratch agent on
@@ -10,6 +13,11 @@ import { signalwireVoiceProvider as provider } from '@/lib/voice/signalwire';
  * turned out to be wrong when somebody actually placed a call.
  */
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
+const RECEIPT_AUTH = Object.freeze({
+  scheme: 'basic' as const,
+  username: 'voice-receipt',
+  password: 'test-only-password',
+});
 const measured = () => ({
   project_id: '2687f308-939e-4e73-97bd-4edfc0d7fd5a',
   space_id: '7e9a4752-2bfc-4cd1-a66f-fb3bd902a4ac',
@@ -22,6 +30,8 @@ const measured = () => ({
     { role: 'user', content: 'Test complete. ' },
     { role: 'assistant', content: ' Thank you! The test is complete.' },
   ],
+  raw_call_log: [{ role: 'user', content: 'duplicate raw transcript' }],
+  call_timeline: [{ type: 'token', content: 'duplicate instrumented transcript' }],
   call_start_date: 1787171665880654,
   call_answer_date: 1787171666607564,
   call_end_date: 1787171699845567,
@@ -44,7 +54,34 @@ describe('reading the measured receipt', () => {
       eventType: 'post_conversation',
       aiStartMicros: 1787171667036808,
       aiEndMicros: 1787171699843237,
+      callLog: [
+        { role: 'system', content: 'You are a test agent.', timestamp: 1787171667036808 },
+        { role: 'assistant', content: 'Hello! Please say "test complete."', timestamp: null },
+        { role: 'user', content: 'Test complete.', timestamp: null },
+        { role: 'assistant', content: 'Thank you! The test is complete.', timestamp: null },
+      ],
     });
+  });
+
+  it('separates one normalized transcript from transcript-free receipt evidence', () => {
+    const payload = measured();
+    const parsed = provider.parseReceipt(payload);
+    if (!parsed.ok) throw new Error('expected a receipt');
+
+    const evidence = minimizeSignalWireVoiceReceiptPayload(payload, parsed.receipt);
+    expect(evidence).toMatchObject({
+      action: 'post_conversation',
+      call_id: CALL,
+      project_id: payload.project_id,
+      space_id: payload.space_id,
+      summary: 'This was an authentication test.',
+    });
+    for (const transcriptKey of [
+      'call_log', 'raw_call_log', 'call_timeline', 'post_prompt_data',
+    ]) {
+      expect(evidence).not.toHaveProperty(transcriptKey);
+    }
+    expect(parsed.receipt.callLog).toHaveLength(4);
   });
 
   it('carries the billable window and the answered window separately', () => {
@@ -85,6 +122,10 @@ describe('reading the measured receipt', () => {
       .toMatchObject({ ok: false, reason: 'missing_call_id' });
     expect(provider.parseReceipt({ ...measured(), action: 'call_started' }))
       .toMatchObject({ ok: false, reason: 'unsupported_event_type' });
+    expect(provider.parseReceipt({ ...measured(), project_id: '  ' }))
+      .toMatchObject({ ok: false, reason: 'missing_project_id' });
+    expect(provider.parseReceipt({ ...measured(), space_id: null }))
+      .toMatchObject({ ok: false, reason: 'missing_space_id' });
   });
 
   it('treats a missing or zero timestamp as absent, never as a time', () => {
@@ -134,24 +175,46 @@ describe('rendering an answer', () => {
   it('points the receipt at a URL LGQ owns, and at no other URL', () => {
     const answer = provider.renderAnswer({
       kind: 'ai_agent',
-      receiptUrl: 'https://letsgetquoted.com/api/voice/receipt?account=abc',
+      receiptUrl: 'https://letsgetquoted.com/api/voice/receipt',
+      receiptAuthorization: RECEIPT_AUTH,
       greeting: 'Thanks for calling.',
       capMinutes: 60,
       transferTo: '+15551230000',
     });
     const swml = JSON.parse(answer.body);
+    const ai = swml.sections.main[2].ai;
     expect(answer.contentType).toBe('application/json');
     expect(JSON.stringify(swml)).toContain('letsgetquoted.com/api/voice/receipt');
+    expect(ai.post_prompt_url).not.toContain('@');
+    expect(ai.post_prompt_auth_user).toBe(RECEIPT_AUTH.username);
+    expect(ai.post_prompt_auth_password).toBe(RECEIPT_AUTH.password);
+    // `prompt` is hidden model context. The disclosure must be deterministic
+    // audio before the AI starts, not an instruction the model may paraphrase.
+    expect(swml.sections.main[1].play.url)
+      .toBe('say: You are speaking with an AI assistant. Thanks for calling.');
+    expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
-    expect(swml.sections.main[1].ai.params.max_duration).toBe(3600);
+    expect(ai.params.max_duration).toBe(3600);
   });
 
   it('omits the transfer function entirely when there is nowhere to transfer', () => {
     const answer = provider.renderAnswer({
-      kind: 'ai_agent', receiptUrl: 'https://x.test/r', greeting: 'Hi', capMinutes: 60, transferTo: null,
+      kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Hi', capMinutes: 60, transferTo: null,
     });
-    expect(JSON.parse(answer.body).sections.main[1].ai.SWAIG).toBeUndefined();
+    expect(JSON.parse(answer.body).sections.main[2].ai.SWAIG).toBeUndefined();
+  });
+
+  it('marks a SWAIG connect as a transfer, as the provider contract requires', () => {
+    const answer = provider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Hi', capMinutes: 60, transferTo: '+15551230000',
+    });
+    const action = JSON.parse(answer.body)
+      .sections.main[2].ai.SWAIG.functions[0].data_map.expressions[0].output.action[0];
+    expect(action.transfer).toBe(true);
+    expect(action.SWML.sections.main[0].connect.to).toBe('+15551230000');
   });
 
   it('escapes a number that would otherwise break the markup', () => {

@@ -538,6 +538,7 @@ export type DirectPaymentSettlementCronSummary = Readonly<{
   terminal_failures: number;
   sms_indeterminate: number;
   feed_recorded: number;
+  sms_queued: number;
   sms_sent: number;
   sms_skipped_no_consent: number;
   sms_skipped_opted_out: number;
@@ -558,6 +559,7 @@ export function summarizeDirectPaymentSettlementBatch(
   let terminalFailures = 0;
   let smsIndeterminate = 0;
   let feedRecorded = 0;
+  let smsQueued = 0;
   let smsSent = 0;
   let smsSkippedNoConsent = 0;
   let smsSkippedOptedOut = 0;
@@ -584,6 +586,9 @@ export function summarizeDirectPaymentSettlementBatch(
 
     if (outcome.feedStatus === 'recorded') feedRecorded += 1;
     switch (outcome.smsStatus) {
+      case 'queued':
+        smsQueued += 1;
+        break;
       case 'sent':
         smsSent += 1;
         break;
@@ -613,6 +618,7 @@ export function summarizeDirectPaymentSettlementBatch(
     terminal_failures: terminalFailures,
     sms_indeterminate: smsIndeterminate,
     feed_recorded: feedRecorded,
+    sms_queued: smsQueued,
     sms_sent: smsSent,
     sms_skipped_no_consent: smsSkippedNoConsent,
     sms_skipped_opted_out: smsSkippedOptedOut,

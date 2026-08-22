@@ -38,6 +38,8 @@ export type VoiceCallRow = Readonly<{
 }>;
 
 export type VoiceCallHistory = Readonly<{
+  /** False means the history read failed; it must not be presented as no calls. */
+  available: boolean;
   calls: readonly VoiceCallRow[];
   /** Minutes settled in the window. Excludes calls that were never billed. */
   billedMinutes: number;
@@ -46,29 +48,46 @@ export type VoiceCallHistory = Readonly<{
 }>;
 
 const DEFAULT_LIMIT = 50;
+const DEFAULT_HISTORY_DAYS = 30;
+
+/** The catalog promises 30 or 90 days; malformed input takes the shorter path. */
+export function boundedVoiceHistoryDays(value: unknown): number {
+  const parsed = typeof value === 'string' && value.trim() ? Number(value) : value;
+  if (typeof parsed !== 'number' || !Number.isSafeInteger(parsed)) {
+    return DEFAULT_HISTORY_DAYS;
+  }
+  return Math.min(90, Math.max(30, parsed));
+}
 
 export async function loadVoiceCallHistory(
   supabase: SupabaseClient,
   accountId: string,
-  options: Readonly<{ limit?: number }> = {},
+  options: Readonly<{ limit?: number; historyDays?: number; now?: Date }> = {},
 ): Promise<VoiceCallHistory> {
   const limit = Math.min(200, Math.max(1, options.limit ?? DEFAULT_LIMIT));
+  const historyDays = boundedVoiceHistoryDays(options.historyDays);
+  const now = options.now ?? new Date();
+  const retainedAfter = new Date(
+    now.getTime() - historyDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  try {
 
-  const { data, error } = await supabase
+    const { data, error } = await supabase
     .from('voice_calls')
     .select('id, provider_call_id, caller_number, started_at, ai_seconds, billed_minutes, settlement, outcome, summary, lead_id')
     .eq('account_id', accountId)
+    // Retention runs daily, so physical deletion can trail the exact boundary
+    // by several hours. The read cutoff keeps the owner-visible promise exact.
+    .gte('created_at', retainedAfter)
     .order('started_at', { ascending: false, nullsFirst: false })
     .limit(limit);
 
-  // An empty history and an unreadable one look identical to a contractor, so
-  // the error is logged rather than swallowed — but the card still renders. A
-  // dashboard page that throws because one panel could not load is worse than a
-  // panel that says it has nothing.
-  if (error) {
-    console.error('voice call history read failed:', error);
-    return Object.freeze({ calls: [], billedMinutes: 0, unmeteredCalls: 0 });
-  }
+  // Keep the rest of the dashboard available, but retain the distinction
+  // between a verified empty history and a failed read for the panel to render.
+    if (error) {
+      console.error('voice call history read failed:', error);
+      return Object.freeze({ available: false, calls: [], billedMinutes: 0, unmeteredCalls: 0 });
+    }
 
   const calls = (data ?? []).map((row) => {
     const r = row as Record<string, unknown>;
@@ -86,8 +105,9 @@ export async function loadVoiceCallHistory(
     });
   });
 
-  return Object.freeze({
-    calls,
+    return Object.freeze({
+      available: true,
+      calls,
     // Only `allowance` and `overage` were actually charged. Counting an
     // `unmetered` call here would show a contractor minutes they were never
     // billed for and cannot reconcile against anything.
@@ -98,8 +118,12 @@ export async function loadVoiceCallHistory(
           : total,
       0,
     ),
-    unmeteredCalls: calls.filter((call) => call.settlement === 'unmetered').length,
-  });
+      unmeteredCalls: calls.filter((call) => call.settlement === 'unmetered').length,
+    });
+  } catch (error) {
+    console.error('voice call history read threw:', error);
+    return Object.freeze({ available: false, calls: [], billedMinutes: 0, unmeteredCalls: 0 });
+  }
 }
 
 /** `1:05`, or `—` when the receipt could not say. */

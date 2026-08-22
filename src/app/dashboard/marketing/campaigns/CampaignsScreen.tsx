@@ -24,7 +24,7 @@ type Props = {
   daysSinceLastSend: number | null;
   unsubscribesSinceLastSend: number;
   draft?: Parameters<typeof CampaignWorkspace>[0]['composer']['initial'];
-  searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
   basePath?: string;
   /** See MarketingNav — the demo lists only the sections it has built. */
   navOnly?: string[];
@@ -44,7 +44,9 @@ export default function CampaignsScreen({
   basePath = '/dashboard',
   navOnly,
 }: Props) {
-  const sentCount = searchParams.sent ? Number(searchParams.sent) : null;
+  const emailSent = searchParams.emailSent ? Number(searchParams.emailSent) : 0;
+  const smsQueued = searchParams.smsQueued ? Number(searchParams.smsQueued) : 0;
+  const hasOutcome = searchParams.emailSent !== undefined || searchParams.smsQueued !== undefined;
 
   return (
     <main className="wide-shell workspace-shell">
@@ -61,13 +63,15 @@ export default function CampaignsScreen({
         </section>
       ) : null}
 
-      {sentCount !== null ? (
+      {hasOutcome ? (
         <section className="panel workspace-section-card flash-banner flash-success">
           <p>
-            Campaign sent to <strong>{sentCount}</strong> {sentCount === 1 ? 'message' : 'messages'} across{' '}
-            {searchParams.recipients ?? 0} {Number(searchParams.recipients) === 1 ? 'customer' : 'customers'}.
+            Campaign accepted across {searchParams.recipients ?? 0}{' '}
+            {Number(searchParams.recipients) === 1 ? 'customer' : 'customers'}: <strong>{emailSent}</strong>{' '}
+            {emailSent === 1 ? 'email sent' : 'emails sent'} and <strong>{smsQueued}</strong>{' '}
+            {smsQueued === 1 ? 'text queued' : 'texts queued'}.
             {Number(searchParams.skipped) > 0 ? ` ${searchParams.skipped} skipped (not reachable).` : ''}
-            {Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed to send.` : ''}
+            {Number(searchParams.failed) > 0 ? ` ${searchParams.failed} failed before acceptance.` : ''}
           </p>
         </section>
       ) : null}

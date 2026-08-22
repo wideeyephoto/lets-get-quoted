@@ -105,6 +105,7 @@ export async function sendQuickStopOffer(supabase: SupabaseClient, accountId: st
       feeLabel,
       payUrl: `${APP_ORIGIN}/pay/${payment.id}`,
       minutes,
+      idempotencyKey: `quick-stop:${requestId}:offer:${payment.id}`,
     });
   }
 }
@@ -175,6 +176,7 @@ export async function confirmQuickStopPayment(admin: SupabaseClient, paymentId: 
       businessName,
       whenLabel: when,
       statusUrl: `${APP_ORIGIN}/quick-stop/${confirmed.id}`,
+      idempotencyKey: `quick-stop:${confirmed.id}:confirmed:${paymentId}`,
     });
   }
 

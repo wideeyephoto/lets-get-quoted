@@ -161,16 +161,12 @@ export function ownerAlertChip(alerts: OwnerAlerts): StatusChip {
  * The dedicated-number chip.
  *
  * WHAT IT IS ABOUT. A number of the contractor's own, and the carrier
- * registration that number needs — not whether they may text customers at all.
- * They may, today, on the shared platform number, first message included. The
- * strip labels this chip with the number rather than with the capability,
- * because a chip reading "Customer texting: Coming soon" over a working inbox
- * announced that a shipped feature was missing.
+ * registration that number needs. Customer texting remains unavailable until
+ * that dedicated sender is carrier-approved, inbound-ready, and active in the
+ * currently selected provider lane.
  *
- * `not_started` reads "Coming soon" and not "Not started", because "Not
- * started" is an accusation — it says the contractor has something to do. They
- * do not. Nobody can begin until the provider confirms the downstream-business
- * registration process, and saying so is the honest version.
+ * Applications are a private beta: an owner may submit the evidence now, while
+ * carrier submission and activation remain explicitly operator-controlled.
  */
 export function registrationChip(registration: Registration): StatusChip {
   if (registration.kind === 'unavailable') {
@@ -181,7 +177,7 @@ export function registrationChip(registration: Registration): StatusChip {
       return { label: 'Approved', tone: 'ready', detail: null };
     case 'submitted':
     case 'in_review':
-      return { label: 'Under review', tone: 'pending', detail: 'Sent to the carriers. This normally takes a few business days.' };
+      return { label: 'Under review', tone: 'pending', detail: 'LGQ is reviewing your application. Carrier submission may follow after business verification.' };
     case 'action_required':
       return { label: 'Action required', tone: 'attention', detail: registration.detail };
     case 'rejected':
@@ -189,9 +185,9 @@ export function registrationChip(registration: Registration): StatusChip {
     case 'not_started':
     default:
       return {
-        label: 'Coming soon',
+        label: 'Private beta',
         tone: 'pending',
-        detail: 'Registration opens once our provider confirms the process for managed accounts.',
+        detail: 'Applications are open. LGQ reviews each business before any carrier submission or number purchase.',
       };
   }
 }

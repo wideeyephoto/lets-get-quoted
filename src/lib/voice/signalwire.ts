@@ -1,9 +1,12 @@
+import { greetingWithAiDisclosure } from '@/lib/voice/provider';
 import type {
   InboundCall,
   VoiceAnswer,
   VoiceAnswerPlan,
   VoiceProvider,
+  VoiceReceipt,
   VoiceReceiptParse,
+  VoiceTranscriptTurn,
 } from '@/lib/voice/provider';
 
 /**
@@ -44,6 +47,66 @@ function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function transcriptFrom(payload: Record<string, unknown>): readonly VoiceTranscriptTurn[] | null {
+  if (!Array.isArray(payload.call_log)) return null;
+  const turns: VoiceTranscriptTurn[] = [];
+  for (const candidate of payload.call_log) {
+    const turn = record(candidate);
+    if (!turn || typeof turn.content !== 'string' || !turn.content.trim()) continue;
+    turns.push(Object.freeze({
+      role: text(turn.role),
+      content: turn.content.trim(),
+      timestamp: typeof turn.timestamp === 'number'
+        && Number.isFinite(turn.timestamp) && turn.timestamp > 0
+        ? turn.timestamp
+        : null,
+    }));
+  }
+  return Object.freeze(turns);
+}
+
+function compact(value: Record<string, unknown>): Readonly<Record<string, unknown>> {
+  return Object.freeze(Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined),
+  ));
+}
+
+/**
+ * The immutable receipt evidence LGQ keeps.
+ *
+ * SignalWire sends the conversation in `call_log`, `raw_call_log`, and
+ * `call_timeline`. The normalized callLog travels separately to voice_calls;
+ * no transcript enters voice_events. Provider telemetry and new unknown fields
+ * are allowlist-dropped here.
+ */
+export function minimizeSignalWireVoiceReceiptPayload(
+  payload: unknown,
+  receipt: VoiceReceipt,
+): Readonly<Record<string, unknown>> {
+  const body = record(payload) ?? {};
+  const swmlCall = record(body.SWMLCall);
+  const swmlVars = record(record(body.SWMLVars)?.userVariables);
+  const callEcho = text(swmlCall?.call_id);
+  const memberEcho = text(swmlVars?.memberCallId);
+
+  return compact({
+    action: receipt.eventType,
+    call_id: receipt.providerCallId,
+    project_id: receipt.projectId,
+    space_id: receipt.spaceId,
+    conversation_type: text(body.conversation_type),
+    call_start_date: receipt.callStartMicros,
+    call_answer_date: receipt.callAnswerMicros,
+    call_end_date: receipt.callEndMicros,
+    ai_start_date: receipt.aiStartMicros,
+    ai_end_date: receipt.aiEndMicros,
+    caller_id_number: receipt.callerNumber,
+    summary: receipt.summary,
+    SWMLCall: callEcho ? { call_id: callEcho } : null,
+    SWMLVars: memberEcho ? { userVariables: { memberCallId: memberEcho } } : null,
+  });
 }
 
 function escapeXml(value: string): string {
@@ -97,6 +160,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
     if (plan.kind === 'ai_agent') {
       // SWML, which is JSON. `post_prompt_url` is where the receipt lands, and
       // it is the only URL in here — LGQ's own.
+      const spokenGreeting = greetingWithAiDisclosure(plan.greeting);
       return Object.freeze({
         contentType: 'application/json',
         body: JSON.stringify({
@@ -104,16 +168,33 @@ export const signalwireVoiceProvider: VoiceProvider = {
           sections: {
             main: [
               { answer: {} },
+              // `ai.prompt` is the model's hidden identity/instruction prompt,
+              // not a deterministic spoken greeting. Play the disclosure and
+              // contractor greeting first so hearing it never depends on model
+              // compliance. SignalWire documents `say:` as a `play` URL.
+              { play: { url: `say: ${spokenGreeting}` } },
               {
                 ai: {
                   post_prompt_url: plan.receiptUrl,
+                  // SignalWire supports these as dedicated fields. Using them
+                  // produces Authorization: Basic on the receipt request while
+                  // keeping reusable credentials out of URLs, request logs and
+                  // error trackers.
+                  post_prompt_auth_user: plan.receiptAuthorization.username,
+                  post_prompt_auth_password: plan.receiptAuthorization.password,
                   params: {
                     // The published safety cap, expressed to the provider so it
                     // holds even if LGQ's own settlement never runs.
                     end_of_speech_timeout: 1000,
                     max_duration: plan.capMinutes * 60,
                   },
-                  prompt: { text: plan.greeting },
+                  prompt: {
+                    text: 'You are an AI receptionist for a home-service contractor. '
+                      + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
+                      + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
+                      + 'and preferred appointment time. Never claim an appointment is confirmed. '
+                      + 'If the caller asks for a person and a transfer tool is available, use it.',
+                  },
                   post_prompt: {
                     text: 'Summarise the caller\'s name, phone number, service address, '
                       + 'the work requested, how urgent it is, and any appointment time '
@@ -127,7 +208,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                       argument: { type: 'object', properties: {} },
                       data_map: { expressions: [{
                         string: 'true', pattern: '.*',
-                        output: { response: 'Connecting you now.', action: [{ SWML: {
+                        output: { response: 'Connecting you now.', action: [{ transfer: true, SWML: {
                           version: '1.0.0',
                           sections: { main: [{ connect: { to: plan.transferTo } }] },
                         } }] },
@@ -178,6 +259,14 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
     const callId = text(body.call_id);
     if (!callId) return Object.freeze({ ok: false as const, reason: 'missing_call_id' as const });
+    const projectId = text(body.project_id);
+    if (!projectId) {
+      return Object.freeze({ ok: false as const, reason: 'missing_project_id' as const });
+    }
+    const spaceId = text(body.space_id);
+    if (!spaceId) {
+      return Object.freeze({ ok: false as const, reason: 'missing_space_id' as const });
+    }
 
     // The measured payload carries the call id three times, identical in all
     // three. Reading one and ignoring the others would make a payload whose
@@ -197,8 +286,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
         provider: 'signalwire' as const,
         providerCallId: callId,
         eventType: 'post_conversation' as const,
-        projectId: text(body.project_id),
-        spaceId: text(body.space_id),
+        projectId,
+        spaceId,
         callStartMicros: micros(body.call_start_date),
         callAnswerMicros: micros(body.call_answer_date),
         callEndMicros: micros(body.call_end_date),
@@ -206,6 +295,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
         aiEndMicros: micros(body.ai_end_date),
         callerNumber: text(body.caller_id_number) ?? text(record(body.global_data)?.caller_id_number),
         summary: summaryFrom(body),
+        callLog: transcriptFrom(body),
       }),
     });
   },

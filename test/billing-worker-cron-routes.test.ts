@@ -773,7 +773,7 @@ describe('PII-free billing worker heartbeat summaries', () => {
     const summary = summarizeDirectPaymentSettlementBatch({
       claimedCount: 4,
       outcomes: [
-        { taskId: secret, status: 'completed', feedStatus: 'recorded', smsStatus: 'sent' },
+        { taskId: secret, status: 'completed', feedStatus: 'recorded', smsStatus: 'queued' },
         { taskId: secret, status: 'already_finished', feedStatus: 'recorded', smsStatus: 'sent' },
         { taskId: secret, status: 'failed_retryable', feedStatus: 'pending', smsStatus: 'pending' },
         { taskId: secret, status: 'sms_indeterminate', feedStatus: 'recorded', smsStatus: 'indeterminate' },
@@ -789,7 +789,8 @@ describe('PII-free billing worker heartbeat summaries', () => {
       terminal_failures: 0,
       sms_indeterminate: 1,
       feed_recorded: 3,
-      sms_sent: 2,
+      sms_queued: 1,
+      sms_sent: 1,
       sms_skipped_no_consent: 0,
       sms_skipped_opted_out: 0,
       sms_pending: 1,

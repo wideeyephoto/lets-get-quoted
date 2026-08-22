@@ -18,6 +18,9 @@ import {
   getFailedSmsEvents,
 } from '@/lib/admin-alerts';
 import { smsProviderSummary, type SmsProviderId } from '@/lib/sms-provider';
+import { aiVoiceEnabled } from '@/lib/voice/admission';
+import { voiceWebhookSecuritySummary } from '@/lib/voice/auth';
+import { loadVoiceOperatorHealth } from '@/lib/voice/operator-health';
 import styles from '../admin.module.css';
 
 const PROVIDER_LABEL: Record<SmsProviderId, string> = {
@@ -96,15 +99,18 @@ export default async function AdminHealthPage() {
   const now = new Date();
   const diagnostics = createAdminSignalDiagnostics();
 
-  const [{ last, lastSuccessAt, failedJobs }, webhookFailures, failedEmails, failedSms] = await Promise.all([
+  const [{ last, lastSuccessAt, failedJobs }, webhookFailures, failedEmails, failedSms, voiceOperations] = await Promise.all([
     loadCronStatus(admin, CRON_JOBS.map((j) => j.job)),
     getUnresolvedWebhookFailures(admin, { diagnostics }),
     getFailedEmailEvents(admin, { diagnostics }),
     getFailedSmsEvents(admin, { diagnostics }),
+    loadVoiceOperatorHealth(admin),
   ]);
 
   // Pure env read, no await — the provider is configuration, not state.
   const messaging = smsProviderSummary();
+  const voiceSecurity = voiceWebhookSecuritySummary();
+  const voiceEnabled = aiVoiceEnabled();
 
   const rows = CRON_JOBS.map((spec) => {
     const run: CronRunRow | null = last.get(spec.job) ?? null;
@@ -237,6 +243,7 @@ export default async function AdminHealthPage() {
           inbound texts from BOTH providers will validate. */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>Messaging provider</h2>
+        <p className={styles.muted} style={{ marginTop: 0 }}><Link href="/admin/messaging">Open queue, number, and callback operations →</Link></p>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <tbody>
@@ -250,8 +257,8 @@ export default async function AdminHealthPage() {
                   )}
                   {messaging.requestedButUnconfigured ? (
                     <span className={styles.muted} style={{ display: 'block', fontSize: '.72rem' }}>
-                      LGQ_SMS_PROVIDER asks for <code>{messaging.requestedButUnconfigured}</code>, whose credentials are
-                      missing. Nothing falls back to the other provider on purpose: sending under the wrong number and
+                      LGQ_SMS_PROVIDER asks for <code>{messaging.requestedButUnconfigured}</code>, which is invalid or
+                      does not have a complete credential block. Nothing falls back to the other provider on purpose: sending under the wrong number and
                       the wrong registration while you believe you have cut over is worse than sending nothing.
                     </span>
                   ) : null}
@@ -287,15 +294,88 @@ export default async function AdminHealthPage() {
                   {messaging.statusCallbacksEnabled ? (
                     <>Attached to every send.</>
                   ) : (
-                    // Silent until now: no https origin means no StatusCallback
-                    // is ever sent, so "Failed texts" below can only ever be
-                    // zero and looks like good news.
+                    // Silent until now: no trusted HTTPS LGQ origin means no
+                    // StatusCallback is sent, so "Failed texts" below can only
+                    // ever be zero and looks like good news.
                     <span style={{ color: '#ffd166' }}>
-                      Off — NEXT_PUBLIC_APP_URL is not https, so no delivery result is ever reported back and
+                      Off — NEXT_PUBLIC_APP_URL is missing or is not a trusted bare HTTPS LGQ origin, so no delivery result is ever reported back and
                       &ldquo;Failed texts&rdquo; cannot rise above zero.
                     </span>
                   )}
                 </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>AI Voice webhook security</h2>
+        {voiceOperations.failures.length > 0 ? (
+          <div className={`${styles.banner} ${styles.err}`}>
+            AI Voice operations data is incomplete: {voiceOperations.failures.join(', ')}. An em dash is unknown, not zero.
+          </div>
+        ) : null}
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <tbody>
+              <tr>
+                <td>Product admission</td>
+                <td>{voiceEnabled ? 'Enabled by LGQ_AI_VOICE_ENABLED' : 'Off'}</td>
+              </tr>
+              <tr>
+                <td>Inbound call HMAC</td>
+                <td>
+                  {voiceSecurity.inboundSigningConfigured
+                    ? 'Signing key present'
+                    : <span style={{ color: '#fca5a5' }}>Missing — every AI admission and fallback status callback is rejected</span>}
+                </td>
+              </tr>
+              <tr>
+                <td>Receipt Basic auth</td>
+                <td>
+                  {voiceSecurity.receiptBasicConfigured
+                    ? 'Dedicated credential present'
+                    : <span style={{ color: '#fca5a5' }}>Missing or malformed — no AI call can be admitted</span>}
+                </td>
+              </tr>
+              <tr>
+                <td>Receipt tenant scope</td>
+                <td>
+                  {voiceSecurity.projectScopeConfigured && voiceSecurity.spaceScopeConfigured
+                    ? 'Project and Space IDs present'
+                    : <span style={{ color: '#ffd166' }}>Incomplete — accepted receipts are not constrained by both provider tenant IDs</span>}
+                </td>
+              </tr>
+              <tr>
+                <td>Endpoints</td>
+                <td><code>/api/voice/ai</code> · <code>/api/voice/ai/status</code> · <code>/api/voice/receipt</code></td>
+              </tr>
+              <tr>
+                <td>Configured to answer</td>
+                <td>
+                  {voiceOperations.activeSettings === null ? '—' : voiceOperations.activeSettings}
+                  {voiceOperations.activeSettings !== null && voiceOperations.verifiedActiveRoutes !== null ? (
+                    <span className={styles.muted} style={{ display: 'block', fontSize: '.72rem' }}>
+                      {voiceOperations.verifiedActiveRoutes} with a verified customer-facing route
+                      {voiceOperations.activeSettings > voiceOperations.verifiedActiveRoutes
+                        ? ` · ${voiceOperations.activeSettings - voiceOperations.verifiedActiveRoutes} cannot answer`
+                        : ''}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <td>Receipts not fully processed</td>
+                <td>{voiceOperations.receiptsNeedingProcessing ?? '—'}</td>
+              </tr>
+              <tr>
+                <td>Calls needing billing review</td>
+                <td>{voiceOperations.callsNeedingBillingReview ?? '—'}</td>
+              </tr>
+              <tr>
+                <td>Latest AI call</td>
+                <td>{voiceOperations.latestCallAt ? ago(voiceOperations.latestCallAt, now) : voiceOperations.failures.includes('latest call') ? '—' : 'never'}</td>
               </tr>
             </tbody>
           </table>

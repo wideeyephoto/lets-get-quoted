@@ -6,10 +6,11 @@ import { sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
-import { isLeadVerificationConfigured, isLeadVerificationValid } from '@/lib/lead-verification';
+import { isLeadVerificationValid } from '@/lib/lead-verification';
+import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { isSmsConfigured, sendOwnerHighValueLeadSms } from '@/lib/sms';
+import { sendOwnerHighValueLeadSms } from '@/lib/sms';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 
@@ -71,6 +72,7 @@ async function notifyOwner(
         leadName: lead.name ?? '',
         estimate,
         dashboardUrl,
+        idempotencyKey: `owner-high-value-lead:${lead.id}`,
       });
     }
   } catch (error) {
@@ -231,8 +233,12 @@ export async function POST(request: NextRequest) {
   // goes through, because rejecting real customers over our own configuration
   // is worse, but it is flagged as unchecked rather than silently unflagged.
   if (filters.phoneVerification && text(data, 'wizard', 4) === '1') {
-    if (!isSmsConfigured() || !isLeadVerificationConfigured()) {
-      console.error('Phone verification is enabled but unavailable — no SMS provider or no verification secret.');
+    const verificationReadiness = await loadLeadPhoneVerificationReadiness(
+      site.account_id,
+      admin,
+    );
+    if (verificationReadiness.kind !== 'ready') {
+      console.error(`Phone verification is enabled but unavailable: ${verificationReadiness.reason}.`);
       flags.push('phone_verification_unavailable');
     } else {
       const verified = normalizedPhone !== null && isLeadVerificationValid(

@@ -25,6 +25,38 @@ export const AUTOMATION_COLUMNS = {
 
 export type AutomationKey = keyof typeof AUTOMATION_COLUMNS;
 
+/**
+ * Switches whose advertised behavior can initiate a customer text without the
+ * owner pressing a separate send button.
+ *
+ * A configured boolean is not delivery readiness. Until the workspace owns an
+ * active, assigned, inbound-ready contractor number, letting one of these move
+ * from off to on would promise an automation the delivery worker must suppress.
+ * Keep this policy shared by the page and the Server Action so a crafted action
+ * request cannot bypass the disabled control.
+ *
+ * Online Booking and Quick Stop are intentionally absent: their switches expose
+ * useful intake/marketplace surfaces before a later, explicit owner decision to
+ * send. Those individual sends still pass through the durable sender-readiness
+ * boundary.
+ */
+export const DEDICATED_MESSAGING_AUTOMATION_KEYS = [
+  'missed-call',
+  'reviews',
+  'followups',
+  'reminders',
+  'arrival',
+  'selections',
+] as const satisfies readonly AutomationKey[];
+
+const DEDICATED_MESSAGING_AUTOMATIONS = new Set<AutomationKey>(
+  DEDICATED_MESSAGING_AUTOMATION_KEYS,
+);
+
+export function automationRequiresDedicatedMessaging(key: AutomationKey): boolean {
+  return DEDICATED_MESSAGING_AUTOMATIONS.has(key);
+}
+
 export function isAutomationKey(value: string): value is AutomationKey {
   return Object.prototype.hasOwnProperty.call(AUTOMATION_COLUMNS, value);
 }

@@ -18,8 +18,8 @@ export type LocationPolicy = 'ask' | 'on' | 'off';
 export type LocationPrecision = 'exact' | 'street';
 export type WindowStyle = 'exact' | 'window';
 
-/** Delivery outcome of the customer text. "Sent" is a claim; this is the receipt. */
-export type SmsStatus = 'sent' | 'failed' | 'no_phone' | 'opted_out' | 'not_configured';
+/** Queue outcome of the customer text. Carrier callbacks own sent/delivered. */
+export type SmsStatus = 'queued' | 'sent' | 'failed' | 'no_phone' | 'opted_out';
 
 // The quick picks, straight from a tech's mental model of "how far out am I".
 export const ETA_CHOICES = [5, 10, 15, 30, 45, 60] as const;
@@ -625,10 +625,10 @@ export function describeArrivalOutcome(
     case 'revised': {
       const opener = result === 'started' ? 'On the way' : 'Arrival time updated';
       switch (sms) {
+        case 'queued': return { text: `${opener} — the customer text is queued for delivery ✓`, error: false };
         case 'sent': return { text: `${opener} — the customer was texted ✓`, error: false };
         case 'opted_out': return { text: `${opener}, but this number opted out of texts. Give them a call.`, error: true };
         case 'no_phone': return { text: `${opener}, but there's no usable phone number on this job — nothing was sent.`, error: true };
-        case 'not_configured': return { text: `${opener}, but texting isn't set up on this account — nothing was sent.`, error: true };
         case 'failed': return { text: `${opener}, but the text FAILED to send. The customer has not been told.`, error: true };
         default: return { text: `${opener} ✓`, error: false };
       }

@@ -29,15 +29,15 @@ export default function PerformanceScreen({
   navOnly?: string[];
 }) {
   const emailSent = campaigns.reduce((sum, campaign) => sum + (campaign.email_sent ?? 0), 0);
-  const smsSent = campaigns.reduce((sum, campaign) => sum + (campaign.sms_sent ?? 0), 0);
+  const smsQueued = campaigns.reduce((sum, campaign) => sum + (campaign.sms_sent ?? 0), 0);
   const failed = campaigns.reduce((sum, campaign) => sum + (campaign.failed_count ?? 0), 0);
   const skipped = campaigns.reduce((sum, campaign) => sum + (campaign.skipped_count ?? 0), 0);
 
   const tiles = [
-    { key: 'campaigns', label: 'Campaigns sent', value: campaigns.length, note: 'All time' },
-    { key: 'messages', label: 'Messages delivered', value: emailSent + smsSent, note: `${emailSent} email · ${smsSent} SMS` },
+    { key: 'campaigns', label: 'Campaign runs', value: campaigns.length, note: 'All time' },
+    { key: 'messages', label: 'Messages accepted', value: emailSent + smsQueued, note: `${emailSent} email sent · ${smsQueued} texts queued` },
     { key: 'published', label: 'Posts published', value: counts.published, note: counts.scheduled > 0 ? `${counts.scheduled} scheduled` : 'On your website' },
-    { key: 'failed', label: 'Not delivered', value: failed + skipped, note: `${failed} failed · ${skipped} unreachable` },
+    { key: 'failed', label: 'Not processed', value: failed + skipped, note: `${failed} failed · ${skipped} unreachable` },
   ];
 
   return (
@@ -80,20 +80,21 @@ export default function PerformanceScreen({
                   <th scope="col">Sent</th>
                   <th scope="col">Subject</th>
                   <th scope="col">Audience</th>
-                  <th scope="col">Delivered</th>
-                  <th scope="col">Not delivered</th>
+                  <th scope="col">Email sent</th>
+                  <th scope="col">Texts queued</th>
+                  <th scope="col">Not processed</th>
                 </tr>
               </thead>
               <tbody>
                 {campaigns.map((campaign) => {
-                  const delivered = (campaign.email_sent ?? 0) + (campaign.sms_sent ?? 0);
                   const missed = (campaign.failed_count ?? 0) + (campaign.skipped_count ?? 0);
                   return (
                     <tr key={campaign.id}>
                       <td>{monthLabel(campaign.created_at)}</td>
                       <td>{campaign.subject?.trim() || <span className="mkt-perf-muted">No subject (SMS)</span>}</td>
                       <td>{campaign.audience}</td>
-                      <td>{delivered}</td>
+                      <td>{campaign.email_sent ?? 0}</td>
+                      <td>{campaign.sms_sent ?? 0}</td>
                       {/* Zero reads as good here, so it is not dressed as a
                           warning — only a real miss gets the tone. */}
                       <td className={missed > 0 ? 'mkt-perf-miss' : undefined}>{missed > 0 ? missed : '—'}</td>
@@ -113,7 +114,7 @@ export default function PerformanceScreen({
         <p className="workspace-lead">
           Opens and clicks aren&apos;t tracked. Counting them means putting an invisible tracking pixel in every
           email you send, and we&apos;d rather not do that to your customers without asking you first. So these
-          numbers are what actually left the building — not who read it.
+          email counts are provider-accepted and text counts are durably queued. Carrier delivery is shown only when a callback proves it.
         </p>
       </section>
     </main>

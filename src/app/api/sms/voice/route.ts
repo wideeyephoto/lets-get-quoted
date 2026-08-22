@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { hasSignatureHeader, validateWebhookSignature } from '@/lib/sms-provider';
 import { logWebhookFailure } from '@/lib/webhook-failures';
+import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
 
 export const runtime = 'nodejs';
 
@@ -14,11 +15,6 @@ function xml(inner: string, status = 200) {
     headers: { 'Content-Type': 'text/xml' },
   });
 }
-function appOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`;
-  return raw.replace(/\/$/, '');
-}
-
 // Voice webhook for a contractor's tracking number. Rings their real line; the
 // dial's action callback (voice/status) handles a no-answer by texting the caller
 // back and logging a missed-call lead. Point the number's Voice URL here.
@@ -33,16 +29,17 @@ export async function POST(request: Request) {
     await logWebhookFailure({ source: 'sms_voice', errorMessage: 'Missing provider signature header' });
     return xml('', 403);
   }
-  const data = await request.formData();
-  const check = validateWebhookSignature(request, data);
+  const rawBody = await request.clone().text();
+  const check = validateWebhookSignature(request, rawBody);
   if (!check.ok) {
     await logWebhookFailure({
       source: 'sms_voice',
-      referenceId: String(data.get('CallSid') || '') || null,
+      referenceId: null,
       errorMessage: `Signature validation failed: ${check.reason}`,
     });
     return xml('', 403);
   }
+  const data = await request.formData();
 
   try {
     return await dispatchVoiceCall(request, data);
@@ -104,7 +101,13 @@ async function dispatchVoiceCall(request: Request, data: FormData): Promise<Next
   // gets an action URL in the other family, so the dial-completion leg is
   // signed over one URL and validated against another: a 403 on precisely the
   // callback that decides whether a missed call gets a text back.
-  const action = `${appOrigin()}${new URL(request.url).pathname}/status?account=${account.id}`;
+  const origin = trustedProviderCallbackOrigin();
+  if (!origin) throw new Error('Provider callback origin is missing or unsafe.');
+  const requestPath = new URL(request.url).pathname;
+  if (requestPath !== '/api/sms/voice' && requestPath !== '/api/twilio/voice') {
+    throw new Error('Provider voice callback path is not recognized.');
+  }
+  const action = `${origin}${requestPath}/status?account=${account.id}`;
   // callerId is the (owned) tracking number so the contractor sees a consistent
   // caller; timeout then fires the action callback for the missed-call text-back.
   return xml(

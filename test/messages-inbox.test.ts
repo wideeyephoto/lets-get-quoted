@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { listConversations, markThreadRead } from '../src/lib/messages';
+import {
+  listConversations,
+  loadConversationMessages,
+  loadConversations,
+  loadCurrentSmsConsentPhones,
+  markThreadRead,
+} from '../src/lib/messages';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type Row = { phone_number: string; body: string; direction: string; created_at: string; read_at?: string | null; media_urls?: string[] | null };
@@ -7,7 +13,13 @@ type Row = { phone_number: string; body: string; direction: string; created_at: 
 // A stub that answers the two queries listConversations makes: the message slice
 // and the jobs/leads name lookup. `smsError` simulates a pre-migration database
 // where read_at / media_urls do not exist yet.
-function client(rows: Row[], opts: { smsError?: boolean; names?: Array<{ name: string; phone: string }> } = {}): SupabaseClient {
+function client(rows: Row[], opts: {
+  smsError?: boolean;
+  fallbackError?: boolean;
+  eventError?: boolean;
+  threadError?: boolean;
+  names?: Array<{ name: string; phone: string }>;
+} = {}): SupabaseClient {
   let smsCalls = 0;
   const api = {
     from(table: string) {
@@ -17,9 +29,15 @@ function client(rows: Row[], opts: { smsError?: boolean; names?: Array<{ name: s
         select: (columns: string) => {
           if (table === 'sms_messages') {
             smsCalls += 1;
+            if (columns === '*' && opts.threadError) {
+              chain.__result = { data: null, error: { message: 'thread unavailable' } };
+              return chain;
+            }
             const wantsNewColumns = columns.includes('read_at');
             if (opts.smsError && wantsNewColumns) {
               chain.__result = { data: null, error: { message: 'column does not exist' } };
+            } else if (opts.smsError && opts.fallbackError) {
+              chain.__result = { data: null, error: { message: 'transcript unavailable' } };
             } else if (opts.smsError) {
               // The fallback query cannot select columns that do not exist, so
               // the rows come back without them at all.
@@ -30,6 +48,10 @@ function client(rows: Row[], opts: { smsError?: boolean; names?: Array<{ name: s
             } else {
               chain.__result = { data: rows, error: null };
             }
+          } else if (table === 'sms_events') {
+            chain.__result = opts.eventError
+              ? { data: null, error: { message: 'delivery overlay unavailable' } }
+              : { data: [], error: null };
           } else if (table === 'leads') {
             chain.__result = { data: opts.names ?? [], error: null };
           } else {
@@ -116,6 +138,24 @@ describe('listConversations', () => {
     expect(conversations[0].unread).toBe(0);
     expect((stub as unknown as { smsCalls: number }).smsCalls).toBe(2); // tried the new columns, fell back
   });
+
+  it('distinguishes an unreadable transcript from a genuinely empty inbox', async () => {
+    await expect(loadConversations(client([], { smsError: true, fallbackError: true }), 'acct-1'))
+      .resolves.toEqual({ kind: 'unavailable', data: [] });
+  });
+
+  it('fails closed when queued delivery events cannot be overlaid', async () => {
+    await expect(loadConversations(client([row()], { eventError: true }), 'acct-1'))
+      .resolves.toEqual({ kind: 'unavailable', data: [] });
+  });
+
+  it('distinguishes an unreadable open thread from a thread with no messages', async () => {
+    await expect(loadConversationMessages(
+      client([], { threadError: true }),
+      'acct-1',
+      '+12485550100',
+    )).resolves.toEqual({ kind: 'unavailable', data: [] });
+  });
 });
 
 describe('markThreadRead', () => {
@@ -159,5 +199,71 @@ describe('markThreadRead', () => {
   it('does not refresh when row-level security updates nothing', async () => {
     const { api } = updateClient(null, []);
     await expect(markThreadRead(api, 'acct-1', '+12485550100')).resolves.toBe(false);
+  });
+});
+
+describe('manual compose consent destinations', () => {
+  function consentClient(input: {
+    consent?: unknown[] | null;
+    scopes?: unknown[] | null;
+    consentError?: unknown;
+    scopeError?: unknown;
+  }): SupabaseClient {
+    return {
+      from(table: string) {
+        const chain: Record<string, unknown> = {};
+        const self = () => chain;
+        const result = table === 'sms_consent_scopes'
+          ? { data: input.scopes ?? [], error: input.scopeError ?? null }
+          : { data: input.consent ?? [], error: input.consentError ?? null };
+        Object.assign(chain, {
+          select: self,
+          eq: self,
+          not: self,
+          is: self,
+          then: (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve),
+        });
+        return chain;
+      },
+    } as unknown as SupabaseClient;
+  }
+
+  it('returns only normalized, current customer-scoped destinations', async () => {
+    const result = await loadCurrentSmsConsentPhones(consentClient({
+      consent: [
+        { phone_number: '(248) 555-0100', status: 'opted_in', consented_at: '2026-08-21T00:00:00Z', opted_out_at: null },
+        { phone_number: '+12485550200', status: 'opted_in', consented_at: '2026-08-21T00:00:00Z', opted_out_at: null },
+        { phone_number: '+12485550300', status: 'opted_in', consented_at: '2026-08-21T00:00:00Z', opted_out_at: null },
+        { phone_number: '+12485550400', status: 'opted_out', consented_at: '2026-08-21T00:00:00Z', opted_out_at: '2026-08-21T01:00:00Z' },
+      ],
+      scopes: [
+        { phone_number: '+12485550100', consent_scope: 'customer' },
+        { phone_number: '+12485550200', consent_scope: 'crew' },
+        { phone_number: '+12485550300', consent_scope: 'owner' },
+        { phone_number: '+12485550400', consent_scope: 'customer' },
+      ],
+    }), 'acct-1');
+    expect(result).toEqual({ kind: 'ready', data: ['+12485550100'] });
+  });
+
+  it('fails closed when base consent cannot be read', async () => {
+    await expect(loadCurrentSmsConsentPhones(
+      consentClient({ consent: null, consentError: { message: 'consent unavailable' } }),
+      'acct-1',
+    )).resolves.toEqual({ kind: 'unavailable', data: [] });
+  });
+
+  it('fails closed when customer audience scope cannot be read', async () => {
+    await expect(loadCurrentSmsConsentPhones(
+      consentClient({
+        consent: [{
+          phone_number: '+12485550100', status: 'opted_in',
+          consented_at: '2026-08-21T00:00:00Z', opted_out_at: null,
+        }],
+        scopes: null,
+        scopeError: { message: 'scope unavailable' },
+      }),
+      'acct-1',
+    )).resolves.toEqual({ kind: 'unavailable', data: [] });
   });
 });

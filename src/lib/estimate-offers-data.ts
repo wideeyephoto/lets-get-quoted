@@ -4,7 +4,6 @@ import { loadBusinessName } from '@/lib/business-name';
 import { getLeadTriage, isLeadSnoozed, LEAD_PRUNE_FLAGS, type LeadTriage } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordAccountEvent } from '@/lib/account-events';
-import { logOutboundMessage } from '@/lib/messages';
 import {
   displayStatus,
   greetingName,
@@ -262,12 +261,11 @@ type OfferWithLead = EstimateOffer & {
 /**
  * The homeowner texted back. Work out what they meant and do it.
  *
- * Runs on the service-role client from the Twilio webhook, which has a phone
- * number and nothing else. Never throws: an inbound webhook that errors gets
- * retried by Twilio, and a retry here would mean a second confirmation text for
- * one yes.
+ * Runs only after the authenticated webhook inbox has resolved an active
+ * dedicated To number to one account. The account predicate is not optional:
+ * the same homeowner may legitimately know several contractors.
  */
-export async function resolveOfferReply(phone: string, rawBody: string): Promise<ReplyOutcome> {
+export async function resolveOfferReply(accountId: string, phone: string, rawBody: string): Promise<ReplyOutcome> {
   const nothing: ReplyOutcome = { handled: false, reply: null };
   try {
     const admin = createAdminClient();
@@ -278,6 +276,7 @@ export async function resolveOfferReply(phone: string, rawBody: string): Promise
       .select(
         `${OFFER_FIELDS}, lead:leads(id, name, address, project_type, lat, lng, status), account:accounts(business_name, alert_phone)`,
       )
+      .eq('account_id', accountId)
       .eq('phone', normalized)
       .eq('status', 'held')
       .order('sent_at', { ascending: false })
@@ -372,18 +371,12 @@ export async function resolveOfferReply(phone: string, rawBody: string): Promise
 }
 
 /**
- * Answers the homeowner, and puts what we said in the contractor's inbox.
- *
- * The reply itself goes back as TwiML — Twilio sends it, but never tells us it
- * did, so the thread would otherwise show a bare "YES" with nothing after it.
- * Mirroring it here is what makes the conversation readable later.
+ * Return a reply intent only. The authenticated inbound route queues it with
+ * the exact inbound sender-number binding; provider acceptance then projects
+ * the real outbound transcript. Writing sms_messages here would manufacture an
+ * optimistic message before any carrier request existed.
  */
-async function replyTo(admin: SupabaseClient, offer: OfferWithLead, message: string): Promise<ReplyOutcome> {
-  try {
-    await logOutboundMessage(admin, offer.account_id, offer.phone, message);
-  } catch (error) {
-    console.error('Estimate offer reply log failed:', error instanceof Error ? error.message : error);
-  }
+async function replyTo(_admin: SupabaseClient, _offer: OfferWithLead, message: string): Promise<ReplyOutcome> {
   return { handled: true, reply: message };
 }
 
@@ -473,7 +466,12 @@ async function notifyOwner(offer: OfferWithLead, message: string): Promise<void>
   if (!alertPhone) return;
   // accountId so the sender can check whether this owner replied STOP —
   // consent rows are keyed (account_id, phone_number).
-  await sendOwnerEstimateAcceptedSms({ accountId: offer.account_id, alertPhone, message });
+  await sendOwnerEstimateAcceptedSms({
+    accountId: offer.account_id,
+    alertPhone,
+    message,
+    idempotencyKey: `estimate-offer-owner:${offer.id}:reply`,
+  });
 }
 
 /** Display helper shared by the panel: what an offer looks like right now. */

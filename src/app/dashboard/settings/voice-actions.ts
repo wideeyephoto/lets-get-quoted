@@ -2,20 +2,21 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { recordAccountEvent } from '@/lib/account-events';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { BusinessHours } from '@/lib/voice/business-hours';
+import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
+import { aiVoiceEnabled } from '@/lib/voice/admission';
+import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 
 /**
  * Writing what a contractor configured about their AI receptionist.
  *
  * WRITES GO THROUGH THE SESSION CLIENT, not the admin one. `voice_settings`
- * carries an owner-only RLS policy, and using the service-role client here
- * would bypass it — leaving `requireOwnerContext` as the only thing between a
- * server action and another workspace's phone. A server action is a public
- * endpoint; one authorization check is not enough for a table that decides what
- * a business says to its customers and whether their calls are recorded.
+ * carries an owner-only RLS policy. The service-role client is used only to
+ * read the internal recurring-capacity ledger; the settings write stays on the
+ * caller's session client, so RLS remains the second authorization boundary.
  *
  * EVERY VALUE IS RE-VALIDATED SERVER-SIDE. The client sends what the form holds,
  * and the form is not the boundary.
@@ -28,16 +29,17 @@ export type VoiceSettingsInput = {
   answerMode: string;
   greeting: string;
   transferNumber: string;
-  emergencyTransferNumber: string;
   businessHours: Record<string, [string, string] | null>;
 };
 
 function statusOf(value: unknown): 'off' | 'active' | 'paused' {
-  return value === 'active' || value === 'paused' ? value : 'off';
+  if (value === 'off' || value === 'active' || value === 'paused') return value;
+  throw new Error('Choose Off, Answering, or Paused.');
 }
 
 function answerModeOf(value: unknown): 'always' | 'after_hours' {
-  return value === 'always' ? 'always' : 'after_hours';
+  if (value === 'always' || value === 'after_hours') return value;
+  throw new Error('Choose whether the receptionist answers every call or only after hours.');
 }
 
 /** `H:MM` or `HH:MM` inside a real day, or null. */
@@ -61,9 +63,10 @@ function timeOf(value: unknown): string | null {
  * anywhere saying why.
  */
 function businessHoursOf(value: unknown): { hours: BusinessHours; dropped: string[] } {
-  const source = value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Business hours must be a day-by-day schedule.');
+  }
+  const source = value as Record<string, unknown>;
   const hours: Record<string, [string, string]> = {};
   const dropped: string[] = [];
 
@@ -99,11 +102,52 @@ export async function updateVoiceSettingsAction(
 
   const status = statusOf(input?.status);
   const answerMode = answerModeOf(input?.answerMode);
-  const greeting = String(input?.greeting ?? '').trim().slice(0, GREETING_MAX) || null;
-  const transferNumber = normalizeUsPhone(String(input?.transferNumber ?? '')) || null;
-  const emergencyTransferNumber =
-    normalizeUsPhone(String(input?.emergencyTransferNumber ?? '')) || null;
+  const rawGreeting = String(input?.greeting ?? '').trim();
+  if (rawGreeting.length > GREETING_MAX) {
+    throw new Error(`Greeting must be ${GREETING_MAX} characters or fewer.`);
+  }
+  const greeting = rawGreeting || null;
+  const rawTransferNumber = String(input?.transferNumber ?? '').trim();
+  const transferNumber = rawTransferNumber ? normalizeUsPhone(rawTransferNumber) : null;
+  if (rawTransferNumber && !transferNumber) {
+    throw new Error('Enter a valid US transfer number, or leave it blank.');
+  }
   const { hours, dropped } = businessHoursOf(input?.businessHours);
+
+  if (status === 'active') {
+    if (!aiVoiceEnabled()) {
+      throw new Error('AI Voice is not enabled in this environment.');
+    }
+    const admin = createAdminClient();
+    const entitlement = await loadVoiceEntitlement(admin, accountId);
+    if (!entitlement.available) {
+      throw new Error('We could not verify your AI Voice entitlement. Nothing was changed; try again.');
+    }
+    if (!entitlement.enabled) {
+      throw new Error('AI Voice is not included in this workspace or an active add-on.');
+    }
+    if (entitlement.concurrentCalls < 1) {
+      throw new Error('AI Voice has no available call capacity in this workspace.');
+    }
+
+    // The provider finds a workspace only by the number that was dialled. The
+    // generic call_tracking_verified_at can be written by the older missed-call
+    // route, so activation requires route-specific evidence for the CURRENT
+    // number instead.
+    const route = await loadVoiceRouteReadiness(admin, accountId);
+    if (route.kind === 'unavailable') {
+      throw new Error('We could not verify the customer-facing call route. Nothing was changed; try again.');
+    }
+    if (route.kind === 'not_ready' && route.reason === 'missing_number') {
+      throw new Error('Add a valid customer-facing number before turning on AI Voice.');
+    }
+    if (route.kind === 'not_ready' && route.reason === 'dedicated_number_not_ready') {
+      throw new Error('Your customer-facing number must be an active dedicated SignalWire number before turning on AI Voice.');
+    }
+    if (route.kind !== 'ready') {
+      throw new Error('Call the customer-facing number once to verify its Voice webhook before turning on AI Voice.');
+    }
+  }
 
   // Recording is NOT settable here. It is a legal act with its own action and
   // its own record of who accepted what; folding it into a general save would
@@ -116,7 +160,6 @@ export async function updateVoiceSettingsAction(
       answer_mode: answerMode,
       greeting,
       transfer_number: transferNumber,
-      emergency_transfer_number: emergencyTransferNumber,
       business_hours: hours,
     }, { onConflict: 'account_id' });
 
@@ -132,22 +175,17 @@ export async function updateVoiceSettingsAction(
   });
 
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
   return { saved: true, droppedDays: dropped };
 }
 
 /**
- * Turning call recording on or off.
+ * Compatibility endpoint retained for any already-loaded client bundle.
  *
- * SEPARATE FROM EVERY OTHER SETTING, and it takes the acknowledgement rather
- * than a boolean, because recording somebody's phone call without telling them
- * is illegal in a good part of the country. The database will refuse
- * `recording_enabled = true` with no accepted disclosure, so this cannot
- * succeed by accident — but the row also records WHO accepted it and WHEN,
- * which a CHECK constraint cannot.
- *
- * Turning it off deliberately leaves the acceptance in place. It is a record of
- * something that happened, not a current preference, and erasing it would
- * destroy the evidence that the calls already recorded were disclosed.
+ * The provider answer currently starts no `record_call` instruction and LGQ has
+ * no recording retention/deletion rail. Claiming that this toggle records calls
+ * would therefore be false. Enabling fails closed; disabling remains available
+ * so a stale true row can always be made safe.
  */
 export async function setVoiceRecordingAction(
   input: { enabled: boolean; acknowledged: boolean },
@@ -155,33 +193,23 @@ export async function setVoiceRecordingAction(
   const { supabase, accountId } = await requireOwnerContext();
   const enabled = input?.enabled === true;
 
-  if (enabled && input?.acknowledged !== true) {
-    throw new Error(
-      'Confirm that callers will be told the call is recorded before turning recording on.',
-    );
-  }
+  if (enabled) throw new Error('Call recording is not available yet.');
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const patch: Record<string, unknown> = { account_id: accountId, recording_enabled: enabled };
-  if (enabled) {
-    patch.recording_disclosure_accepted_at = new Date().toISOString();
-    patch.recording_disclosure_accepted_by = user?.id ?? null;
-  }
-
   const { error } = await supabase
     .from('voice_settings')
-    .upsert(patch, { onConflict: 'account_id' });
+    .upsert({ account_id: accountId, recording_enabled: false }, { onConflict: 'account_id' });
   if (error) throw new Error(error.message);
 
   await recordAccountEvent({
     accountId,
     kind: 'ai_voice_recording_changed',
-    summary: `Call recording turned ${enabled ? 'on' : 'off'}`,
+    summary: 'Call recording kept off',
     actorEmail: user?.email ?? null,
-    meta: { enabled },
+    meta: { enabled: false },
   });
 
   revalidatePath('/dashboard/settings');
-  return { enabled };
+  return { enabled: false };
 }

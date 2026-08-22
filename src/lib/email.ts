@@ -479,13 +479,19 @@ export async function sendReviewRequestConfirmationEmail(input: {
   sentTo: string | null;
   jobUrl: string;
 }): Promise<void> {
+  const smsQueued = input.channel === 'sms';
   await sendContractorAlertEmail({
     accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
-    subject: `Review request sent to ${input.clientName}`,
+    subject: `Review request ${smsQueued ? 'queued for' : 'sent to'} ${input.clientName}`,
     heading: `You asked ${input.clientName} for a review`,
-    bodyLines: [`Job ${input.jobRef}`, describeDelivery(input.channel, input.sentTo)],
+    bodyLines: [
+      `Job ${input.jobRef}`,
+      smsQueued
+        ? `Text queued for ${input.sentTo ?? input.clientName}; delivery status will appear in Messages.`
+        : describeDelivery(input.channel, input.sentTo),
+    ],
     ctaLabel: 'Open the job',
     ctaUrl: input.jobUrl,
     tone: 'info',
@@ -508,13 +514,13 @@ export async function sendReminderRunSummaryEmail(input: {
     accountId: input.accountId,
     recipientEmail: input.recipientEmail,
     businessName: input.businessName,
-    subject: `${input.sentCount} appointment ${plural} sent for tomorrow`,
-    heading: `Tomorrow’s customers have been reminded`,
+    subject: `${input.sentCount} appointment ${plural} accepted for tomorrow`,
+    heading: `Tomorrow’s reminders are queued or emailed`,
     bodyLines: [
-      `${input.sentCount} ${plural} went out.`,
+      `${input.sentCount} ${plural} were accepted for delivery.`,
       input.failedCount > 0
-        ? `${input.failedCount} couldn’t be delivered — those customers haven’t heard from you.`
-        : 'Everyone booked for tomorrow was reached.',
+        ? `${input.failedCount} couldn’t be queued or emailed.`
+        : 'Every eligible reminder was queued or emailed.',
     ],
     ctaLabel: 'Open your schedule',
     ctaUrl: input.dashboardUrl,

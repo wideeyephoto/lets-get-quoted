@@ -696,7 +696,7 @@ export type MarketingCampaignRow = {
   sentAt: string;
   recipients: number;
   emailSent: number;
-  smsSent: number;
+  smsQueued: number;
   failed: number;
   skipped: number;
 };
@@ -736,7 +736,7 @@ export function buildMarketingPerformance(campaigns: CampaignRecord[], limit = 6
     sentAt: campaign.created_at,
     recipients: Number(campaign.recipient_count) || 0,
     emailSent: Number(campaign.email_sent) || 0,
-    smsSent: Number(campaign.sms_sent) || 0,
+    smsQueued: Number(campaign.sms_sent) || 0,
     failed: Number(campaign.failed_count) || 0,
     skipped: Number(campaign.skipped_count) || 0,
   }));

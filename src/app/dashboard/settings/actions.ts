@@ -19,7 +19,14 @@ import { sendTestDigest } from '@/lib/daily-digest';
 import { backfillAccount, syncAccount } from '@/lib/quickbooks/sync';
 import { deleteInsuranceProof, isInsuranceFile, uploadInsuranceProof } from '@/lib/insurance-storage';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
-import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
+import {
+  AUTOMATION_COLUMNS,
+  AUTOMATION_LABELS,
+  automationRequiresDedicatedMessaging,
+  isAutomationKey,
+  type AutomationKey,
+} from '@/lib/automations';
+import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
 import { recordAccountEvent } from '@/lib/account-events';
 import { ARRIVAL_WINDOW_CHOICES, DEFAULT_WINDOW_MINUTES } from '@/lib/arrival';
 import {
@@ -306,6 +313,12 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
 export async function toggleAutomationAction(key: AutomationKey, next: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
   if (!isAutomationKey(key)) throw new Error('Unknown automation.');
+  // Turning off must always remain possible. Turning on an automation that can
+  // originate customer SMS requires the same exact inventory evidence as a
+  // manual send; a feature flag is not proof that the workspace has a sender.
+  if (next && automationRequiresDedicatedMessaging(key)) {
+    await requireActiveDedicatedMessagingSender(accountId);
+  }
   const { error } = await supabase
     .from('accounts')
     .update({ [AUTOMATION_COLUMNS[key]]: next })
@@ -323,6 +336,7 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
   });
 
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
   revalidatePath('/dashboard');
 }
 
@@ -331,6 +345,10 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
 // and the daily digest. Each still has its own card to tune or turn back off.
 export async function enableRecommendedAutomationsAction() {
   const { supabase, accountId } = await requireOwnerContext();
+  // Three of the four recommended switches originate customer texts. Without
+  // a prepared/on split in the current schema, reject the whole atomic preset
+  // rather than claiming those automations are active while delivery is dark.
+  await requireActiveDedicatedMessagingSender(accountId);
   const { error } = await supabase
     .from('accounts')
     .update({
@@ -342,6 +360,7 @@ export async function enableRecommendedAutomationsAction() {
     .eq('id', accountId);
   if (error) throw new Error(error.message);
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
   revalidatePath('/dashboard');
 }
 

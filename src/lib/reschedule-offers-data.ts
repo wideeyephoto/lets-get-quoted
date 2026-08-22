@@ -3,7 +3,6 @@ import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordAccountEvent } from '@/lib/account-events';
-import { logOutboundMessage } from '@/lib/messages';
 import { sendOwnerEstimateAcceptedSms } from '@/lib/sms';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { expandScheduledJobs, isMissingEndDateColumn, SPAN_COLUMNS, SPAN_COLUMNS_BEFORE_END_DATE, type SchedulableJob } from '@/lib/jobs';
@@ -234,11 +233,11 @@ type OfferWithJob = RescheduleOffer & {
 /**
  * The customer texted back.
  *
- * Runs on the service-role client from the Twilio webhook. Never throws: an
- * inbound webhook that errors gets retried, and a retry here would mean a second
- * confirmation text for one yes — or worse, a second discount.
+ * Runs only after the authenticated webhook inbox has resolved an active
+ * dedicated To number to one account. Never select an offer globally by phone:
+ * the same homeowner may legitimately know several contractors.
  */
-export async function resolveRescheduleReply(phone: string, rawBody: string): Promise<ReplyOutcome> {
+export async function resolveRescheduleReply(accountId: string, phone: string, rawBody: string): Promise<ReplyOutcome> {
   const nothing: ReplyOutcome = { handled: false, reply: null };
   try {
     const admin = createAdminClient();
@@ -249,6 +248,7 @@ export async function resolveRescheduleReply(phone: string, rawBody: string): Pr
       .select(
         `${OFFER_FIELDS}, job:jobs(id, ref, client_name, quoted_amount, scheduled_for), account:accounts(business_name, alert_phone)`,
       )
+      .eq('account_id', accountId)
       .eq('phone', normalized)
       .eq('status', 'sent')
       .order('sent_at', { ascending: false })
@@ -371,12 +371,8 @@ async function applyAcceptedReschedule(admin: SupabaseClient, offer: OfferWithJo
   return true;
 }
 
-async function replyTo(admin: SupabaseClient, offer: OfferWithJob, message: string): Promise<ReplyOutcome> {
-  try {
-    await logOutboundMessage(admin, offer.account_id, offer.phone, message);
-  } catch (error) {
-    console.error('Reschedule reply log failed:', error instanceof Error ? error.message : error);
-  }
+/** The callback route durably queues this intent before any transcript exists. */
+async function replyTo(_admin: SupabaseClient, _offer: OfferWithJob, message: string): Promise<ReplyOutcome> {
   return { handled: true, reply: message };
 }
 
@@ -385,7 +381,12 @@ async function notifyOwner(offer: OfferWithJob, message: string): Promise<void> 
   if (!alertPhone) return;
   // accountId so the sender can check whether this owner replied STOP —
   // consent rows are keyed (account_id, phone_number).
-  await sendOwnerEstimateAcceptedSms({ accountId: offer.account_id, alertPhone, message });
+  await sendOwnerEstimateAcceptedSms({
+    accountId: offer.account_id,
+    alertPhone,
+    message,
+    idempotencyKey: `reschedule-offer-owner:${offer.id}:reply`,
+  });
 }
 
 function friendlyDate(dateKey: string): string {

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { AUTOMATION_COLUMNS, isAutomationKey } from '@/lib/automations';
+import {
+  AUTOMATION_COLUMNS,
+  DEDICATED_MESSAGING_AUTOMATION_KEYS,
+  automationRequiresDedicatedMessaging,
+  isAutomationKey,
+} from '@/lib/automations';
 
 describe('automation toggle map', () => {
   it('maps each switchable automation to its own accounts column', () => {
@@ -46,5 +51,17 @@ describe('automation toggle map', () => {
     expect(isAutomationKey('suspended_at')).toBe(false);
     expect(isAutomationKey('toString')).toBe(false);
     expect(isAutomationKey('constructor')).toBe(false);
+  });
+
+  it('identifies every switch that can originate customer SMS without a later owner send', () => {
+    expect(DEDICATED_MESSAGING_AUTOMATION_KEYS).toEqual([
+      'missed-call', 'reviews', 'followups', 'reminders', 'arrival', 'selections',
+    ]);
+    for (const key of DEDICATED_MESSAGING_AUTOMATION_KEYS) {
+      expect(automationRequiresDedicatedMessaging(key)).toBe(true);
+    }
+    expect(automationRequiresDedicatedMessaging('booking')).toBe(false);
+    expect(automationRequiresDedicatedMessaging('extra-stop')).toBe(false);
+    expect(automationRequiresDedicatedMessaging('daily-digest')).toBe(false);
   });
 });

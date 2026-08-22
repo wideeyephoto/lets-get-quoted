@@ -1,10 +1,21 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
-import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
-import { settleVoiceReceipt } from '@/lib/voice/settlement';
+import {
+  signalWireVoiceScope,
+  verifyVoiceReceiptAuthorization,
+  VOICE_RECEIPT_BASIC_ENV,
+} from '@/lib/voice/auth';
+import {
+  minimizeSignalWireVoiceReceiptPayload,
+  signalwireVoiceProvider,
+} from '@/lib/voice/signalwire';
+import {
+  ingestVoiceEvent,
+  processVoiceReceipt,
+  VoiceReceiptProcessingRpcError,
+} from '@/lib/voice/receipt-processing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,8 +27,9 @@ export const dynamic = 'force-dynamic';
  * provider offers nothing else. Measured against a live agent
  * (docs/ai-voice-v1-decisions.md §11): no signature header of any kind, no
  * signing secret anywhere in the dashboard, and the project API token neither
- * sent nor used to sign. Basic credentials embedded in the callback URL are the
- * only supported mechanism, and they stay readable there after saving.
+ * sent nor used to sign. SignalWire's AI method instead accepts dedicated
+ * post-prompt username/password fields and sends them as HTTP Basic auth. The
+ * reusable credential therefore never appears in a callback URL or a log.
  *
  * So this route does not pretend a signature exists. It checks four things,
  * none of which is sufficient alone:
@@ -37,97 +49,11 @@ export const dynamic = 'force-dynamic';
  * the same code once, and an operator could not tell a missing environment
  * variable from a wrong password.
  *
- * ALWAYS 200 ON A DELIVERED RECEIPT IT ACCEPTED. The provider retries on 5xx and
- * there is exactly one receipt per call; a transient 500 here loses the only
- * record of what a call cost.
+ * 200 MEANS FINISHED OR DELIBERATELY INERT. A claimed attempt that throws, is
+ * still inside its backoff, or is owned by another delivery returns 503 so the
+ * provider keeps one retry alive. Processed, ignored, and exhausted events are
+ * stable no-ops and return 200.
  */
-
-const CREDENTIAL_ENV = 'LGQ_VOICE_RECEIPT_BASIC' as const;
-
-function constantTimeEquals(a: string, b: string): boolean {
-  const left = Buffer.from(a, 'utf8');
-  const right = Buffer.from(b, 'utf8');
-  // Compare lengths without branching on the secret: unequal lengths still do
-  // a full comparison against a same-length buffer.
-  if (left.length !== right.length) {
-    timingSafeEqual(left, left);
-    return false;
-  }
-  return timingSafeEqual(left, right);
-}
-
-/**
- * The configured credential, or null when the endpoint is not set up.
- *
- * Absent means CLOSED, not open. An unset secret on an endpoint whose whole job
- * is to accept unsigned billing evidence would be the single worst default in
- * the product.
- */
-function expectedCredential(): string | null {
-  const raw = (process.env[CREDENTIAL_ENV] ?? '').trim();
-  return raw.length > 0 && raw.includes(':') ? raw : null;
-}
-
-/**
- * A comparable fingerprint that reveals neither side.
- *
- * 32 bits of SHA-256. Enough to tell "these are the same string" from "these are
- * not" when both are written into a log an operator can read; nowhere near
- * enough to recover the input. This exists because a bare 401 leaves somebody
- * who set a Vercel Sensitive variable -- which is write-only, and cannot be read
- * back by anyone -- with no way to find out whether the value they think they
- * set is the value the build holds.
- */
-function fingerprint(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 8);
-}
-
-/** The username half. Not a secret, and usually where the mismatch is. */
-function userPart(credential: string): string {
-  const at = credential.indexOf(':');
-  return at > 0 ? credential.slice(0, at) : '(none)';
-}
-
-/**
- * Why a credential was refused, in terms an operator can act on, with neither
- * side of it written down.
- */
-function mismatchDetail(request: Request, expected: string): string {
-  const header = request.headers.get('authorization') ?? '';
-  const [scheme, encoded] = header.split(' ');
-  if (!scheme || scheme.toLowerCase() !== 'basic' || !encoded) {
-    return 'no Basic credentials were presented';
-  }
-  let presented = '';
-  try {
-    presented = Buffer.from(encoded, 'base64').toString('utf8');
-  } catch {
-    return 'the Authorization header was not valid base64';
-  }
-  if (!presented.includes(':')) return 'the decoded credential had no colon in it';
-
-  const sameUser = userPart(presented) === userPart(expected);
-  return sameUser
-    ? `username matches, password differs (configured ${fingerprint(expected)}, presented ${fingerprint(presented)})`
-    : `username differs: configured "${userPart(expected)}", presented "${userPart(presented)}"`;
-}
-
-function authorized(request: Request): boolean {
-  const expected = expectedCredential();
-  if (!expected) return false;
-
-  const header = request.headers.get('authorization') ?? '';
-  const [scheme, encoded] = header.split(' ');
-  if (!scheme || scheme.toLowerCase() !== 'basic' || !encoded) return false;
-
-  let presented: string;
-  try {
-    presented = Buffer.from(encoded, 'base64').toString('utf8');
-  } catch {
-    return false;
-  }
-  return constantTimeEquals(presented, expected);
-}
 
 export async function POST(request: Request) {
   // NOT CONFIGURED IS NOT THE SAME AS NOT AUTHORIZED, and collapsing them cost
@@ -138,26 +64,33 @@ export async function POST(request: Request) {
   // 503 is the honest status and leaks nothing worth having: an attacker learns
   // the deployment has no secret set, which they already could not exploit,
   // while the person deploying learns the one thing they actually need.
-  const expected = expectedCredential();
-  if (!expected) {
+  const auth = verifyVoiceReceiptAuthorization(request);
+  if (!auth.ok && auth.reason === 'not_configured') {
     await logWebhookFailure({
       source: 'ai_voice',
-      errorMessage: `Voice receipt endpoint has no ${CREDENTIAL_ENV} configured`,
+      errorMessage: `Voice receipt endpoint has no valid ${VOICE_RECEIPT_BASIC_ENV} configured`,
     });
     return NextResponse.json({ error: 'not_configured' }, { status: 503 });
   }
 
-  if (!authorized(request)) {
-    // Terse and bodyless from here on. Which HALF of a credential was wrong, and
-    // whether the username exists, stay unsaid.
-    // The RESPONSE stays bodyless and says nothing. The detail goes to
-    // webhook_failures, which only the service role can read -- so the person
-    // deploying can find out what differs while a prober still learns nothing.
+  if (!auth.ok) {
+    // Store only a fixed reason code. Usernames, password fingerprints and the
+    // Authorization value are reusable authentication material or useful
+    // probes and do not belong in logs.
     await logWebhookFailure({
       source: 'ai_voice',
-      errorMessage: `Voice receipt rejected: ${mismatchDetail(request, expected)}`,
+      errorMessage: `Voice receipt authentication failed: ${auth.reason}`,
     });
     return new NextResponse(null, { status: 401 });
+  }
+
+  const providerScope = signalWireVoiceScope();
+  if (!providerScope) {
+    await logWebhookFailure({
+      source: 'ai_voice',
+      errorMessage: 'Voice receipt project/space scope is missing or invalid',
+    });
+    return NextResponse.json({ error: 'provider_scope_not_configured' }, { status: 503 });
   }
 
   let payload: unknown;
@@ -179,35 +112,41 @@ export async function POST(request: Request) {
   }
 
   const receipt = parsed.receipt;
+  const minimizedPayload = minimizeSignalWireVoiceReceiptPayload(payload, receipt);
   const admin = createAdminClient();
 
   try {
-    const { data, error } = await admin.rpc('ingest_voice_event', {
-      p_provider_call_id: receipt.providerCallId,
-      p_event_type: receipt.eventType,
-      p_provider_project_id: receipt.projectId,
-      p_provider_space_id: receipt.spaceId,
-      p_expected_project_id: process.env.SIGNALWIRE_PROJECT_ID || null,
-      p_expected_space_id: process.env.SIGNALWIRE_SPACE_ID || null,
-      p_payload: payload,
-    });
-
-    if (error) {
-      // 23505 is a receipt that changed between deliveries; 22023 is one that
-      // does not belong here. Neither is retryable, and returning 500 for either
-      // would have the provider redeliver it for ever.
-      const terminal = error.code === '23505' || error.code === '22023';
+    let inbox;
+    try {
+      inbox = await ingestVoiceEvent(admin, {
+        providerCallId: receipt.providerCallId,
+        eventType: receipt.eventType,
+        providerProjectId: receipt.projectId,
+        providerSpaceId: receipt.spaceId,
+        expectedProjectId: providerScope.projectId,
+        expectedSpaceId: providerScope.spaceId,
+        payload: minimizedPayload,
+      });
+    } catch (error) {
+      // 23505 is either immutable-payload drift or an INSERT race. The helper
+      // retries once, so an identical concurrent delivery becomes a normal
+      // replay while changed input receives 23505 again. 22023 still means the
+      // receipt does not belong here. Neither is retryable.
+      const code = error instanceof VoiceReceiptProcessingRpcError
+        ? error.rpcCode
+        : null;
+      const terminal = code === '23505' || code === '22023';
       await logWebhookFailure({
         source: 'ai_voice',
         referenceId: receipt.providerCallId,
-        errorMessage: `ingest_voice_event failed (${error.code ?? 'unknown'}): ${error.message}`,
+        errorMessage: `ingest_voice_event failed (${code ?? 'unknown'}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       });
       return NextResponse.json({ error: 'rejected' }, { status: terminal ? 400 : 500 });
     }
 
-    const row = Array.isArray(data) ? data[0] : data;
-    const inserted = Boolean(row?.inserted);
-    const admitted = Boolean(row?.admitted);
+    const { inserted, admitted, voiceEventId } = inbox;
 
     // Stored, attributed to nobody, settled not at all. This is the shape of a
     // forged receipt and of a genuine misconfiguration, and they are worth
@@ -221,29 +160,70 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, settled: false }, { status: 200 });
     }
 
-    // A replay must not settle twice. The ledger's finalization key would refuse
-    // it anyway, but there is no reason to ask.
-    if (!inserted) return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
+    // Ingest deduplicates immutable evidence; this claim decides whether that
+    // evidence still has unfinished work. A duplicate after a transient failure
+    // therefore resumes, while processed/ignored rows remain no-ops.
+    const processing = await processVoiceReceipt(admin, voiceEventId, receipt);
 
-    const settlement = await settleVoiceReceipt(admin, receipt);
-    if (settlement.reconcile) {
+    if (processing.status === 'processed') {
+      return NextResponse.json({
+        ok: true,
+        minutes: processing.minutes,
+        ...(inserted ? {} : { duplicate: true }),
+      }, { status: 200 });
+    }
+
+    if (processing.status === 'processed_before' || processing.status === 'ignored') {
+      return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
+    }
+
+    if (processing.status === 'busy' || processing.status === 'deferred') {
+      return NextResponse.json(
+        { error: 'processing_pending' },
+        {
+          status: 503,
+          headers: { 'Retry-After': String(processing.retryAfterSeconds ?? 5) },
+        },
+      );
+    }
+
+    if (processing.status === 'exhausted') {
       await logWebhookFailure({
         source: 'ai_voice',
         referenceId: receipt.providerCallId,
-        errorMessage: `Voice receipt needs reconciliation: ${settlement.reconcile}`,
+        errorMessage: 'Voice receipt processing attempts are exhausted',
       });
+      return NextResponse.json({ ok: true, settled: false }, { status: 200 });
     }
 
-    await admin
-      .from('voice_events')
-      .update({
-        processing_status: settlement.reconcile ? 'failed' : 'processed',
-        processed_at: settlement.reconcile ? null : new Date().toISOString(),
-        last_error: settlement.reconcile,
-      })
-      .eq('provider_call_id', receipt.providerCallId);
+    // Every non-failure variant returned above. Keep the explicit guard so a
+    // newly added claim state fails closed instead of being mistaken for a
+    // settlement result.
+    if (processing.status !== 'retryable_failure'
+        && processing.status !== 'terminal_failure') {
+      throw new Error(`Unhandled voice receipt processing status: ${processing.status}`);
+    }
 
-    return NextResponse.json({ ok: true, minutes: settlement.minutes }, { status: 200 });
+    await logWebhookFailure({
+      source: 'ai_voice',
+      referenceId: receipt.providerCallId,
+      errorMessage: processing.error instanceof Error
+        ? `Voice receipt processing failed (${processing.reason}): ${processing.error.message}`
+        : `Voice receipt needs reconciliation: ${processing.reason}`,
+    });
+
+    if (processing.status === 'retryable_failure') {
+      return NextResponse.json(
+        { error: 'processing_failed' },
+        {
+          status: 500,
+          headers: processing.retryAfterSeconds === null
+            ? undefined
+            : { 'Retry-After': String(processing.retryAfterSeconds) },
+        },
+      );
+    }
+    return NextResponse.json({ ok: true, settled: false }, { status: 200 });
   } catch (error) {
     console.error('Voice receipt handler threw:', error);
     await logWebhookFailure({

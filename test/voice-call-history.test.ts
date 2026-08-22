@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  boundedVoiceHistoryDays,
   describeSettlement,
   formatCallLength,
   loadVoiceCallHistory,
@@ -11,10 +12,15 @@ import {
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 
 let reply: { data?: unknown; error?: unknown };
+let retainedAfter: string | null;
 const supabase = {
   from() {
     const chain: Record<string, unknown> = {};
     for (const method of ['select', 'eq', 'order']) chain[method] = () => chain;
+    chain.gte = (column: string, value: string) => {
+      if (column === 'created_at') retainedAfter = value;
+      return chain;
+    };
     chain.limit = () => Promise.resolve(reply);
     return chain;
   },
@@ -29,6 +35,7 @@ const call = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   reply = { data: [call()], error: null };
+  retainedAfter = null;
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -39,6 +46,19 @@ describe('the read is scoped by RLS as well as by the query', () => {
     // thing keeping one workspace out of another's history.
     const source = readFileSync(join(process.cwd(), 'src', 'lib', 'voice', 'call-history.ts'), 'utf8');
     expect(source).not.toContain('createAdminClient');
+  });
+
+  it('enforces the entitlement retention window in the owner-visible query', async () => {
+    const now = new Date('2026-08-21T12:00:00.000Z');
+    await loadVoiceCallHistory(supabase, ACCOUNT, { historyDays: 90, now });
+    expect(retainedAfter).toBe('2026-05-23T12:00:00.000Z');
+  });
+
+  it('bounds missing or malformed retention values to the privacy-safe window', () => {
+    expect(boundedVoiceHistoryDays(undefined)).toBe(30);
+    expect(boundedVoiceHistoryDays(0)).toBe(30);
+    expect(boundedVoiceHistoryDays(45)).toBe(45);
+    expect(boundedVoiceHistoryDays(900)).toBe(90);
   });
 });
 
@@ -76,7 +96,21 @@ describe('the totals a contractor is shown', () => {
     // than a panel saying it has nothing.
     reply = { data: null, error: { message: 'down' } };
     const history = await loadVoiceCallHistory(supabase, ACCOUNT);
-    expect(history).toMatchObject({ calls: [], billedMinutes: 0, unmeteredCalls: 0 });
+    expect(history).toMatchObject({ available: false, calls: [], billedMinutes: 0, unmeteredCalls: 0 });
+  });
+
+  it('marks a successful empty read as available', async () => {
+    reply = { data: [], error: null };
+    expect(await loadVoiceCallHistory(supabase, ACCOUNT)).toMatchObject({ available: true, calls: [] });
+  });
+
+  it('keeps a thrown transport failure distinct from a verified empty history', async () => {
+    const throwing = {
+      from() { throw new Error('network down'); },
+    } as never;
+    expect(await loadVoiceCallHistory(throwing, ACCOUNT)).toMatchObject({
+      available: false, calls: [],
+    });
   });
 });
 

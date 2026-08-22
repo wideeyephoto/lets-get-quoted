@@ -34,7 +34,8 @@ describe('what a workspace pays for', () => {
   });
 
   it('never charges without a workspace to charge', () => {
-    // A lead verifying their phone before any workspace relationship exists.
+    // Only genuinely platform-scoped traffic is accountless. Public-site lead
+    // verification is tenant-scoped and passes the site's account id.
     for (const category of ['customer_message', 'crew_message'] as SmsBillingCategory[]) {
       expect(bills(category, null)).toBe(false);
     }

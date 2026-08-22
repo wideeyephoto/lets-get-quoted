@@ -34,6 +34,7 @@ export type AccountEventKind =
   | 'automation_settings_changed'
   | 'ai_voice_settings_updated'
   | 'ai_voice_recording_changed'
+  | 'ai_voice_route_verified'
   | 'office_invitation_sent'
   | 'office_invitation_revoked'
   | 'office_access_removed'

@@ -282,8 +282,16 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
       const url = `${APP_ORIGIN}/client/jobs/${token}`;
 
       let channel: 'sms' | 'email';
+      let smsEventId: string | null = null;
       if (canText && normalizedPhone) {
-        await sendQuoteFollowupSms({ phone: normalizedPhone, businessName, clientName: firstName, url, accountId: link.account_id });
+        smsEventId = await sendQuoteFollowupSms({
+          phone: normalizedPhone,
+          businessName,
+          clientName: firstName,
+          url,
+          accountId: link.account_id,
+          idempotencyKey: `quote-followup:${jobId}:${index + 1}`,
+        });
         channel = 'sms';
       } else {
         await sendQuoteFollowupEmail({ recipientEmail: email as string, businessName, clientName: firstName, url, accountId: link.account_id });
@@ -293,10 +301,17 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
       const number = index + 1;
       await createJobFeedEvent(admin, link.account_id, jobId, {
         kind: 'quote_followup',
-        title: channel === 'sms' ? 'Quote follow-up texted' : 'Quote follow-up emailed',
-        body: `Nudged ${job.client_name} to review their quote (follow-up ${number} of ${account.days.length}, day ${account.days[index]}).`,
+        title: channel === 'sms' ? 'Quote follow-up queued' : 'Quote follow-up emailed',
+        body: `${channel === 'sms' ? 'Queued a nudge for' : 'Nudged'} ${job.client_name} to review their quote (follow-up ${number} of ${account.days.length}, day ${account.days[index]}).`,
         visibility: 'internal',
-        meta: { channel, followup_number: number, scheduled_day: account.days[index], days_since_share: daysSinceShare },
+        meta: {
+          channel,
+          followup_number: number,
+          scheduled_day: account.days[index],
+          days_since_share: daysSinceShare,
+          delivery_state: channel === 'sms' ? 'queued' : 'sent',
+          sms_event_id: smsEventId,
+        },
       });
       sent++;
     } catch (error) {

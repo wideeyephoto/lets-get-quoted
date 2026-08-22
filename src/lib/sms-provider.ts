@@ -1,4 +1,4 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
@@ -11,6 +11,7 @@ import {
 import { billsTextCredits, type SmsSendContext } from '@/lib/sms-billing-policy';
 import { releaseUsageOverage } from '@/lib/billing/usage-overage';
 import type { TextCreditOverage } from '@/lib/billing/text-credit-usage';
+import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
 
 /**
  * EVERY provider-shaped fact in the application lives in this file.
@@ -39,6 +40,51 @@ import type { TextCreditOverage } from '@/lib/billing/text-credit-usage';
  */
 
 export type SmsProviderId = 'twilio' | 'signalwire';
+
+/**
+ * A definite local billing decision made before a provider request can start.
+ *
+ * The durable worker uses this type to keep an exhausted workspace terminal
+ * and pre-request. Direct callers still receive the same actionable message.
+ */
+export class SmsBillingRefusalError extends Error {
+  override readonly name = 'SmsBillingRefusalError';
+
+  constructor() {
+    super('This workspace is out of text credits. Buy a top-up to keep texting.');
+  }
+}
+
+/**
+ * A provider response that proves the message was rejected, rather than a
+ * transport failure whose outcome is unknown. Only response classes that are
+ * safe to replay may set retryable.
+ */
+export class SmsProviderRejectedError extends Error {
+  override readonly name = 'SmsProviderRejectedError';
+
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Billing evidence persisted at the durable request boundary. A carrier call
+ * may succeed while its response is lost, so the reservation/overage identity
+ * must survive outside this process before the socket opens.
+ */
+export type SmsUsageEvidence =
+  | Readonly<{
+      kind: 'reservation';
+      reservationId: string;
+      finalizationKey: string;
+    }>
+  | Readonly<{ kind: 'overage'; overageKey: string }>
+  | Readonly<{ kind: 'unmetered' }>;
 
 export type SmsProviderConfig = {
   id: SmsProviderId;
@@ -94,6 +140,34 @@ export type SmsProviderConfig = {
 const TWILIO_HEADER = 'x-twilio-signature';
 const SIGNALWIRE_HEADER = 'x-signalwire-signature';
 
+/**
+ * The one provider-host boundary shared by compatibility messaging and Relay
+ * provisioning. Keeping the hostname rule here lets the architecture guard
+ * continue proving that no second module can invent a provider destination.
+ */
+export function normalizeSignalWireSpaceOrigin(raw: string): string | null {
+  const entered = raw.trim();
+  if (!entered) return null;
+  try {
+    const parsed = new URL(entered.includes('://') ? entered : `https://${entered}`);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password
+        || parsed.port || parsed.search || parsed.hash) return null;
+    if (parsed.pathname !== '/' && parsed.pathname !== '') return null;
+    // A Space is always hosted at <space>.signalwire.com. The provider's bare
+    // marketing/API apex is not a customer Space and must never receive a
+    // project's Basic credentials.
+    const suffix = '.signalwire.com';
+    if (!parsed.hostname.endsWith(suffix)) return null;
+    const spaceSubdomain = parsed.hostname.slice(0, -suffix.length);
+    if (!spaceSubdomain.split('.').every((label) => (
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)
+    ))) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
 // ABOUT THE `.json` SUFFIX ON BOTH URLs BELOW.
 //
 // Twilio's 2010-04-01 API returns XML unless the resource path ends in `.json`,
@@ -132,30 +206,25 @@ function signalwireConfig(): SmsProviderConfig | null {
   // what makes it a safe thing to infer the provider from. You cannot have a
   // working SignalWire config without it, so "provider = signalwire, no space"
   // is not a state that can be reached.
-  const space = (process.env.SIGNALWIRE_SPACE_URL || '')
-    .trim()
-    .replace(/^https?:\/\//, '')
-    .replace(/\/+$/, '');
+  const spaceOrigin = normalizeSignalWireSpaceOrigin(process.env.SIGNALWIRE_SPACE_URL || '');
   const projectId = process.env.SIGNALWIRE_PROJECT_ID;
   const apiToken = process.env.SIGNALWIRE_API_TOKEN;
   const senderPoolId = process.env.SIGNALWIRE_NUMBER_GROUP_ID || undefined;
   const from = process.env.SIGNALWIRE_FROM_NUMBER || undefined;
-  if (!space || !projectId || !apiToken || (!senderPoolId && !from)) return null;
+  if (!spaceOrigin || !projectId || !apiToken || (!senderPoolId && !from)) return null;
   return {
     id: 'signalwire',
     authUser: projectId,
     authPassword: apiToken,
     accountPath: projectId,
-    // Falls back to the API token deliberately. SignalWire's credentials page
-    // exposes a separate signing key, but their prose docs never state which
-    // secret signs a webhook, and their own SDK's validateRequest takes "the
-    // auth token". One of the two is right; both are secrets we hold; and
-    // exactly one is tried per request, chosen here at config time rather than
-    // guessed per request. If inbound starts returning `mismatch` on the health
-    // card, set SIGNALWIRE_SIGNING_KEY explicitly — that is the whole fix.
-    signingKey: process.env.SIGNALWIRE_SIGNING_KEY || apiToken,
+    // Webhook authentication is a separate credential and never falls back to
+    // the API token. Keeping the empty value on this outbound-only structure
+    // lets a deployment send while its callback is intentionally still dark;
+    // the verifier below reads SIGNALWIRE_SIGNING_KEY independently and fails
+    // closed until it is present.
+    signingKey: process.env.SIGNALWIRE_SIGNING_KEY || '',
     signatureHeader: SIGNALWIRE_HEADER,
-    messagesUrl: `https://${space}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/Messages.json`,
+    messagesUrl: `${spaceOrigin}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/Messages.json`,
     senderPoolId,
     from,
   };
@@ -195,20 +264,22 @@ export function smsProviderConfig(): SmsProviderConfig | null {
   if (requested === 'twilio' || requested === 'signalwire') {
     return available.find((config) => config.id === requested) ?? null;
   }
+  // Only an EMPTY selector may infer the incumbent. A typo during the
+  // dual-credential cutover (for example `signalwir`) is still an explicit
+  // operator choice; silently treating it as "unset" would put real traffic
+  // back on Twilio's number and A2P registration.
+  if (requested) return null;
   return available[0] ?? null;
+}
+
+/** Resolve an explicitly named outbound provider without fallback. */
+export function smsProviderConfigFor(provider: SmsProviderId): SmsProviderConfig | null {
+  return configuredSmsProviders().find((config) => config.id === provider) ?? null;
 }
 
 /** Whether this deployment can send a text at all. */
 export function isSmsProviderConfigured(): boolean {
   return smsProviderConfig() !== null;
-}
-
-function appOrigin(): string | null {
-  const raw = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
-  // http origins get no callback: the provider would post delivery status in
-  // the clear to an address it cannot verify, and localhost is not reachable
-  // from their side anyway.
-  return raw?.startsWith('https://') ? raw : null;
 }
 
 export type SendRequest = { url: string; headers: Record<string, string>; body: URLSearchParams };
@@ -221,12 +292,18 @@ export type SendRequest = { url: string; headers: Record<string, string>; body: 
  * egress. A test that has to mock fetch to check a URL is a test that can send
  * a real message the day somebody's mock stops matching.
  */
-export function buildSendRequest(config: SmsProviderConfig, to: string, body: string): SendRequest {
+export function buildSendRequest(
+  config: SmsProviderConfig,
+  to: string,
+  body: string,
+  fromOverride?: string,
+): SendRequest {
   const data = new URLSearchParams({ To: to, Body: body });
-  if (config.senderPoolId) data.set('MessagingServiceSid', config.senderPoolId);
+  if (fromOverride) data.set('From', fromOverride);
+  else if (config.senderPoolId) data.set('MessagingServiceSid', config.senderPoolId);
   else if (config.from) data.set('From', config.from);
 
-  const origin = appOrigin();
+  const origin = trustedProviderCallbackOrigin();
   if (origin) data.set('StatusCallback', `${origin}/api/sms/status`);
 
   return {
@@ -306,6 +383,32 @@ export const SIMULATED_PROVIDER_ID = 'simulated';
 
 export type SmsSuppression = 'not-configured' | 'test' | 'preview' | 'switched-off';
 
+export type SmsLaneSuppression = SmsSuppression
+  | 'canary-account-not-enabled'
+  | 'sender-purpose-not-enabled';
+
+const SMS_ACCOUNT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** The exact workspace allow-list shared by every SMS egress lane. */
+export function smsCanaryAccounts(): ReadonlySet<string> {
+  return new Set(
+    (process.env.LGQ_SMS_CANARY_ACCOUNT_IDS || '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => SMS_ACCOUNT_ID.test(value)),
+  );
+}
+
+/** Release switch for a sender-number purpose, shared by queued and synchronous egress. */
+export function smsSenderPurposeEnabled(purpose: string | null): boolean {
+  if (purpose === 'lgq_shared') return process.env.LGQ_SMS_SHARED_ENABLED === '1';
+  if (purpose === 'lgq_dispatch') return process.env.LGQ_SMS_DISPATCH_ENABLED === '1';
+  if (purpose === 'contractor_dedicated') {
+    return process.env.LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED === '1';
+  }
+  return false;
+}
+
 /**
  * Why outbound SMS must not leave this process right now, or null to send.
  *
@@ -336,6 +439,26 @@ export function outboundSmsSuppression(): SmsSuppression | null {
 }
 
 /**
+ * Full outbound lane admission, including the global/test/Preview switch,
+ * account canary, and sender-purpose release gate. Carrier-generated reply XML is
+ * egress too, so callback routes must use this rather than bypassing the worker.
+ */
+export function outboundSmsLaneSuppression(
+  accountId: string | null,
+  senderPurpose: string | null,
+): SmsLaneSuppression | null {
+  const global = outboundSmsSuppression();
+  if (global) return global;
+  const canaries = smsCanaryAccounts();
+  if (canaries.size > 0
+      && (!accountId || !canaries.has(accountId.trim().toLowerCase()))) {
+    return 'canary-account-not-enabled';
+  }
+  if (!smsSenderPurposeEnabled(senderPurpose)) return 'sender-purpose-not-enabled';
+  return null;
+}
+
+/**
  * The one egress point in the application, and therefore the one place a text
  * credit can be spent.
  *
@@ -350,6 +473,17 @@ export async function sendProviderMessage(
   to: string,
   body: string,
   context: SmsSendContext,
+  options: Readonly<{
+    provider?: SmsProviderId;
+    from?: string;
+    messageKey?: string;
+    /**
+     * Durable-worker compare-and-set performed after every local preflight and
+     * immediately before the provider socket is opened. Ordinary direct callers
+     * omit it and retain their existing behavior.
+     */
+    beforeRequest?: (usage: SmsUsageEvidence) => Promise<void>;
+  }> = {},
 ): Promise<string> {
   const suppressed = outboundSmsSuppression();
   if (suppressed === 'not-configured') throw new Error('SMS provider is not configured.');
@@ -365,7 +499,9 @@ export async function sendProviderMessage(
     return SIMULATED_PROVIDER_ID;
   }
 
-  const config = smsProviderConfig();
+  const config = options.provider
+    ? smsProviderConfigFor(options.provider)
+    : smsProviderConfig();
   if (!config) throw new Error('SMS provider is not configured.');
 
   // Hold the credits before the carrier call, spend them once it is accepted.
@@ -383,10 +519,17 @@ export async function sendProviderMessage(
       body,
       // Fresh per send. Two deliberate sends of the same text are two texts,
       // and the carrier bills both.
-      messageKey: `sms:${randomUUID()}`,
-    }, { mode });
+      messageKey: options.messageKey ?? `sms:${randomUUID()}`,
+    }, {
+      mode,
+      // Durable deliveries can be quarantined after an ambiguous provider
+      // outcome. Keep their hold alive long enough for the minute-level
+      // reconciliation worker and an ordinary platform outage; the direct
+      // synchronous path retains its short 15-minute safety lease.
+      reservationTtlMs: options.beforeRequest ? 24 * 60 * 60 * 1000 : undefined,
+    });
     if (decision.outcome === 'refused') {
-      throw new Error('This workspace is out of text credits. Buy a top-up to keep texting.');
+      throw new SmsBillingRefusalError();
     }
     if (decision.outcome === 'allowed') lease = decision.lease;
     // Out of allowance but within an authorized overage cap. Nothing is held in
@@ -395,21 +538,66 @@ export async function sendProviderMessage(
     if (decision.outcome === 'allowed_overage') overage = decision.overage;
   }
 
-  const request = buildSendRequest(config, to, body);
-
+  let requestAttempted = false;
   try {
+    const request = buildSendRequest(config, to, body, options.from);
+    const usage: SmsUsageEvidence = lease
+      ? Object.freeze({
+        kind: 'reservation' as const,
+        reservationId: lease.reservationId,
+        finalizationKey: lease.finalizationKey,
+      })
+      : overage
+        ? Object.freeze({ kind: 'overage' as const, overageKey: overage.idempotencyKey })
+        : Object.freeze({ kind: 'unmetered' as const });
+    if (options.beforeRequest) await options.beforeRequest(usage);
+    requestAttempted = true;
     const response = await fetch(request.url, { method: 'POST', headers: request.headers, body: request.body });
     // Read as text, once. Reading as JSON is what threw on non-JSON bodies, and a
     // Response body can only be consumed one time — so there was no second chance
     // to see what actually came back.
-    const raw = await response.text();
+    let raw: string;
+    try {
+      raw = await response.text();
+    } catch (error) {
+      if (isDefinitiveProviderRejection(response.status)) {
+        throw new SmsProviderRejectedError(
+          response.status,
+          `SMS provider rejected the message (HTTP ${response.status}).`,
+          response.status === 429,
+        );
+      }
+      throw error;
+    }
     const result = parseSendResponse(response.ok, response.status, raw);
-    if ('error' in result) throw new Error(result.error);
-    if (ledger && lease) await commitTextCreditUsage(ledger, lease);
+    if ('error' in result) {
+      if (isDefinitiveProviderRejection(response.status)) {
+        throw new SmsProviderRejectedError(
+          response.status,
+          result.error,
+          response.status === 429,
+        );
+      }
+      throw new Error(result.error);
+    }
+    if (ledger && lease && !await commitTextCreditUsage(ledger, lease)) {
+      // Durable workers stored the lease before opening the socket and their
+      // reconciliation pass will retry this exact finalization. Do not turn a
+      // provider acceptance into a resend merely because the ledger reply was
+      // unavailable.
+      console.error('text credit commit is pending durable reconciliation');
+    }
     return result.providerId;
   } catch (error) {
-    if (ledger && lease) await releaseTextCreditUsage(ledger, lease, 'send_failed');
-    if (ledger && overage && context.accountId) {
+    const definitiveRejection = error instanceof SmsProviderRejectedError;
+    if (ledger && lease) {
+      if (!requestAttempted || definitiveRejection) {
+        await releaseTextCreditUsage(ledger, lease, 'send_failed');
+      } else if (!await commitTextCreditUsage(ledger, lease)) {
+        console.error('indeterminate text credit commit is pending durable reconciliation');
+      }
+    }
+    if (ledger && overage && context.accountId && (!requestAttempted || definitiveRejection)) {
       // Spread rather than restated. Listing the fields is how this one lost
       // `periodStart` when the type gained it -- the release then looked the
       // period up itself, found the wrong one, and gave nothing back.
@@ -417,6 +605,15 @@ export async function sendProviderMessage(
     }
     throw error;
   }
+}
+
+/**
+ * A received non-timeout 4xx is positive evidence that the provider declined
+ * this request. HTTP 408 is deliberately excluded: an intermediary can time out
+ * after the provider accepted work, making replay unsafe just like socket loss.
+ */
+function isDefinitiveProviderRejection(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 408;
 }
 
 // -- inbound signatures --------------------------------------------------------
@@ -437,11 +634,10 @@ export type SignatureCheck =
  * mismatch. An attacker who sets the header controls only which of two secrets
  * they have to forge against, and they hold neither.
  *
- * Both providers use the same primitive — HMAC-SHA1, base64, over the full URL
- * followed by every form field as key+value, sorted. That is confirmed by
- * reading both SDKs, not by assuming compatibility; SignalWire's prose docs
- * never state the algorithm at all, which is exactly why `mismatch` is a
- * distinguishable outcome and shows up on the admin health card.
+ * Compatibility form callbacks use HMAC-SHA1/base64 over the full URL plus
+ * sorted fields. SignalWire RELAY/SWML/JSON uses HMAC-SHA1/hex over the full
+ * URL plus the exact raw body. Both paths follow SignalWire's current SDK test
+ * vectors; a JSON object is never re-serialized for verification.
  *
  * The three reasons are separate because they mean different things at 2am.
  * `secret-not-configured` means a provider console was pointed at this app
@@ -459,24 +655,71 @@ export function hasSignatureHeader(request: Request): boolean {
   return request.headers.get(SIGNALWIRE_HEADER) !== null || request.headers.get(TWILIO_HEADER) !== null;
 }
 
-export function validateWebhookSignature(request: Request, data: FormData): SignatureCheck {
-  // SignalWire's SDK reads its own header and falls back to Twilio's, so it may
-  // send both. Prefer the specific one; either way only one key is tried.
+export function validateWebhookSignature(
+  request: Request,
+  body: FormData | string,
+): SignatureCheck {
+  // The header chooses exactly one independently configured verification key.
+  // SignalWire's API token is intentionally not a fallback: its Dashboard
+  // exposes a distinct Signing Key and the current SDK documents that key as
+  // the webhook credential.
   const signalwire = request.headers.get(SIGNALWIRE_HEADER);
   const twilio = request.headers.get(TWILIO_HEADER);
-
   const claim = signalwire
-    ? { provider: 'signalwire' as const, signature: signalwire, key: signalwireConfig()?.signingKey }
+    ? {
+        provider: 'signalwire' as const,
+        signature: signalwire,
+        key: process.env.SIGNALWIRE_SIGNING_KEY,
+      }
     : twilio
-      ? { provider: 'twilio' as const, signature: twilio, key: twilioConfig()?.signingKey ?? process.env.TWILIO_AUTH_TOKEN }
+      ? {
+          provider: 'twilio' as const,
+          signature: twilio,
+          key: process.env.TWILIO_AUTH_TOKEN,
+        }
       : null;
 
   if (!claim) return { ok: false, reason: 'missing-header' };
   if (!claim.key) return { ok: false, reason: 'secret-not-configured' };
 
-  const key = claim.key;
-  const suffix = sortedFormPairs(data);
-  const matches = candidateUrls(request).some((url) => timingSafeMatch(sign(key, url + suffix), claim.signature));
+  const urls = candidateUrls(request);
+  if (urls.length === 0) return { ok: false, reason: 'mismatch' };
+
+  // Scheme A — SignalWire RELAY/SWML/JSON. The digest is lowercase hex over
+  // the exact raw body. It cannot be reconstructed after JSON parsing.
+  if (claim.provider === 'signalwire'
+      && typeof body === 'string'
+      && urls.some((url) => timingSafeMatch(
+        signHex(claim.key!, url + body), claim.signature,
+      ))) {
+    return { ok: true, provider: claim.provider };
+  }
+
+  // Scheme B — Twilio/Compatibility form callbacks. A raw JSON callback may
+  // use the documented URL-only signature only when the signed URL carries a
+  // matching bodySHA256. Without that binding, a captured URL signature could
+  // be replayed with attacker-chosen JSON. Raw form callbacks continue to sign
+  // every sorted field, so their body is bound without the query parameter.
+  const mediaType = request.headers.get('content-type')
+    ?.split(';', 1)[0].trim().toLowerCase() ?? '';
+  const rawForm = typeof body === 'string'
+    && (mediaType === '' || mediaType === 'application/x-www-form-urlencoded');
+  const matches = urls.some((url) => {
+    if (typeof body !== 'string') {
+      return timingSafeMatch(
+        signBase64(claim.key!, url + sortedFormPairs(body)),
+        claim.signature,
+      );
+    }
+    if (rawForm && timingSafeMatch(
+      signBase64(claim.key!, url + sortedRawFormPairs(body)),
+      claim.signature,
+    )) {
+      return true;
+    }
+    return bodySha256Matches(url, body)
+      && timingSafeMatch(signBase64(claim.key!, url), claim.signature);
+  });
   return matches ? { ok: true, provider: claim.provider } : { ok: false, reason: 'mismatch' };
 }
 
@@ -494,46 +737,78 @@ export function validateWebhookSignature(request: Request, data: FormData): Sign
 function sortedFormPairs(data: FormData): string {
   return [...data.entries()]
     .map(([key, value]) => [key, String(value)] as const)
-    .sort(([leftKey, leftValue], [rightKey, rightValue]) =>
-      leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0,
-    )
+    // V8's sort is stable: repeated fields keep their submission order, as the
+    // SignalWire and Twilio compatibility algorithms require.
+    .sort(([leftKey], [rightKey]) => leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0)
     .reduce((result, [key, value]) => `${result}${key}${value}`, '');
 }
 
-/**
- * The URL the provider signed, as best we can reconstruct it behind a proxy.
- *
- * Two candidates, with and without an explicit default port. Both vendors' SDKs
- * hedge the same way and SignalWire's carries a comment saying signature
- * generation on their back end is inconsistent about it. This is a bounded,
- * named hedge over the ONE key the header already selected — two spellings of
- * the same URL, not a second secret.
- */
-function candidateUrls(request: Request): string[] {
-  const url = new URL(request.url);
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  if (forwardedProto) url.protocol = `${forwardedProto}:`;
-  if (forwardedHost) url.host = forwardedHost;
-
-  // Built by string concatenation, NOT by setting url.port.
-  //
-  // WHATWG URL normalizes a default port out of existence: assigning
-  // `url.port = '443'` to an https URL leaves url.port as '' and toString()
-  // unchanged, so the "hedge" was two identical strings and hedged nothing.
-  // Both vendors' SDKs assemble this by hand for the same reason.
-  const canonical = url.toString();
-  const authority = `${url.protocol}//${url.hostname}`;
-  const tail = `${url.pathname}${url.search}${url.hash}`;
-  const alternate = url.port
-    ? `${authority}${tail}` // an explicit non-default port: try it removed
-    : `${authority}:${url.protocol === 'https:' ? '443' : '80'}${tail}`; // none: try the default made explicit
-
-  return [canonical, alternate];
+function sortedRawFormPairs(rawBody: string): string {
+  const pairs: Array<readonly [string, string]> = [];
+  try {
+    new URLSearchParams(rawBody).forEach((value, key) => pairs.push([key, value]));
+  } catch {
+    return '';
+  }
+  return pairs
+    .sort(([leftKey], [rightKey]) => leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0)
+    .reduce((result, [key, value]) => `${result}${key}${value}`, '');
 }
 
-function sign(key: string, payload: string): string {
+function bodySha256Matches(url: string, rawBody: string): boolean {
+  const expected = new URL(url).searchParams.get('bodySHA256');
+  if (expected === null) return false;
+  return timingSafeMatch(createHash('sha256').update(rawBody, 'utf8').digest('hex'), expected);
+}
+
+const SIGNED_PROVIDER_CALLBACK_PATHS: ReadonlySet<string> = new Set([
+  '/api/sms/inbound',
+  '/api/sms/status',
+  '/api/sms/voice',
+  '/api/sms/voice/status',
+  '/api/twilio/inbound',
+  '/api/twilio/status',
+  '/api/twilio/voice',
+  '/api/twilio/voice/status',
+  '/api/voice/ai',
+  '/api/voice/ai/status',
+]);
+
+/**
+ * The exact public URL the provider signed.
+ *
+ * Authority is configuration, never request input: Host and X-Forwarded-* can
+ * be supplied by the caller or rewritten by a proxy, so accepting either here
+ * lets an attacker choose the string authenticated by the provider HMAC. Only
+ * the request's exact allowlisted route and query survive reconstruction.
+ *
+ * Two candidates, with and without an explicit :443. Both vendors' SDKs hedge
+ * the same way and SignalWire's carries a comment saying signature generation
+ * on their back end is inconsistent about it. This remains a bounded spelling
+ * hedge over one configured HTTPS origin, not a second authority or secret.
+ */
+function candidateUrls(request: Request): string[] {
+  const origin = trustedProviderCallbackOrigin();
+  if (!origin) return [];
+
+  try {
+    const received = new URL(request.url);
+    if (received.hash || !SIGNED_PROVIDER_CALLBACK_PATHS.has(received.pathname)) return [];
+
+    const tail = `${received.pathname}${received.search}`;
+    const hostname = new URL(origin).hostname;
+    return [`${origin}${tail}`, `https://${hostname}:443${tail}`];
+  } catch {
+    return [];
+  }
+}
+
+function signBase64(key: string, payload: string): string {
   return createHmac('sha1', key).update(payload).digest('base64');
+}
+
+function signHex(key: string, payload: string): string {
+  return createHmac('sha1', key).update(payload, 'utf8').digest('hex');
 }
 
 function timingSafeMatch(expected: string, provided: string): boolean {
@@ -546,7 +821,7 @@ function timingSafeMatch(expected: string, provided: string): boolean {
 
 export type SmsProviderSummary = {
   active: SmsProviderId | null;
-  /** Set when LGQ_SMS_PROVIDER names a provider whose credentials are absent. */
+  /** Set when LGQ_SMS_PROVIDER is invalid or names an unconfigured provider. */
   requestedButUnconfigured: string | null;
   configured: SmsProviderId[];
   senderMode: 'pool' | 'single-number' | null;
@@ -574,13 +849,16 @@ export function smsProviderSummary(): SmsProviderSummary {
   const requested = (process.env.LGQ_SMS_PROVIDER || '').trim().toLowerCase();
   const configured = configuredSmsProviders();
   const active = smsProviderConfig();
-  const named = requested === 'twilio' || requested === 'signalwire';
+  const acceptedSignatureHeaders = [
+    process.env.TWILIO_AUTH_TOKEN ? TWILIO_HEADER : null,
+    process.env.SIGNALWIRE_SIGNING_KEY ? SIGNALWIRE_HEADER : null,
+  ].filter((header): header is string => header !== null);
   return {
     active: active?.id ?? null,
-    requestedButUnconfigured: named && !active ? requested : null,
+    requestedButUnconfigured: requested && !active ? requested : null,
     configured: configured.map((config) => config.id),
     senderMode: active ? (active.senderPoolId ? 'pool' : 'single-number') : null,
-    acceptedSignatureHeaders: configured.map((config) => config.signatureHeader),
-    statusCallbacksEnabled: appOrigin() !== null,
+    acceptedSignatureHeaders,
+    statusCallbacksEnabled: trustedProviderCallbackOrigin() !== null,
   };
 }

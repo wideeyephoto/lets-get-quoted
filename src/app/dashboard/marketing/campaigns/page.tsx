@@ -33,7 +33,7 @@ export const metadata = { title: 'Campaigns' };
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 

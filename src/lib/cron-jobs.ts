@@ -31,6 +31,27 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'voice-retention',
+    label: 'AI Voice history retention',
+    schedule: '43 5 * * *',
+    importance: 'customer',
+    consequence: 'Expired caller transcripts and receipt payloads stop being deleted after their promised 30-to-90-day history window.',
+  },
+  {
+    job: 'sms-inbound-actions',
+    label: 'Inbound SMS action recovery',
+    schedule: '* * * * *',
+    importance: 'customer',
+    consequence: 'Authenticated replies that crashed after receipt ingest stop resuming their booking, reschedule, confirmation, or dispatch action.',
+  },
+  {
+    job: 'sms-delivery',
+    label: 'SMS delivery queue',
+    schedule: '* * * * *',
+    importance: 'customer',
+    consequence: 'Queued account alerts, dispatch messages, and approved contractor texts stop reaching recipients.',
+  },
+  {
     job: 'legacy-quick-stop-late-refunds',
     label: 'Legacy Quick Stop late refunds',
     schedule: '*/5 * * * *',
@@ -250,12 +271,13 @@ const DAY = 24 * HOUR;
 /**
  * How often the expression fires, in milliseconds.
  *
- * Handles the four shapes this schedule actually uses and returns null for
+ * Handles the five shapes this schedule actually uses and returns null for
  * anything else, rather than guessing. A general cron parser would be a lot of
  * code to support expressions nobody has written, and — worse — a subtly wrong
  * one produces a confident "overdue" badge on a healthy job, which is the fastest
  * way to teach staff to ignore this page.
  *
+ *   * * * * *                   every minute
  *   asterisk-slash-N * * * *   every N minutes
  *   0 * * * *                  hourly
  *   0 H * * *                  daily
@@ -266,6 +288,8 @@ export function expectedIntervalMs(schedule: string): number | null {
   if (parts.length !== 5) return null;
   const [minute, hour, dom, month, dow] = parts;
   if (dom !== '*' || month !== '*') return null;
+
+  if (minute === '*' && hour === '*' && dow === '*') return MINUTE;
 
   const everyNMinutes = /^\*\/(\d+)$/.exec(minute);
   if (everyNMinutes && hour === '*' && dow === '*') {
@@ -361,6 +385,7 @@ export function scheduleInWords(schedule: string): string {
   const parts = schedule.trim().split(/\s+/);
   if (parts.length !== 5) return schedule;
   const [minute, hour, , , dow] = parts;
+  if (minute === '*' && hour === '*' && dow === '*') return 'Every minute';
   const everyN = /^\*\/(\d+)$/.exec(minute);
   if (everyN && hour === '*') return `Every ${everyN[1]} minutes`;
   // Everything below reads the minute as a single literal, so anything else —

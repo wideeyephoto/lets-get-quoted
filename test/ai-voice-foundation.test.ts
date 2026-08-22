@@ -130,6 +130,33 @@ describe('the receipt boundary settles only calls LGQ admitted', () => {
   });
 });
 
+describe('receipt replays resume unfinished settlement', () => {
+  const route = () => read('src', 'app', 'api', 'voice', 'receipt', 'route.ts');
+  const processor = () => read('src', 'lib', 'voice', 'receipt-processing.ts');
+  const leads = () => read('src', 'lib', 'leads.ts');
+
+  it('does not confuse an inbox duplicate with completed work', () => {
+    expect(route()).not.toMatch(/if\s*\(\s*!inserted\s*\)/);
+    expect(route()).toContain('processVoiceReceipt(admin, voiceEventId, receipt)');
+  });
+
+  it('claims before settlement and completes only after settlement returns', () => {
+    const source = processor();
+    expect(source.indexOf('await store.claim(eventId)'))
+      .toBeLessThan(source.indexOf('await settle(admin, receipt'));
+    expect(source.indexOf('await settle(admin, receipt'))
+      .toBeLessThan(source.indexOf('await store.complete(claim)'));
+  });
+
+  it('idempotently reuses the lead created by a prior ambiguous attempt', () => {
+    expect(leads()).toContain("onConflict: 'source_voice_event_id'");
+    expect(leads()).toContain('ignoreDuplicates: true');
+    expect(leads()).toContain(".eq('source_voice_event_id', voiceEventId)");
+    expect(read('src', 'lib', 'voice', 'settlement.ts'))
+      .toContain('sourceVoiceEventId: options.voiceEventId');
+  });
+});
+
 describe('the voice SKUs exist, and cannot be bought', () => {
   it('names both, so the price book is not carried in a conversation', async () => {
     const { TOP_UPS } = await import('@/lib/billing/catalog');
@@ -209,20 +236,19 @@ describe('the receipt route can be diagnosed without leaking anything', () => {
 
   it('never puts either credential in the response', () => {
     const source = route();
-    const unauthorized = source.slice(source.indexOf('if (!authorized(request))'));
+    const unauthorized = source.slice(source.indexOf('if (!auth.ok)'));
     // The 401 body is null. Everything diagnostic goes to webhook_failures,
     // which only the service role can read.
     expect(unauthorized).toContain('new NextResponse(null, { status: 401 })');
     expect(unauthorized).not.toMatch(/NextResponse\.json\([^)]*expected/);
   });
 
-  it('logs a fingerprint, never the secret', () => {
+  it('logs only a fixed auth reason, never credential material or a fingerprint', () => {
     const source = route();
-    expect(source).toContain("digest('hex').slice(0, 8)");
-    // The username half is named because it is not a secret and is usually
-    // where the mismatch is; the password half only ever appears as 32 bits of
-    // digest, which cannot be reversed.
-    expect(source).toContain('username matches, password differs');
-    expect(source).not.toMatch(/errorMessage:[^;]*presented\}/);
+    expect(source).toContain('Voice receipt authentication failed: ${auth.reason}');
+    expect(source).not.toContain("digest('hex').slice(0, 8)");
+    expect(source).not.toContain('username matches');
+    expect(source).not.toContain('password differs');
+    expect(source).not.toContain('request.headers.get(\'authorization\')');
   });
 });

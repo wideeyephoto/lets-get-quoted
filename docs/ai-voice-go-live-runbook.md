@@ -1,8 +1,13 @@
 # AI Voice Receptionist — go-live runbook
 
-Written 2026-08-19, revised the same day. Everything in Phase 4 V1 exists in code
+Written 2026-08-19, revised 2026-08-21. Everything in Phase 4 V1 exists in code
 and is dark. This is the order to switch it on, what to check after each step,
 and how to tell a working call from a silently unbilled one.
+
+**Production remains NO-GO.** This runbook does not authorize activation.
+Dedicated-number/provider entitlement setup and sellable AI Voice pricing are
+unfinished, and no staging canary, production-environment validation, or cutover
+evidence exists yet.
 
 Read §0 before anything else. It is why the flag order is what it is.
 
@@ -41,7 +46,7 @@ the panel says in those words.
 
 ## Prerequisites
 
-All eight voice migrations applied to production:
+All required voice migrations applied to production, in order:
 
 | Migration | What it adds |
 | --- | --- |
@@ -51,8 +56,15 @@ All eight voice migrations applied to production:
 | `20260819130000` | `ai_voice` lead source |
 | `20260819140000` | `voice_settings` |
 | `20260819150000` | `voice_calls` |
+| `20260819160000` | truncate-setting compatibility fix |
+| `20260819170000` | revoke browser-role truncate privileges |
+| `20260819180000` | voice SKU support in the top-up ledger |
 | `20260819190000` | `grant_voice_minute_allowance`, the lot tail |
 | `20260819200000` | asserts the canonical reset is untouched |
+| `20260821190000` | receipt claim/lease/CAS retries, lead idempotency, unsupported-setting guards |
+| `20260821191000` | atomic concurrency admission and token-bound release/finalization |
+| `20260821221223` | exact active dedicated-number revision binding for admission |
+| `20260821230000` | single transcript, entitlement-bounded visibility, and service-only purge |
 
 ```sql
 select to_regclass('public.voice_events')            as voice_events,
@@ -60,10 +72,21 @@ select to_regclass('public.voice_events')            as voice_events,
        to_regclass('public.voice_settings')          as settings,
        to_regclass('public.voice_calls')             as calls,
        to_regprocedure('public.commit_usage_reservation_partial(uuid,text,bigint)') as partial_commit,
-       to_regprocedure('public.grant_voice_minute_allowance(uuid,timestamptz,timestamptz)') as granter;
+       to_regprocedure('public.grant_voice_minute_allowance(uuid,timestamptz,timestamptz)') as granter,
+       to_regprocedure('public.claim_voice_call_admission(uuid,text,text,integer)') as admission_claim,
+       to_regprocedure('public.claim_voice_event_processing(uuid)') as event_claim,
+       to_regprocedure('public.complete_voice_event_processing(uuid,uuid)') as event_complete,
+       to_regprocedure('public.fail_voice_event_processing(uuid,uuid,text,boolean)') as event_fail,
+       to_regprocedure('public.purge_expired_voice_history(integer)') as retention_purge;
 ```
 
-All six non-null, or stop.
+All eleven checks non-null, or stop.
+
+Local-only verification on 2026-08-21 passed 21 voice test files / 276 tests,
+the final webhook-boundary suite 12/12, and the disposable PostgreSQL 17 voice
+inbox/retention harness 89/89. The full repository passed 550 files / 9,476
+tests. These counts prove the local artifact only; they are not deployment or
+provider evidence.
 
 ---
 
@@ -99,7 +122,8 @@ request. Then, with the credentials just set:
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}
-' -X POST   'https://user:password@<host>/api/voice/receipt'   -H 'content-type: application/json' -d '{}'
+' -X POST 'https://<host>/api/voice/receipt' -u 'user:password' \
+  -H 'content-type: application/json' -d '{}'
 ```
 
 Expect **`400`** — authentication passed and the empty body was rejected.
@@ -107,7 +131,7 @@ Expect **`400`** — authentication passed and the empty body was rejected.
 | Code | Means |
 | --- | --- |
 | `503` | **no credential in this build.** Set the variable and redeploy; setting it without a new build changes nothing. |
-| `401` (authenticated) | the credential does not match what the build holds |
+| `401` | the credential does not match what the build holds |
 | `400` | working |
 | `404` | this host is not serving the app — check the alias points at the deployment |
 
@@ -118,16 +142,21 @@ and "the password is wrong" were indistinguishable. They are not any more.
 
 ## Step 2 — the scratch agent
 
-In SignalWire, create an AI Agent and set its **post-prompt URL** to:
+For a dashboard scratch agent, set its **post-prompt URL** to:
 
 ```
-https://user:password@<host>/api/voice/receipt
+https://<host>/api/voice/receipt
 ```
 
-Credentials in the URL are the only authentication this provider offers — there
-is no signature and no signing secret (`docs/ai-voice-v1-decisions.md` §11). The
-userinfo is stripped from the request URL and arrives as an `Authorization:
-Basic` header, which is what the route reads.
+Set the scratch agent's post-prompt username and password fields separately.
+There is no receipt signature or signing secret (`docs/ai-voice-v1-decisions.md`
+§11). SignalWire sends those fields as `Authorization: Basic`, which is what the
+route reads. Never place the credential in the URL: URLs are routinely captured
+by browser history, proxy access logs and error trackers.
+
+The production `/api/voice/ai` route does this automatically in returned SWML:
+it emits `post_prompt_url`, `post_prompt_auth_user`, and
+`post_prompt_auth_password` as separate fields from `LGQ_VOICE_RECEIPT_BASIC`.
 
 Do **not** attach a production number yet.
 
@@ -161,10 +190,9 @@ workspace, and no other behaviour changed anywhere.
 ## Step 5 — configure the test workspace
 
 On the card: set status **Answering**, when-it-answers **Every call** (so the
-test does not depend on the hour), a greeting, and a transfer number.
-
-Leave **recording off**. It requires the disclosure acknowledgement and the
-database will refuse to enable it without one.
+test does not depend on the hour), a greeting, and a transfer number. Recording
+and a separate emergency route are intentionally unavailable; the database
+also rejects those unsupported states.
 
 **Check:**
 
@@ -188,15 +216,25 @@ select provider_call_id, reservation_id, reserved_minutes, admitted_at
 from public.voice_call_admissions order by admitted_at desc limit 5;
 
 -- 2. The receipt arrived and was accepted.
-select provider_call_id, processing_status, account_id, last_error, received_at
+select provider_call_id, processing_status, account_id, attempt_count,
+       next_attempt_at, last_error, received_at
 from public.voice_events order by received_at desc limit 5;
 
--- 3. The call is in the contractor's history.
-select provider_call_id, caller_number, ai_seconds, billed_minutes, settlement, outcome
+-- 3. The call is in the contractor's history, with the one retained transcript.
+select provider_call_id, caller_number, ai_seconds, billed_minutes, settlement,
+       outcome, coalesce(jsonb_array_length(transcript), 0) as transcript_entries
 from public.voice_calls order by created_at desc limit 5;
 
+-- The backend receipt retains no transcript aliases after normalization.
+select provider_call_id,
+       payload ?| array['call_log','raw_call_log','call_timeline','post_prompt_data']
+         as has_transcript_key,
+       payload_sha256
+from public.voice_events order by received_at desc limit 5;
+
 -- 4. A lead was created, filed as an AI call and not a missed one.
-select id, source, name, phone, left(message, 80) as summary, created_at
+select id, source, source_voice_event_id, name, phone,
+       left(message, 80) as summary, created_at
 from public.leads where source = 'ai_voice' order by created_at desc limit 5;
 
 -- 5. Nothing failed quietly.
@@ -212,11 +250,16 @@ order by created_at desc limit 10;
 | 1 admission | one row, `reservation_id` **null**, `reserved_minutes` 0 | no row → the number is not pointed at `/api/voice/ai`, or the signature failed. See (5). |
 | 2 receipt | `processing_status = 'processed'`, `account_id` set | `ignored` → the call id matched no admission. Almost always: the agent's post-prompt URL is on a different deployment from the one that answered. |
 | 3 history | `ai_seconds` ≈ the real call, `settlement = 'unmetered'` | `unbillable` → the receipt carried no usable `ai_start_date`/`ai_end_date`. Capture the payload. |
-| 4 lead | one row, `source = 'ai_voice'` | none → check (5); lead failure is contained and does not stop settlement. |
+| 4 lead | one row, `source = 'ai_voice'`, linked to the receipt by `source_voice_event_id` | none → check (2) and (5); lead failure keeps the receipt retryable, so `failed` plus a future `next_attempt_at` is expected until a retry succeeds. |
 | 5 failures | empty | read it; every rejection lands here with a reason. |
 
 `settlement = 'unmetered'` is **correct at this stage** and is what §0 predicts.
 The history panel will show "Answered but not billed".
+
+For a receipt that includes `call_log`, check (3) must show that normalized array
+only in `voice_calls.transcript`; `has_transcript_key` must be false in
+`voice_events`. The stored payload hash must match the rewritten transcript-free
+payload. Any duplicate transcript or stale hash is a stop condition.
 
 ### How to tell a working call from a silently unbilled one
 
@@ -264,6 +307,25 @@ published behaviour but is the first time a billing decision can end a call.
 
 ---
 
+## Retention is continuous, not an activation flag
+
+`/api/cron/voice-retention` runs daily at **05:43 UTC** and calls
+`purge_expired_voice_history(integer)` as the service role. It has no rollout
+flag: retention is a privacy boundary once caller content exists.
+
+- Owner RLS must hide history as soon as the workspace's bounded entitlement
+  retention period expires, even before the next purge.
+- Purge must delete expired terminal `voice_calls` and `voice_events` in bounded
+  batches while preserving active or retryable receipts.
+- Browser/authenticated roles must not be able to execute the purge.
+- The supported entitlement range remains 30–90 days; missing or malformed
+  entitlement evidence fails to the bounded default rather than retaining forever.
+
+Inspect the cron result and oldest eligible rows during staging. A failed purge,
+owner-visible expired history, or deletion of retryable evidence blocks go-live.
+
+---
+
 ## Rollback
 
 Every step reverses independently, cheapest first:
@@ -290,10 +352,11 @@ anything outstanding within the 90-minute hold.
   redeploy. This made two billing workers look like they had stopped.
 - **Preview writes Production Supabase.** A variable set only in Production makes
   preview deploys behave differently against the same data.
-- **The receipt is unauthenticated by design.** It is safe only because LGQ
-  settles calls it admitted. If admissions ever stop being written, a forged
-  receipt stops being inert — check (1) is therefore a security check as well as
-  a functional one.
+- **The provider supplies no signature, but the receipt is not unauthenticated.**
+  LGQ requires dedicated HTTP Basic credentials, exact project/space identity,
+  and a matching admission. The admission check remains security-critical: a
+  receipt for a call LGQ did not admit is stored as inert evidence and is never
+  settled.
 - **A call that fails while connecting sends no receipt at all.** Its hold is
   released by the sweeper, not by anything in the request path. The sweeper is
   load-bearing here, not a backstop.

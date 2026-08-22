@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 
-import { setVoiceRecordingAction, updateVoiceSettingsAction } from './voice-actions';
+import { updateVoiceSettingsAction } from './voice-actions';
 
 /**
  * The AI receptionist card.
@@ -29,33 +30,67 @@ type Props = {
   answerMode: 'always' | 'after_hours';
   greeting: string;
   transferNumber: string;
-  emergencyTransferNumber: string;
   businessHours: Hours;
-  recordingEnabled: boolean;
   timezone: string;
-  /** From the plan. Zero means the plan carries no AI Voice at all. */
+  /** Base-plan inclusion or an active recurring AI Voice add-on. */
+  entitled: boolean;
+  /** Distinguishes a verified no-entitlement result from a failed billing read. */
+  entitlementAvailable: boolean;
+  /** False when the saved settings row could not be read. */
+  settingsAvailable: boolean;
+  /** Route-specific evidence for the current customer-facing number. */
+  routeState: 'ready' | 'missing_number' | 'dedicated_number_not_ready' | 'unverified' | 'unavailable';
+  /** The capacity within an entitlement, never the entitlement itself. */
   concurrentCalls: number;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export default function AiReceptionistSection(props: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState(props.status);
   const [answerMode, setAnswerMode] = useState(props.answerMode);
   const [greeting, setGreeting] = useState(props.greeting);
   const [transferNumber, setTransferNumber] = useState(props.transferNumber);
-  const [emergency, setEmergency] = useState(props.emergencyTransferNumber);
   const [hours, setHours] = useState<Hours>(props.businessHours);
-  const [recording, setRecording] = useState(props.recordingEnabled);
-  const [acknowledged, setAcknowledged] = useState(props.recordingEnabled);
   const [save, setSave] = useState<SaveState>('idle');
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [, startSaving] = useTransition();
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const unsold = props.concurrentCalls < 1;
+  const unsold = props.entitlementAvailable && !props.entitled;
+  const activationBlockedReason = !props.settingsAvailable
+    ? 'Saved receptionist settings could not be loaded.'
+    : !props.entitlementAvailable
+      ? 'AI Voice entitlement could not be verified.'
+      : !props.entitled
+        ? 'This workspace does not include AI Voice or an active add-on.'
+        : props.routeState === 'unavailable'
+          ? 'The customer-facing call route could not be verified.'
+          : props.routeState === 'missing_number'
+            ? 'A valid customer-facing number has not been configured.'
+            : props.routeState === 'dedicated_number_not_ready'
+              ? 'The customer-facing number is not an active dedicated SignalWire number.'
+            : props.routeState === 'unverified'
+              ? 'The customer-facing number has not completed a signed test call to the AI Voice route.'
+              : null;
+  const editingBlocked = !props.settingsAvailable;
+  const controlsDisabled = editingBlocked || save === 'saving';
+
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+  }, []);
+
+  function markEdited() {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    setSave('idle');
+    setProblem(null);
+    setNotice(null);
+  }
 
   function setDay(day: string, open: string | null, close: string | null) {
+    markEdited();
     setHours((current) => ({
       ...current,
       [day]: open && close ? [open, close] : null,
@@ -70,7 +105,6 @@ export default function AiReceptionistSection(props: Props) {
       try {
         const result = await updateVoiceSettingsAction({
           status, answerMode, greeting, transferNumber,
-          emergencyTransferNumber: emergency,
           businessHours: hours,
         });
         // The server drops a day whose closing time is at or before its opening
@@ -88,6 +122,9 @@ export default function AiReceptionistSection(props: Props) {
           });
         }
         setSave('saved');
+        router.refresh();
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setSave('idle'), 2400);
       } catch (error) {
         setSave('error');
         setProblem(error instanceof Error ? error.message : 'Could not save.');
@@ -95,26 +132,46 @@ export default function AiReceptionistSection(props: Props) {
     });
   }
 
-  function toggleRecording(next: boolean) {
-    setProblem(null);
-    startSaving(async () => {
-      try {
-        const result = await setVoiceRecordingAction({ enabled: next, acknowledged });
-        setRecording(result.enabled);
-      } catch (error) {
-        setProblem(error instanceof Error ? error.message : 'Could not change recording.');
-      }
-    });
-  }
-
   return (
     <div className="voice-card">
-      {unsold ? (
-        <p className="voice-unsold">
-          Your plan doesn&apos;t include the AI Voice Receptionist yet. You can set it up here, and
-          it will start answering once it&apos;s on your plan.
+      {!props.settingsAvailable ? (
+        <p className="voice-unsold" role="alert">
+          We couldn&apos;t load the saved receptionist settings. The controls are locked so an
+          unknown live configuration cannot be overwritten with defaults. Refresh the page or contact support.
         </p>
-      ) : null}
+      ) : !props.entitlementAvailable ? (
+        <p className="voice-unsold" role="status">
+          We couldn&apos;t verify AI Voice access right now. Existing settings are shown, but Answering
+          cannot be activated until the billing check succeeds.
+        </p>
+      ) : unsold ? (
+        <p className="voice-unsold">
+          This workspace doesn&apos;t include AI Voice and has no active AI Voice add-on. You can
+          prepare the greeting and hours here, but it cannot be switched to Answering.
+        </p>
+      ) : props.routeState === 'unavailable' ? (
+        <p className="voice-unsold" role="status">
+          We couldn&apos;t verify the customer-facing call route right now. Answering stays unavailable;
+          refresh the page or contact support if it continues.
+        </p>
+      ) : props.routeState === 'missing_number' ? (
+        <p className="voice-unsold" role="status">
+          Add a valid customer-facing number in Missed-call text-back before turning on Answering.
+        </p>
+      ) : props.routeState === 'dedicated_number_not_ready' ? (
+        <div className="alert alert-warning" role="status">
+          AI Voice requires an active dedicated SignalWire number assigned to this workspace.
+        </div>
+      ) : props.routeState === 'unverified' ? (
+        <p className="voice-unsold" role="status">
+          Before Answering can be turned on, point the customer-facing number at the AI Voice webhook
+          and place one test call. The signed call is the proof that calls really reach LGQ.
+        </p>
+      ) : (
+        <p className="voice-unsold">
+          Included: {props.concurrentCalls} simultaneous AI {props.concurrentCalls === 1 ? 'call' : 'calls'}.
+        </p>
+      )}
 
       <div className="voice-field">
         <span className="voice-label">Receptionist</span>
@@ -124,7 +181,9 @@ export default function AiReceptionistSection(props: Props) {
               key={value}
               type="button"
               aria-pressed={status === value}
-              onClick={() => setStatus(value)}
+              disabled={controlsDisabled || (value === 'active' && activationBlockedReason !== null)}
+              title={value === 'active' ? activationBlockedReason ?? undefined : undefined}
+              onClick={() => { markEdited(); setStatus(value); }}
             >
               {value === 'off' ? 'Off' : value === 'active' ? 'Answering' : 'Paused'}
             </button>
@@ -132,7 +191,9 @@ export default function AiReceptionistSection(props: Props) {
         </div>
         <small>
           {status === 'active'
-            ? 'Callers you don’t pick up reach the receptionist.'
+            ? activationBlockedReason
+              ? `Configured, but not answering: ${activationBlockedReason}`
+              : 'Calls covered by the schedule below reach the receptionist.'
             : status === 'paused'
               ? 'Paused — your settings are kept, and nothing answers for now.'
               : 'Off — calls follow your normal forwarding.'}
@@ -142,10 +203,10 @@ export default function AiReceptionistSection(props: Props) {
       <div className="voice-field">
         <span className="voice-label">When it answers</span>
         <div className="voice-choices" role="group" aria-label="When the receptionist answers">
-          <button type="button" aria-pressed={answerMode === 'after_hours'} onClick={() => setAnswerMode('after_hours')}>
+          <button type="button" disabled={controlsDisabled} aria-pressed={answerMode === 'after_hours'} onClick={() => { markEdited(); setAnswerMode('after_hours'); }}>
             Outside business hours
           </button>
-          <button type="button" aria-pressed={answerMode === 'always'} onClick={() => setAnswerMode('always')}>
+          <button type="button" disabled={controlsDisabled} aria-pressed={answerMode === 'always'} onClick={() => { markEdited(); setAnswerMode('always'); }}>
             Every call
           </button>
         </div>
@@ -162,6 +223,7 @@ export default function AiReceptionistSection(props: Props) {
                 <input
                   id={`voice-open-${day}`}
                   type="time"
+                  disabled={controlsDisabled}
                   value={window?.[0] ?? ''}
                   onChange={(event) => setDay(day, event.target.value || null, window?.[1] ?? '17:00')}
                 />
@@ -169,10 +231,11 @@ export default function AiReceptionistSection(props: Props) {
                 <input
                   aria-label={`${label} closing time`}
                   type="time"
+                  disabled={controlsDisabled}
                   value={window?.[1] ?? ''}
                   onChange={(event) => setDay(day, window?.[0] ?? '08:00', event.target.value || null)}
                 />
-                <button type="button" className="voice-clear" onClick={() => setDay(day, null, null)}>
+                <button type="button" className="voice-clear" disabled={controlsDisabled} onClick={() => setDay(day, null, null)}>
                   Closed
                 </button>
               </div>
@@ -187,9 +250,10 @@ export default function AiReceptionistSection(props: Props) {
           id="voice-greeting"
           rows={3}
           maxLength={1000}
+          disabled={controlsDisabled}
           placeholder="Thanks for calling Rivera Plumbing."
           value={greeting}
-          onChange={(event) => setGreeting(event.target.value)}
+          onChange={(event) => { markEdited(); setGreeting(event.target.value); }}
         />
         <small>
           Callers are always told they&apos;re speaking with an AI assistant, whatever you write here.
@@ -202,52 +266,31 @@ export default function AiReceptionistSection(props: Props) {
           id="voice-transfer"
           type="tel"
           inputMode="tel"
+          disabled={controlsDisabled}
           placeholder="(248) 555-0100"
           value={transferNumber}
-          onChange={(event) => setTransferNumber(event.target.value)}
+          onChange={(event) => { markEdited(); setTransferNumber(event.target.value); }}
         />
-        <small>Where the receptionist puts a caller through. Leave blank and it won&apos;t offer to.</small>
+        <small>
+          Where the receptionist puts a caller through. Leave blank to use your account&apos;s normal
+          forwarding number; without either number, it won&apos;t offer a transfer.
+        </small>
       </div>
 
       <div className="voice-field">
-        <label className="voice-label" htmlFor="voice-emergency">Emergencies go to</label>
-        <input
-          id="voice-emergency"
-          type="tel"
-          inputMode="tel"
-          placeholder="(248) 555-0111"
-          value={emergency}
-          onChange={(event) => setEmergency(event.target.value)}
-        />
-        <small>Used when a caller describes something urgent. Falls back to the number above.</small>
+        <span className="voice-label">Emergency routing</span>
+        <small>
+          Not available yet. The receptionist can use only the primary transfer number above;
+          it does not currently classify an emergency into a separate route.
+        </small>
       </div>
 
       <div className="voice-field voice-recording">
         <span className="voice-label">Record calls</span>
-        <label htmlFor="voice-recording-ack" className="voice-check">
-          <input
-            id="voice-recording-ack"
-            type="checkbox"
-            checked={acknowledged}
-            onChange={(event) => setAcknowledged(event.target.checked)}
-          />
-          <span>
-            I&apos;ll make sure callers are told the call is recorded. Recording without telling
-            people is illegal in much of the US.
-          </span>
-        </label>
-        <button
-          type="button"
-          className="voice-recording-toggle"
-          aria-pressed={recording}
-          disabled={!recording && !acknowledged}
-          onClick={() => toggleRecording(!recording)}
-        >
-          {recording ? 'Recording is on — turn it off' : 'Turn recording on'}
-        </button>
-        {recording ? (
-          <small>Turning it off stops new recordings. It doesn&apos;t delete ones already made.</small>
-        ) : null}
+        <small>
+          Not available yet. Calls are not recorded; LGQ will not offer this switch until
+          recording storage, disclosure, retention and deletion all work end to end.
+        </small>
       </div>
 
       <div className="voice-foot">
@@ -255,7 +298,12 @@ export default function AiReceptionistSection(props: Props) {
         <span className={`voice-save voice-save-${save}`} aria-live="polite">
           {save === 'saving' ? 'Saving…' : save === 'saved' ? '✓ Saved' : save === 'error' ? 'Couldn’t save' : ''}
         </span>
-        <button type="button" className="voice-submit" onClick={submit} disabled={save === 'saving'}>
+        <button
+          type="button"
+          className="voice-submit"
+          onClick={submit}
+          disabled={controlsDisabled || (status === 'active' && activationBlockedReason !== null)}
+        >
           Save settings
         </button>
       </div>

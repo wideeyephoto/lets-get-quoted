@@ -183,8 +183,7 @@ export async function tryUsageOverage(
   const period = await resolvePeriod(admin, input.accountId);
   if (!period) return Object.freeze({ outcome: 'unavailable' as const });
 
-  try {
-    const { data, error } = await admin.rpc('authorize_usage_overage', {
+  const rpcArgs = {
       p_account_id: input.accountId,
       p_resource_code: input.resourceCode,
       p_units: input.units,
@@ -192,9 +191,61 @@ export async function tryUsageOverage(
       p_period_start: period.start,
       p_period_end: period.end,
       p_idempotency_key: input.idempotencyKey,
-    });
-    if (error) {
-      console.error('usage overage authorization failed:', error);
+  };
+
+  try {
+    // The RPC is idempotent on this exact key. If its response is lost after
+    // commit, replaying the identical statement returns the original accrual
+    // rather than charging again. This is a read-after-unknown, not a new
+    // authorization attempt.
+    let result: Readonly<{ data: unknown; error: unknown }> | null = null;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const candidate = await admin.rpc('authorize_usage_overage', rpcArgs);
+        result = candidate;
+        if (!candidate.error) break;
+        lastError = candidate.error;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    const data = result?.data;
+    if (!result || result.error) {
+      // One final read distinguishes "the commit happened but both replies were
+      // lost" from "nothing was charged". Durable SMS reconciliation also
+      // derives this same key from its attempt ledger, so a total database
+      // outage cannot strand an eventual charge without a recovery path.
+      try {
+        const { data: existing, error: readError } = await admin
+          .from('workspace_overage_accrual_events')
+          .select(
+            'resource_code, units, millicents, accrued_millicents, cap_millicents, period_start, released_at',
+          )
+          .eq('account_id', input.accountId)
+          .eq('idempotency_key', input.idempotencyKey)
+          .maybeSingle();
+        if (!readError && existing
+            && existing.resource_code === input.resourceCode
+            && Number(existing.units) === input.units
+            && Number(existing.millicents) === input.units * rate
+            && existing.period_start === period.start
+            && existing.released_at === null) {
+          return Object.freeze({
+            outcome: 'accrued' as const,
+            chargedMillicents: Number(existing.millicents),
+            accruedMillicents: Number(existing.accrued_millicents),
+            capMillicents: Number(existing.cap_millicents),
+            periodStart: period.start,
+            idempotencyKey: input.idempotencyKey,
+          });
+        }
+      } catch {
+        // The caller fails closed in enforce mode. Durable attempt evidence is
+        // what lets the reconciliation worker later release an unknown commit.
+      }
+      console.error('usage overage authorization remained unknown:', lastError);
       return Object.freeze({ outcome: 'unavailable' as const });
     }
 
@@ -325,7 +376,7 @@ export async function settleUsageOverage(
     return nothing;
   }
   try {
-    const { data, error } = await admin.rpc('settle_usage_overage', {
+    const { data, error } = await admin.rpc('settle_usage_overage_result', {
       p_account_id: input.accountId,
       p_idempotency_key: input.idempotencyKey,
       p_units: input.units,
@@ -343,9 +394,16 @@ export async function settleUsageOverage(
       console.error('usage overage settlement failed:', error);
       return nothing;
     }
-    const refunded = Number(data ?? 0);
-    if (!Number.isFinite(refunded)) return nothing;
-    return { settled: true, refundedMillicents: refunded };
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || typeof row !== 'object') return nothing;
+    const settled = (row as Record<string, unknown>).settled;
+    const refunded = Number((row as Record<string, unknown>).refunded_millicents);
+    const replayed = (row as Record<string, unknown>).replayed;
+    if (typeof settled !== 'boolean' || typeof replayed !== 'boolean'
+        || !Number.isSafeInteger(refunded) || refunded < 0) return nothing;
+    return settled
+      ? { settled: true, refundedMillicents: refunded }
+      : nothing;
   } catch (error) {
     console.error('usage overage settlement threw:', error);
     return nothing;

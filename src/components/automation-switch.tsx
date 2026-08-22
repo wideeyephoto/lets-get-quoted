@@ -20,12 +20,17 @@ export default function AutomationSwitch({
   // the automation and its current state in full.
   onLabel = 'On',
   offLabel = 'Off',
+  enableBlocked = false,
+  blockedReason,
 }: {
   label: string;
   on: boolean;
   action: (next: boolean) => Promise<void>;
   onLabel?: string;
   offLabel?: string;
+  /** Block only an off -> on transition; an already-on switch stays stoppable. */
+  enableBlocked?: boolean;
+  blockedReason?: string;
 }) {
   const [optimistic, setOptimistic] = useState(on);
   const [failed, setFailed] = useState(false);
@@ -40,6 +45,10 @@ export default function AutomationSwitch({
   }, [on]);
 
   const checked = optimistic;
+  const activationBlocked = !checked && enableBlocked;
+  const accessibleState = activationBlocked
+    ? `${label} — off. ${blockedReason ?? 'Setup is required before this can be turned on.'}`
+    : `${label} — currently ${checked ? 'on' : 'off'}`;
 
   return (
     <span className="automation-switch-wrap">
@@ -47,9 +56,10 @@ export default function AutomationSwitch({
         type="button"
         role="switch"
         aria-checked={checked}
-        aria-label={`${label} — currently ${checked ? 'on' : 'off'}`}
+        aria-label={accessibleState}
+        title={activationBlocked ? blockedReason : undefined}
         className={`automation-switch ${checked ? 'on' : 'off'}`}
-        disabled={saving}
+        disabled={saving || activationBlocked}
         onClick={async (event) => {
           // Keep the click off the <summary> so the card doesn't expand.
           event.preventDefault();

@@ -18,9 +18,10 @@ import { fakeClient, resetFakeIds, type FakeLog, type Row, type Store } from './
 
 const store: Store = {};
 const log: FakeLog = [];
-const texts: Array<{ crewId: string; eventType: string; body: string }> = [];
+const texts: Array<{ crewId: string; eventType: string; body: string; idempotencyKey?: string }> = [];
 const feed: Array<{ kind: string; title: string; jobId: string }> = [];
 const emails: Array<{ subject: string }> = [];
+let subcontractorSmsStatus: 'queued' | 'simulated' = 'queued';
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => fakeClient(store, log).client,
@@ -46,9 +47,16 @@ vi.mock('@/lib/job-feed', () => ({
 
 vi.mock('@/lib/sms', () => ({
   isLiveMessagingEnvironment: () => false,
-  sendSubcontractorSms: async (params: { crewId: string; eventType: string; body: string }) => {
-    texts.push({ crewId: params.crewId, eventType: params.eventType, body: params.body });
-    return { status: 'simulated' as const, providerId: 'simulated' };
+  sendSubcontractorSms: async (params: { crewId: string; eventType: string; body: string; idempotencyKey?: string }) => {
+    texts.push({
+      crewId: params.crewId,
+      eventType: params.eventType,
+      body: params.body,
+      idempotencyKey: params.idempotencyKey,
+    });
+    return subcontractorSmsStatus === 'queued'
+      ? { status: 'queued' as const, smsEventId: `event-${params.crewId}` }
+      : { status: 'simulated' as const, smsEventId: null };
   },
 }));
 
@@ -172,6 +180,7 @@ const requestRow = () => store.subcontractor_requests[0] as Row;
 const offerFor = (crewId: string) => store.subcontractor_offers.find((row) => row.crew_id === crewId) as Row;
 
 beforeEach(() => {
+  subcontractorSmsStatus = 'queued';
   seed();
 });
 
@@ -564,7 +573,7 @@ describe('collect interest and let the owner choose', () => {
 // ============================================================================
 
 describe('sending a request', () => {
-  it('creates one offer and one distinct link per recipient, then sends once each', async () => {
+  it('creates one offer and one distinct link per recipient, then queues once each', async () => {
     seed({ crew: ['crew-a', 'crew-b'] });
     // Start from a draft with no offers on it.
     store.subcontractor_offers = [];
@@ -577,7 +586,7 @@ describe('sending a request', () => {
       messageBody: 'New subcontract job from BrokePipes. [secure link]',
     });
 
-    expect(result.sent).toBe(2);
+    expect(result.queued).toBe(2);
     expect(store.subcontractor_offers).toHaveLength(2);
 
     const hashes = store.subcontractor_offers.map((row) => row.token_hash);
@@ -590,12 +599,21 @@ describe('sending a request', () => {
       expect(body).toMatch(/\/sub\//);
     }
 
-    expect(requestRow().status).toBe('sent');
+    expect(requestRow().status).toBe('queued');
+    expect(store.subcontractor_offers.every((row) => row.provider_id === null)).toBe(true);
+    expect(store.subcontractor_offers.every((row) => typeof row.sms_event_id === 'string')).toBe(true);
     expect(texts.filter((text) => text.eventType === 'sub_offer')).toHaveLength(2);
-    expect(feed.some((event) => event.kind === 'sub_request_sent')).toBe(true);
+    const offerKeys = texts
+      .filter((text) => text.eventType === 'sub_offer')
+      .map((text) => text.idempotencyKey);
+    expect(offerKeys).toHaveLength(2);
+    expect(offerKeys.every((key) => /^subcontractor:.+:offer$/.test(key ?? ''))).toBe(true);
+    expect(new Set(offerKeys).size).toBe(2);
+    expect(feed.some((event) => event.kind === 'sub_request_queued')).toBe(true);
   });
 
   it('reports the simulation rather than pretending a text was delivered', async () => {
+    subcontractorSmsStatus = 'simulated';
     seed({ crew: ['crew-a'] });
     store.subcontractor_offers = [];
     requestRow().status = 'draft';
@@ -618,7 +636,7 @@ describe('sending a request', () => {
       crewIds: ['crew-a', 'crew-b'],
       messageBody: 'Offer [secure link]',
     });
-    expect(result.sent).toBe(1);
+    expect(result.queued).toBe(1);
     expect(result.skipped).toEqual([{ name: 'Sub 2', reason: 'No mobile number on file' }]);
   });
 
@@ -630,6 +648,44 @@ describe('sending a request', () => {
     }).catch((error: Error) => error);
     expect(String(result)).toMatch(/Already has an offer/i);
     expect(store.subcontractor_offers).toHaveLength(1);
+  });
+
+  it('repairs a queued offer whose durable event link was interrupted without minting another offer', async () => {
+    seed({ crew: ['crew-a'] });
+    const offer = offerFor('crew-a');
+    offer.status = 'queued';
+    offer.sent_at = null;
+    offer.provider_id = null;
+    offer.sms_event_id = null;
+    requestRow().status = 'queued';
+    requestRow().sent_at = null;
+
+    const client = fakeClient(store, log).client;
+    const result = await sendSubcontractorRequest(client, ACCOUNT, REQUEST, {
+      crewIds: ['crew-a'],
+      messageBody: 'This changed copy must not replace the already-approved offer.',
+    });
+
+    expect(result.queued).toBe(1);
+    expect(store.subcontractor_offers).toHaveLength(1);
+    expect(texts).toEqual([
+      expect.objectContaining({
+        crewId: 'crew-a',
+        eventType: 'sub_offer',
+        body: 'Offer',
+        idempotencyKey: 'subcontractor:offer-1:offer',
+      }),
+    ]);
+    expect(offer.sms_event_id).toBe('event-crew-a');
+    expect(offer.provider_id).toBeNull();
+
+    await expect(
+      sendSubcontractorRequest(client, ACCOUNT, REQUEST, {
+        crewIds: ['crew-a'],
+        messageBody: 'Offer [secure link]',
+      }),
+    ).rejects.toThrow(/Already has an offer/i);
+    expect(texts).toHaveLength(1);
   });
 
   it('refuses to send a claimed request', async () => {

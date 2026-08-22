@@ -161,7 +161,7 @@ describe('an unrunnable check is visible on the lead', () => {
    */
   it('flags a submission whose verification could not run', () => {
     expect(LEADS).toContain('phone_verification_unavailable');
-    expect(LEADS).toContain('isLeadVerificationConfigured()');
+    expect(LEADS).toContain('loadLeadPhoneVerificationReadiness(');
   });
 
   it('gives that flag a label, so it renders as words rather than a slug', () => {
@@ -175,7 +175,7 @@ describe('an unrunnable check is visible on the lead', () => {
    * never made.
    */
   it('checks the secret before sending anybody a code', () => {
-    const gate = VERIFY.indexOf('isLeadVerificationConfigured()');
+    const gate = VERIFY.indexOf('await loadLeadPhoneVerificationReadiness(');
     // The CALL, not the import at the top of the file — which is of course
     // where a naive indexOf finds the name first, and would have this passing
     // no matter where the gate went.
@@ -183,6 +183,18 @@ describe('an unrunnable check is visible on the lead', () => {
     expect(gate).toBeGreaterThan(-1);
     expect(send).toBeGreaterThan(-1);
     expect(gate).toBeLessThan(send);
+  });
+
+  it('routes public-site codes through that contractor dedicated sender', () => {
+    expect(VERIFY).toContain(".select('id, account_id, company_name, content')");
+    expect(VERIFY).toContain('loadLeadPhoneVerificationReadiness(accountId, admin)');
+    expect(VERIFY).toContain("messaging.kind !== 'ready'");
+    expect(VERIFY).toContain('reason: messaging.reason');
+    expect(VERIFY).toContain('senderNumberId: messaging.senderId');
+    expect(VERIFY).toContain('idempotencyKey: `lead-verification:${siteId}:${code}:${expiresAt}`');
+    const form = read('src', 'lib', 'templates', 'HeroQuickForm.tsx');
+    expect(form).toContain('Code queued — it should arrive shortly. Enter it below.');
+    expect(form).not.toContain('Code texted — enter it below.');
   });
 
   it('leaves no `|| \'\'` secret fallback in the module', () => {

@@ -297,8 +297,9 @@ describe('the request page', () => {
     expect(rule(DISPATCH_CSS, '.offerTableWrap')).toContain('overflow-x: auto');
   });
 
-  it('shows offers sent, viewed, declined and the time left', () => {
-    expect(REQUEST_PAGE).toContain('Offers sent');
+  it('shows queued, carrier-accepted, viewed, declined and time-left facts', () => {
+    expect(REQUEST_PAGE).toContain('Texts queued');
+    expect(REQUEST_PAGE).toContain('Carrier accepted');
     expect(REQUEST_PAGE).toContain('Viewed');
     expect(REQUEST_PAGE).toContain('Declined');
     expect(REQUEST_PAGE).toContain('Time remaining');

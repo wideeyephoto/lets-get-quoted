@@ -4,25 +4,38 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
-import { isPhoneOptedOut, recordOwnerSmsConsent, recordSmsConsent, sendInboxReplySms } from '@/lib/sms';
+import {
+  hasCurrentSmsConsent,
+  recordOwnerSmsConsent,
+  sendInboxReplySms,
+} from '@/lib/sms';
 import { loadBusinessName } from '@/lib/business-name';
-import { logOutboundMessage, markThreadRead } from '@/lib/messages';
+import { markThreadRead } from '@/lib/messages';
 import { createMessageTemplate, deleteMessageTemplate } from '@/lib/message-templates';
 import { loadOwnerAlerts, validateOwnerAlerts } from '@/lib/owner-sms';
 import { OWNER_SMS_DISCLOSURE_VERSION } from '@/lib/owner-sms-disclosure';
 import type { OwnerAlertsState } from '@/lib/owner-sms-state';
+import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function messageIntent(formData: FormData): string {
+  const value = String(formData.get('intentId') ?? '').trim().toLowerCase();
+  if (!UUID.test(value)) throw new Error('This message form expired. Refresh and try again.');
+  return value;
+}
 
 export async function sendReplyAction(phone: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const body = (formData.get('body') ?? '').toString().trim();
-  const normalized = normalizeUsPhone(phone) ?? phone;
+  const intentId = messageIntent(formData);
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) throw new Error('This message thread has an invalid phone number.');
   if (!body) redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
 
-  // Respect opt-outs: a contact who replied STOP can't be messaged until they
-  // text START, exactly like every other outbound path.
-  if (await isPhoneOptedOut(accountId, normalized)) {
-    throw new Error('This contact opted out of texts (replied STOP). They must text START before you can message them again.');
-  }
+  // A platform/shared number is never a fallback for traffic sent in a
+  // contractor's name. Fail before consent writes or the delivery enqueue.
+  await requireActiveDedicatedMessagingSender(accountId);
 
   // The SAME name every other text in the product signs with. This read
   // accounts.business_name on its own, which on a live account is the signup
@@ -33,13 +46,19 @@ export async function sendReplyAction(phone: string, formData: FormData) {
   // most likely to reply. See lib/business-name for the ladder.
   const businessName = await loadBusinessName(supabase, accountId);
 
-  const providerId = await sendInboxReplySms({ phone: normalized, businessName, body, accountId });
-  // The contact texted first, so consent is implied — keep the ledger current.
-  await recordSmsConsent(accountId, normalized, 'inbox_reply');
-  await logOutboundMessage(supabase, accountId, normalized, body, providerId);
+  // Consent and durable-thread evidence are locked and rechecked inside the
+  // enqueue RPC. A hand-edited ?thread= URL can never create consent or work.
+  const eventId = await sendInboxReplySms({
+    phone: normalized,
+    businessName,
+    body,
+    accountId,
+    idempotencyKey: `inbox-reply:${accountId}:${intentId}`,
+    requireExistingThread: true,
+  });
 
   revalidatePath('/dashboard/messages');
-  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
+  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=reply&queued=${encodeURIComponent(eventId)}`);
 }
 
 /**
@@ -60,11 +79,10 @@ export async function sendReplyAction(phone: string, formData: FormData) {
  * told people to "Reply STOP to opt out" and then ignored them; see the note on
  * sendOwnerHighValueLeadSms.
  *
- * ensureSmsConsentBaseline rather than recordSmsConsent, deliberately: the
- * former never overwrites an existing row, so somebody who has already texted
- * STOP is not silently opted back in by pressing Save on a settings form. Only
- * a START from their own handset can do that, which is the entire point of an
- * opt-out.
+ * recordOwnerSmsConsent rather than the generic attestation writer,
+ * deliberately: its conditional update never overwrites an opted-out row, so
+ * somebody who already texted STOP is not silently opted back in by pressing
+ * Save. Only START from their handset can restore that state.
  */
 export async function saveOwnerAlertsAction(
   _previous: OwnerAlertsState,
@@ -180,13 +198,18 @@ export async function startConversationAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const rawPhone = (formData.get('phone') ?? '').toString().trim();
   const body = (formData.get('body') ?? '').toString().trim();
+  const intentId = messageIntent(formData);
 
   const normalized = normalizeUsPhone(rawPhone);
   if (!normalized) throw new Error('Enter a 10-digit US mobile number.');
   if (!body) throw new Error('Type a message to send.');
 
-  if (await isPhoneOptedOut(accountId, normalized)) {
-    throw new Error('This contact opted out of texts (replied STOP). They must text START before you can message them again.');
+  // The worker also verifies sender readiness, but the owner action must tell
+  // the truth immediately instead of accepting a message that cannot leave.
+  await requireActiveDedicatedMessagingSender(accountId);
+
+  if (!(await hasCurrentSmsConsent(accountId, normalized))) {
+    throw new Error('We do not have current SMS consent for this contact. Record consent through the customer workflow, or have them send your business a message. If they previously opted out, they must text START before you can reply.');
   }
 
   // Same ladder as the reply above — and it matters more here, because this is
@@ -194,12 +217,17 @@ export async function startConversationAction(formData: FormData) {
   // top to decide whether it is spam.
   const businessName = await loadBusinessName(supabase, accountId);
 
-  const providerId = await sendInboxReplySms({ phone: normalized, businessName, body, accountId });
-  await recordSmsConsent(accountId, normalized, 'inbox_compose');
-  await logOutboundMessage(supabase, accountId, normalized, body, providerId);
+  const eventId = await sendInboxReplySms({
+    phone: normalized,
+    businessName,
+    body,
+    accountId,
+    idempotencyKey: `inbox-reply:${accountId}:${intentId}`,
+    requireExistingThread: false,
+  });
 
   revalidatePath('/dashboard/messages');
-  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
+  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=compose&queued=${encodeURIComponent(eventId)}`);
 }
 
 /** Opening a thread is what marks it read — see markThreadRead on why "as of now". */

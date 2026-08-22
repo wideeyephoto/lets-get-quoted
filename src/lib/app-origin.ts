@@ -16,6 +16,48 @@
 
 export const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
+type PublicOriginEnvironment = Readonly<Record<string, string | undefined>>;
+
+function validHostname(value: string): boolean {
+  return value.length > 0
+    && value.length <= 253
+    && value.split('.').every((label) => (
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)
+    ));
+}
+
+/**
+ * The HTTPS origin allowed to receive provider callbacks and callback secrets.
+ *
+ * Ordinary links may use APP_ORIGIN's localhost fallback. Provider callbacks
+ * cannot: SignalWire can attach a reusable Basic credential and a call
+ * transcript, while SMS delivery callbacks are the only durable carrier
+ * evidence. Require an explicit, bare HTTPS origin inside LGQ's configured DNS
+ * namespace so a typo cannot send either to an unrelated host.
+ */
+export function trustedProviderCallbackOrigin(
+  env: PublicOriginEnvironment = process.env,
+): string | null {
+  const raw = (env.NEXT_PUBLIC_APP_URL ?? '').trim();
+  const root = (env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'letsgetquoted.com')
+    .trim().toLowerCase();
+  if (!raw || !validHostname(root)) return null;
+
+  try {
+    const url = new URL(raw);
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== 'https:' || url.username || url.password || url.port
+        || (url.pathname !== '/' && url.pathname !== '') || url.search || url.hash
+        || !validHostname(hostname)
+        || (hostname !== root && !hostname.endsWith(`.${root}`))) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 // Characters a browser silently removes from a URL — C0 controls and DEL. They
 // matter because they are stripped AFTER any check we write, so a tab tucked
 // inside "/<tab>/evil" passes a naive startsWith("/") and then re-forms as

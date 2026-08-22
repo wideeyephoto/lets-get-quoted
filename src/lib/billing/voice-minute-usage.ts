@@ -3,7 +3,11 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { tryUsageOverage, type UsageOverageHold } from '@/lib/billing/usage-overage';
+import {
+  releaseUsageOverage,
+  tryUsageOverage,
+  type UsageOverageHold,
+} from '@/lib/billing/usage-overage';
 
 /**
  * DARK metering for AI Voice Receptionist minutes.
@@ -84,6 +88,7 @@ export type VoiceMinuteLease = Readonly<{
 
 export type VoiceAdmission =
   | 'not_metered'
+  | 'existing_admission'
   /** The ledger could not answer. Recoverable: the receipt still arrives. */
   | 'ledger_unavailable'
   | 'exhausted_not_enforced';
@@ -105,12 +110,17 @@ export type VoiceMinuteDecision =
   | Readonly<{ outcome: 'admitted_overage'; overage: UsageOverageHold }>
   | Readonly<{ outcome: 'admitted_unmetered'; reason: VoiceAdmission }>
   /** Follow the contractor's forwarding or voicemail rule. Not an error. */
-  | Readonly<{ outcome: 'refused' }>;
+  | Readonly<{
+      outcome: 'refused';
+      reason: 'no_allowance' | 'admission_unavailable' | 'at_capacity' | 'number_not_ready';
+    }>;
 
 export type VoiceAdmissionInput = Readonly<{
   accountId: string;
   /** The provider's call id. The join to the receipt, and to nothing else. */
   providerCallId: string;
+  /** Exact active dedicated number reached by this call. Rechecked in SQL. */
+  dialedNumber: string;
 }>;
 
 /**
@@ -171,12 +181,37 @@ function insufficientCredits(error: { code?: string; message?: string } | null):
 export async function admitVoiceCall(
   admin: SupabaseClient,
   input: VoiceAdmissionInput,
-  options: Readonly<{ mode?: VoiceMinuteMode; now?: () => Date; capMinutes?: number }> = {},
+  options: Readonly<{
+    mode?: VoiceMinuteMode;
+    now?: () => Date;
+    capMinutes?: number;
+    concurrencyLimit?: number;
+  }> = {},
 ): Promise<VoiceMinuteDecision> {
   const mode = options.mode ?? voiceMinuteMode();
   const cap = options.capMinutes ?? VOICE_CALL_CAP_MINUTES;
+  const concurrencyLimit = options.concurrencyLimit ?? 1;
+
+  const slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
+  if (slot.outcome === 'existing') {
+    return Object.freeze({
+      outcome: 'admitted_unmetered' as const, reason: 'existing_admission' as const,
+    });
+  }
+  if (slot.outcome === 'at_capacity') {
+    return Object.freeze({ outcome: 'refused' as const, reason: 'at_capacity' as const });
+  }
+  if (slot.outcome === 'number_not_ready') {
+    return Object.freeze({ outcome: 'refused' as const, reason: 'number_not_ready' as const });
+  }
+  if (slot.outcome !== 'claimed') {
+    return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+  }
 
   if (mode === 'off') {
+    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     return Object.freeze({ outcome: 'admitted_unmetered' as const, reason: 'not_metered' as const });
   }
 
@@ -199,7 +234,9 @@ export async function admitVoiceCall(
     reservationId = result.data;
     reserveError = result.error;
   } catch {
-    await recordAdmission(admin, input, null, 0);
+    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     return Object.freeze({
       outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const,
     });
@@ -208,7 +245,9 @@ export async function admitVoiceCall(
   if (reserveError) {
     if (insufficientCredits(reserveError)) {
       if (mode !== 'enforce') {
-        await recordAdmission(admin, input, null, 0);
+        if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+          return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+        }
         return Object.freeze({
           outcome: 'admitted_unmetered' as const, reason: 'exhausted_not_enforced' as const,
         });
@@ -229,7 +268,17 @@ export async function admitVoiceCall(
         // reserved_minutes carries the CAP that was charged, not zero: it is
         // what the settlement trues down from, and what a human reading the row
         // needs to see to understand a $21 line.
-        await recordAdmission(admin, input, null, cap, overage.idempotencyKey);
+        if (!await finalizeAdmission(
+          admin, slot.admissionId, input, null, cap, overage.idempotencyKey,
+        )) {
+          await releaseUsageOverage(admin, {
+            accountId: input.accountId,
+            idempotencyKey: overage.idempotencyKey,
+            resourceCode: VOICE_MINUTE_RESOURCE_CODE,
+            millicents: overage.chargedMillicents,
+          });
+          return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+        }
         return Object.freeze({
           outcome: 'admitted_overage' as const,
           overage: Object.freeze({
@@ -241,41 +290,92 @@ export async function admitVoiceCall(
           }),
         });
       }
-      // No admission row: the call is not being answered by the AI, so there
-      // will be no receipt to attribute.
-      return Object.freeze({ outcome: 'refused' as const });
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
+      return Object.freeze({ outcome: 'refused' as const, reason: 'no_allowance' as const });
     }
     console.error('voice minute reservation failed:', reserveError);
-    await recordAdmission(admin, input, null, 0);
+    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     return Object.freeze({
       outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const,
     });
   }
 
   if (typeof reservationId !== 'string' || !reservationId) {
-    await recordAdmission(admin, input, null, 0);
+    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     return Object.freeze({
       outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const,
     });
   }
 
-  await recordAdmission(admin, input, reservationId, cap);
+  const lease = Object.freeze({
+    reservationId,
+    finalizationKey,
+    accountId: input.accountId,
+    providerCallId: input.providerCallId,
+    reservedMinutes: cap,
+    ownsReservation: true,
+  });
+  if (!await finalizeAdmission(admin, slot.admissionId, input, reservationId, cap)) {
+    await releaseVoiceCall(admin, lease, 'admission_record_failed');
+    return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+  }
   return Object.freeze({
     outcome: 'admitted' as const,
-    lease: Object.freeze({
-      reservationId,
-      finalizationKey,
-      accountId: input.accountId,
-      providerCallId: input.providerCallId,
-      reservedMinutes: cap,
-      ownsReservation: true,
-    }),
+    lease,
   });
 }
 
-/** Never throws: a failure here must not stop the caller being answered. */
-async function recordAdmission(
+/** Never throws; false means the AI must not answer an unattributable call. */
+type AdmissionSlot =
+  | Readonly<{ outcome: 'claimed'; admissionId: string }>
+  | Readonly<{
+    outcome: 'existing' | 'at_capacity' | 'number_not_ready' | 'busy' | 'unavailable';
+  }>;
+
+async function claimAdmissionSlot(
   admin: SupabaseClient,
+  input: VoiceAdmissionInput,
+  concurrencyLimit: number,
+): Promise<AdmissionSlot> {
+  if (!Number.isSafeInteger(concurrencyLimit) || concurrencyLimit < 1 || concurrencyLimit > 100) {
+    return Object.freeze({ outcome: 'unavailable' as const });
+  }
+  try {
+    const { data, error } = await admin.rpc('claim_voice_call_admission', {
+      p_account_id: input.accountId,
+      p_provider_call_id: input.providerCallId,
+      p_dialed_number: input.dialedNumber,
+      p_concurrency_limit: concurrencyLimit,
+    });
+    if (error) {
+      console.error('voice admission slot claim failed:', error);
+      return Object.freeze({ outcome: 'unavailable' as const });
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || typeof row !== 'object') return Object.freeze({ outcome: 'unavailable' as const });
+    const status = (row as { claim_status?: unknown }).claim_status;
+    if (status === 'existing' || status === 'at_capacity'
+        || status === 'number_not_ready' || status === 'busy') {
+      return Object.freeze({ outcome: status });
+    }
+    const admissionId = (row as { admission_id?: unknown }).admission_id;
+    if (status === 'claimed' && typeof admissionId === 'string' && admissionId) {
+      return Object.freeze({ outcome: 'claimed' as const, admissionId });
+    }
+  } catch (error) {
+    console.error('voice admission slot claim threw:', error);
+  }
+  return Object.freeze({ outcome: 'unavailable' as const });
+}
+
+/** Never throws; false means the AI must not answer an unattributable call. */
+async function finalizeAdmission(
+  admin: SupabaseClient,
+  admissionId: string,
   input: VoiceAdmissionInput,
   reservationId: string | null,
   reservedMinutes: number,
@@ -284,19 +384,43 @@ async function recordAdmission(
   // reads a null reservation as "nothing to do". That is how a $21 hold on a
   // twenty-second call ended up with no path back.
   overageKey: string | null = null,
-): Promise<void> {
+): Promise<boolean> {
   try {
-    const { error } = await admin.from('voice_call_admissions').upsert({
-      account_id: input.accountId,
-      provider: 'signalwire',
-      provider_call_id: input.providerCallId,
-      reservation_id: reservationId,
-      reserved_minutes: reservedMinutes,
-      overage_key: overageKey,
-    }, { onConflict: 'provider,provider_call_id', ignoreDuplicates: true });
-    if (error) console.error('voice admission record failed:', error);
+    const { data, error } = await admin.rpc('finalize_voice_call_admission', {
+      p_admission_id: admissionId,
+      p_account_id: input.accountId,
+      p_provider_call_id: input.providerCallId,
+      p_reservation_id: reservationId,
+      p_reserved_minutes: reservedMinutes,
+      p_overage_key: overageKey,
+    });
+    if (error) {
+      console.error('voice admission finalization failed:', error);
+      return false;
+    }
+    return data === true;
   } catch (error) {
-    console.error('voice admission record threw:', error);
+    console.error('voice admission finalization threw:', error);
+    return false;
+  }
+}
+
+async function releaseAdmissionClaim(
+  admin: SupabaseClient,
+  admissionId: string,
+  input: VoiceAdmissionInput,
+): Promise<boolean> {
+  try {
+    const { data, error } = await admin.rpc('release_voice_call_admission_claim', {
+      p_admission_id: admissionId,
+      p_account_id: input.accountId,
+      p_provider_call_id: input.providerCallId,
+    });
+    if (error) console.error('voice admission claim release failed:', error);
+    return !error && data === true;
+  } catch (error) {
+    console.error('voice admission claim release threw:', error);
+    return false;
   }
 }
 

@@ -10875,6 +10875,15 @@ button.inbox-thread-item {
    ink; the paragraph only carries it. */
 .inbox-bubble p { margin: 0; overflow-wrap: anywhere; color: inherit; }
 
+.inbox-bubble-status {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.82;
+}
+
 .inbox-bubble-inbound {
   background: rgba(var(--tint), 0.09);
   border: 1px solid var(--edge-t10);

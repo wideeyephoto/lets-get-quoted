@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { createAdminClient } from '@/lib/auth';
 import { hasSignatureHeader, validateWebhookSignature } from '@/lib/sms-provider';
-import { sendMissedCallTextBack } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
-import { createLead } from '@/lib/leads';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 
 export const runtime = 'nodejs';
@@ -24,70 +23,63 @@ export async function POST(request: Request) {
     await logWebhookFailure({ source: 'sms_voice', errorMessage: 'Missing provider signature header (dial status)' });
     return xml('', 403);
   }
-  const data = await request.formData();
-  const check = validateWebhookSignature(request, data);
+  const rawBody = await request.clone().text();
+  const check = validateWebhookSignature(request, rawBody);
   if (!check.ok) {
     await logWebhookFailure({
       source: 'sms_voice',
-      referenceId: String(data.get('CallSid') || '') || null,
+      referenceId: null,
       errorMessage: `Dial status signature validation failed: ${check.reason}`,
     });
     return xml('', 403);
   }
+  const data = await request.formData();
 
   const accountId = new URL(request.url).searchParams.get('account');
   const dialStatus = String(data.get('DialCallStatus') ?? '');
   const caller = normalizeUsPhone(String(data.get('From') ?? ''));
+  const callId = String(data.get('CallSid') ?? '').trim();
 
-  if (accountId && caller && MISSED.has(dialStatus)) {
+  if (!MISSED.has(dialStatus)) return xml();
+
+  // A missed callback is not accepted until its provider call identity, lead,
+  // consent baseline and SMS outbox entry commit in one database transaction.
+  // Returning 5xx keeps provider retry semantics intact on any storage fault.
+  if (!accountId || !caller || !callId) {
+    await logWebhookFailure({
+      source: 'sms_voice',
+      eventType: dialStatus,
+      referenceId: callId || null,
+      errorMessage: 'Missed-call callback is missing account, caller, or call identity',
+    });
+    return xml('', 500);
+  }
+
+  try {
     const admin = createAdminClient();
-    try {
-      // The switch is enforced HERE, not in the dial. It says "text callers you
-      // miss", so it governs the text; the call itself still rings through.
-      const { data: settings } = await admin
-        .from('accounts')
-        .select('call_textback_enabled')
-        .eq('id', accountId)
-        .maybeSingle();
-      if (!settings?.call_textback_enabled) return xml();
-
-      // Dedupe against a status-callback retry / repeat calls in a short window.
-      const since = new Date(Date.now() - 10 * 60_000).toISOString();
-      const { data: recent } = await admin
-        .from('leads')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('source', 'missed_call')
-        .eq('phone', caller)
-        .gte('created_at', since)
-        .limit(1)
-        .maybeSingle();
-
-      if (!recent) {
-        const [{ data: site }, { data: account }] = await Promise.all([
-          admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-          admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-        ]);
-        const businessName = (site?.company_name as string | undefined) || (account?.business_name as string | undefined) || 'us';
-        await createLead(admin, accountId, {
-          source: 'missed_call',
-          name: `Missed call — ${caller}`,
-          phone: caller,
-          message: 'Missed call captured automatically. An auto text-back was sent.',
-          sourcePage: '/call',
-          triage: { score: 'warm', flags: [], contactPreference: 'any' },
-        });
-        await sendMissedCallTextBack({ accountId, phone: caller, businessName });
-      }
-    } catch (error) {
-      console.error('Missed-call text-back failed:', error instanceof Error ? error.message : error);
-      await logWebhookFailure({
-        source: 'sms_voice',
-        eventType: dialStatus,
-        referenceId: String(data.get('CallSid') || '') || null,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      });
+    const { data: rows, error } = await admin.rpc('ingest_sms_missed_call', {
+      p_provider: check.provider,
+      p_provider_call_id: callId,
+      p_account_id: accountId,
+      p_phone_number: caller,
+      p_dial_status: dialStatus,
+      p_body_sha256: createHash('sha256').update(rawBody).digest('hex'),
+    });
+    if (error) throw error;
+    const result = Array.isArray(rows) ? rows[0] : rows;
+    if (!result || !['accepted', 'opted_out', 'deduplicated_recent', 'disabled']
+      .includes(String(result.ingest_disposition ?? ''))) {
+      throw new Error('Missed-call ingest returned no durable disposition');
     }
+  } catch (error) {
+    console.error('Missed-call text-back ingest failed:', error instanceof Error ? error.message : error);
+    await logWebhookFailure({
+      source: 'sms_voice',
+      eventType: dialStatus,
+      referenceId: callId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    return xml('', 500);
   }
 
   return xml(); // empty response ends the call cleanly

@@ -20,21 +20,24 @@ vi.mock('@/lib/leads', () => ({ createLead: (...a: unknown[]) => createLead(...a
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
+const EVENT = '22222222-2222-4222-8222-222222222222';
 
 let admissionRow: unknown;
+let admissionError: { code?: string; message?: string } | null;
+let historyError: { code?: string; message?: string } | null;
 const history = vi.fn();
 const admin = {
   from(table: string) {
     const chain: Record<string, unknown> = {};
     for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
-    chain.maybeSingle = () => Promise.resolve({ data: admissionRow, error: null });
+    chain.maybeSingle = () => Promise.resolve({ data: admissionRow, error: admissionError });
     // The history write is a real call, not a no-op. Without this the whole
     // recordCallHistory path threw into its own catch and these tests proved
     // nothing about it -- which is exactly the shape of a green run that means
     // nothing, and the reason the ledger harness stopped transcribing.
     chain.upsert = (row: unknown) => {
       if (table === 'voice_calls') history(row);
-      return Promise.resolve({ error: null });
+      return Promise.resolve({ error: table === 'voice_calls' ? historyError : null });
     };
     (chain as { then: unknown }).then = (r: (v: unknown) => unknown) => r({ data: null, error: null });
     return chain;
@@ -54,6 +57,10 @@ const receipt = (over: Partial<VoiceReceipt> = {}): VoiceReceipt => ({
   aiEndMicros: 1787171699843237,
   callerNumber: '+15559876543',
   summary: 'Caller wants a leaking outdoor tap looked at, Tuesday if possible.',
+  callLog: [
+    { role: 'user', content: 'My outdoor tap is leaking.', timestamp: 1787171680000000 },
+    { role: 'assistant', content: 'I will pass that along.', timestamp: null },
+  ],
   ...over,
 });
 
@@ -67,6 +74,8 @@ beforeEach(() => {
   history.mockReset();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   admissionRow = { account_id: ACCOUNT, reservation_id: 'res-1', reserved_minutes: 60 };
+  admissionError = null;
+  historyError = null;
 });
 
 describe('settling a call', () => {
@@ -90,6 +99,16 @@ describe('settling a call', () => {
   it('puts what the caller actually said in front of the contractor', async () => {
     await settleVoiceReceipt(admin, receipt());
     expect(createLead.mock.calls[0][2].message).toContain('leaking outdoor tap');
+  });
+
+  it('uses the inbox event as the retry identity for both lead and history', async () => {
+    await settleVoiceReceipt(admin, receipt(), { voiceEventId: EVENT });
+    expect(createLead).toHaveBeenCalledWith(admin, ACCOUNT, expect.objectContaining({
+      sourceVoiceEventId: EVENT,
+    }));
+    expect(history).toHaveBeenCalledWith(expect.objectContaining({
+      voice_event_id: EVENT,
+    }));
   });
 
   it('says so plainly when the agent returned no summary', async () => {
@@ -125,11 +144,15 @@ describe('when the two halves disagree', () => {
     expect(result).toMatchObject({ minutes: null, reconcile: 'settlement_failed', leadId: 'lead-1' });
   });
 
-  it('settles even when the lead write fails', async () => {
-    // The minutes were used. A failed insert does not un-use them.
-    createLead.mockRejectedValue(new Error('leads table is having a day'));
-    const result = await settleVoiceReceipt(admin, receipt());
-    expect(result).toMatchObject({ minutes: 1, billed: true, leadId: null });
+  it('surfaces a lead write failure so the durable receipt retries it', async () => {
+    // The ledger settlement already happened under a stable finalization key,
+    // so replay is safe. Completing here would permanently lose the inquiry.
+    const failure = new Error('leads table is having a day');
+    createLead.mockRejectedValue(failure);
+    await expect(settleVoiceReceipt(admin, receipt(), { voiceEventId: EVENT }))
+      .rejects.toBe(failure);
+    expect(settleVoiceCall).toHaveBeenCalledTimes(1);
+    expect(history).not.toHaveBeenCalled();
   });
 
   it('leaves an unbillable receipt for a human instead of billing zero', async () => {
@@ -159,6 +182,17 @@ describe('when the two halves disagree', () => {
     // put a stranger's details in a contractor's pipeline.
     expect(createLead).not.toHaveBeenCalled();
   });
+
+  it('retries a database read failure instead of misclassifying it as no admission', async () => {
+    admissionRow = null;
+    admissionError = { code: '57014', message: 'statement timeout' };
+
+    await expect(settleVoiceReceipt(admin, receipt()))
+      .rejects.toThrow('Voice admission lookup failed (57014)');
+    expect(settleVoiceCall).not.toHaveBeenCalled();
+    expect(createLead).not.toHaveBeenCalled();
+    expect(history).not.toHaveBeenCalled();
+  });
 });
 
 describe('the row the contractor will read', () => {
@@ -171,7 +205,25 @@ describe('the row the contractor will read', () => {
       billed_minutes: 1,       // rounded up
       settlement: 'allowance',
       lead_id: 'lead-1',
+      transcript: receipt().callLog,
     }));
+  });
+
+  it('stores exactly the normalized call_log transcript in call history', async () => {
+    const callLog = [
+      { role: 'user', content: 'The basement is flooding.', timestamp: 12 },
+    ] as const;
+    await settleVoiceReceipt(admin, receipt({ callLog }));
+    expect(history.mock.calls[0][0]).toMatchObject({ transcript: callLog });
+  });
+
+  it('retries instead of losing the sole transcript when call history is unavailable', async () => {
+    historyError = { code: '57014', message: 'raw database detail must not escape' };
+    await expect(settleVoiceReceipt(admin, receipt(), { voiceEventId: EVENT }))
+      .rejects.toThrow('Voice call history write failed (57014)');
+    expect(settleVoiceCall).toHaveBeenCalledTimes(1);
+    expect(createLead).toHaveBeenCalledTimes(1);
+    expect(history).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the exact seconds beside the rounded minutes', async () => {
@@ -231,6 +283,26 @@ describe('the row the contractor will read', () => {
       units: 1,
     });
     expect(settleVoiceCall).not.toHaveBeenCalled();
+  });
+
+  it('never reports more overage minutes than the admission reserved', async () => {
+    admissionRow = {
+      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+      overage_key: 'ai-voice:v1:call_x:overage',
+    };
+    const start = 1_000_000_000;
+    const result = await settleVoiceReceipt(admin, receipt({
+      aiStartMicros: start,
+      aiEndMicros: start + 61 * 60 * 1_000_000,
+    }));
+
+    expect(settleUsageOverage).toHaveBeenCalledWith(admin, {
+      accountId: ACCOUNT,
+      idempotencyKey: 'ai-voice:v1:call_x:overage',
+      units: 60,
+    });
+    expect(result.minutes).toBe(60);
+    expect(history.mock.calls[0][0]).toMatchObject({ billed_minutes: 60 });
   });
 
   it('reports a failed overage settlement rather than claiming success', async () => {

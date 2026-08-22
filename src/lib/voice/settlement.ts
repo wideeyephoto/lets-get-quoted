@@ -13,12 +13,13 @@ const MICROS_PER_SECOND = 1_000_000;
 /**
  * Turning a receipt into a bill and a lead, in that order of certainty.
  *
- * TWO THINGS HAPPEN HERE AND THEY MUST NOT SHARE A FATE. Settling the ledger is
- * arithmetic on a hold LGQ already took; creating the lead is the reason the
- * contractor bought the product. If the lead write fails, the minutes were still
- * used and must still settle. If settlement fails, the caller still rang and the
- * contractor still needs to know. So neither is allowed to throw past the other,
- * and the result says separately what happened to each.
+ * TWO THINGS HAPPEN HERE AND THEY DO NOT SHARE AN IDEMPOTENCY KEY. Settling the
+ * ledger is arithmetic on a hold LGQ already took; creating the lead is the
+ * reason the contractor bought the product. The ledger finalization key makes a
+ * replay safe, and source_voice_event_id makes the lead insert-or-return safe.
+ * A lead failure therefore MUST throw to the durable receipt processor: marking
+ * the event complete would permanently lose the caller inquiry. A settlement
+ * refusal still returns a reconciliation state after attempting the lead.
  *
  * THE RECEIPT IS NOT AUTHORITY. It arrives unsigned. Everything billed here is
  * bounded by a hold LGQ took at admission — `commit_usage_reservation_partial`
@@ -68,13 +69,25 @@ function callerPhone(receipt: VoiceReceipt): string | null {
 export async function settleVoiceReceipt(
   admin: SupabaseClient,
   receipt: VoiceReceipt,
+  options: Readonly<{ voiceEventId?: string }> = {},
 ): Promise<VoiceSettlement> {
-  const { data: admission } = await admin
+  const { data: admission, error: admissionError } = await admin
     .from('voice_call_admissions')
     .select('account_id, reservation_id, reserved_minutes, overage_key')
     .eq('provider', receipt.provider)
     .eq('provider_call_id', receipt.providerCallId)
     .maybeSingle();
+
+  // `data: null` is proof of absence only when the database answered
+  // successfully. Treating a PostgREST outage as "no admission" makes the
+  // durable receipt processor terminal-fail a real call, lose its lead, and
+  // eventually release its usage hold. Throw so the claimed receipt follows
+  // the bounded retry path instead.
+  if (admissionError) {
+    const code = typeof admissionError.code === 'string'
+      ? admissionError.code : 'unknown';
+    throw new Error(`Voice admission lookup failed (${code}).`);
+  }
 
   const row = (admission ?? null) as AdmissionRow | null;
   if (!row) {
@@ -110,12 +123,16 @@ export async function settleVoiceReceipt(
     // the call was answered, because nobody can know its length in advance. Now
     // the receipt says what it actually was, so the charge comes down to it.
     // Without this a twenty-second wrong number costs $21 for ever.
+    const committedMinutes = Math.min(minutes, row.reserved_minutes ?? minutes);
     const outcome = await settleUsageOverage(admin, {
       accountId: row.account_id,
       idempotencyKey: row.overage_key,
-      units: Math.min(minutes, row.reserved_minutes ?? minutes),
+      units: committedMinutes,
     });
-    if (outcome.settled) settled = minutes;
+    // The receipt is not billing authority. If it reports more AI time than
+    // the admission reserved, both the ledger and contractor-facing history
+    // must show the bounded amount that was actually settled.
+    if (outcome.settled) settled = committedMinutes;
     else reconcile = 'settlement_failed';
   }
   // Neither a reservation nor an overage key means the call was admitted
@@ -123,7 +140,9 @@ export async function settleVoiceReceipt(
   // receipt is still the evidence that makes it reconcilable later.
 
   // The lead is why the contractor bought this. It is attempted whatever
-  // happened above, and its failure is contained here.
+  // happened above. Its event-scoped insert is idempotent, so a transient error
+  // must escape and make the whole receipt retry instead of completing without
+  // the customer inquiry.
   let leadId: string | null = null;
   try {
     const phone = callerPhone(receipt);
@@ -133,16 +152,19 @@ export async function settleVoiceReceipt(
       phone,
       message: summaryLine(receipt),
       sourcePage: '/call',
+      sourceVoiceEventId: options.voiceEventId,
       triage: { score: 'warm', flags: [], contactPreference: 'any' },
     });
     leadId = lead.id;
   } catch (error) {
     console.error('AI voice lead creation failed:', error);
+    throw error;
   }
 
-  // The contractor-facing record, written last and never allowed to fail the
-  // two things above it. Billing must never READ this row -- see the migration
-  // header -- so a failure to write it costs a history entry, not a settlement.
+  // The contractor-facing record is written last. Billing must never READ this
+  // row, but its transcript is now the only retained copy of what the caller
+  // said. A write failure must therefore escape to the durable receipt worker;
+  // settlement, lead creation, and this upsert all have stable replay keys.
   await recordCallHistory(admin, receipt, {
     accountId: row.account_id,
     minutes: settled,
@@ -158,6 +180,7 @@ export async function settleVoiceReceipt(
     overage: row.overage_key != null,
     unbillable: minutes === null,
     leadId,
+    voiceEventId: options.voiceEventId ?? null,
   });
 
   return Object.freeze({
@@ -174,7 +197,7 @@ function instant(micros: number | null): string | null {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
-/** Never throws: a report must not break the thing it reports on. */
+/** Required transcript projection; throws so the durable receipt can retry. */
 async function recordCallHistory(
   admin: SupabaseClient,
   receipt: VoiceReceipt,
@@ -186,6 +209,7 @@ async function recordCallHistory(
     overage: boolean;
     unbillable: boolean;
     leadId: string | null;
+    voiceEventId: string | null;
   }>,
 ): Promise<void> {
   const seconds = receipt.aiStartMicros !== null && receipt.aiEndMicros !== null
@@ -204,23 +228,26 @@ async function recordCallHistory(
       : facts.minutes === null ? 'unsettled'
         : facts.overage ? 'overage' : 'allowance';
 
-  try {
-    const { error } = await admin.from('voice_calls').upsert({
-      account_id: facts.accountId,
-      provider: receipt.provider,
-      provider_call_id: receipt.providerCallId,
-      caller_number: callerPhone(receipt),
-      started_at: instant(receipt.callStartMicros),
-      answered_at: instant(receipt.callAnswerMicros),
-      ended_at: instant(receipt.callEndMicros),
-      ai_seconds: seconds,
-      billed_minutes: facts.minutes,
-      settlement,
-      summary: summaryLine(receipt),
-      lead_id: facts.leadId,
-    }, { onConflict: 'provider,provider_call_id' });
-    if (error) console.error('voice call history write failed:', error);
-  } catch (error) {
-    console.error('voice call history write threw:', error);
+  const { error } = await admin.from('voice_calls').upsert({
+    account_id: facts.accountId,
+    provider: receipt.provider,
+    provider_call_id: receipt.providerCallId,
+    voice_event_id: facts.voiceEventId,
+    caller_number: callerPhone(receipt),
+    started_at: instant(receipt.callStartMicros),
+    answered_at: instant(receipt.callAnswerMicros),
+    ended_at: instant(receipt.callEndMicros),
+    ai_seconds: seconds,
+    billed_minutes: facts.minutes,
+    settlement,
+    summary: summaryLine(receipt),
+    transcript: receipt.callLog,
+    lead_id: facts.leadId,
+  }, { onConflict: 'provider,provider_call_id' });
+  if (error) {
+    const code = typeof error.code === 'string' && error.code.trim()
+      ? error.code.trim()
+      : 'unknown';
+    throw new Error(`Voice call history write failed (${code}).`);
   }
 }

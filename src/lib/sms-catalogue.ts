@@ -43,9 +43,9 @@ import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatc
 /**
  * Every text message this app can send, in one list, with the real words.
  *
- * WHAT THIS IS FOR. A contractor's phone number sends all of these under their
- * name, and until now there was nowhere to read them. You could find out what
- * an automation says by turning it on and waiting for it to fire at a customer.
+ * WHAT THIS IS FOR. These messages leave through three deliberately separate
+ * sender lanes, and until now there was nowhere to read them together. You
+ * could find out what an automation says only by turning it on and waiting.
  *
  * WHY THE BODIES ARE BUILT AND NOT TYPED. Every `body` below is the output of
  * the same builder the sender calls, given sample data. Nothing here is a
@@ -70,6 +70,20 @@ const SAMPLE = {
 
 /** Who the phone belongs to. Not everything here goes to a customer. */
 export type SmsAudience = 'customer' | 'lead' | 'owner' | 'crew';
+
+export type SmsSenderLane = 'contractor_dedicated' | 'lgq_shared' | 'lgq_dispatch';
+
+export function senderLaneForAudience(audience: SmsAudience): SmsSenderLane {
+  if (audience === 'owner') return 'lgq_shared';
+  if (audience === 'crew') return 'lgq_dispatch';
+  return 'contractor_dedicated';
+}
+
+export const SENDER_LANE_LABEL: Record<SmsSenderLane, string> = {
+  contractor_dedicated: 'Your dedicated number',
+  lgq_shared: 'LGQ account-alert number',
+  lgq_dispatch: 'LGQ dispatch number',
+};
 
 /**
  * Whether the owner can switch it off, and where.

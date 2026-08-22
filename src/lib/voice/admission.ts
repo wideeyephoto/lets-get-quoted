@@ -7,8 +7,15 @@ import {
   admitVoiceCall,
   voiceMinuteMode,
 } from '@/lib/billing/voice-minute-usage';
+import type { VoiceReceiptAuthorization } from '@/lib/voice/auth';
 import { isWithinBusinessHours, type BusinessHours } from '@/lib/voice/business-hours';
-import type { InboundCall, VoiceAnswerPlan } from '@/lib/voice/provider';
+import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
+import { loadSignalWireVoiceNumberReadiness } from '@/lib/voice/number-readiness';
+import {
+  greetingWithAiDisclosure,
+  type InboundCall,
+  type VoiceAnswerPlan,
+} from '@/lib/voice/provider';
 
 /**
  * Deciding what happens to an inbound call, with no HTTP anywhere in it.
@@ -46,10 +53,9 @@ export function aiVoiceEnabled(env: ServerEnvironment = process.env): boolean {
 const FALLBACK_MESSAGE =
   "Sorry, we can't take your call right now. Please try again later.";
 
-/** Until a workspace can set its own. Deliberately says who is speaking. */
+/** Until a workspace can set its own. The fixed disclosure is added below. */
 const DEFAULT_GREETING =
-  'Thanks for calling. You are speaking with an AI assistant. I can take a few '
-  + 'details about the work you need and pass them straight to the team.';
+  'Thanks for calling. I can take a few details about the work you need and pass them straight to the team.';
 
 /** How long an admission is assumed live without a receipt, for counting. */
 const OPEN_CALL_WINDOW_MINUTES = VOICE_CALL_CAP_MINUTES;
@@ -64,7 +70,10 @@ export type VoiceSettings = Readonly<{
 
 export type VoiceWorkspace = Readonly<{
   accountId: string;
+  /** Exact active SignalWire dedicated number proven by sender inventory. */
+  voiceNumber: string;
   callForwardNumber: string | null;
+  voiceEntitled: boolean;
   concurrentCallLimit: number;
   timezone: string;
   /** Null when this workspace has never configured the receptionist. */
@@ -86,6 +95,16 @@ export async function resolveVoiceWorkspace(
   admin: SupabaseClient,
   toNumber: string,
 ): Promise<VoiceWorkspace | null> {
+  // Resolve the provider inventory before the workspace. An accounts row is
+  // configuration, not proof that LGQ owns an active SignalWire number for it.
+  // Shared, suspended, unprovisioned and cross-account numbers all become the
+  // same null result, without revealing which of those facts was true.
+  const numberReadiness = await loadSignalWireVoiceNumberReadiness(admin, {
+    number: toNumber,
+  });
+  if (numberReadiness.kind !== 'ready') return null;
+  const dedicatedNumber = numberReadiness.number;
+
   const { data: account, error } = await admin
     .from('accounts')
     // NOT selecting a per-workspace greeting. There is no column for one yet,
@@ -94,7 +113,8 @@ export async function resolveVoiceWorkspace(
     // read written ahead of its column does not degrade; it fails closed for
     // everyone. The greeting lands with the settings screen that edits it.
     .select('id, call_forward_number, timezone')
-    .eq('call_tracking_number', toNumber)
+    .eq('id', dedicatedNumber.accountId)
+    .eq('call_tracking_number', dedicatedNumber.number)
     .maybeSingle();
 
   if (error) {
@@ -103,16 +123,11 @@ export async function resolveVoiceWorkspace(
   }
   if (!account) return null;
 
-  // Entitlement is read separately and defensively. A workspace whose
-  // entitlement row is missing or unreadable gets a limit of zero rather than a
-  // default that would let it place unlimited concurrent AI calls.
-  const { data: entitlement } = await admin
-    .from('workspace_entitlements')
-    .select('feature_limits')
-    .eq('account_id', account.id)
-    .maybeSingle();
-
-  const limits = (entitlement?.feature_limits ?? {}) as Record<string, unknown>;
+  // Capacity and entitlement are different facts. Every plan carries a launch
+  // concurrency number, but only Scale inclusion or an active add-on makes the
+  // product usable. Keep the arithmetic in one shared reader so the route and
+  // the dashboard cannot disagree.
+  const voiceEntitlement = await loadVoiceEntitlement(admin, String(account.id));
 
   // No row means never configured, which is off. Read separately and
   // defensively for the same reason as the entitlement: an unreadable row must
@@ -127,8 +142,10 @@ export async function resolveVoiceWorkspace(
 
   return Object.freeze({
     accountId: String(account.id),
+    voiceNumber: dedicatedNumber.number,
     callForwardNumber: (account.call_forward_number as string | null) ?? null,
-    concurrentCallLimit: positiveInteger(limits.voice_concurrent_calls, 0),
+    voiceEntitled: voiceEntitlement.enabled,
+    concurrentCallLimit: positiveInteger(voiceEntitlement.concurrentCalls, 0),
     timezone: (account.timezone as string | null) || 'America/New_York',
     settings: row
       ? Object.freeze({
@@ -201,11 +218,13 @@ export type VoiceCallPlan = Readonly<{
   /** Why the AI did not answer, when it did not. For the failure log. */
   declineReason:
   | 'no_workspace' | 'product_off' | 'not_configured' | 'paused' | 'within_business_hours'
-  | 'no_seat' | 'at_capacity' | 'no_allowance' | null;
+  | 'no_entitlement' | 'receipt_auth_unavailable' | 'no_seat' | 'at_capacity'
+  | 'no_allowance' | 'number_not_ready' | 'admission_unavailable' | null;
 }>;
 
 export type PlanInboundOptions = Readonly<{
-  receiptUrl: (accountId: string) => string;
+  receiptUrl: string;
+  receiptAuthorization: VoiceReceiptAuthorization | null;
   forwardActionUrl: (accountId: string) => string;
   enabled?: boolean;
   now?: () => Date;
@@ -232,7 +251,7 @@ export async function planInboundCall(
         plan: Object.freeze({
           kind: 'forward' as const,
           number: workspace.callForwardNumber,
-          callerId: call.toNumber,
+          callerId: workspace.voiceNumber,
           timeoutSeconds: 20,
           actionUrl: options.forwardActionUrl(workspace.accountId),
         }),
@@ -249,6 +268,14 @@ export async function planInboundCall(
   if (!workspace) return fallback(null, 'no_workspace');
 
   if (!(options.enabled ?? aiVoiceEnabled())) return fallback(workspace, 'product_off');
+
+  if (!workspace.voiceEntitled) return fallback(workspace, 'no_entitlement');
+
+  // The receipt is the only evidence that can settle the call. Starting an AI
+  // session without its dedicated callback credential would produce a paid,
+  // un-attributable call, so fail to the contractor's normal line before the
+  // ledger is touched.
+  if (!options.receiptAuthorization) return fallback(workspace, 'receipt_auth_unavailable');
 
   const settings = workspace.settings;
   if (!settings || settings.status === 'off') return fallback(workspace, 'not_configured');
@@ -273,17 +300,22 @@ export async function planInboundCall(
   const decision = await admitVoiceCall(admin, {
     accountId: workspace.accountId,
     providerCallId: call.providerCallId,
-  }, { mode: voiceMinuteMode() });
+    dialedNumber: workspace.voiceNumber,
+  }, {
+    mode: voiceMinuteMode(),
+    concurrencyLimit: workspace.concurrentCallLimit,
+  });
 
-  if (decision.outcome === 'refused') return fallback(workspace, 'no_allowance');
+  if (decision.outcome === 'refused') return fallback(workspace, decision.reason);
 
   return Object.freeze({
     accountId: workspace.accountId,
     declineReason: null,
     plan: Object.freeze({
       kind: 'ai_agent' as const,
-      receiptUrl: options.receiptUrl(workspace.accountId),
-      greeting: settings.greeting?.trim() || DEFAULT_GREETING,
+      receiptUrl: options.receiptUrl,
+      receiptAuthorization: options.receiptAuthorization,
+      greeting: greetingWithAiDisclosure(settings.greeting?.trim() || DEFAULT_GREETING),
       capMinutes: VOICE_CALL_CAP_MINUTES,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.

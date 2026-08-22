@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { randomUUID } from 'node:crypto';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { fullDate } from '@/lib/recurring-display';
@@ -6,7 +7,13 @@ import { conversationPreview, groupByDay, groupRuns, initialsFor, messageContext
 import { conversationLinkLabel, inboxEmptyState, type InboxFilter } from '@/lib/inbox-view';
 import { linkifyMessage } from '@/lib/message-linkify';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { buildContactNameMap, getConversationMessages, listConversations } from '@/lib/messages';
+import {
+  buildContactNameMap,
+  loadConversationMessages,
+  loadConversations,
+  loadCurrentSmsConsentPhones,
+  outboundDeliveryLabel,
+} from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
 import { starterRepliesFor } from '@/lib/starter-replies';
 import { loadMessagingSetup } from '@/lib/owner-sms';
@@ -14,10 +21,12 @@ import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConve
 import MessagingSetup from './MessagingSetup';
 import SavedReplies from './SavedReplies';
 import ComposeMessage from './ComposeMessage';
+import PersistentMessageIntent from './PersistentMessageIntent';
 import AddAsCustomer from './AddAsCustomer';
 import ScrollToLatest from './ScrollToLatest';
 import MarkVisibleThreadRead from './MarkVisibleThreadRead';
 import SaveButton from '@/components/save-button';
+import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
 
 export const metadata = { title: 'Messages' };
 
@@ -65,13 +74,24 @@ function MessageBody({ body }: { body: string }) {
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: { thread?: string; q?: string; filter?: string; setup?: string };
+  searchParams: { thread?: string; q?: string; filter?: string; setup?: string; sent?: string; queued?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
-  const allConversations = await listConversations(supabase, accountId);
-  // Both reads report "unavailable" rather than a default on failure, so the
-  // strip can say it could not tell instead of announcing a state.
-  const setup = await loadMessagingSetup(accountId);
+  const [conversationRead, consentPhoneRead, setup, messagingReadiness] = await Promise.all([
+    loadConversations(supabase, accountId),
+    loadCurrentSmsConsentPhones(supabase, accountId),
+    // Both setup reads report "unavailable" rather than a default on failure,
+    // so the strip can say it could not tell instead of announcing a state.
+    loadMessagingSetup(accountId),
+    loadDedicatedMessagingReadiness(accountId),
+  ]);
+  const allConversations = conversationRead.data;
+  const conversationsAvailable = conversationRead.kind === 'ready';
+  const customerMessagingReady = messagingReadiness.kind === 'ready';
+  // One durable producer identity per rendered form. Browser double-submit or
+  // a lost server-action response reuses this value and resolves to one event.
+  const composeIntentId = randomUUID();
+  const replyIntentId = randomUUID();
 
   // Filtering happens before the active thread is chosen, so opening the page
   // on "Unread" lands you in an unread thread rather than on an empty pane.
@@ -100,16 +120,21 @@ export default async function MessagesPage({
   // into the newest conversation with no way back to the list.
   const threadChosen = Boolean(searchParams.thread);
 
-  const [messages, nameMap] = await Promise.all([
-    activePhone ? getConversationMessages(supabase, accountId, activePhone) : Promise.resolve([]),
+  const [messageRead, nameMap] = await Promise.all([
+    activePhone
+      ? loadConversationMessages(supabase, accountId, activePhone)
+      : Promise.resolve({ kind: 'ready' as const, data: [] }),
     buildContactNameMap(supabase, accountId),
   ]);
+  const messages = messageRead.data;
+  const messagesAvailable = messageRead.kind === 'ready';
   const activeName = activePhone ? nameMap.get(activePhone) ?? null : null;
   const templates = await listMessageTemplates(supabase, accountId);
   // Who they are and what this is about — the three tabs you used to have to
   // open to answer a text.
   const context = await messageContext(supabase, accountId, activePhone);
   const days = groupByDay(messages);
+  const knownThread = messagesAvailable && messages.length > 0;
   // Bound the read receipt to what this response actually rendered. A new text
   // arriving during hydration must remain unread until it is on screen.
   const readThrough = [...messages]
@@ -122,11 +147,10 @@ export default async function MessagesPage({
     (message) => message.direction === 'inbound' && !message.read_at,
   );
 
-  // Everyone this account has a number for, for the compose picker. Reuses the
-  // same name map the threads use, so a customer is called the same thing in
-  // both places.
-  const contacts = [...nameMap.entries()]
-    .map(([phone, name]) => ({ phone, name }))
+  // Only consent-backed numbers appear in compose. Having a lead/job phone is
+  // not consent, and the atomic enqueue rechecks the same ledger at send time.
+  const contacts = consentPhoneRead.data
+    .map((phone) => ({ phone, name: nameMap.get(phone) ?? formatPhoneDashes(phone) }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const totalUnread = conversations.reduce((sum, conversation) => sum + conversation.unread, 0);
   const empty = inboxEmptyState({ total: allConversations.length, filter, query: rawQuery });
@@ -192,7 +216,23 @@ export default async function MessagesPage({
               );
             })}
           </div>
-          <ComposeMessage contacts={contacts} action={startConversationAction} />
+          {customerMessagingReady && conversationsAvailable && consentPhoneRead.kind === 'ready' ? (
+            <ComposeMessage
+              contacts={contacts}
+              action={startConversationAction}
+              fallbackIntentId={composeIntentId}
+              intentStorageKey={`lgq:messages:compose:${accountId}`}
+              resetToken={searchParams.sent === 'compose' ? searchParams.queued : null}
+            />
+          ) : customerMessagingReady ? (
+            <button className="btn primary" type="button" disabled title="Messaging history could not be checked">
+              New message unavailable
+            </button>
+          ) : (
+            <Link className="btn primary" href="/dashboard/messages?setup=1#texting-setup">
+              Set up customer texting
+            </Link>
+          )}
         </div>
       </header>
 
@@ -219,7 +259,12 @@ export default async function MessagesPage({
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Conversations</p>
           </div>
-          {conversations.length === 0 ? (
+          {!conversationsAvailable ? (
+            <div className="inbox-empty" role="alert">
+              <p className="inbox-empty-title">Couldn&rsquo;t check your messages</p>
+              <p className="inbox-empty-body">Nothing was marked empty. Reload before sending or retrying a text.</p>
+            </div>
+          ) : conversations.length === 0 ? (
             <div className="inbox-empty">
               <p className="inbox-empty-title">{empty.title}</p>
               <p className="inbox-empty-body">{empty.body}</p>
@@ -262,6 +307,9 @@ export default async function MessagesPage({
                           reads as a bug rather than as a picture. */}
                       {conversationPreview(conversation.lastBody) ||
                         (conversation.lastHasMedia ? 'Sent a photo' : '')}
+                      {conversation.lastDirection === 'outbound' ? (
+                        <> · {outboundDeliveryLabel(conversation.lastDeliveryStatus)}</>
+                      ) : null}
                     </p>
                     {conversation.unread > 0 ? (
                       <span className="inbox-unread" aria-hidden="true">{conversation.unread}</span>
@@ -308,7 +356,9 @@ export default async function MessagesPage({
               </div>
 
               <div className="inbox-messages">
-                {messages.length === 0 ? (
+                {!messagesAvailable ? (
+                  <p className="empty-state" role="alert">Couldn&rsquo;t check this conversation. Reload before sending or retrying a message.</p>
+                ) : messages.length === 0 ? (
                   <p className="empty-state">No messages in this thread yet.</p>
                 ) : (
                   days.map((day) => (
@@ -331,30 +381,38 @@ export default async function MessagesPage({
                                 question already answered, and the width it
                                 cost is width the message wanted. */}
                             <div className="inbox-run-stack">
-                              {run.items.map((message, index) => (
-                                <div
-                                  key={message.id}
-                                  className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
-                                >
-                                  {message.body ? <MessageBody body={message.body} /> : null}
-                                  {(message.media_urls ?? []).length > 0 ? (
-                                    <div className="inbox-bubble-media">
-                                      {(message.media_urls ?? []).map((url) => (
-                                        // Opens full size in a new tab; the thumbnail stays
-                                        // small so a thread of photos still scans as a
-                                        // conversation rather than a gallery.
-                                        <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                                          <img src={url} alt="Photo from the customer" loading="lazy" />
-                                        </a>
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ))}
+                              {run.items.map((message, index) => {
+                                const statusLabel = message.direction === 'outbound'
+                                  ? outboundDeliveryLabel(message.delivery_status)
+                                  : null;
+                                const showIntermediateWarning = index < run.items.length - 1 &&
+                                  statusLabel != null && !['Sent', 'Delivered'].includes(statusLabel);
+                                return (
+                                  <div
+                                    key={message.id}
+                                    className={`inbox-bubble inbox-bubble-${message.direction}${index === run.items.length - 1 ? ' is-last' : ''}`}
+                                  >
+                                    {message.body ? <MessageBody body={message.body} /> : null}
+                                    {(message.media_urls ?? []).length > 0 ? (
+                                      <div className="inbox-bubble-media">
+                                        {(message.media_urls ?? []).map((url) => (
+                                          // Opens full size in a new tab; the thumbnail stays
+                                          // small so a thread of photos still scans as a
+                                          // conversation rather than a gallery.
+                                          <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={url} alt="Photo from the customer" loading="lazy" />
+                                          </a>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    {showIntermediateWarning ? <span className="inbox-bubble-status">{statusLabel}</span> : null}
+                                  </div>
+                                );
+                              })}
                               <span className="inbox-run-time">
                                 {formatTime(last.created_at)}
-                                {run.direction === 'outbound' ? <> · Sent</> : null}
+                                {run.direction === 'outbound' ? <> · {outboundDeliveryLabel(last.delivery_status)}</> : null}
                               </span>
                             </div>
                           </div>
@@ -378,11 +436,30 @@ export default async function MessagesPage({
                   targetId="reply-body"
                   createAction={createTemplateAction}
                   deleteAction={deleteTemplateAction}
+                  canInsert={customerMessagingReady && knownThread}
                 />
-                <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
-                  <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
-                  <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Send</SaveButton>
-                </form>
+                {customerMessagingReady && knownThread ? (
+                  <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
+                    <PersistentMessageIntent
+                      storageKey={`lgq:messages:reply:${accountId}:${activePhone}`}
+                      fallbackId={replyIntentId}
+                      resetToken={searchParams.sent === 'reply' ? searchParams.queued : null}
+                    />
+                    <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
+                    <SaveButton className="btn primary" pendingLabel="Queueing…" savedLabel="Queued ✓">Send</SaveButton>
+                  </form>
+                ) : !messagesAvailable ? (
+                  <p className="empty-state">Messaging is disabled until this conversation can be checked safely.</p>
+                ) : !customerMessagingReady ? (
+                  <p className="empty-state">
+                    Customer replies require an approved, active dedicated number.{' '}
+                    <Link href="/dashboard/messages?setup=1#texting-setup">Open Texting setup</Link>.
+                  </p>
+                ) : (
+                  <p className="empty-state">
+                    This is not an existing message thread. Choose a conversation or start a new one.
+                  </p>
+                )}
               </div>
             </>
           ) : (

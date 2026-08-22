@@ -1,3 +1,5 @@
+import type { VoiceReceiptAuthorization } from '@/lib/voice/auth';
+
 /**
  * What LGQ needs from a voice provider, and nothing about who it is.
  *
@@ -10,8 +12,8 @@
  *
  * Voice agents share none of that. Measured, not assumed
  * (docs/ai-voice-v1-decisions.md §11): SignalWire AI Agents deliver ONE JSON
- * callback, at the end of the call, with no signature and no authentication
- * beyond Basic credentials embedded in a URL. Retell and Vapi differ on every
+ * callback, at the end of the call, with no signature and authentication via
+ * dedicated post-prompt HTTP Basic fields. Retell and Vapi differ on every
  * one of those, including how many callbacks arrive. A struct of differences
  * between things with nothing in common is just two things.
  *
@@ -39,6 +41,25 @@ export type InboundCall = Readonly<{
   fromNumber: string | null;
 }>;
 
+/** The disclosure callers must hear before interacting with the agent. */
+export const AI_VOICE_DISCLOSURE = 'You are speaking with an AI assistant.';
+
+/**
+ * Add the fixed disclosure to a contractor-authored greeting.
+ *
+ * This is idempotent because admission and the provider boundary both call it:
+ * admission makes the plan truthful to tests/UI, and the adapter makes a plan
+ * assembled anywhere else unable to omit the disclosure.
+ */
+export function greetingWithAiDisclosure(greeting: string | null | undefined): string {
+  const custom = (greeting ?? '').trim();
+  if (!custom) {
+    return `${AI_VOICE_DISCLOSURE} I can take a few details about the work you need and pass them straight to the team.`;
+  }
+  if (custom.includes(AI_VOICE_DISCLOSURE)) return custom;
+  return `${AI_VOICE_DISCLOSURE} ${custom}`;
+}
+
 /**
  * What LGQ decided to do with a call, expressed before any provider renders it.
  *
@@ -52,6 +73,11 @@ export type VoiceAnswerPlan =
     kind: 'ai_agent';
     /** Where the provider posts the receipt. Always a URL LGQ owns. */
     receiptUrl: string;
+    /**
+     * Dedicated callback credentials. The adapter renders them into provider
+     * auth fields; they are never placed in receiptUrl or written to a log.
+     */
+    receiptAuthorization: VoiceReceiptAuthorization;
     greeting: string;
     /** Minutes after which the agent must stop, whatever else is true. */
     capMinutes: number;
@@ -73,6 +99,14 @@ export type VoiceAnswerPlan =
 
 /** A rendered answer, ready to return to the provider's own request. */
 export type VoiceAnswer = Readonly<{ body: string; contentType: string }>;
+
+/** The one provider transcript representation LGQ retains. */
+export type VoiceTranscriptTurn = Readonly<{
+  role: string | null;
+  content: string;
+  /** Provider microsecond timestamp when present. */
+  timestamp: number | null;
+}>;
 
 /**
  * The end-of-call receipt, normalised.
@@ -97,12 +131,16 @@ export type VoiceReceipt = Readonly<{
   aiEndMicros: number | null;
   callerNumber: string | null;
   summary: string | null;
+  /** SignalWire `call_log`, normalized to role/content/timestamp only. */
+  callLog: readonly VoiceTranscriptTurn[] | null;
 }>;
 
 /** Why a payload was not accepted. Reported, never silently swallowed. */
 export type VoiceReceiptRejection =
   | 'not_an_object'
   | 'missing_call_id'
+  | 'missing_project_id'
+  | 'missing_space_id'
   | 'call_id_disagreement'
   | 'unsupported_event_type';
 

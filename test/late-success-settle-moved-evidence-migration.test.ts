@@ -17,13 +17,13 @@ const patch = readFileSync(join(
   process.cwd(),
   'migrations',
   '20260818234500_late_success_settle_reports_moved_evidence.sql',
-), 'utf8');
+), 'utf8').replace(/\r\n/g, '\n');
 
 const origin = readFileSync(join(
   process.cwd(),
   'migrations',
   '20260816213000_direct_checkout_late_success_operator_resolution.sql',
-), 'utf8');
+), 'utf8').replace(/\r\n/g, '\n');
 
 const GRANT_SIGNATURE = [
   'public.settle_direct_checkout_late_success_task(',

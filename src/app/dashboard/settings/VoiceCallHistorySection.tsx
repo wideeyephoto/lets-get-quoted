@@ -37,6 +37,15 @@ export default function VoiceCallHistorySection({
   history: VoiceCallHistory;
   timezone: string;
 }) {
+  if (!history.available) {
+    return (
+      <p className="voice-history-empty" role="status">
+        We couldn&apos;t load call history right now. This is not an all-clear and does not mean
+        there have been no calls. Refresh the page or contact support if it continues.
+      </p>
+    );
+  }
+
   if (history.calls.length === 0) {
     return (
       <p className="voice-history-empty">

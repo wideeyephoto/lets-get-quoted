@@ -153,6 +153,7 @@ export async function createAndSendScheduleRequest(
     clientName: job?.client_name ?? 'client',
     token,
     accountId,
+    idempotencyKey: `schedule-options:${request.id}`,
   });
 
   return request;
@@ -324,6 +325,7 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
           address: request.job.address,
           scheduledFor: option.date,
           scheduledTime: option.time,
+          idempotencyKey: `crew-schedule:${request.job_id}:${member.id}:${option.date}:${option.time ?? 'none'}`,
         });
       } catch (error) {
         console.error(`Crew schedule SMS failed for crew ${member.id} on job ${request.job_id}:`, error);

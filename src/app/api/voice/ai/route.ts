@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 
 import { createAdminClient } from '@/lib/auth';
-import { hasSignatureHeader, validateWebhookSignature } from '@/lib/sms-provider';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { planInboundCall } from '@/lib/voice/admission';
+import {
+  signalWireVoiceScope,
+  verifySignedVoiceWebhook,
+  voiceReceiptAuthorization,
+} from '@/lib/voice/auth';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
+import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
+import { recordVoiceRouteVerification } from '@/lib/voice/route-readiness';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,28 +40,18 @@ function xml(inner: string, status = 200) {
   });
 }
 
-function appOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL
-    || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`;
-  return raw.replace(/\/$/, '');
-}
-
 export async function POST(request: Request) {
-  if (!hasSignatureHeader(request)) {
-    await logWebhookFailure({ source: 'ai_voice', errorMessage: 'Missing provider signature header' });
-    return xml('', 403);
-  }
-
-  const data = await request.formData();
-  const check = validateWebhookSignature(request, data);
+  const rawBody = await request.clone().text();
+  const check = verifySignedVoiceWebhook(request, rawBody);
   if (!check.ok) {
     await logWebhookFailure({
       source: 'ai_voice',
-      referenceId: String(data.get('CallSid') || '') || null,
-      errorMessage: `Signature validation failed: ${check.reason}`,
+      referenceId: null,
+      errorMessage: `Voice admission signature validation failed: ${check.reason}`,
     });
     return xml('', 403);
   }
+  const data = await request.formData();
 
   const provider = signalwireVoiceProvider;
 
@@ -72,15 +68,59 @@ export async function POST(request: Request) {
         + 'Please try again later.</Say>');
     }
 
+    // The receipt contains transcript PII and is sent with a reusable Basic
+    // credential. Never admit or reserve an AI call until its destination is a
+    // bare HTTPS origin inside LGQ's configured DNS namespace.
+    const callbackOrigin = trustedProviderCallbackOrigin();
+    if (!callbackOrigin) {
+      await logWebhookFailure({
+        source: 'ai_voice',
+        referenceId: call.providerCallId,
+        errorMessage: 'Voice callback origin is missing or unsafe',
+      });
+      return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. '
+        + 'Please try again later.</Say>');
+    }
+
+    // The unsigned end-of-call receipt is safe only when it can be checked
+    // against both exact SignalWire tenancy identifiers. Do not start a paid AI
+    // session if either side of that future comparison is absent or malformed.
+    if (!signalWireVoiceScope()) {
+      await logWebhookFailure({
+        source: 'ai_voice',
+        referenceId: call.providerCallId,
+        errorMessage: 'Voice receipt project/space scope is missing or invalid',
+      });
+      return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. '
+        + 'Please try again later.</Say>');
+    }
+
     const admin = createAdminClient();
-    // Built from the request's OWN path, not a literal: the action URL is inside
-    // the HMAC the provider signs, so a hard-coded one signed over a different
-    // path 403s on precisely the callback that decides what happens next.
-    const basePath = new URL(request.url).pathname;
     const { plan, accountId, declineReason } = await planInboundCall(admin, call, {
-      receiptUrl: (id) => `${appOrigin()}/api/voice/receipt?account=${id}`,
-      forwardActionUrl: (id) => `${appOrigin()}${basePath}/status?account=${id}`,
+      // One stable endpoint. Workspace attribution comes from the admitted call
+      // id, never from a caller-controlled query parameter.
+      receiptUrl: `${callbackOrigin}/api/voice/receipt`,
+      // SignalWire renders this into dedicated auth fields. It is never placed
+      // in the URL or included in the decline log below.
+      receiptAuthorization: voiceReceiptAuthorization(),
+      forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}`,
     });
+
+    // A valid signed call to this route is the only durable proof LGQ can get
+    // that the provider actually points this customer-facing number here. Stamp
+    // it even when the product is still off: that is how an owner completes the
+    // test call before activating Answering. Await the write so a serverless
+    // response cannot terminate the proof before it commits.
+    if (accountId) {
+      const verified = await recordVoiceRouteVerification(admin, {
+        accountId,
+        number: call.toNumber,
+        providerCallId: call.providerCallId,
+      });
+      if (!verified) {
+        console.error('AI voice route verification evidence was not persisted');
+      }
+    }
 
     // A decline is not a failure and is not logged as one — every reason below
     // is a caller who still reaches the business. It is recorded so that

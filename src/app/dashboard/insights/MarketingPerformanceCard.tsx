@@ -51,12 +51,11 @@ export default function MarketingPerformanceCard({
         <>
           <p className="ins-sub ins-mkt-summary">
             {campaigns.length} recent send{campaigns.length === 1 ? '' : 's'} · {totalRecipients.toLocaleString()}{' '}
-            recipient{totalRecipients === 1 ? '' : 's'} reached
+            recipient{totalRecipients === 1 ? '' : 's'} targeted
           </p>
 
           <ul className="ins-mkt-list">
             {campaigns.map((campaign) => {
-              const sent = campaign.emailSent + campaign.smsSent;
               return (
                 <li className="ins-mkt-row" key={campaign.id}>
                   <div className="ins-mkt-when">
@@ -66,11 +65,11 @@ export default function MarketingPerformanceCard({
                     </span>
                   </div>
                   <div className="ins-mkt-stats">
-                    <span className="ins-mkt-stat">
-                      <strong>{sent.toLocaleString()}</strong> sent
-                    </span>
-                    {campaign.emailSent > 0 && campaign.smsSent > 0 ? (
-                      <span className="ins-mkt-muted">{campaign.emailSent} email · {campaign.smsSent} text</span>
+                    {campaign.emailSent > 0 ? (
+                      <span className="ins-mkt-stat"><strong>{campaign.emailSent.toLocaleString()}</strong> email sent</span>
+                    ) : null}
+                    {campaign.smsQueued > 0 ? (
+                      <span className="ins-mkt-stat"><strong>{campaign.smsQueued.toLocaleString()}</strong> {campaign.smsQueued === 1 ? 'text' : 'texts'} queued</span>
                     ) : null}
                     {campaign.skipped > 0 ? <span className="ins-mkt-muted">{campaign.skipped} skipped</span> : null}
                     {campaign.failed > 0 ? <span className="ins-mkt-fail">{campaign.failed} failed</span> : null}
@@ -82,7 +81,7 @@ export default function MarketingPerformanceCard({
 
           <p className="ins-sub ins-mkt-note">
             Opens, clicks, replies and booked revenue aren&apos;t tracked anywhere, so they&apos;re not shown —
-            this is what was sent and how it delivered, not how it performed.
+            email acceptance and queued texts are shown separately; carrier delivery is not inferred.
           </p>
 
           <div className="ins-card-foot">

@@ -247,6 +247,7 @@
 .banner { border-radius: 0.7rem; padding: 0.7rem 0.9rem; font-size: 0.85rem; margin-bottom: 1rem; }
 .banner.ok { background: rgba(52, 211, 153, 0.12); border: 1px solid var(--cedge-green-1); color: var(--ink-mod-green-1); }
 .banner.err { background: rgba(248, 113, 113, 0.12); border: 1px solid var(--cedge-red-31); color: var(--ink-mod-red-1); }
+.banner.warn { background: rgba(255, 209, 102, 0.12); border: 1px solid var(--cedge-amber-7); color: var(--gold-ink); }
 
 .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.05rem; }
 .timeline li { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 0.8rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule-t05); font-size: 0.82rem; }
