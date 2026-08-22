@@ -1,13 +1,31 @@
 import { randomUUID } from 'node:crypto';
+import { cache } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
+import { signingKeys } from '@/lib/auth-jwks';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { clientIpFrom } from '@/lib/rate-limit';
 import { deniedMessage, parseStaffRole, staffCan, type Permission, type StaffRole } from '@/lib/staff';
 import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
 import { OFFICE_NO_ACCESS_PATH, officeLandingPath } from '@/lib/office-access';
+
+/**
+ * React's per-request memoization, where it exists.
+ *
+ * `cache` lives in the copy of React that Next vendors for the server, which is
+ * what `react` resolves to in a Next build. It is NOT exported by the react
+ * 18.3.1 in node_modules, which is what Vitest resolves — so under the test
+ * runner this import is undefined and calling it threw at module load, taking
+ * down 29 test files that only import this module in passing.
+ *
+ * Falling back to the identity wrapper is safe: it means no memoization, which
+ * is exactly how every one of these call sites behaved before. Deduplication is
+ * a performance property, never a correctness one — nothing here may depend on
+ * being called once.
+ */
+const perRequest: typeof cache = typeof cache === 'function' ? cache : (fn) => fn;
 
 // Service-role client bypasses RLS for trusted server-side writes.
 // Never expose this client or its key to the browser.
@@ -214,9 +232,16 @@ export async function ensureAccountMembership(
   return { account_id: newAccount.id, role: 'owner' };
 }
 
-/** The columns every dashboard guard gates on. */
-const ACCOUNT_GATE_COLUMNS = 'suspended_at, terms_accepted_at, terms_version, timezone';
-
+/**
+ * The columns every dashboard guard gates on.
+ *
+ * No longer a select list. The guards read the account row EMBEDDED in the
+ * membership query as `accounts(*)`, deliberately: naming a column the database
+ * has not migrated yet fails the whole query, and here that would mean every
+ * owner bounced to /login on a deploy that landed ahead of its migration. What
+ * survives as a list is this type, and the gates below still treat a column that
+ * is simply absent as "carry on".
+ */
 type AccountGateRow = {
   suspended_at?: string | null;
   terms_accepted_at?: string | null;
@@ -280,49 +305,207 @@ function applyAccountGates(
   }
 }
 
+type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
+
+/**
+ * Who is asking, verified LOCALLY.
+ *
+ * `getUser()` posts the access token to /auth/v1/user and waits for the Auth
+ * server on every single call — on a page load, on every server action. This
+ * project signs its tokens with ES256 (see the ki<d> in /auth/v1/.well-known/
+ * jwks.json), so the signature can be checked here with WebCrypto against a
+ * cached public key and no network at all. `getClaims` is supabase-js's own
+ * supported path for that, and it still reads the session through getSession(),
+ * so the near-expiry refresh is untouched.
+ *
+ * WHAT THIS GIVES UP, precisely: a cryptographically valid, unexpired token is
+ * now accepted without asking the Auth server whether that user has since been
+ * banned or deleted. That is a real change and it is bounded by the access
+ * token's own lifetime.
+ *
+ * It is survivable here because the sharp instrument is not the ban. Staff lock
+ * an account out with `suspended_at`, which is a column read on every single
+ * request a few lines below and is completely unaffected. The ban path —
+ * signOutAllSessionsAction — is already documented, in its own comment and in
+ * the UI it drives, as blocking the next token REFRESH rather than killing a
+ * live token, so it was never the instant kill switch.
+ *
+ * requireAdmin() deliberately keeps calling getUser(). The staff console is a
+ * higher-value target on a fraction of the traffic, so it has nothing to gain
+ * here and something to lose.
+ */
+async function verifiedUser(
+  supabase: SupabaseServerClient,
+): Promise<{ id: string; email: string | null } | null> {
+  const read = async (keys: Awaited<ReturnType<typeof signingKeys>>) =>
+    supabase.auth.getClaims(undefined, keys ? { keys } : {});
+
+  let { data, error } = await read(await signingKeys());
+  if (error) {
+    // A rotated key is the one failure worth a second look: refetch the set and
+    // try once more before treating it as "not signed in". Any other error is
+    // still just a failed verification, and a second attempt costs one fetch.
+    ({ data, error } = await read(await signingKeys({ force: true })));
+  }
+  if (error || !data?.claims?.sub) return null;
+
+  const claims = data.claims as { sub: string; email?: unknown };
+  return { id: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : null };
+}
+
+/**
+ * Every membership this user holds, each with its account row attached, in ONE
+ * round trip.
+ *
+ * This was three: getUser() over the network, a memberships lookup, then an
+ * accounts lookup keyed on what that returned — strictly serial, because each
+ * needs the one before it. PostgREST can follow the memberships.account_id
+ * foreign key itself (there is exactly one FK from memberships to accounts, so
+ * the embed is unambiguous), which folds the third into the second, and
+ * verifiedUser above removes the first.
+ *
+ * ALL memberships, not just the owner row. The choice between them belongs to
+ * chooseMemberRow, which has to see the whole set to make the same decision
+ * getCurrentMembership makes — and an office user, who has no owner row at all,
+ * must be recognised as office rather than mistaken for a brand-new signup.
+ *
+ * `accounts(*)` rather than a column list, for the same reason the automations
+ * page selects `*`: naming a column the database has not migrated yet fails the
+ * WHOLE query, which here would mean every owner bounced to /login. Embedding
+ * everything cannot fail that way, and a column that does not exist simply is
+ * not on the object — which is exactly what the gates below already test for.
+ *
+ * Read with the SERVICE ROLE, not the session client, and that is stricter than
+ * what it replaces. `accounts` has `acc_read` as `is_owner(id)`, so an office
+ * user reading its own workspace row through RLS gets NOTHING back — and a null
+ * row reads as "not suspended", which would let somebody keep working inside a
+ * business staff had suspended.
+ */
+type MemberRow = { account_id: string | null; role: string | null; accounts: unknown };
+
+async function readMemberRows(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<MemberRow[]> {
+  const { data } = await admin
+    .from('memberships')
+    .select('account_id, role, accounts(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  return (data ?? []) as MemberRow[];
+}
+
+/**
+ * Which membership this request is acting under.
+ *
+ * The same preference getCurrentMembership applies, and it has to stay the same:
+ * owner first so a dual-role user always lands in their own business, then
+ * OFFICE so somebody who keeps another company's books is not dropped into the
+ * field app by an older crew row, then the oldest of whatever is left.
+ */
+function chooseMemberRow(rows: MemberRow[]): MemberRow | null {
+  return rows.find((row) => row.role === 'owner')
+    ?? rows.find((row) => row.role === 'office')
+    ?? rows[0]
+    ?? null;
+}
+
+/** A to-one embed comes back as an object; tolerate an array in case it does not. */
+function embeddedAccount(row: MemberRow | null): Record<string, unknown> | null {
+  const raw = row?.accounts;
+  if (!raw) return null;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return (value as Record<string, unknown>) ?? null;
+}
+
+/**
+ * The session, its membership and its account row — resolved once per request.
+ *
+ * Every dashboard page is rendered under a layout that needs the same three
+ * things, so this ran TWICE per page load: the layout through
+ * requireDashboardShellContext and the page through requireOwnerContext, each
+ * paying its own getUser() over the network plus a memberships read plus an
+ * accounts read. React's `cache()` is keyed per request, so the layout pays for
+ * it and the page gets it free.
+ *
+ * Takes no arguments on purpose. The gates differ between the two callers — an
+ * office user is redirected by one and admitted by the other — so the GATES stay
+ * in the callers and only the reads are shared. Nothing here redirects; a caller
+ * decides what a missing session or the wrong role means for it.
+ *
+ * Outside a render — a Route Handler, say — React has no cache dispatcher and
+ * `cache()` documents that it simply calls through, so those callers behave
+ * exactly as they did before.
+ */
+const loadSessionMember = perRequest(async () => {
+  const supabase = createSupabaseServerClient();
+  const user = await verifiedUser(supabase);
+  if (!user) return null;
+
+  const admin = createAdminClient();
+  let rows = await readMemberRows(admin, user.id);
+
+  // ensureAccountMembership is skipped where it would return early anyway. Its
+  // own first two lookups ask "is there an owner row" and "is there an office
+  // row", and both answers are already in `rows` — so calling it in those cases
+  // is a round trip that provisions nothing and changes nothing.
+  //
+  // What is left is exactly the set it was written to serve: somebody with no
+  // membership at all, and somebody who is ONLY on another business's crew, who
+  // is deliberately given an owner account of their own here rather than being
+  // locked out of owning a business because they once worked for one.
+  //
+  // The office case is the one that must not slip. An office user has no owner
+  // row, so a bare check for "no owner row" would send them through provisioning
+  // and hand them an empty workspace of their own — and because that row would
+  // be an OWNER row, every later sign-in would resolve to it and the business
+  // that hired them would never be reachable again. That is the bug the office
+  // short-circuit inside ensureAccountMembership exists to prevent, and this
+  // condition is written to agree with it rather than to route around it.
+  if (!rows.some((row) => row.role === 'owner' || row.role === 'office')) {
+    try {
+      await ensureAccountMembership(user.id);
+    } catch (error) {
+      console.error('ensureAccountMembership error:', error);
+      throw error;
+    }
+    rows = await readMemberRows(admin, user.id);
+  }
+
+  return { supabase, user, member: chooseMemberRow(rows) };
+});
+
 // Shared guard for server components/actions that require a logged-in owner.
 // Returns a session-scoped (RLS-respecting) Supabase client plus the resolved
 // user + account context. Redirects to /login if any check fails.
 export async function requireOwnerContext(options: { skipFirstRunGate?: boolean } = {}) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await loadSessionMember();
 
-  if (!user) {
+  if (!session) {
     redirect('/login');
   }
 
-  try {
-    await ensureAccountMembership(user.id);
-  } catch (error) {
-    console.error('ensureAccountMembership error:', error);
-    throw error;
-  }
-
-  const membership = await getCurrentMembership(user.id);
+  const { supabase, user, member } = session;
 
   // An office user has a real membership and no owner surface to be given yet.
   // Sending them to /login would loop -- they are already signed in, so logging
   // in returns them straight here -- and it would read as a broken account
   // rather than as access that has not been switched on.
-  if (membership.accountId && membership.role === 'office') {
+  if (member?.account_id && member.role === 'office') {
     redirect('/office-access');
   }
 
-  if (!membership.accountId || membership.role !== 'owner') {
+  if (!member?.account_id || member.role !== 'owner') {
     redirect('/login');
   }
 
   // Staff-suspended accounts are blocked from the owner surface until lifted.
   // Defensive: a missing column (pre-migration) or read error is treated as
   // "not suspended" so this never breaks the dashboard before it's deployed.
-  const { data: acct } = await supabase
-    .from('accounts')
-    .select(ACCOUNT_GATE_COLUMNS)
-    .eq('id', membership.accountId)
-    .maybeSingle();
-  applyAccountGates(acct, { role: 'owner', skipFirstRunGate: options.skipFirstRunGate });
+  // The row arrived embedded in the membership read above, so the gates cost
+  // nothing extra here.
+  const acct = embeddedAccount(member);
+  applyAccountGates(acct as AccountGateRow, { role: 'owner', skipFirstRunGate: options.skipFirstRunGate });
 
   // userEmail is who to write into an audit trail. Anything that records a
   // decision — approving hours, marking a crew member paid — has to name a
@@ -331,8 +514,22 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
     supabase,
     userId: user.id,
     userEmail: user.email ?? null,
-    accountId: membership.accountId,
+    accountId: member.account_id,
     accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
+    /**
+     * The whole account row, already in hand.
+     *
+     * It is fetched here regardless — the suspension and terms gates need it —
+     * and it is fetched as `accounts(*)`, so it holds every column. Callers that
+     * want one more setting off this row should read it from here rather than
+     * issuing a second query for it; that second query was the single most
+     * repeated round trip in the dashboard.
+     *
+     * Null only when the read failed, which the gates above already treat as
+     * "carry on" — so consumers must keep their own defaults rather than
+     * assuming a row.
+     */
+    account: acct,
   };
 }
 
@@ -611,37 +808,28 @@ export async function loadHeldCapabilities(
  * PAGE's, and both are below.
  */
 async function resolveOfficeCapableMember() {
-  const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const session = await loadSessionMember();
+
+  if (!session) {
     redirect('/login');
   }
 
-  try {
-    await ensureAccountMembership(user.id);
-  } catch (error) {
-    console.error('ensureAccountMembership error:', error);
-    throw error;
-  }
+  const { supabase, user, member } = session;
 
-  const membership = await getCurrentMembership(user.id);
-  if (!membership.accountId || (membership.role !== 'owner' && membership.role !== 'office')) {
+  if (!member?.account_id || (member.role !== 'owner' && member.role !== 'office')) {
     redirect('/login');
   }
 
-  const role = membership.role as 'owner' | 'office';
+  const role = member.role as 'owner' | 'office';
   const held = await loadHeldCapabilities(role);
 
-  // Read with the SERVICE ROLE, not the session client. `accounts` has
-  // `acc_read` as `is_owner(id)`, so an office user's own read returns nothing
-  // and every gate below would silently pass -- letting somebody keep working
-  // inside a business staff had suspended. The owner guard's RLS read returns
-  // the same row for an owner, so the two agree wherever they overlap.
-  const { data: acct } = await createAdminClient()
-    .from('accounts')
-    .select(ACCOUNT_GATE_COLUMNS)
-    .eq('id', membership.accountId)
-    .maybeSingle();
+  // The account row came back on the SERVICE-ROLE membership read, not through
+  // the session client, and that is load-bearing here rather than incidental.
+  // `accounts` has `acc_read` as `is_owner(id)`, so an office user's own read
+  // returns nothing and every gate below would silently pass -- letting somebody
+  // keep working inside a business staff had suspended. An owner sees the same
+  // row either way, so the two guards agree wherever they overlap.
+  const acct = embeddedAccount(member);
 
   applyAccountGates(acct as AccountGateRow, { role });
 
@@ -649,7 +837,7 @@ async function resolveOfficeCapableMember() {
     supabase,
     userId: user.id,
     userEmail: user.email ?? null,
-    accountId: membership.accountId,
+    accountId: member.account_id,
     accountTimeZone: (acct as { timezone?: string | null } | null)?.timezone || 'America/New_York',
     role,
     capabilities: held,

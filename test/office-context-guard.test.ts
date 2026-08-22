@@ -31,6 +31,29 @@ function rlsBlind(name: string, client: 'admin' | 'session'): boolean {
   return name === 'accounts' && client === 'session' && currentRole === 'office';
 }
 
+/**
+ * The account row now arrives EMBEDDED in the membership read.
+ *
+ * The guards ask for `memberships` with `accounts(*)` rather than issuing a
+ * second query keyed on the first one's answer, so the double has to hand the
+ * account back the same way. Tests keep setting `rows.accounts` as the one knob
+ * — the embed is assembled here, so every case below still configures exactly
+ * what it did before.
+ *
+ * rlsBlind still applies, and that is the point of doing it here rather than in
+ * the fixtures. If somebody changed the membership read to use the SESSION
+ * client, an office user's embedded account would come back null, the
+ * suspension gate would read that as "not suspended", and the suspended-office
+ * test below is what catches it.
+ */
+function withEmbeddedAccount(name: string, client: 'admin' | 'session', list: unknown[]): unknown[] {
+  if (name !== 'memberships') return list;
+  return list.map((row) => ({
+    ...(row as Record<string, unknown>),
+    accounts: rlsBlind('accounts', client) ? null : (rows.accounts ?? null),
+  }));
+}
+
 function table(name: string, client: 'admin' | 'session' = 'admin') {
   const chain: Record<string, unknown> = {};
   for (const method of ['select', 'eq', 'order', 'limit', 'is']) chain[method] = () => chain;
@@ -48,7 +71,10 @@ function table(name: string, client: 'admin' | 'session' = 'admin') {
   };
   chain.delete = () => chain;
   (chain as { then: unknown }).then = (r: (v: unknown) => unknown) =>
-    r({ data: rows[`${name}:list`] ?? [], error: rows[`${name}:error`] ?? null });
+    r({
+      data: withEmbeddedAccount(name, client, (rows[`${name}:list`] as unknown[]) ?? []),
+      error: rows[`${name}:error`] ?? null,
+    });
   return chain;
 }
 
@@ -59,10 +85,30 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ from: (name: string) => table(name, 'admin') }),
 }));
 vi.mock('next/headers', () => ({ headers: () => new Headers(), cookies: () => ({ get: () => undefined }) }));
+/**
+ * No JWKS fetch from a unit test.
+ *
+ * The guards verify the session token locally against a cached key set, and
+ * `signingKeys()` returning null is its documented "no keys to supply" path —
+ * supabase-js is then asked to sort it out, which here is the mock below. The
+ * fetch itself has its own test; this one is about who the guards let through.
+ */
+vi.mock('@/lib/auth-jwks', () => ({ signingKeys: () => Promise.resolve(null) }));
+
 vi.mock('@/lib/supabase-server', () => ({
   createSupabaseServerClient: () => ({
     from: (name: string) => table(name, 'session'),
-    auth: { getUser: () => Promise.resolve({ data: { user: currentUser } }) },
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: currentUser } }),
+      // What the guards actually call. getClaims verifies the signature against
+      // the key set instead of posting the token to /auth/v1/user, so a double
+      // that only models getUser is a double of code that no longer runs.
+      getClaims: () => Promise.resolve(
+        currentUser
+          ? { data: { claims: { sub: currentUser.id, email: currentUser.email } }, error: null }
+          : { data: null, error: null },
+      ),
+    },
   }),
 }));
 
