@@ -320,6 +320,51 @@ export async function buildContactNameMap(supabase: SupabaseClient, accountId: s
   return map;
 }
 
+/**
+ * LGQ's own lanes. A number with one of these purposes belongs to the platform,
+ * not to the contractor.
+ *
+ * WHY THIS INBOX MUST EXCLUDE THEM. `sms_messages` is scoped by account_id
+ * alone, so the moment owner alerts started actually sending (2026-08-22) the
+ * contractor's own mobile appeared in their customer inbox as a thread —
+ * complete with "View customer", a Call button, and a reply box explaining that
+ * "customer replies require an approved, active dedicated number". None of that
+ * is true of a conversation between the contractor and LGQ. It is a
+ * notification, not a customer.
+ *
+ * Owner and crew traffic still exists, is still auditable, and still reaches the
+ * phone; it simply is not a customer conversation and does not belong in the
+ * list of them.
+ */
+const PLATFORM_LANE_PURPOSES = ['lgq_shared', 'lgq_dispatch'] as const;
+
+async function platformLaneSenderIds(supabase: SupabaseClient): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('sms_sender_numbers')
+    .select('id')
+    .in('purpose', PLATFORM_LANE_PURPOSES as unknown as string[]);
+  // FAIL OPEN. If the lane list is unreadable, showing an extra thread is a
+  // cosmetic problem; hiding the contractor's real customer threads is not.
+  if (error) return [];
+  return (data ?? []).map((row) => String((row as { id: unknown }).id));
+}
+
+/**
+ * Drop platform-lane rows from a sms_messages query.
+ *
+ * THE NULL TRAP: `NOT IN (...)` evaluates to NULL for a NULL column, so a bare
+ * `.not('sender_number_id', 'in', ...)` would also discard every legacy message
+ * whose sender was never recorded — which is most of the contractor's history.
+ * Nulls are kept explicitly.
+ */
+function excludePlatformLanes<Q extends { or: (filter: string) => Q }>(
+  query: Q,
+  platformIds: readonly string[],
+): Q {
+  if (platformIds.length === 0) return query;
+  return query.or(`sender_number_id.is.null,sender_number_id.not.in.(${platformIds.join(',')})`);
+}
+
 // Latest message per phone, newest thread first. Reduces a recent slice in JS
 // (no SQL distinct-on) — fine for the volumes a single contractor handles.
 export async function loadConversations(
@@ -328,11 +373,18 @@ export async function loadConversations(
 ): Promise<MessagingReadResult<Conversation[]>> {
   // Columns listed explicitly so a pre-migration database (no read_at /
   // media_urls) still returns rows; the fallback below drops the new ones.
+  const platformIds = await platformLaneSenderIds(supabase);
+  // Filtered in the QUERY, not afterwards in JS: the slice is capped at 500, so
+  // post-filtering would let platform notifications push real customer threads
+  // out of the window entirely.
   const rows = async (columns: string) =>
-    supabase
-      .from('sms_messages')
-      .select(columns)
-      .eq('account_id', accountId)
+    excludePlatformLanes(
+      supabase
+        .from('sms_messages')
+        .select(columns)
+        .eq('account_id', accountId),
+      platformIds,
+    )
       .order('created_at', { ascending: false })
       .limit(500);
 
@@ -395,12 +447,18 @@ export async function listConversations(supabase: SupabaseClient, accountId: str
 /** Inbound messages across every thread that the owner hasn't opened. Drives the nav badge. */
 export async function countUnreadMessages(supabase: SupabaseClient, accountId: string): Promise<number> {
   try {
-    const { count, error } = await supabase
-      .from('sms_messages')
-      .select('id', { head: true, count: 'exact' })
-      .eq('account_id', accountId)
-      .eq('direction', 'inbound')
-      .is('read_at', null);
+    // Same exclusion as the thread list, or the badge counts messages the list
+    // will not show and the two contradict each other.
+    const platformIds = await platformLaneSenderIds(supabase);
+    const { count, error } = await excludePlatformLanes(
+      supabase
+        .from('sms_messages')
+        .select('id', { head: true, count: 'exact' })
+        .eq('account_id', accountId)
+        .eq('direction', 'inbound')
+        .is('read_at', null),
+      platformIds,
+    );
     if (error) return 0;
     return count ?? 0;
   } catch {
@@ -447,13 +505,19 @@ export async function loadConversationMessages(
   accountId: string,
   phone: string,
 ): Promise<MessagingReadResult<SmsMessage[]>> {
+  // Excluded here too. Without it, opening a thread by phone number would still
+  // render the platform's own messages — and the contractor's mobile is exactly
+  // the number most likely to appear in both.
+  const platformIds = await platformLaneSenderIds(supabase);
   const [messages, events] = await Promise.all([
-    supabase
-      .from('sms_messages')
-      .select('*')
-      .eq('account_id', accountId)
-      .eq('phone_number', phone)
-      .order('created_at', { ascending: true }),
+    excludePlatformLanes(
+      supabase
+        .from('sms_messages')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('phone_number', phone),
+      platformIds,
+    ).order('created_at', { ascending: true }),
     loadManualSmsEvents(supabase, accountId, phone),
   ]);
   if (messages.error || events.kind === 'unavailable') {
