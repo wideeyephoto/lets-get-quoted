@@ -56,7 +56,9 @@ function withEmbeddedAccount(name: string, client: 'admin' | 'session', list: un
 
 function table(name: string, client: 'admin' | 'session' = 'admin') {
   const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'order', 'limit', 'is']) chain[method] = () => chain;
+  let selected = '';
+  chain.select = (columns?: string) => { selected = columns ?? ''; return chain; };
+  for (const method of ['eq', 'order', 'limit', 'is']) chain[method] = () => chain;
   chain.maybeSingle = () => Promise.resolve(
     rlsBlind(name, client)
       ? { data: null, error: null }
@@ -70,11 +72,19 @@ function table(name: string, client: 'admin' | 'session' = 'admin') {
     return Object.assign(Promise.resolve({ error: null }), after);
   };
   chain.delete = () => chain;
-  (chain as { then: unknown }).then = (r: (v: unknown) => unknown) =>
-    r({
+  (chain as { then: unknown }).then = (r: (v: unknown) => unknown) => {
+    // PostgREST answers PGRST200 for an embed it cannot resolve while its
+    // schema cache is stale, and it fails the WHOLE query when it does. Only
+    // the embedded form fails; the same read without accounts(*) succeeds,
+    // which is exactly the fallback the guard depends on.
+    if (rows[`${name}:embedError`] && selected.includes('accounts(*)')) {
+      return r({ data: null, error: { code: 'PGRST200', message: 'could not find a relationship' } });
+    }
+    return r({
       data: withEmbeddedAccount(name, client, (rows[`${name}:list`] as unknown[]) ?? []),
       error: rows[`${name}:error`] ?? null,
     });
+  };
   return chain;
 }
 
@@ -181,6 +191,17 @@ describe('requireOwnerContext still means owner, nobody else', () => {
     asOwner();
     rows.accounts = { suspended_at: null, terms_accepted_at: null, terms_version: null };
     expect(await redirectOf(() => requireOwnerContext())).toBe('/welcome');
+  });
+
+  it('still lets an owner in when the account EMBED fails', async () => {
+    // The one way folding the two reads into one could be WORSE than leaving
+    // them apart. A stale PostgREST schema cache fails the whole query, so
+    // without the un-embedded fallback the guard would see no membership at
+    // all and send every owner to /login -- a total lockout in place of the
+    // graceful degradation a separate account read used to give.
+    asOwner();
+    rows['memberships:embedError'] = true;
+    expect(await redirectOf(() => requireOwnerContext())).toBeNull();
   });
 
   it('still fails OPEN on the pre-migration shape', async () => {

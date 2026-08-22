@@ -323,12 +323,21 @@ type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
  * banned or deleted. That is a real change and it is bounded by the access
  * token's own lifetime.
  *
- * It is survivable here because the sharp instrument is not the ban. Staff lock
- * an account out with `suspended_at`, which is a column read on every single
- * request a few lines below and is completely unaffected. The ban path —
- * signOutAllSessionsAction — is already documented, in its own comment and in
- * the UI it drives, as blocking the next token REFRESH rather than killing a
- * live token, so it was never the instant kill switch.
+ * BE PRECISE ABOUT THE BAN, because the comfortable version of this is wrong.
+ * signOutAllSessionsAction documents itself as blocking the next token REFRESH
+ * rather than killing a live one — but that describes the token lifecycle, not
+ * this guard. Today every guard calls getUser(), which posts to /auth/v1/user,
+ * and GoTrue refuses a banned user there: on main a staff ban locks the
+ * dashboard on the very next request. After this change it takes up to one
+ * access-token lifetime. That is a real reduction and it is being made
+ * deliberately.
+ *
+ * What makes it acceptable is that the ban is not the instrument staff reach
+ * for. Locking a workspace is `suspended_at`, which is a column read on every
+ * single request a few lines below and is completely unaffected by any of
+ * this. If an immediate ban is ever needed, the answer is to shorten the
+ * access-token lifetime or re-check getUser() on the paths that matter — not
+ * to assume this one still does it.
  *
  * requireAdmin() deliberately keeps calling getUser(). The staff console is a
  * higher-value target on a fraction of the traffic, so it has nothing to gain
@@ -387,12 +396,40 @@ async function readMemberRows(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<MemberRow[]> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from('memberships')
     .select('account_id, role, accounts(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
-  return (data ?? []) as MemberRow[];
+  if (!error && data) return data as MemberRow[];
+
+  /**
+   * THE EMBED FAILED, AND THAT MUST NOT COST ANYONE THEIR DASHBOARD.
+   *
+   * This is the one way folding two reads into one could be WORSE than
+   * leaving them apart, and it is worth being explicit about. When the
+   * account row was its own query, a failure left `acct` null, the gates read
+   * that as "carry on", and the owner got in. Embedded, a failure fails the
+   * WHOLE query — so without this the membership comes back empty too, the
+   * guard concludes there is no membership, and EVERY owner is redirected to
+   * /login. A graceful degradation would have become a total lockout.
+   *
+   * And it is not hypothetical. PostgREST answers PGRST200 for an embed it
+   * cannot resolve while its schema cache is stale, which is exactly the
+   * window right after a migration — and migrations are applied directly
+   * against production here.
+   *
+   * So the embed is treated as what it is: an optimisation. Losing it costs a
+   * round trip and the gates fail open exactly as they did before, which is
+   * the behaviour this port is supposed to preserve rather than trade away.
+   */
+  const { data: plain } = await admin
+    .from('memberships')
+    .select('account_id, role')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  return ((plain ?? []) as Array<{ account_id: string | null; role: string | null }>)
+    .map((row) => ({ ...row, accounts: null }));
 }
 
 /**
