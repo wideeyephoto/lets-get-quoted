@@ -213,7 +213,17 @@ export class SignalWireNumberProvisioningClient {
       });
     }
     this.authorization = `Basic ${Buffer.from(`${config.projectId}:${config.apiToken}`, 'utf8').toString('base64')}`;
-    this.providerDetailRedactions = [config.apiToken, this.authorization];
+    // The 10DLC callback token travels in an outbound request body (the
+    // assignment's status_callback_url), so a provider error that echoes the
+    // request back would otherwise put it in error_detail -- which IS rendered
+    // on the admin registrations page, to an operator who by design cannot read
+    // the Sensitive Vercel variable. The loop below skips values under 4 chars,
+    // so an unset variable is a no-op.
+    this.providerDetailRedactions = [
+      config.apiToken,
+      this.authorization,
+      (process.env.LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN ?? '').trim(),
+    ];
   }
 
   static fromEnvironment(fetchImpl: typeof fetch = fetch): SignalWireNumberProvisioningClient {

@@ -35,6 +35,7 @@ function safeErrorCode(error: unknown, fallback: string): string {
     process.env.SIGNALWIRE_API_TOKEN,
     process.env.SIGNALWIRE_SIGNING_KEY,
     process.env.SIGNALWIRE_PROJECT_ID,
+    process.env.LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN,
   ].filter((value): value is string => Boolean(value));
   if (
     candidate
@@ -60,6 +61,7 @@ export function redactMessagingRegistrationFailureMessage(message: string): stri
     process.env.SIGNALWIRE_API_TOKEN,
     process.env.SIGNALWIRE_SIGNING_KEY,
     process.env.SIGNALWIRE_PROJECT_ID,
+    process.env.LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN,
   ]) {
     if (secret && secret.length >= 4) safe = safe.split(secret).join('[redacted-secret]');
   }

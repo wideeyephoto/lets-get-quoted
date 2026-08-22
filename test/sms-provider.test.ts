@@ -863,7 +863,10 @@ describe('webhook_failures.source', () => {
     const allowed = [...match![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
 
     const union = read('src', 'lib', 'webhook-failures.ts');
-    const declared = [...union.matchAll(/^\s*\|?\s*'([a-z_]+)'$/gm)].map((m) => m[1]);
+    // The `;?` is load-bearing: the union's LAST member ends in a semicolon, so
+    // without it this guard silently drops the newest value -- the one most
+    // likely to be missing from the CHECK constraint.
+    const declared = [...union.matchAll(/^\s*\|?\s*'([a-z_]+)';?$/gm)].map((m) => m[1]);
     expect(declared.length).toBeGreaterThan(0);
     for (const value of declared) expect(allowed, `${value} is not in the CHECK constraint`).toContain(value);
   });

@@ -1316,6 +1316,52 @@ function productionAppOrigin(): string {
   throw new Error('NEXT_PUBLIC_APP_URL must be a trusted bare production HTTPS origin inside LGQ\'s configured root domain before provisioning an inbound number.');
 }
 
+export const SIGNALWIRE_10DLC_CALLBACK_TOKEN_ENV = 'LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN';
+const SIGNALWIRE_10DLC_CALLBACK_TOKEN_SHAPE = /^[A-Za-z0-9_-]{32,128}$/;
+
+/**
+ * The 10DLC status callback URL, pinned to this deployment's own route.
+ *
+ * Until 2026-08-22 this threw unconditionally: there was no authenticated route
+ * to receive a registry callback, so registering one would have invited an
+ * unauthenticated POST. That is also why the reason for the 2026-08-21
+ * assignment failure was never captured -- nothing was ever registered to
+ * receive it. The route now exists at /api/sms/registry-status/[token].
+ *
+ * The token is a PATH SEGMENT rather than a query parameter or HTTP Basic
+ * credentials because secureHttpsCallback rejects credentials, query strings
+ * and fragments -- a path segment is the only channel the provider will accept.
+ */
+export function requireExactSignalWire10dlcStatusCallback(raw: string): string {
+  // secureHttpsCallback MUST run first: its message is what pins the rejection
+  // of a `?token=` style callback, and reordering makes that assertion pass for
+  // the wrong reason.
+  const entered = secureHttpsCallback(raw, 'SignalWire assignment callback');
+  const token = (process.env[SIGNALWIRE_10DLC_CALLBACK_TOKEN_ENV] ?? '').trim();
+  if (!SIGNALWIRE_10DLC_CALLBACK_TOKEN_SHAPE.test(token)) {
+    throw new Error(`${SIGNALWIRE_10DLC_CALLBACK_TOKEN_ENV} must be 32-128 characters of [A-Za-z0-9_-] before a 10DLC status callback can be registered.`);
+  }
+  const expected = `${productionAppOrigin()}/api/sms/registry-status/${token}`;
+  if (entered !== expected) {
+    throw new Error('SignalWire 10DLC status callback must exactly match the configured production route.');
+  }
+  return expected;
+}
+
+/**
+ * The same URL with the secret segment removed, for anything durable.
+ *
+ * Deterministic so the operation fingerprint stays stable across a token
+ * rotation; a token-dependent fingerprint would read as idempotency drift and
+ * refuse the next legitimate assignment.
+ */
+export function redactedSignalWire10dlcStatusCallback(url: string | null): string | null {
+  if (!url) return null;
+  const token = (process.env[SIGNALWIRE_10DLC_CALLBACK_TOKEN_ENV] ?? '').trim();
+  if (token.length > 0 && url.includes(token)) return url.replace(token, '[redacted]');
+  return url.replace(/\/api\/sms\/registry-status\/[^/?#]+/, '/api/sms/registry-status/[redacted]');
+}
+
 export function requireExactSignalWireInboundWebhook(raw: string): string {
   const entered = secureHttpsCallback(raw, 'SignalWire inbound webhook');
   const expected = `${productionAppOrigin()}/api/sms/inbound`;
@@ -1544,11 +1590,8 @@ export async function assignMessagingNumberCampaign(input: Readonly<{
   requireSignalWireProviderProvisioningReadiness(input.accountId);
   if (input.binding.campaignId !== input.campaignId) throw new Error('Campaign binding does not match the assignment request.');
   const callbackRaw = input.statusCallbackUrl ?? process.env.LGQ_SIGNALWIRE_10DLC_STATUS_CALLBACK_URL ?? null;
-  if (callbackRaw) {
-    secureHttpsCallback(callbackRaw, 'SignalWire assignment callback');
-    throw new Error('LGQ has no authenticated 10DLC assignment-callback route; leave the callback unset and use durable reconciliation.');
-  }
-  const callbackUrl = null;
+  // Unset stays legal: the callback is evidence, never the activation path.
+  const callbackUrl = callbackRaw ? requireExactSignalWire10dlcStatusCallback(callbackRaw) : null;
   const runtime = input.runtime ?? defaultRuntime();
   await inspectRecordAndRequireCarrierCompleteCampaign({
     applicationId: input.applicationId,
@@ -1560,7 +1603,9 @@ export async function assignMessagingNumberCampaign(input: Readonly<{
   const payload = {
     campaign_id: input.campaignId,
     number: input.number,
-    status_callback_url: callbackUrl,
+    // Redacted BEFORE the fingerprint is computed. The real URL goes to the
+    // provider only; the token is a credential and must not become a durable row.
+    status_callback_url: redactedSignalWire10dlcStatusCallback(callbackUrl),
   };
   return executeProviderMutation({
     applicationId: input.applicationId,
@@ -1575,7 +1620,7 @@ export async function assignMessagingNumberCampaign(input: Readonly<{
     result: (order) => ({
       id: order.id,
       state: order.state,
-      status_callback_url: order.statusCallbackUrl,
+      status_callback_url: redactedSignalWire10dlcStatusCallback(order.statusCallbackUrl),
     }),
     runtime,
   });
@@ -1824,7 +1869,9 @@ export async function resolveIndeterminateMessagingNumberOperation(input: Readon
     providerResult = {
       id: order.id,
       state: order.state,
-      status_callback_url: order.statusCallbackUrl,
+      // Redacted for the same reason as the sibling at the normal completion
+      // site: the token is a credential and must not become a durable row.
+      status_callback_url: redactedSignalWire10dlcStatusCallback(order.statusCallbackUrl),
       campaign_id: assignment.campaignId,
       number: assignment.number,
       assignment_id: assignment.id,
