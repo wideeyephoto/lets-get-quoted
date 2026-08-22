@@ -35323,3 +35323,115 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 @media (max-width: 640px) {
   #settings-panel-plan .panel.workspace-section-card { padding: 0.9rem 0.95rem; }
 }
+
+/* ---------------------------------------------------------------------------
+   ACCOUNT / PLAN COLOR SYSTEM.
+
+   The active tab and hero already carried the brand orange, but every surface
+   below them resolved to the same navy card with the same grey edge. The page
+   was therefore colourful at the top and visually flat everywhere a decision
+   was made. These accents identify sections by purpose while leaving copy,
+   forms, checkout behavior and status semantics unchanged.
+
+   Theme-aware ink tokens supply every accent. They deliberately become darker
+   on the light theme, so borders and glyphs do not wash out on white.
+   --------------------------------------------------------------------------- */
+.settings-shell {
+  position: relative;
+  isolation: isolate;
+}
+.settings-shell::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -1.5rem -1.25rem auto;
+  height: min(52rem, 78vh);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 9%, rgba(255, 122, 33, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 16%, color-mix(in srgb, var(--ink-violet-1) 15%, transparent), transparent 38%),
+    radial-gradient(circle at 52% 58%, color-mix(in srgb, var(--info) 10%, transparent), transparent 42%);
+  filter: saturate(1.12);
+}
+
+:root[data-theme] .settings-shell > .workspace-hero {
+  border-color: color-mix(in srgb, var(--ink-orange-8) 34%, transparent);
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--ink-violet-1) 13%, transparent), transparent 34%),
+    linear-gradient(145deg, rgba(255, 122, 33, 0.16), transparent 42%),
+    var(--bg-elevated);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--ink-orange-8) 15%, transparent),
+    0 22px 55px -42px color-mix(in srgb, var(--ink-orange-8) 75%, transparent);
+}
+
+.settings-shell .settings-tabnav {
+  border-color: color-mix(in srgb, var(--ink-violet-1) 24%, var(--line));
+  background:
+    linear-gradient(100deg, rgba(255, 122, 33, 0.06), color-mix(in srgb, var(--ink-violet-1) 7%, transparent)),
+    rgba(9, 18, 30, 0.86);
+  box-shadow: 0 16px 40px -32px color-mix(in srgb, var(--ink-violet-1) 72%, transparent);
+}
+
+/* One accent per decision area. The narrow top rule makes each section easy to
+   relocate while scrolling; the soft wash carries the same identity inward. */
+:root[data-theme] #settings-panel-plan > .panel.workspace-section-card {
+  --plan-card-accent: var(--ink-orange-8);
+  position: relative;
+  overflow: clip;
+  border-color: color-mix(in srgb, var(--plan-card-accent) 34%, transparent);
+  background-image: linear-gradient(140deg, color-mix(in srgb, var(--plan-card-accent) 9%, transparent), transparent 45%);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--plan-card-accent) 12%, transparent),
+    0 18px 42px -38px color-mix(in srgb, var(--plan-card-accent) 72%, transparent);
+}
+#settings-panel-plan > .panel.workspace-section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 1.15rem auto;
+  height: 2px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, var(--plan-card-accent), transparent 82%);
+  opacity: 0.78;
+}
+#settings-panel-plan > .panel.workspace-section-card .eyebrow,
+#settings-panel-plan > .panel.workspace-section-card .workspace-section-ic {
+  color: var(--plan-card-accent);
+  stroke: var(--plan-card-accent);
+}
+
+#settings-panel-plan #plan-at-a-glance { --plan-card-accent: var(--info); }
+#settings-panel-plan #current-plan { --plan-card-accent: var(--ink-orange-8); }
+#settings-panel-plan #usage-balances { --plan-card-accent: var(--good); }
+#settings-panel-plan #workspace-storage { --plan-card-accent: var(--ink-violet-1); }
+#settings-panel-plan #overage { --plan-card-accent: var(--warn); }
+#settings-panel-plan #buy-credits { --plan-card-accent: var(--ink-green-7); }
+#settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
+
+/* The glance bar is still one compact component, but each fact now has its own
+   tint and top keyline. That supplies pop without returning to four bulky cards. */
+#settings-panel-plan .plan-glancebar-cell {
+  --glance-accent: var(--ink-orange-8);
+  background-image: linear-gradient(145deg, color-mix(in srgb, var(--glance-accent) 9%, transparent), transparent 64%);
+  box-shadow: inset 0 2px color-mix(in srgb, var(--glance-accent) 72%, transparent);
+}
+#settings-panel-plan .plan-glancebar-cell:nth-child(2) { --glance-accent: var(--ink-violet-1); }
+#settings-panel-plan .plan-glancebar-cell:nth-child(3) { --glance-accent: var(--good); }
+#settings-panel-plan .plan-glancebar-cell:nth-child(4) { --glance-accent: var(--warn); }
+#settings-panel-plan .plan-glancebar-ic { stroke: var(--glance-accent); opacity: 0.95; }
+
+/* Balances and purchasable packs are the most repeated shapes on the page.
+   Alternating keylines make them scannable without adding labels or clutter. */
+#settings-panel-plan .plan-usage-balance {
+  --balance-accent: var(--good);
+  border-color: color-mix(in srgb, var(--balance-accent) 26%, var(--rule-t08));
+  background-image: linear-gradient(145deg, color-mix(in srgb, var(--balance-accent) 7%, transparent), transparent 58%);
+}
+#settings-panel-plan .plan-usage-balance:nth-child(4n + 2) { --balance-accent: var(--info); }
+#settings-panel-plan .plan-usage-balance:nth-child(4n + 3) { --balance-accent: var(--ink-violet-1); }
+#settings-panel-plan .plan-usage-balance:nth-child(4n + 4) { --balance-accent: var(--warn); }
+
+@media (max-width: 640px) {
+  .settings-shell::before { inset-inline: -1rem; height: 38rem; }
+  #settings-panel-plan > .panel.workspace-section-card::before { inset-inline: 0.95rem; }
+}

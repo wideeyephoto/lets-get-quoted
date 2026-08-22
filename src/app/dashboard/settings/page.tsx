@@ -363,7 +363,7 @@ export default async function SettingsPage({
   // /dashboard/reports now, where somebody is actually asking for them.
 
   return (
-    <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell settings-shell">
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
           <div className="workspace-eyebrow-row">

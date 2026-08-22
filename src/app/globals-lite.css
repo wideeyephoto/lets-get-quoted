@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 65c26255a6b492ce
+   source-sha256: 0ac152b22857f8b7
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16713,4 +16713,44 @@ select optgroup {
 #settings-panel-plan .workspace-section-card + .workspace-section-card { margin-top: 0.75rem; }
 @media (max-width: 640px) {
   #settings-panel-plan .panel.workspace-section-card { padding: 0.9rem 0.95rem; }
+}
+
+/* One accent per decision area. The narrow top rule makes each section easy to
+   relocate while scrolling; the soft wash carries the same identity inward. */
+:root[data-theme] #settings-panel-plan > .panel.workspace-section-card {
+  --plan-card-accent: var(--ink-orange-8);
+  position: relative;
+  overflow: clip;
+  border-color: color-mix(in srgb, var(--plan-card-accent) 34%, transparent);
+  background-image: linear-gradient(140deg, color-mix(in srgb, var(--plan-card-accent) 9%, transparent), transparent 45%);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--plan-card-accent) 12%, transparent),
+    0 18px 42px -38px color-mix(in srgb, var(--plan-card-accent) 72%, transparent);
+}
+#settings-panel-plan > .panel.workspace-section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 1.15rem auto;
+  height: 2px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, var(--plan-card-accent), transparent 82%);
+  opacity: 0.78;
+}
+#settings-panel-plan > .panel.workspace-section-card .eyebrow,
+#settings-panel-plan > .panel.workspace-section-card .workspace-section-ic {
+  color: var(--plan-card-accent);
+  stroke: var(--plan-card-accent);
+}
+
+#settings-panel-plan #plan-at-a-glance { --plan-card-accent: var(--info); }
+#settings-panel-plan #current-plan { --plan-card-accent: var(--ink-orange-8); }
+#settings-panel-plan #usage-balances { --plan-card-accent: var(--good); }
+#settings-panel-plan #workspace-storage { --plan-card-accent: var(--ink-violet-1); }
+#settings-panel-plan #overage { --plan-card-accent: var(--warn); }
+#settings-panel-plan #buy-credits { --plan-card-accent: var(--ink-green-7); }
+#settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
+
+@media (max-width: 640px) {
+  .settings-shell::before { inset-inline: -1rem; height: 38rem; }
+  #settings-panel-plan > .panel.workspace-section-card::before { inset-inline: 0.95rem; }
 }
