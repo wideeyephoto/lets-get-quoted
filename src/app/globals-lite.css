@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: f016db304f54e47c
+   source-sha256: 7d9b2b19ffbdd2e8
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16749,6 +16749,10 @@ select optgroup {
 #settings-panel-plan #overage { --plan-card-accent: var(--warn); }
 #settings-panel-plan #buy-credits { --plan-card-accent: var(--ink-green-7); }
 #settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
+
+/* The top-up disclosure itself is now the link target. A deep link can open it
+   directly instead of landing on a closed wrapper that needs a second click. */
+#settings-panel-plan details#buy-credits > summary { min-height: 2.5rem; }
 
 @media (max-width: 640px) {
   .settings-shell::before { inset-inline: 0; height: 38rem; }

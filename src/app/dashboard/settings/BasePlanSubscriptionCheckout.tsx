@@ -65,12 +65,14 @@ function newBrowserOperationId(): string | null {
 export default function BasePlanSubscriptionCheckout({
   initialPlanCode = null,
   initialBillingInterval = null,
+  embedded = false,
 }: {
   // Where the visitor said, on /pricing, which plan they wanted. Only ever a
   // pre-selection: the controls stay live, and consent is still reset on every
   // change below, so arriving here pre-filled buys nothing on its own.
   initialPlanCode?: PaidPlanCode | null;
   initialBillingInterval?: BillingCycle | null;
+  embedded?: boolean;
 } = {}) {
   const [planCode, setPlanCode] = useState<PaidPlanCode>(initialPlanCode ?? 'solo');
   const [billingInterval, setBillingInterval] = useState<BillingCycle>(initialBillingInterval ?? 'monthly');
@@ -96,8 +98,14 @@ export default function BasePlanSubscriptionCheckout({
   }, [state]);
 
   return (
-    <section className="panel workspace-section-card" id="choose-paid-plan">
-      <details className="workspace-fold" open={Boolean(initialPlanCode || initialBillingInterval)}>
+    <div
+      className={embedded ? 'plan-usage-embedded-checkout' : 'panel workspace-section-card'}
+    >
+      <details
+        className="workspace-fold"
+        id="choose-paid-plan"
+        open={Boolean(initialPlanCode || initialBillingInterval)}
+      >
         <summary>
           <span className="section-heading workspace-section-heading compact-heading">
             <span className="eyebrow">Plans</span>
@@ -203,6 +211,6 @@ export default function BasePlanSubscriptionCheckout({
         ) : null}
         </form>
       </details>
-    </section>
+    </div>
   );
 }

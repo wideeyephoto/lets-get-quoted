@@ -6,6 +6,8 @@ const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts),
 const PAGE = read('src', 'app', 'dashboard', 'settings', 'page.tsx');
 const SECTION = read('src', 'app', 'dashboard', 'settings', 'PlanUsageSection.tsx');
 const TABS = read('src', 'app', 'dashboard', 'settings', 'SettingsTabs.tsx');
+const TOP_UP = read('src', 'app', 'dashboard', 'settings', 'TopUpPurchaseCheckout.tsx');
+const HASH_LINK = read('src', 'app', 'dashboard', 'settings', 'SettingsHashLink.tsx');
 const LOADER = read('src', 'lib', 'billing', 'plan-usage.ts');
 const DEMO = read('src', 'app', 'demo', 'settings', 'page.tsx');
 const ENV = read('.env.example');
@@ -48,6 +50,12 @@ describe('Plan & usage navigation', () => {
     expect(DEMO).toContain('const pricingDashboardEnabled = planUsageDashboardEnabled()');
     expect(DEMO).toContain("...(pricingDashboardEnabled ? [{");
     expect(DEMO).toContain("label: 'Plan & usage'");
+  });
+
+  it('opens a linked purchase disclosure instead of stopping at a closed wrapper', () => {
+    expect(TOP_UP).toMatch(/<details[\s\S]*id="buy-credits"/);
+    expect(HASH_LINK).toContain('window.dispatchEvent(settingsTabEvent(href))');
+    expect(TABS).toContain('if (el instanceof HTMLDetailsElement) el.open = true');
   });
 });
 
@@ -149,7 +157,9 @@ describe('the Plan & usage glance strip claims only what it can prove', () => {
     expect(SECTION).toContain('plan-glancebar');
     const cells = (SECTION.match(/<GlanceCell/g) ?? []).length;
     const statuses = (SECTION.match(/<StatusLine/g) ?? []).length;
-    expect(cells).toBe(4);
+    // Current plan, next event and projected cost stay in the glance strip.
+    // Extra usage now lives with the other usage limits in the consolidated card.
+    expect(cells).toBe(3);
     // Every cell renders one, and the sections below render more.
     expect(statuses).toBeGreaterThanOrEqual(cells);
   });

@@ -126,8 +126,11 @@ export default function TopUpPurchaseCheckout({
   const hasCredits = offered.some((sku) => !sku.recurring);
 
   return (
-    <section className="panel workspace-section-card" id="buy-credits">
-      <details className="workspace-fold" open={returnStatus !== null}>
+    <details
+      className="panel workspace-section-card workspace-fold"
+      id="buy-credits"
+      open={returnStatus !== null}
+    >
         <summary>
           <span className="section-heading workspace-section-heading compact-heading">
             <span className="eyebrow">Add-ons</span>
@@ -199,7 +202,6 @@ export default function TopUpPurchaseCheckout({
           </p>
         ) : null}
         </div>
-      </details>
-    </section>
+    </details>
   );
 }

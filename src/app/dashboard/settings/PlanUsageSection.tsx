@@ -33,6 +33,7 @@ import ChangePlanPanel from './ChangePlanPanel';
 import { BILLING_PLANS, type BillingCycle, type BillingPlanId } from '@/lib/billing/catalog';
 import { planLadder, type PlanBand } from '@/lib/billing/plan-crossover';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
+import SettingsHashLink from './SettingsHashLink';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -590,8 +591,14 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
   // used to render identically -- confidently, and about money.
   if (!overage.readable) {
     return (
-      <section className="panel workspace-section-card" id="overage">
-        <h3>Extra usage</h3>
+      <details className="plan-usage-limit-row workspace-fold" id="overage" open>
+        <summary>
+          <span className="section-heading workspace-section-heading compact-heading">
+            <span className="eyebrow">Spending control</span>
+            <span className="workspace-fold-title">Extra usage</span>
+          </span>
+          <em className="workspace-fold-note">Unavailable</em>
+        </summary>
         <div className="plan-usage-unavailable" role="status">
           <strong>Extra usage could not be read.</strong>
           <span>
@@ -599,7 +606,7 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
             Refresh in a moment, or contact support if this continues.
           </span>
         </div>
-      </section>
+      </details>
     );
   }
 
@@ -610,8 +617,7 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
 
   if (!overage.enabled) {
     return (
-      <section className="panel workspace-section-card" id="overage">
-        <details className="workspace-fold">
+        <details className="plan-usage-limit-row workspace-fold" id="overage">
           <summary>
             <span className="section-heading workspace-section-heading compact-heading">
               <span className="eyebrow">Spending control</span>
@@ -628,13 +634,11 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
               </p>
             )}
         </details>
-      </section>
     );
   }
 
   return (
-    <section className="panel workspace-section-card" id="overage">
-      <details className="workspace-fold" open={overage.atCap}>
+      <details className="plan-usage-limit-row workspace-fold" id="overage" open={overage.atCap}>
         <summary>
           <span className="section-heading workspace-section-heading compact-heading">
             <span className="eyebrow">Spending control</span>
@@ -697,10 +701,9 @@ function OverageCard({ overage, selfServe }: { overage: OverageSummary; selfServ
           to know what they have spent before they are offered a control that
           changes what they can spend. */}
       {selfServe ? <OverageAuthorizationPanel enabled capCents={overage.capCents} /> : null}
-      </details>
-    </section>
-  );
-}
+        </details>
+    );
+  }
 
 export default function PlanUsageSection({
   data,
@@ -805,6 +808,17 @@ export default function PlanUsageSection({
     && data.plan.billingInterval === 'none'
     && data.plan.billingStatus === 'free'
     && data.plan.entitlementState === 'active';
+  const creditSummary = lots?.kind === 'ready'
+    ? lots.resources.map((resource) => {
+      const available = (resource.periodRemaining ?? 0) + resource.nonExpiring;
+      return `${resource.label.replace(/ credits$/i, '')}: ${available.toLocaleString('en-US')}`;
+    }).join(' · ')
+    : data.balances.kind === 'ready'
+      ? data.balances.balances.map((balance) => (
+        `${balance.label.replace(/ credits$/i, '')}: ${balance.availableUnits?.toLocaleString('en-US') ?? '—'}`
+      )).join(' · ')
+      : 'Unavailable';
+  const creditNeedsAttention = lots?.kind !== 'ready' && data.balances.kind !== 'ready';
 
   return (
     <>
@@ -837,46 +851,20 @@ export default function PlanUsageSection({
                   : 'Nothing is scheduled'}
             </StatusLine>
           </GlanceCell>
-          <GlanceCell
-            icon="extra"
-            label="Extra usage this period"
-            value={overage === null || !overage.readable
-              ? 'Unavailable'
-              : overage.enabled
-                ? formatOverageTotal(overage.totalMillicents)
-                : 'Off'}
-          >
-            <StatusLine tone={overage?.readable && overage.enabled && overage.atCap ? 'warn' : 'neutral'}>
-              {overage === null || !overage.readable
-                ? 'Could not be read'
-                : !overage.enabled
-                  ? 'Nothing is billed past your plan'
-                  : overage.atCap
-                    ? 'At your limit'
-                    : 'Within your limit'}
-            </StatusLine>
-          </GlanceCell>
           <GlanceCell icon="projected" label="Projected this period" value={forecastValueWord(forecast)}>
             <StatusLine tone="neutral">{forecastStatusWord(forecast, data.plan)}</StatusLine>
           </GlanceCell>
         </div>
         {forecast.millicents !== null ? (
-          <p className="plan-usage-fineprint">
-            A projection, not a bill. Excludes tax, proration, discounts and account credits.
-            The LGQ platform fee is taken from the payments you collect, not billed here.
-          </p>
+          <details className="plan-usage-limit-details plan-glance-details">
+            <summary>About projected cost</summary>
+            <p className="plan-usage-fineprint">
+              A projection, not a bill. Excludes tax, proration, discounts and account credits.
+              The LGQ platform fee is taken from the payments you collect, not billed here.
+            </p>
+          </details>
         ) : null}
       </section>
-
-      {nextBand && data.plan.kind === 'ready' && data.plan.planCode !== 'enterprise' ? (
-        <PlanFitBanner
-          planCode={data.plan.planCode}
-          nextPlanName={nextBand.planName}
-          thresholdLabel={`about $${ladderBandDollars(nextBand.fromAnnualBasisCents).toLocaleString('en-US')} a month`}
-          ctaHref={planFitCtaHref}
-          workingOut={describeCrossover(data.plan.planCode, nextBand.planCode, ladderCycle)}
-        />
-      ) : null}
 
       <section className="panel workspace-section-card" id="current-plan">
         <div className="section-heading workspace-section-heading compact-heading">
@@ -939,6 +927,43 @@ export default function PlanUsageSection({
                 This workspace is currently {data.plan.entitlementState}. Contact support if that does not look right.
               </p>
             ) : null}
+            {nextBand && data.plan.planCode !== 'enterprise' ? (
+              <PlanFitBanner
+                planCode={data.plan.planCode}
+                nextPlanName={nextBand.planName}
+                thresholdLabel={`about $${ladderBandDollars(nextBand.fromAnnualBasisCents).toLocaleString('en-US')} a month`}
+                ctaHref={planFitCtaHref}
+                workingOut={describeCrossover(data.plan.planCode, nextBand.planCode, ladderCycle)}
+              />
+            ) : null}
+            {canStartFirstSubscription && showSubscriptionCheckout ? (
+              <BasePlanSubscriptionCheckout
+                embedded
+                initialPlanCode={planIntent?.planCode ?? null}
+                initialBillingInterval={planIntent?.billingInterval ?? null}
+              />
+            ) : null}
+            {ladder ? (
+              <details className="plan-usage-limit-details plan-usage-plan-fit-details" id="plan-fit">
+                <summary>Compare plan breakpoints</summary>
+                <ul className="plan-usage-ladder">
+                  {ladder.map((band) => (
+                    <li key={band.planCode} data-current={band.isCurrent ? 'true' : undefined}>
+                      <span className="plan-usage-ladder-plan">
+                        {band.planName}
+                        {band.isCurrent ? <em> — your plan</em> : null}
+                      </span>
+                      <span className="plan-usage-ladder-band">{describeBand(band)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="plan-usage-fineprint">
+                  Compared on {ladderCycle === 'annual' ? 'annual' : 'monthly'} billing using the
+                  service subtotal the LGQ fee applies to. Tax, tips, refunds, Stripe processing,
+                  add-ons, and extra seats are excluded.
+                </p>
+              </details>
+            ) : null}
           </>
         ) : (
           <div className="plan-usage-unavailable" role="status">
@@ -947,13 +972,6 @@ export default function PlanUsageSection({
           </div>
         )}
       </section>
-
-      {canStartFirstSubscription && showSubscriptionCheckout ? (
-        <BasePlanSubscriptionCheckout
-          initialPlanCode={planIntent?.planCode ?? null}
-          initialBillingInterval={planIntent?.billingInterval ?? null}
-        />
-      ) : null}
 
       {planChange ? (
         <ChangePlanPanel
@@ -974,54 +992,11 @@ export default function PlanUsageSection({
         />
       ) : null}
 
-      {ladder ? (
-        <section className="panel workspace-section-card" id="plan-fit">
-          {/* FOLDED. The banner above already states the one number a reader
-              needs -- where the next plan up starts costing less -- so the full
-              ladder is genuinely detail rather than something hidden. Nothing
-              here can be a warning, so unlike Plan capacity it is never forced
-              open. */}
-          <details className="workspace-fold">
-            <summary>
-              <span className="section-heading workspace-section-heading compact-heading">
-                <span className="eyebrow">Plan fit</span>
-                <span className="workspace-fold-title"><SectionIcon name="fit" />Which plan costs least at what you collect</span>
-              </span>
-            </summary>
-          {/* No estimate and no recommendation: every figure below comes from
-              catalog constants alone. The half of this that would say "at YOUR
-              volume you would save X" needs settled payment history, and there
-              is none -- so this says where the lines cross and leaves the
-              reader to place themselves on it. */}
-          <ul className="plan-usage-ladder">
-            {ladder.map((band) => (
-              <li key={band.planCode} data-current={band.isCurrent ? 'true' : undefined}>
-                <span className="plan-usage-ladder-plan">
-                  {band.planName}
-                  {band.isCurrent ? <em> — your plan</em> : null}
-                </span>
-                <span className="plan-usage-ladder-band">{describeBand(band)}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="plan-usage-fineprint">
-            Monthly amounts are the discount-adjusted service subtotal the LGQ fee is
-            taken on &mdash; tax, tips, refunds and Stripe&rsquo;s own processing are not
-            counted. Compared on {ladderCycle === 'annual' ? 'annual' : 'monthly'} billing;
-            {ladderCycle === 'annual'
-              ? ' paying monthly raises every figure here.'
-              : ' paying annually lowers every figure here.'}
-            {' '}Add-ons and extra seats are not included.
-          </p>
-          </details>
-        </section>
-      ) : null}
-
       <section className="panel workspace-section-card" id="usage-balances">
         <div className="workspace-section-headrow">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Available now</p>
-            <h2><SectionIcon name="credits" />Credit balances</h2>
+            <h2><SectionIcon name="credits" />Usage &amp; limits</h2>
           </div>
           {/* The mockup puts "Add credits" here, and it is the one header action
               on this tab with somewhere real to go. Its two neighbours in the
@@ -1032,9 +1007,22 @@ export default function PlanUsageSection({
               Rendered only when the top-up surface is, so the link can never
               point at a section that is not on the page. */}
           {showTopUpPurchase ? (
-            <a className="btn subtle workspace-section-action" href="#buy-credits">Add credits</a>
+            <SettingsHashLink className="btn workspace-section-action" href="#buy-credits">
+              Add credits
+            </SettingsHashLink>
           ) : null}
         </div>
+        <div className="plan-usage-limit-stack" role="group" aria-label="Credits, storage, extra usage, and plan capacity">
+          <details className="plan-usage-limit-row workspace-fold plan-usage-credit-row" open={creditNeedsAttention}>
+            <summary>
+              <span className="section-heading workspace-section-heading compact-heading">
+                <span className="eyebrow">Communications &amp; AI</span>
+                <span className="workspace-fold-title"><SectionIcon name="credits" />Credit balances</span>
+              </span>
+              <em className={`workspace-fold-note${creditNeedsAttention ? '' : ' neutral'} plan-usage-limit-summary`}>
+                {creditSummary}
+              </em>
+            </summary>
         {/* THE SENTENCE THAT USED TO LIVE HERE HAS BEEN RETIRED ON PURPOSE.
             It read: "Plan-period credits and purchased credits can share one
             balance, so this is not presented as a monthly usage chart." That was
@@ -1080,12 +1068,12 @@ export default function PlanUsageSection({
             never expire, and are used only after refreshing credits run out.
           </p>
         </details>
-      </section>
+          </details>
 
       {storageState.kind !== 'hidden' ? (
-        <section className="panel workspace-section-card" id="workspace-storage">
           <details
-            className="workspace-fold"
+            className="plan-usage-limit-row workspace-fold"
+            id="workspace-storage"
             open={storageState.kind !== 'measured' || storageState.over || storageState.nearly}
           >
             <summary>
@@ -1166,22 +1154,18 @@ export default function PlanUsageSection({
             </div>
           )}
           </details>
-        </section>
       ) : null}
 
       {/* After storage, before buying more: a contractor reading "you have run
           up $2.84 extra" should meet the top-up offer next, not before. */}
       {overage ? <OverageCard overage={overage} selfServe={overageSelfServe} /> : null}
 
-      {data.plan.kind === 'ready' && showTopUpPurchase ? (
-        <TopUpPurchaseCheckout
-          planCode={data.plan.planCode}
-          returnStatus={topUpCheckoutStatus}
-        />
-      ) : null}
-
       {data.plan.kind === 'ready' && limits.length > 0 ? (
-        <section className="panel workspace-section-card" id="included-limits">
+          <details
+            className="plan-usage-limit-row workspace-fold"
+            id="included-limits"
+            open={capacityNeedsAttention}
+          >
           {/* COLLAPSED, as the mockup has it -- but never when something is wrong.
               A disclosure that hides "you are over your limit" is a disclosure
               that hides the one line somebody needed. Open by default whenever a
@@ -1191,7 +1175,6 @@ export default function PlanUsageSection({
               forcing it open would mean it is never collapsed for anybody. The
               summary carries the count either way, so the signal survives being
               shut. */}
-          <details className="workspace-fold" open={capacityNeedsAttention}>
             <summary>
               <span className="section-heading workspace-section-heading compact-heading">
                 <span className="eyebrow">Plan capacity</span>
@@ -1225,7 +1208,15 @@ export default function PlanUsageSection({
             </dl>
           </details>
           </details>
-        </section>
+      ) : null}
+        </div>
+      </section>
+
+      {data.plan.kind === 'ready' && showTopUpPurchase ? (
+        <TopUpPurchaseCheckout
+          planCode={data.plan.planCode}
+          returnStatus={topUpCheckoutStatus}
+        />
       ) : null}
     </>
   );

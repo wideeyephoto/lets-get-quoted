@@ -3052,7 +3052,8 @@ h3 {
    the tab bar — which is sticky at 0.6rem — parks straight on top of its
    heading. The anchor works and looks like it didn't. */
 .settings-tabpanel > section[id],
-.settings-tabpanel > details[id] { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
+.settings-tabpanel > details[id],
+.settings-tabpanel details[id] { scroll-margin-top: calc(var(--appbar-h) + 5.2rem); }
 
 /* The child combinator above is deliberate -- it stops a nested id inheriting a
    margin meant for a top-level card. But #platform-fee IS nested: it is a <div>
@@ -4506,15 +4507,15 @@ h3 {
   opacity: 0.85;
 }
 
-/* AT A GLANCE, as one bar rather than four cards.
-   Four bordered cards with display-sized numbers made the top of this tab
+/* AT A GLANCE, as one bar rather than separate cards.
+   Repeated bordered cards with display-sized numbers made the top of this tab
    heavier than the plan it describes. This is the mockup's shape: one surface,
    hairline dividers, an icon per cell, and type small enough that the sections
    below stay the point. The status line stays -- a tone is never allowed to
    carry meaning without a word beside it, and that rule outranks the layout. */
 .plan-glancebar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 1rem 0 0;
   border: 1px solid var(--rule-t12);
   border-radius: 0.9rem;
@@ -35341,6 +35342,24 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   position: relative;
   isolation: isolate;
 }
+
+/* Settings is a destination, not a marketing page. Keep its identity and
+   account context, but let the selected task enter the first viewport. */
+.settings-shell > .settings-hero {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 1.35rem 1.55rem;
+}
+.settings-shell > .settings-hero .workspace-title {
+  margin: 0.3rem 0 0.35rem;
+  max-width: none;
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
+}
+.settings-shell > .settings-hero .workspace-lead {
+  max-width: 68ch;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+.settings-shell > .settings-hero .account-created-note { margin-top: 0.55rem; }
 .settings-shell::before {
   content: '';
   position: absolute;
@@ -35409,6 +35428,68 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
 #settings-panel-plan #buy-credits { --plan-card-accent: var(--ink-green-7); }
 #settings-panel-plan #included-limits { --plan-card-accent: var(--ink-blue-2); }
 
+/* One decision surface: the recommendation and paid-plan controls now live
+   inside the current-plan card instead of becoming two more orange cards. */
+#settings-panel-plan #current-plan .plan-fit-banner {
+  margin: 0.9rem 0 0;
+  padding: 0.72rem 0.8rem;
+  border-radius: 0.75rem;
+}
+#settings-panel-plan #current-plan .plan-fit-banner-head {
+  font-size: 0.94rem;
+  line-height: 1.35;
+}
+#settings-panel-plan #current-plan .plan-fit-banner-actions .btn { padding-block: 0.5rem; }
+#settings-panel-plan .plan-usage-embedded-checkout {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--rule-t12);
+}
+#settings-panel-plan .plan-glance-details { margin-top: 0.65rem; }
+
+/* Balances are the overview. Storage, spending controls and plan capacity are
+   compact rows inside the same card, so the page reads as one usage system. */
+#settings-panel-plan .plan-usage-limit-stack {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--rule-t12);
+}
+#settings-panel-plan .plan-usage-limit-row {
+  --limit-row-accent: var(--info);
+  padding: 0.68rem 0.78rem;
+  border: 1px solid color-mix(in srgb, var(--limit-row-accent) 27%, var(--rule-t12));
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--limit-row-accent) 6%, transparent), transparent 62%);
+}
+#settings-panel-plan .plan-usage-limit-row#workspace-storage { --limit-row-accent: var(--ink-violet-1); }
+#settings-panel-plan .plan-usage-limit-row#overage { --limit-row-accent: var(--warn); }
+#settings-panel-plan .plan-usage-limit-row#included-limits { --limit-row-accent: var(--ink-blue-2); }
+#settings-panel-plan .plan-usage-credit-row { --limit-row-accent: var(--good); }
+#settings-panel-plan .plan-usage-limit-row .eyebrow,
+#settings-panel-plan .plan-usage-limit-row .workspace-section-ic {
+  color: var(--limit-row-accent);
+  stroke: var(--limit-row-accent);
+}
+#settings-panel-plan .plan-usage-limit-row > summary .workspace-section-heading { margin-bottom: 0; }
+#settings-panel-plan .plan-usage-limit-row[open] > summary { margin-bottom: 0.7rem; }
+#settings-panel-plan .plan-usage-limit-summary {
+  flex: 1 1 22rem;
+  text-align: right;
+  line-height: 1.45;
+}
+@media (max-width: 700px) {
+  #settings-panel-plan .plan-usage-limit-summary {
+    flex-basis: 100%;
+    text-align: left;
+  }
+}
+
+/* The top-up disclosure itself is now the link target. A deep link can open it
+   directly instead of landing on a closed wrapper that needs a second click. */
+#settings-panel-plan details#buy-credits > summary { min-height: 2.5rem; }
+
 /* The glance bar is still one compact component, but each fact now has its own
    tint and top keyline. That supplies pop without returning to four bulky cards. */
 #settings-panel-plan .plan-glancebar-cell {
@@ -35417,8 +35498,7 @@ a.sms-cat-switch:focus-visible { outline: 2px solid var(--accent); outline-offse
   box-shadow: inset 0 2px color-mix(in srgb, var(--glance-accent) 72%, transparent);
 }
 #settings-panel-plan .plan-glancebar-cell:nth-child(2) { --glance-accent: var(--ink-violet-1); }
-#settings-panel-plan .plan-glancebar-cell:nth-child(3) { --glance-accent: var(--good); }
-#settings-panel-plan .plan-glancebar-cell:nth-child(4) { --glance-accent: var(--warn); }
+#settings-panel-plan .plan-glancebar-cell:nth-child(3) { --glance-accent: var(--warn); }
 #settings-panel-plan .plan-glancebar-ic { stroke: var(--glance-accent); opacity: 0.95; }
 
 /* Balances and purchasable packs are the most repeated shapes on the page.

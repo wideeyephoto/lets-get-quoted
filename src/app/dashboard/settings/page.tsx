@@ -364,7 +364,7 @@ export default async function SettingsPage({
 
   return (
     <main className="wide-shell workspace-shell settings-shell">
-      <section className="workspace-hero panel">
+      <section className="workspace-hero settings-hero panel">
         <div className="workspace-hero-copy">
           <div className="workspace-eyebrow-row">
             <p className="eyebrow">Account</p>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { settingsTabEvent } from '@/lib/nav-helpers';
+
 /**
  * The mockup's hero, with the one thing about it that could not ship.
  *
@@ -77,7 +79,13 @@ export default function PlanFitBanner({
       <div className="plan-fit-banner-actions">
         <button type="button" className="btn subtle" onClick={dismiss}>Not now</button>
         {ctaHref ? (
-          <a className="btn" href={ctaHref}>Review {nextPlanName}</a>
+          <a
+            className="btn"
+            href={ctaHref}
+            onClick={() => window.dispatchEvent(settingsTabEvent(ctaHref))}
+          >
+            Review {nextPlanName}
+          </a>
         ) : null}
       </div>
     </section>
