@@ -96,17 +96,25 @@ describe('the contractor-facing claims are bounded by what the ledger knows', ()
 });
 
 /**
- * THE NEW INFORMATION ARCHITECTURE, AND THE TWO TILES THAT ARE DELIBERATELY NOT
+ * THE NEW INFORMATION ARCHITECTURE, AND THE TILE THAT IS STILL DELIBERATELY NOT
  * IN IT.
  *
- * The glance strip is three tiles. A fourth showing an estimated monthly cost
- * was designed and dropped, because no upcoming-invoice read exists anywhere in
- * this codebase: the figure would exclude proration, tax, discounts and account
- * credits, and basePriceCents is a per-YEAR number for an annual subscriber. A
- * fifth ranking a "best opportunity" was dropped because the remedies it would
- * rank -- more storage, more office seats -- are withheld SKUs with no live
- * Price. Both are cheap to add back and wrong until the data exists, so they are
- * pinned absent here rather than left to somebody's judgement in a hurry.
+ * The glance strip was three tiles and is now four. THE FOURTH USED TO BE PINNED
+ * ABSENT HERE, and the reason it is no longer absent is not that somebody wanted
+ * it -- it is that the frame that made it wrong was fixed. The dropped tile said
+ * "Estimated this MONTH", and `basePriceCents` is a per-YEAR number on an annual
+ * plan, so it would have quoted a Growth annual subscriber $1,188 for a month
+ * costing $99. A billing PERIOD is exactly the span that figure covers, so
+ * "Projected this period" makes the units agree by construction. The other
+ * original objection -- that proration, tax, discounts and account credits are
+ * invisible -- was never solved and never will be from this data, so it is
+ * answered by SAYING SO on the page rather than by withholding the figure, and
+ * the sentence that says so is pinned below.
+ *
+ * A fifth tile ranking a "best opportunity" is STILL absent, and for a reason
+ * that has not changed: the remedies it would rank -- more storage, more office
+ * seats -- are withheld SKUs with no live Price. It would press somebody toward
+ * a purchase that cannot be completed.
  */
 describe('the Plan & usage glance strip claims only what it can prove', () => {
   /**
@@ -123,9 +131,40 @@ describe('the Plan & usage glance strip claims only what it can prove', () => {
     expect(SECTION).toContain('workspace-metric-value');
   });
 
-  it('shows no estimated or forecast money figure', () => {
+  it('frames the money figure per period, never per month', () => {
+    expect(SECTION).toContain('Projected this period');
+    // The unit bug that kept this tile off the page for two stages. Banning the
+    // exact string is the point: the arithmetic is correct only because nothing
+    // converts a period into a month anywhere on this surface.
     expect(RENDERED).not.toMatch(/Estimated this month/i);
-    expect(RENDERED).not.toMatch(/\bforecast\b/i);
+  });
+
+  it('never prints the projection without saying what it leaves out', () => {
+    expect(SECTION).toContain('A projection, not a bill.');
+    expect(SECTION).toContain('Excludes tax, proration, discounts and account credits');
+    // The platform fee is netted out of collections rather than charged, so
+    // adding it here would sum two money flows into a number matching neither.
+    // Excluded on purpose, and the page has to admit the exclusion.
+    expect(SECTION).toContain('platform fee is taken from the payments you collect');
+  });
+
+  it('does not dress a pinned agreement as a failure', () => {
+    // Both branches render no number, and only ONE of them is a fault. A
+    // workspace pinned to a superseded catalog is active, paying and renewing;
+    // "Unavailable" above it is the word a customer screenshots and asks about.
+    expect(SECTION).toContain("forecast.basis === 'price_unknown' ? 'Not projected' : 'Unavailable'");
+  });
+
+  it('carries a basis word beside the number, never a bare dollar figure', () => {
+    // Two of the seven bases are cases where something is MISSING from the
+    // total -- an unreadable overage read, and a price set by agreement. A
+    // number rendered without its basis reads as an invoice in both.
+    expect(SECTION).toContain('forecastStatusWord(forecast, data.plan)');
+    expect(SECTION).toContain("case 'plan_plus_unknown':");
+    expect(SECTION).toContain('Extra usage could not be read');
+  });
+
+  it('still refuses the tile whose remedies cannot be bought', () => {
     expect(RENDERED).not.toMatch(/Best opportunity/i);
   });
 
