@@ -30,6 +30,7 @@ import CancelSubscriptionPanel from './CancelSubscriptionPanel';
 import OverageAuthorizationPanel from './OverageAuthorizationPanel';
 import ChangePlanPanel from './ChangePlanPanel';
 import type { BillingCycle, BillingPlanId } from '@/lib/billing/catalog';
+import { planLadder, type PlanBand } from '@/lib/billing/plan-crossover';
 import TopUpPurchaseCheckout from './TopUpPurchaseCheckout';
 
 function formatDate(value: string): string {
@@ -319,6 +320,24 @@ function planStatusWord(plan: WorkspacePlanRead): string {
  * not one -- it cannot see proration, tax, discounts or account credits, and
  * two of the seven bases are cases where something is missing from the total.
  */
+/**
+ * Nearest hundred dollars. These are the volumes at which two cost lines cross,
+ * not amounts anybody will be invoiced, and quoting one to the cent invites a
+ * reader to treat "$5,207.31" as a figure somebody computed for them. Both
+ * edges of adjacent bands round the same way, so a band never appears to start
+ * before the one before it ended.
+ */
+function ladderBandDollars(annualBasisCents: number): number {
+  return Math.round(annualBasisCents / 12 / 100 / 100) * 100;
+}
+
+function describeBand(band: PlanBand): string {
+  const money = (cents: number) => `$${ladderBandDollars(cents).toLocaleString('en-US')}`;
+  if (band.toAnnualBasisCents === null) return `Above about ${money(band.fromAnnualBasisCents)} a month`;
+  if (band.fromAnnualBasisCents === 0) return `Up to about ${money(band.toAnnualBasisCents)} a month`;
+  return `About ${money(band.fromAnnualBasisCents)} to ${money(band.toAnnualBasisCents)} a month`;
+}
+
 /**
  * The two branches with no number must not wear the same word. A workspace
  * pinned to an agreement is ACTIVE, paying, and renewing -- rendering
@@ -635,6 +654,20 @@ export default function PlanUsageSection({
   const now = Date.now();
   const event = nextEvent(data.plan, data.balances, planChange, cancellable, now);
   const forecast = forecastPeriodCost(data.plan, overage, now);
+
+  // WITHHELD FROM A PINNED WORKSPACE, deliberately. A workspace on a superseded
+  // catalog is billed at prices this ladder does not know, so comparing it
+  // against today's published ones would be a confident answer to a question
+  // about somebody else's plan. Enterprise is excluded for the same reason: a
+  // custom agreement has no catalog price to cross.
+  const ladderCycle: BillingCycle = data.plan.kind === 'ready' && data.plan.billingInterval === 'annual'
+    ? 'annual'
+    : 'monthly';
+  const ladder = data.plan.kind === 'ready'
+    && data.plan.usesCurrentCatalog
+    && data.plan.planCode !== 'enterprise'
+    ? planLadder(data.plan.planCode, ladderCycle)
+    : null;
   const tone = planTone(data.plan);
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
@@ -801,6 +834,40 @@ export default function PlanUsageSection({
           currentPeriodEnd={cancellable.currentPeriodEnd}
           alreadyScheduled={cancellable.alreadyScheduled}
         />
+      ) : null}
+
+      {ladder ? (
+        <section className="panel workspace-section-card" id="plan-fit">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Plan fit</p>
+            <h2>Which plan costs least at what you collect</h2>
+          </div>
+          {/* No estimate and no recommendation: every figure below comes from
+              catalog constants alone. The half of this that would say "at YOUR
+              volume you would save X" needs settled payment history, and there
+              is none -- so this says where the lines cross and leaves the
+              reader to place themselves on it. */}
+          <ul className="plan-usage-ladder">
+            {ladder.map((band) => (
+              <li key={band.planCode} data-current={band.isCurrent ? 'true' : undefined}>
+                <span className="plan-usage-ladder-plan">
+                  {band.planName}
+                  {band.isCurrent ? <em> — your plan</em> : null}
+                </span>
+                <span className="plan-usage-ladder-band">{describeBand(band)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="plan-usage-fineprint">
+            Monthly amounts are the discount-adjusted service subtotal the LGQ fee is
+            taken on &mdash; tax, tips, refunds and Stripe&rsquo;s own processing are not
+            counted. Compared on {ladderCycle === 'annual' ? 'annual' : 'monthly'} billing;
+            {ladderCycle === 'annual'
+              ? ' paying monthly raises every figure here.'
+              : ' paying annually lowers every figure here.'}
+            {' '}Add-ons and extra seats are not included.
+          </p>
+        </section>
       ) : null}
 
       <section className="panel workspace-section-card" id="usage-balances">

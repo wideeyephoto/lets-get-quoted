@@ -4473,6 +4473,34 @@ h3 {
 .plan-usage-note { --tone-ink: var(--info); }
 .plan-usage-note.warning { --tone-ink: var(--warn); }
 
+/* PLAN FIT: which plan is cheapest at which volume. A ladder, so the current
+   plan has to be findable at a glance without colour carrying the meaning --
+   the row says "your plan" in words as well. */
+.plan-usage-ladder {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-usage-ladder li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule-t12);
+  border-radius: 0.6rem;
+}
+.plan-usage-ladder li[data-current] {
+  border-color: var(--cedge-orange-24);
+  background: rgba(255, 138, 61, 0.06);
+}
+.plan-usage-ladder-plan { color: var(--text); font-weight: 800; }
+.plan-usage-ladder-plan em { color: var(--mute-t50); font-style: normal; font-weight: 700; }
+.plan-usage-ladder-band { color: var(--mute-t50); font-size: 0.85rem; }
+
 /* EXTRA USAGE, the one control on this page that raises what somebody can be
    charged. The consent block and the action row reuse .base-plan-checkout-*,
    which already solve exactly this layout; only the money field is new. */
