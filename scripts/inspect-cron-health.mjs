@@ -72,15 +72,47 @@ try {
       group by job`,
     [windowMinutes],
   );
+/**
+ * The LONGEST gap this schedule can leave, in minutes, or null if unreadable.
+ *
+ * Deliberately coarse and deliberately conservative. It exists only to answer
+ * "could this possibly have fired inside the window?" — anything it cannot parse
+ * returns null and is treated as due, because the failure that matters is a dead
+ * worker reported as fine, never the reverse.
+ */
+function maxIntervalMinutes(schedule) {
+  const parts = String(schedule || '').trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [minute, hour, dom, month, dow] = parts;
+  if (month !== '*') return 366 * 1440;
+  if (dom !== '*') return 31 * 1440;
+  if (dow !== '*') return 7 * 1440;
+  if (hour === '*') return minute === '*' ? 1 : 60;
+  const step = /^\*\/(\d+)$/.exec(hour);
+  if (step) return Number(step[1]) * 60;
+  // A single hour, or a list of them: the widest gap is still under a day.
+  return 1440;
+}
+
   const seen = new Map(rows.map((row) => [row.job, row]));
 
   console.log(`cron_runs over the last ${windowMinutes} minute(s)`);
   console.log(`${declared.length} crons declared in vercel.json\n`);
 
   const silent = [];
+  const idle = [];
   for (const { job, schedule } of declared.slice().sort((a, b) => a.job.localeCompare(b.job))) {
     const row = seen.get(job);
     if (!row) {
+      // A weekly cron is not broken on a Saturday. Reporting it as SILENT beside a
+      // genuinely dead every-minute worker is a permanent false alarm, and a report
+      // that always shows two problems teaches people to read neither.
+      const period = maxIntervalMinutes(schedule);
+      if (period !== null && period > windowMinutes) {
+        idle.push({ job, schedule });
+        console.log(`idle     ${job.padEnd(34)} ${schedule} -- a ${windowMinutes}min window cannot see it`);
+        continue;
+      }
       silent.push({ job, schedule });
       console.log(`SILENT   ${job.padEnd(34)} ${schedule}`);
       continue;
@@ -96,9 +128,14 @@ try {
     for (const row of undeclared) console.log(`  ${row.job} (${row.runs} runs)`);
   }
 
-  console.log(`\n${declared.length - silent.length} of ${declared.length} declared crons recorded a run.`);
+  console.log(`\n${declared.length - silent.length - idle.length} of ${declared.length - idle.length} DUE crons recorded a run.`);
+  if (idle.length) {
+    console.log(`${idle.length} not due in this window: ${idle.map((i) => i.job).join(', ')}.`);
+    console.log('Widen it to reach them: node scripts/inspect-cron-health.mjs 10140');
+  }
   if (silent.length) {
-    console.log('A SILENT worker is not a passing worker -- it recorded nothing at all.');
+    console.log('A SILENT worker is not a passing worker -- it recorded nothing at all,');
+    console.log('and its own schedule says it should have.');
   }
 } finally {
   await client.end();

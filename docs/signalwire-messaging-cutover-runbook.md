@@ -121,6 +121,28 @@ Eleven documented fields, none of them a failure reason, and the delivery is
 and never **why**; support is the only path to a cause. `failed` may also be
 transient. Do not build logic that expects a reason to arrive.
 
+### The campaign itself has no status callback
+
+Registered 2026-08-22 on the assignment ORDER, which is why assignment state
+changes now arrive. The **campaign** object still carries no
+`status_callback_url`, so a campaign-level change — suspension, expiry, a
+carrier revoking the use case — delivers nothing anywhere. `npm run
+verify:signalwire` reports it as a carrier blocker.
+
+Registering one needs a valid `LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN`, so it is
+naturally sequenced with the outstanding rotation above.
+
+### verify:signalwire mixes two sources
+
+Run it anywhere and the carrier rows are true: brand, campaign, number,
+message handler, assignment state. The rows tagged **`[local env]`** are not —
+they read `.env.local` on the machine running the script, while the production
+flags are Vercel **Sensitive** variables that nothing can read back.
+
+On a laptop that means the lane rows say "not set" and the callback-token row
+FAILs while production may be perfectly configured. The summary separates the
+two on purpose; before 2026-08-22 it printed one "NOT READY. Blocking:" list
+and a missing local file read as a production outage.
 ### Rotating the token is a carrier operation
 
 The callback URL embeds the token, so rotation forces a delete and re-create of

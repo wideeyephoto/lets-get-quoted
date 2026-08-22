@@ -59,6 +59,7 @@ select count(*) from sms_sender_numbers where purpose = 'contractor_dedicated';
 | A2 | **Per-contractor brand + campaign** | Manual, outside the product. See below |
 | A3 | Campaign use case must permit contractor→customer | Our platform campaign declares the opposite |
 | A4 | Callback token rotation | **Outstanding** — the token was leaked twice on 2026-08-22. Rotation is a carrier operation that destroys and re-creates the assignment, so it waits until a failed assignment costs nothing. Procedure and the failure it caused are in the [runbook](signalwire-messaging-cutover-runbook.md#rotating-the-token-is-a-carrier-operation) |
+| A5 | Campaign has no `status_callback_url` | Registered on the assignment order 2026-08-22, but not on the campaign — so a suspension, expiry or revoked use case delivers nothing anywhere. Needs a valid callback token, so it sequences with A4 |
 
 ### A2 is the real gate
 
@@ -166,6 +167,7 @@ attempting it.
 | C2 | Brand/campaign creation unautomated (A2) |
 | C3 | `LGQ_TEXT_CREDIT_METER_ENABLED` / `LGQ_TEXT_CREDIT_GATE_ENABLED` — state unknown. Two-way multiplies volume; measure before enforcing, per the usage-meter convention |
 | C4 | `LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED`, `LGQ_SMS_DELIVERY_WORKER_ENABLED`, `LGQ_SMS_INBOUND_ACTION_WORKER_ENABLED` all need sequencing, and each is baked at build |
+| C5 | **Inbound actions apply inline with no gate, but their retry is dark.** `processSmsInboundActionReceipt` has no flag check, so the webhook applies actions whatever the flags say. The `sms-inbound-actions` cron — declared `* * * * *` — has recorded **zero** runs in seven days, because the route 404s before recording when `LGQ_SMS_INBOUND_ACTION_WORKER_ENABLED` is off. So an action that comes back `busy`, `deferred` or `failed` has no backstop; the route's 503 asks the carrier to redeliver, and carrier redelivery is finite. Nothing is stuck today (`select task_state, count(*) from sms_inbound_action_tasks` → one `completed`), but two-way multiplies the inbound volume that would test it |
 
 ---
 
@@ -195,6 +197,11 @@ attempting it.
 Production flag values are Vercel **Sensitive** variables: write-only, unreadable
 by anyone including the operator agent. Confirming the live state of any
 `LGQ_SMS_*` flag needs a Vercel read or an authenticated probe.
+
+`npm run verify:signalwire` tags those rows **`[local env]`**. Its carrier rows
+— brand, campaign, number, handler, assignment — are true wherever it runs; the
+tagged rows only describe the machine running it. Do not read a tagged FAIL as a
+production fact.
 
 ---
 

@@ -124,6 +124,27 @@ const ENUM_RE = /alter type public\.(\w+)\s+add value\s+(?:if not exists\s+)?'([
 /** `add constraint <name>` -- definitive only when the file does not also drop it. */
 const ADD_CONSTRAINT_RE = /add constraint (\w+)/g;
 const DROP_CONSTRAINT_RE = /drop constraint (?:if exists )?(\w+)/g;
+/**
+ * A function created here and RETIRED by a later migration.
+ *
+ * The constraint logic below already handles drop-and-recreate inside one file.
+ * This is the same problem across files, and it produced a PARTIAL that could
+ * never be cleared: 20260821194000 creates defer_direct_payment_settlement_task,
+ * and 20260821210000 drops it on purpose — the specialised direct-payment worker
+ * was retired in favour of the canonical SMS delivery queue. Production was
+ * right and the audit was wrong, which is the worse way round: a permanent red
+ * teaches people to stop reading the report.
+ */
+const DROP_FUNCTION_RE = /drop function (?:if exists )?public\.(\w+)/g;
+/**
+ * Only consulted for a migration that would otherwise be INDETERMINATE.
+ *
+ * A grant-only migration creates no object and replaces no function, so nothing
+ * above can see it. Deliberately NOT applied to migrations that already have
+ * proofs: a later migration may revoke what an earlier one granted, and reading
+ * that as a gap would reintroduce the exact false positive this pass removes.
+ */
+const GRANT_TABLE_RE = /grant\s+(select|insert|update|delete|truncate)\s+on\s+table\s+public\.(\w+)\s+to\s+(\w+)/gi;
 /** The browser-role TRUNCATE revoke, which leaves no object of its own behind. */
 const TRUNCATE_REVOKE_RE = /revoke\s+truncate\s+on\s+all tables in schema public\s+from\s+([\w, ]+)/;
 
@@ -170,16 +191,31 @@ for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sor
   }
 }
 
+/**
+ * The last thing any migration did to each function: define it, or drop it.
+ *
+ * `files` is in chronological order, so the final write wins. Within one file a
+ * drop-and-recreate pair must resolve to `define`, which is why drops are
+ * recorded before definitions below.
+ */
+const lastFunctionAction = new Map();
+
 for (const file of files) {
   const sql = readFileSync(join(MIGRATIONS, file), 'utf8').replace(/\r\n/g, '\n');
   const tables = [...sql.matchAll(TABLE_RE)].map((m) => m[1]);
   const newFunctions = [];
+  for (const m of sql.matchAll(DROP_FUNCTION_RE)) {
+    lastFunctionAction.set(m[1], { file, kind: 'drop' });
+  }
   for (const m of sql.matchAll(FUNCTION_RE)) {
     const [, orReplace, name, , body] = m;
     lastDefiner.set(name, file);
     expectedBody.set(name, body);
+    lastFunctionAction.set(name, { file, kind: 'define' });
     if (!orReplace) newFunctions.push(name);
   }
+  const grants = [...sql.matchAll(GRANT_TABLE_RE)]
+    .map((m) => ({ privilege: m[1].toUpperCase(), table: m[2], role: m[3] }));
 
   // A migration that only source-patches proves itself by its own marker.
   const patches = sql.includes('pg_get_functiondef')
@@ -205,7 +241,7 @@ for (const file of files) {
     ? truncateRevoke[1].split(',').map((r) => r.trim()).filter((r) => r === 'anon' || r === 'authenticated')
     : [];
 
-  created.set(file, { tables, newFunctions, patchProbe, enums, constraints, revokedFrom });
+  created.set(file, { tables, newFunctions, patchProbe, enums, constraints, revokedFrom, grants });
 }
 
 /**
@@ -253,7 +289,7 @@ const functionBodies = async (name) =>
 const results = [];
 
 for (const file of files) {
-  const { tables, newFunctions, patchProbe, enums, constraints, revokedFrom } = created.get(file);
+  const { tables, newFunctions, patchProbe, enums, constraints, revokedFrom, grants } = created.get(file);
   const owned = [...lastDefiner.entries()].filter(([, f]) => f === file).map(([n]) => n);
 
   const proofs = [];
@@ -305,11 +341,27 @@ for (const file of files) {
       detail: r.rows[0].n === 0 ? '' : `${r.rows[0].n} tables still grant it`,
     });
   }
+  // Retired ON PURPOSE by a later migration: its absence is the correct state,
+  // so demanding it here is a gap that can never be closed.
+  const retiredBy = (fn) => {
+    const last = lastFunctionAction.get(fn);
+    return last && last.kind === 'drop' && last.file > file ? last.file : null;
+  };
   for (const fn of newFunctions) {
+    const retired = retiredBy(fn);
+    if (retired) {
+      proofs.push({ what: `function ${fn}`, ok: true, retired: true, detail: `retired by ${retired}` });
+      continue;
+    }
     proofs.push({ what: `function ${fn}`, ok: (await functionBodies(fn)).length > 0 });
   }
   for (const fn of owned) {
     if (newFunctions.includes(fn)) continue; // already proved by existence
+    const retired = retiredBy(fn);
+    if (retired) {
+      proofs.push({ what: `function ${fn}`, ok: true, retired: true, detail: `retired by ${retired}` });
+      continue;
+    }
     const installed = await functionBodies(fn);
     if (installed.length === 0) {
       proofs.push({ what: `function ${fn}`, ok: false, detail: 'absent' });
@@ -331,11 +383,25 @@ for (const file of files) {
     proofs.push({ what: `body of ${fn}`, ok: match, detail: match ? '' : 'an older definition is installed' });
   }
 
+  // A grant-only migration leaves no object behind. Probed only when nothing
+  // else proved anything, so a later revoke of an earlier grant cannot become
+  // the same permanent false gap this pass exists to remove.
+  if (proofs.length === 0) {
+    for (const g of grants) {
+      const r = await client.query(
+        `select case when to_regclass('public.' || $2) is null then false
+                     else has_table_privilege($1, ('public.' || $2)::regclass, $3) end as ok`,
+        [g.role, g.table, g.privilege],
+      );
+      proofs.push({ what: `${g.role} may ${g.privilege} ${g.table}`, ok: r.rows[0].ok === true });
+    }
+  }
+
   let verdict;
   if (proofs.length === 0) {
     verdict = 'INDETERMINATE';
   } else if (proofs.every((p) => p.ok)) {
-    verdict = proofs.some((p) => p.patched) ? 'PATCHED' : 'APPLIED';
+    verdict = proofs.some((p) => p.patched || p.retired) ? 'PATCHED' : 'APPLIED';
   } else if (proofs.every((p) => !p.ok)) {
     verdict = 'NOT APPLIED';
   } else {

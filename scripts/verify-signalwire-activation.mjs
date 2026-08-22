@@ -393,17 +393,42 @@ async function main() {
 }
 
 function finish() {
+  // WHICH CHECKS ARE ACTUALLY ABOUT PRODUCTION.
+  //
+  // This script mixes two sources and used to present them as one verdict. The
+  // carrier checks hit the SignalWire API and are true wherever this runs. The
+  // rest read .env.local / .env on THIS MACHINE — and the production flags live
+  // in Vercel as Sensitive variables that nothing here can read. So on a laptop
+  // the lane rows say "not set" and the token row FAILs while production may be
+  // perfectly configured, and "NOT READY. Blocking:" read as a statement about
+  // production when half of it was a statement about a missing local file.
+  const ENV_SCOPED = new Set([
+    'env names', 'misfiled credential', 'duplicate credential', 'app origin',
+    'signalwire config', 'provider resolution', 'signing key',
+    '10DLC callback token', 'kill switch', 'canary list',
+  ]);
+  const isEnvScoped = (name) => ENV_SCOPED.has(name) || name.startsWith('lane ');
+
   const width = Math.max(...results.map((r) => r.name.length));
   for (const r of results) {
-    console.log(`${r.level.padEnd(4)}  ${r.name.padEnd(width)}  ${r.detail}`);
+    const scope = isEnvScoped(r.name) ? ' [local env]' : '';
+    console.log(`${r.level.padEnd(4)}  ${r.name.padEnd(width)}  ${r.detail}${scope}`);
   }
   const failures = results.filter((r) => r.level === 'FAIL');
+  const carrierFailures = failures.filter((f) => !isEnvScoped(f.name));
+  const envFailures = failures.filter((f) => isEnvScoped(f.name));
   console.log('');
   console.log(`${results.filter((r) => r.level === 'PASS').length} passed, ${failures.length} failed, ${results.filter((r) => r.level === 'WARN').length} warnings`);
-  if (failures.length) {
+  if (carrierFailures.length) {
     console.log('');
-    console.log('NOT READY. Blocking:');
-    failures.forEach((f) => console.log(`  - ${f.name}: ${f.detail}`));
+    console.log('NOT READY at the carrier. These are true wherever this runs:');
+    carrierFailures.forEach((f) => console.log(`  - ${f.name}: ${f.detail}`));
+  }
+  if (envFailures.length) {
+    console.log('');
+    console.log('Unset in THIS environment. Says nothing about production, whose flags are');
+    console.log('Vercel Sensitive variables and unreadable by anyone:');
+    envFailures.forEach((f) => console.log(`  - ${f.name}: ${f.detail}`));
   }
   // A gate, not a report.
   process.exitCode = failures.length ? 1 : 0;
