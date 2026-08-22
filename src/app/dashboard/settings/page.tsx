@@ -14,6 +14,7 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import TradeAutocomplete from '@/components/trade-autocomplete';
 import ExportData from './ExportData';
 import DeleteAccountButton from './DeleteAccountButton';
+import PlanUsageSection, { type PlanUsageSnapshot } from './PlanUsageSection';
 import { updateBusinessAddressesAction, updateBusinessBasicsAction, deleteAccountAction } from './actions';
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import InsuranceSection from './InsuranceSection';
@@ -43,6 +44,13 @@ export default async function SettingsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
+  // Usage is deliberately a rolling window. A calendar-month number looks like
+  // a quota that resets, and messaging currently has no such allowance. Rolling
+  // 30-day windows also make the comparison useful on the first day of a month.
+  const usageWindowEnd = new Date();
+  const usageWindowStart = new Date(usageWindowEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const previousUsageWindowStart = new Date(usageWindowStart.getTime() - 30 * 24 * 60 * 60 * 1000);
+
   // ── ONE READ OF THE ACCOUNT ROW, and everything independent in one wave ────
   //
   // This page read the account row FIVE times: a narrow select here and four
@@ -68,6 +76,10 @@ export default async function SettingsPage({
     trailingVolume,
     quickBooksStatus,
     { count: clientCount },
+    outboundMessages,
+    inboundMessages,
+    previousMessages,
+    accountCredits,
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.auth.getUserIdentities(),
@@ -89,6 +101,30 @@ export default async function SettingsPage({
     connectionStatus(accountId),
     // Is this account still moving in? See stillMovingIn below.
     supabase.from('clients').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+    supabase
+      .from('sms_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('direction', 'outbound')
+      .gte('created_at', usageWindowStart.toISOString())
+      .lt('created_at', usageWindowEnd.toISOString()),
+    supabase
+      .from('sms_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('direction', 'inbound')
+      .gte('created_at', usageWindowStart.toISOString())
+      .lt('created_at', usageWindowEnd.toISOString()),
+    supabase
+      .from('sms_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .gte('created_at', previousUsageWindowStart.toISOString())
+      .lt('created_at', usageWindowStart.toISOString()),
+    // Account credits are a signed money ledger, not message/voice units. A
+    // pre-migration database reports unavailable instead of turning the whole
+    // Settings page into an error.
+    supabase.from('account_credits').select('amount_cents').eq('account_id', accountId),
   ]);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
@@ -109,6 +145,44 @@ export default async function SettingsPage({
   });
 
   const feeTier = getTierInfo(trailingVolume);
+
+  const messagingAvailable = !outboundMessages.error && !inboundMessages.error && !previousMessages.error;
+  const accountCreditCents = accountCredits.error
+    ? null
+    : (accountCredits.data ?? []).reduce(
+        (total, row) => total + (Number((row as { amount_cents?: unknown }).amount_cents) || 0),
+        0,
+      );
+  const planUsageSnapshot: PlanUsageSnapshot = {
+    accessTier: typeof accountRow.plan === 'string' ? accountRow.plan : null,
+    trailingVolume,
+    feeTier: {
+      tier: feeTier.tier,
+      rate: feeTier.rate,
+      nextTier: feeTier.nextTier,
+      progressToNext: feeTier.progressToNext,
+      amountToNextTier: feeTier.amountToNextTier,
+    },
+    accountCreditCents,
+    messaging: {
+      available: messagingAvailable,
+      outboundLast30Days: messagingAvailable ? outboundMessages.count ?? 0 : 0,
+      inboundLast30Days: messagingAvailable ? inboundMessages.count ?? 0 : 0,
+      previous30Days: messagingAvailable ? previousMessages.count ?? 0 : 0,
+      numberConfigured: Boolean(accountRow.sms_number),
+    },
+    voice: {
+      trackingNumberConfigured: Boolean(accountRow.call_tracking_number),
+      forwardingNumberConfigured: Boolean(accountRow.call_forward_number),
+      routingVerified: Boolean(accountRow.call_tracking_verified_at),
+      missedCallTextBackEnabled: accountRow.call_textback_enabled === true,
+    },
+    payments: {
+      connected: Boolean(accountRow.stripe_connect_id && accountRow.connect_onboarded),
+      paused: Boolean(accountRow.connect_disabled_at),
+      restricted: Boolean(accountRow.payouts_restricted_at),
+    },
+  };
 
   // A stored 0 is a real choice and is kept; the defaults stand in only when
   // there is nothing stored at all. `|| 0` would have conflated the two, which
@@ -327,6 +401,12 @@ export default async function SettingsPage({
                 </section>
               </>
             ),
+          },
+          {
+            id: 'plan',
+            label: 'Plan',
+            anchors: ['plan', 'plan-priority', 'plan-risk', 'usage-balances', 'buy-credits', 'plan-alerts', 'plan-actions'],
+            content: <PlanUsageSection snapshot={planUsageSnapshot} />,
           },
           {
             id: 'business',
