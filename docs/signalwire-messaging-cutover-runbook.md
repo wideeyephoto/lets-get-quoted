@@ -16,6 +16,10 @@ This is the controlled handoff for LGQ operational messaging. Supabase Auth phon
 
 No lane inherits another lane's Campaign, number, consent, or release decision.
 
+The contractor lane is blocked and has never run. Its gate list — carrier,
+commercial, engineering and compliance — is in
+[Two-Way Messaging Readiness](two-way-messaging-readiness.md).
+
 ### Who can receive from the shared number
 
 Only the **account owner**, at `accounts.alert_phone`, and only for
