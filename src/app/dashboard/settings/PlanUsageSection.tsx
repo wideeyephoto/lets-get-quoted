@@ -1,9 +1,11 @@
 import { formatUsdFromCents } from '@/lib/billing/catalog';
 import type {
   PlanUsageLimits,
+  WorkspaceBalancesRead,
   WorkspacePlanRead,
   WorkspacePlanUsage,
 } from '@/lib/billing/plan-usage';
+import type { CapacityRow, WorkspaceCapacity } from '@/lib/billing/capacity-usage';
 import { formatStorageBytes, type WorkspaceStorageState } from '@/lib/billing/storage-usage';
 import {
   NO_PURCHASED_SEATS,
@@ -32,6 +34,21 @@ function formatDate(value: string): string {
   });
 }
 
+/**
+ * formatDate for values nobody validated on the way in.
+ *
+ * plan-usage and storage-usage both run their timestamps through an optionalIso
+ * guard, so anything from them is parseable by the time it reaches here.
+ * overage-summary does not -- it casts period_start and period_end straight off
+ * the row -- and `new Date('whatever').toLocaleDateString()` renders the literal
+ * string "Invalid Date" rather than throwing, which is how a date nobody checked
+ * ends up printed on the one card a contractor might dispute.
+ */
+function formatDateOrNull(value: string | null): string | null {
+  if (!value || !Number.isFinite(Date.parse(value))) return null;
+  return formatDate(value);
+}
+
 function platformFeeLabel(basisPoints: number): string {
   return `${(basisPoints / 100).toFixed(2)}%`;
 }
@@ -46,6 +63,31 @@ function planPrice(plan: Extract<WorkspacePlanRead, { kind: 'ready' }>): string 
 
 type ReadyPlan = Extract<WorkspacePlanRead, { kind: 'ready' }>;
 type BillingStatus = ReadyPlan['billingStatus'];
+
+/**
+ * Named rather than inline, so the derivations further down can take them as
+ * arguments instead of restating their shape. Both are supplied by page.tsx.
+ */
+export type CancellableProps = Readonly<{
+  planName: string;
+  currentPeriodEnd: string | null;
+  alreadyScheduled: boolean;
+}>;
+
+export type PlanChangeProps = Readonly<{
+  currentPlanCode: BillingPlanId;
+  currentBillingInterval: 'none' | BillingCycle;
+  currentPeriodEnd: string | null;
+  pendingPlanCode: string | null;
+  pendingEffectiveAt: string | null;
+  options: readonly {
+    planCode: BillingPlanId;
+    billingInterval: 'none' | BillingCycle;
+    label: string;
+    effect: 'immediate' | 'at_renewal';
+    priceLabel: string;
+  }[];
+}>;
 
 export function billingStatusLabel(status: BillingStatus): string {
   switch (status) {
@@ -136,6 +178,8 @@ type StorageView =
     bytesUsed: number;
     limitBytes: number;
     objectCount: number | null;
+    /** When the sweep last ran. Arrives in props and was previously discarded. */
+    measuredAt: string | null;
     percent: number;
     over: boolean;
     nearly: boolean;
@@ -158,12 +202,155 @@ function storageView(storage: WorkspaceStorageState | null): StorageView {
     bytesUsed: storage.bytesUsed,
     limitBytes: storage.limitBytes,
     objectCount: storage.objectCount,
+    measuredAt: storage.measuredAt,
     percent,
     over: storage.bytesUsed > storage.limitBytes,
     nearly: storage.bytesUsed <= storage.limitBytes && percent >= 80,
   };
 }
 
+type Tone = 'healthy' | 'info' | 'warn' | 'danger' | 'neutral';
+
+/** A tone is never rendered without this word beside it. Color is not a status. */
+function StatusLine({ tone, children }: { tone: Tone; children: string }) {
+  return <p className="tone-status" data-tone={tone}>{children}</p>;
+}
+
+/**
+ * THE SIX DATE FIELDS ON THIS SURFACE ARE FOUR INSTANTS, AND TWO PAIRS ARE THE
+ * SAME DATABASE COLUMN.
+ *
+ * `plan.periodEnd` and `overage.periodEnd` both read workspace_entitlements
+ * .period_end. `planChange.currentPeriodEnd` and `cancellable.currentPeriodEnd`
+ * both read billing_subscriptions.current_period_end, and the projector sets one
+ * from the other. Labelling per SOURCE would print one date up to four times
+ * under four different names and look like four separate commitments.
+ *
+ * So: one candidate per instant, the earliest still ahead of us wins, and the
+ * label says what the date MEANS rather than which loader produced it.
+ *
+ * A Flex workspace has none of these, structurally -- billing_subscriptions
+ * excludes 'flex' by CHECK, and the Flex seed writes neither period_end nor
+ * next_allowance_reset_at. That is "nothing is scheduled", which is a true and
+ * rather good thing to say about pay-as-you-go, not a failed lookup.
+ */
+type NextEvent = Readonly<{ label: string; at: string }>;
+
+export function nextEvent(
+  plan: WorkspacePlanRead,
+  balances: WorkspaceBalancesRead,
+  planChange: PlanChangeProps | null,
+  cancellable: CancellableProps | null,
+  now: number,
+): NextEvent | null {
+  const candidates: (NextEvent | null)[] = [];
+
+  if (planChange?.pendingEffectiveAt) {
+    candidates.push({ label: 'Plan changes', at: planChange.pendingEffectiveAt });
+  }
+
+  // Cancellation and renewal are the same column and cannot both be true. A
+  // subscription set to cancel does not renew, so saying "Renews" about it
+  // would be the single most disputable sentence on the page.
+  const periodEnd = planChange?.currentPeriodEnd ?? cancellable?.currentPeriodEnd ?? null;
+  if (periodEnd) {
+    candidates.push(cancellable?.alreadyScheduled
+      ? { label: 'Plan ends', at: periodEnd }
+      : { label: 'Renews', at: periodEnd });
+  }
+
+  if (plan.kind === 'ready' && plan.nextAllowanceResetAt) {
+    candidates.push({ label: 'Credits reset', at: plan.nextAllowanceResetAt });
+  }
+
+  if (balances.kind === 'ready') {
+    const expiries = balances.balances
+      .map((balance) => balance.nextExpirationAt)
+      .filter((value): value is string => Boolean(value))
+      .sort();
+    if (expiries[0]) candidates.push({ label: 'Credits expire', at: expiries[0] });
+  }
+
+  const future = candidates
+    .filter((candidate): candidate is NextEvent => candidate !== null)
+    .filter((candidate) => Number.isFinite(Date.parse(candidate.at)) && Date.parse(candidate.at) >= now)
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+
+  return future[0] ?? null;
+}
+
+/**
+ * The tone of the plan card, in the order a contractor needs to hear it.
+ *
+ * Money that is not being collected outranks everything: a workspace can be
+ * restricted BECAUSE the payment failed, and telling somebody "restricted,
+ * contact support" when their bank is waiting on a 3-D Secure confirmation
+ * sends them to the one place that cannot help.
+ */
+function planTone(plan: WorkspacePlanRead): Tone {
+  if (plan.kind !== 'ready') return 'neutral';
+  if (plan.billingStatus === 'unpaid' || plan.entitlementState === 'restricted') return 'danger';
+  if (collectionNote(plan.billingStatus)) return 'warn';
+  if (plan.entitlementState !== 'active') return 'warn';
+  if (plan.billingStatus === 'free') return 'neutral';
+  return 'healthy';
+}
+
+function planStatusWord(plan: WorkspacePlanRead): string {
+  if (plan.kind !== 'ready') return 'Not available right now';
+  if (collectionNote(plan.billingStatus)) return billingStatusLabel(plan.billingStatus);
+  if (plan.entitlementState !== 'active') {
+    return `Workspace ${plan.entitlementState}`;
+  }
+  if (plan.billingInterval === 'none') return 'Pay as you go — nothing renews';
+  return 'Active';
+}
+
+
+const CAPACITY_TONE: Readonly<Record<CapacityRow['verdict'], Tone>> = {
+  // Not measured is NEUTRAL, never healthy and never a warning. A read that did
+  // not happen is not a problem the contractor caused and not an all-clear.
+  unknown: 'neutral',
+  healthy: 'healthy',
+  near: 'warn',
+  at_limit: 'info',
+  over: 'danger',
+};
+
+/**
+ * One capacity row: the figure, the word, and a bar only where a bar can be
+ * honest.
+ *
+ * `at_limit` is INFO rather than a warning. On Flex, "1 of 1 office users" is
+ * simply what the free plan is, and painting it amber tells somebody that the
+ * thing they chose is broken. Over the limit is a different matter and is the
+ * only red here.
+ */
+function CapacityMeter({ row }: { row: CapacityRow }) {
+  const tone = CAPACITY_TONE[row.verdict];
+  return (
+    <li className="plan-usage-capacity" data-tone={tone}>
+      <span className="plan-usage-capacity-label">{row.label}</span>
+      <strong className="plan-usage-capacity-figure">{row.detail}</strong>
+      {/* No bar when the count could not be read or no limit is known. An empty
+          track reads as "you have used none of it", which is the single most
+          misleading thing an unmeasured row could say. */}
+      {row.percent === null ? null : (
+        <div
+          className="plan-usage-storage-meter"
+          role="img"
+          aria-label={`${row.percent}% of the ${row.label.toLowerCase()} allowance used`}
+        >
+          <div
+            className={`plan-usage-storage-meter-fill${row.verdict === 'over' ? ' over' : row.verdict === 'near' ? ' nearly' : ''}`}
+            style={{ width: `${Math.max(row.percent, 2)}%` }}
+          />
+        </div>
+      )}
+      <StatusLine tone={tone}>{row.status}</StatusLine>
+    </li>
+  );
+}
 
 /**
  * What has been run up past the allowance, and what is left before it stops.
@@ -197,6 +384,20 @@ function OverageCard({ overage }: { overage: OverageSummary }) {
   return (
     <section className="panel workspace-section-card" id="overage">
       <h3>Extra usage this period</h3>
+      {/* WHICH period. Both dates have been loaded since the accrual read was
+          written and rendered nowhere, so the card said "this period" and left
+          the reader to guess which one -- on the one figure here they might want
+          to dispute. Note this is period_END, never period_start on its own: the
+          projector moves period_start mid-month, which is why the accrual query
+          matches by overlap rather than equality. */}
+      {formatDateOrNull(overage.periodEnd) ? (
+        <p className="plan-usage-fineprint">
+          {formatDateOrNull(overage.periodStart)
+            ? `${formatDateOrNull(overage.periodStart)} — `
+            : 'Through '}
+          {formatDateOrNull(overage.periodEnd)}
+        </p>
+      ) : null}
       <p className="usage-overage-total">
         <strong>{formatOverageTotal(overage.totalMillicents)}</strong>
         {overage.capCents === null ? null : (
@@ -247,6 +448,7 @@ export default function PlanUsageSection({
   topUpCheckoutStatus = null,
   overage,
   planIntent = null,
+  capacity = null,
 }: {
   data: WorkspacePlanUsage;
   storage?: WorkspaceStorageState | null;
@@ -259,24 +461,17 @@ export default function PlanUsageSection({
   planIntent?: PlanIntent | null;
   // Present only when this workspace has a subscription there is still something
   // to cancel, and only when the cancellation flag is on.
-  cancellable?: { planName: string; currentPeriodEnd: string | null; alreadyScheduled: boolean } | null;
-  planChange?: {
-    currentPlanCode: BillingPlanId;
-    currentBillingInterval: 'none' | BillingCycle;
-    currentPeriodEnd: string | null;
-    pendingPlanCode: string | null;
-    pendingEffectiveAt: string | null;
-    options: readonly {
-      planCode: BillingPlanId;
-      billingInterval: 'none' | BillingCycle;
-      label: string;
-      effect: 'immediate' | 'at_renewal';
-      priceLabel: string;
-    }[];
-  } | null;
+  cancellable?: CancellableProps | null;
+  planChange?: PlanChangeProps | null;
+  /** Used against entitled, for the dimensions a workspace can actually consume. */
+  capacity?: WorkspaceCapacity | null;
 }) {
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits, purchasedSeats) : [];
+  // Server-rendered, so this is the render instant and not a client clock that
+  // could disagree with the dates beside it.
+  const event = nextEvent(data.plan, data.balances, planChange, cancellable, Date.now());
+  const tone = planTone(data.plan);
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
     && data.plan.billingInterval === 'none'
@@ -285,10 +480,66 @@ export default function PlanUsageSection({
 
   return (
     <>
+      {/* AT A GLANCE — three tiles, not the mockup's four.
+          "Estimated this month" is absent on purpose: no upcoming-invoice read
+          exists anywhere in this codebase, so the figure would exclude proration,
+          tax, discounts and credits, and basePriceCents is a per-YEAR number for
+          an annual subscriber. "Best opportunity" is absent for the same class of
+          reason -- the remedies it would rank are withheld SKUs with no live
+          Price. Both come back when there is something true to put in them.
+
+          .workspace-metric-grid is reused rather than invented: FinanceReports
+          already uses it on this very page, and its 3-2-1 responsive steps are
+          already tuned. */}
+      <section className="panel workspace-section-card" id="plan-at-a-glance">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">At a glance</p>
+          <h2>Plan &amp; usage</h2>
+        </div>
+        <div className="workspace-metric-grid plan-usage-glance">
+          <article className="workspace-metric-card">
+            <span className="workspace-metric-label">Current plan</span>
+            <strong className="workspace-metric-value">{data.plan.kind === 'ready' ? data.plan.planName : 'Unavailable'}</strong>
+            <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
+          </article>
+          <article className="workspace-metric-card">
+            <span className="workspace-metric-label">Next event</span>
+            <strong className="workspace-metric-value">{event ? formatDate(event.at) : 'None scheduled'}</strong>
+            <StatusLine tone="neutral">
+              {event
+                ? event.label
+                : data.plan.kind === 'ready' && data.plan.billingInterval === 'none'
+                  ? 'Nothing renews and nothing expires'
+                  : 'Nothing is scheduled'}
+            </StatusLine>
+          </article>
+          <article className="workspace-metric-card">
+            <span className="workspace-metric-label">Extra usage this period</span>
+            <strong className="workspace-metric-value">
+              {overage === null
+                ? 'Unavailable'
+                : overage.enabled
+                  ? formatOverageTotal(overage.totalMillicents)
+                  : 'Off'}
+            </strong>
+            <StatusLine tone={overage?.enabled && overage.atCap ? 'warn' : 'neutral'}>
+              {overage === null
+                ? 'Could not be read'
+                : !overage.enabled
+                  ? 'Nothing is billed past your plan'
+                  : overage.atCap
+                    ? 'At your limit'
+                    : 'Within your limit'}
+            </StatusLine>
+          </article>
+        </div>
+      </section>
+
       <section className="panel workspace-section-card" id="current-plan">
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Current plan</p>
           <h2>Your LGQ plan</h2>
+          <StatusLine tone={tone}>{planStatusWord(data.plan)}</StatusLine>
         </div>
 
         {data.plan.kind === 'ready' ? (
@@ -437,17 +688,34 @@ export default function PlanUsageSection({
                   ? 'Job photos, lead photos, crew photos, website images and video, and insurance certificates.'
                   : `${storageState.objectCount.toLocaleString('en-US')} ${storageState.objectCount === 1 ? 'file' : 'files'} across job photos, lead photos, crew photos, website images and video, and insurance certificates.`}
               </p>
+              {/* This sentence used to end "or add storage", and there is nothing to add:
+                  storage_100gb is withheld and has no live Price, so it is never rendered in
+                  the buy card. It reaches a contractor at the exact moment uploads start being
+                  refused, which is the worst possible moment to name a remedy that does not
+                  exist. Say only what they can actually do. */}
+              {/* The one real freshness timestamp on this page, and it arrived in
+                  props and was thrown away. Stated as a plain date with a neutral
+                  tone and no staleness threshold: how old the measurement is
+                  depends on a sweep flag the contractor does not hold, so warning
+                  them about it would blame them for our schedule. */}
+              {storageState.measuredAt ? (
+                <p className="plan-usage-fineprint">Measured {formatDate(storageState.measuredAt)}.</p>
+              ) : null}
               {storageState.over ? (
                 <p className="plan-usage-note warning" role="status">
                   This workspace is over its storage allowance. Nothing has been deleted and nothing will be.
-                  Remove files you no longer need, or add storage, to make room for new uploads.
+                  Remove files you no longer need to make room for new uploads.
                 </p>
               ) : storageState.nearly ? (
                 <p className="plan-usage-note" role="status">
                   Storage is nearly full. Once it is full, new uploads are refused until room is made — existing
                   files are never removed.
                 </p>
-              ) : null}
+              ) : (
+                // Healthy got `null` before, so a card at 12% said nothing at all
+                // and read as though a sentence had failed to load.
+                <StatusLine tone="healthy">Room to spare</StatusLine>
+              )}
             </>
           ) : storageState.kind === 'unmeasured' ? (
             <div className="plan-usage-unavailable" role="status">
@@ -481,17 +749,34 @@ export default function PlanUsageSection({
       {data.plan.kind === 'ready' && limits.length > 0 ? (
         <section className="panel workspace-section-card" id="included-limits">
           <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Included capacity</p>
-            <h2>Workspace limits</h2>
+            <p className="eyebrow">Plan capacity</p>
+            <h2>What you are using</h2>
           </div>
-          <dl className="plan-usage-limit-list">
-            {limits.map((row) => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd>{row.value}</dd>
-              </div>
-            ))}
-          </dl>
+
+          {/* Occupancy first, entitlement second. "Office users: 2" never told a
+              contractor whether they could invite anybody; "1 of 2 used" does.
+              The rows here are only the dimensions a workspace can actually
+              consume -- see the note in capacity-usage.ts about why dedicated
+              numbers and AI Voice are not among them. */}
+          {capacity && capacity.rows.length > 0 ? (
+            <ul className="plan-usage-capacity-grid">
+              {capacity.rows.map((row) => (
+                <CapacityMeter key={row.key} row={row} />
+              ))}
+            </ul>
+          ) : null}
+
+          <details className="plan-usage-limit-details">
+            <summary>Everything included with {data.plan.planName}</summary>
+            <dl className="plan-usage-limit-list">
+              {limits.map((row) => (
+                <div key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
         </section>
       ) : null}
     </>
