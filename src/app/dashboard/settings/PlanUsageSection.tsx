@@ -19,6 +19,11 @@ import {
   remainingCapMillicents,
   type OverageSummary,
 } from '@/lib/billing/overage-summary';
+import {
+  forecastPeriodCost,
+  formatForecast,
+  type PeriodForecast,
+} from '@/lib/billing/period-forecast';
 import type { PlanIntent } from '@/lib/plan-intent';
 import BasePlanSubscriptionCheckout from './BasePlanSubscriptionCheckout';
 import CancelSubscriptionPanel from './CancelSubscriptionPanel';
@@ -307,6 +312,48 @@ function planStatusWord(plan: WorkspacePlanRead): string {
   return 'Active';
 }
 
+/**
+ * Every branch names what the figure is made of. The one thing this must never
+ * do is print a plain number: "$39.00" alone is read as an invoice, and this is
+ * not one -- it cannot see proration, tax, discounts or account credits, and
+ * two of the seven bases are cases where something is missing from the total.
+ */
+/**
+ * The two branches with no number must not wear the same word. A workspace
+ * pinned to an agreement is ACTIVE, paying, and renewing -- rendering
+ * "Unavailable" over it puts the only outage-shaped word on the strip above a
+ * plan that is working perfectly, and it is the word a customer screenshots.
+ * A failed read genuinely is unavailable and keeps it.
+ */
+function forecastValueWord(forecast: PeriodForecast): string {
+  if (forecast.millicents !== null) return formatForecast(forecast.millicents);
+  return forecast.basis === 'price_unknown' ? 'Not projected' : 'Unavailable';
+}
+
+function forecastStatusWord(forecast: PeriodForecast, plan: WorkspacePlanRead): string {
+  switch (forecast.basis) {
+    case 'unreadable':
+      return 'Could not be read';
+    case 'price_unknown':
+      return 'Your price is set by your agreement';
+    case 'plan_plus_unknown':
+      return 'Extra usage could not be read';
+    case 'plan_plus_accrued':
+      return 'Plan price plus extra usage so far';
+    case 'plan_plus_projected':
+      return 'Plan price plus projected extra usage';
+    case 'plan_plus_capped':
+      return 'Plan price plus extra usage, at your cap';
+    case 'plan_only':
+    default:
+      // Flex's answer is a real zero, and saying "plan price only" over $0.00
+      // invites the reader to wonder what the plan price was.
+      return plan.kind === 'ready' && plan.billingInterval === 'none'
+        ? 'Flex has no plan price'
+        : 'Plan price only';
+  }
+}
+
 
 /**
  * One credit resource, with a meter ONLY where a meter can be honest.
@@ -559,8 +606,13 @@ export default function PlanUsageSection({
   const storageState = storageView(storage);
   const limits = data.plan.kind === 'ready' ? includedLimits(data.plan.limits, purchasedSeats) : [];
   // Server-rendered, so this is the render instant and not a client clock that
-  // could disagree with the dates beside it.
-  const event = nextEvent(data.plan, data.balances, planChange, cancellable, Date.now());
+  // could disagree with the dates beside it. Read ONCE and shared: both readers
+  // below answer questions about where we are in the billing period, and two
+  // clock reads a few milliseconds apart could put them on opposite sides of a
+  // period boundary -- "Renews today" beside a projection for the next period.
+  const now = Date.now();
+  const event = nextEvent(data.plan, data.balances, planChange, cancellable, now);
+  const forecast = forecastPeriodCost(data.plan, overage, now);
   const tone = planTone(data.plan);
   const canStartFirstSubscription = data.plan.kind === 'ready'
     && data.plan.planCode === 'flex'
@@ -586,7 +638,7 @@ export default function PlanUsageSection({
           <p className="eyebrow">At a glance</p>
           <h2>Plan &amp; usage</h2>
         </div>
-        <div className="workspace-metric-grid plan-usage-glance">
+        <div className="workspace-metric-grid four-up plan-usage-glance">
           <article className="workspace-metric-card">
             <span className="workspace-metric-label">Current plan</span>
             <strong className="workspace-metric-value">{data.plan.kind === 'ready' ? data.plan.planName : 'Unavailable'}</strong>
@@ -622,7 +674,18 @@ export default function PlanUsageSection({
                     : 'Within your limit'}
             </StatusLine>
           </article>
+          <article className="workspace-metric-card">
+            <span className="workspace-metric-label">Projected this period</span>
+            <strong className="workspace-metric-value">{forecastValueWord(forecast)}</strong>
+            <StatusLine tone="neutral">{forecastStatusWord(forecast, data.plan)}</StatusLine>
+          </article>
         </div>
+        {forecast.millicents !== null ? (
+          <p className="plan-usage-fineprint">
+            A projection, not a bill. Excludes tax, proration, discounts and account credits.
+            The LGQ platform fee is taken from the payments you collect, not billed here.
+          </p>
+        ) : null}
       </section>
 
       <section className="panel workspace-section-card" id="current-plan">
