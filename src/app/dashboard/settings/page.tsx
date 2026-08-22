@@ -31,6 +31,7 @@ import { googleReviewUrl } from '@/lib/review-routing';
 import { loadWorkspacePlanUsage, planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { formatStorageBytes, loadWorkspaceStorageState } from '@/lib/billing/storage-usage';
 import { buildWorkspaceCapacity, loadCrewSeatsUsed } from '@/lib/billing/capacity-usage';
+import { loadWorkspaceCreditLots } from '@/lib/billing/credit-lots';
 import { NO_PURCHASED_SEATS, loadPurchasedSeats } from '@/lib/billing/purchased-seats';
 import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-subscription-entrypoint';
 import { loadChangeableSubscription, planChangeOptions } from '@/lib/billing/plan-change';
@@ -181,6 +182,16 @@ export default async function SettingsPage({
   // widening the client would remove the check rather than satisfy it.
   const crewSeatsUsed = pricingDashboardEnabled
     ? await loadCrewSeatsUsed(supabase, accountId).catch(() => null)
+    : null;
+
+  // The lots behind the balances, so a refreshing allowance can be shown
+  // against its own denominator rather than against every credit the account
+  // has ever been granted. Session client: usage_credit_lots_owner_read is the
+  // boundary, and only the columns granted to `authenticated` are selected.
+  // Its own `unavailable`, so a refusal here falls back to the balance view
+  // rather than emptying the card.
+  const creditLots = pricingDashboardEnabled
+    ? await loadWorkspaceCreditLots(supabase, accountId).catch(() => ({ kind: 'unavailable' as const }))
     : null;
 
   const capacity = pricingDashboardEnabled && planUsage
@@ -475,6 +486,7 @@ export default async function SettingsPage({
                 storage={storageState}
                 purchasedSeats={purchasedSeats}
                 capacity={capacity}
+                lots={creditLots}
                 overage={overage}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
