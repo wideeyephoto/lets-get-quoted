@@ -146,6 +146,7 @@ are read. See the top of this file.
 | `20260823220000` | `claim_stripe_billing_subscription_plan_change` | Inert; nothing calls it |
 | `20260823230000` | Transition RPCs + protection trigger | Inert; nothing calls them |
 | `20260823235000` | Projector + binding read either ledger | Inert; no plan-change row can exist yet |
+| `20260823235500` | Upgrade grants the full new allowance; zero-invoice change activates | Inert for plan changes; the plan-aware lot key applies from the next renewal |
 
 Everything except `20260823190000` is dark. The panel is withheld at the render
 site AND the operation is gated by
@@ -372,7 +373,7 @@ npm run inspect:cron-health
 6. End-to-end projection test in test mode. **This gates the flag**, not the
    migrations and not a design note.
 
-**Ceiling:** `20260823235500` is written and verified but NOT APPLIED. Step 6 and
-the flag flips need a real
+**Ceiling:** every migration on this rail is APPLIED. Step 6 and the flag flips
+need a real
 test-mode Stripe purchase and a Vercel redeploy — `vercel-env-is-baked-at-build`
 means a Production flag does nothing until one happens.
