@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { sendSupportCaseCustomerEmail, sendSupportCaseStaffEmail } from '@/lib/email';
 import {
@@ -35,7 +35,7 @@ function back(path: string, error: SupportFormError): never {
 }
 
 export async function openSupportCaseAction(formData: FormData) {
-  const { accountId, userEmail, supabase } = await requireOwnerContext();
+  const { accountId, userEmail, supabase } = await requireOfficeContext('leads.read');
   const subject = String(formData.get('subject') ?? '').trim().slice(0, SUBJECT_MAX + 1);
   const body = String(formData.get('body') ?? '').trim().slice(0, BODY_MAX + 1);
 
@@ -73,7 +73,7 @@ export async function openSupportCaseAction(formData: FormData) {
 }
 
 export async function replyToSupportCaseAction(caseId: string, formData: FormData) {
-  const { accountId, userEmail, supabase } = await requireOwnerContext();
+  const { accountId, userEmail, supabase } = await requireOfficeContext('leads.read');
   const body = String(formData.get('body') ?? '').trim().slice(0, BODY_MAX + 1);
   const path = `/dashboard/help/${caseId}`;
 

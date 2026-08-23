@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext, createAdminClient } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getSiteContent, mergeSiteContent, slugifyBlogTitle } from '@/lib/site-content';
@@ -26,7 +26,7 @@ import { EMAIL_THEMES, normalizeEmailTheme } from '@/emails/brand';
 
 /** Save the one layout used by every customer-facing email for this account. */
 export async function updateEmailThemeAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const requested = String(formData.get('emailTheme') ?? '');
   if (!EMAIL_THEMES.some((theme) => theme.id === requested)) {
     throw new Error('Choose one of the available email themes.');
@@ -53,7 +53,7 @@ export async function updateEmailThemeAction(formData: FormData) {
  * export becomes a server action and a plain helper cannot live.
  */
 export async function marketingCalendarAction(monthsAhead = 3): Promise<CalendarView> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   return buildCalendarView(supabase, accountId, monthsAhead);
 }
 
@@ -69,7 +69,7 @@ export async function draftMarketingAction(
   beatId: string,
   channel: Channel,
 ): Promise<{ ok: true; draft: MarketingDraft } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   if (!(await checkRateLimit(createAdminClient(), `marketing-draft:${accountId}`, 40, 3600))) {
     return { ok: false, message: 'That is a lot of drafts in an hour — give it a few minutes.' };
   }
@@ -127,7 +127,7 @@ export async function draftMarketingAction(
  * than not offering the button.
  */
 export async function campaignDraftForBeatAction(beatId: string): Promise<CampaignDraft | null> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   if (!(await checkRateLimit(createAdminClient(), `marketing-draft:${accountId}`, 40, 3600))) return null;
   return (await campaignDraftForBeat(supabase, accountId, beatId)) ?? null;
 }
@@ -147,7 +147,7 @@ export async function campaignDraftForBeatAction(beatId: string): Promise<Campai
 export async function createBlogPostFromBeatAction(
   beatId: string,
 ): Promise<{ ok: true; title: string; postId: string } | { ok: false; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const beat = BEATS.find((entry) => entry.id === beatId);
   if (!beat) return { ok: false, message: 'That topic could not be found.' };
@@ -251,7 +251,7 @@ const AUDIENCES: CampaignAudience[] = ['all', 'past', 'repeat', 'lapsed'];
 
 // Local alias, not an export — every export from a 'use server' file becomes a
 // server action, and a type is not one.
-type Supa = Awaited<ReturnType<typeof requireOwnerContext>>['supabase'];
+type Supa = Awaited<ReturnType<typeof requireOfficeContext>>['supabase'];
 
 // Resolve the sender identity shown in marketing email: the display name and the
 // CAN-SPAM physical mailing address (contractor's own, else platform fallback).
@@ -273,7 +273,7 @@ async function resolveSenderIdentity(
 }
 
 export async function sendCampaignAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const channel = String(formData.get('channel') ?? '') as CampaignChannel;
   const audience = String(formData.get('audience') ?? '') as CampaignAudience;
@@ -316,7 +316,7 @@ export async function sendCampaignAction(formData: FormData) {
 // Send just the email version to the owner's own inbox so they can eyeball it
 // before broadcasting. No audience, no SMS — a preview, not a send.
 export async function sendTestEmailAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
 
   const subject = String(formData.get('subject') ?? '').trim() || 'Test message';
   const body = String(formData.get('body') ?? '').trim();
@@ -344,7 +344,7 @@ export async function sendTestEmailAction(formData: FormData) {
  * postal address — are the parts that make the send lawful.
  */
 export async function previewCampaignEmailAction(subject: string, body: string): Promise<string> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const trimmed = body.trim();
   if (!trimmed) return '';
 
@@ -372,7 +372,7 @@ export async function readCampaignAction(input: {
   subject: string;
   body: string;
 }): Promise<CampaignFinding[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   if (!(await checkRateLimit(createAdminClient(), `campaign-guard:${accountId}`, 30, 3600))) return [];
 
   const { data: site } = await supabase.from('sites').select('content').eq('account_id', accountId).maybeSingle();

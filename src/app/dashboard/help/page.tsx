@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import {
   BODY_MAX,
   CUSTOMER_STATUS_LABEL,
@@ -30,7 +30,7 @@ export const metadata = { title: 'Help' };
 export const dynamic = 'force-dynamic';
 
 export default async function HelpPage({ searchParams }: { searchParams: { error?: string; done?: string } }) {
-  const { accountId } = await requireOwnerContext();
+  const { accountId } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 
   const cases = await listAccountCases(admin, accountId);

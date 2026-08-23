@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import MigrationWizard from './MigrationWizard';
 
 export const metadata = { title: 'Move in from another CRM' };
@@ -7,7 +7,7 @@ export const metadata = { title: 'Move in from another CRM' };
 export const dynamic = 'force-dynamic';
 
 export default async function MigratePage() {
-  await requireOwnerContext();
+  await requireOfficeContext('jobs.write');
 
   return (
     <main className="wide-shell workspace-shell">

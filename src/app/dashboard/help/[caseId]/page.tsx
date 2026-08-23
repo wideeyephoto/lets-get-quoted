@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import {
   BODY_MAX,
   CUSTOMER_STATUS_LABEL,
@@ -42,7 +42,7 @@ export default async function HelpCasePage({
   params: { caseId: string };
   searchParams: { error?: string; done?: string };
 }) {
-  const { accountId, userEmail } = await requireOwnerContext();
+  const { accountId, userEmail } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 
   const loaded = await loadAccountCaseThread(admin, accountId, params.caseId);

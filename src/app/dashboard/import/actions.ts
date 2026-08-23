@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { parseTable, parseMoney, type ImportField } from '@/lib/smart-import';
 import { runAnalyze, runApply } from '@/lib/smart-import-run';
 import { CLIENT_FIELDS, SERVICE_FIELDS, JOB_FIELDS, INVOICE_FIELDS } from '@/lib/import-fields';
@@ -37,7 +37,7 @@ export type MigrationRunItem = { name: string; text: string; entity: ImportEntit
 export type MigrationResult = { name: string; entity: ImportEntity; imported: number; duplicates: number; skipped: number; error?: string };
 
 export async function classifyMigrationFiles(files: MigrationFileInput[]): Promise<MigrationClassified[]> {
-  await requireOwnerContext();
+  await requireOfficeContext('jobs.write');
   return (files ?? []).slice(0, MAX_FILES).map((f) => {
     const grid = parseTable((f.text ?? '').trim());
     return { name: f.name, entity: classifyGrid(grid), rowCount: roughRowCount(grid) };
@@ -45,7 +45,7 @@ export async function classifyMigrationFiles(files: MigrationFileInput[]): Promi
 }
 
 export async function runMigration(items: MigrationRunItem[]): Promise<MigrationResult[]> {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const active = (items ?? [])
     .slice(0, MAX_FILES)
     .filter((i): i is { name: string; text: string; entity: ImportEntity } => i.entity !== 'skip')

@@ -1,4 +1,4 @@
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { loadRecipients } from '@/lib/campaigns';
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { loadBlogWorkspace } from '@/lib/site-blog';
@@ -25,7 +25,7 @@ export const metadata = { title: 'Marketing' };
  * MarketingOverviewScreen so the demo renders the same one.
  */
 export default async function MarketingPage() {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
   const today = todayKeyOf();
 
   const [view, recipients, { data: addressRow }, rebookCandidates, blogData, { data: emailSite }] = await Promise.all([

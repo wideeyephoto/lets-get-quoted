@@ -60,6 +60,9 @@ describe('what an office user may open', () => {
       '/dashboard/automations',
       '/dashboard/sites',
       '/dashboard/quick-stops',
+      '/dashboard/marketing',
+      '/dashboard/import',
+      '/dashboard/help',
     ]);
   });
 
@@ -117,8 +120,8 @@ describe('matching a path to a route', () => {
       '/dashboard',
       '/dashboard/payroll',
       '/dashboard/integrations',
-      '/dashboard/marketing',
-      '/dashboard/import',
+      '/dashboard/stripe-merchant',
+      '/dashboard/stripe-return',
     ]) {
       expect(officeRouteFor(path), path).toBeNull();
     }
