@@ -316,6 +316,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/clients/page.tsx',
       'src/app/dashboard/crew/actions.ts',
       'src/app/dashboard/crew/page.tsx',
+      'src/app/dashboard/crew/pay-actions.ts',
       'src/app/dashboard/crew/requests/[id]/page.tsx',
       'src/app/dashboard/crew/requests/new/page.tsx',
       'src/app/dashboard/crew/subcontractor-actions.ts',

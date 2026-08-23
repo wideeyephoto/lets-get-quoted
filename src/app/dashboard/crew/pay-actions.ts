@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import {
   buildPayConfirmation,
   canApproveRow,
@@ -85,7 +85,7 @@ function selectedIds(formData: FormData): string[] {
 }
 
 async function context(formData: FormData) {
-  const { supabase, accountId, userEmail } = await requireOwnerContext();
+  const { supabase, accountId, userEmail } = await requireOfficeContext('crew_pay.write');
   const { data: accountRow } = await supabase
     .from('accounts')
     .select(`timezone, require_separate_payer, ${LABOR_RULE_COLUMNS}`)
