@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { stripComments } from './helpers/source-text';
+
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => {
     throw new Error('unit tests inject the preparation store');
@@ -169,7 +171,15 @@ describe('service-only direct payment preparation adapter', () => {
     expect(activeFiles.length).toBeGreaterThan(1_000);
 
     for (const file of activeFiles) {
-      const source = readFileSync(file, 'utf8');
+      // stripComments, because a comment NAMING this adapter is not a reference
+      // to it. catalog.ts documents the three guards that refuse a stale
+      // currentness row -- one of which is this RPC -- and read raw, the prose
+      // explaining a hazard reads as wiring it up.
+      //
+      // The read site is the right place to fix this, not the assertion: the
+      // thing being guarded is that no active route CALLS the dark adapter, and
+      // that is still fully enforced below.
+      const source = stripComments(readFileSync(file, 'utf8'));
       expect(source).not.toContain('direct-payment-preparation');
       expect(source).not.toContain('prepare_one_off_direct_invoice_payment');
       expect(source).not.toContain('DIRECT_PAYMENT_PREPARATION');

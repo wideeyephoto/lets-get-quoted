@@ -7,6 +7,44 @@
  * page and the payment engine cannot drift through floating-point constants.
  */
 
+/**
+ * BUMPING THIS IS A DATA MIGRATION, NOT A CONSTANT CHANGE.
+ *
+ * `catalog_version` does two structurally different jobs, and they need
+ * opposite handling. Changing this line without doing the second one has
+ * already taken a workspace's ability to collect money once.
+ *
+ * EVIDENCE -- "the version this agreement was signed under". Lives on
+ * `billing_subscription_checkout_operations`, `billing_subscription_consent_acceptances`,
+ * `billing_subscriptions`, and in the Stripe-side subscription, Session and
+ * Price metadata. It is immutable -- an enabled trigger raises 22000 on any
+ * attempt to change it -- and it must stay READABLE at its own version. So when
+ * this constant moves, the READERS must widen. Migration 20260818120000 did
+ * exactly that for three database CHECKs, and deliberately said why:
+ * "Historical evidence must stay interpretable at the version it was written
+ * under."
+ *
+ * CURRENTNESS -- "this row carries catalog X's limits and fee right now". Lives
+ * on `workspace_entitlements.catalog_version` and `payments.fee_catalog_version`.
+ * Live guards compare it to a LITERAL, so it must equal the current catalog.
+ * When this constant moves, these ROWS must move -- widening their readers
+ * would be wrong.
+ *
+ * WHAT WENT WRONG ON 2026-08-18. The bump widened the evidence checks and did
+ * not move the currentness rows. One `workspace_entitlements` row stayed on
+ * `2026-08-15-preview`, and three live functions refuse on that column:
+ * `claim_one_off_direct_checkout_operation`,
+ * `prepare_one_off_direct_invoice_payment`, and
+ * `require_direct_checkout_entitlement_snapshot` (reached from two enabled
+ * triggers on `billing_payment_operations`). The only paid workspace could not
+ * take a card payment from its own customers by any route.
+ *
+ * ALSO NOTE: a bump is NOT required for an allowance change. `20260820150000`
+ * and `20260821010000` both changed included capacity under this same version,
+ * on purpose, and wrote down why: "The version identifies the price book, and
+ * no price changes here." Bump this only when the PRICE BOOK changes, and when
+ * you do, move the currentness rows in the same migration.
+ */
 export const PRICING_CATALOG_VERSION = '2026-08-18-preview' as const;
 
 export const BILLING_PLAN_IDS = ['flex', 'solo', 'growth', 'scale'] as const;
